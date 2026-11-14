@@ -14,17 +14,19 @@ lab_venue: "Laptop"
 
 ## Why an SRE here should know this
 
-Your automation fails at 03:00 with `RESOURCE_EXHAUSTED`. Is that a quota, a rate limit, or missing GPU capacity? The right reaction differs for each. An SRE on an inference platform scripts against this API constantly, so the error model is operational knowledge. This chapter covers the API surface and nothing else. For the product map see [20.30](./30-nebius-ai-factory-to-token-factory-architecture.md) and [20.31](./31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md).
+Your automation fails at 03:00 with `RESOURCE_EXHAUSTED`. You are the one awake, and the script has been creating nodes since the start of the run. Is that a quota, a rate limit, or missing GPU capacity? The right reaction differs for each, and guessing wrong makes the outage longer. An SRE, which means a site reliability engineer, on an inference platform scripts against this API constantly, so the error model is operational knowledge and not trivia for an interview. This chapter covers the API surface and nothing else. For the product map see [20.30](./30-nebius-ai-factory-to-token-factory-architecture.md) and [20.31](./31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md).
 
-Evidence tags: `[official]` is a Nebius docs page, `[source-code]` is a public repository read at a stated commit, `[inference]` is my reasoning and `[gap]` means Nebius has not published it. All pages and repositories were read on 2026-11-11. The protobuf repository is `github.com/nebius/api` at commit `06f5307cad6ac4622f839e3cdecebb53d7222656`.
+Evidence tags: `[official]` is a Nebius docs page, `[source-code]` is a public repository read at a stated commit, `[inference]` is my reasoning and `[gap]` means Nebius has not published it. All pages and repositories were read on 2026-11-11. The protobuf repository is `github.com/nebius/api` at commit `06f5307cad6ac4622f839e3cdecebb53d7222656`. Protobuf is the schema language that describes the messages the API sends, and the commit hash pins the exact version I read.
 
-A realistic question: "You have a script that creates 200 nodes. Halfway through, the network drops. How do you make the re-run safe?"
+A realistic question: "You have a script that creates 200 nodes. Halfway through, the network drops. How do you make the re-run safe?" Keep that question in mind for the whole chapter, because almost every section gives you a piece of the answer.
 
 ## The core ideas
 
 ### 1. One API, several front doors
 
-Everything starts from `.proto` files. The repository README says they define the gRPC API, and it recommends the CLI, the Terraform provider and the Go and Python SDKs [source-code]. The REST docs say REST is generated from the same service definitions and exposes the same resources, operations and versions [official]. The provider changelog says its releases track a Go SDK version, so Terraform sits on top of the Go SDK [source-code].
+A colleague asks you how to add a set of machines, and you realise the command line tool, the Python library and Terraform all seem to do the same job. They do, because they are all clients of one API. The API is defined in `.proto` files, which are protobuf schema files. Protobuf is a compact binary format for structured messages, and gRPC is the remote procedure call system that carries those messages over the network. A remote procedure call is a function call whose code runs on another machine.
+
+Everything starts from `.proto` files. The repository README says they define the gRPC API, and it recommends the CLI, the Terraform provider and the Go and Python SDKs [source-code]. The REST docs say REST is generated from the same service definitions and exposes the same resources, operations and versions [official]. REST here means the familiar HTTP style of calls, with URLs and JSON bodies. The provider changelog says its releases track a Go SDK version, so Terraform sits on top of the Go SDK [source-code]. An SDK is a software development kit, a library that wraps the raw calls in functions your language can use.
 
 ```mermaid
 flowchart LR
@@ -36,21 +38,27 @@ flowchart LR
   S --> A["Your automation"]
 ```
 
+The diagram explains a useful habit. When a client misbehaves, you can ask which layer produced the behaviour. If the SDK adds a retry, that is the SDK. If the server sends an error, that is the API. Because every front door sits on the same definitions, the lowest layer you can reach tells you the most.
+
 I did not find the CLI source. The org has no CLI repository, so CLI behaviour in this chapter comes from its docs only. The web console is not documented as sitting on this API, so I make no claim about it.
 
 **Debug at the lowest layer you can reach: the gRPC call.**
 
 ### 2. The resource model: parent, metadata, spec, status
 
-Every resource follows one pattern in the protobuf files. It has `metadata`, `spec` and `status`. Metadata carries `id`, `parent_id`, `name`, `resource_version`, timestamps and `labels`. The spec is what you ask for and the status is what the platform reports. The status is marked output only [source-code].
+A script breaks on a second run in a way the first run did not predict. The usual cause is that the script treats a resource as a single blob, when the API treats it as three parts with different rules. Every resource follows one pattern in the protobuf files. It has `metadata`, `spec` and `status`. Metadata carries `id`, `parent_id`, `name`, `resource_version`, timestamps and `labels`. The spec is what you ask for and the status is what the platform reports. The status is marked output only [source-code].
 
-Three details matter for automation. First, `parent_id` is required, and for most resources it is a project. A tenant contains projects, groups, quotas and audit logs, and a project isolates resources [official]. Projects are created per region at signup, so a project ID also fixes a region [official]. Second, field annotations such as `IMMUTABLE` mean a change to that field is an `INVALID_ARGUMENT` error and needs a recreate. In the access permit message both `resource_id` and `role` are immutable. Third, `resource_version` gives optimistic concurrency. The comment says the service accepts zero or the current value. The docs say `ABORTED` is usually a resource version mismatch [official].
+Read those three parts as a request, a receipt and a live report. You write the spec, the platform records the metadata, and the status tells you what is actually happening. Your script should never write to status, and it should expect the status to change on its own.
+
+Three details matter for automation. First, `parent_id` is required, and for most resources it is a project. A tenant contains projects, groups, quotas and audit logs, and a project isolates resources [official]. Projects are created per region at signup, so a project ID also fixes a region [official]. Second, field annotations such as `IMMUTABLE` mean a change to that field is an `INVALID_ARGUMENT` error and needs a recreate. In the access permit message both `resource_id` and `role` are immutable. Immutable means the value is fixed once set, so you delete and create again rather than edit. Third, `resource_version` gives optimistic concurrency. The idea is simple. You read the version, make your change, and send the version back, so the server can refuse the write if someone else changed the resource in between. The comment says the service accepts zero or the current value. The docs say `ABORTED` is usually a resource version mismatch [official].
 
 Names are unique within a resource type and parent for services that support `GetByName`. That gives you a natural lookup key for idempotent scripts, as section 8 shows. **Look a resource up by parent and name before you create it.**
 
 ### 3. Services and endpoints
 
-The endpoint of a service is `{api_service_name}.api.nebius.cloud:443`. The name comes from an option in the proto file. Compute is `compute`, IAM control plane is `cpl.iam`, token exchange is `tokens.iam` and audit is `audit` [source-code]. One special case matters: `OperationService` has no endpoint of its own. You poll an operation on the endpoint of the service that created it [source-code].
+Imagine a firewall rule that allows traffic to one host name, and a call to a different host name that fails with a connection error. Every service in this API has its own host name, so the endpoint you pick decides which door you knock on. The endpoint of a service is `{api_service_name}.api.nebius.cloud:443`. The name comes from an option in the proto file. Compute is `compute`, IAM control plane is `cpl.iam`, token exchange is `tokens.iam` and audit is `audit` [source-code]. The control plane is the part of the system that handles management actions such as creating and deleting resources, as opposed to the data plane that serves the traffic itself. IAM stands for identity and access management, the system that decides who may do what. Port 443 is the standard encrypted HTTPS port.
+
+One special case matters: `OperationService` has no endpoint of its own. You poll an operation on the endpoint of the service that created it [source-code]. If you send the poll to the wrong host, you will not find the operation, and that looks like a lost job.
 
 I wrote a small parser, `code/part20/c35_proto_catalog.py`, to list services, methods and long-running methods. On six verbatim proto files copied from the commit above it prints this, and I ran it:
 
@@ -61,13 +69,15 @@ nebius.common.v1.OperationService  endpoint=(none: use the initiating service)  
 nebius.iam.v1.TokenExchangeService  endpoint=tokens.iam.api.nebius.cloud:443  methods=1 long_running=0
 ```
 
-On the whole repository at that commit the same parser counts 226 proto files, 90 services, 487 methods and 210 of them returning an `Operation` [source-code, my count]. Of the methods named Create, Update or Delete, only one does not return an operation, a v1alpha1 maintenance update. The parser taught me one trap. `OperationService.Get` also returns an `Operation`, but it only reads one. A naive rule "returns Operation means long-running" is wrong, so the parser excludes that service.
+On the whole repository at that commit the same parser counts 226 proto files, 90 services, 487 methods and 210 of them returning an `Operation` [source-code, my count]. Of the methods named Create, Update or Delete, only one does not return an operation, a v1alpha1 maintenance update. The parser taught me one trap. `OperationService.Get` also returns an `Operation`, but it only reads one. A naive rule "returns Operation means long-running" is wrong, so the parser excludes that service. A rule that looks right on paper can still be wrong on the real files, and the only cure is to count the real files.
 
-You will also meet `v1alpha1` packages next to `v1`. Alpha operations use a separate message type, and the alpha operation message in the repository is marked deprecated with a note to migrate to `common/v1` [source-code]. **Prefer `v1` and treat alpha packages as ones that can change.**
+You will also meet `v1alpha1` packages next to `v1`. Alpha means an early version whose shape may still change. Alpha operations use a separate message type, and the alpha operation message in the repository is marked deprecated with a note to migrate to `common/v1` [source-code]. **Prefer `v1` and treat alpha packages as ones that can change.**
 
 ### 4. Long-running operations
 
-A method such as `InstanceService/Create` returns an `Operation`. It does not return the instance. The README says a synchronous operation comes back already completed and an asynchronous one updates over time [source-code]. The rules for reading one are exact.
+Imagine you ask for a new node and the call returns in less than a second, with no node in sight. Nothing is broken. The platform accepted your request and will build the node later. A method such as `InstanceService/Create` returns an `Operation`. It does not return the instance. The README says a synchronous operation comes back already completed and an asynchronous one updates over time [source-code]. Creating a VM takes real time on real hardware, so most creates are asynchronous.
+
+Think of the operation as a claim ticket at a repair shop. It proves the work was accepted, and it tells you where the work stands, but it is not the car. The rules for reading one are exact.
 
 | Field or rule | Meaning | Source |
 |---|---|---|
@@ -80,11 +90,11 @@ A method such as `InstanceService/Create` returns an `Operation`. It does not re
 | Concurrent operations on one resource | Not supported: an error, or the first is aborted | README |
 | Retention | Running operations are never deleted, finished ones may be | README |
 
-Two points follow. The operation holds no resource body, so after success you call `Get`. The Go README says so directly. And an operation can be listed by resource through `OperationService/List`, with `page_size` between 1 and 1000 [source-code]. That is how you find an operation you lost track of.
+Two points follow. The operation holds no resource body, so after success you call `Get`. The Go README says so directly. And an operation can be listed by resource through `OperationService/List`, with `page_size` between 1 and 1000 [source-code]. That is how you find an operation you lost track of, which matters a lot in section 7 and in scenario A.
 
-The Go SDK `Wait` is a good reference loop [source-code]. It returns at once if the operation is done. Otherwise it sleeps the poll interval, which defaults to one second, and polls. If a poll fails with a retriable error it backs off exponentially with 20 percent jitter, capped at 30 seconds, and the streak resets after one good poll. It stops when the context ends. The Python SDK `wait` has the same one-second default interval and separate poll timeouts [source-code].
+The Go SDK `Wait` is a good reference loop [source-code]. A reference loop is a worked example you can copy the shape of. It returns at once if the operation is done. Otherwise it sleeps the poll interval, which defaults to one second, and polls. If a poll fails with a retriable error it backs off exponentially with 20 percent jitter, capped at 30 seconds, and the streak resets after one good poll. Backoff means waiting longer after each failure, and jitter adds a little randomness so many clients do not wait and retry in lockstep. The loop stops when the context ends. The Python SDK `wait` has the same one-second default interval and separate poll timeouts [source-code].
 
-My offline version is `c35_operation_poller.py`. Its tests cover success after running polls, a synchronous failure, a failed operation, a timeout, retriable poll errors, and a non-retriable error. One decision deserves attention. A timeout raises `OperationTimeout` carrying the operation ID. It is not a failure. The operation may still finish, so the caller must look at it and never create the resource again blindly.
+My offline version is `c35_operation_poller.py`. Its tests cover success after running polls, a synchronous failure, a failed operation, a timeout, retriable poll errors, and a non-retriable error. One decision deserves attention. A timeout raises `OperationTimeout` carrying the operation ID. It is not a failure. The operation may still finish, so the caller must look at it and never create the resource again blindly. Treating a timeout as a failure is the most common way a fleet script ends up with duplicate machines.
 
 ```python
 op = server.create(key, "gpu-node-7")          # returns an Operation, not a node
@@ -95,7 +105,9 @@ done = wait_operation(op, server.get, clock, interval=1.0, timeout=600)
 
 ### 5. Update is full-replace, with a reset mask
 
-This catches people. The README says `Update` replaces fields rather than patching them [source-code]. Protobuf drops default values on the wire, so an empty value is indistinguishable from "not sent". The server therefore changes a field only if the request carries a non-default value or the field is named in the `X-ResetMask` header. The mask is not Google's field mask. A resource `{a: {b:1, c:2}}` updated with an empty request and mask `a.b` becomes `{a: null}`, which is surprising.
+This catches people. A colleague edits one field in a config, sends the edit to the update call, and a neighbouring field quietly goes back to its default. The surprise comes from how protobuf sends data. The README says `Update` replaces fields rather than patching them [source-code]. Protobuf drops default values on the wire, so an empty value is indistinguishable from "not sent". The server therefore changes a field only if the request carries a non-default value or the field is named in the `X-ResetMask` header. The mask is not Google's field mask. A resource `{a: {b:1, c:2}}` updated with an empty request and mask `a.b` becomes `{a: null}`, which is surprising.
+
+Put simply, the server cannot tell an empty value you meant from a field that was never sent, so it needs a list of the fields you really mean to touch. The mask is that list.
 
 The SDKs manage the header for you. The CLI exposes two modes [official]. Command-line parameters give a patch by default. A file or standard input gives a full update by default, and the docs warn it resets omitted parameters it recognises. `--clear-mask` clears one field in patch mode. For automation this means a script that reads a resource, edits one field and writes it back is correct, and a script that sends only the field it cares about to a full-update path can silently clear the rest. The operation records essential request headers such as `x-resetmask`, so a repeated request is processed the same way [source-code].
 
@@ -103,15 +115,15 @@ The SDKs manage the header for you. The CLI exposes two modes [official]. Comman
 
 ### 6. Pagination and read-after-write
 
-List methods take `parent_id`, `page_size` and `page_token` and return `items` and `next_page_token` [source-code]. A page size of 1 to 1000 is stated for several services, and a default is chosen by the service if you omit it. An empty `next_page_token` ends the listing. The JavaScript SDK `filter()` and the CLI `--all` flag loop for you.
+A script lists the instances in a project and reports fewer than it expects. The listing is not wrong. It is one page of a longer list. List methods take `parent_id`, `page_size` and `page_token` and return `items` and `next_page_token` [source-code]. A page is a slice of the results, and the token is a bookmark that tells the server where the next slice starts. A page size of 1 to 1000 is stated for several services, and a default is chosen by the service if you omit it. An empty `next_page_token` ends the listing. The JavaScript SDK `filter()` and the CLI `--all` flag loop for you, so you rarely need to write the loop yourself.
 
-What does Nebius publish about consistency after a write? Not much. The deprecated alpha operation message says its resource snapshot is a moment in time and that you should call the resource `Get` for the current state [source-code]. The Terraform provider saves the new ID into state even when create returns an error, and then reads the resource with a short five-second timeout [source-code]. I read that as the provider expecting a read right after create to work. A guaranteed consistency model is `[gap]`. A reasonable design, labelled `[inference]`: after an operation succeeds, `Get` with a short retry on `NOT_FOUND`, and confirm the status you need rather than only existence.
+Pagination brings a second question. Once you have written something, can you read it back at once? What does Nebius publish about consistency after a write? Not much. Consistency here means whether a read right after a write sees the write. The deprecated alpha operation message says its resource snapshot is a moment in time and that you should call the resource `Get` for the current state [source-code]. The Terraform provider saves the new ID into state even when create returns an error, and then reads the resource with a short five-second timeout [source-code]. I read that as the provider expecting a read right after create to work. A guaranteed consistency model is `[gap]`. A reasonable design, labelled `[inference]`: after an operation succeeds, `Get` with a short retry on `NOT_FOUND`, and confirm the status you need rather than only existence.
 
 **Loop until the page token is empty, and read the resource after the operation, never before.**
 
 ### 7. The error model and the retry decision
 
-Errors arrive as `google.rpc.Status`. The details can hold a `ServiceError` with a service name, a code, one typed detail and a `retry_type` [source-code]. The typed details tell you what to do.
+A pipeline fails with a 429 status, and the first instinct of most people is to retry in a loop until it works. That instinct is right for some errors and expensive for others. Errors arrive as `google.rpc.Status`, which is the standard error envelope for this kind of API. The details can hold a `ServiceError` with a service name, a code, one typed detail and a `retry_type` [source-code]. The typed details tell you what to do.
 
 | Detail | What it says | Right reaction |
 |---|---|---|
@@ -128,11 +140,11 @@ Errors arrive as `google.rpc.Status`. The details can hold a `ServiceError` with
 
 `retry_type` is the server's hint. `CALL` means retry the failed call. `UNIT_OF_WORK` means redo the whole logic before the call and make a new one. `NOTHING` means fatal [source-code]. The Go SDK classifier uses these in order [source-code]. An explicit `CALL` means retry. `NOTHING` or `UNIT_OF_WORK` means do not retry the call. With no hint it retries `RESOURCE_EXHAUSTED` and `UNAVAILABLE`, network timeouts and connection resets, and a Cloudflare-style 520 to 529 status. It never retries a cancelled or deadline error.
 
-Now the trap. The docs define `RESOURCE_EXHAUSTED` as quotas exhausted, mapped to HTTP 429 [official]. The SDK also retries that code by default. So a pure quota failure is retried by default unless the server sets `retry_type`. I did not find how the services set `retry_type` for `QuotaFailure`. So my guard in `c35_client_guard.py` refuses to retry `QuotaFailure` and `NotEnoughResources` no matter the code. That is `[inference]`, and a deliberate choice.
+Now the trap. The docs define `RESOURCE_EXHAUSTED` as quotas exhausted, mapped to HTTP 429 [official]. The SDK also retries that code by default. So a pure quota failure is retried by default unless the server sets `retry_type`. I did not find how the services set `retry_type` for `QuotaFailure`. So my guard in `c35_client_guard.py` refuses to retry `QuotaFailure` and `NotEnoughResources` no matter the code. That is `[inference]`, and a deliberate choice. Retrying a quota failure cannot help, because the limit does not move while you wait. Retrying a capacity failure in a tight loop only adds load to a platform that is already short.
 
-The deadline code has its own warning. The docs say a state-changing request can return `DEADLINE_EXCEEDED` even though it completed and only the response was late [official]. A retry is safe only with an idempotency key.
+The deadline code has its own warning. The docs say a state-changing request can return `DEADLINE_EXCEEDED` even though it completed and only the response was late [official]. A deadline is the time limit a client gives a call. A retry is safe only with an idempotency key.
 
-The CLI turns this into exit codes [official]. It inspects the first `ServiceError` in the status details, and falls back to the gRPC code. A script in CI can branch on these.
+The CLI turns this into exit codes [official]. It inspects the first `ServiceError` in the status details, and falls back to the gRPC code. A script in CI can branch on these, which means the exit code becomes the input to the next step of your pipeline.
 
 | Exit code | Meaning |
 |---|---|
@@ -148,9 +160,9 @@ The split between target and extra calls is the useful part. For `nebius compute
 
 ### 8. Idempotency
 
-The `X-Idempotency-Key` header makes a mutating call safe to repeat. The README says the same operation is not executed twice, even if the client retries after a timeout, and that the value should be a long random string, preferably a UUID. `Get` and `List` ignore it [source-code]. The audit event reference shows the other side: two requests that are retries of the same action share an `idempotency_id` [official].
+Imagine a create call that times out on your side. The server may have built the node, or it may never have received the request. You cannot tell which from the timeout alone. Idempotency is the property that makes repeating a request safe, because the second attempt has the same effect as the first. The `X-Idempotency-Key` header makes a mutating call safe to repeat. A mutating call is one that changes state, such as a create or a delete. The README says the same operation is not executed twice, even if the client retries after a timeout, and that the value should be a long random string, preferably a UUID. A UUID is a long random identifier that is practically unique. `Get` and `List` ignore it [source-code]. Reads do not need protection, because reading twice changes nothing. The audit event reference shows the other side: two requests that are retries of the same action share an `idempotency_id` [official].
 
-Both SDKs add a random key by default. In the Go SDK the idempotency interceptor is registered before the retry interceptor, so one key is created per call and reused by the SDK retries [source-code, my reading of the chain order]. The Go SDK also lets you pass your own key per call.
+Both SDKs add a random key by default. In the Go SDK the idempotency interceptor is registered before the retry interceptor, so one key is created per call and reused by the SDK retries [source-code, my reading of the chain order]. An interceptor is a hook that wraps each call before it leaves the client, and the order of the hooks decides which one sees the request first. The Go SDK also lets you pass your own key per call.
 
 What Nebius has not published is how long a key is remembered `[gap]`. So treat keys as protection for retries within one process and a short window. They are not a way to make a re-run tomorrow safe. For re-runs use the resource name as the natural key, as in section 2: `GetByName` first, then create, and treat `ALREADY_EXISTS` as a hint to adopt the resource after you check its spec matches.
 
@@ -158,7 +170,7 @@ What Nebius has not published is how long a key is remembered `[gap]`. So treat 
 
 ### 9. Identity and tokens
 
-The API accepts a bearer token in the `Authorization` header [source-code]. An IAM access token is valid for 12 hours [official]. The kinds of identity and credential differ, and an SRE must pick the right one.
+A job that ran fine yesterday fails in the middle of a long run with an authentication error, and nobody changed the code. The cause is usually a token that expired. The API accepts a bearer token in the `Authorization` header [source-code]. A bearer token is a credential that proves who you are to whoever holds it, so anyone holding it can use it. An IAM access token is valid for 12 hours [official]. The kinds of identity and credential differ, and an SRE must pick the right one for each job.
 
 | Credential | Used for | Lifetime and notes |
 |---|---|---|
@@ -168,21 +180,23 @@ The API accepts a bearer token in the `Authorization` header [source-code]. An I
 | Static key | Third-party tools needing long-term credentials | Up to three years |
 | Federated credentials | A workload impersonating a service account through OIDC | Provider must expose OIDC discovery |
 
-The service account flow is explicit in the README [source-code]. You sign a short-lived JWT with RS256 using the claims `kid`, `iss`, `sub` and `exp`, then exchange it through RFC 8693. The gRPC method is `TokenExchangeService/Exchange` on `tokens.iam`, and there is an HTTPS endpoint as well. The Go SDK does this for you and refreshes in the background after 90 percent of the token's lifespan, so a 12-hour token is renewed after about 10 hours 48 minutes [source-code, my arithmetic]. A raw token from the CLI is never refreshed, so a long job using one fails with an authentication error after 12 hours. The CLI maps that to exit code 7.
+Read the table by asking who is calling and for how long. A person at a laptop gets a user token. An unattended pipeline gets a service account, which is an identity that belongs to the automation rather than to a person. OIDC is OpenID Connect, a standard way for one system to trust identities issued by another, and federated credentials use it so a workload can prove its identity without a stored secret.
 
-Authorization sits on groups. A new account has no access. Default groups are `auditors`, `viewers`, `editors` and `admins`, and custom groups get roles through access permits at tenant, project or resource level [official]. The docs advise custom groups with the fewest permissions. I did not find a per-method permission list, so I cannot tell you which role `InstanceService/Stop` needs `[gap]`.
+The service account flow is explicit in the README [source-code]. You sign a short-lived JWT with RS256 using the claims `kid`, `iss`, `sub` and `exp`, then exchange it through RFC 8693. A JWT is a signed token that carries claims, which are statements about the identity, and RFC 8693 is the standard for exchanging one token for another. The gRPC method is `TokenExchangeService/Exchange` on `tokens.iam`, and there is an HTTPS endpoint as well. The Go SDK does this for you and refreshes in the background after 90 percent of the token's lifespan, so a 12-hour token is renewed after about 10 hours 48 minutes [source-code, my arithmetic]. A raw token from the CLI is never refreshed, so a long job using one fails with an authentication error after 12 hours. The CLI maps that to exit code 7.
 
-Two credential hygiene facts come from the docs. In CI, store the credentials file content as a secret and write it at job start [official]. And the proto marks fields such as `subject_token` with a `credentials` option so that they are masked in logs and storage [source-code]. Your own logging does not get that protection. **Give automation its own service account in a least-privilege group, with an expiring key, and never reuse a person's token.**
+Authorization sits on groups. A new account has no access. Default groups are `auditors`, `viewers`, `editors` and `admins`, and custom groups get roles through access permits at tenant, project or resource level [official]. The docs advise custom groups with the fewest permissions. Least privilege is the rule that an identity gets only the access its job needs. I did not find a per-method permission list, so I cannot tell you which role `InstanceService/Stop` needs `[gap]`.
+
+Two credential hygiene facts come from the docs. In CI, store the credentials file content as a secret and write it at job start [official]. And the proto marks fields such as `subject_token` with a `credentials` option so that they are masked in logs and storage [source-code]. Your own logging does not get that protection. A line that prints a request body can still leak a token, so scrub what your own code writes. **Give automation its own service account in a least-privilege group, with an expiring key, and never reuse a person's token.**
 
 ### 10. Quotas, capacity and rate limits
 
-Three different limits look alike and need three different reactions.
+A script creates a set of nodes and gets an error that says the request is over a limit. Three different limits look alike in the error, and they need three different reactions. Mixing them up is how a team waits for capacity that a quota change would have fixed, or asks an admin for quota when the platform only needed a pause.
 
-Quotas are per region and can differ per project [official]. They are resource counts. A VM counts against the quota from creation to deletion, even while stopped, and Managed Kubernetes and Soperator nodes count too, since they are VMs [official]. Only the `admin` group changes quotas. Nebius may also reduce a quota automatically after long low usage. It sends an email and usually gives two days of grace, and running workloads are not affected [official]. You can read quotas through `nebius quotas quota-allowance list`, and the quota service exists in the API at its own endpoint [source-code]. In the proto, creating an allowance that already exists replaces its value. So a script that sets quotas must be careful.
+Quotas are per region and can differ per project [official]. They are resource counts. A quota is a ceiling on how many of something a project may hold. A VM counts against the quota from creation to deletion, even while stopped, and Managed Kubernetes and Soperator nodes count too, since they are VMs [official]. Only the `admin` group changes quotas. Nebius may also reduce a quota automatically after long low usage. It sends an email and usually gives two days of grace, and running workloads are not affected [official]. You can read quotas through `nebius quotas quota-allowance list`, and the quota service exists in the API at its own endpoint [source-code]. In the proto, creating an allowance that already exists replaces its value. So a script that sets quotas must be careful, because a create that looks harmless can overwrite a value someone else chose.
 
-Capacity is different. `NotEnoughResources` means the platform lacks the resource at this moment, whatever your quota says. A quota is permission to ask. It is not a promise of supply. The CLI and API have a capacity advice service for finding where a VM can launch [official, source-code].
+Capacity is different. `NotEnoughResources` means the platform lacks the resource at this moment, whatever your quota says. A quota is permission to ask. It is not a promise of supply. The CLI and API have a capacity advice service for finding where a VM can launch [official, source-code]. When capacity is the problem, the useful move is to try another preset or region, not to wait in the same spot.
 
-Rate limits are the third kind. The proto has `TooManyRequests`, and its `violation` field is "service-dependent" [source-code]. Nebius has not published request-per-second limits for the control plane `[gap]`. So a client must learn the limit from the error, which is what a rate-limit wrapper does.
+Rate limits are the third kind. A rate limit caps how fast you may call, not how many things you hold. The proto has `TooManyRequests`, and its `violation` field is "service-dependent" [source-code]. That phrase means the meaning of the field depends on the service. Nebius has not published request-per-second limits for the control plane `[gap]`. So a client must learn the limit from the error, which is what a rate-limit wrapper does.
 
 Token Factory has its own, published rate limits on the inference side. They are dynamic. In 15-minute windows the limit grows by 20 percent after average use of 80 percent or more, and shrinks by one third at 50 percent or less, up to 20 times the base [official]. Responses carry `x-ratelimit-*` headers, and an over-limit request may still be served with `x-ratelimit-over-limit: yes` [official]. That is the data plane. Do not mix it with the control-plane API.
 
@@ -190,7 +204,7 @@ Token Factory has its own, published rate limits on the inference side. They are
 
 ### 11. Layered retries and timeouts
 
-Each client has its own defaults, and they stack. These are from the sources.
+A single failing call can turn into many calls without anyone writing a loop on purpose. This happens when each library quietly retries on its own. Each client has its own defaults, and they stack. These are from the sources.
 
 | Client | Overall timeout | Per attempt | Attempts | Backoff |
 |---|---|---|---|---|
@@ -199,17 +213,17 @@ Each client has its own defaults, and they stack. These are from the sources.
 | Python SDK | 60 seconds | 20 seconds | internal retry layer | not documented |
 | JavaScript SDK | not stated here | not stated here | 3 total | not stated here |
 
-The Go default has no cooldown between attempts, and the source says so. Three immediate retries against an overloaded service are a small storm. The SDK documentation itself advises setting backoff and timeout for your usage. Chapter [20.21](./21-request-routing-retries-and-overload-control.md) explains why stacked retries multiply and why a retry budget caps them. The same arithmetic applies here. If your script retries 3 times around an SDK that retries 3 times, one failing call makes 9 attempts.
+The Go default has no cooldown between attempts, and the source says so. Three immediate retries against an overloaded service are a small storm. A storm here means a burst of extra requests that makes the overload worse. The SDK documentation itself advises setting backoff and timeout for your usage. Chapter [20.21](./21-request-routing-retries-and-overload-control.md) explains why stacked retries multiply and why a retry budget caps them. The same arithmetic applies here. If your script retries 3 times around an SDK that retries 3 times, one failing call makes 9 attempts.
 
-I measured the budget idea with the guard. One hundred calls that always fail, five attempts each, produce 500 attempts without a budget. With a 10 percent budget and 3 retries in reserve they produce 112 attempts, which is 1.12 per call. I ran that, and it is a simulation, not a Nebius measurement.
+I measured the budget idea with the guard. One hundred calls that always fail, five attempts each, produce 500 attempts without a budget. With a 10 percent budget and 3 retries in reserve they produce 112 attempts, which is 1.12 per call. A retry budget means you may only retry while the retries stay under a fraction of the calls you have made, so a failing service sees a bounded load. I ran that, and it is a simulation, not a Nebius measurement.
 
 **Retry in one layer only, add backoff yourself, and cap retries with a budget.**
 
 ### 12. A safe fleet-automation client
 
-Put together, a safe client has six parts. They are in `c35_client_guard.py`, which has 19 tests. This is my design `[inference]` built on the documented error model, not a Nebius component.
+Put together, a safe client has six parts. Picture the client as a gate in front of the API. Every request passes through it, and the gate decides whether the request may go out, how often, and what happens when it fails. The parts are in `c35_client_guard.py`, which has 19 tests. This is my design `[inference]` built on the documented error model, not a Nebius component.
 
-1. A token-bucket rate limiter, so you never exceed a rate you chose. It waits up to a limit and then raises.
+1. A token-bucket rate limiter, so you never exceed a rate you chose. A token bucket holds spare permission that refills over time, and each call spends one. It waits up to a limit and then raises.
 2. A retry budget that allows retries as a fraction of calls.
 3. A classifier: retry `UNAVAILABLE`, plain `RESOURCE_EXHAUSTED` and `DEADLINE_EXCEEDED`, follow `retry_type`, never retry quota or capacity errors.
 4. One idempotency key per mutation, reused on every attempt.
@@ -223,21 +237,25 @@ op = guard.call(lambda key: api.create(key, spec), mutating=True)
 finished = wait_operation(op, api.get_operation, clock, timeout=900)
 ```
 
-Pair it with the poller. The guard protects the submit call. The poller waits. The guard treats `CANCELLED` as final, and it never sends a mutation without a key, because it always creates one. **A fleet script should be unable to do more than its cap, and unable to retry faster than its budget.**
+Pair it with the poller. The guard protects the submit call. The poller waits. The guard treats `CANCELLED` as final, and it never sends a mutation without a key, because it always creates one. Notice the design choice in part 5. A mutation cap is a blunt tool, and it is meant to be. If a loop goes wrong, the cap stops it after a known number of changes, which is far better than discovering the damage after thousands. **A fleet script should be unable to do more than its cap, and unable to retry faster than its budget.**
 
 ### 13. How Terraform fits
 
-The provider calls the service `Create` and then `Wait` on the operation, through the Go SDK [source-code]. That explains Terraform behaviour. A timeout in the provider is a wait timeout on an operation that may still run, and the resource may exist even though apply failed. The provider keeps the ID in state on a failed create so a later plan can see it. Import is by resource ID, with `terraform import` or an `import` block and `-generate-config-out`. The support document warns that import cannot recover write-only or input-only values the API does not return [source-code]. For drift, state layout and the node group facts, reuse [20.24](./24-terraform-for-resilient-gpu-clusters.md) and do not repeat them. The provider authenticates as a service account through a `service_account` block or from `NEBIUS_IAM_TOKEN`. If both are present, the user credentials win [official]. That is a real trap in CI where a developer token leaks into the environment.
+Terraform apply reports an error, and when you look, the node you wanted is already running. That looks like a bug in Terraform, and it is usually the API doing exactly what the provider asked. The provider calls the service `Create` and then `Wait` on the operation, through the Go SDK [source-code]. That explains Terraform behaviour. A timeout in the provider is a wait timeout on an operation that may still run, and the resource may exist even though apply failed. The provider keeps the ID in state on a failed create so a later plan can see it. A plan is Terraform's preview of what it will change, and state is its record of what it already made. Import is by resource ID, with `terraform import` or an `import` block and `-generate-config-out`. The support document warns that import cannot recover write-only or input-only values the API does not return [source-code]. Write-only values are fields the API accepts but never shows you again, so there is nothing to read back. For drift, state layout and the node group facts, reuse [20.24](./24-terraform-for-resilient-gpu-clusters.md) and do not repeat them.
+
+The provider authenticates as a service account through a `service_account` block or from `NEBIUS_IAM_TOKEN`. If both are present, the user credentials win [official]. That is a real trap in CI where a developer token leaks into the environment. A developer's shell may export a personal token that the pipeline then picks up, and the apply runs as that person. Check the environment of the job, not only the configuration file.
 
 ### 14. Audit logs and tracing a failed call
 
-When a call fails, three IDs identify it. The `InternalError` detail has a request ID and a trace ID. The Python SDK README tells you to keep both for support [source-code]. The audit event has `request_id`, `idempotency_id`, `trace_id`, the response status code and a `STARTED`, `DONE` or `ERROR` status [official]. You can filter by subject, service, resource and status. The service is in preview and covers control-plane events for many services [official]. Data-plane events have a quota of 1000 per second per region and extra events are dropped [official]. For incident work: log the operation ID, request ID and idempotency key on every call, then join with audit events.
+A security team asks which call created a node last Tuesday, and your logs only show that the script ran. The audit log is the record of who called what. When a call fails, three IDs identify it. The `InternalError` detail has a request ID and a trace ID. The Python SDK README tells you to keep both for support [source-code]. A request ID names one call, and a trace ID follows that call across the services it touched. The audit event has `request_id`, `idempotency_id`, `trace_id`, the response status code and a `STARTED`, `DONE` or `ERROR` status [official]. You can filter by subject, service, resource and status. The service is in preview and covers control-plane events for many services [official]. Data-plane events have a quota of 1000 per second per region and extra events are dropped [official]. For incident work: log the operation ID, request ID and idempotency key on every call, then join with audit events. A join here means matching rows from two sources on a shared ID, so one failed call can be traced from your script to the platform's record.
 
 ### 15. Token Factory has its own control plane
 
-Dedicated Endpoints for Token Factory are managed through a separate REST API. The docs show `GET /v0/dedicated_endpoints/templates`, `POST /v0/dedicated_endpoints`, `PATCH` with only the provided fields, `GET` for the list and `DELETE` on `https://api.tokenfactory.nebius.com` [official]. The data plane has regional base URLs. Whether this control plane is built on the gRPC API is not stated in the sources I read `[gap]`. So do not assume Operation objects, idempotency keys or `X-ResetMask` apply. Check the quickstart and operating pages before you automate it. The lifecycle and readiness meanings are in [20.32](./32-token-factory-model-lifecycle-serving-and-economics.md).
+Your team wants to automate Token Factory dedicated endpoints with the same client you wrote for compute. That is a reasonable plan to test, but the sources do not show that the two share a control plane, so test before you assume. Dedicated Endpoints for Token Factory are managed through a separate REST API. The docs show `GET /v0/dedicated_endpoints/templates`, `POST /v0/dedicated_endpoints`, `PATCH` with only the provided fields, `GET` for the list and `DELETE` on `https://api.tokenfactory.nebius.com` [official]. The data plane has regional base URLs. Whether this control plane is built on the gRPC API is not stated in the sources I read `[gap]`. So do not assume Operation objects, idempotency keys or `X-ResetMask` apply. Check the quickstart and operating pages before you automate it. The lifecycle and readiness meanings are in [20.32](./32-token-factory-model-lifecycle-serving-and-economics.md).
 
 ## How to answer out loud
+
+These are short scripts for the interview. Each one gives the answer you can stand behind, then names what you did not check. Practise them out loud, because the spoken version is what the interviewer hears.
 
 **"What do you know about our API?"** Say: it is protobuf first. Services live at `{name}.api.nebius.cloud:443`, REST is generated from the same files, and the CLI, the SDKs and Terraform are clients of it. Mutations return an `Operation` that you poll. Errors carry a typed `ServiceError` with a retry hint. Say this is from the public repository, and that you have not seen the internals.
 
@@ -250,6 +268,8 @@ Dedicated Endpoints for Token Factory are managed through a separate REST API. T
 **"How would you design a fleet client?"** The six parts from section 12, with numbers: a 10 percent retry budget turns 5.0 attempts per call into 1.12 in my simulation. Say it is a simulation.
 
 ## Worked scenarios
+
+Each scenario starts from a symptom you might actually see. Read the symptom first, then try to name the layer and the rule before you read the answer.
 
 ### Scenario A: the CI job exits with 52
 
@@ -269,7 +289,7 @@ A batch job reads a token once with `nebius iam get-access-token`. The token liv
 
 ## Hands-on lab
 
-This runs on a laptop with Python 3 and pytest. I ran steps 1 to 4. Step 5 needs a Nebius account and I did not run it.
+This runs on a laptop with Python 3 and pytest. I ran steps 1 to 4. Step 5 needs a Nebius account and I did not run it. Each step asks one question of the code or the API, so you can stop after any step and still have learned something.
 
 1. From `code/part20`, run `python3 -m pytest -q test_c35_proto_catalog.py test_c35_operation_poller.py test_c35_client_guard.py`. Observed result: 42 passed.
 2. Run `python3 c35_proto_catalog.py`. Expected and observed: six services, with `OperationService` showing no endpoint and no long-running methods.
@@ -321,6 +341,8 @@ The provider is built on the Go SDK. It calls the create method and waits on the
 
 ## Common mistakes and weak answers
 
+Most of these mistakes share one root. The speaker treats a symptom as its own cause, or treats an unknown as a known. Check your own answers against this list before the interview.
+
 - Treating `Operation` as the resource. Say: submit, wait, get.
 - Treating a timeout as a failure and creating again. Say: look up the operation and the name first.
 - Retrying every 429 the same way. Say: rate, quota and capacity are three answers.
@@ -338,6 +360,8 @@ The provider is built on the Go SDK. It calls the create method and waits on the
 - [20.33](./33-ai-factory-solution-architecture-ha-and-recovery.md): failure domains and recovery.
 
 ## Questions to ask the interviewer
+
+These questions show that you have read past the marketing page. Ask the ones that match the team you would join, and listen for whether the answer is clear or vague.
 
 1. Which control-plane API do the Token Factory dedicated endpoints use internally, and do operations and idempotency keys apply to the REST control plane?
 2. How are `retry_type` values chosen for quota and capacity errors, and do clients see them reliably?
