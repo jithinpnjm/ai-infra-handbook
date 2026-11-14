@@ -16,7 +16,9 @@ lab_venue: "Laptop / Docker"
 
 An interviewer says "the alert just fired, you are on call" and starts a clock. You have about 30 minutes. One candidate reported this as the fourth stage of an Amsterdam SRE loop. Nebius has not published the format of this stage, so ask your recruiter whether it exists in your loop.
 
-The official interview page lists troubleshooting and debugging, practical Linux console tasks, and saying your reasoning aloud. The job posting adds incident remediation with runbooks and knowledge of how distributed back-ends fail. The Nebius chat-app case study names the failure shapes behind half of this chapter: tail TTFT, retry amplification, and capacity that shrank silently.
+Picture the moment the clock starts. The room goes quiet, your pulse picks up, and the first sentence you say sets the tone for everything after it. This stage tests composure as much as knowledge, because a calm person who asks the right questions beats a nervous person who knows more facts.
+
+The official interview page lists troubleshooting and debugging, practical Linux console tasks, and saying your reasoning aloud. The job posting adds incident remediation with runbooks and knowledge of how distributed back-ends fail. The Nebius chat-app case study names the failure shapes behind half of this chapter: tail TTFT, retry amplification, and capacity that shrank silently. Tail TTFT means the slow end of the time-to-first-token spread, where a small group of users waits far longer than the typical user. Retry amplification means clients and servers retrying each other until one request becomes many. Capacity that shrank silently means the pool got smaller while every dashboard still looked green.
 
 The interviewer is not checking whether you find the root cause. They watch whether you take control, gather evidence in order, protect users first, and stay safe.
 
@@ -24,13 +26,15 @@ A realistic opening: "It is 14:05. The p99 time-to-first-token alert fired on th
 
 ## The core ideas
 
+Picture a senior engineer standing at a whiteboard with the alert open on a laptop and a short silence to fill. The six ideas below are what that engineer does, in roughly the order they do it.
+
 ### 1. Take control in the first two minutes
 
-The interviewer finishes speaking and waits. Most candidates start typing commands or ask "what do you want me to do". Both lose the room, so fill the first two minutes with the fixed script in the table below.
+The interviewer finishes speaking and waits. That silence feels long, and it is tempting to fill it with a command. Typing first shows you are busy, and asking what the interviewer wants shows you are waiting to be told. Both lose the room, because the room needs someone who is running the incident. So fill the first two minutes with the fixed script in the table below.
 
-The Google SRE book chapter Managing Incidents splits the work into incident command, operations, communication and planning, and only operations should change the system. You play all four, so say "I am commander and ops, and I will post updates as comms".
+The Google SRE book chapter Managing Incidents splits the work into incident command, operations, communication and planning, and only operations should change the system. You play all four, so say "I am commander and ops, and I will post updates as comms". The split matters because a person who is typing commands loses track of time and of the people waiting for news. Incident command keeps the overall picture. Operations changes the system. Communication tells people what is going on, and planning looks ahead. In a drill one candidate holds all four roles, and saying so out loud shows the interviewer that you know the roles are separate even when one person carries them.
 
-The same chapter says to declare an incident if you need a second team, customers can see the outage, or the problem is unsolved after an hour. Say "SEV2 because customers see degraded latency, and I will raise it if errors start". Nebius has not published its scheme.
+The same chapter says to declare an incident if you need a second team, customers can see the outage, or the problem is unsolved after an hour. Say "SEV2 because customers see degraded latency, and I will raise it if errors start". Declaring early is a choice, not a confession of failure. A declared incident brings people and a shared channel, and it can be lowered again later. Notice that the example sentence gives the reason as well as the level. Nebius has not published its scheme, so SEV2 here is a label for this drill.
 
 | Time | Say or ask | Why |
 |---|---|---|
@@ -54,39 +58,49 @@ flowchart TD
   I --> J["Status update, then root cause"]
 ```
 
-Before you touch a keyboard, say the impact, severity and roles.
+Before you touch a keyboard, say the impact, severity and roles. Read the table as a timeline, not a checklist. Each row is a sentence you can say at its minute.
 
 ### 2. Mitigate before you find the root cause
 
-The Google SRE book chapter Effective Troubleshooting says that in a major outage you keep the system working first, even by shedding load, diverting traffic or disabling features. Root cause comes after, and you preserve logs and evidence meanwhile.
+Picture a checkout page that is throwing errors for paying customers while you are still reading the logs. The customers do not care what the cause is yet. They care that the page works again.
 
-Systems Performance, chapter 2, names three habits that waste time: the streetlight, random-change and blame-someone-else anti-methods.
+The Google SRE book chapter Effective Troubleshooting says that in a major outage you keep the system working first, even by shedding load, diverting traffic or disabling features. Shedding load means refusing some requests on purpose so the rest can succeed. Diverting traffic means sending it somewhere healthy. Root cause comes after, and you preserve logs and evidence meanwhile. Copy the logs or leave the failing process alone before you change anything that would erase them.
 
-A good mitigation is reversible, cheap, and does not need the root cause to be right. Rollback, draining a bad zone, capping one tenant and flipping a feature flag fit. State the signal that will prove it worked and the time you will look.
+Systems Performance, chapter 2, names three habits that waste time: the streetlight, random-change and blame-someone-else anti-methods. These habits feel like progress while you are doing them, and each one spends minutes that users are waiting. A streetlight habit checks what you already know how to read. A random change edits settings until something moves. Blame sends the issue to another team. In the drill you can name any of them out loud before you do it, and that alone makes you sound careful.
+
+A good mitigation is reversible, cheap, and does not need the root cause to be right. Rollback, draining a bad zone, capping one tenant and flipping a feature flag fit. The test is simple. If the move turns out to be wrong, can you undo it in one step? Before you run it, name the graph that should change and the time you will check it, so the mitigation gets a verdict and not only a hope.
 
 Pick the lowest-risk reversible action, and name the graph that will confirm it.
 
 ### 3. Narrate hypotheses in order of likelihood and cost to test
 
-The SRE troubleshooting chapter says to test the most likely cause first and think of horses before zebras. Systems Performance chapter 2 gives the scientific method: question, hypothesis, prediction, test, analysis. The prediction makes you convincing. "If the deploy caused this, the metric turned at 13:50 on every replica. If one bad pod caused it, only that pod shows it."
+Picture a latency graph that bends upward at one clear moment, while the team is already arguing about why. Everyone has a favourite theory, and the job is to put them in order before anyone spends an hour on one.
 
-Rank by likelihood and cost to test. A recent change costs one command, a saturated resource costs a graph, and a kernel bug is the zebra. Test the first, and say what result would kill it.
+The SRE troubleshooting chapter says to test the most likely cause first and think of horses before zebras. Horses before zebras means the common explanation comes before the rare one, the same way a hoofbeat in a city street is probably a horse. Systems Performance chapter 2 gives the scientific method: question, hypothesis, prediction, test, analysis. The prediction makes you convincing. A prediction says in advance what the data should look like if you are right, so the claim can be checked. "If the deploy caused this, the metric turned at 13:50 on every replica. If one bad pod caused it, only that pod shows it." Those two sentences start from the same symptom and predict two different pictures, and the graph settles which one is true.
+
+Rank by likelihood and cost to test. Ranking is two questions asked together. How likely is the cause, and how much does it cost to check? A recent change costs one command, a saturated resource costs a graph, and a kernel bug is the zebra. A recent change is likely and cheap, so it goes first. A saturated resource is also likely, and a graph settles it. A kernel bug is possible but expensive to prove, so it waits. For each hypothesis, say the result that would kill it, because a hypothesis you cannot kill is not yet useful.
 
 ### 4. Communicate status on a cadence
 
+Picture a support channel that goes quiet for most of an hour while the engineers are busy. The support team starts answering customers with guesses, and the guesses are usually worse than the truth.
+
 The SRE chapter makes communication its own role, because the commander who is fixing things forgets to tell anyone. In the drill, post an update in the first five minutes and then every ten. That cadence is the drill's choice, not a Nebius rule.
 
-An update has four parts: impact now, what you know, what you are doing, and when the next update comes. "Impact: eu-north chat p99 TTFT is 4 seconds, no errors. We know it began with the 13:50 deploy. We are rolling back now. Next update at 14:25." Never post a guess as a fact.
+An update has four parts: impact now, what you know, what you are doing, and when the next update comes. "Impact: eu-north chat p99 TTFT is 4 seconds, no errors. We know it began with the 13:50 deploy. We are rolling back now. Next update at 14:25." Each part answers a question the reader is already asking. The first asks whether it is bad. The second asks what you know. The third asks what happens next, and the fourth asks when they will hear again. In the example, the deploy time is a fact you have checked, and the rollback is what you are doing right now. Never post a guess as a fact. If you suspect something, write the word suspected.
 
 ### 5. Know when to roll back, and avoid the destructive command
 
+Picture a change that landed at lunchtime, and a symptom that began within minutes of it. The timing is the strongest clue in the room, and it is also the easiest one to ignore when everyone wants a deeper explanation.
+
 Roll back when the symptom began right after a change, the rollback is tested and cheap, and you do not yet know the cause. In Kubernetes the command is `kubectl rollout undo deployment/<name>`, and `kubectl rollout status` shows progress. Do not roll back a one-way data migration, or a change your data shows is innocent.
 
-Every drill has a destructive trap, such as restarting every replica at once, defragmenting a live etcd member, sending EU traffic to a US region, or editing live config that GitOps will overwrite. Before you run anything risky, say what it does, how to undo it, and how far the damage can spread. If you cannot say how to undo it, ask for a second pair of eyes.
+Every drill has a destructive trap, such as restarting every replica at once, defragmenting a live etcd member, sending EU traffic to a US region, or editing live config that GitOps will overwrite. Each trap looks like a fix from a distance. Restarting everything feels decisive, defragmenting feels like tidying, and moving traffic feels like shelter. Before you run anything risky, say what it does, how to undo it, and how far the damage can spread. If you cannot say how to undo it, ask for a second pair of eyes.
 
 ### 6. How the drill runner works
 
-The runner in `code/part20` plays the interviewer. You type questions in plain words and it answers from a JSON file. It times you, records every action, and prints a scorecard.
+Picture yourself alone at a laptop with a 30-minute timer, typing questions to a program that stands in for the interviewer.
+
+The runner in `code/part20` plays the interviewer. You type questions in plain words and it answers from a JSON file. It times you, records every action, and prints a scorecard. Each slash command is an action that the runner records. Plain sentences are questions that the interviewer answers from the incident file.
 
 | Command | Meaning |
 |---|---|
@@ -99,7 +113,7 @@ The runner in `code/part20` plays the interviewer. You type questions in plain w
 | `/hint` | Reveal one topic you have not asked about, costs 2 points |
 | `/done` | End the drill and print the scorecard |
 
-The scorecard has seven lines: taking control 15, evidence 25, hypotheses 15, mitigation 20, mitigating before naming the root cause 5, status cadence 10 and safety 10. The total is 100, with 85 and above strong and 70 and above a pass. These weights are this chapter's choice, not a Nebius rubric.
+The scorecard has seven lines: taking control 15, evidence 25, hypotheses 15, mitigation 20, mitigating before naming the root cause 5, status cadence 10 and safety 10. The total is 100, with 85 and above strong and 70 and above a pass. These weights are this chapter's choice, not a Nebius rubric. Each line maps to a habit from the core ideas above. Taking control is the first idea, evidence is the questions you asked, hypotheses is the third idea, mitigation and the order check belong to the second idea, cadence is the fourth, and safety is the fifth.
 
 ```python
 # code/part20/ch26_session.py
@@ -196,7 +210,7 @@ class Session:
         return "Hint: you have asked about everything."
 ```
 
-The scoring module turns the event log into the seven lines. A risky phrase from the incident file costs 5 points, and the scorecard prints the reason.
+The scoring module turns the event log into the seven lines. A risky phrase from the incident file costs 5 points, and the scorecard prints the reason, so you can see exactly what to practise.
 
 ```python
 # code/part20/ch26_score.py
@@ -324,11 +338,12 @@ def format_scorecard(s):
 
 The loader checks that every incident has impact, dashboard and change questions, real must-ask keys, and mitigation points that add to 20. The wrapper is `code/part20/ch26_incident_drill.py` and the incidents are in `code/part20/ch26_incidents.json`.
 
+
 ## How to answer out loud
 
-Rehearse the order, not the wording.
+Picture the interviewer asking you a short question in the middle of a drill, with no time to build a perfect answer. You need a shape you can follow under pressure. Rehearse the order, not the wording.
 
-**"Walk me through the first five minutes of an alert."** Confirm impact, open the dashboard, declare severity and roles, ask what changed, mitigate or rank hypotheses, then post a status update. Name the numbers you want: request rate, error rate, latency percentiles and saturation. With no dashboard, use the problem statement questions from Systems Performance and check the load balancer and service logs.
+**"Walk me through the first five minutes of an alert."** Confirm impact, open the dashboard, declare severity and roles, ask what changed, mitigate or rank hypotheses, then post a status update. Say the order first, because the interviewer is listening for it. Name the numbers you want: request rate, error rate, latency percentiles and saturation. Explain why each step is there. The impact tells you how urgent it is, the dashboard tells you whether the symptom is real, and the change question is the cheapest hypothesis. With no dashboard, use the problem statement questions from Systems Performance and check the load balancer and service logs.
 
 **"Rollback or fix forward?"** A recent change with an unknown cause means rollback, because it is cheap and reversible. The exceptions are an irreversible data migration, a change that looks innocent, and a risky rollback. Verify on a graph. If it did not help, move to the next hypothesis.
 
@@ -337,14 +352,15 @@ Rehearse the order, not the wording.
 **"How do you communicate?"** One channel, one owner, the four-part update, suspected versus confirmed. In a big incident hand comms to a second person, and escalate early to whoever knows most about the change.
 
 **"What is the most dangerous thing you could do?"** Say the drill's trap first, such as defragmenting a live etcd member. Then give the rule: what it does, how to undo it, the blast radius.
-
 ## Worked scenarios
 
-Ten scripted incidents follow, five for the inference platform and five general ones. All numbers in the tables are invented for the drill, not measurements from Nebius or any real system. With a partner, give them the whole section. They read the opening and answer from the table when your question touches the topic in the first column. Alone, cover the table and set a 30-minute timer.
+Picture a Thursday practice session with a study partner and a stack of incident cards. Ten scripted incidents follow, five for the inference platform and five general ones. All numbers in the tables are invented for the drill, not measurements from Nebius or any real system. With a partner, give them the whole section. They read the opening and answer from the table when your question touches the topic in the first column. Alone, cover the table and set a 30-minute timer.
 
 **Shared rubric.** Every incident uses the 100-point scorecard. Each lists the must-ask questions, the split of its 20 mitigation points, and the risky actions, 5 points each. The strong note under each incident is the one insight that separates a strong run.
 
 ### Incident 1: TTFT spike after a deploy
+
+Picture the chat team pasting a slow-response graph into the incident channel. The model is running, but users wait a long time before the first word arrives, and the error panel shows nothing unusual.
 
 **Interviewer opens.** "At 14:05 the p99 time-to-first-token alert fired for the chat endpoint in eu-north. Users say the model 'thinks' for several seconds before it starts to answer. You are on call. Go."
 
@@ -362,13 +378,15 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `errors` | No errors and no restarts. The logs show only normal request lines. |
 | `diff` | The new router config lost the prefix-hash routing setting. Requests with the same prompt prefix are now spread across all replicas by round robin. |
 
-**Technical anchor.** Hands-On LLM Serving and Optimization, chapter 4: TTFT grows with prefill work and queueing, and inter-token latency belongs to decode. Nebius published a chat-app case study where cache-aware routing raised the hit rate from about 5% to 50-60%.
+**Technical anchor.** Hands-On LLM Serving and Optimization, chapter 4: TTFT grows with prefill work and queueing, and inter-token latency belongs to decode. Nebius published a chat-app case study where cache-aware routing raised the hit rate from about 5% to 50-60%. Read this anchor before the table. TTFT is time to first token, the wait before the first word appears. Prefill is the step that reads the whole prompt, and decode is the step that writes the answer one token at a time. A slow first token therefore points at prefill work or at a queue, while a slow later token points at decode. The table shows a slow first token with steady later tokens, which narrows the search before you have run a single command.
 
-**Cause.** The deploy dropped prefix-aware routing. **Fix.** Roll back with `kubectl rollout undo deployment/<name>`, watch TTFT and the hit rate recover, then diff the values file.
+**Cause.** The deploy dropped prefix-aware routing. **Fix.** Roll back with `kubectl rollout undo deployment/<name>`, watch TTFT and the hit rate recover, then diff the values file. Notice what the cause is not. The prompts did not change, the replicas look alike, and the errors are absent, so the evidence points at the routing config and not at the traffic. The diff afterwards is how you find the setting that was lost, so the next deploy does not lose it again.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `change`, `queue`, `prefix`. Points: rollback 14, verify 6. Risky: restarting every replica empties every cache at once. Strong: new replicas start with an empty prefix cache, so scaling out is no fix.
+**Scoring.** Must ask: `impact`, `dashboard`, `change`, `queue`, `prefix`. Points: rollback 14, verify 6. Risky: restarting every replica empties every cache at once. Strong: new replicas start with an empty prefix cache, so scaling out is no fix. The drill counts a key as asked only when your question matches it, so ask in words that name the signal. Scaling out is tempting here because the queue is long, and the strong note explains why it would not help: new replicas begin with nothing cached.
 
 ### Incident 2: GPU pool shrinking silently
+
+Picture a customer writing in about slowness that has crept up for days, while the monitoring says every pod is healthy. No alert fired, so the only signal in the room is the person complaining.
 
 **Interviewer opens.** "No alert fired. A customer on a dedicated endpoint says latency has crept up for three days and one request in fifty now times out. Your Kubernetes dashboard says everything is healthy. Go."
 
@@ -385,13 +403,15 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `alerts` | Existing alerts watch pod readiness and the error rate. Nothing compares router pool size with desired replicas. |
 | `capacity` | The endpoint is set to min 8 and max 8 replicas. There is no spare. |
 
-**Technical anchor.** Production Kubernetes, chapter 14: a liveness failure restarts the container, and a readiness failure only removes the pod from the endpoints. The Nebius case study describes liveness restarts of healthy workers that did not rejoin the pool. The router here is invented.
+**Technical anchor.** Production Kubernetes, chapter 14: a liveness failure restarts the container, and a readiness failure only removes the pod from the endpoints. The Nebius case study describes liveness restarts of healthy workers that did not rejoin the pool. The router here is invented. Two probes sound alike, so separate them in your head. Liveness asks whether the container should be restarted. Readiness asks whether the pod should receive traffic. A probe that is too strict can turn a busy worker into a restarted worker, and that restart is where this story starts.
 
-**Cause.** A tight liveness probe restarts busy workers, and each never rejoins the router. **Fix.** Re-register the three workers one at a time, loosen the liveness probe, and alert on router pool size against desired replicas.
+**Cause.** A tight liveness probe restarts busy workers, and each never rejoins the router. **Fix.** Re-register the three workers one at a time, loosen the liveness probe, and alert on router pool size against desired replicas. Re-register one at a time, because restarting the whole pool would take down the five workers that still serve traffic. Loosening the liveness probe stops the loop.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `pods`, `probe`, `router`. Points: reregister 10, relax_probe 6, alert 4. Risky: restarting or deleting the whole pool removes the five serving workers. Strong: ready and registered are two facts. Loosen liveness, keep readiness.
+**Scoring.** Must ask: `impact`, `dashboard`, `pods`, `probe`, `router`. Points: reregister 10, relax_probe 6, alert 4. Risky: restarting or deleting the whole pool removes the five serving workers. Strong: ready and registered are two facts. Loosen liveness, keep readiness. Keep the two facts apart when you speak. Ready means Kubernetes thinks the pod can take traffic. Registered means the router has the pod in its own list.
 
 ### Incident 3: KV-cache pressure and a 429 storm
+
+Picture a product manager in the room asking for a quick fix: raise the rate limits so the errors stop. The request sounds reasonable, and your job is to find out whether it would help before anyone changes a number.
 
 **Interviewer opens.** "The 429 rate on a dedicated endpoint is 22% and rising, and p99 latency has tripled. Traffic is 35% above the usual peak. Product asks whether to raise the rate limits. Go."
 
@@ -408,13 +428,15 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `limits` | Tenant A limit is 600 requests per minute and 10,000,000 tokens per minute. They use about 300 RPM and 8.4 million TPM, so they are inside both. |
 | `capacity` | Max replicas is 10 and six are running. A new replica takes about 12 minutes to become ready. |
 
-**Technical anchor.** Hands-On LLM Serving and Optimization, chapter 5: KV cache per token is 2 x layers x heads x head dimension x bytes, which is 524,288 bytes or 0.5 MB for Llama-2-7b. Worked here, 28,000 tokens x 0.5 MB is about 14 GB for one request. The book's L40S example fits 16 requests of 4,096 tokens in 34 GB. A preempted request restarts its prefill, and a request over a Token Factory limit returns 429 with `Retry-After`.
+**Technical anchor.** Hands-On LLM Serving and Optimization, chapter 5: KV cache per token is 2 x layers x heads x head dimension x bytes, which is 524,288 bytes or 0.5 MB for Llama-2-7b. Worked here, 28,000 tokens x 0.5 MB is about 14 GB for one request. The book's L40S example fits 16 requests of 4,096 tokens in 34 GB. A preempted request restarts its prefill, and a request over a Token Factory limit returns 429 with `Retry-After`. Before the arithmetic, the picture. A KV cache holds the attention keys and values for each token of a running request, so one long prompt takes a large slice of it. Preemption means the engine evicts a running request to free that memory, and the evicted request must prefill again when it comes back. That is the loop the table describes.
 
-**Cause.** Tenant A's long prompts exhaust the KV cache, so the engine preempts and recomputes, and retries add load. **Fix.** Cap tenant A by tokens per minute or concurrent long requests, scale out knowing it takes 12 minutes, ask clients to honour Retry-After, and tell tenant A.
+**Cause.** Tenant A's long prompts exhaust the KV cache, so the engine preempts and recomputes, and retries add load. **Fix.** Cap tenant A by tokens per minute or concurrent long requests, scale out knowing it takes 12 minutes, ask clients to honour Retry-After, and tell tenant A. "Recomputes" here means the same prefill work is paid again, which is why throughput falls even though the GPUs look busy. Scaling out helps, but it is slow, so the cap is the first move and the new replicas are the second.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `source429`, `kv`, `prompts`. Points: limit_tenant 9, scale 5, retry 3, tenant_comms 3. Risky: removing the router's shedding, or restarting. Strong: a request-per-minute limit cannot see a long prompt, and raising limits is wrong because the pool is full.
+**Scoring.** Must ask: `impact`, `dashboard`, `source429`, `kv`, `prompts`. Points: limit_tenant 9, scale 5, retry 3, tenant_comms 3. Risky: removing the router's shedding, or restarting. Strong: a request-per-minute limit cannot see a long prompt, and raising limits is wrong because the pool is full. A limit on requests counts a short question and a very long document as one request each. The pool does not count requests. It works on the memory that the prompts occupy, so a request limit is the wrong dial.
 
 ### Incident 4: Regional partial outage with retry amplification
+
+Picture the gateway CPU graphs climbing to three times their normal level while the user traffic line stays flat. The system is doing far more work for the same people, and the cause is not more users.
 
 **Interviewer opens.** "Error rate on the eu-west regional endpoint is 15% and climbing. User traffic is flat. Gateways are at three times their normal CPU. Upstream request rate is four times the user request rate. Go."
 
@@ -431,13 +453,15 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `lb` | You can set the zone b weight to zero at the load balancer with one command. |
 | `timeouts` | Client, gateway and router timeouts are all 60 seconds. |
 
-**Technical anchor.** Google SRE book, Addressing Cascading Failures: three layers each making 3 retries is 4 attempts per layer, so 4 x 4 x 4 = 64 attempts. It suggests randomized exponential backoff, a retry budget with an example of 60 retries per minute, and load shedding. Nebius says Token Factory has EU and US regions with data residency.
+**Technical anchor.** Google SRE book, Addressing Cascading Failures: three layers each making 3 retries is 4 attempts per layer, so 4 x 4 x 4 = 64 attempts. It suggests randomized exponential backoff, a retry budget with an example of 60 retries per minute, and load shedding. Nebius says Token Factory has EU and US regions with data residency. Each layer makes its first try plus up to three retries, so each layer multiplies the work by four. The layers multiply rather than add, because each layer's retries happen inside the attempts of the layer above it. A retry budget caps the extra work. A fixed backoff with no jitter, which means no random spread in timing, makes every retry arrive at the same moment.
 
-**Cause.** Zone b's fault plus unbudgeted retries at three layers, up to 64 attempts per request. **Fix.** Cut or budget retries at the gateway and router, drain zone b, shed load if zones a and c still saturate, and keep traffic in the EU.
+**Cause.** Zone b's fault plus unbudgeted retries at three layers, up to 64 attempts per request. **Fix.** Cut or budget retries at the gateway and router, drain zone b, shed load if zones a and c still saturate, and keep traffic in the EU. The fix has an order. Stop the multiplication first, because it turns a sick zone into a sick region. Drain zone b next, so the bad workers stop receiving requests. Shedding is the last resort, and the residency rule applies to every step.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `change`, `retries`, `zones`. Points: stop_retries 8, drain_zone 8, shed 4. Risky: sending EU traffic to the US, or restarting or adding gateways. Strong: name the multiplication across layers, and name residency before anyone suggests a US failover.
+**Scoring.** Must ask: `impact`, `dashboard`, `change`, `retries`, `zones`. Points: stop_retries 8, drain_zone 8, shed 4. Risky: sending EU traffic to the US, or restarting or adding gateways. Strong: name the multiplication across layers, and name residency before anyone suggests a US failover. Residency is a limit on where the data may go, so it shapes the fix before any capacity arithmetic starts. Adding gateways is a risky move here because it adds more clients making the same retries.
 
 ### Incident 5: Model weights download stuck at cold start
+
+Picture the autoscaler adding pods on a busy morning. The new pods sit at zero ready for minutes at a time, and the pods that are already running get hotter with every minute.
 
 **Interviewer opens.** "The autoscaler added four replicas of a 70B model 25 minutes ago because the existing four are saturated. None is Ready. The new pods show 0/1 and a rising restart count. Go."
 
@@ -453,13 +477,14 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `cache` | Weights are fetched from the object store at every container start into the container's own writable layer. There is no node-local cache and no shared volume. The new nodes have nothing warm. |
 | `history` | Last week's scale-out used a node image with the weights pre-pulled and took about 6 minutes. The new nodes use the plain image. |
 
-**Technical anchor.** LLMs in Production, chapters 3 and 6: a large model takes very long to download, and options include baking weights into the image or mounting a volume downloaded once. Production Kubernetes, chapter 14, shows a startup probe of 30 failures at 10 seconds, which is 300 seconds.
+**Technical anchor.** LLMs in Production, chapters 3 and 6: a large model takes very long to download, and options include baking weights into the image or mounting a volume downloaded once. Production Kubernetes, chapter 14, shows a startup probe of 30 failures at 10 seconds, which is 300 seconds. A startup probe gives a slow container a grace period to finish starting before the other probes take over. Here the grace period is shorter than the download, so the container is restarted before it can ever finish.
 
-**Cause.** 140,000 MB at 20 MB per second is 7,000 seconds, about two hours, and the ten-minute startup probe restarts the download from shard 1. **Fix.** Give the startup probe enough time, protect the four ready replicas with shedding or per-tenant limits, and add a pre-pulled or shared weights volume.
+**Cause.** 140,000 MB at 20 MB per second is 7,000 seconds, about two hours, and the ten-minute startup probe restarts the download from shard 1. Work through it in your head. Divide the size by the speed, then compare the answer with the time the probe allows. **Fix.** Give the startup probe enough time, protect the four ready replicas with shedding or per-tenant limits, and add a pre-pulled or shared weights volume. The four ready replicas are the users in pain right now, so protect them first, then fix the download.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `logs`, `events`, `cache`. Points: stop_loop 7, protect 7, warm_cache 6. Risky: deleting a pod restarts the download. Strong: do the arithmetic, and say why more replicas make it worse.
-
+**Scoring.** Must ask: `impact`, `dashboard`, `logs`, `events`, `cache`. Points: stop_loop 7, protect 7, warm_cache 6. Risky: deleting a pod restarts the download. Strong: do the arithmetic, and say why more replicas make it worse. More pods means more downloads competing for the same object store, which is already sending throttle responses. That is why adding replicas makes the wait longer, not shorter.
 ### Incident 6: Disk full on a GPU node
+
+Picture an alert named DiskPressure on one node, evicted pods, and a restarted replica that crashes with a message about no space left on the device. The replica cannot start until the disk has room again.
 
 **Interviewer opens.** "Alert: DiskPressure on GPU node gpu-17. Two pods were evicted. A vLLM replica on it restarted and now crashes at start with 'No space left on device'. Get the node healthy. Go."
 
@@ -475,13 +500,15 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `images` | /var/lib/containerd holds images and a 22 GB model cache that running replicas on the node use right now. |
 | `others` | Other pods on the node serve traffic. You may cordon the node. |
 
-**Technical anchor.** Systems Performance, chapter 8: an inode holds a file's metadata, so a disk can be full of space or of inodes. The kubelet watches nodefs.available and nodefs.inodesFree, reclaims space first, then evicts pods. The lab runs the deleted-but-open demonstration.
+**Technical anchor.** Systems Performance, chapter 8: an inode holds a file's metadata, so a disk can be full of space or of inodes. The kubelet watches nodefs.available and nodefs.inodesFree, reclaims space first, then evicts pods. The lab runs the deleted-but-open demonstration. An inode is the record that holds a file's size, owner and where its data sits. You can run out of those records while space is free, and you can run out of space while records are free. Here the space is the problem. The trap is a file that was deleted while a process still had it open. The name vanishes from the directory, but the space stays allocated until that process closes the file. Tools that add up file sizes cannot see the file any more, yet the disk still counts it.
 
-**Cause.** Debug logging wrote 58 GB to a file that was deleted while the process held it open. **Fix.** Cordon the node, free the file by restarting its holder or truncating through /proc, turn debug logging off, add a disk alert, and fix the cleanup job.
+**Cause.** Debug logging wrote 58 GB to a file that was deleted while the process held it open. **Fix.** Cordon the node, free the file by restarting its holder or truncating through /proc, turn debug logging off, add a disk alert, and fix the cleanup job. Cordon first, so no new pods land on the sick node. Then free the space in the least harmful way. Truncating through /proc keeps the process running, while restarting the holder also frees the space but interrupts the service. Turning off debug logging stops the same growth from coming back, and the cleanup job needs a fix because deleting an open log file is what created the gap.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `df`, `du`, `deleted`. Points: cordon 4, free_space 9, debug_off 4, follow_up 3. Risky: wiping images and the model cache. Strong: use the du and df gap as the clue, and check inodes too.
+**Scoring.** Must ask: `impact`, `dashboard`, `df`, `du`, `deleted`. Points: cordon 4, free_space 9, debug_off 4, follow_up 3. Risky: wiping images and the model cache. Strong: use the du and df gap as the clue, and check inodes too. The gap between df and du is the clue the drill is looking for. Checking inodes is the second half of the habit, because a full inode table looks like a full disk with a different number.
 
 ### Incident 7: Certificate expiry
+
+Picture the support queue filling at one fixed time in the morning, with the same message from client after client. The internal dashboards load normally, which is what makes the problem confusing at first.
 
 **Interviewer opens.** "At 09:00 UTC the support queue fills with 'certificate has expired' from clients calling the public API. Your internal dashboards load fine. Go."
 
@@ -497,13 +524,15 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `others` | kubeadm certs check-expiration shows the control plane certificates with over 200 days left. A wildcard certificate for the console expires in 6 days and uses the same renewal path. |
 | `workaround` | With a working token you can request a certificate manually and load it into the TLS Secret. The ingress controller reloads Secret changes. |
 
-**Technical anchor.** The kubeadm certificate page gives one year for leaf certificates and ten years for the CA. The cert-manager documentation says the default duration is 90 days, renewal starts two thirds of the way through, `cmctl renew` forces a renewal, and deleting the Secret is not a recommended way to rotate.
+**Technical anchor.** The kubeadm certificate page gives one year for leaf certificates and ten years for the CA. The cert-manager documentation says the default duration is 90 days, renewal starts two thirds of the way through, `cmctl renew` forces a renewal, and deleting the Secret is not a recommended way to rotate. A leaf certificate is the one a server shows to clients. The CA is the authority that signs it. Renewal is the step that issues a fresh certificate before the old one runs out. Because renewal starts partway through the life of the certificate, a renewal that keeps failing can go unnoticed for a long time, and that is exactly what this cause describes.
 
-**Cause.** A rotated DNS provider token was never updated in the cluster, so renewal failed for 30 days. **Fix.** Update the token, force renewal with cmctl renew, verify with openssl s_client, use a manual certificate if renewal is slow, fix the six-day certificate, and add an expiry alert.
+**Cause.** A rotated DNS provider token was never updated in the cluster, so renewal failed for 30 days. **Fix.** Update the token, force renewal with cmctl renew, verify with openssl s_client, use a manual certificate if renewal is slow, fix the six-day certificate, and add an expiry alert. The token changed in one place, and the cluster kept the old copy. The fix is to update the copy, then prove that the new certificate is actually served. The verify step matters, because a renewed certificate that never reaches the ingress still leaves clients failing.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `cert`, `renew`, `why`. Points: fix_and_renew 10, manual_cert 4, verify 3, others 3. Risky: telling clients to skip verification, or deleting the Secret. Strong: check the second certificate that expires in six days.
+**Scoring.** Must ask: `impact`, `dashboard`, `cert`, `renew`, `why`. Points: fix_and_renew 10, manual_cert 4, verify 3, others 3. Risky: telling clients to skip verification, or deleting the Secret. Strong: check the second certificate that expires in six days. Telling clients to skip verification is a tempting shortcut, but it switches off the very check the clients need. A second certificate with its own near deadline tends to disappear once the first incident is closed, so name it while you are still on the call.
 
 ### Incident 8: DNS: intermittent resolution failures
+
+Picture gateway logs filling with name-resolution errors on about one request in twenty, while the inference path keeps working. The errors are small and steady, which makes them easy to dismiss until the failures spread.
 
 **Interviewer opens.** "Gateway pods log 'Temporary failure in name resolution' on about one request in twenty. It began 20 minutes ago. Overall traffic is normal. Go."
 
@@ -519,13 +548,15 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `upstream` | The upstream resolver is healthy. Queried directly from a node it answers in 5 ms. |
 | `test` | From a dnsutils pod, nslookup kubernetes.default works but sometimes takes 1.5 s. An external name alone sometimes times out. |
 
-**Technical anchor.** Production Kubernetes, chapter 6: with ndots 5, a name with fewer dots is tried with each search suffix first, so external names cause several useless queries. It suggests a trailing dot, `dnsConfig` and NodeLocal DNSCache.
+**Technical anchor.** Production Kubernetes, chapter 6: with ndots 5, a name with fewer dots is tried with each search suffix first, so external names cause several useless queries. It suggests a trailing dot, `dnsConfig` and NodeLocal DNSCache. The resolver counts the dots in a name. If the count is below ndots, it appends each search suffix and asks for each combined name before it tries the name as typed. Each extra question costs a query, and a combined name that does not exist returns NXDOMAIN. One external lookup can become several queries, and that multiplies the load on the DNS pods.
 
-**Cause.** The new external lookup, with ndots 5, becomes several queries each, and throttled CoreDNS times out. **Fix.** Roll back or flag off the lookup, scale CoreDNS and lift its CPU limit, use a trailing-dot name or lower ndots through dnsConfig, and plan NodeLocal DNSCache.
+**Cause.** The new external lookup, with ndots 5, becomes several queries each, and throttled CoreDNS times out. **Fix.** Roll back or flag off the lookup, scale CoreDNS and lift its CPU limit, use a trailing-dot name or lower ndots through dnsConfig, and plan NodeLocal DNSCache. The fix works from the outside in. The rollback or flag stops the new load at its source. Scaling and lifting the CPU limit relieve the pods that are already throttled. The naming change cuts the number of queries for every lookup that comes after it.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `change`, `resolv`, `queries`. Points: rollback_or_flag 6, scale_coredns 6, fewer_queries 6, nodelocal 2. Risky: removing every CoreDNS pod, or hard-coded hosts entries. Strong: explain why one lookup becomes several, and test from a pod, not a laptop.
+**Scoring.** Must ask: `impact`, `dashboard`, `change`, `resolv`, `queries`. Points: rollback_or_flag 6, scale_coredns 6, fewer_queries 6, nodelocal 2. Risky: removing every CoreDNS pod, or hard-coded hosts entries. Strong: explain why one lookup becomes several, and test from a pod, not a laptop. A laptop uses its own resolver, so a laptop test can say the name resolves while the pod still fails. Test from inside the pod's network, so the answer comes from the same path the gateway uses.
 
 ### Incident 9: etcd latency
+
+Picture a simple command that used to answer at once now taking seconds to return, and a rollout that has stopped moving. Nothing is failing for the users yet, but the control plane is slowly losing its ability to change anything.
 
 **Interviewer opens.** "kubectl get takes eight seconds. Rollouts and the autoscaler are stalling. The API server logs 'etcdserver: request timed out'. Inference traffic is still being served. Go."
 
@@ -541,13 +572,15 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `layout` | etcd runs colocated with the API server on three control-plane VMs. |
 | `network` | Round trip between members is under 1 ms with no packet loss. |
 
-**Technical anchor.** The etcd FAQ: p99 of `wal_fsync_duration_seconds` should be under 10 ms, and the heartbeat warning means a slow disk, CPU starvation or a slow network. The maintenance page says defragmenting a live member blocks reads and writes.
+**Technical anchor.** The etcd FAQ: p99 of `wal_fsync_duration_seconds` should be under 10 ms, and the heartbeat warning means a slow disk, CPU starvation or a slow network. The maintenance page says defragmenting a live member blocks reads and writes. etcd keeps a write-ahead log, a file where every change is written before it is confirmed. Each write is forced to disk with fsync, and that is the number you watch. When fsync is slow, the leader is slow to confirm changes, and the other members can start to treat it as failed. That is where the leader elections in the logs come from.
 
-**Cause.** The nightly backup writes 40 GB to the leader's disk, so fsync is 180 ms against 10 ms. **Fix.** Stop the backup, confirm fsync p99 and leader changes settle, then give the backup its own disk or throttle it. Do not defragment or restart members.
+**Cause.** The nightly backup writes 40 GB to the leader's disk, so fsync is 180 ms against 10 ms. **Fix.** Stop the backup, confirm fsync p99 and leader changes settle, then give the backup its own disk or throttle it. Do not defragment or restart members. Stop the source first, then wait for the numbers to settle before you decide anything else. Restarting a member adds another leader change to the record, and defragmenting blocks the very reads and writes you need to keep the cluster moving.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `change`, `logs`, `disk`. Points: stop_job 10, verify 4, follow_up 6. Risky: defragmenting a live member, or restarting or removing members. Strong: running pods keep serving but nothing can change, so autoscaling stalls.
+**Scoring.** Must ask: `impact`, `dashboard`, `change`, `logs`, `disk`. Points: stop_job 10, verify 4, follow_up 6. Risky: defragmenting a live member, or restarting or removing members. Strong: running pods keep serving but nothing can change, so autoscaling stalls. A useful way to say it is that the data plane still works while the control plane cannot record new decisions.
 
 ### Incident 10: Bad config push
+
+Picture a gateway returning errors everywhere at once, minutes after an automatic sync reported success. The sync is the change, and the team is asking whether anyone has noticed it is still spreading.
 
 **Interviewer opens.** "It is 11:44. The 5xx rate at the API gateway is 100% in eu-north and climbing in eu-west. A config sync from the GitOps automation finished at 11:42. You are on call. Go."
 
@@ -562,26 +595,27 @@ Ten scripted incidents follow, five for the inference platform and five general 
 | `access` | You have cluster access and the GitOps UI is up. |
 | `workers` | Workers are healthy and ready with no restarts. |
 
-**Technical anchor.** Google SRE book, Emergency Response: a reviewed change still broke things, so canary every change and keep out-of-band rollback tools. Its process-induced example is automation that treated an empty input as all machines.
+**Technical anchor.** Google SRE book, Emergency Response: a reviewed change still broke things, so canary every change and keep out-of-band rollback tools. Its process-induced example is automation that treated an empty input as all machines. A canary sends a change to a small part of the system first, so one bad push cannot reach everything at once. An out-of-band tool is one that does not depend on the pipeline that just broke. In this incident the sync pipeline is also what spreads the change, so the pause control has to sit outside that spread.
 
-**Cause.** A generator turned an empty export into a routing table with no upstreams, and no canary stopped it. **Fix.** Pause the sync before the next region, revert to the last known good commit through the pipeline, verify the 503 rate in each region, then add validation and a canary.
+**Cause.** A generator turned an empty export into a routing table with no upstreams, and no canary stopped it. **Fix.** Pause the sync before the next region, revert to the last known good commit through the pipeline, verify the 503 rate in each region, then add validation and a canary. Pause first because the sync is still moving. Revert second, using the known good commit, so the rollback goes through the pipeline and leaves a record. Verify region by region, because the regions are not all failing at the same speed. Validation and a canary come after the fire is out.
 
-**Scoring.** Must ask: `impact`, `dashboard`, `change`, `diff`, `pipeline`. Points: pause 8, revert 9, verify 3. Risky: editing live config, which GitOps overwrites, or deleting the gateway. Strong: stop the spread first, revert second. Fixing forward is wrong under pressure.
-
+**Scoring.** Must ask: `impact`, `dashboard`, `change`, `diff`, `pipeline`. Points: pause 8, revert 9, verify 3. Risky: editing live config, which GitOps overwrites, or deleting the gateway. Strong: stop the spread first, revert second. Fixing forward is wrong under pressure. Fixing forward means writing a new change while people are watching, and a new change is exactly what caused this problem. The safer move is to return to the last good state and think once the spread has stopped.
 ## Hands-on lab
+
+Picture a laptop with the code folder open, a terminal waiting for its first command, and a timer you can glance at when you need one. Every step below runs against files that are already in the repository, so you can repeat them without setting up a cluster.
 
 All steps run in `code/part20` unless stated. Steps 1 to 4 and 8 were run on macOS, and steps 6, 7 and 8 again on Linux in disposable containers. Step 5 is interactive and was not run by hand.
 
-1. List the incidents.
+1. List the incidents. Start by checking that the drill sees all ten scenarios.
 
 ```bash
 cd code/part20
 python3 ch26_incident_drill.py list
 ```
 
-Expected and observed: ten lines, numbered 1 to 10, five marked `inference` and five marked `general`.
+Expected and observed: ten lines, numbered 1 to 10, five marked `inference` and five marked `general`. If you see fewer lines, check the JSON file before you start a drill.
 
-2. Replay a strong run against incident 1 with timestamps.
+2. Replay a strong run against incident 1 with timestamps. The replay file carries timestamps, so the runner can measure the elapsed time for you.
 
 ```bash
 python3 ch26_incident_drill.py replay ttft-after-deploy samples/ch26_ttft_replay.txt
@@ -589,7 +623,7 @@ python3 ch26_incident_drill.py replay ttft-after-deploy samples/ch26_ttft_replay
 
 Observed: `Total: 100 / 100 (strong)`, with every line at full marks and an elapsed time of 18 min 20 s.
 
-3. Replay a weak run: name the cause at once, then restart everything.
+3. Replay a weak run. What does a weak run look like? It names the cause at once, then restarts everything.
 
 ```bash
 printf '5|/cause probably the cache\n20|/do restart all pods\n40|/done\n' > /tmp/weak.txt
@@ -598,7 +632,7 @@ python3 ch26_incident_drill.py replay ttft-after-deploy /tmp/weak.txt
 
 Observed: `Total: 5 / 100 (repeat this drill)`. The scorecard lists every missed habit and prints the reason that restarting all replicas is risky.
 
-4. Run the unit tests.
+4. Run the unit tests. These check the scorer and the runner. Run them from the same folder.
 
 ```bash
 python3 -m pytest test_ch26_incident_drill.py -q
@@ -614,7 +648,7 @@ python3 ch26_incident_drill.py run disk-full-node --minutes 30
 
 Expected shape: the interviewer opening, a prompt showing elapsed time, answers to your questions, and a scorecard after `/done`.
 
-6. Reproduce the deleted-but-open file from incident 6. On macOS, `lsof +L1` lists open files whose link count is below one.
+6. Reproduce the deleted-but-open file from incident 6. On macOS, `lsof +L1` lists open files whose link count is below one. A link count of zero means the file has no name left in the directory tree, while a process still holds it open.
 
 ```bash
 head -c 5000000 /dev/zero > big.log
@@ -657,7 +691,7 @@ Truncating through the `/proc` descriptor freed the space at once, and `tail` pr
 
 Later in the same run I filled the disk for real. A 60 MB write into the 50 MB tmpfs failed with `head: error writing 'standard output': No space left on device`. Then `df` showed 100 percent and `du` showed 50M. `df -i` showed 757,587 inodes with 2 used, so space and inodes are separate limits. The `df` and `du` gap, the `(deleted)` row and the `/proc` truncation are now real Linux output. The kubelet eviction behaviour was not tested, since there is no cluster.
 
-8. Check the certificate habit from incident 7 with a local self-signed certificate.
+8. Check the certificate habit from incident 7 with a local self-signed certificate. A self-signed certificate is one you make yourself, so you can practise the commands without touching a real endpoint.
 
 ```bash
 openssl req -x509 -newkey rsa:2048 -nodes -keyout k.pem -out c.pem -subj /CN=api.example.test -days 1
@@ -677,7 +711,7 @@ Observed: `Verification: OK` and `New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
 
 ## Drill questions
 
-Answer each one aloud before you open it.
+Picture the interviewer sitting across from you with a pen, asking one question at a time. Answer each one aloud before you open it.
 
 <details><summary>1. What do you say in the first two minutes of an incident drill?</summary>
 
@@ -741,6 +775,8 @@ Pause the sync so it cannot reach the next region. Revert to the last known good
 
 ## Common mistakes and weak answers
 
+Picture the interviewer's notes at the end of the drill. The same few weak lines show up again and again, and each one has a one-sentence replacement you can rehearse before the real round.
+
 | Weak answer | Say instead |
 |---|---|
 | Typing commands at once | "Confirming impact first, then the dashboard" |
@@ -752,7 +788,11 @@ Pause the sync so it cannot reach the next region. Revert to the last known good
 | Refusing to roll back until sure | Roll back a recent change when it is tested and cheap |
 | Blaming another team | Ask for data and name the evidence |
 
+Read the left column as the habit to catch in yourself, and the right column as the sentence to say instead.
+
 ## Connections to the rest of the handbook
+
+Picture the evening after the drill, when the scenario feels familiar and you want the material behind it. Each link below goes deeper on one part of the incidents, and you can read them in any order.
 
 - [17.11 Incident response and game days](../part-17-operations/11-incident-response-and-game-days.md), [17.15 On-call runbooks](../part-17-operations/15-on-call-runbooks.md), [17.6 Alerting, SLOs and health checks for GPU clusters](../part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md) and [17.7 Failure modes and detection](../part-17-operations/07-failure-modes-and-detection.md) cover severity, runbooks and the alerts that open these drills.
 - [20.3 Triage method for a sick Linux box](03-triage-method-for-a-sick-linux-box.md), [20.5 CPU, memory, disk and the scheduler](05-cpu-memory-disk-and-the-scheduler.md), [20.6 Network debugging from socket to switch](06-network-debugging-from-socket-to-switch.md), [2.8 DNS in depth](../part-02-networking/08-dns-in-depth-resolution-records-resolvers-and-caching.md) and [2.10 HTTP, TLS and PKI basics](../part-02-networking/10-http-tls-and-pki-basics.md) support incidents 6 to 8.
