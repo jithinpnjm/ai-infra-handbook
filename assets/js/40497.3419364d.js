@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkhb_scaffold=self.webpackChunkhb_scaffold||[]).push([["40497"],{13192(e,c,s){s.d(c,{createArchitectureServices:()=>a.S});var a=s(84549);s(80184)}}]);

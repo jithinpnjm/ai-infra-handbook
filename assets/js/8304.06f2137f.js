@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkhb_scaffold=self.webpackChunkhb_scaffold||[]).push([["8304"],{36883(e,s,c){c.d(s,{createInfoServices:()=>f.v});var f=c(66744);c(80184)}}]);
