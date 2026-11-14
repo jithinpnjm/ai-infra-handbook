@@ -24,9 +24,9 @@ lab_venue: "GCP / GKE + Nebius MK8s + Local Python Verification Lab"
 
 ## Why this matters for AI infrastructure
 
-A container that answers one test prompt on a laptop proves very little. The hard part is keeping the same endpoint under a strict tail-latency target while hundreds of users send requests of different lengths at once. A cluster can pass every health check and still burn half its hardware budget on bottlenecks nobody measured.
+A container that answers one test prompt on a laptop proves very little. Picture the real goal instead. You need the same endpoint to hold a strict tail-latency target while hundreds of users send requests of different lengths at once. A cluster can pass every health check and still burn half its hardware budget on bottlenecks nobody measured, because health checks only ask whether the server is alive, not whether it is fast enough.
 
-Take a team that deploys 64 GPUs with no benchmarking or telemetry. The service answers requests, and nobody notices that average GPU utilization sits near 45 percent and scaling efficiency near 52 percent. Over a two-week run, 31 of the 64 GPUs do no useful work. That idle capacity wastes roughly fifty thousand dollars of cloud spend.
+Take a team that deploys 64 GPUs with no benchmarking or telemetry. The service answers requests, so the launch looks like a success. Nobody notices that average GPU utilization sits near 45 percent and scaling efficiency near 52 percent. Over a two-week run, 31 of the 64 GPUs do no useful work. That idle capacity wastes roughly fifty thousand dollars of cloud spend. The waste is invisible in the product, because users still get answers, just slower and at a higher cost per answer.
 
 ```text
 Production Serving & Benchmarking Reference Numbers (Hands-On LLM Serving and Optimization Ch. 9, Generative AI on Kubernetes Ch. 3-5, Distributed AI Systems Ch. 10):
@@ -45,13 +45,13 @@ Production Serving & Benchmarking Reference Numbers (Hands-On LLM Serving and Op
   NVLink 8x A100 (p4d.24xlarge): TP=4 cuts TTFT by 50.0% (66 ms -> 33 ms) at 3,926 tok/s, while 4x DP replicas reach 9,816 tok/s (2.50x)
 ```
 
-Three traps cause most serving failures on Google Kubernetes Engine (GKE) and Nebius Managed Kubernetes.
+Three traps cause most serving failures on Google Kubernetes Engine (GKE) and Nebius Managed Kubernetes. GKE is Google's managed Kubernetes service, and Nebius Managed Kubernetes, or MK8s, is the equivalent offering from Nebius. Each trap looks reasonable on a whiteboard and costs real money in production.
 
-- Four-way Tensor Parallelism on PCIe-only L4 or L40S nodes is slower than a single GPU, in both throughput and latency. Tensor Parallelism needs the NVLink and NVSwitch fabrics of A100, H100, or H200 servers.
-- Pulling a 70-billion-parameter checkpoint over the public internet on every pod scale-up takes many minutes. Cold starts are sixteen times slower than warm decode for mid-size models and fifty times slower for 70-billion-parameter models.
-- Round-robin Kubernetes services and CPU-based autoscalers ignore prompt length, KV cache locality, and token queues. Without an LLM-aware Endpoint Picker and KEDA queue-depth scaling, long prompts pile up behind busy replicas while neighboring GPUs sit idle.
+- Why is more tensor parallelism not always faster? Four-way Tensor Parallelism on PCIe-only L4 or L40S nodes is slower than a single GPU, in both throughput and latency. Tensor Parallelism needs the NVLink and NVSwitch fabrics of A100, H100, or H200 servers.
+- Why are scale-ups so slow? Pulling a 70-billion-parameter checkpoint over the public internet on every pod scale-up takes many minutes. Cold starts are sixteen times slower than warm decode for mid-size models and fifty times slower for 70-billion-parameter models.
+- Why do some replicas sit idle while others are overloaded? Round-robin Kubernetes services and CPU-based autoscalers ignore prompt length, KV cache locality, and token queues. Without an LLM-aware Endpoint Picker and KEDA queue-depth scaling, long prompts pile up behind busy replicas while neighboring GPUs sit idle.
 
-Before you expose any LLM endpoint to production traffic, validate its weight caching, KV memory budget, Gateway API routing, and KEDA autoscaling under realistic concurrency sweeps.
+Before you expose any LLM endpoint to production traffic, validate its weight caching, KV memory budget, Gateway API routing, and KEDA autoscaling under realistic concurrency sweeps. A concurrency sweep means running the same test at several levels of simultaneous users, so you can see where the service starts to bend.
 
 ## Prerequisites and outcomes
 
@@ -61,12 +61,7 @@ Before you expose any LLM endpoint to production traffic, validate its weight ca
 - Autoscaling and capacity planning fundamentals from earlier chapters in Part 15.
 
 ### Outcomes
-After this lab chapter, you will be able to do five things:
-- Provision and inspect GPU node pools on GKE and Nebius MK8s, then choose between MIG, time-slicing, Data Parallelism, and Tensor Parallelism from the PCIe or NVLink topology.
-- Remove multi-minute cold starts by caching model weights on a GCS Fuse volume or a Nebius Shared Filesystem, and stream the weights into GPU memory with Run:ai Model Streamer.
-- Deploy vLLM, SGLang, and TensorRT-LLM or NIM with exact VRAM budgets, and show how 4-bit AWQ quantization enlarges the KV cache and raises throughput on one GPU.
-- Expose inference pools through the Gateway API Inference Extension with an Envoy Endpoint Picker, scrape vLLM and DCGM Exporter metrics with Prometheus, and verify KEDA autoscaling.
-- Run repeatable concurrency sweeps with `vllm bench serve`, `genai-bench`, and GuideLLM, then tear everything down so no GPU keeps running. GenAI-Perf is being phased out, so use AIPerf for new runs.
+You reach this lab when a cluster exists on paper and the next question is whether it will hold up. The chapter walks through five jobs in order. It starts by provisioning and inspecting GPU node pools, then cuts cold starts by caching weights, then deploys the three serving engines with exact memory budgets, then exposes the pool through routing and autoscaling, and it finishes with repeatable concurrency sweeps run with `vllm bench serve`, `genai-bench`, and GuideLLM, followed by a full teardown so that no GPU keeps running after the session. GenAI-Perf is being phased out, so use AIPerf for new runs.
 
 ---
 
@@ -74,11 +69,11 @@ After this lab chapter, you will be able to do five things:
 
 ### 1.1 Selecting Node Pools and Verifying Hardware Topology
 
-A serving deployment starts with a choice of node pool. Match the model size and the latency target to the hardware. Both GKE and Nebius MK8s offer two classes of GPU server.
+Suppose you have a model to serve and a budget to spend. The first real decision is not the model or the engine, but the node pool, because the hardware sets the ceiling for everything after it. Match the model size and the latency target to the hardware. Both GKE and Nebius MK8s offer two classes of GPU server.
 
-The cheaper class is a PCIe server with four small GPUs. The GPUs talk through ordinary PCIe switches with no NVLink bridges. The table below lists the exact SKUs.
+The cheaper class is a PCIe server with four small GPUs. The GPUs talk through ordinary PCIe switches with no NVLink bridges. PCIe is the general-purpose bus that connects cards to the host, and it is much slower than NVLink when GPUs need to exchange data. The table below lists the exact SKUs.
 
-The larger class is the SXM server with eight H100 or H200 GPUs. All eight connect through an NVSwitch fabric at 900 GB/s per GPU. Across nodes, these servers add 3.2 Tbps of rail-optimized InfiniBand or RoCEv2 networking.
+The larger class is the SXM server with eight H100 or H200 GPUs. All eight connect through an NVSwitch fabric at 900 GB/s per GPU. NVSwitch is the switch chip that lets every GPU in the box reach every other GPU at full speed. Across nodes, these servers add 3.2 Tbps of rail-optimized InfiniBand or RoCEv2 networking. RoCEv2 is RDMA carried over Ethernet, which lets one server read memory on another without going through the operating system on either side.
 
 | Platform & Node Pool | GPU Model & Count | VRAM per GPU | Intra-Node Interconnect | Inter-Node Fabric | Best Serving Role |
 |---|---|---|---|---|---|
@@ -89,7 +84,7 @@ The larger class is the SXM server with eight H100 or H200 GPUs. All eight conne
 | GKE a3-ultragpu-8g / Nebius gpu-h200-sxm | 8x NVIDIA H200 SXM | 141 GB / 144,384 MiB / 131.32 GiB | NVSwitch 3.0 900 GB/s | 8x 400 Gbps IB / RoCE 3.2 Tbps | Long-context 70B-671B TP=4/8 & large KV pools |
 | Blackwell Reference GB200 NVL72 | 72x NVIDIA B200 | 180 GB HBM3e per GPU | NVSwitch 4.0 1.8 TB/s/GPU, 130 TB/s rack | 800 Gbps NDR/XDR IB | Rack-scale MoE EP/TP & Million-token KV |
 
-Before it can schedule a serving pod, Kubernetes must discover what hardware each worker node has. Node Feature Discovery reads the PCIe bus and labels the node. An NVIDIA GPU, which is a 3D controller from vendor `10de`, gets the label `feature.node.kubernetes.io/pci-0302_10de.present: "true"`. NVIDIA GPU Feature Discovery then runs `nvidia-smi` from a DaemonSet and adds finer labels such as `nvidia.com/gpu.product` and `nvidia.com/gpu.memory`.
+Before Kubernetes can schedule a serving pod, it must discover what hardware each worker node has. Think of this as a check-in desk that reads each node's badge. Node Feature Discovery reads the PCIe bus and labels the node. An NVIDIA GPU, which is a 3D controller from vendor `10de`, gets the label `feature.node.kubernetes.io/pci-0302_10de.present: "true"`. NVIDIA GPU Feature Discovery then runs `nvidia-smi` from a DaemonSet and adds finer labels such as `nvidia.com/gpu.product` and `nvidia.com/gpu.memory`. A DaemonSet is a Kubernetes object that runs one copy of a pod on every node, which is what you want for a per-node hardware reader.
 
 ```mermaid
 flowchart TB
@@ -123,7 +118,7 @@ flowchart TB
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-Before you start a benchmark, run `nvidia-smi` in a diagnostic pod. It should show the GPU idle in performance state P8 with no stale processes, and moving to P0 or P1 under load.
+Before you start a benchmark, run `nvidia-smi` in a diagnostic pod. It should show the GPU idle in performance state P8 with no stale processes, and moving to P0 or P1 under load. Performance states are the power-and-clock levels the GPU moves between, with P8 as the resting state and P0 as the fastest.
 
 ```bash
 # Provision a GKE L4 or H100 GPU node pool and a Nebius MK8s H100 node group
@@ -146,11 +141,13 @@ kubectl run --rm -it gpu-diag --image=nvidia/cuda:12.8.1-base-ubi9 --restart=Nev
 
 ### 1.2 Sub-GPU Sharing and Multi-GPU Parallelism
 
-A small embedding model or a quantized 7-billion-parameter model uses only a fraction of an 80 GB GPU. Giving it a whole device wastes hardware. The NVIDIA GPU Operator ClusterPolicy offers two ways to share a GPU.
+Before you split a GPU, it helps to ask what a slice must guarantee. A slice that is only a scheduling promise can still be starved by a neighbor. A slice with hardware boundaries cannot be. Once you know which guarantee the tenant needs, the choice between MIG and time-slicing is usually obvious.
 
-Multi-Instance GPU (MIG) splits an A100, H100, or B200 in hardware into up to seven isolated instances. Profiles such as 1g.5gb, 2g.10gb, and 4g.20gb give each slice its own Streaming Multiprocessors and a hard memory boundary. Time-slicing is the other way. Setting replicas to 8 in the device plug-in ConfigMap exposes eight virtual GPUs per card, which is eighty schedulable units across ten GPUs. Time-sliced pods take turns on the GPU, with no memory quota and no fault isolation.
+Picture a small embedding model that answers a few requests a second. Giving it a whole 80 GB GPU is like renting a truck to carry a single letter. A small embedding model or a quantized 7-billion-parameter model uses only a fraction of an 80 GB GPU. Giving it a whole device wastes hardware. The NVIDIA GPU Operator ClusterPolicy offers two ways to share a GPU.
 
-For large models the harder choice is between Data Parallelism, which adds replicas, and Tensor Parallelism, which splits one model across GPUs. Many engineers assume that running a 14-billion-parameter model with `--tensor-parallel-size 4` is always faster than one GPU. *Hands-On LLM Serving and Optimization* Chapter 9 tested this on Qwen3-14B-AWQ and found that the answer depends on the node interconnect.
+Multi-Instance GPU (MIG) splits an A100, H100, or B200 in hardware into up to seven isolated instances. Profiles such as 1g.5gb, 2g.10gb, and 4g.20gb give each slice its own Streaming Multiprocessors and a hard memory boundary. Streaming Multiprocessors are the compute units inside the GPU, so a slice with its own set of them cannot slow down a neighbor. Time-slicing is the other way. Setting replicas to 8 in the device plug-in ConfigMap exposes eight virtual GPUs per card, which is eighty schedulable units across ten GPUs. Time-sliced pods take turns on the GPU, with no memory quota and no fault isolation. A time-sliced neighbor that runs out of memory can take the others down with it, which is the main reason to prefer MIG for shared tenants.
+
+For large models the harder choice is between Data Parallelism, which adds replicas, and Tensor Parallelism, which splits one model across GPUs. Data Parallelism is simple to reason about, because each replica is a complete copy that answers on its own. Tensor Parallelism needs the GPUs to talk at every layer. Many engineers assume that running a 14-billion-parameter model with `--tensor-parallel-size 4` is always faster than one GPU. *Hands-On LLM Serving and Optimization* Chapter 9 tested this on Qwen3-14B-AWQ and found that the answer depends on the node interconnect.
 
 ```text
 Multi-GPU Interconnect & Parallelism Comparison (Hands-On LLM Serving and Optimization Ch. 9, Generative AI on Kubernetes Ch. 3):
@@ -165,7 +162,7 @@ Multi-GPU Interconnect & Parallelism Comparison (Hands-On LLM Serving and Optimi
    - Time-slicing with renameByDefault: true and replicas: 8 exposes nvidia.com/gpu.shared: 8 per GPU.
 ```
 
-**Keep Tensor Parallelism on a single GPU and scale horizontally with independent pod replicas whenever the quantized model and its target KV cache fit on one device. Reserve multi-GPU Tensor Parallelism on NVLink nodes for models that exceed single-GPU memory or require sub-40-millisecond TTFT.**
+**Keep Tensor Parallelism on a single GPU and scale horizontally with independent pod replicas whenever the quantized model and its target KV cache fit on one device. Reserve multi-GPU Tensor Parallelism on NVLink nodes for models that exceed single-GPU memory or require sub-40-millisecond TTFT.** A simple rule like this saves money because replicas are easy to add, drain, and remove, while a Tensor Parallel group fails as one unit.
 
 ---
 
@@ -173,20 +170,28 @@ Multi-GPU Interconnect & Parallelism Comparison (Hands-On LLM Serving and Optimi
 
 ### 2.1 The Six-Stage Startup Pipeline and Cold-Start Multipliers
 
-Autoscaling fails if a new replica takes longer to start than the traffic spike lasts. *Distributed AI Systems* Chapter 10 measures how much a cold start costs the first request. It is three to five times slower than warm decode for small models, sixteen times slower for mid-size models, and fifty times slower or more for 70-billion-parameter models that load weights from disk or network storage. Suppose a pod needs 30 seconds to initialize while warm requests finish in 100 milliseconds. Scaling to zero then makes the first user wait 300 times longer.
+Think of the six phases as a relay. Each runner can start only after the previous runner hands over, so the total time is the sum of all the legs. Shortening the slowest leg helps most, which is why this list is ordered from the first hand-off to the last.
 
-*Generative AI on Kubernetes* Chapter 4 splits Kubernetes LLM startup into six phases.
+Picture a morning traffic spike. The autoscaler sees the queue growing and adds new pods, but each pod takes a long time to become useful. Users wait in the queue while the new capacity is still loading. Autoscaling fails if a new replica takes longer to start than the traffic spike lasts. *Distributed AI Systems* Chapter 10 measures how much a cold start costs the first request. It is three to five times slower than warm decode for small models, sixteen times slower for mid-size models, and fifty times slower or more for 70-billion-parameter models that load weights from disk or network storage. Warm decode means the model is already in memory and only has to generate tokens. Suppose a pod needs 30 seconds to initialize while warm requests finish in 100 milliseconds. Scaling to zero then makes the first user wait 300 times longer.
 
-- Image provisioning. The kubelet pulls the vLLM, SGLang, or NIM container image, which is typically under five gigabytes. Setting `imagePullPolicy` to Always forces redundant multi-gigabyte pulls on every rollout. Production manifests must use IfNotPresent and pin an immutable digest hash.
-- Model retrieval and volume mounting. Downloading weights on the fly from Hugging Face or S3 inside every pod copies tens of gigabytes across the network on every restart. Mounting a pre-populated Persistent Volume Claim eliminates per-pod downloads.
-- Process boot. Initializing the Python and C++ serving entrypoint takes roughly one second.
-- Copying weights into GPU HBM. Reading safetensors shards from the mounted volume into GPU VRAM is the dominant startup bottleneck. This step is bounded by storage-to-GPU I/O bandwidth.
-- Engine warmup and CUDA Graph capture. The engine profiles peak activation memory, allocates the PagedAttention KV block pool, and captures decode CUDA Graphs across batch-size buckets.
-- Readiness. The HTTP server binds its listening port and answers Kubernetes readiness probes on `/health`.
+*Generative AI on Kubernetes* Chapter 4 splits Kubernetes LLM startup into six phases. Each phase has its own cost, and the slowest one is the one to attack first.
+
+- What happens first? Image provisioning. The kubelet pulls the vLLM, SGLang, or NIM container image, which is typically under five gigabytes. Setting `imagePullPolicy` to Always forces redundant multi-gigabyte pulls on every rollout. Production manifests must use IfNotPresent and pin an immutable digest hash.
+- Where do the weights come from? Model retrieval and volume mounting. Downloading weights on the fly from Hugging Face or S3 inside every pod copies tens of gigabytes across the network on every restart. Mounting a pre-populated Persistent Volume Claim eliminates per-pod downloads.
+- How long does the process take to boot? Process boot. Initializing the Python and C++ serving entrypoint takes roughly one second, which is rarely the problem.
+- What is the slow part? Copying weights into GPU HBM. Reading safetensors shards from the mounted volume into GPU VRAM is the dominant startup bottleneck. This step is bounded by storage-to-GPU I/O bandwidth.
+- What happens before the first request? Engine warmup and CUDA Graph capture. The engine profiles peak activation memory, allocates the PagedAttention KV block pool, and captures decode CUDA Graphs across batch-size buckets.
+- When is the pod allowed to take traffic? Readiness. The HTTP server binds its listening port and answers Kubernetes readiness probes on `/health`.
 
 ### 2.2 Configuring GKE GCS Fuse, Nebius Shared Filesystems, and Run:ai Model Streamer
 
-To make weight loading fast for every replica, store the checkpoint once on a shared volume backed by local NVMe caching. Then stream the tensors in parallel with the Run:ai Model Streamer. On GKE, the Cloud Storage FUSE CSI driver mounts a Google Cloud Storage bucket as a ReadWriteMany PVC while caching file chunks on node-local NVMe SSDs. On Nebius MK8s, a Nebius Shared Filesystem or a ReadWriteMany network SSD PVC mounted at `/mnt/models` provides high-throughput shared access across all H100 or L40S worker nodes.
+A cold start hurts most when many replicas start together. Picture a sale that opens at the same moment for everyone. Each new pod asks the storage system for the same checkpoint at once. If the storage path can serve only so much at a time, the pods queue behind each other, and the slowest one decides when the fleet is ready. Shared caching and parallel streaming both attack that queue, which is why this section matters for autoscaling and not only for the first start.
+
+Picture a library with one copy of a very large book and a hundred readers who each need to read it at the same moment. If every reader makes a private photocopy from the far shelf, the room fills up and the shelf becomes the bottleneck. If the book sits on a reading table close to everyone, the readers share one copy and the wait disappears. The same idea applies to model weights.
+
+To make weight loading fast for every replica, store the checkpoint once on a shared volume backed by local NVMe caching. NVMe is fast local solid-state storage on the node. Then stream the tensors in parallel with the Run:ai Model Streamer. On GKE, the Cloud Storage FUSE CSI driver mounts a Google Cloud Storage bucket as a ReadWriteMany PVC while caching file chunks on node-local NVMe SSDs. A ReadWriteMany volume can be mounted by many pods at once. On Nebius MK8s, a Nebius Shared Filesystem or a ReadWriteMany network SSD PVC mounted at `/mnt/models` provides high-throughput shared access across all H100 or L40S worker nodes.
+
+The table below compares four ways to load the same 28 GB checkpoint. Read the effective bandwidth column first, because it explains most of the time column.
 
 | Model Loading Strategy | Storage Medium & Concurrency | Effective Read Bandwidth | Time to Load 28 GB Qwen3-14B FP16 | Relative Speedup |
 |---|---|---|---|---|
@@ -195,7 +200,9 @@ To make weight loading fast for every replica, store the checkpoint once on a sh
 | Nebius Shared FS / NVMe + Standard Loader | Local NVMe / Shared Filesystem 4 shards | 5.32 GB/s | 5.27 s / 4.47 s weights | 85.01x |
 | Nebius NVMe + Run:ai Model Streamer | `--load-format runai_streamer` 16 threads | 6.0 GB/s | 4.67 s | 95.93x |
 
-CoreWeave Tensorizer and fastsafetensor require converting checkpoints into a custom serialization format or setting specialized device environment variables. By contrast, Run:ai Model Streamer reads standard safetensors files directly using sixteen concurrent reader threads.
+CoreWeave Tensorizer and fastsafetensor require converting checkpoints into a custom serialization format or setting specialized device environment variables. Serialization format means the on-disk layout of the file. By contrast, Run:ai Model Streamer reads standard safetensors files directly using sixteen concurrent reader threads. That is why it is the easiest option to adopt when your checkpoints already exist in the standard format.
+
+The manifest below ties these pieces together. It creates a shared PVC and a two-replica Deployment that loads from it.
 
 ```yaml
 # shared-model-cache-pvc.yaml: Pre-warmed PVC + vLLM Deployment with Run:ai Model Streamer
@@ -272,7 +279,7 @@ spec:
             sizeLimit: 16Gi
 ```
 
-To make new replicas ready in seconds, combine an IfNotPresent pull policy, a pre-populated ReadWriteMany model PVC, and Run:ai Model Streamer with sixteen threads.
+To make new replicas ready in seconds, combine an IfNotPresent pull policy, a pre-populated ReadWriteMany model PVC, and Run:ai Model Streamer with sixteen threads. Each piece removes a different wait, and together they turn a multi-minute start into something a traffic spike can survive.
 
 ---
 
@@ -280,7 +287,9 @@ To make new replicas ready in seconds, combine an IfNotPresent pull policy, a pr
 
 ### 3.1 Anatomy of the GPU Memory Budget and Preemption Prevention
 
-Every serving engine partitions physical GPU HBM into four regions: static model weights, non-PyTorch CUDA runtime context, peak forward-pass activations, and the pre-allocated KV cache pool. In vLLM, the `--gpu-memory-utilization` flag defaults to 0.90. That setting reserves 90 percent of total VRAM for the engine and leaves 10 percent as an OOM safety buffer.
+A useful way to read the budget is as a bank statement. The GPU memory is the account, the weights are a fixed bill that arrives every month, the activations are a spending spike you must cover, and the KV cache is what is left over to spend on users. When the fixed bills grow, the money left for users shrinks, and the bank starts refusing new customers, which in this case means preemption.
+
+Picture a new engineer who sets a memory flag once and never checks it again. Months later, a longer prompt arrives and the server starts slowing down with no obvious reason. The memory budget was the reason all along. Every serving engine partitions physical GPU HBM into four regions: static model weights, non-PyTorch CUDA runtime context, peak forward-pass activations, and the pre-allocated KV cache pool. KV cache is the memory that holds the attention keys and values for every token in flight, and it grows with the number of active tokens. In vLLM, the `--gpu-memory-utilization` flag defaults to 0.90. That setting reserves 90 percent of total VRAM for the engine and leaves 10 percent as an OOM safety buffer. OOM means out of memory, a crash that happens when a process asks for more memory than exists.
 
 ```text
 vLLM Startup Memory Equations & Production Log Breakdowns (Generative AI on Kubernetes Ch. 4 Example 4-3, Hands-On LLM Serving and Optimization Ch. 9 Steps 4 and 6):
@@ -303,13 +312,13 @@ Case 3: Qwen/Qwen3-14B (FP16) vs Qwen/Qwen3-14B-AWQ (4-bit) on NVIDIA L40S (46,0
   - Net Gain from 4-bit AWQ: 18.1566 GiB freed from weights -> +18.15 GiB KV cache -> 2.65x more KV tokens and 2.65x higher concurrency
 ```
 
-When concurrent requests exhaust the KV cache pool, vLLM emits a scheduler warning in the container logs. It reports that sequence group 0 is preempted by swap mode because there is not enough KV cache space. Evicting and recomputing KV blocks spikes Inter-Token Latency and collapses throughput.
+When concurrent requests exhaust the KV cache pool, vLLM emits a scheduler warning in the container logs. It reports that sequence group 0 is preempted by swap mode because there is not enough KV cache space. Preemption means the engine pauses a running request to free its memory for another one. Evicting and recomputing KV blocks spikes Inter-Token Latency and collapses throughput. Inter-Token Latency, or ITL, is the gap between two consecutive output tokens, and users feel it as stutter.
 
-As shown in the Qwen3-14B experiment on a forty-six-gigabyte L40S GPU, FP16 weights consume more than 65 percent of total memory. That leaves only 11.00 GiB, or 72,064 tokens, for the KV cache. Compressing the model to 4-bit AWQ shrinks weight memory from 27.5185 GiB to 9.3619 GiB. The freed memory expands the KV cache to 29.15 GiB, or 191,056 tokens, and raises long-context concurrency from 1.76x to 4.66x. Similarly, a seventy-billion-parameter model requires 280 GB in FP32 or 140 GB in FP16. Four-bit quantization reduces those weights to 35 GB so the model fits on a single L40S GPU. When compressing custom models with `llmcompressor` using SmoothQuant and W8A8 GPTQ over calibration samples, calibrated FP8 or INT8 models recover more than 99 percent of baseline accuracy on MMLU benchmarks.
+As shown in the Qwen3-14B experiment on a forty-six-gigabyte L40S GPU, FP16 weights consume more than 65 percent of total memory. FP16 stores each weight in 16 bits. That leaves only 11.00 GiB, or 72,064 tokens, for the KV cache. Compressing the model to 4-bit AWQ shrinks weight memory from 27.5185 GiB to 9.3619 GiB. AWQ is a quantization method that keeps the most important weights at higher precision. The freed memory expands the KV cache to 29.15 GiB, or 191,056 tokens, and raises long-context concurrency from 1.76x to 4.66x. Similarly, a seventy-billion-parameter model requires 280 GB in FP32 or 140 GB in FP16. Four-bit quantization reduces those weights to 35 GB so the model fits on a single L40S GPU. When compressing custom models with `llmcompressor` using SmoothQuant and W8A8 GPTQ over calibration samples, calibrated FP8 or INT8 models recover more than 99 percent of baseline accuracy on MMLU benchmarks. Calibration samples are a small set of representative inputs the compressor uses to pick scaling factors, and MMLU is a broad multiple-choice test of knowledge.
 
 ### 3.2 Comparing vLLM, SGLang, and TensorRT-LLM / NIM Configurations
 
-vLLM, SGLang, and TensorRT-LLM or NVIDIA NIM all expose OpenAI-compatible chat endpoints. Each is strongest under different constraints.
+Picture a platform team with three engines on the shortlist and one question on the table: which one fits the traffic we actually have? vLLM, SGLang, and TensorRT-LLM or NVIDIA NIM all expose OpenAI-compatible chat endpoints. That means client code written for one works with another. Each engine is strongest under different constraints, and the table below lists the trade-offs.
 
 | Serving Engine | Core Scheduling & Cache Mechanism | Key Startup Flags | Ideal GKE / Nebius Workload |
 |---|---|---|---|
@@ -317,7 +326,9 @@ vLLM, SGLang, and TensorRT-LLM or NVIDIA NIM all expose OpenAI-compatible chat e
 | SGLang | RadixAttention tree-based prefix cache, zero-overhead CPU scheduler, structured JSON decoding | `--mem-fraction-static 0.88 --chunked-prefill-size 8192 --enable-torch-compile` | Variable-length prompts from 50 to 5,000 tokens (+40% throughput), multi-turn agents |
 | TensorRT-LLM / NIM | Ahead-of-time compiled TensorRT engines, custom FP8/FP4 CUTLASS kernels, in-flight batching | `NIM_MAX_MODEL_LEN=8192`, `NIM_TENSOR_PARALLEL_SIZE=4` | Maximum hardware efficiency and lowest TPOT on H100, H200, and Blackwell NVLink nodes |
 
-Before you commit to an engine, read its startup log and check that the KV cache holds more tokens than your peak concurrent demand, so that no request is swapped out or recomputed.
+A useful way to choose among the three is to ask which part of the stack you expect to change most. If your models change every week and you want one familiar server, vLLM is the calm choice. If your prompts share long prefixes across many multi-turn agents, SGLang's prefix handling is the detail to test first. If you run on NVLink hardware and need the lowest latency per token, the compiled engines are worth their extra build step, because the build is paid once and the speed is collected on every request.
+
+Before you commit to an engine, read its startup log and check that the KV cache holds more tokens than your peak concurrent demand, so that no request is swapped out or recomputed. A startup log is the best free measurement you have, because it reports the real cache size on the real hardware, not the number on a datasheet.
 
 ---
 
@@ -325,13 +336,17 @@ Before you commit to an engine, read its startup log and check that the KV cache
 
 ### 4.1 LLM-Aware Routing with Gateway API Inference Extension
 
-A standard Kubernetes Service balances by round-robin. That is a poor fit for LLMs, because no two requests cost the same GPU work. One request is a short greeting and the next is a RAG document of several thousand tokens. Another may need a LoRA adapter loaded with `--enable-lora` and `--lora-modules`. Sending a follow-up turn to a random replica also throws away the KV cache blocks that another replica already computed for the same conversation.
+A closer look at the scoring helps. The picker does not need to be perfect. It only needs to avoid the worst choice, which is the replica with the longest queue and the coldest cache. Even a rough score that avoids that choice removes most of the tail latency that round-robin creates, and it does so without changing the client at all.
 
-The Kubernetes SIG WG-Serving group built the Gateway API Inference Extension to fix this. *Generative AI on Kubernetes* Chapter 4 describes three components that it adds to the standard Gateway and HTTPRoute resources.
+When a team first moves from round-robin to an aware picker, the most common surprise is that one replica suddenly looks busier. That is usually the intended effect. The picker is steering the long prompts and the cache-friendly follow-ups to the replicas that can absorb them, so the load is no longer spread evenly by count, it is spread by work. Watch the queue depth per replica for a day before you decide the picker is broken.
 
-- InferencePool. Groups all model server pods sharing a base model and accelerator tier under the `inference.networking.k8s.io/v1` API. It exposes up to eight target ports, typically port 8000, and delegates pod selection to an Endpoint Picker service with FailClose failure handling.
-- InferenceObjective. Defines workload priority levels under the `inference.networking.x-k8s.io/v1alpha2` API. Real-time interactive chat receives priority 1 and standard or background batch traffic receives priority 2. That priority hierarchy lets the gateway shed low-priority load when queues saturate.
-- Endpoint Picker. Runs on port 9002 as an Envoy External Processing gRPC filter. It inspects the incoming model or LoRA name and scrapes live waiting-request and KV cache utilization metrics from every pod in the pool. It then routes the request to the replica with the lowest queue depth and highest prefix-cache affinity.
+Picture a restaurant host who seats each party at the next free table, without checking whether the kitchen is backed up or whether a guest needs a high chair. That host is round-robin. A standard Kubernetes Service balances by round-robin. That is a poor fit for LLMs, because no two requests cost the same GPU work. One request is a short greeting and the next is a RAG document of several thousand tokens. Another may need a LoRA adapter loaded with `--enable-lora` and `--lora-modules`. Sending a follow-up turn to a random replica also throws away the KV cache blocks that another replica already computed for the same conversation.
+
+The Kubernetes SIG WG-Serving group built the Gateway API Inference Extension to fix this. *Generative AI on Kubernetes* Chapter 4 describes three components that it adds to the standard Gateway and HTTPRoute resources. Gateway and HTTPRoute are the standard Kubernetes objects that describe how outside traffic enters the cluster and where it goes.
+
+- What groups the model pods? InferencePool. Groups all model server pods sharing a base model and accelerator tier under the `inference.networking.k8s.io/v1` API. It exposes up to eight target ports, typically port 8000, and delegates pod selection to an Endpoint Picker service with FailClose failure handling. FailClose means that if the picker is unavailable, requests are refused instead of being sent blindly.
+- Which requests are urgent? InferenceObjective. Defines workload priority levels under the `inference.networking.x-k8s.io/v1alpha2` API. Real-time interactive chat receives priority 1 and standard or background batch traffic receives priority 2. That priority hierarchy lets the gateway shed low-priority load when queues saturate.
+- Who picks the replica? Endpoint Picker. Runs on port 9002 as an Envoy External Processing gRPC filter. It inspects the incoming model or LoRA name and scrapes live waiting-request and KV cache utilization metrics from every pod in the pool. It then routes the request to the replica with the lowest queue depth and highest prefix-cache affinity. Prefix-cache affinity means the replica already holds the start of this prompt in its cache.
 
 ```yaml
 # gateway-inference-pool.yaml: Gateway API Inference Extension (Generative AI on Kubernetes Ch. 4 Example 4-7)
@@ -375,11 +390,13 @@ spec:
     name: vllm-qwen3-14b-pool
 ```
 
-Large deployments often move to disaggregated prefill and decode with llm-d or NVIDIA Dynamo, LMCache, and NIXL. The Endpoint Picker then sends prefill requests to compute-optimized pools, and the finished KV cache blocks move to decode pools. Standard pod Ethernet at 10 to 20 Gbps is far too slow for that transfer. A 512 MB KV block takes 409.6 ms over 10 Gbps Ethernet. Over 600 Gbps RoCEv2 or 800 Gbps InfiniBand, the same block takes 6.83 ms to 5.12 ms, about sixty times faster.
+Large deployments often move to disaggregated prefill and decode with llm-d or NVIDIA Dynamo, LMCache, and NIXL. Disaggregated serving splits the two phases onto different pools, so the compute-heavy prefill work does not stall the token-by-token decode work. The Endpoint Picker then sends prefill requests to compute-optimized pools, and the finished KV cache blocks move to decode pools. Standard pod Ethernet at 10 to 20 Gbps is far too slow for that transfer. A 512 MB KV block takes 409.6 ms over 10 Gbps Ethernet. Over 600 Gbps RoCEv2 or 800 Gbps InfiniBand, the same block takes 6.83 ms to 5.12 ms, about sixty times faster. The arithmetic is simple: the time is the block size divided by the link speed, so a faster link shrinks the wait in direct proportion.
 
 ### 4.2 Prometheus + DCGM Scraping, TPOT Alerting, and KEDA Autoscaling
 
-A production stack must scrape both the model runtime and the GPU driver. Configure a Prometheus ServiceMonitor with a 15-second interval on port 8080 or 8000 at `/metrics`. Pair it with the DCGM Exporter DaemonSet from the NVIDIA GPU Operator, and add OpenTelemetry tracing through `--otlp-traces-endpoint`.
+When you build a dashboard for this stack, put the queue and the cache on the same screen. A rising queue with a falling cache hit rate says the router is spreading prompts too evenly. A rising queue with a steady cache says the replicas are simply too few. The two pictures call for different fixes, and the table in this section lists the signal behind each one.
+
+Picture an on-call phone that rings only when a user is already unhappy. A production stack should warn you earlier, which means it must watch both the model runtime and the GPU driver. Configure a Prometheus ServiceMonitor with a 15-second interval on port 8080 or 8000 at `/metrics`. A ServiceMonitor is the Prometheus Operator object that tells Prometheus where to scrape. Pair it with the DCGM Exporter DaemonSet from the NVIDIA GPU Operator, and add OpenTelemetry tracing through `--otlp-traces-endpoint`. OpenTelemetry tracing records the timing of each stage in a request, so you can see where the time went.
 
 | Metric Layer | Prometheus / OpenTelemetry Metric Name | Operational Meaning & Target Threshold |
 |---|---|---|
@@ -390,7 +407,7 @@ A production stack must scrape both the model runtime and the GPU driver. Config
 | GPU Hardware Telemetry | `DCGM_FI_DEV_GPU_UTIL`, `DCGM_FI_DEV_FB_USED` | SM compute activity reaching 97% under saturated Prefix Repetition and HBM usage |
 | Output Quality | Async LLM-as-a-Judge / ROUGE / garak / Ragas | Evaluate 1% to 10% of responses asynchronously so judge latency never blocks traffic |
 
-The default Kubernetes HPA watches only CPU and host memory. The Knative KPA counts raw HTTP requests whatever their token length. Neither signal reflects GPU saturation. *Generative AI on Kubernetes* Chapter 4 therefore recommends KServe in Standard mode with KEDA. KEDA reads `vllm:num_requests_running` from the pod or from Prometheus. It scales between 1 and 5 replicas to keep running requests near 4 per pod.
+The default Kubernetes HPA watches only CPU and host memory. The Knative KPA counts raw HTTP requests whatever their token length. Neither signal reflects GPU saturation. *Generative AI on Kubernetes* Chapter 4 therefore recommends KServe in Standard mode with KEDA. KEDA is an event-driven autoscaler that can read custom metrics. KEDA reads `vllm:num_requests_running` from the pod or from Prometheus. It scales between 1 and 5 replicas to keep running requests near 4 per pod. Running requests is the metric that tracks how busy the GPU batch actually is, which is closer to real load than CPU.
 
 ```yaml
 # kserve-keda-alert.yaml: KServe + KEDA Autoscaling (Generative AI on Kubernetes Ex. 4-4) and Prometheus Alert (Generative AI on Kubernetes Ex. 5-5)
@@ -443,7 +460,7 @@ spec:
             summary: "Model TPOT exceeded 0.3s (300ms) human reading threshold"
 ```
 
-In production, set KEDA to keep at least one replica, so that baseline traffic never meets the 30-second scale-from-zero cold start.
+In production, set KEDA to keep at least one replica, so that baseline traffic never meets the 30-second scale-from-zero cold start. A cold start that a user sees at the front of the line is the failure you are trying to prevent.
 
 ---
 
@@ -451,11 +468,13 @@ In production, set KEDA to keep at least one replica, so that baseline traffic n
 
 ### 5.1 Designing Realistic Traffic Profiles and Latency Decomposition
 
-A benchmark that sends the same hundred-token prompt in a closed loop hides the memory and scheduling problems that break real clusters. *Distributed AI Systems* Chapter 10 shows that fixed-length tests miss the 40 percent throughput advantage of SGLang RadixAttention on variable-length prompts. Real prompts range from fifty to five thousand tokens.
+A useful mental check is to ask whether your benchmark could ever fail. A test that cannot fail tells you nothing about the cluster. Add a mix of prompt lengths, add a concurrency level high enough to build a queue, and add a warmup, so the first slow requests do not pollute the numbers.
 
-Average latency also hides tail spikes. Take a system with an 80 ms average where 5 percent of requests spike to 500 ms. Its users are unhappy. A system where every request finishes between 90 ms and 110 ms feels far steadier.
+Picture a benchmark that sends the same hundred-token prompt over and over in a loop. The numbers look wonderful, and then the launch happens and the real users send a mix of short questions and long documents. A benchmark that sends the same hundred-token prompt in a closed loop hides the memory and scheduling problems that break real clusters. *Distributed AI Systems* Chapter 10 shows that fixed-length tests miss the 40 percent throughput advantage of SGLang RadixAttention on variable-length prompts. Real prompts range from fifty to five thousand tokens. A closed loop means each client waits for its last answer before sending the next, so the test never builds a real queue.
 
-A good benchmark report therefore splits end-to-end latency into prefill and decode and reports P50, P95, and P99 after warmup. Warm up for five to ten iterations in eager mode, or twenty to fifty with compiled or CUDA Graph engines. Then measure at least one hundred requests.
+Average latency also hides tail spikes. Take a system with an 80 ms average where 5 percent of requests spike to 500 ms. Its users are unhappy, even though the average looks fine. A system where every request finishes between 90 ms and 110 ms feels far steadier, even though its average is higher. Tail latency is the slow end of the distribution, and it is what users remember.
+
+A good benchmark report therefore splits end-to-end latency into prefill and decode and reports P50, P95, and P99 after warmup. Those percentiles mean the latency that a chosen share of requests stays under. P50 is the middle request, and the higher labels look further into the slow tail. Warm up for five to ten iterations in eager mode, or twenty to fifty with compiled or CUDA Graph engines. Warmup runs the first slow requests that load kernels and caches, and you throw them away. Then measure at least one hundred requests.
 
 ```text
 End-to-End Inference Latency Decomposition & Benchmark Dataset Profiles (Distributed AI Systems Ch. 10, Hands-On LLM Serving and Optimization Ch. 9):
@@ -477,7 +496,9 @@ End-to-End Inference Latency Decomposition & Benchmark Dataset Profiles (Distrib
 
 ### 5.2 Running Concurrency Sweeps with Benchmark CLI Tools
 
-Four command-line tools cover the benchmark matrix for GKE and Nebius endpoints.
+Before you run any of these commands, write down the question the run must answer. A sweep that answers "how fast is the model" is less useful than one that answers "at what concurrency does TTFT leave its target." Choosing the question first also tells you which dataset, which concurrency levels, and which percentiles belong in the run.
+
+Picture a benchmark matrix on a whiteboard. Each cell is one combination of model, workload, and concurrency, and you need every cell to compare fairly. Four command-line tools cover the benchmark matrix for GKE and Nebius endpoints. Each one is useful for a different part of the matrix, so the commands below are not interchangeable.
 
 ```bash
 # 1. vLLM ShareGPT Benchmark (2,000 prompts, 10 RPS, concurrency 10, Hands-On LLM Serving and Optimization Ch. 9 Step 5)
@@ -505,7 +526,7 @@ genai-bench benchmark --api-backend openai --api-base "http://localhost:8000" \
   --num-concurrency 1 --num-concurrency 4 --num-concurrency 10 --num-concurrency 32
 ```
 
-The table below summarizes the benchmark results from *Hands-On LLM Serving and Optimization* Chapter 9. It covers FP16, Prefix Repetition, 4-bit AWQ, and multi-GPU layouts.
+The table below summarizes the benchmark results from *Hands-On LLM Serving and Optimization* Chapter 9. It covers FP16, Prefix Repetition, 4-bit AWQ, and multi-GPU layouts. Read the throughput and latency columns side by side, because a gain in one often costs something in the other.
 
 | Benchmark Run | Workload & Rate | Total Input / Output Tokens | Req Throughput | Output TPS / Peak TPS | Total Token Throughput | Mean TTFT | Mean / Median / P99 ITL |
 |---|---|---|---|---|---|---|---|
@@ -514,11 +535,13 @@ The table below summarizes the benchmark results from *Hands-On LLM Serving and 
 | Qwen3-14B-AWQ 4-bit 1x L40S | ShareGPT 2,000 req, 10 RPS | 446,619 / 412,052 | Scaled | Scaled | 1,280.0 tok/s / 2.70x | 59.29 ms / -42.78% | Lower HBM decode latency |
 | Qwen3-14B-AWQ NVLink p4d 4x A100 | TP=4 Single Instance vs 4x DP Replicas | ShareGPT sweep | Scaled | Scaled | 3,926 tok/s TP=4 vs 9,816 tok/s 4x DP / 2.50x | 66.0 ms TP=1 to 33.0 ms TP=4 | Low latency NVLink |
 
-Before you fix replica counts, benchmark both a varied conversational dataset such as ShareGPT and a prefix-heavy workload. The first gives baseline decoding throughput and the second shows how much prefix caching helps.
+Before you fix replica counts, benchmark both a varied conversational dataset such as ShareGPT and a prefix-heavy workload. The first gives baseline decoding throughput and the second shows how much prefix caching helps. Use both, because a single dataset can make the system look better or worse than it is.
 
 ---
 
 ## 6. How It Fails: Production Serving and Benchmarking Failure Modes
+
+Each row in the table below is a failure that shows up in the logs or in Prometheus before a user complains. Read the symptom column first, because it tells you where to look. The root cause explains why the symptom happens, and the remediation column gives the fix you would apply.
 
 | Failure Mode | Observable Symptom in Logs & Prometheus | Root Cause | Concrete Remediation |
 |---|---|---|---|
@@ -529,7 +552,11 @@ Before you fix replica counts, benchmark both a varied conversational dataset su
 | **5. Disaggregated KV Transfer Bottleneck over Pod Ethernet** | Disaggregated prefill/decode deployment exhibits 409.6 ms TTFT transfer overhead between prefill and decode pods. | KV cache blocks of 512 MB traverse standard 10-20 Gbps pod Ethernet instead of 500-800 Gbps RDMA/RoCEv2 or InfiniBand. | Bind NIXL and LMCache to secondary GPUDirect RDMA interfaces at 600 Gbps RoCEv2 or 800 Gbps InfiniBand, cutting transfer time to 6.83 ms or 5.12 ms. |
 | **6. Orphaned Cloud GPU Node Pools & LoadBalancers After Benchmarking** | Monthly cloud bill accumulates $50,000 across 64 GPUs over 336 hours at $4-$5/GPU-hr after benchmark runs conclude. | Deleting the Kubernetes Deployment leaves GPU node pools, LoadBalancer IPs, and 500 GiB SSD PVCs running. | Execute the automated GKE and Nebius teardown checklist immediately after exporting benchmark results. |
 
-Each of these failures shows up in startup logs or Prometheus histograms before users report an outage.
+A good habit is to rerun the benchmark after every change that touches memory, routing, or replica counts. A single run can mislead you, because one unlucky burst of traffic can look like a regression. Two matching runs on the same settings give you much more confidence than one run with a dramatic result.
+
+Read the table as a set of early warnings. The first two rows show up in the first load test, the middle rows show up when traffic grows, and the last row shows up on the invoice. Each row names one signal you can alert on, so the failure becomes a page instead of a surprise.
+
+Each of these failures shows up in startup logs or Prometheus histograms before users report an outage. That is the good news. The bad news is that someone has to be looking at those logs and histograms on the day it happens.
 
 ---
 
@@ -537,15 +564,23 @@ Each of these failures shows up in startup logs or Prometheus histograms before 
 
 ### Venue and Scope
 
-The verification lab runs locally in Python from `code/part15/serve_benchmark_gke_nebius.py` and `code/part15/serve_benchmark_gke_nebius_lab.py`, with no cloud dependency. The Kubernetes manifests and cloud commands in Sections 1 through 5 are written for live GKE and Nebius clusters, and they have not been run on live hardware. The twenty-eight calculations in the Python lab all run and pass.
+Start with the part you can run for free and check at your own desk, which is a lab on a laptop with no cloud account and no GPU. That is the right first step for a chapter like this, because the arithmetic is the part you can check for free. Once the arithmetic holds, the cloud session is spent on the parts only a real cluster can show you.
+
+Keep your notes from this lab next to the benchmark results, with the date and the commit you tested, so that a later reader can tell which version the numbers came from. When a later cluster run disagrees with the arithmetic, the notes show whether the formula, the input, or the hardware is the source of the gap.
+
+Picture a lab you can run on a laptop on a train, with no cloud account and no GPU. The verification lab runs locally in Python from `code/part15/serve_benchmark_gke_nebius.py` and `code/part15/serve_benchmark_gke_nebius_lab.py`, with no cloud dependency. The Kubernetes manifests and cloud commands in Sections 1 through 5 are written for live GKE and Nebius clusters, and they have not been run on live hardware. In plain words, the cluster steps are a template you still have to check against a real cluster. The twenty-eight calculations in the Python lab all run and pass.
 
 ### 7.1 Running the Self-Checking Python Verification Lab
 
-From the repository root, run the suite to execute all twenty-eight checks.
+Think of the lab output as a receipt. Each line shows what was checked and the value that came out, so a reader can compare the line with the matching prose without rerunning the numbers by hand. If a line ever fails, the failure points at one formula, which is far easier to repair than a vague sense that a table looks off.
+
+Picture a colleague asking whether the numbers in this chapter really add up. The lab is the way to answer without a cluster. From the repository root, run the suite to execute all twenty-eight checks.
 
 ```bash
 python3 code/part15/serve_benchmark_gke_nebius_lab.py
 ```
+
+The expected output looks like this. Each line names one check and shows the value it verified.
 
 ```text
 === Chapter 15.17 Lab: Serve and Benchmark on GKE and Nebius ===
@@ -583,7 +618,9 @@ Summary: 28 passed, 0 failed
 
 ### 7.2 Mandatory GKE and Nebius Teardown Checklist
 
-After copying your benchmark JSON and CSV artifacts off the cluster, run the following teardown sequence. Verify that zero billable GPU nodes, external load balancers, or persistent disks remain active.
+A teardown is safest when it is written as a list before the session starts. The list names every node pool, load balancer, filesystem, and volume that the session created, so the cleanup is a matching exercise and not a memory test. Teams that skip the list tend to leave one forgotten item running for weeks.
+
+Picture the Friday after a benchmark session, when the team has the results and wants to go home. This is the step that most often gets skipped, and it is the step that keeps billing running. After copying your benchmark JSON and CSV artifacts off the cluster, run the following teardown sequence. Verify that zero billable GPU nodes, external load balancers, or persistent disks remain active.
 
 ```bash
 # 1. Delete KServe InferenceServices, Gateway API resources, Deployments, and PVCs
@@ -602,7 +639,7 @@ nebius compute filesystem list --parent-id "$NEBIUS_PROJECT_ID"
 kubectl get nodes -l nvidia.com/gpu.count
 ```
 
-Always confirm that `kubectl get nodes` and your cloud console show zero active GPU instances before closing a benchmarking session.
+Always confirm that `kubectl get nodes` and your cloud console show zero active GPU instances before closing a benchmarking session. A quick check at the end costs a minute and can save thousands of dollars.
 
 ---
 
@@ -732,8 +769,8 @@ At 52 percent scaling efficiency, sixty-four GPUs deliver the effective compute 
 
 ## Key takeaways
 
-- **Match parallelism to the interconnect.** On PCIe-only pools such as L4 and L40S, run single-GPU replicas with Data Parallelism. Keep multi-GPU Tensor Parallelism for NVLink and NVSwitch pools when the model exceeds one GPU or needs a TTFT under 40 milliseconds.
-- Combine an IfNotPresent pull policy, a pre-populated ReadWriteMany PVC with local NVMe caching, and Run:ai Model Streamer with sixteen threads. This removes multi-minute cold starts.
+- Match parallelism to the interconnect. On PCIe-only pools such as L4 and L40S, run single-GPU replicas with Data Parallelism. Keep multi-GPU Tensor Parallelism for NVLink and NVSwitch pools when the model exceeds one GPU or needs a TTFT under 40 milliseconds.
+- Combine an IfNotPresent pull policy, a pre-populated ReadWriteMany PVC with local NVMe caching, and Run:ai Model Streamer with sixteen threads. Together they remove the multi-minute cold starts that make autoscaling useless.
 - Quantizing Qwen3-14B from FP16 to 4-bit AWQ on an L40S grows the KV cache by 2.65x, from 72,064 to 191,056 tokens. It raises ShareGPT throughput by 2.70x to 1,280.0 tokens per second and cuts mean TTFT by 42.78 percent to 59.29 ms.
 - Replace round-robin services and CPU autoscalers with the Gateway API Inference Extension and KServe with KEDA, at four running requests per pod. Alert when the five-minute maximum TPOT reaches 0.3 seconds.
 - Run concurrency sweeps over ShareGPT, Prefix Repetition, genai-bench, and GuideLLM with twenty percent warmup. Then run the GKE and Nebius teardown checklist at once, so that no idle GPU keeps billing.
@@ -742,18 +779,20 @@ At 52 percent scaling efficiency, sixty-four GPUs deliver the effective compute 
 
 ## Exercises
 
-1. An A100-80GB reports 79.14 GiB of total memory at 0.90 GPU memory utilization. Weights take 14.99 GiB, non-PyTorch runtime 0.12 GiB, and peak activations 1.19 GiB. How much VRAM is usable, and how much is left for the KV cache?
-2. An L40S holds Qwen3-14B in FP16 and in 4-bit AWQ. The KV cache grows from 72,064 to 191,056 tokens. How much weight memory does AWQ save, and by what ratio does the token capacity grow?
-3. On the same pair, ShareGPT throughput rises from 474.38 to 1,280.0 tokens per second, and mean TTFT falls from 103.61 ms to 59.29 ms. What are the speedup and the TTFT reduction?
-4. A 28.0 GB checkpoint downloads over a 500 Mbps link on every pod start. How long does that take? How long does it take from a gcsfuse PVC at 2.5 GB/s, and from a Nebius volume with Run:ai Model Streamer at 6.0 GB/s? What is the speedup of the streamer over the download?
-5. A scale-from-zero cold start takes 30.0 s and a warm request takes 100.0 ms. What is the ratio, and why must the KEDA `minReplicas` stay at 1 or more?
+Each exercise below gives you one situation and asks for one result. The numbers come from the chapter, so check each answer against the parameter block that follows the list.
+
+1. An A100-80GB reports 79.14 GiB of total memory at 0.90 GPU memory utilization. A checkpoint of weights takes 14.99 GiB, the non-PyTorch runtime takes 0.12 GiB, and peak activations take 1.19 GiB. How much VRAM is usable? How much is left for the KV cache?
+2. An L40S holds Qwen3-14B in FP16 and in 4-bit AWQ. The KV cache grows from 72,064 to 191,056 tokens. How much weight memory does AWQ save? By what ratio does the token capacity grow?
+3. On the same pair, ShareGPT throughput rises from 474.38 to 1,280.0 tokens per second. Mean TTFT falls from 103.61 ms to 59.29 ms. What are the speedup and the TTFT reduction?
+4. A 28.0 GB checkpoint downloads over a 500 Mbps link on every pod start. How long does that take? How long does it take from a gcsfuse PVC at 2.5 GB/s? How long from a Nebius volume with Run:ai Model Streamer at 6.0 GB/s? What is the speedup of the streamer over the download?
+5. A scale-from-zero cold start takes 30.0 s and a warm request takes 100.0 ms. What is the ratio? Why must the KEDA `minReplicas` stay at 1 or more?
 6. An EndpointPicker on port 9002 scores three replicas for a request whose LoRA adapter is loaded on the first two pods. Pod 1 has 7 waiting requests, 0.88 KV utilization, and no prefix hit. Pod 2 has 1 waiting request, 0.42 KV utilization, and a prefix hit. Pod 3 has 4 waiting requests, 0.65 KV utilization, and no adapter. Use `evaluate_gateway_epp_and_disaggregated_kv()` to score the pods. Which one is picked?
-7. How many milliseconds does a 512 MB KV block take over 10 Gbps pod Ethernet, over 600 Gbps RoCEv2, and over 800 Gbps NDR InfiniBand?
+7. How many milliseconds does a 512 MB KV block take over 10 Gbps pod Ethernet? How many over 600 Gbps RoCEv2? How many over 800 Gbps NDR InfiniBand?
 8. KEDA targets four running requests per pod. Three active pods report 6, 5, and 7 running requests. How many replicas does KEDA provision?
 9. A Prefix Repetition request has a 104.64 ms TTFT, a 43.95 ms inter-token latency, and 128 output tokens. What is its end-to-end latency?
-10. A 64-GPU cluster runs for 336 hours at 52 percent scaling efficiency and 45 percent GPU utilization. How many GPUs are effectively used, how many are wasted, and how many GPU-hours are wasted? What does that cost at $4.80 per GPU-hour?
+10. A 64-GPU cluster runs for 336 hours at 52 percent scaling efficiency and 45 percent GPU utilization. How many GPUs are effectively used? How many are wasted, and how many GPU-hours are wasted? What does that cost at $4.80 per GPU-hour?
 
-Solution sketch: exercise 1 gives 79.14 * 0.90 = 71.22 GiB usable and 54.93 GiB for the KV cache. Exercise 7 gives 409.6 ms, 6.83 ms, and 5.12 ms. Exercise 9 gives 104.64 + 127 * 43.95 = 5,686.29 ms. Exercise 10 gives 33 effective GPUs, 31 wasted, and 10,416 wasted GPU-hours.
+Solution sketch: for exercise 1, 79.14 * 0.90 = 71.22 GiB is usable, and 54.93 GiB is left for the KV cache. For exercise 7, the three transfer times are 409.6 ms, 6.83 ms, and 5.12 ms. For exercise 9, 104.64 + 127 * 43.95 = 5,686.29 ms. For exercise 10, 33 GPUs are effective, 31 are wasted, and 10,416 GPU-hours are wasted. Work through your own answer first, then compare, because the reasoning matters more than the match.
 
 ---
 
@@ -782,3 +821,4 @@ Primary Book Sources (Local TOON-RAG Corpus):
 
 GenAI-Perf is being phased out, and NVIDIA points new benchmarking to AIPerf (`aiperf profile`). The sources are the GenAI-Perf README in triton-inference-server/perf_analyzer and the AIPerf README and docs/cli-options.md in ai-dynamo/aiperf.
 - Provenance files for this chapter: `planning/coverage/chapters/15-17.md` (coverage) and `planning/ledgers/15-17.md` (claim and number ledger).
+

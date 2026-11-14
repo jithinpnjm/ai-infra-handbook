@@ -93,3 +93,6 @@ Chapters 12.1-12.24 rewritten and committed (6 commits, +28-34% words, guard 0 h
 
 ## Parts 13 and 14 status (2026-11-14)
 Part 13 (9 ch) and Part 14 (16 ch) rewritten and committed (+28-31% words, guard 0 hard, chain <=0.2, spans 0 lost, Mermaid 776 ok, build ok). Open items are in ledgers voice_rewrite_part13_*.md and part14_*.md: 13.5 interview "3 hours" vs "180 minutes" vs 45.3 min cold wait (owner to reconcile); 13.2 "tenfold gap" is 2.33x; 14.2 HBM fragmentation 20-30% vs 20.4-38.2%; 14.7 "four ways" vs three listed; 14.11 elastic agent walkthrough needs torchrun-doc check. Part 15 (18 ch) in progress.
+
+## Part 15 status (2026-11-14)
+Part 15 (18 ch) rewritten and committed (+28-40% words, guard 0 hard, chain <=0.2, spans 0 lost, Mermaid 776 ok, build ok). Open items in ledgers voice_rewrite_part15_*.md: 15.4 "nine operational stages" lists five; 15.8 "must exceed 256" vs >= 256; 15.10 70/180/122 vs 110 GB inconsistency; unverified "Volume 12"/ASP attributions in 15.11/15.12; 15.1 ran at +39.9% (top of range). Part 16 (15 ch) in progress.
