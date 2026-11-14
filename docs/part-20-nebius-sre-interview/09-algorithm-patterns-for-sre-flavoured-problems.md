@@ -14,9 +14,9 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-The interviewer pastes a link to a shared editor and says: "Here is a log file with a few million lines. Tell me which endpoints are slowest, and which ones have been failing in the last five minutes." This chapter serves the coding round. Nebius states that the process includes at least one practical coding, algorithms or data-structures task. It also says you may use any language, should say your reasoning aloud, ask for hints and review your code before submitting.
+The interviewer pastes a link to a shared editor and says: "Here is a log file with a few million lines. Tell me which endpoints are slowest, and which ones have been failing in the last five minutes." Picture the cursor blinking in an empty file. The log is too big to open in an editor, the clock is running, and you need a method before you need a line of code. This chapter serves the coding round. Nebius states that the process includes at least one practical coding, algorithms or data-structures task. It also says you may use any language, should say your reasoning aloud, ask for hints and review your code before submitting.
 
-One candidate reported two LeetCode easy-to-medium problems in a one-hour round. Nebius has not published its problems, so this chapter does not guess a list. It teaches the patterns behind most easy and medium problems, framed as SRE situations.
+One candidate reported two LeetCode easy-to-medium problems in a one-hour round. Nebius has not published its problems, so this chapter does not guess a list. It teaches the patterns behind most easy and medium problems, framed as SRE situations. The point is not to memorise every answer. The point is to recognise the shape of a problem quickly and to know the template that fits it.
 
 A realistic question in the interviewer's voice: "Implement a rate limiter that allows 100 requests per minute per API key. Then tell me what happens at the window boundary, and how you would change it to allow bursts."
 
@@ -24,7 +24,7 @@ A realistic question in the interviewer's voice: "Implement a rate limiter that 
 
 ## The core ideas
 
-Every section below has the same parts. First the situation, then the idea in plain words, then a template you can type from memory. After the template come its cost, the SRE setting, the follow-up an interviewer adds, and the bug that most often sinks the answer. All code is in `code/part20/` with the prefix `c09_`, and the blocks here are exact copies of the files. The tests carry the prefix `test_c09_`.
+Every section below has the same parts. First the situation, then the idea in plain words, then a template you can type from memory. After the template come its cost, the SRE setting, the follow-up an interviewer adds, and the bug that most often sinks the answer. Read the situation first, because it tells you which question the interviewer is really asking. All code is in `code/part20/` with the prefix `c09_`, and the blocks here are exact copies of the files. The tests carry the prefix `test_c09_`.
 
 ```mermaid
 flowchart TD
@@ -64,9 +64,11 @@ flowchart TD
 
 ### 1. Log parsing and aggregation with hash maps
 
-A service writes one line per request. Your manager wants error rate and total time per endpoint from a file too large to load. The idea is a single pass. Read one line at a time, update a dictionary keyed by endpoint, and never keep the lines. Learning Python, chapter 14, explains why: iterating over a file object reads one line at a time and avoids the memory problem of loading everything with `readlines`.
+A service writes one line per request. Your manager wants error rate and total time per endpoint from a file too large to load. The idea is a single pass. Read one line at a time, update a dictionary keyed by endpoint, and never keep the lines. Learning Python, chapter 14, explains why: iterating over a file object reads one line at a time and avoids the memory problem of loading everything with `readlines`. The file stays on disk, and only the running totals stay in memory.
 
-Two details matter. Real logs contain garbage, so the parser returns `None` for a bad line and the caller counts it instead of crashing. And counts need a default, which `defaultdict` or `Counter` supplies, as Fluent Python, chapter 3, shows.
+Walk through the first pass in your head. The loop takes one line, asks the parser for a record, and either counts it as bad or adds it to the running totals for its endpoint. Then the loop moves on, and the earlier line is gone from memory. The only thing that grows is the dictionary, and it grows with endpoints, which is the number you want to stay small.
+
+Two details matter. Real logs contain garbage, so the parser returns `None` for a bad line and the caller counts it instead of crashing. A crash in the middle of a large file loses the work already done, while a counted bad line costs one increment. And counts need a default, which `defaultdict` or `Counter` supplies, as Fluent Python, chapter 3, shows. Without the default, the first time you see a new endpoint the code would fail, and that failure would only show up on the busy path.
 
 ```python
 """Log parsing and aggregation with hash maps."""
@@ -122,19 +124,23 @@ def first_duplicate_request_id(ids):
     return None
 ```
 
-The cost is O(n) time and memory proportional to the number of distinct paths, not lines. That second part is where the SRE angle lives. If you key by raw URL and the URL contains a user id, the dictionary grows without bound. Chapter 20.15 covers the same problem as metric cardinality. The helper `collapse_ids` in the strings section shows the usual fix.
+The cost is O(n) time and memory proportional to the number of distinct paths, not lines. That second part is where the SRE angle lives. If you key by raw URL and the URL contains a user id, the dictionary grows without bound. Each new user adds a new key, and memory grows with the user base instead of with the handful of routes your service really has. Chapter 20.15 covers the same problem as metric cardinality. The helper `collapse_ids` in the strings section shows the usual fix, which is to replace the ids with a placeholder before you use the path as a key.
+
+A concrete case makes the risk clear. Suppose the service puts a customer id in the path, and every customer makes a few requests a day. After a month the dictionary holds one entry per customer, not one per route, and every report has to scan all of them. Collapsing the ids keeps the dictionary the size the product actually needs.
 
 
 
 
 
-Decide: if the question says "per" something, reach for a dictionary first and say what the key is.
+Decide: if the question says "per" something, reach for a dictionary first and say what the key is. The key is the answer to "per what", and naming it out loud shows the interviewer you understood the question before you wrote any code.
 
 ### 2. Sliding windows: rolling error rate and the maximum in a window
 
-An alert should fire when the error rate over the last five minutes exceeds one percent. Events arrive in time order. The naive approach recounts the window on every event. The better idea is to keep the events in a queue, add the new one on the right, and drop the old ones from the left, adjusting a running total as you go.
+An alert should fire when the error rate over the last five minutes exceeds one percent. Events arrive in time order, and the alert runs all day. The naive approach recounts the window on every event, which is wasteful when most events are the same as the last check. The better idea is to keep the events in a queue, add the new one on the right, and drop the old ones from the left, adjusting a running total as you go. The window slides along the stream, which is where the name comes from.
 
-Use `collections.deque` for the queue. Fluent Python, chapter 2, says a deque is the more efficient first-in first-out structure than a list, because popping from the front of a list shifts every element.
+Use `collections.deque` for the queue. Fluent Python, chapter 2, says a deque is the more efficient first-in first-out structure than a list, because popping from the front of a list shifts every element. A deque removes from either end without moving the rest, so the eviction step stays cheap no matter how long the window grows.
+
+The reason the deque matters is easy to see with a small picture. A list stores its items side by side, so removing the first one means sliding every other item one place along. A deque is built so that both ends are cheap, and the sliding never happens.
 
 ```python
 """Sliding windows: rolling error rate and max in a window, both with a deque."""
@@ -197,19 +203,21 @@ def longest_run_below(values, limit):
     return best
 ```
 
-The second function is the classic follow-up: the maximum of every window of k values. The deque stores indexes of values in decreasing order. When a new value arrives, every smaller value at the back can never be the maximum again, so you pop them. Each index enters and leaves once, so the work is O(n) even though there is a loop inside a loop.
+The second function is the classic follow-up: the maximum of every window of k values. The deque stores indexes of values in decreasing order. When a new value arrives, every smaller value at the back can never be the maximum again, so you pop them. Each index enters and leaves once, so the work is O(n) even though there is a loop inside a loop. Picture a line of people waiting for a lift, where anyone shorter than a newcomer will never be the tallest while the newcomer stays in the window.
 
-A timing on a Mac with Python 3.12.7 and window size 1,000 shows the claim. The deque version took 0.0012, 0.0028 and 0.0052 seconds for 10,000, 20,000 and 40,000 values. The naive version took 0.0567, 0.1184 and 0.2495 seconds. Doubling n doubles both, as it should for fixed k, but the naive one pays a factor of about k. That is a timing on one machine, not a guarantee.
+A timing on a Mac with Python 3.12.7 and window size 1,000 shows the claim. The deque version took 0.0012, 0.0028 and 0.0052 seconds for 10,000, 20,000 and 40,000 values. The naive version took 0.0567, 0.1184 and 0.2495 seconds. Doubling n doubles both, as it should for fixed k, but the naive one pays a factor of about k. That is a timing on one machine, not a guarantee, and the ratio is the part worth remembering.
+
+When you read a timing like this, look for the ratio and the trend, and forget the exact digits. The trend says the naive method slows down in step with the window size, while the deque method does not. That is the claim the interviewer will care about, and a timing on your own machine will show the same shape with different digits.
 
 
 
-The common bugs are off-by-one on the boundary and the empty window. In the test file the event exactly ten seconds old is out of a ten-second window, and the rate of an empty window is zero. Say your boundary choice aloud: "I treat the window as half-open, so an event exactly W seconds old is dropped."
+The common bugs are off-by-one on the boundary and the empty window. In the test file the event exactly ten seconds old is out of a ten-second window, and the rate of an empty window is zero. Say your boundary choice aloud: "I treat the window as half-open, so an event exactly W seconds old is dropped." A half-open window includes its start and excludes its end, and that one sentence tells the interviewer you have thought about the edge.
 
-Decide: if the question is about "the last N items" or "the last T seconds", it is a window, and your first sentence is whether it is half-open.
+Decide: if the question is about "the last N items" or "the last T seconds", it is a window, and your first sentence is whether it is half-open. Half-open or closed is the first question a careful engineer asks about any time range.
 
 ### 3. Two pointers
 
-Two sorted lists of timestamps come from two servers, and you want one merged timeline. Or you want two values in a sorted list of latencies that sum to a budget. The idea is to put one pointer at each relevant position and move the one that the comparison tells you to move. Sortedness is what makes the move safe, because it tells you which pointer can never help again.
+Two sorted lists of timestamps come from two servers, and you want one merged timeline. Or you want two values in a sorted list of latencies that sum to a budget. The idea is to put one pointer at each relevant position and move the one that the comparison tells you to move. Sortedness is what makes the move safe, because it tells you which pointer can never help again. Picture two people walking up a staircase from opposite ends, each stepping only when the step they stand on is the wrong one.
 
 ```python
 """Two pointers on sorted data."""
@@ -272,15 +280,17 @@ def common_sorted(a, b):
     return out
 ```
 
-Every function is O(n) time and O(1) extra memory, apart from the output. The in-place dedupe uses a read pointer and a write pointer and finishes with a `del` of the tail.
+Every function is O(n) time and O(1) extra memory, apart from the output. The in-place dedupe uses a read pointer and a write pointer and finishes with a `del` of the tail. The pattern shows up in SRE work whenever data is already sorted and you want to avoid building a second copy of it.
 
 
 
-Decide: if the input is sorted and you are about to write a nested loop, stop and ask whether two pointers remove the inner loop.
+Decide: if the input is sorted and you are about to write a nested loop, stop and ask whether two pointers remove the inner loop. A nested loop over sorted data is usually the first sign that the sort is being wasted.
 
 ### 4. Heaps and top-k
 
-The question is "which ten endpoints are slowest" over ten million samples. Sorting everything costs O(n log n) and holds everything in memory. The idea is a min-heap of size k. The root is the weakest member of the current top k. A new sample either beats the root and replaces it, or is ignored.
+The question is "which ten endpoints are slowest" over ten million samples. Sorting everything costs O(n log n) and holds everything in memory. The idea is a min-heap of size k. The root is the weakest member of the current top k. A new sample either beats the root and replaces it, or is ignored. The heap never holds more than k items, however long the stream runs.
+
+Picture the heap during a run. The first ten samples fill it, and the root holds the fastest of them. Each later sample is compared with the root. A slow sample pushes out the fastest one in the heap, and a fast sample is dropped at once. At the end, the heap holds the ten slowest, and sorting those ten is cheap.
 
 ```python
 """Heaps: top-k and merging k sorted streams."""
@@ -344,19 +354,21 @@ class RunningMedian:
         return (-self.low[0] + self.high[0]) / 2
 ```
 
-Time is O(n log k) and memory O(k). A measurement with k equal to 10 gives this. The heap took 0.0045 seconds for 100,000 samples and 0.0185 for 400,000. Sorting and slicing took 0.0154 and 0.0735. So the heap was three to four times faster here, but both grew linearly with n. Do not claim a dramatic speedup. The honest claim is the memory: the heap never holds more than k items, which matters on a stream.
+Time is O(n log k) and memory O(k). A measurement with k equal to 10 gives this. The heap took 0.0045 seconds for 100,000 samples and 0.0185 for 400,000. Sorting and slicing took 0.0154 and 0.0735. So the heap was three to four times faster here, but both grew linearly with n. Do not claim a dramatic speedup. The honest claim is the memory: the heap never holds more than k items, which matters on a stream that never ends.
 
-The second function merges k sorted streams, such as the logs from k servers, lazily. The heap holds one head per stream. Pop the smallest, refill from the same stream. The stream index in the tuple is the tiebreaker, because Python compares tuples element by element and would otherwise try to compare two payloads that may not be comparable. The test proves laziness with an endless generator, because an eager merge would never return.
-
-
+The second function merges k sorted streams, such as the logs from k servers, lazily. The heap holds one head per stream. Pop the smallest, refill from the same stream. The stream index in the tuple is the tiebreaker, because Python compares tuples element by element and would otherwise try to compare two payloads that may not be comparable. The test proves laziness with an endless generator, because an eager merge would never return. Lazy means the function hands back one value at a time, so the merged log never has to fit in memory.
 
 
 
-Decide: "best k" or "merge sorted inputs" means a heap, and you must say which end of the heap holds what.
+
+
+Decide: "best k" or "merge sorted inputs" means a heap, and you must say which end of the heap holds what. In a min-heap the root is the smallest value, and for a top-k problem that root is the one to compare against and replace.
 
 ### 5. Interval merging and scheduling
 
-Platform teams book maintenance windows and GPU reservations. Two questions follow. Which windows overlap, and how many nodes do we need if each reservation needs a whole node? The idea is to sort by start time and sweep once, keeping only what you must remember about the past.
+Platform teams book maintenance windows and GPU reservations. Two questions follow. Which windows overlap, and how many nodes do we need if each reservation needs a whole node? The idea is to sort by start time and sweep once, keeping only what you must remember about the past. Think of a single list of bookings on a shared whiteboard, read from the top, with a note of which rooms are still in use.
+
+A useful way to say the sweep is "I walk the timeline from left to right, and at each point I know how many things are running." That sentence is short, it names the state you keep, and it describes the sweep without any code.
 
 ```python
 """Interval merging and scheduling."""
@@ -422,21 +434,23 @@ def fits_window(existing, new):
     return all(ne <= s or e <= ns for s, e in existing)
 ```
 
-Merging is O(n log n) for the sort and O(n) for the sweep. The bug that fails most candidates is writing `out[-1][1] = e` instead of `max(out[-1][1], e)`. An interval fully inside the previous one would then shrink it. The test `merge_intervals([(1, 10), (2, 3)])` is there for that.
+Merging is O(n log n) for the sort and O(n) for the sweep. The bug that fails most candidates is writing `out[-1][1] = e` instead of `max(out[-1][1], e)`. An interval fully inside the previous one would then shrink it. The test `merge_intervals([(1, 10), (2, 3)])` is there for that. The example is small, and that is the point: the bug only shows when one interval sits inside another.
 
-The node-count function uses a min-heap of end times. If the earliest end is at or before the next start, that node is free, so reuse it. Otherwise open a new node. The sweep version reaches the same answer by turning each interval into a plus event and a minus event, and sorting so that minus comes before plus at the same instant. The test cross-checks both against a brute-force count of overlaps at every integer time.
+The node-count function uses a min-heap of end times. If the earliest end is at or before the next start, that node is free, so reuse it. Otherwise open a new node. The sweep version reaches the same answer by turning each interval into a plus event and a minus event, and sorting so that minus comes before plus at the same instant. The test cross-checks both against a brute-force count of overlaps at every integer time, which gives you two independent answers that must agree.
 
-Say your boundary convention before you code. Are intervals closed or half-open? A reservation that ends at 10:00 and one that starts at 10:00 can share a node under the half-open reading. Under the closed reading they conflict. The code above merges touching intervals and treats reservations as half-open, and the docstrings say so. That is a decision you should state, not hide.
+Say your boundary convention before you code. Are intervals closed or half-open? A reservation that ends at 10:00 and one that starts at 10:00 can share a node under the half-open reading. Under the closed reading they conflict. The code above merges touching intervals and treats reservations as half-open, and the docstrings say so. That is a decision you should state, not hide, because the interviewer may have a different rule in mind for their system.
 
 
 
-Decide: if time ranges appear, sort by start, then say whether the ends are inclusive.
+Decide: if time ranges appear, sort by start, then say whether the ends are inclusive. The inclusive question is the one that decides whether two touching ranges collide.
 
 ### 6. Rate limiters: four algorithms and their trade-offs
 
-An API key should get 100 requests a minute. An attacker or a buggy client sends 1,000. The limiter must say yes or no in microseconds, using little memory per key. There are four standard answers. Each one trades accuracy, memory and burst behaviour differently.
+An API key should get 100 requests a minute. An attacker or a buggy client sends 1,000. The limiter must say yes or no in microseconds, using little memory per key. There are four standard answers, and each one trades accuracy, memory and burst behaviour differently. The question is not which algorithm is best in general. The question is which one fits the promise you made to the customer.
 
-The fixed window counts requests per clock minute and resets at the boundary. The sliding log stores a timestamp for every accepted request. The token bucket holds tokens that refill at a steady rate up to a cap. The leaky bucket is a queue that drains at a fixed rate. A fifth, the sliding window counter, is the usual compromise.
+The fixed window counts requests per clock minute and resets at the boundary. The sliding log stores a timestamp for every accepted request. The token bucket holds tokens that refill at a steady rate up to a cap. The leaky bucket is a queue that drains at a fixed rate. A fifth, the sliding window counter, is the usual compromise between accuracy and memory. Picture each one as a different kind of ticket office: one counts sales per hour, one keeps every receipt, one hands out tokens that accumulate, and one lines people up and lets them through at a fixed pace.
+
+The fixed window is the easiest to build and the easiest to explain, which is why it appears in so many first answers. Its weakness is the boundary, and the boundary is what the interviewer will test. Knowing the weakness by heart is worth more than knowing the code by heart.
 
 ```python
 """Four rate limiters. The clock is always passed in, so tests never sleep.
@@ -540,7 +554,7 @@ class LeakyBucket:
         return False
 ```
 
-Chapter 20.13 already contains a production-flavoured token bucket in `gw13_token_bucket.py` that counts LLM tokens and tracks tenants. The versions here are the interview-sized ones. The clock is an argument, so tests never sleep.
+Chapter 20.13 already contains a production-flavoured token bucket in `gw13_token_bucket.py` that counts LLM tokens and tracks tenants. The versions here are the interview-sized ones. The clock is an argument, so tests never sleep, and that keeps the tests fast and repeatable. If you move the code into a service, the clock should still come from the caller.
 
 | Algorithm | Memory per key | Burst behaviour | Weakness |
 |---|---|---|---|
@@ -550,19 +564,21 @@ Chapter 20.13 already contains a production-flavoured token bucket in `gw13_toke
 | Token bucket | Level and last time | Allows a burst up to the bucket size | Burst may hurt a weak backend |
 | Leaky bucket | Level and last time | None, output is smooth | Rejects short bursts a backend could take |
 
-The tests demonstrate the numbers. With a limit of 10 per second, 10 requests at 0.99 and 10 at 1.0 all pass the fixed window, so 20 requests arrive within 10 milliseconds. The sliding log lets exactly 10 through. The sliding counter lets at most 11 through in the test.
+The tests demonstrate the numbers. With a limit of 10 per second, 10 requests at 0.99 and 10 at 1.0 all pass the fixed window, so 20 requests arrive within 10 milliseconds. The sliding log lets exactly 10 through. The sliding counter lets at most 11 through in the test. The table below sums up the trade-offs, and the boundary burst is the one to be ready to explain.
 
-The token bucket is the answer to say first for an API, because it enforces the long-run rate and permits a burst. The test offers 100 requests a second for 60 seconds to a bucket with rate 5 and burst 10 and checks that between 300 and 310 pass. Refill is computed lazily from the elapsed time on each call, so no background thread is needed.
+The token bucket is the answer to say first for an API, because it enforces the long-run rate and permits a burst. The test offers 100 requests a second for 60 seconds to a bucket with rate 5 and burst 10 and checks that between 300 and 310 pass. Refill is computed lazily from the elapsed time on each call, so no background thread is needed. A bucket that refills while nobody is calling costs nothing, which is why it suits many keys at once.
+
+Think of the bucket as a savings account for requests. Each second adds a few tokens, up to a cap. A client can spend the saved tokens in one quick burst, and then it can only send as fast as the account refills. That is exactly the behaviour a healthy API wants, and it is why the token bucket is the usual first answer.
 
 
 
-Decide: say "token bucket" for APIs and name the boundary burst of the fixed window as the reason not to use it.
+Decide: say "token bucket" for APIs and name the boundary burst of the fixed window as the reason not to use it. The short version is that the fixed window lets a client send the full limit twice in a row across the boundary.
 
 ### 7. LRU cache
 
-A router caches which replica holds a prompt prefix, and the table must not grow forever. When it is full, throw away the entry used longest ago. Systems Performance, chapter 2, defines LRU as an eviction policy that removes the least recently used object when space is needed.
+A router caches which replica holds a prompt prefix, and the table must not grow forever. When it is full, throw away the entry used longest ago. Systems Performance, chapter 2, defines LRU as an eviction policy that removes the least recently used object when space is needed. Picture a small desk with room for only a few open files. When a new file arrives, you put away the one you have not touched for the longest time.
 
-The idea needs two things at once. Lookup by key in constant time needs a hash map. Finding and moving the oldest or newest entry in constant time needs an ordered list. The interview version asks you to write it, first with `OrderedDict`, which does both, and then from scratch with a doubly linked list.
+The idea needs two things at once. Lookup by key in constant time needs a hash map. Finding and moving the oldest or newest entry in constant time needs an ordered list. The interview version asks you to write it, first with `OrderedDict`, which does both, and then from scratch with a doubly linked list. Knowing why each structure is there is worth more than typing either one from memory.
 
 ```python
 """LRU cache two ways: OrderedDict, and a hash map plus a doubly linked list."""
@@ -650,21 +666,21 @@ class LRUList:
         return out
 ```
 
-In `LRUOrdered`, `move_to_end` marks a key as most recent and `popitem(last=False)` drops the oldest. Fluent Python, chapter 3, lists both methods. In `LRUList`, the map goes from key to node. The sentinels at each end remove every special case for an empty list. Each node stores its key, and that is not decoration. When you evict the tail node, you must know which dictionary key to delete.
+In `LRUOrdered`, `move_to_end` marks a key as most recent and `popitem(last=False)` drops the oldest. Fluent Python, chapter 3, lists both methods. In `LRUList`, the map goes from key to node. The sentinels at each end remove every special case for an empty list, so the code does not need an if statement before each change. Each node stores its key, and that is not decoration. When you evict the tail node, you must know which dictionary key to delete.
 
-Every operation is O(1). A timing of 200,000 get-or-put operations with capacity 1,000 shows this. The `OrderedDict` took 0.030 seconds and the hand-built list 0.053. Both are constant per operation. The built-in structure is simply written in C.
+Every operation is O(1). A timing of 200,000 get-or-put operations with capacity 1,000 shows this. The `OrderedDict` took 0.030 seconds and the hand-built list 0.053. Both are constant per operation. The built-in structure is simply written in C, which is why it is a little faster, and that is a fact about the implementation and not about the algorithm.
 
-The test runs both caches against a reference model through 2,000 random operations, comparing the full recency order after every step. It also stores a value of 0, since the classic bug is treating a falsy value as a miss.
+The test runs both caches against a reference model through 2,000 random operations, comparing the full recency order after every step. It also stores a value of 0, since the classic bug is treating a falsy value as a miss. A cache that returns "not found" for a stored zero is correct in the sense of never crashing, and wrong in the sense of quietly losing data.
 
 
 
-Decide: start with `OrderedDict`, say it is enough in production, and then offer to build the linked list if the interviewer wants the mechanism.
+Decide: start with `OrderedDict`, say it is enough in production, and then offer to build the linked list if the interviewer wants the mechanism. The order of those three moves shows you know both the tool and the reason for it.
 
 ### 8. Consistent hashing with virtual nodes
 
-You want requests with the same session to land on the same replica, so its cache is warm. Taking the hash modulo the number of replicas works until you add one replica, and then almost every key moves. Distributed AI Systems, chapter 9, applies consistent hashing of the user id to give the same user the same model variant. This is the generic mechanism. Nebius has not published its router algorithm.
+You want requests with the same session to land on the same replica, so its cache is warm. Taking the hash modulo the number of replicas works until you add one replica, and then almost every key moves. Distributed AI Systems, chapter 9, applies consistent hashing of the user id to give the same user the same model variant. This is the generic mechanism. Nebius has not published its router algorithm, so do not describe it as theirs.
 
-The idea: put both nodes and keys on a circle by hashing them. A key belongs to the first node clockwise from it. Adding a node steals only the arc just before it, so roughly one in N keys moves. With few points the arcs have very uneven lengths, so each node gets many virtual points spread around the circle.
+The idea: put both nodes and keys on a circle by hashing them. A key belongs to the first node clockwise from it. Adding a node steals only the arc just before it, so roughly one in N keys moves. With few points the arcs have very uneven lengths, so each node gets many virtual points spread around the circle. Picture a clock face with a few hands, where each hand covers a slice, and where a slice is split into many thin pieces so that no single hand covers much more than its share.
 
 ```python
 """Consistent hashing with virtual nodes, plus the balance and movement measurements."""
@@ -720,21 +736,25 @@ def modulo_moved_fraction(n_before, n_after, keys):
     return sum(h(k) % n_before != h(k) % n_after for k in keys) / len(keys)
 ```
 
-The built-in `hash` for strings changes between Python processes, so the ring uses a SHA-256 prefix. That is the first thing to say when asked why you did not just call `hash()`.
+The built-in `hash` for strings changes between Python processes, so the ring uses a SHA-256 prefix. That is the first thing to say when asked why you did not just call `hash()`. A router that restarts with a different hash would send every session to a different replica, and the caches would go cold all at once.
 
-Lookup is a binary search on the sorted points, and the modulo wraps the circle. Balance here is the highest node load divided by the mean, for 10 nodes and 100,000 keys. With 1 point per node the ratio was 1.935. With 10 points it was 1.573, with 100 it was 1.106 and with 1,000 it was 1.035. The lookup cost rose only from 0.054 to 0.074 seconds per 100,000 lookups when the number of ring points went from 200 to 20,000, which fits O(log N).
+Lookup is a binary search on the sorted points, and the modulo wraps the circle. Balance here is the highest node load divided by the mean, for 10 nodes and 100,000 keys. With 1 point per node the ratio was 1.935. With 10 points it was 1.573, with 100 it was 1.106 and with 1,000 it was 1.035. The lookup cost rose only from 0.054 to 0.074 seconds per 100,000 lookups when the number of ring points went from 200 to 20,000, which fits O(log N). More points cost a little memory and a little lookup time, and they buy a much flatter load.
 
-The tests check the movement claim. Adding an eleventh node to ten moved between 5 and 15 percent of 20,000 keys on the ring, against over 85 percent for modulo hashing. Removing a node moved only that node's keys.
+A simple way to explain the ring to a colleague is to picture a list of hash values in sorted order, with a wrap at the end. To find the owner of a key, you find where the key's hash would sit in the list, then take the next point. If the key is past the last point, you wrap to the first one. The binary search makes that lookup take a few steps even with thousands of points.
+
+The tests check the movement claim. Adding an eleventh node to ten moved between 5 and 15 percent of 20,000 keys on the ring, against over 85 percent for modulo hashing. Removing a node moved only that node's keys. That last property is the one that matters in an outage, because the keys that stayed put keep their warm caches.
 
 
 
-Decide: always quote the balance number you measured as the reason for virtual nodes, not a remembered rule of thumb.
+Decide: always quote the balance number you measured as the reason for virtual nodes, not a remembered rule of thumb. A number from your own run is evidence, and a rule of thumb is only a guess.
 
 ### 9. Retry with exponential backoff and jitter
 
-A dependency returns 503 for ten seconds. Ten thousand clients retry immediately, again and again, and the dependency cannot recover. The idea is to wait longer after each failure, and to randomise the wait so that clients do not retry in lockstep.
+A dependency returns 503 for ten seconds. Ten thousand clients retry immediately, again and again, and the dependency cannot recover. Picture a shop with a closed door, where every customer knocks at the same moment, every second, and nobody can get in while the door is shut. The idea is to wait longer after each failure, and to randomise the wait so that clients do not retry in lockstep.
 
-Full jitter means the delay is a uniform random number between zero and the current ceiling. The ceiling doubles each attempt and is capped.
+Full jitter means the delay is a uniform random number between zero and the current ceiling. The ceiling doubles each attempt and is capped. The randomness is what spreads the retries across time, so a thousand clients that failed together do not all come back together.
+
+Without jitter, a thousand clients that all failed at the same moment would wait the same amount and retry at the same moment, and the dependency would see the same spike again. With full jitter, the retries spread out across the whole wait window, and the load arrives as a smooth slope instead of a wall.
 
 ```python
 """Retry with exponential backoff and jitter. Sleep and randomness are injected.
@@ -776,19 +796,23 @@ def call_with_retry(fn, max_attempts=5, base=0.1, cap=5.0, deadline_s=None,
             sleep(delay)
 ```
 
-The herd simulation and the retry-budget arithmetic are in `c21_backoff_math.py` and chapter 20.21. Here you need only the template and the discipline around it. Randomness and sleep are injected, so the tests assert exact delays without waiting: with the random value fixed at 1, attempts 0 and 3 wait 0.1 and 0.8 seconds, and attempt 30 is capped at 5.
+The herd simulation and the retry-budget arithmetic are in `c21_backoff_math.py` and chapter 20.21. Here you need only the template and the discipline around it. Randomness and sleep are injected, so the tests assert exact delays without waiting: with the random value fixed at 1, attempts 0 and 3 wait 0.1 and 0.8 seconds, and attempt 30 is capped at 5. Injecting the sleep and the randomness is what makes a retry loop testable at all.
 
-Three rules make the answer senior. Retry only errors that are safe to retry, which in the code is a dedicated exception type, and let everything else propagate at once. Bound the total time with a deadline and never sleep past it. And only retry operations that are idempotent, or carry an idempotency key.
+Three rules make the answer senior. Retry only errors that are safe to retry, which in the code is a dedicated exception type, and let everything else propagate at once. Bound the total time with a deadline and never sleep past it. And only retry operations that are idempotent, or carry an idempotency key. An idempotent operation gives the same result when it runs twice, so a retry cannot charge a customer twice.
+
+A common way to present the three rules is to name them in order, safe errors first, then the deadline, then idempotence. Each rule closes a different way that a retry can make an outage worse, so naming all three shows you have thought about the failure, not only the timing.
 
 
 
-Decide: say "capped exponential backoff with full jitter, a deadline and a retry budget" as one phrase.
+Decide: say "capped exponential backoff with full jitter, a deadline and a retry budget" as one phrase. The phrase names every part of the answer, so the interviewer hears the whole design in one breath.
 
 ### 10. Topological sort and cycle detection
 
-You must start services in an order where each service's dependencies are up first. Or a Terraform-like tool must apply resources in dependency order. The graph has an edge from each service to the things it needs. A valid order exists exactly when there is no cycle.
+You must start services in an order where each service's dependencies are up first. Or a Terraform-like tool must apply resources in dependency order. The graph has an edge from each service to the things it needs. A valid order exists exactly when there is no cycle. Picture a set of building blocks where each one rests on others, and you must place the base pieces before the pieces that rest on them.
 
-Kahn's algorithm: count how many unmet dependencies each node has, start with those at zero, and each time you finish a node, reduce the count of the nodes that waited on it. If nodes remain at the end, they are on a cycle or blocked by one.
+Kahn's algorithm: count how many unmet dependencies each node has, start with those at zero, and each time you finish a node, reduce the count of the nodes that waited on it. If nodes remain at the end, they are on a cycle or blocked by one. The method is a queue of ready work, and each finished item unlocks the items that were waiting for it.
+
+Here is the method in plain steps. Count the open dependencies of each service. Put every service with no open dependencies into a queue. Take one from the queue and write it to the output. For each service that was waiting on it, subtract one open dependency, and queue it if the count reaches zero. Repeat until the queue is empty.
 
 ```python
 """Dependency graphs: topological order, cycle detection, BFS shortest path."""
@@ -896,29 +920,33 @@ def blast_radius(deps, failed):
     return reachable(rev, failed) - {failed}
 ```
 
-Cost is O(V + E). The function returns the order plus the stuck nodes, which gives cycle detection for free. For a precise report, `find_cycle` walks depth-first with three colours and returns the actual loop. A grey node found again means you came back to something on the current path. The test cross-checks the two methods against each other on 300 random graphs.
+Cost is O(V + E). The function returns the order plus the stuck nodes, which gives cycle detection for free. For a precise report, `find_cycle` walks depth-first with three colours and returns the actual loop. A grey node found again means you came back to something on the current path. The test cross-checks the two methods against each other on random graphs, so the two answers must match.
 
-Chapter 20.24 shows a plan ordering resources. This is the general algorithm, not a description of Terraform internals.
+Chapter 20.24 shows a plan ordering resources. This is the general algorithm, not a description of Terraform internals. If the interviewer asks how a real tool orders its work, say that the algorithm is the general idea and that you would check the tool's documentation for its details.
 
 
 
-Decide: ask "what should happen on a cycle", because the answer is an error naming the cycle, not an empty result.
+Decide: ask "what should happen on a cycle", because the answer is an error naming the cycle, not an empty result. An empty result looks like success, and a silent success is the worst outcome for a deploy.
 
 ### 11. BFS, DFS and shortest path on a service graph
 
-A database fails. Which services are affected? Or: what is the fewest hops between two network devices? Breadth-first search explores in rings of increasing distance, so the first time it reaches the target is the shortest route when every edge costs the same. Depth-first search follows one path as far as it goes and is the natural tool for "what is reachable".
+A database fails. Which services are affected? Or: what is the fewest hops between two network devices? Breadth-first search explores in rings of increasing distance, so the first time it reaches the target is the shortest route when every edge costs the same. Depth-first search follows one path as far as it goes and is the natural tool for "what is reachable". Both answers matter during an incident, and the question you are asked tells you which search to reach for.
 
-The code above has all three. `shortest_path` marks a node as seen when it is added to the queue, not when it is removed. Marking late lets the same node enter the queue many times and can make the search exponential on dense graphs. `reachable` is iterative with a stack, and the test builds a chain of 50,000 services to show that a recursive version would hit Python's recursion limit. `blast_radius` reverses the edges and reuses `reachable`.
+During an incident, the two questions often come one after another. First, what breaks. Second, what is the fastest safe route back. The first is a reachability question, and the second is an ordering question. Saying so out loud helps the interviewer see that you are solving the right problem at each moment.
 
-The cost is O(V + E).
+The code above has all three. `shortest_path` marks a node as seen when it is added to the queue, not when it is removed. Marking late lets the same node enter the queue many times and can make the search exponential on dense graphs. `reachable` is iterative with a stack, and the test builds a chain of 50,000 services to show that a recursive version would hit Python's recursion limit. `blast_radius` reverses the edges and reuses `reachable`, so one function answers the question "who depends on this" by walking the graph backwards.
+
+The cost is O(V + E). Each node is visited once and each edge is looked at once, so the total work grows with the size of the map of services. That is why the same code handles a small dependency graph and a large one without changing shape.
 
 
 
-Decide: if edges are unweighted and you want the fewest hops, say BFS. If they have costs, say Dijkstra.
+Decide: if edges are unweighted and you want the fewest hops, say BFS. If they have costs, say Dijkstra. The question about costs is the one that decides which algorithm you need.
 
 ### 12. Union-find
 
-Fifty nodes report errors. Some pairs are linked, for example by sharing a switch. How many separate failure clusters are there? Union-find answers "are these two in the same group" and "merge these two groups" in near-constant time. Each group has a root, `find` follows parents up to the root, and `union` points one root at the other.
+Fifty nodes report errors. Some pairs are linked, for example by sharing a switch. How many separate failure clusters are there? Union-find answers "are these two in the same group" and "merge these two groups" in near-constant time. Each group has a root, `find` follows parents up to the root, and `union` points one root at the other. Think of it as a set of small teams, where each team has a leader and a merge means one leader reports to the other.
+
+Picture a small map of racks, where a line between two racks means they share a switch. If both racks are failing and they share a switch, they probably belong to one incident. Union-find lets you walk the list of links once and collect the racks into clusters, without building the full map first.
 
 ```python
 """Union-find with path compression and union by size."""
@@ -973,17 +1001,19 @@ def failing_clusters(failing_nodes, links):
     return sorted(sorted(g) for g in uf.groups())
 ```
 
-Two optimisations make it fast. Path compression flattens the tree during `find`. Union by size attaches the smaller tree under the larger. Together they give an amortised cost treated as constant.
+Two optimisations make it fast. Path compression flattens the tree during `find`, so the next lookup goes straight to the root. Union by size attaches the smaller tree under the larger, which keeps the trees shallow in the first place. Together they give an amortised cost treated as constant. Amortised means that a single slow call can happen, but the average over many calls stays small.
 
-The test compares the component count against a brute-force merge of sets on random edge lists. The `failing_clusters` function is the SRE form: only links between two failing nodes count, so a healthy switch does not join clusters. In the interview, ask whether a shared healthy switch should connect them.
+The test compares the component count against a brute-force merge of sets on random edge lists. The `failing_clusters` function is the SRE form: only links between two failing nodes count, so a healthy switch does not join clusters. In the interview, ask whether a shared healthy switch should connect them, because the answer depends on whether the switch is a real path for the fault.
 
 
 
-Decide: for a stream of "these two are connected" facts, use union-find. For a one-time traversal of a graph you already hold, BFS is fine.
+Decide: for a stream of "these two are connected" facts, use union-find. For a one-time traversal of a graph you already hold, BFS is fine. Union-find is for facts that arrive over time, and BFS is for a graph that is already in memory.
 
 ### 13. Binary search on the answer
 
-You do not know the right timeout. You do have a yes-or-no test: with this timeout, do at least 99 percent of requests succeed? Because a larger timeout can only help, the answers go no, no, no, yes, yes, yes. Binary search finds the flip point in a handful of checks, even if each check is expensive.
+You do not know the right timeout. You do have a yes-or-no test: with this timeout, do at least 99 percent of requests succeed? Because a larger timeout can only help, the answers go no, no, no, yes, yes, yes. Binary search finds the flip point in a handful of checks, even if each check is expensive. The search does not need to know the shape of the curve, only that the answer flips once.
+
+Picture a team that must choose a timeout for a client library. Too short, and healthy requests fail. Too long, and a stuck request holds a connection for a long time. The search asks only one question at each step: at this timeout, is the target met? Each answer narrows the range by half.
 
 ```python
 """Binary search on the answer: find the smallest value for which a monotonic check passes."""
@@ -1049,25 +1079,27 @@ def float_search(lo, hi, ok, iterations=60):
     return hi
 ```
 
-The template `first_true` is the one to memorise. It returns `hi + 1` when nothing passes, so the caller must test for that.
+The template `first_true` is the one to memorise. It returns `hi + 1` when nothing passes, so the caller must test for that. Forgetting that last check is the most common bug in this pattern, and the function's docstring says it on purpose.
 
 The examples are the SRE forms. `min_replicas` finds the fewest replicas that cover peak traffic when per-replica capacity falls as replicas are added, so you cannot just divide. The test compares it to a linear scan. `min_timeout_ms` returns the smallest integer timeout that lets a target fraction finish. `min_window_hours` is the classic split-array problem, framed as the shortest maintenance window that lets a fixed job order run on a given number of nodes. The test compares it to brute force on 100 random inputs. `float_search` uses a fixed number of iterations because a real-valued loop that tests equality may never end.
 
-The cost is O(log range) calls to the check, so the total is that times the cost of one check. State both.
+The cost is O(log range) calls to the check, so the total is that times the cost of one check. State both, because a cheap check that runs many times and an expensive check that runs a few times can have very different bills.
 
 
 
-Decide: whenever a problem asks for "the minimum X such that something holds", and bigger X never makes it worse, search on X.
+Decide: whenever a problem asks for "the minimum X such that something holds", and bigger X never makes it worse, search on X. The phrase "bigger never hurts" is the test that tells you the pattern applies.
 
 ### 14. Streaming percentiles, and why you never average percentiles
 
-The latency SLI is p99. Servers handle millions of requests, so you cannot store every latency. Systems Performance, chapter 2, lists latency as an average or a percentile, and the percentile is the one that reveals the tail users feel. Three ideas follow.
+The latency SLI is p99. Servers handle millions of requests, so you cannot store every latency. Systems Performance, chapter 2, lists latency as an average or a percentile, and the percentile is the one that reveals the tail users feel. Three ideas follow, and each one answers a different part of the problem: what the percentile means, how to keep a sample of it, and how to keep a histogram of it.
 
-First, the exact definition. The nearest-rank percentile is the smallest value with at least p percent of the samples at or below it. That is what `percentile` computes, and the tests include a single-element list and an empty list.
+First, the exact definition. The nearest-rank percentile is the smallest value with at least p percent of the samples at or below it. That is what `percentile` computes, and the tests include a single-element list and an empty list, because those are the two cases that break careless code.
 
-Second, a reservoir sample keeps k values chosen uniformly from a stream of unknown length. After the first k, item number n replaces a random slot with probability k over n.
+Picture a list of response times written out in order, with the smallest on the left. The p95 is the value that most of the list sits at or below, with only the slowest few above it. Writing the list out first is the easiest way to check the function against a small example.
 
-Third, a fixed-bucket histogram counts how many samples fall in each of a set of buckets with geometric spacing. This is the idea behind a Prometheus histogram. Its memory depends on the number of buckets, not on the traffic, and histograms from many servers add bucket by bucket. The Prometheus histogram guide says the error is limited by the width of the bucket the quantile falls in. The error depends on the bucket ratio. I measured it on 200,000 lognormal samples. The exact p99 was 551.79. A ratio of 1.1 with 123 buckets gave 593.35, and a ratio of 1.02 with 584 buckets gave 553.93. Finer buckets, smaller error.
+Second, a reservoir sample keeps k values chosen uniformly from a stream of unknown length. After the first k, item number n replaces a random slot with probability k over n. The effect is that every item seen so far has the same chance of being in the sample, however long the stream has run.
+
+Third, a fixed-bucket histogram counts how many samples fall in each of a set of buckets with geometric spacing. This is the idea behind a Prometheus histogram. Its memory depends on the number of buckets, not on the traffic, and histograms from many servers add bucket by bucket. The Prometheus histogram guide says the error is limited by the width of the bucket the quantile falls in. The error depends on the bucket ratio. I measured it on 200,000 lognormal samples. The exact p99 was 551.79. A ratio of 1.1 with 123 buckets gave 593.35, and a ratio of 1.02 with 584 buckets gave 553.93. Finer buckets, smaller error. The trade is memory for accuracy, and you can choose the point on that curve.
 
 ```python
 """Streaming percentiles: exact, reservoir sample, fixed-bucket histogram, and the averaging trap."""
@@ -1150,17 +1182,19 @@ def true_p99(groups):
     return percentile(sorted(x for g in groups for x in g), 99)
 ```
 
-A t-digest is a more advanced sketch. At a high level it keeps a small set of clusters, each with a mean and a count, with very small clusters at the tails so extreme percentiles stay accurate, and two digests can be merged. It is not implemented in the code folder. If asked, describe that idea and say a library is the right choice in practice.
+A t-digest is a more advanced sketch. At a high level it keeps a small set of clusters, each with a mean and a count, with very small clusters at the tails so extreme percentiles stay accurate, and two digests can be merged. It is not implemented in the code folder. If asked, describe that idea and say a library is the right choice in practice, because a well-tested library beats a quick implementation under pressure.
 
 The trap in the last two functions is the one to remember. If a quiet server has 1,000 requests with p99 of 10 and a busy one has 10 requests with p99 of 100, the average of the two p99s is 55. The true p99 across all 1,010 requests is 12. The test asserts exactly those numbers. Averaging percentiles weights a server with ten requests as much as one with a thousand. **To combine servers, merge the histograms or the raw samples, then take the percentile.** The same rule explains why a Prometheus query for a fleet p99 uses `histogram_quantile` over summed bucket rates and not an average of per-instance quantiles. The Prometheus histogram guide shows `histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))` as the good form. It says averaging quantiles gives statistically nonsensical values, and it adds that this works only while the bucket boundaries match across instances.
 
 
 
-Decide: say "I would never average percentiles, I would merge histograms" before the interviewer has to ask.
+Decide: say "I would never average percentiles, I would merge histograms" before the interviewer has to ask. Saying it first shows that you know the trap and that you avoid it by design.
 
 ### 15. String compression and parsing
 
-The last two small patterns are text. Run-length encoding replaces a run of the same character by its count and the character. A tokeniser turns a line like `level=info msg="hello world"` into fields while respecting quotes.
+The last two small patterns are text. A support engineer pastes a log line with a quoted message and asks what the fields are, or asks for a compressed form of a repeated string. Run-length encoding replaces a run of the same character by its count and the character. A tokeniser turns a line like `level=info msg="hello world"` into fields while respecting quotes.
+
+A short way to say the tokeniser idea is "I read one character at a time, and I change state when I see a quote." That sentence names the approach, and it prepares you for the edge cases that follow.
 
 ```python
 """String compression and parsing: run-length encoding and a quote-aware tokeniser."""
@@ -1238,17 +1272,17 @@ def collapse_ids(path):
     return re.sub(r"/[0-9a-f]{8,}(?=/|$)", "/:hex", path)
 ```
 
-Both are O(n). Run-length encoding has two classic traps. When the count has more than one digit, decoding must read all the digits, and the test uses a run of 25. And the format is ambiguous when the data itself contains digits, so the decoder documents that restriction and rejects a missing count. A round-trip test over random strings proves the pair is consistent.
+Both are O(n). Run-length encoding has two classic traps. When the count has more than one digit, decoding must read all the digits, and the test uses a run of 25. And the format is ambiguous when the data itself contains digits, so the decoder documents that restriction and rejects a missing count. A round-trip test over random strings proves the pair is consistent, which means encoding and then decoding gives back the original.
 
-The tokeniser reads one character at a time with a small state machine. Inside quotes a backslash escapes the next character, and an unterminated quote raises an error. Python's `str.split` would break `"hello world"` apart, and that is the point of the exercise. The `collapse_ids` helper turns `/users/123/jobs/9f2c4a1b88` into a stable label, tying back to cardinality.
+The tokeniser reads one character at a time with a small state machine. Inside quotes a backslash escapes the next character, and an unterminated quote raises an error. Python's `str.split` would break `"hello world"` apart, and that is the point of the exercise. The `collapse_ids` helper turns `/users/123/jobs/9f2c4a1b88` into a stable label, tying back to cardinality, which is why the same helper appears in the first section.
 
 
 
-Decide: for any parser, write the three bad inputs first: empty, truncated, and the character that has a special meaning.
+Decide: for any parser, write the three bad inputs first: empty, truncated, and the character that has a special meaning. Writing the bad inputs first gives the parser its shape before you write it.
 
 ### 16. Basic concurrency: queues, counters and asyncio
 
-An ingest service has a fast reader and slow writers. A counter is updated from many threads. A fan-out call asks five backends and must not wait for the slowest forever. These are the three concurrency questions an SRE round asks.
+An ingest service has a fast reader and slow writers. A counter is updated from many threads. A fan-out call asks five backends and must not wait for the slowest forever. These are the three concurrency questions an SRE round asks, and each one has a standard answer that is short to say and easy to get wrong.
 
 ```python
 """Basic concurrency: producer/consumer, a thread-safe counter, asyncio gather with timeouts."""
@@ -1337,29 +1371,37 @@ async def fetch_all(fns, per_call_timeout, overall_timeout):
         return [("err", "overall_timeout")] * len(fns)
 ```
 
-Producer and consumer. A bounded `queue.Queue` connects them, so a slow consumer slows the producer instead of letting memory grow. This is the same idea as the bounded request queue that Distributed AI Systems, chapter 9, recommends, with 503 as the overflow response. The producer sends one sentinel per worker so each worker knows when to stop.
+Producer and consumer. A bounded `queue.Queue` connects them, so a slow consumer slows the producer instead of letting memory grow. This is the same idea as the bounded request queue that Distributed AI Systems, chapter 9, recommends, with 503 as the overflow response. The producer sends one sentinel per worker so each worker knows when to stop. Without the sentinel, the workers would wait on the queue forever.
+
+Picture a conveyor belt with a fixed length. The producer can only add items while there is room on the belt, and the workers take items off as they finish. When the belt is full, the producer waits, which is exactly the backpressure you want in a service under load.
 
 The thread-safe counter. The Python FAQ for 3.12 says that `i = i+1` is not atomic and that, when in doubt, you should use a mutex. So the locked `Counter` is correct and `UnsafeCounter` is wrong by specification. Running the unsafe counter with 8 threads and 200,000 increments each on Python 3.12.7 reported exactly 1,600,000, so the race did not appear. That does not make it safe. The scheduler may switch between the bytecodes of the read, the add and the write, and other interpreter versions or other operations can lose updates. Never offer "it worked when I ran it" as a proof. Systems Performance, chapter 5, describes mutexes as making other threads block and wait off the CPU.
 
+A simple way to remember the lesson is that the lock turns three steps into one. Without the lock, two threads can each read the same value, each add one, and each write back the same result. Two increments then leave the count one lower than it should be. The lock makes the read, add and write happen as one unit.
+
 Asyncio. Fluent Python, chapter 21, shows `asyncio.gather` waiting for all awaitables and returning results in the order they were submitted. The 3.12 documentation adds that if one raises and `return_exceptions` is false, the exception propagates immediately and the other awaitables keep running. Our `fetch_all` therefore wraps each call so it never raises, gives each call its own timeout with `wait_for`, and puts an overall timeout around the whole gather. The tests show three different outcomes for a fast, a slow and a failing call, and that the overall timeout cancels everything. Python 3.11 added `asyncio.timeout` and `asyncio.TaskGroup` as the modern alternatives.
 
-For CPU-bound work, threads do not help in standard CPython because of the global interpreter lock, so use processes. For I/O-bound fan-out, threads or asyncio work.
+A simple mental model is a set of waiters in a restaurant. Each call is a table, and the gather is the host waiting for every table to finish. The per-call timeout is a rule that a slow table is cleared alone, and the overall timeout is a rule that the whole room closes at a fixed time.
+
+For CPU-bound work, threads do not help in standard CPython because of the global interpreter lock, so use processes. For I/O-bound fan-out, threads or asyncio work. The question to ask is where the time goes: waiting on the network or computing on the processor.
 
 
 
-Decide: name the bottleneck first, I/O or CPU, because the right tool follows from it.
+Decide: name the bottleneck first, I/O or CPU, because the right tool follows from it. Naming the bottleneck is the step that turns a vague concurrency question into a concrete design.
 
 ## How to answer out loud
 
-The rhythm for every coding question is the same. Restate the problem and ask two clarifying questions. Name the pattern. Say the plan and the complexity. Write the code, test it on a tiny example, then on edge cases. Finish with the follow-up you would expect.
+The rhythm for every coding question is the same. Restate the problem and ask two clarifying questions. Name the pattern. Say the plan and the complexity. Write the code, test it on a tiny example, then on edge cases. Finish with the follow-up you would expect. Five short questions follow, one for each of the patterns most often asked, and each answer is written as you might say it in the room.
 
-**Question 1. "Implement a rate limiter for 100 requests a minute per key."** Ask per key or global, one process or many, bursts or not. Name the four options, then choose the token bucket. Write `allow(now)` with a lazy refill. Say the memory is two numbers per key. Name the boundary burst of the fixed window, which is up to twice the limit, as the reason you rejected the simpler option. Expect follow-ups on idle-key eviction and a shared store.
+Keep the rhythm in your head as a checklist of five short moves. Restate, pick the pattern, state the cost, write and test, then name the follow-up. A candidate who follows the same five moves each time sounds calm, and calm is what the interviewer hears first.
+
+**Question 1. "Implement a rate limiter for 100 requests a minute per key."** Ask per key or global, one process or many, bursts or not. Name the four options, then choose the token bucket. Write `allow(now)` with a lazy refill. Say the memory is two numbers per key. Name the boundary burst of the fixed window, which is up to twice the limit, as the reason you rejected the simpler option. Expect follow-ups on idle-key eviction and a shared store, and say that a shared store is a different design with its own failure modes.
 
 **Question 2. "Find the slowest ten endpoints in a huge log."** Say you will stream the file, not load it. Aggregate with a dictionary keyed by endpoint, then take the top ten with a size-ten heap. State O(n) for the pass and O(m log 10) for the heap over m endpoints. Ask whether slowest means the mean or p99. If p99, say you cannot keep every sample and would use a histogram per endpoint.
 
-**Question 3. "Design an LRU cache."** Begin with the pair of needs: lookup by key and removal of the oldest. Offer `OrderedDict` in five lines. Then, if asked, draw the hash map pointing at nodes of a doubly linked list with sentinels, and walk through a get and an eviction. State O(1). Mention the zero-value trap.
+**Question 3. "Design an LRU cache."** Begin with the pair of needs: lookup by key and removal of the oldest. Offer `OrderedDict` in five lines. Then, if asked, draw the hash map pointing at nodes of a doubly linked list with sentinels, and walk through a get and an eviction. State O(1). Mention the zero-value trap, because it is the one most often missed in a live round.
 
-**Question 4. "Given service dependencies, give a start order."** Say topological sort and Kahn's algorithm. Explain the in-degree counting in two sentences. Leftover nodes mean a cycle. State O(V + E).
+**Question 4. "Given service dependencies, give a start order."** Say topological sort and Kahn's algorithm. Explain the in-degree counting in two sentences. Leftover nodes mean a cycle. State O(V + E). If the interviewer adds a cycle to the graph, name the cycle rather than returning an empty list.
 
 **Question 5. "Retries: how would you write them?"** Say capped exponential backoff with full jitter, a total deadline, retries only for safe errors and idempotent calls, and a retry budget so a partial outage does not multiply load. Point to chapter 20.21 for the layered-amplification arithmetic. Expect the follow-up "why jitter", and answer that without it every client retries at the same instants.
 
@@ -1369,35 +1411,39 @@ The rhythm for every coding question is the same. Restate the problem and ask tw
 
 ### Scenario 1. A rolling error-rate alert with a quiet-period guard
 
-Problem. The on-call wants an alert when the five-minute error rate exceeds one percent. At 03:00 traffic is so low that one failed request out of two is a 50 percent rate. How do you build it?
+A tired on-call engineer wakes up to a page that fires for a single failed request in the middle of the night. Problem. The on-call wants an alert when the five-minute error rate exceeds one percent. At 03:00 traffic is so low that one failed request out of two is a 50 percent rate. How do you build it, so that the page means something?
 
-Reasoning. The window pattern gives the rate. The empty or tiny window gives a noisy result. So the alert needs a minimum number of requests as well as a rate threshold.
+Reasoning. The window pattern gives the rate. The empty or tiny window gives a noisy result. So the alert needs a minimum number of requests as well as a rate threshold. A rate on its own is misleading when there is almost no traffic, and the minimum volume is what stops the noise from paging anyone.
 
-Steps. Feed events into `RollingErrorRate`. Before alerting, read `len(r.events)` and require at least a stated minimum. Choose the minimum from the traffic: with 100 requests in the window, a single error is already one percent, so a minimum of a few hundred keeps one stray failure from paging anyone. That figure is an example, not a Nebius standard.
+Steps. Feed events into `RollingErrorRate`. Before alerting, read `len(r.events)` and require at least a stated minimum. Choose the minimum from the traffic: with 100 requests in the window, a single error is already one percent, so a minimum of a few hundred keeps one stray failure from paging anyone. That figure is an example, not a Nebius standard. Pick the number that matches your own traffic, and write it down with the reason.
 
-Answer. Window rate plus a volume floor. Memory is the number of events in the window, so at 10,000 requests a second and a 300-second window the deque would hold three million tuples. Say that this is too much and switch to per-second buckets of two counters, which is 300 entries. This bucket trick is the same window pattern with a coarser unit.
+Think of the minimum as a guard rail rather than a threshold. It does not say whether the service is healthy. It says whether the number is big enough to be worth reading at all, and that is a separate question that the interviewer may ask.
+
+Answer. Window rate plus a volume floor. Memory is the number of events in the window, so at 10,000 requests a second and a 300-second window the deque would hold three million tuples. Say that this is too much and switch to per-second buckets of two counters, which is 300 entries. This bucket trick is the same window pattern with a coarser unit, and it trades a little precision for a large drop in memory.
 
 ### Scenario 2. Fitting a maintenance job into GPU reservations
 
-Problem. A node has reservations `(0, 4)` and `(2, 6)` hours, and a second node has `(8, 10)`. All are half-open. How many nodes do you need for all three, and where can a two-hour job run?
+A planner has two nodes, a stack of reservations and a job that must fit somewhere before a deadline. Problem. A node has reservations `(0, 4)` and `(2, 6)` hours, and a second node has `(8, 10)`. All are half-open. How many nodes do you need for all three, and where can a two-hour job run?
 
-Reasoning. The first two overlap during hours 2 to 4, so they need separate nodes, and `(8, 10)` can reuse either. `min_gpu_nodes` returns 2. For the job, `free_slots` on the first node, after merging to `(0, 6)`, leaves `(6, 8)` and `(8, 10)` free.
+Reasoning. The first two overlap during hours 2 to 4, so they need separate nodes, and `(8, 10)` can reuse either. `min_gpu_nodes` returns 2. For the job, `free_slots` on the first node, after merging to `(0, 6)`, leaves `(6, 8)` and `(8, 10)` free. Walk the timeline on paper before you trust the function, because the picture makes the gaps obvious.
 
-Answer. Two nodes, and the job fits at hours 6 to 8 on the first. Your first reply to a real request should be whether reservations are per node or pooled.
+Answer. Two nodes, and the job fits at hours 6 to 8 on the first. Your first reply to a real request should be whether reservations are per node or pooled, because that answer changes the whole model.
 
 ### Scenario 3. Which services break, and what starts first
 
-Problem. The dependency map is `api -> db, cache`, `cache -> net`, `db -> net`, and `web -> api`. The network layer goes down. What is the blast radius, and in what order do you bring things back?
+A network outage has just been announced, and the team asks which services will break and in what order to bring them back. Problem. The dependency map is `api -> db, cache`, `cache -> net`, `db -> net`, and `web -> api`. The network layer goes down. What is the blast radius, and in what order do you bring things back?
 
-Reasoning. Blast radius is every service that transitively depends on `net`. `blast_radius(deps, "net")` reverses the edges and walks. It returns `cache`, `db`, `api` and `web`. Recovery order is the topological order, with `net` first, then `cache` and `db`, then `api`, then `web`. The order is deterministic because ties are broken alphabetically.
+Reasoning. Blast radius is every service that transitively depends on `net`. `blast_radius(deps, "net")` reverses the edges and walks. It returns `cache`, `db`, `api` and `web`. Recovery order is the topological order, with `net` first, then `cache` and `db`, then `api`, then `web`. The order is deterministic because ties are broken alphabetically, which means the team gets the same plan every time they run it.
 
-Answer. Everything except `net` is affected, and the start order is `net, cache, db, api, web`. The tests assert the blast radius and a topological order for a graph of this shape. If someone later adds `net -> web`, the graph has a cycle, and `topo_order` returns the stuck nodes and `find_cycle` names the loop. The correct behaviour is to refuse to proceed and print the cycle.
+A useful habit is to read the reversed edges aloud. If the network depends on nothing, every line that starts at the network leads to a service that is affected. That sentence explains the reverse walk without a diagram.
+
+Answer. Everything except `net` is affected, and the start order is `net, cache, db, api, web`. The tests assert the blast radius and a topological order for a graph of this shape. If someone later adds `net -> web`, the graph has a cycle, and `topo_order` returns the stuck nodes and `find_cycle` names the loop. The correct behaviour is to refuse to proceed and print the cycle, so that the team fixes the map before they restart anything.
 
 ## Hands-on lab
 
-All of this lab ran on this Mac with Python 3.12.7 and pytest 8.3.5. Nothing needs a container.
+All of this lab ran on this Mac with Python 3.12.7 and pytest 8.3.5. Nothing needs a container, so you can run it on any laptop with the same versions, and the steps below are in the order the chapter needs them.
 
-1. Run the tests from the repository root.
+1. Run the tests from the repository root. The command below runs all four test files together, and it should finish quickly.
 
 ```bash
 python3 -m pytest code/part20/test_c09_logs_windows.py code/part20/test_c09_heaps_intervals.py code/part20/test_c09_ratelimit_lru_ring.py code/part20/test_c09_rest.py -q
@@ -1405,13 +1451,13 @@ python3 -m pytest code/part20/test_c09_logs_windows.py code/part20/test_c09_heap
 
 Expected result: 65 passed.
 
-2. Measure the complexity claims.
+2. Measure the complexity claims. The script prints timings for the window and ring examples, so you can compare them with the numbers in this chapter.
 
 ```bash
 python3 code/part20/c09_measure.py
 ```
 
-Expected shape: the deque column grows about twice when n doubles, the naive column grows about twice as well but is roughly fifty times larger at k equal to 1,000, ring balance falls from about 1.9 to about 1.04 as virtual nodes rise from 1 to 1,000, and the unsafe counter probably prints 1,600,000. The numbers in this chapter came from that run. Yours will differ in the digits.
+Expected shape: the deque column grows about twice when n doubles, the naive column grows about twice as well but is roughly fifty times larger at k equal to 1,000, ring balance falls from about 1.9 to about 1.04 as virtual nodes rise from 1 to 1,000, and the unsafe counter probably prints 1,600,000. The numbers in this chapter came from that run. Yours will differ in the digits, but the shape should match.
 
 ```text
 sliding max, k=1000: deque vs naive (seconds)
@@ -1422,7 +1468,7 @@ ring balance (max load / mean) 10 nodes, 100k keys
   vnodes= 1000 ratio=1.035
 ```
 
-3. Break the code on purpose. In `c09_intervals.py`, replace `max(out[-1][1], e)` with `e`, and rerun the second test file. Expected result: `test_merge_intervals` fails. Restore the line. Then in `c09_lru.py`, delete the `move_to_end` call in `get` and watch the random cross-check fail. These mutations show what the tests guard.
+3. Break the code on purpose. In `c09_intervals.py`, replace `max(out[-1][1], e)` with `e`, and rerun the second test file. Expected result: `test_merge_intervals` fails. Restore the line. Then in `c09_lru.py`, delete the `move_to_end` call in `get` and watch the random cross-check fail. These mutations show what the tests guard, and they are the quickest way to learn which line matters.
 
 These lab steps were not run in a container, and the mutation steps were not run. The test and measurement steps are the ones that ran.
 
@@ -1526,6 +1572,8 @@ In the test the true p99 over all 1,010 requests is 12 ms, while the average of 
 
 
 ## Connections to the rest of the handbook
+
+The coding round connects to several other chapters, so this list shows where to go next when a part of this one is still shaky.
 
 - 20.8 What to expect (`c20-08`), 20.10 Complexity and latency numbers (`c20-10`) and 20.11 Practice set (`c20-11`) are the rest of the coding round.
 - 20.13 Design: multi-tenant LLM API (`c20-13`) contains the production-style token bucket and a router simulation.
