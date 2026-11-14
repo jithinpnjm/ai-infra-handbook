@@ -14,19 +14,21 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-A customer writes to support: "Our fine-tuned model worked in the test. In production we see 404 for ten minutes after every restart, the bill is higher than the token count suggests, and legal asks where prompts are processed." Each part of that message is a question about the product contract. This chapter serves the system design round and the project deep dive. It also feeds the incident round, because most customer incidents on a managed inference product start with a misread contract.
+A customer writes to support: "Our fine-tuned model worked in the test. In production we see 404 for ten minutes after every restart, the bill is higher than the token count suggests, and legal asks where prompts are processed." Each part of that message is a question about the product contract. Read it slowly. The 404 is a readiness question, the bill is a billing question, and the legal line is a data question. Sorting each complaint into its own bucket is most of the job. This chapter serves the system design round and the project deep dive. It also feeds the incident round, because most customer incidents on a managed inference product start with a misread contract.
 
-The job posting asks you to design "a whole or partial distributed system" and to run production back-ends. The interviewer wants to hear you separate three things. What Nebius documents, what Nebius markets, and what you would design yourself. Nebius has not published its gateway, router, scheduler or billing pipeline [gap]. So the skill being tested is accuracy about the public contract, plus honest reasoning about the rest.
+The job posting asks you to design "a whole or partial distributed system" and to run production back-ends. The interviewer wants to hear you separate three things. What Nebius documents, what Nebius markets, and what you would design yourself. Keeping those apart is what makes an answer sound like an engineer and not like a sales deck. Nebius has not published its gateway, router, scheduler or billing pipeline [gap]. So the skill being tested is accuracy about the public contract, plus honest reasoning about the rest.
 
 A realistic question in the interviewer's voice: "A customer on a dedicated endpoint says their bill did not change after they enabled prompt caching. Another says their serverless bill dropped. Explain both, and tell me what you would check."
 
-Every fact below carries a tag. **[official]** means a Nebius documentation page fetched on 2026-11-09. **[vendor]** means a Nebius blog or sales page. **[gap]** means not public. **[mine]** means my reasoning, not a Nebius statement.
+Both questions turn on one idea. The product you are on decides the unit you are billed in, so the same feature can change one bill and leave the other alone.
+
+Every fact below carries a tag. **[official]** means a Nebius documentation page fetched on 2026-11-09. **[vendor]** means a Nebius blog or sales page. **[gap]** means not public. **[mine]** means my reasoning, not a Nebius statement. The tags are the thing to say out loud. When you quote a number, say which tag it carries.
 
 ## The core ideas
 
 ### 1. Two products behind one API
 
-A new engineer says "we use Token Factory" and nobody asks which product. That is the first mistake. Token Factory has Public Serverless endpoints and Dedicated Endpoints. Both speak an OpenAI-compatible API under `/v1`, and the API accepts the vLLM parameter set [official]. After that they differ in almost every way that matters to an SRE.
+A new engineer says "we use Token Factory" and nobody asks which product. That is the first mistake. The name covers products with different units, different regions and different limits, so the question is never optional. Token Factory has Public Serverless endpoints and Dedicated Endpoints. Both speak an OpenAI-compatible API under `/v1`, and the API accepts the vLLM parameter set [official]. After that they differ in almost every way that matters to an SRE. API compatibility means your client code can often point at either one. It does not mean the two behave the same under load, in billing or in data handling.
 
 | Question | Public Serverless | Dedicated Endpoint |
 |---|---|---|
@@ -37,15 +39,17 @@ A new engineer says "we use Token Factory" and nobody asks which product. That i
 | Custom weights | Base models only | Supported for eligible models, beta, on request |
 | Pricing | Per token | Per GPU hour, billed per minute |
 
-The table follows the Dedicated Endpoints overview page [official]. One cell needs care. The overview says capacity is "reserved for your organization". The capacity page says self-service endpoints use an on-demand shared pool, that the capacity is "not a long-term reservation", and that minimum replicas are guaranteed only while the endpoint is active [official]. The second page is more precise. Read "reserved" as "held while active".
+The table follows the Dedicated Endpoints overview page [official]. Read it as a list of questions to ask the customer, not as a feature comparison. One cell needs care. The overview says capacity is "reserved for your organization". The capacity page says self-service endpoints use an on-demand shared pool, that the capacity is "not a long-term reservation", and that minimum replicas are guaranteed only while the endpoint is active [official]. The second page is more precise. Read "reserved" as "held while active".
 
-The Public Serverless page says these endpoints suit testing and non-critical work, and are not intended for production that needs a stable region [official]. The legal guide repeats it [official]. An answer that proposes Serverless for a regulated production path without that caveat loses points.
+The Public Serverless page says these endpoints suit testing and non-critical work, and are not intended for production that needs a stable region [official]. The legal guide repeats it [official]. An answer that proposes Serverless for a regulated production path without that caveat loses points. 
+
+In practice this means a team that starts on Public Serverless and later moves to a Dedicated Endpoint changes more than the URL. It changes the region rules, the rate-limit rules, the billing unit and the place where capacity comes from. Plan that migration as a project with its own checks, not as a one-line config change.
 
 **Choose the product from the region, capacity and billing contract first, and talk about models second.**
 
 ### 2. Identity: organisation, project, group, key
 
-An SRE must revoke a contractor without stopping a production endpoint. The resource model makes that possible. An organisation holds projects. A project holds API keys, fine-tuning jobs, dedicated endpoints, files and datasets [official]. Being listed as a user grants nothing until the user is placed in a group.
+An SRE must revoke a contractor without stopping a production endpoint. The resource model makes that possible, because the change happens in membership and not in the endpoint itself. An organisation holds projects. A project holds API keys, fine-tuning jobs, dedicated endpoints, files and datasets [official]. Being listed as a user grants nothing until the user is placed in a group. Think of the organisation as the company, the project as a team's workspace, and the group as the role a person plays inside it.
 
 | Level | Group | What it can do |
 |---|---|---|
@@ -54,13 +58,15 @@ An SRE must revoke a contractor without stopping a production endpoint. The reso
 | Project | Admin | Full control of project resources and membership, can create and delete keys |
 | Project | Member | Operate project resources, create and delete only its own keys |
 
-The permission tables are on the Groups and Organizations pages [official]. Two details are easy to miss. Billing Manager has no access to inference observability, so a finance user cannot see latency. And an Organisation Admin automatically administers every project, so admin membership should be rare.
+The permission tables are on the Groups and Organizations pages [official]. Two details are easy to miss. Billing Manager has no access to inference observability, so a finance user cannot see latency. And an Organisation Admin automatically administers every project, so admin membership should be rare. When you read the table, ask what a single leaked key or a single departed user could do. The answer should be small.
+
+Write the table into the team runbook next to the names of the people who hold each role. When someone changes jobs, the runbook tells you which membership to remove, and that is quicker than searching the console under pressure.
 
 **Map every human and every workload to one group and one project before you issue a key.**
 
 ### 3. Control plane, data plane and the routing key
 
-An engineer runs a create call, gets a 201, and sends a request one second later. The request fails with 404. The two planes explain why.
+An engineer runs a create call, gets a 201, and sends a request one second later. The request fails with 404. The two planes explain why. A control plane is the part of a system that changes configuration. A data plane is the part that does the work, which here means answering inference requests.
 
 The control plane changes configuration. It has one common base URL, `https://api.tokenfactory.nebius.com`, and the paths start with `/v0/dedicated_endpoints` [official]. The data plane serves inference and has a regional base URL under `/v1`. For `eu-north1` the data-plane URL is the same host as the control plane. For `eu-west1` and `us-central1` the docs show their own hosts [official]. The API schema, version 20261105, lists sixteen region values, while the docs table lists three [official]. Do not assume all sixteen are orderable. Ask the template call.
 
@@ -73,7 +79,11 @@ flowchart LR
   C -.->|"desired state"| R
 ```
 
-The create response returns two identifiers. `endpoint_id` is for update and delete. `routing_key` is what you pass as `model` in inference calls, exactly as returned [official]. The quickstart says that while the endpoint provisions, inference may fail, often with 404, until it is routable [official]. So a 404 after creation is expected, and the fix is to wait for readiness. The FAQ lists three causes of 404: not ready, wrong inference domain, wrong routing key [official].
+Read the flowchart as loops that meet at the replicas. The control loop tells the replicas what to be. The data loop sends them traffic.
+
+The create response returns two identifiers. `endpoint_id` is for update and delete. `routing_key` is what you pass as `model` in inference calls, exactly as returned [official]. The quickstart says that while the endpoint provisions, inference may fail, often with 404, until it is routable [official]. So a 404 after creation is expected, and the fix is to wait for readiness. The FAQ lists three causes of 404: not ready, wrong inference domain, wrong routing key [official]. Changing the key is the wrong first move when the real cause is readiness.
+
+In plain terms, the routing key is the name your requests carry so the data plane knows which endpoint should answer. The endpoint ID is the handle the control plane uses to change or remove the endpoint. Keep the two in separate variables in your code, so a delete never uses the name meant for inference.
 
 Which proxy, load balancer or scheduler sits between the data plane and the replicas is not published [gap]. Chapter [20.14](./14-design-dedicated-endpoints-and-safe-model-rollout.md) gives a reasonable design for that hidden part, labelled as design.
 
@@ -81,7 +91,9 @@ Which proxy, load balancer or scheduler sits between the data plane and the repl
 
 ### 4. Lifecycle is deployment state, readiness is serving state
 
-A dashboard shows an endpoint as Running, yet half the requests fail. The docs split status into two fields for this reason. Lifecycle says what stage the deployment is in. Readiness says whether it can serve traffic now [official].
+A dashboard shows an endpoint as Running, yet half the requests fail. The docs split status into two fields for this reason. Lifecycle says what stage the deployment is in. Readiness says whether it can serve traffic now [official]. Running is a stage. It is not a promise that every replica is answering.
+
+A rollout is a useful test of the table. During an update the expected row is Updating with Ready, which means the endpoint keeps serving while it changes. A Partially ready reading during an update is a question to put to the platform team, not a reason to roll back in a panic. Watch the trend over several checks before you act on one reading.
 
 | Lifecycle | Readiness | Meaning from the docs |
 |---|---|---|
@@ -94,26 +106,26 @@ A dashboard shows an endpoint as Running, yet half the requests fail. The docs s
 | Stopping | Partially ready | Shutting down |
 | Stopped | Not ready | Fully stopped |
 
-
-
-The docs say to contact support if a Warning or Partially ready state lasts more than three hours [official]. There is a small inconsistency to know. The prose lists the lifecycle states as Starting, Updating, Running, Warning, Stopping and Stopped. The table uses Error, and the API schema's `DeploymentStatus` enum has exactly `starting`, `running`, `updating`, `stopping`, `stopped`, `error` [official]. Code against the schema. The readiness enum is `ready`, `partially_ready`, `not_ready`. The deployment object also returns `ready_replicas`.
+The docs say to contact support if a Warning or Partially ready state lasts more than three hours [official]. Keep an eye on how long an endpoint stays in a state, not only which state it is in. There is a small inconsistency to know. The prose lists the lifecycle states as Starting, Updating, Running, Warning, Stopping and Stopped. The table uses Error, and the API schema's `DeploymentStatus` enum has exactly `starting`, `running`, `updating`, `stopping`, `stopped`, `error` [official]. Code against the schema. The readiness enum is `ready`, `partially_ready`, `not_ready`. The deployment object also returns `ready_replicas`. A client that reads only lifecycle will treat a Running endpoint as healthy, which is the exact mistake the table exists to prevent.
 
 **Gate your client and your deploy pipeline on readiness, and treat `partially_ready` as degraded, not as healthy.**
 
 ### 5. Capacity: what is guaranteed and what is not
 
-At 3 a.m. a team stops its endpoint to save money. At 9 a.m. they start it and it sits in Starting. Nothing is broken. The capacity page describes exactly this.
+At 3 a.m. a team stops its endpoint to save money. At 9 a.m. they start it and it sits in Starting. Nothing is broken. The team's surprise comes from assuming the endpoint still holds its GPUs after a stop. The capacity page describes exactly this.
 
 Self-service dedicated endpoints run on on-demand Nebius AI Cloud capacity from a shared pool. Capacity is allocated only while the endpoint is active. When it stops, for any reason, the GPUs return to the pool. That includes a manual stop, an incident interruption and maintenance. A restart asks the pool again and gets whatever is free [official].
 
-Four statements follow from the page.
+A shared pool works like a shared rental fleet. Your endpoint holds a machine while it is active, and when you hand it back, someone else may take it before you ask again. That is why a restart can be fast one morning and slow the next, even with an identical configuration. Nothing in the endpoint has changed. The pool has.
+
+Four statements follow from the page. Each one is a sentence you can quote, with its tag.
 
 - Minimum replicas are reserved and non-preemptible while the endpoint is active [official].
 - Scaling above minimum depends on burst capacity and is not guaranteed [official].
 - There is no formal SLA for self-service dedicated endpoints unless a contract says so [official].
 - Guaranteed capacity across restarts needs a sales conversation about reserved GPUs [official].
 
-The create schema has an optional `reservation_policy` with values `AUTO`, `FORBID` and `STRICT`, plus `reservation_ids` [official]. The docs do not explain these values [gap]. A reasonable reading is that they control whether the endpoint draws on a customer reservation [mine]. Do not promise behaviour from the names.
+The create schema has an optional `reservation_policy` with values `AUTO`, `FORBID` and `STRICT`, plus `reservation_ids` [official]. The docs do not explain these values [gap]. A reasonable reading is that they control whether the endpoint draws on a customer reservation [mine]. Do not promise behaviour from the names. The safe move is to call them unknown and ask.
 
 Chapter [20.20](./20-autoscaling-gpu-inference.md) covers autoscaling in depth. Chapter [20.12](./12-estimation-toolkit-for-inference-capacity.md) covers how many GPUs a load needs.
 
@@ -121,11 +133,13 @@ Chapter [20.20](./20-autoscaling-gpu-inference.md) covers autoscaling in depth. 
 
 ### 6. Flavors and serving techniques, with the mechanism
 
-A customer asks why `-fast` costs more. Nebius says there are two flavors, Base and Fast, that give identical model outputs and differ in token pricing, latency and optimisation level. Fast uses smaller batch sizes, more compute and techniques such as speculative decoding. You select it by appending `-fast` to the model name [official]. The docs name the GPU types L40, H100, H200 and B200. The API schema also lists B300 and some variant names [official].
+A customer asks why `-fast` costs more. That question is really a trade the customer is making, and the answer is the mechanism behind it. Nebius says there are two flavors, Base and Fast, that give identical model outputs and differ in token pricing, latency and optimisation level. A flavor here is the same model served with a different setup. Fast uses smaller batch sizes, more compute and techniques such as speculative decoding. You select it by appending `-fast` to the model name [official]. The docs name the GPU types L40, H100, H200 and B200. The API schema also lists B300 and some variant names [official].
 
-Why would smaller batches lower latency? Hands-On LLM Serving and Optimization, chapter 6, says that as batch size goes up, processing latency goes up too, and memory use grows until the GPU runs out. A large batch gives more throughput and each request waits longer. A small batch gives the opposite trade. That is the reasoning behind a latency flavor.
+Why would smaller batches lower latency? A batch is a group of requests the GPU works on together. Hands-On LLM Serving and Optimization, chapter 6, says that as batch size goes up, processing latency goes up too, and memory use grows until the GPU runs out. A large batch gives more throughput and each request waits longer. A small batch gives the opposite trade. That is the reasoning behind a latency flavor.
 
-Speculative decoding fits that picture. The vLLM docs say it reduces inter-token latency for memory-bound workloads at medium to low request rates, and that its sampling is lossless up to hardware numeric precision [vLLM v0.32.0 docs]. A small draft model proposes several tokens and the main model verifies them in one pass. At high load the extra work matters more, so the technique gains less. That is a reasonable explanation of why Fast pairs it with smaller batches [mine].
+When you explain this to a customer, start with the trade and not the feature name. The customer chooses between a lower price per token and a faster reply under light load. Fast is the right answer only when the faster reply is worth the higher price. A short benchmark on their own prompts answers that question better than any card on a website.
+
+Speculative decoding fits that picture. Speculation here means guessing ahead, and the main model checks the guesses. The vLLM docs say it reduces inter-token latency for memory-bound workloads at medium to low request rates, and that its sampling is lossless up to hardware numeric precision [vLLM v0.32.0 docs]. A small draft model proposes several tokens and the main model verifies them in one pass. At high load the extra work matters more, so the technique gains less. That is a reasonable explanation of why Fast pairs it with smaller batches [mine].
 
 Here is a short, correct glossary of the techniques Nebius lists. The Nebius cards describe some of them loosely, so use these definitions in an interview.
 
@@ -138,7 +152,9 @@ Here is a short, correct glossary of the techniques Nebius lists. The Nebius car
 | Speculative decoding | Draft model proposes tokens, main model verifies them |
 | Quantisation | Stores weights or activations at lower precision to save memory and compute, at a small quality cost |
 
-One claim needs a caveat. Nebius says the optimised models keep "approximately 99%" of the original quality [vendor]. The same overview also says the two flavors give identical outputs. Quantisation can change outputs, and speculative decoding alone does not. So treat the quality statements as marketing and ask for an evaluation on your own data [mine].
+One claim needs a caveat. Nebius says the optimised models keep "approximately 99%" of the original quality [vendor]. The same overview also says the two flavors give identical outputs. Quantisation can change outputs, and speculative decoding alone does not. So treat the quality statements as marketing, and ask what the evaluation measured before you repeat the figure. Ask for an evaluation on your own data [mine].
+
+Continuous batching is easier to picture as a bus that takes on a new passenger the moment someone gets off. The bus never waits for a full load before it moves, which is why the table says a queued request joins at once. The gain is in keeping the GPU busy, and the cost is that each request now shares the bus with changing company. Whether that suits a latency target depends on the load, so measure it on the customer's traffic.
 
 For the engine itself, the docs say the API supports the full set of vLLM parameters [official]. They do not say which engine version runs, or that every model uses vLLM [gap]. Chapter [20.22](./22-operating-vllm-triton-ray-and-tensorrt-llm.md) covers operating vLLM.
 
@@ -146,7 +162,9 @@ For the engine itself, the docs say the API supports the full set of vLLM parame
 
 ### 7. Cached tokens: a performance feature and a billing line
 
-Take the example from the docs. A request has 3,108 prompt tokens, and 3,072 came from the cache. It is billed for 36 input tokens, 3,072 cached input tokens and the output tokens [official]. The rule is that prompt tokens equal uncached input plus cached input, so each token is billed once.
+A bill arrives with a line for cached tokens, and the customer asks why it is smaller than the prompt. Take the example from the docs. A request has 3,108 prompt tokens, and 3,072 came from the cache. It is billed for 36 input tokens, 3,072 cached input tokens and the output tokens [official]. The rule is that prompt tokens equal uncached input plus cached input, so each token is billed once. The rule is simple to state, but the consequence takes a moment to see. The same tokens are read, and only the price of the cached part changes.
+
+Here is what happens in one request, in the order the docs imply. The service compares the start of your prompt with blocks it already holds. It reuses the longest run of matching blocks and computes the rest. The response then reports how many prompt tokens came from the cache, and the bill uses that count. The details of Nebius's cache internals are not in the pages used here [gap], so read this as the general mechanism and not as a Nebius specification.
 
 Run it with placeholder prices to see the effect. The script `c32_token_economics.py` takes prices as arguments, because the real per-model prices live on the Nebius pricing page and change. With input at 1.00, cached at 0.10 and output at 3.00 per million tokens, and 62 output tokens, the cached request costs 0.0005292 and the uncached one costs 0.003294. The cache removes about 84 percent of that bill. Those prices are invented for the demonstration. Do not quote them.
 
@@ -256,25 +274,27 @@ if __name__ == "__main__":
     print("windows to 20x    :", windows_to_reach(20), "=", windows_to_reach(20) * 15, "minutes")
 ```
 
-Notice what cached tokens do not do. The cached price applies only to Serverless text generation through Chat Completions, Completions and the Responses API. Embeddings, rerank and image APIs do not report cached tokens. Batch inference is not covered [official]. On Dedicated Endpoints the cache still works, but you pay per GPU hour, so the bill does not change. Cache hits there improve throughput and latency [official]. That answers the interview question about the two customers. The dedicated customer sees no change in the bill by itself. The serverless customer saw a drop because the prefix was stable and the cache hit.
+Notice what cached tokens do not do. The cached price applies only to Serverless text generation through Chat Completions, Completions and the Responses API. Embeddings, rerank and image APIs do not report cached tokens. Batch inference is not covered [official]. On Dedicated Endpoints the cache still works, but you pay per GPU hour, so the bill does not change. Cache hits there improve throughput and latency [official]. That answers the interview question about the two customers. The dedicated customer sees no change in the bill by itself. The serverless customer saw a drop because the prefix was stable and the cache hit. A cache hit changes the price of a token, not the number of tokens the model reads.
 
-The cache is best effort. Nebius promises no hit rate, no discount and no lifetime. A repeated request can return `cached_tokens: 0`. Reasons listed are eviction, a different replica serving the request, or a model or service update [official]. An unused prefix may go after a few minutes [official]. You cannot set a TTL or pin a prompt.
+The cache is best effort. Nebius promises no hit rate, no discount and no lifetime. A repeated request can return `cached_tokens: 0`. Reasons listed are eviction, a different replica serving the request, or a model or service update [official]. An unused prefix may go after a few minutes [official]. You cannot set a TTL or pin a prompt. For a customer, the practical result is that a single good run tells you little. Look at the share over a day.
 
 Why can `cached_tokens` be lower than the length of the shared part? The docs say the engine caches in internal blocks and the value is usually rounded down to a block boundary [official]. The vLLM design doc shows a likely mechanism. vLLM hashes each KV block from its tokens and its prefix, and it caches only full blocks [vLLM v0.32.0 docs]. Whether Nebius runs vLLM block logic is not stated [gap], so treat that as a plausible match [mine].
 
-To raise the hit rate, follow the docs. Put static content first and dynamic content last. Keep the prefix identical. Append to the history instead of rewriting it. Send requests that share a prefix close together. Use the same model, since the cache is not shared between models [official]. In a streaming request, set `stream_options.include_usage` to true, or the response may not report cached tokens even though they are billed [official].
+To raise the hit rate, follow the docs. Put static content first and dynamic content last. Keep the prefix identical. Append to the history instead of rewriting it. Send requests that share a prefix close together. Use the same model, since the cache is not shared between models [official]. In a streaming request, set `stream_options.include_usage` to true, or the response may not report cached tokens even though they are billed [official]. Each rule on that list protects the shared prefix from accidental change, and the cache depends on that prefix staying the same.
 
-Scope is where privacy enters. On Serverless the cache is shared within a model, across organisations, projects and API keys. A hit does not reveal who sent the earlier request. On Dedicated Endpoints each customer has an isolated cache. Traffic that arrives through OpenRouter is served as ordinary Serverless traffic, so it shares the same cache [official]. The page says plainly: do not use caching as an access control boundary, and `prompt_cache_key` only helps route to the server that holds the cache [official]. Note the contrast with vLLM, whose prefix cache can mix a cache salt into the block hash to isolate tenants [vLLM v0.32.0 docs]. Nebius does not describe such a salt for Serverless [gap].
+Scope is where privacy enters. On Serverless the cache is shared within a model, across organisations, projects and API keys. A hit does not reveal who sent the earlier request. On Dedicated Endpoints each customer has an isolated cache. Traffic that arrives through OpenRouter is served as ordinary Serverless traffic, so it shares the same cache [official]. The page says plainly: do not use caching as an access control boundary, and `prompt_cache_key` only helps route to the server that holds the cache [official]. Note the contrast with vLLM, whose prefix cache can mix a cache salt into the block hash to isolate tenants [vLLM v0.32.0 docs]. Nebius does not describe such a salt for Serverless [gap]. Treat the cache as performance, never as privacy.
 
-The chat-app case study claims a cache-aware design took hit rate from about 5 percent to 50 or 60 percent and cut cost about fourfold on mirrored production traffic [vendor]. It is one workload. Quote it with that label.
+The chat-app case study claims a cache-aware design took hit rate from about 5 percent to 50 or 60 percent and cut cost about fourfold on mirrored production traffic [vendor]. It is one workload. Read it as one customer's story, not a forecast, and quote it with that label.
 
 **Design prompts for a stable prefix, read `cached_tokens` from every response, and never assume a hit.**
 
 ### 8. Dynamic rate limits on Serverless
 
-A customer launches and gets 429 at the first spike. The Serverless limit is not a fixed number. Nebius calls it dynamic, and gives the rules [official].
+A customer launches and gets 429 at the first spike. The Serverless limit is not a fixed number. Nebius calls it dynamic, and gives the rules [official]. A 429 is the server saying the limit for that window is used up, and the surprise for most customers is that the limit moved while they were not looking.
 
-Usage is evaluated in rolling 15-minute windows. If average usage in a window is at least 80 percent of the limit, the next window's limit is multiplied by 1.2. If average usage is at most 50 percent, the next limit is divided by 1.5. The limit can grow to at most 20 times the base allocation, and beyond that Nebius requires an Enterprise plan [official]. Between 50 and 80 percent the limit holds.
+Usage is evaluated in rolling 15-minute windows. If average usage in a window is at least 80 percent of the limit, the next window's limit is multiplied by 1.2. If average usage is at most 50 percent, the next limit is divided by 1.5. The limit can grow to at most 20 times the base allocation, and beyond that Nebius requires an Enterprise plan [official]. Between 50 and 80 percent the limit holds. Because the windows roll, the limit changes in small steps, and a customer cannot plan it from a calendar.
+
+Walk through a launch the way the limit sees it. Traffic starts high, so each window that stays at or above the upper threshold raises the next limit. Traffic drops during a quiet hour, and the limit may fall back toward the base. The customer never sees a single switch. They see a limit that differs each time they check, so a retry plan written on launch day can go stale by the afternoon.
 
 The docs show a ramp from a base of 60 requests per minute and 400,000 tokens per minute. I reproduced it in code and it matches.
 
@@ -286,23 +306,25 @@ The docs show a ramp from a base of 60 requests per minute and 400,000 tokens pe
 | 1 hour | 2.07 | 124 | 828,000 |
 | 2 hours | 4.30 | 258 | 1,720,000 |
 
-The arithmetic is 1.2 to the power n. Eight windows give 4.30. Reaching 20 times needs 17 windows, because 1.2 to the 16th is about 18.5 and to the 17th is about 22.2. That is 255 minutes, so a customer who starts at the base limit and runs hot cannot reach the ceiling inside a launch hour. The function `windows_to_reach` returns 17. The base values of 60 and 400,000 are the docs' example, and each account has its own default [official].
+The arithmetic is 1.2 to the power n. Eight windows give 4.30. Reaching 20 times needs 17 windows, because 1.2 to the 16th is about 18.5 and to the 17th is about 22.2. That is 255 minutes, so a customer who starts at the base limit and runs hot cannot reach the ceiling inside a launch hour. The function `windows_to_reach` returns 17. The base values of 60 and 400,000 are the docs' example, and each account has its own default [official]. Keep this table open in a launch review, because it shows how slowly the ceiling is reached.
 
 Over-limit requests may still be processed at lower priority when there is spare capacity, and the response carries `x-ratelimit-over-limit: yes` [official]. A 429 comes with `Retry-After` [official]. The headers include remaining requests and tokens, and `x-ratelimit-dynamic-scale-requests` for the current factor [official].
 
-The design lesson is client-side. Ramp traffic you can predict, honour `Retry-After`, and cap retries. Chapter [20.21](./21-request-routing-retries-and-overload-control.md) covers retry budgets and overload control.
+The design lesson is client-side. Ramp traffic you can predict, honour `Retry-After`, and cap retries. A client that retries at once after a 429 makes the spike worse. A common pattern is exponential backoff with jitter, where each wait grows and a random spread keeps many clients from returning together. Chapter [20.21](./21-request-routing-retries-and-overload-control.md) covers retry budgets and overload control.
 
 **On a 429, read the headers, back off with jitter, and tell the customer to ramp or move to a dedicated endpoint.**
 
 ### 9. Billing: tokens, GPU minutes, and three documented conflicts
 
-The two products bill in different units, so the cost question is a break-even question. Serverless bills tokens. Dedicated bills GPU time with per-minute granularity [official].
+A customer asks whether moving to a dedicated endpoint will save money. The honest answer is that it depends on traffic, and you need the traffic before you can give a number. The two products bill in different units, so the cost question is a break-even question. Serverless bills tokens. Dedicated bills GPU time with per-minute granularity [official].
 
-A simple model is enough for an interview. The dedicated floor is GPU price times GPUs per replica times replicas times hours. Serverless cost is tokens times the blended per-token price. Break-even is the floor divided by the blended price. With placeholder numbers of 2.00 per GPU-hour, one GPU, one replica and 730 hours, the floor is 1,460. At a blended 0.50 per million tokens, break-even is 2.92 billion tokens a month, about 1,111 tokens per second on average [mine, placeholder inputs]. The point is the shape. The floor is paid whether or not traffic arrives, and one replica must actually deliver that throughput. Measure it. Chapter [20.12](./12-estimation-toolkit-for-inference-capacity.md) shows how to estimate throughput per GPU.
+A simple model is enough for an interview. The dedicated floor is GPU price times GPUs per replica times replicas times hours. Serverless cost is tokens times the blended per-token price. Break-even is the floor divided by the blended price. With placeholder numbers of 2.00 per GPU-hour, one GPU, one replica and 730 hours, the floor is 1,460. At a blended 0.50 per million tokens, break-even is 2.92 billion tokens a month, about 1,111 tokens per second on average [mine, placeholder inputs]. The point is the shape. The floor is paid whether or not traffic arrives, and one replica must actually deliver that throughput. Measure it. Keep the arithmetic on paper and say the units aloud as you go. Chapter [20.12](./12-estimation-toolkit-for-inference-capacity.md) shows how to estimate throughput per GPU.
+
+A customer with little traffic will find the floor expensive, and a customer with steady traffic may find it cheap. Ask for the traffic shape first: the average, the peak, and how many hours a day the endpoint must be up. Those facts decide which product wins, and none of them needs a price list.
 
 Now the documented conflicts. Each one is a good question to raise with an account team.
 
-**Conflict 1, when is capacity billed.** The Billing Policy prose says an endpoint is active, accessible and billable when at least one replica runs, and is not billed at zero replicas. The table on the same page says provisioning, not ready and partially ready are not billed, and ready is billed. It also says replica restarts and graceful shutdown for a rolling update are not billed [official]. Take an endpoint with 10 minutes not ready, 20 minutes partially ready with one replica, and 30 minutes ready. The table reading bills 30 minutes. The prose reading bills 50. The function `billed_minutes` shows both. The page says charges may vary under a custom contract. Get the line-item rule in writing.
+**Conflict 1, when is capacity billed.** The Billing Policy prose says an endpoint is active, accessible and billable when at least one replica runs, and is not billed at zero replicas. The table on the same page says provisioning, not ready and partially ready are not billed, and ready is billed. It also says replica restarts and graceful shutdown for a rolling update are not billed [official]. Take an endpoint with 10 minutes not ready, 20 minutes partially ready with one replica, and 30 minutes ready. The table reading bills 30 minutes. The prose reading bills 50. The function `billed_minutes` shows both. The difference matters, because the same timeline gives different totals. The page says charges may vary under a custom contract. Get the line-item rule in writing.
 
 **Conflict 2, prepaid or post-paid.** The Supplemental Terms say fees are post-paid unless an Order Form says otherwise, and the AI Cloud changelog for October 19 to 25, 2026 repeats that Token Factory fees are now post-paid [official]. The Billing and Consumption page still describes top-ups, a balance, and automatic card charges that bring the balance to zero. A failed card charge suspends the account [official]. Both may be partly true during a transition. Ask which applies to the tenant.
 
@@ -312,7 +334,7 @@ Now the documented conflicts. Each one is a good question to raise with an accou
 
 ### 10. Where data goes: ZDR, speculative decoding, Data Lab, fine-tuning
 
-Legal asks where prompts are processed and stored. Processing and storage are different questions, and the legal guide answers them separately [official].
+Legal asks where prompts are processed and stored. Processing and storage are different questions, and the legal guide answers them separately [official]. Keep that split in your head before you open the guide, because a yes to one question is not a yes to the other.
 
 | Data | Processing | Storage | Source |
 |---|---|---|---|
@@ -322,41 +344,47 @@ Legal asks where prompts are processed and stored. Processing and storage are di
 | Data Lab | EU-North1 Finland only | Raw completions not exported are deleted after 1 year, datasets kept until deleted | Data Processing page |
 | Observability metrics | Collected where inference runs | Eventually stored in `eu-north` | Observability page |
 
-The surprise is that the region promise covers real-time processing. Retained data and metrics can live elsewhere, so legal must review storage separately.
+The surprise is that the region promise covers real-time processing. Retained data and metrics can live elsewhere, so legal must review storage separately. In a review, put the table in front of legal and ask them to mark each row with the answer they accept. A single yes at the top of the table is not enough for an audit.
 
-ZDR is an organisation-level setting that covers every project and endpoint. With ZDR on, inputs and outputs are not stored, are not used for speculative decoding, and are not used for training [official]. The guide warns that ZDR may reduce service quality, for example inference speed. It does not say that speculative decoding itself is turned off, only that your data is not used for it [official]. Without ZDR, inputs and outputs are kept to run speculative decoding, and the guide says content is never used to train any model [official].
+ZDR, which stands for Zero Data Retention, is an organisation-level setting that covers every project and endpoint. With ZDR on, inputs and outputs are not stored, are not used for speculative decoding, and are not used for training [official]. The guide warns that ZDR may reduce service quality, for example inference speed. It does not say that speculative decoding itself is turned off, only that your data is not used for it [official]. Without ZDR, inputs and outputs are kept to run speculative decoding, and the guide says content is never used to train any model [official].
 
 The Supplemental Terms are wider. They let Nebius process input and output to run the service or to "train smaller Models used for Speculative Decoding" [official]. So draft-model training is a form of training, and the guide's "no training" sentence has to be read as no training of the main models [mine]. The guide says the terms and DPA prevail where they differ [official]. The terms describe opt-out through the onboarding form or an email to support, and the guide describes a setting on the account profile page [official]. For regulated work, ask for written confirmation of ZDR status. The guide says support can give it [official].
 
-Data Lab collects chat-completion logs unless ZDR is on. Importing a time range where ZDR was fully on gives an empty import [official]. This matters for fine-tuning plans. A team that enables ZDR cannot later build a training set from its own traffic logs.
+Follow one prompt through the table. A Serverless prompt is processed globally, which can change without notice. A dedicated prompt stays in the region you chose. If speculative decoding keeps a copy under the rules above, that copy is stored in Finland unless ZDR is on. Metrics about the request are collected where inference runs, and they are stored later in a different place. Each of those is a separate row, and legal reads each row separately.
+
+Data Lab collects chat-completion logs unless ZDR is on. Importing a time range where ZDR was fully on gives an empty import [official]. This matters for fine-tuning plans. A team that enables ZDR cannot later build a training set from its own traffic logs. The privacy setting and the training plan are the same decision, so make it once, on purpose.
 
 **Answer "where is my data" as four separate questions: processed, stored, logged and deleted.**
 
 ### 11. Post-training and custom weights
 
-A coding assistant team wants a model tuned on its accepted completions. Post-training in Token Factory offers supervised fine-tuning, on full weights or LoRA adapters, with long-context support, and custom speculator training [official].
+A coding assistant team wants a model tuned on its accepted completions. Post-training means changing a model with your own examples after it was first trained. Post-training in Token Factory offers supervised fine-tuning, on full weights or LoRA adapters, with long-context support, and custom speculator training [official]. LoRA adapters are small add-on weight files that change a model's behaviour without rewriting all of it.
 
-The custom speculator job uses the fine-tuning API with `method.type="spec-draft"`. It trains a drafter with 1 to 7 decoding heads and produces an artifact you serve with vLLM through `--speculative-config` [official]. The page says the speculator generally performs best when `num_speculative_tokens` matches or is below the number of heads trained [official]. The reason it can help is acceptance. A drafter trained on your traffic proposes tokens the main model accepts more often [mine].
+The custom speculator job uses the fine-tuning API with `method.type="spec-draft"`. It trains a drafter with 1 to 7 decoding heads and produces an artifact you serve with vLLM through `--speculative-config` [official]. A drafter is the small model that proposes tokens, and a decoding head is an extra output that predicts tokens ahead of the main output. The page says the speculator generally performs best when `num_speculative_tokens` matches or is below the number of heads trained [official]. The reason it can help is acceptance. A drafter trained on your traffic proposes tokens the main model accepts more often [mine].
 
-Custom weights on Dedicated Endpoints are beta and available on request through support. The create schema has `custom_weights_id` [official]. Public Serverless supports base models only [official]. So the loop from logs to fine-tune to dedicated endpoint exists, but each step has an eligibility check. A model missing from the list is a support request with the Hugging Face link and traffic details [official].
+Custom weights on Dedicated Endpoints are beta and available on request through support. The create schema has `custom_weights_id` [official]. Public Serverless supports base models only [official]. So the loop from logs to fine-tune to dedicated endpoint exists, but each step has an eligibility check. A model missing from the list is a support request with the Hugging Face link and traffic details [official]. Name those gates in the interview. A candidate who names them sounds like someone who has shipped a model.
+
+Before you propose any of this, ask whether prompting, retrieval or a routing change could solve the problem first. Fine-tuning changes a model's habits, and it also creates a model you must now evaluate, version and retire. That work is worth it only when the cheaper options have been tried [inference].
 
 **Describe the lifecycle as data, train, evaluate, deploy, observe, and name the eligibility gate at each step.**
 
 ### 12. Observability and deprecations
 
-A customer says latency doubled at noon. Observability can show it, but only for Dedicated Endpoints. The page states this in a note, even though its introduction mentions public endpoints [official]. So Serverless customers have no per-endpoint dashboard.
+A customer says latency doubled at noon. Observability can show it, but only for Dedicated Endpoints. The page states this in a note, even though its introduction mentions public endpoints [official]. So Serverless customers have no per-endpoint dashboard. Before you open a dashboard, confirm which product the customer is on.
 
-The documented metrics are requests per minute, input and output tokens per minute, tokens per request, KV-cache hit rate, end-to-end latency, time to first token, output speed, active replicas, active GPUs, average and busiest GPU utilisation, and error rate by status code. Latency shows p50, p90 and p99. TTFT is measured on streaming requests only [official]. Some capacity metrics may be hidden depending on the pricing model [official]. Filters include project, API key, region, prompt length and error code.
+A latency walkthrough starts with the percentile that moved. If p50 is flat and p99 rose, a few slow requests are the problem, and you look for queueing or cold starts. If p50 rose too, the typical request got slower, and you check load, batch size and the replica count. Time to first token and output speed split the problem further, because the first points at waiting and the second at generation. These are standard readings, not Nebius-specific rules [mine].
 
-For export, the Prometheus config scrapes `read.monitoring.api.nebius.cloud` through a federate path scoped to the project, authenticated with a static API key. The docs recommend a scrape interval of at least 15 seconds [official]. Metrics are near real time, usually within tens of seconds, and are explicitly not for billing reconciliation [official]. 
+The documented metrics are requests per minute, input and output tokens per minute, tokens per request, KV-cache hit rate, end-to-end latency, time to first token, output speed, active replicas, active GPUs, average and busiest GPU utilisation, and error rate by status code. Latency shows p50, p90 and p99, which are the values that a given share of requests stay under. TTFT, time to first token, is measured on streaming requests only [official]. Some capacity metrics may be hidden depending on the pricing model [official]. Filters include project, API key, region, prompt length and error code.
 
-Deprecations are the other lifecycle you must track. The November 2026 notice says that on November 9, 2026 the affected models stop being available through the API and Playground on Serverless. It lists 11 model rows with recommended replacements. Dedicated Endpoints for those models are unaffected. Token Factory does not reroute requests from a deprecated model [official]. The August 2026 notice used the same rules with a removal date of August 31, 2026 [official]. The date in the November notice is the day this chapter was checked, so read the live catalog.
+For export, the Prometheus config scrapes `read.monitoring.api.nebius.cloud` through a federate path scoped to the project, authenticated with a static API key. A federate path is a Prometheus endpoint that returns a chosen set of series, so one scrape job can pull a project's metrics into your own store. The docs recommend a scrape interval of at least 15 seconds [official]. Metrics are near real time, usually within tens of seconds, and are explicitly not for billing reconciliation [official].
+
+Deprecations are the other lifecycle you must track. The November 2026 notice says that on November 9, 2026 the affected models stop being available through the API and Playground on Serverless. It lists 11 model rows with recommended replacements. Dedicated Endpoints for those models are unaffected. Token Factory does not reroute requests from a deprecated model [official]. The August 2026 notice used the same rules with a removal date of August 31, 2026 [official]. The date in the November notice is the day this chapter was checked, so read the live catalog. A model that disappears from the API can fail a deploy that worked last month, and nothing in your code will warn you first.
 
 **Alert on error rate by status code, keep a model inventory, and read the deprecation page monthly.**
 
 ### 13. Failure handling: what the customer sees and what to do
 
-Most incidents on a managed product reach you as an HTTP status. The FAQ gives the mapping [official].
+At night a pager shows a spike in one status code. Most incidents on a managed product reach you as an HTTP status, and the status is the first clue to the cause. The FAQ gives the mapping [official].
 
 | Status | Documented cause | First action |
 |---|---|---|
@@ -366,13 +394,17 @@ Most incidents on a managed product reach you as an HTTP status. The FAQ gives t
 | 409 | Capacity or configuration conflict | Pick a supported GPU and region from templates, or reduce max replicas |
 | 422 | Invalid payload values | Validate against the template list |
 
-The rate-limit page adds 429, with headers and `Retry-After` [official]. A rule follows from the capacity and legal pages. Provider failover across regions does not exist for dedicated endpoints. If a customer needs cross-region continuity, the customer builds it. A reasonable design is a second endpoint in an approved region, tested under load, with a client-side router that fails closed when residency forbids the second region [mine]. Chapter [20.33](./33-ai-factory-solution-architecture-ha-and-recovery.md) works through recovery patterns, and chapter [20.18](./18-how-llm-serving-fails.md) covers the failure modes inside the engine.
+The rate-limit page adds 429, with headers and `Retry-After` [official]. A rule follows from the capacity and legal pages. Provider failover across regions does not exist for dedicated endpoints. If a customer needs cross-region continuity, the customer builds it. A reasonable design is a second endpoint in an approved region, tested under load, with a client-side router that fails closed when residency forbids the second region [mine]. Fail closed means the router refuses the request instead of sending it somewhere the data may not go. Chapter [20.33](./33-ai-factory-solution-architecture-ha-and-recovery.md) works through recovery patterns, and chapter [20.18](./18-how-llm-serving-fails.md) covers the failure modes inside the engine.
 
-The Nebius case studies add evidence from specific workloads. In the routing study, 300 trajectories ran on one or three vLLM replicas. Cache-aware routing cut average step time about 50 percent and total runtime about 36 percent against default Kubernetes ClusterIP routing, and P95 latency fell from over a minute to under 20 seconds [vendor]. That is one agent workload on a customer-style setup. It is not a Token Factory SLA and it is not a statement of how Token Factory routes [gap].
+Here is a 404 walkthrough from start to finish. The customer reports 404 after a restart. You check the status first, since a provisioning endpoint answers 404 for a while. If readiness is not ready, you wait and watch the trend. If readiness is ready and the 404 continues, you compare the routing key and the base URL with the values the create call returned. Only after those checks do you look at capacity or the customer's client code.
+
+The Nebius case studies add evidence from specific workloads. In the routing study, 300 trajectories ran on one or three vLLM replicas. Cache-aware routing cut average step time about 50 percent and total runtime about 36 percent against default Kubernetes ClusterIP routing, and P95 latency fell from over a minute to under 20 seconds [vendor]. That is one agent workload on a customer-style setup. It is not a Token Factory SLA and it is not a statement of how Token Factory routes [gap]. A case study tells you what one setup achieved, and it does not tell you what your setup will achieve.
 
 **On any incident, map the status code to the documented cause first, then check readiness, then capacity.**
 
 ## How to answer out loud
+
+The interviewer asks a short question and waits for your first sentence. Start with the product, then the consequence, then the check. The four drills below are written as spoken answers, so say each one aloud and listen for the place where you stall.
 
 **Question 1. "Serverless or dedicated for this customer?"** Start with three discovery questions. Does the customer need a fixed region, a predictable tail latency, or a custom model? If any answer is yes, say Dedicated Endpoint. Name the cost of that choice: GPU hours while active, no guaranteed capacity after a stop, no SLA unless contracted. Then say Serverless suits tests, spiky use and non-critical work.
 
@@ -382,6 +414,8 @@ The Nebius case studies add evidence from specific workloads. In the routing stu
 
 **Question 4. "Where do prompts go?"** Answer processed, stored, logged, deleted. Serverless is Global. Dedicated is pinned to the chosen region. Retained data goes to Finland unless ZDR is on. Data Lab runs in EU-North1. Say that legal gets written confirmation from support.
 
+Close each answer by naming the document or page you would check. Interviewers trust an answer that points to a source more than one that only sounds sure.
+
 ## Worked scenarios
 
 ### Scenario 1: The bill did not drop
@@ -390,15 +424,15 @@ A customer enabled a long system prompt and expected a lower serverless bill. Th
 
 Reasoning. Zero is valid. The docs list eviction, a different replica and a service update as causes. The customer's prompt also puts a timestamp at the start, which changes the prefix for every call. Move dynamic fields to the end. Check streaming calls for `stream_options.include_usage`. Then track the hit share as the sum of cached tokens over the sum of prompt tokens across a day, and do not judge single requests.
 
-Answer. Cached input is billed at the cached price only when the cache is hit. With a stable prefix, hits rise. No hit rate is promised.
+Answer. Cached input is billed at the cached price only when the cache is hit. With a stable prefix, hits rise. No hit rate is promised. The customer should measure the share over several days before judging the change.
 
 ### Scenario 2: The morning restart
 
-A team stops an endpoint at night and starts it at 09:00. It stays Starting and Not ready for 25 minutes.
+A team stops an endpoint at night and starts it at 09:00. It stays Starting and Not ready for 25 minutes. The team's first instinct is to delete it and create it again, which would be the wrong move.
 
 Reasoning. The stop released the GPUs. The start asks the shared pool again. If the GPU type is scarce, the wait can be longer than the first deployment [official]. Lifecycle Starting with readiness Not ready means provisioning. The billing table says this time is not billed. Check the status page, and check whether the requested replicas exceed what the pool has, which can cause a 409.
 
-Answer. Do not loop on creation. Wait for readiness, and after three hours contact support. For a morning start that must work, ask sales about reserved capacity.
+Answer. Do not loop on creation. Wait for readiness, and after three hours contact support. For a morning start that must work, ask sales about reserved capacity. Write the morning start into the runbook with its expected wait, so the on-call engineer does not spend the first hour guessing.
 
 ### Scenario 3: The surprise 429 ramp
 
@@ -406,9 +440,11 @@ A customer with the docs' example base of 60 requests per minute jumps to 400 du
 
 Reasoning. Usage near the limit raises the next window's limit by 1.2 at most every 15 minutes. The jump is 400 over 60, which is 6.67 times the base. Powers of 1.2 give 6.19 at the 10th window and 7.43 at the 11th. So it takes 11 windows, or 165 minutes. The customer cannot ramp fast enough for a launch.
 
-Answer. Ramp before launch, use the Batch API for asynchronous work, or move to a dedicated endpoint with its own capacity. Honour `Retry-After` meanwhile.
+Answer. Ramp before launch, use the Batch API for asynchronous work, or move to a dedicated endpoint with its own capacity. Honour `Retry-After` meanwhile. The conversation with the customer should start with the launch date, because the ramp, not the code, is the constraint.
 
 ## Hands-on lab
+
+Imagine a Friday afternoon where a customer wants a demo running by Monday, and you want to check the economics before you say yes. The lab below is how you do that check on a laptop, and where the one step that needs an account begins.
 
 Steps 1 and 2 run on a laptop and I ran them. Step 3 needs a Token Factory account and was not run.
 
@@ -421,6 +457,8 @@ python3 -m pytest code/part20/test_c32_token_economics.py -q
 
 Expected result: the script prints a cost with cache of 0.0005292, a cost without cache of 0.003294, a saving of 0.839, a ramp of 1.0, 1.2, 1.44, 2.07, 4.3, and 17 windows or 255 minutes to 20x. The tests report 10 passed.
 
+If a number differs, read the script before you read the docs. The script shows the formula, and a mismatch usually means a changed input, not a changed price.
+
 2. Fetch the documentation index and find the pages named in this chapter.
 
 ```bash
@@ -429,14 +467,17 @@ curl -sL https://docs.tokenfactory.nebius.com/llms.txt | grep -i "cached-tokens\
 
 Expected result: four or more lines with page links.
 
+The page list changes over time, so keep the links in your notes rather than memorising file names.
+
 3. With an API key, list templates and read the valid model, flavor, GPU and region combinations. Expected shape of the output: a JSON list. This step was not run.
 
 ```bash
 curl -sS -H "Authorization: Bearer $API_TOKEN" https://api.tokenfactory.nebius.com/v0/dedicated_endpoints/templates
 ```
 
-
 ## Drill questions
+
+Imagine a colleague asking these questions across a table, with no laptop open. Answer each one from memory, then open the answer.
 
 <details><summary>1. What is the difference between lifecycle and readiness on a Dedicated Endpoint?</summary>
 Lifecycle is the deployment stage: starting, updating, running, stopping, stopped, or error. Readiness is whether it can serve now: ready, partially ready, or not ready. Use readiness to decide whether to send traffic.
@@ -480,6 +521,8 @@ The Supplemental Terms say the Nebius SLA does not apply and no uptime commitmen
 
 ## Common mistakes and weak answers
 
+Picture the interviewer's notes at the end of the round. The same few weak answers show up on most of them, and each one is easy to fix with a sentence you rehearse in advance.
+
 Calling Token Factory "serverless" without saying which product. Say Public Serverless or Dedicated Endpoint, and state the region and capacity consequence.
 
 Promising a cache discount. The cache is best effort, with no hit rate or lifetime guaranteed. Say the cached price applies only to tokens actually served from cache.
@@ -493,6 +536,8 @@ Saying "ZDR turns off speculative decoding". The guide says your data is not sto
 Treating observability as the bill. Nebius says it is for operations. Reconcile from the `usage` object and the consumption report.
 
 ## Connections to the rest of the handbook
+
+Imagine a colleague asking how to set up a new customer on Token Factory, a week after the interview. The links below cover each part of that answer.
 
 - [20.12 Estimation toolkit for inference capacity](./12-estimation-toolkit-for-inference-capacity.md) for sizing the GPU floor behind the break-even.
 - [20.13 Design: a multi-tenant LLM inference API](./13-design-a-multi-tenant-llm-inference-api.md) for the tenant isolation that a shared cache lacks.
