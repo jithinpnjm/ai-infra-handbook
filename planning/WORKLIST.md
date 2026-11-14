@@ -96,3 +96,6 @@ Part 13 (9 ch) and Part 14 (16 ch) rewritten and committed (+28-31% words, guard
 
 ## Part 15 status (2026-11-14)
 Part 15 (18 ch) rewritten and committed (+28-40% words, guard 0 hard, chain <=0.2, spans 0 lost, Mermaid 776 ok, build ok). Open items in ledgers voice_rewrite_part15_*.md: 15.4 "nine operational stages" lists five; 15.8 "must exceed 256" vs >= 256; 15.10 70/180/122 vs 110 GB inconsistency; unverified "Volume 12"/ASP attributions in 15.11/15.12; 15.1 ran at +39.9% (top of range). Part 16 (15 ch) in progress.
+
+## Part 16 status (2026-11-14)
+Part 16 (15 ch) rewritten and committed (+29-39% words, guard 0 hard, chain <=0.4, spans 0 lost, Mermaid 776 ok, build ok). Open items in ledgers voice_rewrite_part16_*.md: 16.5 locked train_elastic.py builds the model twice; 16.15 exercise 2 wording conflicts with 16.14 s7.2 (Kueue limits GPUs, not money); 16.11 "Azure AD" vs Entra ID; 16.9 one added word "production" in 4.4 to check; unverified Production Kubernetes / Practical MLOps chapter attributions. Part 17 (16 ch) in progress.
