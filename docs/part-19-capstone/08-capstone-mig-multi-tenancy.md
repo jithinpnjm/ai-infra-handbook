@@ -25,46 +25,42 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-It is Monday morning and the chat team posts in the platform channel. Their new model server has been Pending for two hours, waiting for one slice of 3g.40gb. The dashboard shows twelve idle slices of 1g.10gb on the very same nodes. Nothing is broken. The platform simply holds the right amount of GPU in the wrong shapes.
+It is Monday morning, and the chat team posts in the platform channel. Their new model server has been Pending for two hours. Pending is the state a pod enters when Kubernetes cannot yet place it on a node. The server is waiting for one slice of 3g.40gb, which is a fixed-size piece of a GPU. The dashboard shows twelve idle slices of 1g.10gb on the very same nodes. Nothing is broken. The platform simply holds the right amount of GPU in the wrong shapes.
 
-That gap between free capacity and usable capacity is the whole subject of this capstone. A whole GPU is easy to schedule and easy to bill, but a small service wastes most of it. Splitting the GPU fixes the waste and creates new problems: shapes that do not fit, slices that nobody can use, reconfigurations that need a drained node, and a bill that must be divided by slice.
+That gap between free capacity and usable capacity is the whole subject of this capstone. A whole GPU is easy to schedule and easy to bill. The trouble is that a small service uses only a sliver of it, so most of the card sits idle. Splitting the GPU fixes that waste, but it creates new problems. Some shapes do not fit anywhere. Some slices sit unused because nobody needs that size. Changing the layout means draining a node first, which means emptying it of work. And the bill must now be divided by slice, not by card.
 
-Multi-Instance GPU, called MIG here, is NVIDIA's hardware method for cutting one GPU into separate instances. This chapter builds a small multi-tenant platform on top of it. You will choose profiles for a tenant mix, check the layout with a tested planner, load it with mig-parted, give each tenant a Kueue quota in slices, and price the slices. You will also set up per-instance monitoring and learn which questions MIG answers and which it does not.
+Multi-Instance GPU, called MIG here, is NVIDIA's hardware method for cutting one GPU into separate instances. Each instance gets its own slice of memory and compute, and a tenant sees only its own slice. This chapter builds a small multi-tenant platform on top of it. Along the way you choose profiles for a tenant mix, check the layout with a tested planner, load the layout with mig-parted, give each tenant a Kueue quota in slices, and price those slices. Last, you set up per-instance monitoring and learn which questions MIG answers and which it leaves open.
 
-The host had no GPU, so no MIG command was run and no pod was scheduled. The lab says what was run here and what was not. Output shown for the unrun steps is an expected shape from NVIDIA documentation.
+The machine used to write this chapter had no GPU, so no MIG command ran and no pod was scheduled. The lab says what ran here and what did not. Output shown for the steps that did not run is the expected shape from NVIDIA's documentation, not a capture from a real node.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 11.24 for the MIG hardware model and the six-layer validation chain.
-- Chapter 11.25 and 11.26 for time-slicing, MPS and the sharing decision tree.
-- Chapter 11.4 and 11.5 for the GPU Operator, and 11.8 for Kueue.
-- Chapter 17.4 for the DCGM exporter and 18.5 for the security view of GPU sharing.
-- Chapter 16.14 for the chargeback model that this chapter fills in for MIG slices.
+Each item below names the earlier chapter that teaches the idea, so you can go back if a step feels unfamiliar.
+
+- Chapter 11.24 covers the MIG hardware model and the six-layer validation chain.
+- Chapters 11.25 and 11.26 cover time-slicing, MPS and the sharing decision tree.
+- Chapters 11.4 and 11.5 cover the GPU Operator, and Chapter 11.8 covers Kueue.
+- Chapter 17.4 covers the DCGM exporter, and Chapter 18.5 covers the security view of GPU sharing.
+- Chapter 16.14 covers the chargeback model that this chapter fills in for MIG slices.
 
 ### Outcomes
 
-After this capstone you will be able to:
-
-1. Choose between MIG, time-slicing, MPS and whole GPUs for a given tenant.
-2. Design a MIG layout for a tenant mix and prove with a tool that the hardware can create it.
-3. Write the mig-parted configuration and the GPU Operator steps that apply it.
-4. Give each tenant a Kueue quota counted in slices and a native ResourceQuota as a second guard.
-5. Compute the cost of a slice, and separate idle cost from cost lost to geometry.
-6. Name the failure modes of a sliced fleet and monitor each instance with DCGM.
+Think about the afternoon a platform team decides how to share its H100 GPUs between several teams that do not trust one another. This chapter follows that decision from start to finish. It begins with the choice between MIG, time-slicing, MPS and whole GPUs for each tenant. It then designs a MIG layout for the tenant mix and asks a tool to prove that the hardware can create it. Next comes the mig-parted configuration and the GPU Operator steps that apply it. Each tenant gets a Kueue quota counted in slices, backed by a native ResourceQuota as a second guard. The chapter prices a slice and separates idle cost from the cost lost to geometry. It ends with the failure modes of a sliced fleet and the way to watch each instance with DCGM.
 
 ---
-
 ## 1. Choosing the isolation tool
 
-A research team asks for "a quarter of a GPU" for a notebook service. The platform engineer has four ways to say yes, and the team will quietly notice which one was chosen the first time a neighbour's job slows them down. The choice is about what each tenant is allowed to do to the others.
+A research team asks for "a quarter of a GPU" for a notebook service. The platform engineer has four ways to say yes. The team will quietly notice which one was chosen the first time a neighbour's job slows them down. So the choice is really about what each tenant is allowed to do to the others, and how much one tenant's work can disturb another's.
 
-NVIDIA's MIG guide compares three concurrency mechanisms in one table. CUDA streams live inside a single process and share everything. The Multi-Process Service, MPS, lets cooperating processes share the SMs, but it offers no error isolation and the memory bandwidth, caches and capacity are shared. MIG is a physical partition. It gives each instance its own SM slices, memory slices and engines, and it isolates errors.
+NVIDIA's MIG guide compares three concurrency mechanisms in one table. Concurrency here means several pieces of work running on one GPU at the same time. CUDA streams live inside a single process and share everything in it. The Multi-Process Service, MPS, lets cooperating processes share the SMs, which are the streaming multiprocessors that do the arithmetic. It offers no error isolation, though, and the memory bandwidth, caches and capacity are still shared. MIG is a physical partition. It gives each instance its own SM slices, memory slices and engines, and it isolates errors.
 
-Time-slicing is a fourth option and it comes from the GPU Operator rather than from the CUDA guide. The device plugin advertises each GPU as several replicas and hands them to different pods. The GPU Operator documentation says plainly that, unlike MIG, there is no memory or fault isolation between the replicas. Pods take turns on the same GPU.
+Time-slicing is a fourth option, and it comes from the GPU Operator rather than from the CUDA guide. The device plugin is the component that tells Kubernetes which GPUs a node has. With time-slicing, it advertises each GPU as several replicas and hands them to different pods. The GPU Operator documentation says plainly that, unlike MIG, there is no memory or fault isolation between the replicas. The pods take turns on the same GPU, so one heavy pod can slow the others down.
 
-The table below sets the four options side by side. The MIG, MPS and streams rows come from the MIG guide, and the time-slicing row comes from the GPU Operator guide.
+It helps to think about the choice as a question of trust and fairness. If two tenants trust each other and their jobs are small, sharing a GPU loosely may be fine. If they do not trust each other, or one of them runs jobs that can crash the whole card, then the sharing has to be stronger. The four options sit along that line, from loosest to strictest. Whole GPUs sit at the strict end, because nothing is shared at all.
+
+The table below sets the four options side by side. Read the columns as questions. Does a neighbour's work slow this tenant down? Can a neighbour read this tenant's memory? Does a neighbour's error reach this tenant? The MIG, MPS and streams rows come from the MIG guide, and the time-slicing row comes from the GPU Operator guide.
 
 | Mechanism | Partition type | SM isolation | Memory protection and bandwidth QoS | Error isolation |
 |---|---|---|---|---|
@@ -73,11 +69,13 @@ The table below sets the four options side by side. The MIG, MPS and streams row
 | MIG | Physical, up to 7 instances | Yes | Yes | Yes |
 | Time-slicing | Replicas of one GPU | No, pods take turns | No | No |
 
-Whole GPUs have no slicing loss, no reconfiguration and no fragmentation. Anything that spans GPUs belongs on them. The MIG guide lists no peer-to-peer between instances on different GPUs, no CUDA IPC across GPU instances, and only experimental NCCL support.
+Before you choose MIG, it is worth knowing what it gives up. Once the layout is set, the boundaries are fixed. A tenant that suddenly needs more memory cannot take it from an idle neighbour, even if that neighbour is sitting on a large, empty slice. The boundaries that protect a tenant are the same ones that trap spare capacity.
 
-The book *AI Systems Performance Engineering* reaches the same conclusion from the performance side. Its chapter 3 says MIG suits multi-tenant, small-model inference and is usually the wrong tool for large distributed training. It also states the price. An idle instance cannot lend its resources to another, because the partition is hard.
+Whole GPUs have no slicing loss, no reconfiguration and no fragmentation. Those are the three costs that the rest of this chapter spends its time on. Anything that spans GPUs belongs on whole GPUs. The MIG guide lists no peer-to-peer transfers between instances on different GPUs and no CUDA IPC across GPU instances. CUDA IPC is the mechanism for sharing memory between processes on the GPU. The guide also gives only experimental NCCL support. NCCL is the library that multi-GPU training uses to talk between cards.
 
-The rule that follows: whole GPUs for training that spans GPUs and for tenants that fill a GPU, MIG for small tenants that distrust each other or need a predictable share, and time-slicing or MPS only inside one trust domain.
+AI Systems Performance Engineering reaches the same conclusion from the performance side. Its chapter 3 says MIG suits multi-tenant, small-model inference, and that it is usually the wrong tool for large distributed training. It also states the price. An idle instance cannot lend its resources to another, because the partition is hard. Capacity that nobody is using stays stranded inside its slice.
+
+The rule that follows is short. Use whole GPUs for training that spans GPUs and for tenants that fill a GPU. Use MIG for small tenants that distrust each other or need a predictable share. Use time-slicing or MPS only inside one trust domain, which means one team or one group that trusts itself. The flowchart below turns that rule into questions you can ask a tenant.
 
 ```mermaid
 flowchart TD
@@ -92,25 +90,26 @@ flowchart TD
     E -->|"No"| M
 ```
 
-Size the slice for the concurrent peak and not for the weight file, because a model that loads in 7 GB can need much more once its cache fills.
+Size the slice for the concurrent peak, not for the size of the weight file. Here is why. A model that loads in 7 GB can need much more memory once its cache fills during real traffic. A slice that fits the weights alone will fail under load.
 
-Two combinations are documented. MPS runs on top of MIG with a lower client limit, and time-slicing can let several processes share one MIG partition. Both give back some of the isolation that made MIG attractive.
+Two combinations are documented. MPS can run on top of MIG, with a lower client limit. Time-slicing can also let several processes share one MIG partition. Both give back some of the isolation that made MIG attractive in the first place, so use them with the same care as before.
 
-**Decision rule:** Give whole GPUs to anything that spans GPUs or fills one, give MIG slices to small tenants that need isolation, and keep time-slicing and MPS inside a single trust domain.
+**Decision rule:** Give whole GPUs to anything that spans GPUs or fills one. Give MIG slices to small tenants that need isolation. Keep time-slicing and MPS inside a single trust domain.
 
 **In one minute:** MIG is the only option in the table that isolates SMs, memory bandwidth and errors at once. It costs flexibility, because idle slices cannot be lent. Whole GPUs stay the answer for large jobs.
 
 ---
-
 ## 2. What NVIDIA documents about MIG profiles
 
-A planner on the platform team writes "split every H100 into two halves" in a design document. A reviewer asks which profile that is, and nobody can say whether it is 3g.40gb or 4g.40gb. The two profiles differ in compute, and the hardware allows different combinations of each. The names carry the answer, so it pays to read them properly.
+A planner on the platform team writes "split every H100 into two halves" in a design document. A reviewer asks which profile that means, and nobody can say whether it is 3g.40gb or 4g.40gb. The two profiles differ in compute, and the hardware allows different combinations of each. A profile is a named recipe for one instance. The names carry the answer, so it pays to read them properly before you agree to anything.
 
-A MIG-capable GPU is described by two kinds of slice. The MIG User Guide says a GPU memory slice is roughly one eighth of the memory resources, including capacity and bandwidth. A GPU SM slice is roughly one seventh of the SMs when the GPU is in MIG mode. A GPU instance combines some memory slices with some SM slices. The profile name `Ng.Mgb` means N SM slices and about M gigabytes of memory.
+A MIG-capable GPU is cut into two kinds of slice. A memory slice is roughly one eighth of the GPU's memory resources, including capacity and bandwidth. The MIG User Guide says so. An SM slice is roughly one seventh of the SMs when the GPU is in MIG mode. Here, SM means streaming multiprocessor, the unit that runs the arithmetic. A GPU instance combines some memory slices with some SM slices. The profile name `Ng.Mgb` reads as N SM slices and about M gigabytes of memory. So 3g.40gb is three SM slices with about 40 GB of memory.
 
-A GPU instance can be divided into compute instances that share its memory but have their own SMs. This chapter uses one compute instance per GPU instance, which is what `-C` and mig-parted create.
+Here is a way to read a profile name without memorising it. Take the first number before the g. That is the count of SM slices, and the SM slices are the compute. Take the number after the dot and before the gb. That is the memory in gigabytes, rounded. A 2g.20gb instance therefore has two compute slices and about 20 GB of memory, and it sits on two of the eight memory positions. Read that way, the names stop looking random, and the fractions become easy to check by hand.
 
-The MIG User Guide's "Supported MIG Profiles" page has one table per product. The H100 80 GB table is the one this chapter uses. Its columns for hardware units and copy engines are in the data file, and the first columns are shown here.
+A GPU instance can be divided further into compute instances. Those share the instance's memory but get their own SMs. This chapter uses one compute instance per GPU instance, which is what `-C` and mig-parted create. Keep that in mind, because the two levels are easy to confuse.
+
+The MIG User Guide has a page called "Supported MIG Profiles", with one table per product. This chapter uses the H100 80 GB table. Its columns for hardware units and copy engines live in the data file, and the first columns are shown here. A copy engine moves data between memory regions, so it matters for slices that copy a lot.
 
 | Profile | Fraction of memory | Fraction of SMs | Instances per GPU |
 |---|---|---|---|
@@ -122,39 +121,44 @@ The MIG User Guide's "Supported MIG Profiles" page has one table per product. Th
 | 4g.40gb | 4/8 | 4/7 | 1 |
 | 7g.80gb | Full | 7/7 | 1 |
 
-The profile names follow the memory, so they change between products. The MIG User Guide says the A100 80 GB names are 1g.10gb, 1g.20gb, 2g.20gb, 3g.40gb, 4g.40gb and 7g.80gb, which are the same names as the H100. The 40 GB A100 uses 1g.5gb, 1g.10gb, 2g.10gb, 3g.20gb, 4g.20gb and 7g.40gb. The H200 uses 1g.18gb, 1g.35gb, 2g.35gb, 3g.71gb, 4g.71gb and 7g.141gb. The B200 uses 1g.23gb, 1g.45gb, 2g.45gb, 3g.90gb, 4g.90gb and 7g.180gb. All of them share the same fractions, so a layout designed in slices carries across products even though the gigabyte labels change.
+The profile names follow the memory, so they change from one product to the next. The MIG User Guide says the A100 80 GB names are 1g.10gb, 1g.20gb, 2g.20gb, 3g.40gb, 4g.40gb and 7g.80gb, which are the same names as the H100. The 40 GB A100 uses 1g.5gb, 1g.10gb, 2g.10gb, 3g.20gb, 4g.20gb and 7g.40gb. The H200 uses 1g.18gb, 1g.35gb, 2g.35gb, 3g.71gb, 4g.71gb and 7g.141gb. The B200 uses 1g.23gb, 1g.45gb, 2g.45gb, 3g.90gb, 4g.90gb and 7g.180gb. All of them share the same fractions. A layout designed in slices therefore carries across products, even though the gigabyte labels change. Designing in slices is the habit to build.
 
-The `+me` profile adds media engines, and only one such 1g instance fits per GPU. The A30, the RTX PRO cards and the Thor iGPU have four or two slices, so the planner refuses them.
+The `+me` profile adds media engines, which handle video encoding and decoding, and only one such 1g instance fits per GPU. The A30, the RTX PRO cards and the Thor iGPU have four or two slices, so the planner refuses them. A planner that refuses a GPU it does not know is safer than one that guesses.
 
-The MIG User Guide gives SM counts only for the A100 40 GB listing: 14 for a 1g slice, 42 for 3g, 56 for 4g and 98 for 7g. The GPU Operator guide prints H100 labels of 16, 32 and 60 multiprocessors for 1g.10gb, 2g.20gb and 3g.40gb. This chapter does not extrapolate SM counts, because the MIG User Guide does not publish them.
+The MIG User Guide gives SM counts only for the A100 40 GB listing: 14 for a 1g slice, 42 for 3g, 56 for 4g and 98 for 7g. The GPU Operator guide prints H100 labels of 16, 32 and 60 multiprocessors for 1g.10gb, 2g.20gb and 3g.40gb. Those labels come from a configuration example, not from a table of hardware. This chapter does not extrapolate SM counts to other GPUs, because the MIG User Guide does not publish them for those GPUs.
 
-The MIG User Guide lists minimum drivers: R450 for the A100, R525 for the H100, R550 for the H200 and R570 for the B200. From Hopper on, enabling MIG mode needs no GPU reset, and the mode does not persist across a driver reload. Created instances never survive a reboot, so MIG Manager or mig-parted must recreate them.
+The MIG User Guide lists minimum drivers: R450 for the A100, R525 for the H100, R550 for the H200 and R570 for the B200. A driver is the kernel module that lets the operating system talk to the GPU, and the minimum is the oldest one that supports the card. From Hopper on, which means the H100 and newer, enabling MIG mode needs no GPU reset. The mode does not persist across a driver reload, though. Created instances never survive a reboot, so MIG Manager or mig-parted must recreate them each time the node starts.
 
-The full table is data: `code/part19/c08_mig_profiles.json` holds all 99 rows from 14 tables with source page and dates, and a test counts them. Two oddities are kept as printed: the H100 1g.20gb row shows memory 1/4 but L2 1/8, and copy engines are 7 for the A100 7g.40gb and 8 for the H100 7g.80gb.
+The table is long, and it is easy to misread one row. A useful habit is to check a row against the fractions before you copy it. If a profile shows more SM slices than its name implies, or more memory than its fraction allows, stop and look at the source page again. That check takes a minute and prevents a layout built on a typo.
 
-**Decision rule:** Design layouts in slices of one eighth memory and one seventh SM, then translate to profile names per product, and take every number from the MIG User Guide's table for that exact GPU.
+The full table lives in data, not in prose. The file `code/part19/c08_mig_profiles.json` holds all 99 rows from 14 tables, with the source page and dates, and a test counts them. Two oddities are kept as printed, because changing them would hide a question. The H100 1g.20gb row shows memory 1/4 but L2 1/8. Copy engines are 7 for the A100 7g.40gb and 8 for the H100 7g.80gb. L2 is the GPU's shared second-level cache.
+
+**Decision rule:** Design layouts in slices of one eighth memory and one seventh SM, then translate them to profile names for each product. Take every number from the MIG User Guide's table for that exact GPU.
 
 **In one minute:** A profile name is a pair of slice counts plus a rounded memory size. The slice fractions are the same on every seven-slice GPU, and the names change with memory. The data file holds the whole NVIDIA table.
 
 ---
-
 ## 3. Designing a layout for a tenant mix
 
-The chat team needs four copies of a model with a peak of about 30 GB. Search needs ten small embedding servers, notebooks need six medium slices, fine-tuning needs two large ones and a nightly batch job wants a whole GPU. An engineer counts 49 of the 56 slices on an eight-GPU node and declares that it fits. It does not, and the reason is geometry.
+The chat team needs four copies of a model with a peak of about 30 GB. Search needs ten small embedding servers. Notebooks need six medium slices, fine-tuning needs two large ones, and a nightly batch job wants a whole GPU. An engineer adds up the slices, counts 49 of the 56 available on an eight-GPU node, and declares that the plan fits. It does not. The reason is geometry, which means where each slice is allowed to sit on the chip, not how many slices there are.
 
-A GPU instance cannot start just anywhere. The MIG User Guide shows the legal start positions with `nvidia-smi mig -lgipp` for the A100 40 GB. A start position is counted in memory slices from 0 to 7. The 1g.5gb profile can start at any of positions 0 to 6. The 1g.10gb profile can start at 0, 2, 4 or 6. The 2g.10gb profile can start at 0, 2 or 4. The 3g.20gb profile can start at 0 or 4, the 4g.20gb profile only at 0, and the 7g.40gb profile only at 0.
+Imagine you are placing furniture in a narrow room, where a wide sofa can only go against certain walls. Each profile has its own walls. Some are flexible, such as the 1g profile, which can start in many places. Others are rigid, such as the 4g profile, which has only one wall. The planner's job is to fit every piece of furniture without leaving a gap that nothing can use.
 
-Three consequences follow from those positions, and each one explains a failure that surprises new operators.
+A GPU instance cannot start just anywhere. Think of the memory slices as a row of numbered seats, and of each profile as a group that must sit in certain seats. The MIG User Guide shows the legal start positions with `nvidia-smi mig -lgipp` for the A100 40 GB. A start position is counted in memory slices from 0 to 7. The 1g.5gb profile can start at any of positions 0 to 6. The 1g.10gb profile can start at 0, 2, 4 or 6. The 2g.10gb profile can start at 0, 2 or 4. The 3g.20gb profile can start at 0 or 4. The 4g.20gb profile can start only at 0, and the 7g.40gb profile can start only at 0.
 
-1. Only one 4g instance fits on a GPU, because it can only start at 0. A second 4g request is refused even if memory is free.
-2. Two 3g instances fill all eight memory slices, so nothing else fits beside them. They use 6 of the 7 SM slices, so one SM slice is stranded.
-3. Seven 1g instances use all seven SM slices but only seven of the eight memory slices. One memory slice is stranded, which is why seven 1g.10gb slices give 70 GB of an 80 GB card.
+Three consequences follow from those positions. Each one explains a failure that surprises new operators, so they are worth reading slowly.
 
-The MIG User Guide also shows that creation order matters. Asking for 3g.20gb last fails with "Insufficient Resources" and asking first succeeds, so the planner prints the largest profile first. mig-parted retries orderings itself.
+1. Why can a second 4g request fail with memory free? Only one 4g instance fits on a GPU, because it can start only at 0. A second 4g request is refused even if memory is free.
+2. What strands an SM slice in a two-3g layout? Two 3g instances fill all eight memory slices, so nothing else fits beside them. They use 6 of the 7 SM slices, so one SM slice is stranded.
+3. Why do seven 1g instances give only 70 GB? Seven 1g instances use all seven SM slices but only seven of the eight memory slices. One memory slice is stranded, which is why seven 1g.10gb slices give 70 GB of an 80 GB card.
 
-Does the same table hold for the H100 and later GPUs? The MIG User Guide prints the listing only for the A100 40 GB and draws other products as figures. The planner reuses the A100 positions for every seven-slice GPU, and a test checks that against the H100 figure of 19 valid configurations: every figure row is feasible and every maximal mix the planner finds is in the figure. It is still an inference, so confirm with `nvidia-smi mig -lgipp` on the real GPU.
+Creation order matters too. The MIG User Guide shows that asking for 3g.20gb last fails with "Insufficient Resources", while asking for it first succeeds. The planner therefore prints the largest profile first. mig-parted retries orderings on its own, so you rarely need to fix the order by hand.
 
-The planner packs the largest profiles first, putting each instance on the first GPU where an exact search over start positions still succeeds, and it reports anything that fits nowhere. Here is the tenant mix from the story on H100 80 GB, produced by `python3 code/part19/c08_mig_planner.py`.
+Does the same table hold for the H100 and later GPUs? That is the honest question to ask. The MIG User Guide prints the listing only for the A100 40 GB, and it draws the other products as figures. The planner reuses the A100 positions for every seven-slice GPU. A test checks that choice against the H100 figure of 19 valid configurations. Every row of the figure is feasible under the planner, and every maximal mix the planner finds appears in the figure. Still, this is an inference and not a published fact. Confirm the positions with `nvidia-smi mig -lgipp` on the real GPU before you rely on them.
+
+Here is what the planner does, in plain steps. It takes the largest request first, because a large instance is the hardest to place. It looks for a GPU where that instance can start at a legal position. If it finds one, it places the instance and moves on to the next request. If none of the GPUs has room, it reports the request as unplaced, so the platform team sees a shortfall instead of a silent failure. The exact search over start positions is what keeps the planner honest. A simpler rule that only counted slices would say the layout fits when it does not.
+
+The planner packs the largest profiles first. For each instance, it tries the first GPU where an exact search over start positions still succeeds. Anything that fits nowhere gets reported rather than silently dropped. Here is the tenant mix from the story, on H100 80 GB, produced by `python3 code/part19/c08_mig_planner.py`.
 
 | Tenant | Profile | Instances | SM slices |
 |---|---|---|---|
@@ -164,9 +168,9 @@ The planner packs the largest profiles first, putting each instance on the first
 | finetune | 4g.40gb | 2 | 8 |
 | batch-eval | 7g.80gb | 1 | 7 |
 
-The SM slices sum to 49, which is 7 GPUs with perfect packing, and the memory slices sum to 54, also 7 GPUs. The planner needs 8, and with 7 one search instance has no home. The nvidia-devops capstone says a layout is valid when slices sum to at most 7 and memory fits. The planner shows that rule is necessary and not sufficient.
+The SM slices sum to 49, which would be 7 GPUs with perfect packing. The memory slices sum to 54, which is also 7 GPUs. The planner needs 8, though, and with 7 one search instance has no home. The nvidia-devops capstone says a layout is valid when the slices sum to at most 7 and the memory fits. The planner shows that this rule is necessary and not sufficient. Passing it does not prove that the layout can be built.
 
-The planner is a first-fit-decreasing heuristic. It found 8 GPUs and the lower bound is 7, and this chapter does not prove 8 optimal.
+The planner uses a first-fit-decreasing heuristic. That is a simple rule that places the biggest items first and takes the first place that fits. It found 8 GPUs, and the lower bound is 7. This chapter does not prove that 8 is the best possible answer.
 
 ```mermaid
 flowchart LR
@@ -180,6 +184,8 @@ flowchart LR
     G6 --> S["spare, held by the platform"]
 ```
 
+Read the table below as the view from the node. It lists how each GPU is cut and what each one offers.
+
 | GPUs | Layout | Slices offered | Stranded on each GPU |
 |---|---|---|---|
 | 0 | 7g.80gb | 1 whole GPU | none |
@@ -188,9 +194,9 @@ flowchart LR
 | 4 and 5 | 2g.20gb x 3 + 1g.10gb | 6 of 2g, 2 of 1g | 1 memory slice |
 | 6 and 7 | 1g.10gb x 7 | 14 of 1g | 1 memory slice |
 
-The totals offered by the node are one 7g.80gb, two 4g.40gb, four 3g.40gb, six 2g.20gb and sixteen 1g.10gb. Search needs ten of the sixteen small slices. The other six are headroom, and the Kueue design in section 5 holds them in a shared queue.
+The totals offered by the node are one 7g.80gb, two 4g.40gb, four 3g.40gb, six 2g.20gb and sixteen 1g.10gb. Search needs ten of the sixteen small slices. The other six are headroom. The Kueue design in section 5 holds them in a shared queue, so any tenant that needs them can borrow them.
 
-The same layout as a mig-parted config is generated by the planner function `mig_parted_yaml`, compared by a test, and accepted by the upstream parser of mig-parted v0.15.1. The format follows the GPU Operator guide. The `all-disabled` entry lets a node return to whole GPUs with one label change.
+The planner can also write the same layout as a mig-parted config. It does this with the function `mig_parted_yaml`. A test compares the output with the checked-in file, and the upstream parser of mig-parted v0.15.1 accepts it. The format follows the GPU Operator guide. The `all-disabled` entry lets a node return to whole GPUs with one label change, which is useful when you need the node back for training.
 
 ```yaml
 version: v1
@@ -224,7 +230,7 @@ mig-configs:
         "1g.10gb": 7
 ```
 
-In the GPU Operator the text lives inside a ConfigMap, and NVIDIA says the key must be named `config.yaml`. A test checks that it equals the standalone file.
+In the GPU Operator, the same text lives inside a ConfigMap. A ConfigMap is a Kubernetes object that holds plain configuration text. NVIDIA says the key must be named `config.yaml`. A test checks that the ConfigMap's text equals the standalone file, so the two copies cannot drift apart.
 
 ```yaml
 apiVersion: v1
@@ -265,25 +271,24 @@ data:
             "1g.10gb": 7
 ```
 
-From GPU Operator v26.3.0 MIG Manager can also generate per-node configs such as `all-1g.10gb` and `all-balanced` itself. Custom entries are for layouts like this one.
+From GPU Operator v26.3.0, MIG Manager can also generate per-node configs by itself, such as `all-1g.10gb` and `all-balanced`. Custom entries are for layouts like this one.
 
-The node advertises different resources by strategy. With `single`, every MIG device appears as `nvidia.com/gpu` and all GPUs must use MIG with one profile, otherwise GPU Feature Discovery labels the product `-MIG-INVALID`. With `mixed`, each profile is its own resource, and this five-profile node needs it.
+The node advertises its MIG devices differently depending on the strategy. A strategy is the rule for naming the resources. With `single`, every MIG device appears as `nvidia.com/gpu`, and all GPUs must use MIG with one profile. Otherwise GPU Feature Discovery labels the product `-MIG-INVALID`. With `mixed`, each profile is its own resource, and this five-profile node needs it.
 
-GKE differs. It partitions per node pool with `gpu-partition-size`, every GPU in the pool gets the same size, and nodes carry the label `cloud.google.com/gke-gpu-partition-size`. GKE's H100 80 GB list omits 4g.40gb, so this layout cannot be built there as written. GKE also says splitting H100 and newer GPUs rules out GPUDirect, and that it is not recommended for untrusted workloads.
+GKE does this differently. It partitions per node pool, using `gpu-partition-size`, so every GPU in one pool gets the same size. Nodes carry the label `cloud.google.com/gke-gpu-partition-size`. A node pool is a group of nodes with the same settings, and GKE manages them as one unit. GKE's H100 80 GB list omits 4g.40gb, so this layout cannot be built there as written. GKE also says that splitting H100 and newer GPUs rules out GPUDirect, which is NVIDIA's direct path for moving data between GPUs and other devices. GKE says the feature is not recommended for untrusted workloads.
 
-**Decision rule:** Plan layouts with a tool that knows start positions, keep one or two layouts per node pool, and confirm the placements with `nvidia-smi mig -lgipp` on the real hardware.
+**Decision rule:** Plan layouts with a tool that knows start positions. Keep one or two layouts per node pool, and confirm the placements with `nvidia-smi mig -lgipp` on the real hardware.
 
 **In one minute:** Slice arithmetic gives a lower bound, and geometry adds loss. The tenant mix needs 8 H100s, one more than the SM slices suggest. The mig-parted config is generated from the plan and parsed by the upstream code.
 
 ---
-
 ## 4. Running the layout: reconfiguration, pending pods and fragmentation
 
-On Thursday the platform team relabels node 3 from "balanced" to "all-3g.40gb" for a new tenant. MIG Manager starts and the pods on the node stop. The batch team's run dies at hour nine. The change was correct, and the damage came from treating a layout change as a label edit.
+On Thursday the platform team relabels node 3 from "balanced" to "all-3g.40gb" for a new tenant. The label change looks like a small edit. MIG Manager starts, and the pods on the node stop. The batch team's run dies at hour nine. The change itself was correct. The damage came from treating a layout change as a label edit, when it is really a maintenance task.
 
-Applying a layout is disruptive. The GPU Operator guide says MIG Manager sets `nvidia.com/mig.config.state`, terminates all GPU pods on the node, and moves the state from `pending` to `success`, or to `rebooting` with the reboot option. A daemon holding a driver handle, such as DCGM or NVSM, can also block enabling MIG with "In use by another client", and the MIG User Guide's remedy is to stop it first. The BCM administration manual adds that only one MIG management tool may configure a node at a time, whether that is BCM, the DGX service or the GPU Operator's MIG Manager.
+Applying a layout is disruptive, and you should plan for that before you start. The GPU Operator guide says MIG Manager sets `nvidia.com/mig.config.state`, terminates all GPU pods on the node, and moves the state from `pending` to `success`. With the reboot option, the state can go to `rebooting` instead. A daemon that holds a driver handle can also block enabling MIG, with the message "In use by another client". DCGM and NVSM are examples of such daemons. The MIG User Guide's remedy is to stop that daemon first. The BCM administration manual adds one more rule: only one MIG management tool may configure a node at a time. That tool can be BCM, the DGX service or the GPU Operator's MIG Manager, but never two of them at once.
 
-Six failure modes of a sliced fleet are worth knowing. The table lists the symptom, the cause and the first check.
+A sliced fleet has six common failure modes, and they are worth knowing before the first page arrives. The table lists the symptom you see, the likely cause and the first check to run.
 
 | Symptom | Cause | First check |
 |---|---|---|
@@ -294,36 +299,41 @@ Six failure modes of a sliced fleet are worth knowing. The table lists the sympt
 | Layout lost after reboot | MIG devices are not persistent, and on Hopper the mode is not either | Confirm MIG Manager reapplied the config and the state label is `success` |
 | Workload admitted by Kueue but Pending in the scheduler | Quota is larger than what the node really offers | Compare ClusterQueue quota with node allocatable |
 
-Stranded slices come in two kinds. The first is built into the layout: two 3g profiles always strand one SM slice and seven 1g profiles always strand one memory slice. The second comes from history, because the MIG User Guide says that fragmentation occurs as instances are created and destroyed.
+Consider what a reconfiguration looks like from the tenants' side. A notebook user sees a session drop. A batch job that was halfway through a run is killed, and its checkpoint, if it has one, is the only thing left. A chat service may lose a replica and need time to recover. None of these is a bug in MIG. They are the cost of changing the shape of a shared machine. The job of the platform is to plan that cost, announce it, and schedule it at a quiet time.
 
-The planner shows the second kind with instances that cannot move. With two 1g.10gb instances at starts 0 and 4, six memory slices are free, but 4g.40gb needs start 0 and 3g.40gb needs 0 or 4. Only a 2g.20gb still starts, so fragmentation is 0.667. A planner that may move instances finds room for the 3g.40gb. That gap is the difference between paper and a live node, and tests cover both.
+Stranded slices come in two kinds, and the difference matters. The first kind is built into the layout. Two 3g profiles always strand one SM slice, and seven 1g profiles always strand one memory slice. You can see that coming on paper. The second kind comes from history. The MIG User Guide says that fragmentation occurs as instances are created and destroyed over time. A node that looks fine on its first day can get stuck later.
 
-One process sees little. CUDA enumerates one compute instance per GPU instance and at most 64 MIG instances across all GPUs, so a script expecting eight MIG devices will not get them. A pod needing two slices also stays Pending if no single node supplies both.
+The planner shows the second kind with instances that cannot move. Suppose two 1g.10gb instances sit at starts 0 and 4. Six memory slices are free, but a 4g.40gb needs start 0, and a 3g.40gb needs 0 or 4. Both are blocked. Only a 2g.20gb still starts, so fragmentation is 0.667 in this example. A planner that may move the existing instances finds room for the 3g.40gb. That gap is the difference between a layout on paper and a live node, and the tests cover both cases.
 
-A reconfiguration window needs a procedure. This one is derived from the documented behaviour, and NVIDIA does not publish it as a procedure.
+One process sees only a little of the picture. CUDA lists one compute instance per GPU instance, and it lists at most 64 MIG instances across all GPUs. So a script that expects eight MIG devices may not get them, even when the node has them. The same sort of surprise applies to pods. A pod that needs two slices stays Pending if no single node supplies both of them.
 
-1. Cordon the node and let its Kueue workloads finish or be preempted.
-2. Lower the ClusterQueue quotas for the affected profiles, so Kueue stops admitting to slices about to disappear.
-3. Label the node with the new `nvidia.com/mig.config` and wait for `success`.
-4. Check allocatable with `kubectl`, restore the quotas to match, and uncordon.
+Think of a reconfiguration window as a short maintenance shift. Before it starts, you reduce the work that can arrive. During it, the node is empty of GPU pods and the layout changes. After it, you check the result and reopen the quota. The order matters, because the quota must never promise more slices than the node currently offers. That is the reason the procedure moves the quota first and the layout second.
 
-**Decision rule:** Treat every layout change as a drained-node maintenance task, move the quota first and the layout second, and keep the number of live layouts small.
+A reconfiguration window needs a written procedure. The steps below are derived from the documented behaviour. NVIDIA does not publish them as a procedure, so treat them as a draft to adapt to your site.
 
-**In one minute:** Applying a MIG config stops the GPU pods on the node, and monitoring agents can block it. Slices are lost in two ways: by layout, which is fixed by design, and by history, which is fixed by discipline. Most Pending pods trace back to shape, strategy or quota disagreeing with the node.
+1. Cordon the node, which means marking it so that no new pods land there, and let its Kueue workloads finish or be preempted.
+2. Lower the ClusterQueue quotas for the affected profiles, so Kueue stops admitting work to slices that are about to disappear.
+3. Label the node with the new `nvidia.com/mig.config` value, and wait for the state to read `success`.
+4. Check the allocatable counts with `kubectl`, restore the quotas to match them, and uncordon the node.
+
+**Decision rule:** Treat every layout change as a drained-node maintenance task. Move the quota first and the layout second, and keep the number of live layouts small.
+
+**In one minute:** Applying a MIG config stops the GPU pods on the node, and monitoring agents can block it. Slices are lost in two ways. One is the layout, which is fixed by design. The other is history, which is fixed by discipline. Most Pending pods trace back to shape, strategy or quota disagreeing with the node.
 
 ---
-
 ## 5. Quotas and chargeback per slice
 
-At quarter end the finance partner asks which team used how much GPU, and why two teams with the same pod count have very different invoices. The platform has pod counts and no way to price a 1g slice against a 3g slice. A slice becomes money only after someone defines a price.
+At quarter end, the finance partner asks which team used how much GPU. Two teams with the same pod count have very different invoices, and nobody can explain why. The platform has pod counts, but no way to price a 1g slice against a 3g slice. A slice becomes money only after someone defines a price for it. This section covers the quota side first, then the price.
 
-Quotas first. Kueue counts extended resources like any other. A ClusterQueue sets `nominalQuota`, `borrowingLimit` and `lendingLimit` per resource and per ResourceFlavor, and a flavor maps to nodes through `nodeLabels`. The label `nvidia.com/mig.config` is a good key, because it names the layout the node has.
+To see why the price matters, imagine two tenants that each run a model for the same number of hours. One uses a 1g.10gb slice and the other uses a 3g.40gb slice. A pod count says they are equal, and an invoice based on pods charges them the same. Yet one has taken far more of the card. A price per slice, built from the share of the card each slice takes, makes the invoice match the use.
 
-The Kueue source refuses a pod that requests a resource the ClusterQueue does not cover, with the reason "resource unavailable in ClusterQueue". A tenant queue must therefore list `cpu` and `memory` as well as its MIG resource. Listing only one MIG resource also pins a tenant to that profile.
+Quotas come first. Kueue counts extended resources, which are custom resources such as a MIG slice, the same way it counts CPU and memory. A ClusterQueue sets `nominalQuota`, `borrowingLimit` and `lendingLimit` for each resource and each ResourceFlavor. A ResourceFlavor describes a kind of node, and it maps to nodes through `nodeLabels`. The label `nvidia.com/mig.config` is a good key, because it names the layout that the node has.
 
-The design has one ClusterQueue per tenant plus a queue holding the six spare 1g.10gb slices, all in one cohort. Each tenant holds its own profile and lends nothing. The spare queue lends its slices and search may borrow up to six, so no tenant's reserved slices can be taken.
+The Kueue source refuses a pod that requests a resource the ClusterQueue does not cover. The reason it gives is "resource unavailable in ClusterQueue". A tenant queue must therefore list `cpu` and `memory` as well as its MIG resource, or the pod is refused. Listing only one MIG resource also pins a tenant to that profile. That may be exactly what you want, or it may not.
 
-The file is validated against the Kueue v0.20.5 CRDs with `check_crd_yaml.py`, which rejects unknown fields. The current API is `v1beta2`. It names the cohort field `cohortName`, and the checker rejects the older field names `flavorQuotas` and `cohort`.
+The design has one ClusterQueue per tenant, plus one more queue that holds the six spare 1g.10gb slices. All of them sit in one cohort, which is a group of queues that can lend to each other. Each tenant holds its own profile and lends nothing. The spare queue lends its slices, and search may borrow up to six of them. The loan covers only the spare slices, so no tenant's reserved slices can be taken.
+
+A CRD, or custom resource definition, is the schema that tells Kubernetes which fields an object may have. The file is checked against the Kueue v0.20.5 CRDs with `check_crd_yaml.py`, and the checker rejects unknown fields. The current API is `v1beta2`. In that API the cohort field is `cohortName`. The checker also rejects the older field names `flavorQuotas` and `cohort`, so a file copied from an old example fails before it reaches the cluster.
 
 ```yaml
 # Kueue objects for the MIG tenant mix (Chapter 19.8).
@@ -503,7 +513,7 @@ spec:
   clusterQueue: cq-batch
 ```
 
-A native ResourceQuota is a second fence, enforced by the API server at pod creation. Kubernetes accepts only the `requests.` prefix for extended resources. The file gives each namespace its ClusterQueue count, plus the six borrowable slices for search, and a test checks the agreement.
+A native ResourceQuota is a second fence. The API server enforces it at pod creation, and it is a separate check that does not depend on Kueue. Kubernetes accepts only the `requests.` prefix for extended resources, so the quota names must start that way. The file gives each namespace its ClusterQueue count, plus the six borrowable slices for search. A test checks that the two agree.
 
 ```yaml
 # Namespaces and native ResourceQuota guard for the MIG tenants (Chapter 19.8).
@@ -595,7 +605,7 @@ metadata:
   name: gpu-platform
 ```
 
-A workload asks for a slice by name, and a queue label hands admission to Kueue. The Job below asks for one 3g.40gb slice for the chat tenant.
+A workload asks for a slice by name, and a queue label hands admission to Kueue. The Job below asks for one 3g.40gb slice for the chat tenant. The pod asks for the slice in its limits, and Kueue decides when it may start.
 
 ```yaml
 # A Kueue-managed Job that asks for one 3g.40gb slice (Chapter 19.8).
@@ -625,13 +635,15 @@ spec:
               nvidia.com/mig-3g.40gb: 1
 ```
 
-Now the price. The rule must be additive, so shares on one GPU never exceed the GPU. This is a design choice, not NVIDIA's: a slice's weight is the average of its memory share and SM share. A 7g.80gb slice weighs 1, a 3g.40gb slice weighs 0.4643 and a 4g.40gb slice weighs 0.5357, so those two together make one GPU.
+Pricing is also a policy decision. The arithmetic is simple once the weights are set, but the weights reflect what the platform wants to encourage. A team that values small slices can lower their weight. A team that wants to discourage fragmentation can raise the price of awkward shapes. The chapter keeps the rule simple on purpose, so that the discussion about policy stays visible.
 
-Memory alone would charge a 3g.40gb and a 4g.40gb the same, although the 4g tenant gets a third more SMs. SM alone would undercharge the 1g.20gb slice. Teams with strong views can change one function.
+Now the price. The pricing rule has to be additive, so that the shares of one GPU never add up to more than that GPU. This is a design choice of this chapter, not an NVIDIA rule. A slice's weight is the average of its memory share and its SM share. A 7g.80gb slice weighs 1. A 3g.40gb slice weighs 0.4643, and a 4g.40gb slice weighs 0.5357. Those two together make one GPU.
 
-Each GPU's cost then splits three ways. Tenants pay for reserved slices. Idle cost is slices nobody holds. Layout loss is the share no profile can use, such as the SM slice left beside two 3g instances. The parts add up to the node cost, and a test checks that.
+Memory alone would charge a 3g.40gb and a 4g.40gb the same amount, although the 4g tenant gets a third more SMs. SM alone would undercharge the 1g.20gb slice, which holds a larger share of memory than its compute suggests. Teams with strong views can change one function, and the invariant test will still check the additive rule.
 
-The worked example uses a placeholder price of 4.00 USD per GPU-hour, which is illustrative and not a quote, over 730 hours. The 8-GPU node costs 23,360 USD per month. The values come from `python3 code/part19/c08_finops.py`.
+Each GPU's cost then splits three ways, and the split is the heart of the chargeback. Tenants pay for the slices they reserve. Idle cost is the price of slices that nobody holds. Layout loss is the share that no profile can use, such as the SM slice left beside two 3g instances. The three parts add up to the node cost, and a test checks that they do.
+
+The worked example uses a placeholder price of 4.00 USD per GPU-hour. The price is illustrative, not a quote, and the calculation runs over 730 hours in a month. At that price, the 8-GPU node costs 23,360 USD per month. The values come from `python3 code/part19/c08_finops.py`, so you can change the price and watch the table move.
 
 | Line | Monthly cost in USD | How it arises |
 |---|---|---|
@@ -643,48 +655,50 @@ The worked example uses a placeholder price of 4.00 USD per GPU-hour, which is i
 | Idle slices | 2,346.43 | the 6 spare slices of 1g.10gb |
 | Layout loss | 938.57 | one SM slice on GPU 3, one memory slice on GPUs 4 to 7 |
 
-Under allocated chargeback the platform absorbs the idle line. Under fully loaded chargeback idle cost is spread in proportion to what tenants pay, and the calculator offers both. Layout loss stays with the platform, because no tenant chose it. Production Kubernetes chapter 12 makes the point that quotas are what let tenants share a cluster safely.
+Two chargeback styles use the same table in different ways. Under allocated chargeback, the platform absorbs the idle line, and tenants pay only for what they reserve. Under fully loaded chargeback, idle cost is spread across tenants in proportion to what each one pays. The calculator offers both. Layout loss stays with the platform in either style, because no tenant chose it. Production Kubernetes chapter 12 makes the point that quotas are what let tenants share a cluster safely.
 
-A reservation is not use. A slice at 1.857 USD per hour that is busy a quarter of the time costs 7.43 USD per busy hour, and the calculator computes that from the utilisation of section 7. Chapter 19.1 shows the Slurm view, where accounting tracks GRES and fairshare falls as an account consumes it.
+A reservation is not use, and the difference shows up on the invoice. A slice at 1.857 USD per hour that is busy a quarter of the time costs 7.43 USD per busy hour. The calculator computes that figure from the utilisation in section 7. Chapter 19.1 shows the Slurm view of the same idea, where accounting tracks GRES and fairshare falls as an account consumes it.
 
 **Decision rule:** Count quota in slices per tenant with Kueue, mirror it in a native ResourceQuota, charge by a published weight per profile, and show idle cost and layout loss as separate lines.
 
 **In one minute:** A slice becomes billable once a weight per profile exists. The tenant mix on one node costs 23,360 USD per month at the placeholder price, of which 3,285 USD is idle or lost to geometry. Fully loaded chargeback is a policy on top of the same numbers.
 
 ---
-
 ## 6. What MIG isolates and what it does not
 
-A security reviewer asks whether tenant A can read tenant B's memory on the same H100. The honest answer depends on which sentence of the vendor documentation you rely on, and on what else the stack shares.
+Security reviews often go wrong in one of two ways. Some reviewers accept a single vendor sentence as the whole answer, and stop reading. Others reject the whole design because one sentence is unclear. A better review reads each documented control, names what it covers, and lists the gaps for the platform team to fill. The rest of this section follows that method.
 
-NVIDIA's guide says each instance has separate and isolated paths through the memory system. Crossbar ports, L2 cache banks, memory controllers and DRAM buses are assigned uniquely, giving predictable throughput even when other instances thrash their caches. It also describes fault isolation and says one client cannot impact the work of others. Its concurrency table marks memory protection, bandwidth QoS and error isolation as yes for MIG.
+A security reviewer asks whether tenant A can read tenant B's memory on the same H100. The honest answer depends on which sentence of the vendor documentation you rely on, and on what else the stack shares. Start with what the vendor documents, and then list what the documents leave out.
 
-Documented limits and controls:
+NVIDIA's guide says each instance has separate and isolated paths through the memory system. The crossbar, which is the switch that links compute to memory, together with the L2 cache banks, memory controllers and DRAM buses, is assigned to instances uniquely. That gives predictable throughput, even when other instances thrash their caches. Thrashing means the caches are constantly evicting one another's data. The guide also describes fault isolation and says one client cannot impact the work of others. Its concurrency table marks memory protection, bandwidth QoS and error isolation as yes for MIG.
 
-- Toggling MIG mode needs `CAP_SYS_ADMIN`, and creating instances needs the `mig-config` capability, which root holds and which can be delegated.
-- Peer-to-peer between instances on different GPUs and CUDA IPC across GPU instances are unsupported. The concurrency table lists cross-partition interop as "Limited IPC".
-- GPUDirect RDMA works from GPU instances. Graphics APIs work only on `+gfx` profiles of some Blackwell cards.
-- Profiling of shared GPU resources is unsupported.
+The guide also documents limits and controls, and they are the part to read most carefully.
 
-What stays shared is inferred, since the MIG User Guide is silent. One driver serves all instances, so a bad driver update is node-wide. The board has one power budget and one firmware, and a GPU reset affects the whole GPU. Chapter 11.24 lists the same shared items.
+- Who can change the layout? Toggling MIG mode needs `CAP_SYS_ADMIN`, which is a powerful Linux capability. Creating instances needs the `mig-config` capability, which root holds and which can be delegated to others.
+- Can instances talk directly? Peer-to-peer transfers between instances on different GPUs are unsupported, and so is CUDA IPC across GPU instances. The concurrency table lists cross-partition interop as "Limited IPC".
+- Which features work inside an instance? GPUDirect RDMA works from GPU instances. Graphics APIs work only on `+gfx` profiles of some Blackwell cards.
+- Can you profile the shared parts? Profiling of shared GPU resources is unsupported.
 
-Kubernetes isolation is outside MIG. Namespaces, RBAC, network policies and storage credentials keep tenant A from tenant B's secrets. Production Kubernetes chapter 12 separates soft multitenancy, where tenants share some trust, from hard multitenancy, where they are treated as adversaries, and notes that requests and limits are weaker than a hypervisor.
+What stays shared is an inference, because the MIG User Guide is silent on it. One driver serves all instances, so a bad driver update reaches every tenant on the node. The board has one power budget and one firmware image, and a GPU reset affects the whole GPU. Chapter 11.24 lists the same shared items.
 
-GKE's page says multi-instance GPUs are not recommended for untrusted workloads. For adversarial tenants, MIG is one layer, to combine with Chapter 18.5 and separate node pools. Older book advice that NCCL does not work with MIG is superseded by the MIG User Guide, which now gives experimental support from NCCL 2.31 with conditions.
+Kubernetes isolation is a separate layer, and MIG does not provide it. Namespaces, RBAC, network policies and storage credentials keep tenant A away from tenant B's secrets. RBAC is the role-based access control that decides who may do what. Production Kubernetes chapter 12 separates soft multitenancy, where tenants share some trust, from hard multitenancy, where they are treated as adversaries. It also notes that requests and limits are weaker than a hypervisor, which is the layer that separates virtual machines.
+
+GKE's page says multi-instance GPUs are not recommended for untrusted workloads. For adversarial tenants, MIG is one layer among several. Combine it with the controls in Chapter 18.5, and keep such tenants on separate node pools. The older advice in AI Systems Performance Engineering says NCCL does not work with MIG. The MIG User Guide supersedes that advice, and it now gives experimental support from NCCL 2.31 with conditions.
 
 **Decision rule:** Tell reviewers that MIG isolates the SMs, memory paths and errors of each instance, and that the driver, board, host and Kubernetes layers are separate controls that you must provide.
 
 **In one minute:** NVIDIA documents separate memory paths, fault isolation and quality of service per instance. It does not document MIG as a replacement for tenant controls elsewhere. Providers such as GKE add their own warning for untrusted workloads.
 
 ---
-
 ## 7. Monitoring each instance
 
-On Friday the notebooks tenant reports slow cells. The node dashboard shows the GPU 40 percent busy and the memory looks fine. The engineer needs to know whether that tenant's slice is the busy one, and the GPU-level view cannot say.
+Per-instance monitoring is what turns a vague complaint into a short investigation. Start with the instance that belongs to the complaining tenant, check its activity and its memory, and compare them with the node total. If the instance is quiet and the node is busy, the cause is a neighbour. If the instance is busy and its memory is nearly full, the cause is the slice itself, and the fix may be a larger profile.
 
-On Ampere, NVML and `nvidia-smi` do not attribute utilisation to MIG devices and show N/A. The MIG User Guide recommends DCGM, v3 or later. GKE says GPU utilisation metrics such as `duty_cycle` are not available for multi-instance GPUs.
+On Friday the notebooks tenant reports slow cells. The node dashboard shows the GPU 40 percent busy, and the memory looks fine. The engineer needs to know whether the notebooks slice is the busy one, or whether the work comes from a neighbour. The GPU-level view cannot answer that question, because it blends all the slices into one number.
 
-The DCGM exporter 4.9.0 repository documents what is reported per instance. On a MIG GPU, fields DCGM declares at GPU level are read once per GPU without `GPU_I_ID`, `GPU_I_PROFILE` or `GPU_CI_ID` labels. Fields declared at instance level carry the MIG labels. In the default metric file they are:
+On Ampere, NVML and `nvidia-smi` do not attribute utilisation to MIG devices, and they show N/A instead. NVML is the NVIDIA library that those tools are built on. The MIG User Guide recommends DCGM, version 3 or later, for per-instance numbers. GKE says that GPU utilisation metrics such as `duty_cycle` are not available for multi-instance GPUs.
+
+The DCGM exporter 4.9.0 repository documents what is reported per instance. On a MIG GPU, fields that DCGM declares at GPU level are read once per GPU, and they carry no `GPU_I_ID`, `GPU_I_PROFILE` or `GPU_CI_ID` labels. Fields declared at instance level carry those MIG labels. The table below lists the ones that matter here, with the level at which each one is reported.
 
 | Metric | What it tells you | Level on a MIG GPU |
 |---|---|---|
@@ -696,13 +710,13 @@ The DCGM exporter 4.9.0 repository documents what is reported per instance. On a
 | `DCGM_FI_DEV_BOARD_POWER_WATTS` | Board power draw | Per physical GPU |
 | `DCGM_FI_DEV_GPU_TEMP_CELSIUS` | GPU temperature | Per physical GPU |
 
-Two warnings. Version 4.9.0 names metrics with units, and its repository tells users to update dashboards to the new names, so a panel that goes blank after an upgrade is likely a rename. Power and temperature are per physical GPU, so you cannot bill or alert on power for one tenant, and this chapter invents no per-instance energy figure.
+Two warnings come with this table. First, version 4.9.0 names metrics with their units, and its repository tells users to update dashboards to the new names. A panel that goes blank after an upgrade is therefore likely a rename, not a broken GPU. Second, power and temperature are per physical GPU. You cannot bill or alert on power for one tenant from these fields, and this chapter does not invent a per-instance energy figure.
 
-Per-instance series carry `gpu`, `GPU_I_ID` and `GPU_I_PROFILE`, and with Kubernetes enrichment `namespace`, `pod` and `container`. The HPC job mapping uses the GPU instance ID, not the `Device N` ordinal that `nvidia-smi -L` prints.
+Each per-instance series carries the `gpu`, `GPU_I_ID` and `GPU_I_PROFILE` labels. With Kubernetes enrichment, it also carries `namespace`, `pod` and `container`, so you can point a panel at one tenant's pod. Pick the right identifier when you map a job to a GPU. The HPC job mapping uses the GPU instance ID, not the `Device N` ordinal that `nvidia-smi -L` prints, because the ordinal names a physical device and not an instance.
 
-The platform adds a second family. kube-state-metrics exports allocatable and requests per resource and sanitises the name, so `nvidia.com/mig-1g.10gb` appears as `nvidia_com_mig_1g_10gb`. Kueue exports reservation, nominal quota and pending workloads per queue, and the per-resource ones need `metrics.enableClusterQueueResources`.
+The platform adds a second family of metrics. kube-state-metrics exports allocatable and requested amounts per resource, and it sanitises the name, so `nvidia.com/mig-1g.10gb` appears as `nvidia_com_mig_1g_10gb`. Kueue exports reservation, nominal quota and pending workloads per queue. The per-resource ones need `metrics.enableClusterQueueResources` turned on, so check that option before you build the panels.
 
-The dashboard has ten panels. Every expression was parsed with `promtool`, which is the only check run on them.
+The dashboard has ten panels. Each expression was parsed with `promtool`, which is the only check that ran on them. Parsing catches syntax errors, but it cannot tell you whether a metric returns data, so read the panels with that gap in mind.
 
 | Panel | Question it answers | Source metrics |
 |---|---|---|
@@ -717,31 +731,32 @@ The dashboard has ten panels. Every expression was parsed with `promtool`, which
 | Weighted share | Who is borrowing | Kueue weighted share |
 | Idle slice cost | Monthly price of unreserved quota | Kueue plus price rule |
 
-The price rule is a Prometheus rules file with one constant series per profile, labelled by `resource`, so cost panels join reservations to price. The file holds three alerts: an instance under 5 percent graphics activity for six hours, an instance above 90 percent of its memory for ten minutes, and workloads pending while MIG slices are free. The third is crude on purpose, because no metric says which profile a pending workload needs.
+The price rule is a Prometheus rules file with one constant series per profile, labelled by `resource`. That lets the cost panels join each reservation to its price. A constant series is a fixed value that never changes, which makes it a convenient price list. The file holds three alerts. The first fires when an instance stays under 5 percent graphics activity for six hours. The second fires when an instance stays above 90 percent of its memory for ten minutes. The third fires when workloads are pending while MIG slices are free. The third alert is crude on purpose, because no metric says which profile a pending workload needs.
 
-**Decision rule:** Monitor GPU-level health per physical GPU and activity and memory per instance, read the exporter version's metric names from its own file, and price slices in a rules file that a test regenerates.
+**Decision rule:** Monitor GPU-level health per physical GPU, and activity and memory per instance. Read the exporter version's metric names from its own file, and price slices in a rules file that a test regenerates.
 
 **In one minute:** `nvidia-smi` cannot show per-instance utilisation on Ampere, and GKE hides it too. DCGM exporter 4.9.0 reports memory, graphics, tensor and memory-interface activity per instance, and power and temperature per GPU. Kueue and kube-state-metrics add the quota and allocation views.
 
 ---
-
 ## 8. Hands-on lab
 
-The first half of the lab runs on any laptop and was run here. The second half needs a MIG-capable node and was not run. Both use the same files.
+Work through the lab in order. Each step leaves behind a result that the next step relies on, so a failure early on makes later steps meaningless. Keep a short log of what you ran and what you saw, because the record is part of the lesson.
+
+Picture a laptop with no GPU and an afternoon to spare. That is enough to check most of this chapter, and the checks catch the mistakes that cost the most later. The first half of the lab runs on any laptop. The second half needs a MIG-capable node, which this chapter's author did not have while writing. Both halves use the same files.
 
 ### What was run here and what was not
 
-Run here, on macOS arm64 with no GPU: the tests, the planner, the cost calculator, the upstream mig-parted parser, kubeconform, the Kueue CRD check and promtool. Not run: MIG mode, instance creation, the GPU Operator, Kueue admission and DCGM scraping. Expected shapes below come from NVIDIA documentation, not from a real node.
+A reader who jumps straight to the lab wants to know which results are real. On macOS arm64 with no GPU, these ran: the tests, the planner, the cost calculator, the upstream mig-parted parser, kubeconform, the Kueue CRD check and promtool. These did not run: MIG mode, instance creation, the GPU Operator, Kueue admission and DCGM scraping. The expected shapes below come from NVIDIA documentation, not from a real node.
 
 ### Step 1: set up the validators (run here)
 
-Clone Kueue at v0.20.5 and mig-parted at v0.15.1. Copy `code/part19/c08_validate_mig_parted.go.txt` to `cmd/c08validate/main.go` in the mig-parted checkout and build it with `GOFLAGS=-mod=vendor go build -o c08validate ./cmd/c08validate`. It calls the upstream `Spec` parser. Set `KUEUE_CRDS` to `config/components/crd/bases` in the Kueue checkout and `MIGPARTED_VALIDATOR` to the binary.
+Start by building the two validators that the checks need. Clone Kueue at v0.20.5 and mig-parted at v0.15.1. Copy `code/part19/c08_validate_mig_parted.go.txt` to `cmd/c08validate/main.go` in the mig-parted checkout. Then build it with `GOFLAGS=-mod=vendor go build -o c08validate ./cmd/c08validate`. The validator calls the upstream `Spec` parser, so it judges the config the way mig-parted itself does. Last, set `KUEUE_CRDS` to `config/components/crd/bases` in the Kueue checkout, and set `MIGPARTED_VALIDATOR` to the built binary.
 
 What to record: the two tags, and the commit hashes. Here they were `v0.20.5` at `7e71578` and `v0.15.1` at `a24171d`.
 
 ### Step 2: run the local checks (run here)
 
-The script below runs all six local checks in order. It exits at the first failure.
+The script below runs all six local checks in order, and it stops at the first failure. Read the numbered comments as a list of the checks themselves.
 
 ```bash
 #!/usr/bin/env bash
@@ -780,19 +795,19 @@ python3 -I ../../tools/check_crd_yaml.py \
 promtool check rules c08_mig_rules.yml
 ```
 
-Expected result: 68 tests pass, the planner prints 8 GPUs for the tenant mix and shows the shortfall with 7, the cost table matches section 5, the mig-parted file is accepted, and kubeconform, the CRD check and promtool report no problems. In the run for this chapter, kubeconform reported 13 resources valid, the CRD check reported 12 resources and 0 problems, and promtool found 9 rules.
+Expected result: 68 tests pass. The planner prints 8 GPUs for the tenant mix and shows the shortfall with 7. The cost table matches section 5. The mig-parted file is accepted, and kubeconform, the CRD check and promtool report no problems. In the run for this chapter, kubeconform reported 13 resources valid, the CRD check reported 12 resources and 0 problems, and promtool found 9 rules.
 
 What to record: the test count and the three validator summaries.
 
 ### Step 3: break something on purpose (run here)
 
-Rename the first `cohortName` in `c08_kueue_mig.yaml` to `cohort`. The CRD check reports "Additional properties are not allowed ('cohort' was unexpected)". Restore it. Then add `"4g.40gb": 2` to the GPU 0 entry of `c08_mig_parted_config.yaml`. The upstream parser still prints OK, because it checks structure and name format and not geometry, but three tests fail: the generator comparison, the ConfigMap comparison and the per-GPU feasibility check. Restore the file.
+This step proves that the checks can fail, and that the parser alone is not enough. Rename the first `cohortName` in `c08_kueue_mig.yaml` to `cohort`. The CRD check reports "Additional properties are not allowed ('cohort' was unexpected)". Restore the name. Next, add `"4g.40gb": 2` to the GPU 0 entry of `c08_mig_parted_config.yaml`. That layout is impossible, yet the upstream parser still prints OK. The parser checks structure and name format, not geometry. Three tests fail instead: the generator comparison, the ConfigMap comparison and the per-GPU feasibility check. Restore the file.
 
 What to record: the CRD message, the three failing test names, and the fact that the upstream parser accepted the impossible layout. This step proves that the checks can fail, and it shows why the planner is needed on top of the parser.
 
 ### Step 4: apply the layout (not run: needs a MIG-capable node)
 
-Install the GPU Operator with `--set mig.strategy=mixed`, as the NVIDIA guide shows. Install Kueue v0.20.5 and turn on `metrics.enableClusterQueueResources`. Then run the cluster script. Set `NODE` to an 8-GPU H100 node that you can drain.
+This step needs a MIG-capable node, so read it as a plan. Install the GPU Operator with `--set mig.strategy=mixed`, as the NVIDIA guide shows. Install Kueue v0.20.5 and turn on `metrics.enableClusterQueueResources`. Then run the cluster script. Set `NODE` to an 8-GPU H100 node that you are willing to drain, because the script empties it of GPU work.
 
 ```bash
 #!/usr/bin/env bash
@@ -826,38 +841,41 @@ kubectl get workloads -n team-chat
 kubectl get pods -n team-chat -o wide
 ```
 
-Expected shape of the output, taken from the GPU Operator guide and not produced here: right after the label step, the state label reads `pending`, and after MIG Manager finishes it reads `success`. The node then advertises `nvidia.com/mig-1g.10gb`, `nvidia.com/mig-2g.20gb`, `nvidia.com/mig-3g.40gb`, `nvidia.com/mig-4g.40gb` and `nvidia.com/mig-7g.80gb` as allocatable, with the counts 16, 6, 4, 2 and 1. `nvidia-smi -L` lists each GPU followed by its MIG devices.
+Expected shape of the output, taken from the GPU Operator guide and not produced here: right after the label step, the state label reads `pending`. After MIG Manager finishes, it reads `success`. The node then advertises its MIG resources as allocatable. Expect 16 of `nvidia.com/mig-1g.10gb` and 6 of `nvidia.com/mig-2g.20gb`. Expect 4 of `nvidia.com/mig-3g.40gb` and 2 of `nvidia.com/mig-4g.40gb`. Expect 1 of `nvidia.com/mig-7g.80gb`. The command `nvidia-smi -L` lists each GPU, followed by its MIG devices.
 
 What to record: the final value of `nvidia.com/mig.config.state`, the allocatable counts, and how long the node was unschedulable.
 
 ### Step 5: check that quota matches the node (not run)
 
-Compare the allocatable counts with the sum of nominal quotas. A test proves the files agree with the plan, so any difference means the hardware gave another layout. Run `nvidia-smi mig -lgi`, compare starts with the plan, and fix the layout before the quota.
+This step asks whether the quota and the hardware agree. Compare the allocatable counts with the sum of the nominal quotas. A test proves that the files agree with the plan, so any difference means the hardware produced a different layout from the one you planned. Run `nvidia-smi mig -lgi`, compare the start positions with the plan, and fix the layout before you touch the quota.
 
 What to record: the two number lists and any difference.
 
 ### Step 6: admit a workload and read the metrics (not run)
 
-After the Job in step 4 is admitted, `kubectl get workloads -n team-chat` should show it admitted by `cq-chat`. In Prometheus, `kueue_cluster_queue_resource_reservation` for `nvidia.com/mig-3g.40gb` should read 1 for that queue. The per-instance DCGM series for that pod should carry `GPU_I_PROFILE="3g.40gb"`. Import `c08_finops_mig_dashboard.json` into Grafana and load `c08_mig_rules.yml` into Prometheus.
+This step follows the Job from step 4 through the stack. After the Job is admitted, `kubectl get workloads -n team-chat` should show it admitted by `cq-chat`. In Prometheus, `kueue_cluster_queue_resource_reservation` for `nvidia.com/mig-3g.40gb` should read 1 for that queue. The per-instance DCGM series for that pod should carry `GPU_I_PROFILE="3g.40gb"`. Last, import `c08_finops_mig_dashboard.json` into Grafana and load `c08_mig_rules.yml` into Prometheus.
 
 What to record: the reservation value, the DCGM labels you actually saw, and any panel that returned no data. A panel with no data is most often a metric rename or a missing Kueue option.
 
 ### Step 7: GKE variant (not run)
 
-On GKE the layout is per node pool: one pool per profile with `gpu-partition-size`, selected by the label `cloud.google.com/gke-gpu-partition-size`. The GKE page shows pods requesting `nvidia.com/gpu` for a partition, so Kueue flavors would key off that label. No manifest was written because it could not be tested.
+This variant is for teams on GKE. On GKE the layout is set per node pool. Use one pool per profile, with `gpu-partition-size`, and select the pool by the label `cloud.google.com/gke-gpu-partition-size`. The GKE page shows pods requesting `nvidia.com/gpu` for a partition, so Kueue flavors would key off that label. No manifest was written here, because it could not be tested.
 
 What to record: the partition sizes available for your GPU type, since GKE's list for the H100 omits 4g.40gb.
 
 ---
-
 ## Exercises
 
-1. **Add a profile to the demand.** A tenant needs three `1g.20gb` slices. Predict the GPU count, then run the planner. *Solution sketch:* Add the line to `TENANT_MIX`. Each slice takes 2 memory slices and 1 SM slice, so memory grows by 6 and SM by 3. The planner treats `1g.20gb` as its own profile with starts 0, 2, 4 and 6.
-2. **Waste less.** Two GPUs hold seven `1g.10gb` and strand a memory slice each. Replace one with three `2g.20gb` and one `1g.10gb`. *Solution sketch:* Check `layout_stats`. SM slices become full, but search loses spare capacity, so the right answer depends on demand.
-3. **Change the cost rule.** Charge by memory share only. *Solution sketch:* Make `blended_weight` return `Fraction(mem_slices, 8)`. The 4g.40gb and 3g.40gb now cost the same. The invariant test still passes, which shows the rule is policy and not physics.
-4. **Alert on stranded geometry.** Fire when slices of one profile are free while another profile is short. *Solution sketch:* Use allocatable minus requests per `resource` and compare with Kueue pending workloads. Check with `promtool check rules`. No metric says which profile a pending workload needs, so add a label yourself.
-5. **Plan a reconfiguration.** Move node 3 to `all-3g.40gb`. *Solution sketch:* Follow the four steps in section 4. The config gives 2 slices per GPU, so quotas must say 16 for the node.
-6. **Argue for whole GPUs.** The batch tenant runs 7g.80gb two hours a night. *Solution sketch:* The weight is 1, so allocated cost equals a whole GPU. The difference is the other 22 hours, which a dedicated slice cannot lend. Use `cost_per_busy_hour` to show the gap.
+Work the exercises with a notebook beside you. Each answer should come from a run of the code, not from memory, and the solution sketches are there to check your reasoning after you have made a prediction.
+
+Picture a platform engineer who has just been asked to change the tenant plan for next quarter. The exercises below are the same kind of request, and each one builds on the code from this chapter.
+
+1. **Add a profile to the demand.** A tenant needs three `1g.20gb` slices. Predict the GPU count before you run anything, then run the planner. *Solution sketch:* add the line to `TENANT_MIX`. Each slice takes 2 memory slices and 1 SM slice. Three slices therefore add 6 memory slices and 3 SM slices. The planner treats `1g.20gb` as its own profile. Its legal starts are the even positions between 0 and 6.
+2. **Waste less.** Two GPUs each hold seven `1g.10gb` slices and strand a memory slice apiece. Try replacing one of those GPUs with three `2g.20gb` slices and one `1g.10gb` slice. Then decide which layout is better for the demand you expect. *Solution sketch:* check `layout_stats`. The SM slices become full, but search loses spare capacity, so the right answer depends on demand.
+3. **Change the cost rule.** Change the cost rule so that the charge depends on memory share only. *Solution sketch:* make `blended_weight` return `Fraction(mem_slices, 8)`. The 4g.40gb and 3g.40gb slices now cost the same. The invariant test still passes, which shows the rule is policy and not physics.
+4. **Alert on stranded geometry.** Write an alert that fires when slices of one profile sit free while another profile is short. *Solution sketch:* use allocatable minus requests, per `resource`, and compare the result with Kueue pending workloads. Check the rule with `promtool check rules`. No metric says which profile a pending workload needs, so you must add a label yourself.
+5. **Plan a reconfiguration.** Plan a move of node 3 to `all-3g.40gb`. *Solution sketch:* follow the four steps in section 4. The config gives 2 slices per GPU, so the quotas must add up to 16 for the node.
+6. **Argue for whole GPUs.** The batch tenant runs a 7g.80gb slice for two hours a night. Argue for or against a whole GPU for that tenant. *Solution sketch:* the weight is 1, so the allocated cost equals a whole GPU. The difference is the other 22 hours, which a dedicated slice cannot lend to anyone. Use `cost_per_busy_hour` to show the gap.
 
 ---
 

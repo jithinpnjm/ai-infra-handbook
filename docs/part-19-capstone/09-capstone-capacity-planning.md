@@ -26,42 +26,38 @@ lab_venue: "Local (standard-library Python, no GPU)"
 
 ## Why this matters for AI infrastructure
 
-On a Monday the finance lead asks one question: how many GPUs do we need next year, and should we buy them or rent them? The platform team has three answers in three spreadsheets. Training says 100 GPUs for six weeks every quarter. Inference says its traffic doubled since spring. The research group says "as many as you can give us." Nobody can say what the sum is, how sure they are, or what happens if one of the numbers is wrong.
+On a Monday the finance lead asks one question. How many GPUs do we need next year, and should we buy them or rent them? The platform team has three answers, one in each of three spreadsheets. Training says 100 GPUs for six weeks every quarter. Inference says its traffic doubled since spring. The research group says "as many as you can give us." Nobody can say what the sum is, how sure anyone is about it, or what happens if one of the numbers is wrong.
 
-Chapter 17.12 taught the first version of this skill with a simple rule: current count, times growth, times a buffer. That rule is a good start for a single pool. A real estate has four kinds of work with different shapes. Training is a large burst with a deadline. Fine-tuning is a steady trickle. Inference follows customer traffic and needs spare replicas. Notebooks follow the working day and are mostly idle.
+Chapter 17.12 taught the first version of this skill with a simple rule: current count, times growth, times a buffer. That rule is a good start for a single pool. A real GPU estate, though, has four kinds of work with different shapes. Training is a large burst with a deadline. Fine-tuning is a steady trickle. Inference follows customer traffic and needs spare replicas. Notebooks follow the working day and are mostly idle. A single growth rate cannot describe all four at once.
 
 This capstone plans all four together, from the demand inputs to the memo that someone signs. It reuses the inference maths from chapter 20.12 and the spare-pool maths from chapter 20.16 by importing the tested code, so the numbers agree across the handbook. Everything new is in `code/part19/c09_*`, and every number in this chapter is copied from the output of that code.
 
-One warning applies to the whole chapter. Every price, failure rate and lead time in the worked example is a **placeholder** that I chose to make the arithmetic readable. None of them is a quote, a measurement or a recommendation. The model is the product. The inputs are yours to replace.
+One warning applies to the whole chapter. Every price, failure rate and lead time in the worked example is a **placeholder** that this chapter chose to make the arithmetic readable. None of them is a quote, a measurement or a recommendation. The model is the product. The inputs are yours to replace.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 17.12, for the single-pool forecast and the FinOps view.
-- Chapter 20.12, for per-GPU inference ceilings and the headroom plus N+1 formula.
-- Chapter 20.16, for sizing a spare pool from failure rate times repair time.
-- Chapter 19.4, for what a multi-node training run costs in checkpoints and restarts.
-- Python 3.12 and pytest. Nothing else.
+Each item below is an earlier chapter that teaches the idea this one builds on. Read the matching chapter if a step feels new.
+
+- Chapter 17.12 covers the single-pool forecast and the FinOps view.
+- Chapter 20.12 covers per-GPU inference ceilings and the headroom plus N+1 formula.
+- Chapter 20.16 covers sizing a spare pool from failure rate times repair time.
+- Chapter 19.4 covers what a multi-node training run costs in checkpoints and restarts.
+- You need Python 3.12 and pytest. Nothing else.
 
 ### Outcomes
 
-After this capstone you will be able to:
-
-1. List the demand inputs for a mixed estate and attach a low, base and high value to each.
-2. Size a training run from tokens to GPU-hours, wall-clock time, cluster size and checkpoint overhead.
-3. Combine training, fine-tuning, inference and notebooks into one pool, with headroom and spares.
-4. Compare on-demand, reserved and owned capacity with a cost model whose prices are explicit inputs.
-5. Forecast demand with a confidence band and place the order early enough for its lead time.
-6. Run scenarios and a sensitivity table, and write the decision memo.
+Picture the moment the finance lead asks for a decision memo by Friday. This chapter walks through the steps that answer that request. You list the demand inputs for a mixed estate and attach a low, base and high value to each one. You size a training run from tokens to GPU-hours, wall-clock time, cluster size and checkpoint overhead. You combine training, fine-tuning, inference and notebooks into one pool, with headroom and spares. You compare on-demand, reserved and owned capacity with a cost model whose prices are explicit inputs. You forecast demand with a confidence band, and you place the order early enough for its lead time. Last, you run scenarios and a sensitivity table, and you write the decision memo.
 
 ---
-
 ## 1. Demand inputs and their uncertainty
 
-An inference lead says traffic will grow "about 5 percent a month." The history shows 8.8 percent. A researcher says the next model needs "about 2 trillion tokens." Last year's run needed 40 percent more than its first estimate. Every plan starts with numbers like these, and the plan is only as good as the least certain one.
+An inference lead says traffic will grow "about 5 percent a month." When you plot the history, it shows 8.8 percent. A researcher says the next model needs "about 2 trillion tokens." Last year's run needed 40 percent more than its first estimate. Every plan starts with numbers like these, and each one carries a different amount of doubt. The plan is only as good as its least certain input, so the first job is to find out which input that is.
 
-The first job is to list the inputs and give each a range. Not every input matters equally, so a range for each one tells you where to spend measurement effort. The table lists the inputs this chapter uses.
+The first job is to list the inputs and give each one a range. A range has a low value, a base value and a high value. Not every input matters equally, so the width of each range tells you where measurement effort will pay off. A wide range on an input that drives the answer is a good place to start measuring. A narrow range on an input that barely matters is not. The table lists the inputs this chapter uses and where each one usually comes from.
+
+Walk down the table one row at a time and ask the same question of each input. Who knows this number today? If the answer is a person who measures it, the input is probably solid. If the answer is a meeting, the input is probably a guess. The training row shows the pattern. The parameter count and the token budget come from a research plan, which is firm for now but may change. The MFU and the checkpoint write speed come from past runs and storage tests. Those are measurements, but only of the hardware you had then. Fine-tuning and notebook inputs come from roadmaps and logs. Those are good sources that move quickly. Money changes most often, so give every price a date, as the sections below show.
 
 | Workload | Inputs | Where the number comes from |
 |---|---|---|
@@ -72,7 +68,7 @@ The first job is to list the inputs and give each a range. Not every input matte
 | Estate | Failure rate, repair time, batch utilisation target | Fleet health data from chapter 20.16 |
 | Money | Prices, discounts, hardware cost, lead times | Contracts and quotes, with dates |
 
-The map below shows how the pieces of this chapter connect.
+The map below shows how the pieces of this chapter connect. Read it from left to right, and then follow the arrow from the review back to the inputs.
 
 ```mermaid
 flowchart LR
@@ -85,6 +81,8 @@ flowchart LR
     G --> A
 ```
 
+Each box in the map has a section of this chapter behind it. The table below says what each node produces and where it is covered.
+
 | Node | What it produces | Section |
 |---|---|---|
 | Demand inputs | A table of ranges with owners | 1 |
@@ -95,31 +93,38 @@ flowchart LR
 | Decision memo | The ask, the order date, the unverified list | 7 |
 | Review | Forecast error against the band | 5 |
 
-The diagram is a loop on purpose. The review feeds the next set of inputs, so the plan improves each quarter.
+The diagram is a loop on purpose. The review at the end feeds the next set of inputs, so the plan improves each quarter instead of being rebuilt from zero.
 
-The book *Systems Performance* gives the method behind this table. Its section on resource limits asks you to measure the request rate, measure the resource use, express each request in terms of resources, and extrapolate to the limit. Its worked example has a server doing 1,000 requests per second on 16 CPUs at 40 percent. That works out to 0.64 percent of CPU per request, so the limit is 2,500 requests per second. The book calls this a rough best case, because another limit may be hit first. GPU planning follows the same four steps.
+Systems Performance gives the method behind this table. Its section on resource limits asks you to measure the request rate, measure the resource use, express each request in terms of resources, and extrapolate to the limit. Its worked example has a server doing 1,000 requests per second on 16 CPUs at 40 percent. That works out to 0.64 percent of CPU per request, so the limit is 2,500 requests per second. Systems Performance calls this a rough best case, because another limit may be hit first. The arithmetic is simple. Find out how much of the resource each request uses, then ask how many requests fit before the resource is full. GPU planning follows the same four steps.
 
-The same book warns that the result is only useful if you know the peak. A web server with 100,000 hits per day averages one request per second. If most hits arrive in the seconds after new content goes up, the peak is very different. Plan for the peak, not the average.
+Systems Performance warns again that the result is only useful if you know the peak. A web server with 100,000 hits per day averages one request per second. If most of those hits arrive in the seconds after new content goes up, the peak is very different from the average. Planning for the average leaves you short exactly when it matters. Plan for the peak, not the average.
 
-The model in this chapter handles uncertainty in two ways. For the inference traffic it fits a trend to history and reads a band from it, which section 5 covers. For the other inputs it takes three values, low, mode and high, samples them from a triangular distribution, and reruns the whole plan a thousand times. The result is a spread of pool sizes, not one number.
+The model in this chapter handles uncertainty in two ways. For inference traffic, it fits a trend to the history and reads a band from that trend, which section 5 covers. For the other inputs, it takes three values, the low, the mode and the high. The mode is the most likely value. The model samples each input from a triangular distribution, which is a simple shape that rises to the mode and falls away on both sides. Then it reruns the whole plan a thousand times. The result is a spread of pool sizes, not one number.
 
-**Decision rule:** Write down every input with a low, a base and a high value before you size anything, and mark which ones are measured and which are guessed.
+Notice that the two methods answer different questions. The trend band asks how noisy the traffic history is. The sampling asks how sensitive the plan is to the guesses. Both matter, and neither replaces the other. A plan with a tight band on traffic can still be wrong if the training deadline moves, and a plan with careful training numbers can still be wrong if traffic doubles. Keep both views in front of the reader.
+
+**Decision rule:** Write down every input with a low, a base and a high value before you size anything. Mark which ones are measured and which are guessed.
 
 **In one minute:** A capacity plan is a function of its inputs. The inputs come from different teams and have different quality. Ranges tell you which inputs deserve measurement, and the plan should show a spread instead of a single figure.
 
 ---
-
 ## 2. Training and fine-tuning sizing
 
-A research lead asks whether a 13 billion parameter model can be trained on 2 trillion tokens within 45 days. The platform team answers "probably" and then discovers the cluster has 64 free GPUs. Nobody did the arithmetic. It takes five lines.
+A research lead asks whether a 13 billion parameter model can be trained on 2 trillion tokens within 45 days. The platform team answers "probably". Then someone checks the cluster and finds 64 free GPUs, and the room goes quiet. Nobody had done the arithmetic. It takes about five lines, and this section walks through each one.
+
+Before you read the formulas, picture the answer that the research lead needs. Does the run finish in time, and what does it cost? Every step below answers one part of that question. The first part is how much compute the run needs. The second is how much of the hardware's rated speed you will actually get. The third is how many GPUs that takes, given the deadline. The fourth is what failures and checkpoints add on top.
 
 ### 2.1 From tokens to GPU-hours
 
-For a dense transformer, the compute of a training run is about six floating-point operations per parameter per token. The book *Distributed AI Systems*, chapter 2, gives this rule for forward and backward together and cites the PaLM paper, appendix B. This is the 6ND rule: N parameters, D tokens.
+A dense transformer is a model in which every parameter takes part in every token. For such a model, the compute of a training run is about six floating-point operations per parameter per token. A floating-point operation, or FLOP, is one arithmetic step on a number stored in floating-point form. The GPU's peak rate is counted in these steps per second. Distributed AI Systems, chapter 2, gives this rule for the forward and backward passes together, and it cites the PaLM paper, appendix B. Engineers call it the 6ND rule, where N is the number of parameters and D is the number of tokens.
 
-Model FLOPS utilisation, or MFU, says what share of the datasheet peak the run really achieves. The same chapter defines it as model FLOPs per iteration divided by iteration time, divided by peak FLOPS. It says a well-optimised cluster might reach 40 to 60 percent for large models. Its worked example has a 70 billion parameter model at 860 teraFLOP per iteration and 2.0 seconds, on a 989 TFLOPS peak. That gives 430 TFLOPS and an MFU of about 43 percent.
+The rule is a planning estimate, not an exact count. Real models differ in architecture, so the constant can move with the design. The point for planning is simpler. Doubling the parameters roughly doubles the compute, and doubling the tokens does too. A plan that changes both at once multiplies the compute by the product of the two changes. That is why the estimate matters even when it is rough.
 
-The peak must be the one for the precision you train in. Use BF16 or FP16 on an H100, not the FP8 figure from a marketing slide. The dense BF16 peak of 989.5 TFLOPS is taken from the chapter 20.12 estimator, which fact-checked it against the NVIDIA H100 page.
+Model FLOPS utilisation, or MFU, says what share of the datasheet peak the run really achieves. Datasheets quote a peak that the hardware only reaches on ideal work, so MFU is the honest number to plan with. Distributed AI Systems defines it as model FLOPs per iteration divided by iteration time, and then divided by peak FLOPS. It says a well-optimised cluster might reach 40 to 60 percent for large models. Its worked example has a 70 billion parameter model at 860 teraFLOP per iteration and 2.0 seconds, on a 989 TFLOPS peak. That gives 430 TFLOPS and an MFU of about 43 percent. The arithmetic is simple, and it shows how much of the datasheet number a real run keeps.
+
+A useful way to hold MFU in your head is as an efficiency grade for the whole cluster. A grade of 40 percent means that the run keeps less than half of what the datasheet promises, which is normal for large models. Communication between GPUs, waiting for data and the overheads of the framework all take a share of the time that never appears as arithmetic. The grade is the sum of those losses, which is why a team should measure it on its own runs.
+
+The peak must be the one for the precision you train in. Precision means how many bits each number uses, and lower precision formats usually run faster. Use BF16 or FP16 on an H100, not the FP8 figure from a marketing slide, because this run is set up in BF16. The dense BF16 peak of 989.5 TFLOPS is taken from the chapter 20.12 estimator, which fact-checked it against the NVIDIA H100 page. Dense means the figure leaves out sparsity tricks that only some workloads can use.
 
 ```text
 FLOPs       = 6 x N x D
@@ -127,7 +132,7 @@ GPU-hours   = FLOPs / (peak FLOPS x MFU) / 3600
 GPUs needed = GPU-hours / deadline hours
 ```
 
-For this estate N is 13 billion and D is 2 trillion. MFU is an assumed 0.40, which is inside the commonly cited range but is a planning choice. The code prints the result.
+For this estate, N is 13 billion and D is 2 trillion. MFU is an assumed 0.40. That sits inside the commonly cited range, but it is a planning choice, not a measurement. Put the numbers through the three lines above and the code prints the result, as shown next.
 
 ```text
 6ND FLOPs            1.560e+23
@@ -143,45 +148,52 @@ cluster MTBF         288 h; Young interval 2846 s
 slow storage 0.5 GB/s: checkpoint 156 s, inflation 1.0461, GPUs 112
 ```
 
-Read the result in order. The run needs 1.56e23 floating-point operations, which is 109,483 GPU-hours at the assumed MFU. Spread over a 45-day deadline that is about 101 GPUs. Nodes come in eights, so the plan rounds up to 104 GPUs on 13 nodes.
+Read the result in order, from the top. The run needs 1.56e23 floating-point operations. At the assumed MFU, that is 109,483 GPU-hours. Spread over a 45-day deadline, it comes to about 101 GPUs. Nodes come in eights, so the plan rounds up to 104 GPUs on 13 nodes. Rounding to whole nodes is not cosmetic, because the machines you buy and schedule are whole machines.
 
 ### 2.2 Checkpoints and failures
 
-A run that takes 44 days will see failures. The same book says a 10,000 GPU cluster might see a failure every few hours. A failure costs the work since the last checkpoint, plus the time to restart. A checkpoint costs the time the run spends writing it.
+A run that takes 44 days will see failures. Hardware breaks, links drop and software hangs, and a big cluster breaks more often than a small one. Distributed AI Systems says a 10,000 GPU cluster might see a failure every few hours. A failure costs the work since the last checkpoint, which is a saved copy of the training state, plus the time to restart. A checkpoint costs the time the run spends writing it. The trade-off between those two costs is what this section is about.
 
-The model uses two inputs and one first-order rule. The checkpoint size is the parameter count times bytes per parameter. The book says Adam state is about twice the model size. With bf16 weights that gives 2 plus 4, or 6 bytes per parameter, so 78 GB for 13 billion parameters. Real checkpoint contents differ by framework, so treat 6 as an input. At an assumed 20 GB per second the write takes 3.9 seconds.
+Imagine a run that checkpoints very rarely. Each failure then throws away a long stretch of work, and the restart has to redo it. Now imagine a run that checkpoints very often. Failures are cheap, but the GPUs spend a growing share of their time writing to disk. The best setting sits between those two extremes. The next paragraphs show how to find it without guessing.
 
-The wall-clock multiplier is a first-order model of this chapter's own, not a published formula. It is one, plus the write time divided by the interval, plus the expected lost work per failure divided by the time between failures. Lost work per failure is half an interval plus the restart. The cluster failure interval is the per-GPU interval divided by the GPU count, because failures are assumed independent.
+The model uses two inputs and one first-order rule. A first-order rule is a simple approximation that keeps the leading effect and drops the small ones. The checkpoint size is the parameter count times the bytes per parameter. Distributed AI Systems says Adam state is about twice the model size. Adam is the optimizer that keeps two extra running values for each weight. With bf16 weights, that gives 2 plus 4, or 6 bytes per parameter, so 78 GB for 13 billion parameters. Real checkpoint contents differ by framework, so treat 6 as an input you can change. At an assumed 20 GB per second, the write takes 3.9 seconds.
 
-Because the GPU count changes the failure interval, and the failure interval changes the multiplier, and the multiplier changes the GPU count, the code iterates until the answer stops moving. With the placeholder inputs the multiplier is 1.0037. That is small, and it should be. A checkpoint that takes 4 seconds once an hour costs almost nothing.
+The wall-clock multiplier is a first-order model that this chapter built. It is not a published formula. Here is how it works in words. Start with one. Add the write time divided by the checkpoint interval, which is the share of time spent saving. Then add the expected lost work per failure, divided by the time between failures. Lost work per failure is half an interval plus the restart. The time between failures for the whole cluster is the per-GPU figure divided by the GPU count, because failures are assumed to be independent. Independent here means that one GPU failing does not make another one more likely to fail.
 
-Slow storage changes the story. The worked example repeats the sizing at 0.5 GB per second. The checkpoint takes 156 seconds, the multiplier rises to 1.0461, and the plan needs 112 GPUs instead of 104. That is one more node, bought because of the storage, not the GPUs.
+The GPU count changes the failure interval. The failure interval changes the multiplier. The multiplier changes the GPU count again. Because of that loop, the code iterates until the answer stops moving, and the stable answer is called a fixed point. With the placeholder inputs, the multiplier is 1.0037. That is small, and it should be. A checkpoint that takes 4 seconds once an hour costs almost nothing.
 
-The checkpoint interval has a best value. A standard first-order result, Young's formula, says it is the square root of twice the write time times the cluster failure interval. This formula is not in the gem books, so treat it as unverified. The test suite checks that it lands at the minimum of the multiplier on a grid. For this estate it gives 2,846 seconds, about 47 minutes. Checkpointing every hour is nearly as good, at 1.0037 against 1.0036. Checkpointing every six hours is worse, at 1.0114.
+Slow storage changes the story. The worked example repeats the sizing at 0.5 GB per second. The checkpoint now takes 156 seconds, the multiplier rises to 1.0461, and the plan needs 112 GPUs instead of 104. That is one more node, and you pay for it because of the storage, not because of the GPUs. Before you blame the accelerators for a slow run, check how fast the disk can write.
 
-The book *AI Systems Performance Engineering*, chapter 1, adds a warning about how far a headline number can mislead. It describes Meta's "Revisiting Reliability" paper, where a cluster that looked fully used lost 70 to 75 percent of its compute to overheads such as communication, data delays and failure recovery. The model above counts only checkpoints and failures. It does not count data stalls or communication. If your measured MFU already includes them, as it should, the model is consistent. If you borrow MFU from a paper, you are borrowing their overheads too.
+Slow storage hurts in a quiet way. Nothing fails, and the dashboard still shows the GPUs busy. The time simply leaks into the checkpoints, a little at each save. Over a 44-day run, that leak can be the difference between finishing on time and missing the deadline. A storage test costs an afternoon, and it can save the cost of a whole extra node.
+
+The checkpoint interval has a best value. A standard first-order result, Young's formula, says that the best interval is the square root of twice the write time times the cluster failure interval. Young's formula is not in the gem books, so treat it as unverified. The test suite checks that it lands at the minimum of the multiplier on a grid of candidate intervals. For this estate it gives 2,846 seconds, about 47 minutes. Checkpointing every hour is nearly as good, at 1.0037 against 1.0036. Checkpointing every six hours is worse, at 1.0114. The curve is flat near the best point, so a round number like one hour is a sensible choice.
+
+AI Systems Performance Engineering, chapter 1, adds a warning about how far a headline number can mislead. It describes Meta's "Revisiting Reliability" paper, where a cluster that looked fully used lost 70 to 75 percent of its compute to overheads such as communication, data delays and failure recovery. The model above counts only checkpoints and failures. It does not count data stalls or communication. If your measured MFU already includes those losses, as it should, the model is consistent. If you borrow an MFU from a paper, you are borrowing that paper's overheads too, and you should know which ones they were.
 
 ### 2.3 Fine-tuning
 
-Fine-tuning is the same arithmetic on a smaller scale and with no deadline pressure. The estate runs ten fine-tunes a month, each on 10 billion tokens. The model turns the monthly GPU-hours into an average GPU count and divides by the batch utilisation target, which section 3 explains. The result is 8.8 GPUs on average. The model treats every fine-tune as full-parameter training with the 6ND rule. If you use adapters, the real cost is lower, and no source here says how much lower.
+Fine-tuning is the same arithmetic on a smaller scale, and it usually has no deadline pressure. The estate runs ten fine-tunes a month, each on 10 billion tokens. The model turns the monthly GPU-hours into an average GPU count. It then divides by the batch utilisation target, which section 3 explains, because a batch queue never runs at full stretch. The result is 8.8 GPUs on average. The model treats every fine-tune as full-parameter training with the 6ND rule. If you use adapters instead, which are small add-on layers that train instead of all the weights, the real cost is lower. No source here says how much lower, so measure it on your own runs.
 
-**Decision rule:** Size training from 6ND and a measured MFU, round up to whole nodes, add the checkpoint and failure multiplier, and check the storage write speed before you blame the GPUs.
+The fine-tuning row is easy to underestimate. Ten small runs each month look harmless next to one large training run. Yet they keep part of the cluster busy every month, and their demand arrives on a steady schedule. That steady demand is exactly what the pool must cover between the big bursts of training.
+
+**Decision rule:** Size training from 6ND and a measured MFU. Round up to whole nodes, add the checkpoint and failure multiplier, and check the storage write speed before you blame the GPUs.
 
 **In one minute:** Training is 6ND divided by what the hardware actually delivers. For the example run that is about 109,000 GPU-hours and 104 GPUs for a 45-day deadline. Checkpoints cost almost nothing on fast storage and one extra node on slow storage.
 
 ---
-
 ## 3. Inference, notebooks and the pool
 
-It is the third day of a new product launch. Traffic is above forecast, one replica has crashed, and the autoscaler is waiting for a node that has not arrived. The service has capacity for the average and nothing for this moment. Headroom and spare replicas exist for this moment.
+It is the third day of a new product launch. Traffic is running above forecast, one replica has crashed, and the autoscaler is waiting for a node that has not arrived yet. The service has capacity for the average load and almost nothing for this moment. Headroom and spare replicas exist for exactly this moment, and this section sizes them before the launch rather than during it.
 
 ### 3.1 Inference
 
-Chapter 20.12 derived the per-GPU ceiling for Qwen3-8B on one H100 at batch 64 with 2,000 prompt tokens and 500 output tokens. The model imports that code and does not redo it. The ceiling is 5.68 requests per second, with a mean time per output token of 22.4 milliseconds.
+Chapter 20.12 derived the per-GPU ceiling for Qwen3-8B on one H100 at batch 64, with 2,000 prompt tokens and 500 output tokens. The ceiling is the most requests one GPU can serve under the conditions that chapter assumes. The model imports that code and does not redo the work. The ceiling is 5.68 requests per second, with a mean time per output token of 22.4 milliseconds.
 
-Headroom and spares come from the same chapter. The book *AI Systems Performance Engineering*, chapter 16, advises targeting about 90 percent of peak throughput and keeping extra replicas that sit mostly idle, and it warns that autoscaling takes time to provision resources. The formula is replicas equals ceil of QPS over rate times target, plus spares. At 40 requests per second that gives 9 GPUs, which the tests check against chapter 20.12.
+Think of the ceiling as the speed limit of one lane on a road. Adding lanes, which here means adding replicas, raises the total. The autoscaler decides how many lanes are open at a given moment. The limit itself depends on the model, the prompt length, the output length and the batch size. Change any of those, and the lane speed changes too. That is why the chapter fixes all of them in one place and imports the result, rather than letting each team re-derive it.
 
-Inference demand is a forecast, so the model needs a QPS for each month. It fits a trend to nine months of gateway history, takes the P90 value at month 12, and spreads growth geometrically from today's 40 requests per second. The P90 is a planning choice, and section 5 explains it. At month 12 the plan is 116.2 requests per second and 24 GPUs.
+Headroom and spares come from the same chapter. AI Systems Performance Engineering, chapter 16, advises targeting about 90 percent of peak throughput, and it recommends keeping extra replicas that sit mostly idle. It also warns that autoscaling takes time to provision resources. Headroom is the gap you leave below the ceiling, so that a burst does not push the replicas past what they can serve. The formula is replicas equals the ceiling of QPS over rate times target, plus spares. QPS, or queries per second, is the request rate. At 40 requests per second, the formula gives 9 GPUs, and the tests check that result against chapter 20.12.
+
+Inference demand is a forecast, so the model needs a QPS for each month. It fits a trend to nine months of gateway history, takes the P90 value at month 12, and spreads the growth geometrically from today's 40 requests per second. Geometric growth means each month is a fixed percentage above the month before. P90 means the value that 90 percent of outcomes stay under. The P90 is a planning choice, and section 5 explains it. At month 12, the plan is 116.2 requests per second and 24 GPUs.
 
 ```text
 per-GPU ceiling      5.68 req/s, latency 11.3 s, TPOT 22.4 ms
@@ -189,21 +201,31 @@ QPS in 12 months     P10 100.7  P50 108.2  P90 116.2; trend 8.8% per month
 planned QPS (P90)    116.2; GPUs at month 12: 24
 ```
 
+Read the output from the top. The first line is the per-GPU ceiling. The second line gives the range of demand at month 12, from the low band to the high. The third line is the number the plan actually uses.
+
+A reader who sees 24 GPUs at month 12 should ask where that number comes from. The answer is the P90 demand divided by the usable rate per GPU, with the target and spares added on top. Each step is in the code, so the number can be traced back to its inputs rather than trusted on faith.
+
 ### 3.2 Notebooks
 
-Notebook demand follows people. 60 users, with 30 percent active at the peak, share GPUs two to a GPU. That is 18 concurrent sessions and 9 GPUs. Both the 30 percent and the sharing ratio are placeholders. Measure them from your scheduler. If you share GPUs with MIG slices, chapter 19.8 explains the limits.
+Notebook demand follows people, not forecasts. Think about a team of 60 users, where 30 percent are active at the peak. Those users share GPUs, two to a GPU. That gives 18 concurrent sessions and 9 GPUs. Both the 30 percent and the sharing ratio are placeholders. Measure them from your scheduler before you trust the result. If you share the notebook GPUs with MIG slices, chapter 19.8 explains the limits of that approach.
+
+Notebooks are the least predictable workload in the estate. A user may open a session in the morning and leave it running all day. Sharing helps, but only up to a point, because a busy session can slow the others on the same GPU. Measure the concurrency from the scheduler before you commit to a sharing ratio, rather than trusting the estimate.
 
 ### 3.3 Utilisation targets
 
-Not every workload deserves the same target. Inference runs at 90 percent of its throughput ceiling because a burst or a slow batch otherwise breaks the latency target. Batch work such as training and fine-tuning gets a target of 0.85 in the example. The target pays for the gaps between runs, the queue wait, and the nodes that are down. It is an input, and the sensitivity table in section 6 shows it moves the cost more than any other input.
+Not every workload deserves the same target. Inference runs at 90 percent of its throughput ceiling, because a burst or a slow batch would otherwise break the latency target. Batch work such as training and fine-tuning gets a target of 0.85 in the example. A utilisation target is the share of capacity you plan to keep busy. The target pays for the gaps between runs, the wait in the queue, and the nodes that are down for repair. It is an input, and the sensitivity table in section 6 shows that it moves the cost more than any other input.
 
-*Systems Performance*, chapter 2, gives a cautionary view of high utilisation. It says utilisation beyond 60 percent can hide short bursts of 100 percent use, and that queueing delays grow as utilisation rises. That advice comes from CPUs and disks, not from GPUs, and no source here gives a GPU-specific number. For interactive notebooks, where a person waits, the lower end of the range is safer. For batch work that can queue, 0.85 is a placeholder you must check against your own queue times.
+Choosing a target is a balancing act. A higher target means fewer idle GPUs and a higher risk of a slow response. A lower target means more headroom and a bigger bill. Batch work can afford a higher target, because nobody is waiting on each job. An interactive service cannot. That is why the two workloads get different numbers in the same model.
+
+Systems Performance, chapter 2, gives a cautionary view of high utilisation. It says utilisation beyond 60 percent can hide short bursts of 100 percent use, and that queueing delays grow as utilisation rises. That advice comes from CPUs and disks, not from GPUs, and no source here gives a GPU-specific number. Queueing delay is the time work spends waiting its turn. For interactive notebooks, where a person sits and waits, the lower end of the range is safer. For batch work that can queue, 0.85 is a placeholder that you must check against your own queue times.
 
 ### 3.4 Putting the estate together
 
-Training runs for 45 days in each quarter in this example, so it is active one month, half a month, then off. The monthly demand is the sum of the four workloads. The peak of the sum is what the pool must cover. It is not the sum of the four peaks, because training and inference peak in different months.
+Training runs for 45 days in each quarter in this example, so it is active for one month, then half a month, then off. The monthly demand is the sum of the four workloads. The peak of that sum is what the pool must cover. It is not the sum of the four separate peaks, because training and inference peak in different months. Adding the peaks would buy GPUs that never run at the same time.
 
-Spare nodes come from chapter 20.16. The model imports that code and asks for the number of spares that keeps 99.9 percent of repair states covered, given a 10 percent annual failure rate and a 72-hour repair. For a fleet of 21 nodes the answer is one node. With a 336-hour repair, the pool grows by one more node, to 184 GPUs. The fleet in this example is small, so the spare pool is small. The chapter 20.16 example with 512 nodes needs 3 to 7.
+Walk through a single month to see how the pieces fit. Inference grows steadily, training switches on and off, fine-tuning stays flat, and notebooks follow the working day. The sum of those four curves is the demand for that month. The pool has to be large enough for the highest of those sums, not for the average of them. That is why the table below has a trough and a peak, and why the pool is sized for the peak.
+
+Spare nodes come from chapter 20.16. The model imports that code and asks for the number of spares that keeps 99.9 percent of repair states covered. A repair state is a situation in which some nodes are down for repair at the same time. The inputs are a 10 percent annual failure rate and a 72-hour repair. For a fleet of 21 nodes, the answer is one node. With a 336-hour repair, the pool grows by one more node, to 184 GPUs. The fleet in this example is small, so the spare pool is small too. The chapter 20.16 example, with 512 nodes, needs 3 to 7 spares.
 
 ```text
 fine-tune average GPUs 8.8; notebook GPUs 9
@@ -223,40 +245,45 @@ month  inference training finetune notebooks   total
 peak 161.2 GPUs, spare nodes 1, pool 176 GPUs
 ```
 
-The peak is 161.2 GPUs in month 10. The pool is 21 nodes for the peak plus one spare node, which is 22 nodes and 176 GPUs. In month 3 the estate needs only 29.8 GPUs. That gap is the most important fact in the table. A pool sized for the peak sits mostly idle in the troughs, and section 4 shows what that means for cost.
+Read the table from the bottom line up. The peak is 161.2 GPUs in month 10. The pool is 21 nodes for the peak, plus one spare node, which is 22 nodes and 176 GPUs. In month 3, the estate needs only 29.8 GPUs. That gap is the most important fact in the table. A pool sized for the peak sits mostly idle in the troughs, and section 4 shows what that means for cost.
 
-**Decision rule:** Size each workload with its own rule, add the four demands month by month, take the peak of the sum, round to whole nodes, and add spares from failure rate times repair time.
+**Decision rule:** Size each workload with its own rule. Add the four demands month by month, take the peak of the sum, round to whole nodes, and add spares from failure rate times repair time.
 
 **In one minute:** Inference gets a 90 percent target and an extra replica. Batch work gets a lower target to pay for gaps. The pool is the peak of the monthly sum. For the example that is 176 GPUs, with a trough near 30.
 
 ---
-
 ## 4. Buy versus rent, reserved versus on-demand
 
-The pool is sized. Finance asks how to pay for it. A cloud sales rep offers a discount for a one-year commitment. A hardware vendor offers a quote that arrives in four months. Someone in the room says that renting is always cheaper at our size, and someone else says owning is always cheaper. Both are making a claim about utilisation without saying so.
+The pool is sized, and now finance asks how to pay for it. A cloud sales rep offers a discount for a one-year commitment. A hardware vendor offers a quote that arrives in four months. Someone in the room says renting is always cheaper at our size. Someone else says owning is always cheaper. Both are making a claim about utilisation without saying so. This section makes that claim visible, so you can test it.
 
 ### 4.1 Three ways to get a GPU-hour
 
-On-demand capacity costs the most per hour and charges only for hours used. Reserved capacity costs less per hour and charges for every hour of the commitment. Owned capacity has a fixed cost for every hour of its life, plus running cost. It is cheaper per hour still, if you can keep it busy. Spot capacity is cheaper but can be taken away. The model covers spot with one formula, and the tests check it. Spot is best for work that checkpoints well.
+On-demand capacity costs the most per hour, but you pay only for the hours you use. Reserved capacity costs less per hour, and you pay for every hour of the commitment, used or not. Owned capacity has a fixed cost for every hour of its life, plus running cost. Per hour, it is cheaper still, if you can keep it busy. Spot capacity is cheaper again, but the provider can take it away. The model covers spot with one formula, and the tests check it. Spot is best for work that checkpoints well, because a checkpoint lets a training run resume after it is interrupted.
 
-All prices are inputs. The worked example uses on-demand at 5.00 dollars per GPU-hour, a reserved discount of 35 percent, a hardware cost of 40,000 dollars per GPU amortised over four years, and 1.50 dollars per GPU-hour of running cost. These numbers are invented. They are not prices. Chapter 20.12 cites public list prices fetched on 2026-11-09, and *Hands-On LLM Serving and Optimization*, Chapter 5, prints a table of GPU costs that it says were current in spring 2026 and may change. Use quotes from your own vendors, with dates.
+Spot is attractive on paper, and the rework fraction is what keeps the comparison honest. Rework is the share of paid time that is thrown away when a run is interrupted and has to repeat work. A cheap price with a high rework share can cost more than a dearer steady price.
+
+All prices are inputs, and you should treat them as variables, not facts. The worked example uses on-demand at 5.00 dollars per GPU-hour, a reserved discount of 35 percent, a hardware cost of 40,000 dollars per GPU amortised over four years, and 1.50 dollars per GPU-hour of running cost. Amortised means spread evenly over the life of the asset. These numbers are invented. They are not prices. Chapter 20.12 cites public list prices fetched on 2026-11-09. Hands-On LLM Serving and Optimization, Chapter 5, prints a table of GPU costs that it says were current in spring 2026 and may change. Use quotes from your own vendors, with dates.
 
 ### 4.2 The break-even rule
 
-Owned capacity is paid for every hour. On-demand capacity is paid only for used hours. Owning wins when the share of owned hours that you actually use is above owned cost per hour divided by on-demand price per hour.
+Owned capacity is paid for every hour, whether or not it is busy. On-demand capacity is paid only for the hours you use. So owning wins when the share of owned hours that you actually use is above owned cost per hour, divided by the on-demand price per hour. In plain words, the machine has to be busy often enough that each busy hour carries less of the fixed cost than an on-demand hour would cost.
+
+Think of owning as paying rent on a flat whether or not you live in it. If you live there most of the time, the cost per night is low. If you visit once a month, the same flat is expensive. Owned GPUs work the same way. The fixed cost is the rent, and utilisation decides whether the flat was a good deal.
 
 ```text
 owned $/hour    = hardware cost / (life years x 8760) + running cost per hour
 break-even use  = owned $/hour / on-demand $/hour
 ```
 
-With the placeholders, owned capacity costs 2.64 dollars per GPU-hour and break-even is 52.8 percent. The same rule applies to a reserved commitment, which is just a smaller version of owning.
+With the placeholders, owned capacity costs 2.64 dollars per GPU-hour, and the break-even point is 52.8 percent. Below that share of use, renting on demand is cheaper. Above it, owning wins. The same rule applies to a reserved commitment, which is a smaller version of owning, with a contract in place of a purchase.
 
 ### 4.3 The commit level
 
-The break-even rule tells you whether to own. It does not tell you how much. A commit of 161 GPUs, the peak, would leave most of them idle in the troughs. A commit of zero gives up the discount. The right level is in between, and the model finds it by trying every whole-number commit from 0 to the peak and keeping the cheapest.
+The break-even rule tells you whether to own. It does not tell you how much to commit to. A commit of 161 GPUs, which is the peak, would leave most of them idle in the troughs. A commit of zero gives up the discount entirely. The right level sits in between, and the model finds it by trying every whole-number commit from 0 to the peak and keeping the cheapest. The search is quick, because the list of candidates is short.
 
-The cost of a commit level is easy to state. The commit is paid every hour. Demand above the commit is bought on demand. The model charges owned spares as well, since a spare node is paid for every hour.
+A useful picture is a stack of blocks. The bottom block is the demand that never goes away, and it deserves the cheapest and most committed capacity. The blocks above it come and go, and they belong to the more flexible tiers. The commit level is simply the height of the bottom block, measured in GPUs.
+
+The cost of a commit level is easy to state. The commit is paid every hour. Demand above the commit is bought on demand. The model charges owned spares as well, because a spare node is paid for every hour it sits in the rack, whether or not it is needed.
 
 ```text
 on-demand 5.00, reserved 3.25, owned 2.64 USD per GPU-hour; owning beats on-demand above 52.8% utilisation
@@ -267,37 +294,42 @@ average demand 95.2 GPUs; owned base of 93 is busy 79.1% of the time
 base hours per month 730
 ```
 
-All on-demand costs about 4.17 million dollars a year. A reserved commitment of 90 GPUs, with the rest on demand, costs about 3.59 million. An owned base of 93 GPUs with the rest on demand costs about 3.29 million. The owned base is busy 79.1 percent of the time, well above the 52.8 percent break-even. These figures follow from placeholder prices, so the ranking is only an example. The next section shows how easily it flips.
+All on-demand costs about 4.17 million dollars a year. A reserved commitment of 90 GPUs, with the rest on demand, costs about 3.59 million. An owned base of 93 GPUs, with the rest on demand, costs about 3.29 million. The owned base is busy 79.1 percent of the time, well above the 52.8 percent break-even. These figures follow from placeholder prices, so the ranking is only an example. Section 6 shows how easily it flips.
 
-Notice what the best commit is not. It is not the peak and not the average, which is 95.2 GPUs. It sits near the level that the estate needs for most of the year. Capacity above it is the burst tier, and the sensible burst tier is on-demand capacity or spot capacity for the training run.
+Notice what the best commit is not. It is not the peak, and it is not the average, which is 95.2 GPUs. It sits near the level that the estate needs for most of the year. Capacity above that level is the burst tier. For a burst tier, on-demand capacity makes sense, and spot capacity can also work for the training run, as long as the run checkpoints.
 
-*LLMs in Production*, Chapter 3, adds two practical points for the decision. GPUs are rare and limited, and they can be extremely difficult to provision for companies that stay on-premise. Even in the cloud, teams still chase provisioning errors when they ask for a new GPU workspace. A purchase decision is therefore also a supply decision, and section 5 puts a number on it. For inference served through a vendor API, *Machine Learning Platform Engineering*, Chapter 13, notes that LLM services charge by token consumption. That is the opposite of renting a fixed GPU, and it favours spiky or small workloads.
+LLMs in Production, Chapter 3, adds two practical points to the decision. GPUs are rare and limited, and they can be extremely difficult to provision for companies that stay on-premise. Even in the cloud, teams still chase provisioning errors when they ask for a new GPU workspace. A purchase decision is therefore also a supply decision, and section 5 puts a number on the supply side. For inference served through a vendor API, Machine Learning Platform Engineering, Chapter 13, notes that LLM services charge by token consumption. That is the opposite of renting a fixed GPU. It favours spiky or small workloads, because you pay only for the tokens you send.
 
-**Decision rule:** Commit only to the level of demand you expect to keep busy for most of the year, compare it with the break-even use, and cover the rest with on-demand or spot capacity.
+**Decision rule:** Commit only to the level of demand that you expect to keep busy for most of the year. Compare that level with the break-even use, and cover the rest with on-demand or spot capacity.
 
 **In one minute:** Owning and reserving are bets that utilisation stays high. The break-even rule is owned cost per hour divided by on-demand price. The best commit sits near the base load, not at the peak. All prices here are placeholders, so rerun the model with real quotes.
 
 ---
-
 ## 5. Forecasting with confidence bands and lead times
 
-The inference lead says traffic doubled in nine months. Procurement says new GPUs take four months to arrive. If you order on the current number, the order lands four months late, in a world where demand has grown 40 percent. Lead time turns a forecast into a deadline.
+The inference lead says traffic doubled in nine months. Procurement says new GPUs take four months to arrive. If you order on the current number, the order lands four months late, in a world where demand has grown 40 percent. Lead time turns a forecast into a deadline. The date you must place the order is the date the demand arrives, minus the lead time.
 
 ### 5.1 The band
 
-The model fits a straight line to the logarithm of monthly peak QPS, which assumes constant percentage growth. It reads the central value at the forecast month and a band from the standard prediction interval for a regression. The band widens with the scatter in the history and with the distance from the data.
+The model fits a straight line to the logarithm of monthly peak QPS. A logarithm turns steady percentage growth into a straight line, which is why the fit uses it. The model reads the central value at the forecast month. It reads a band from the standard prediction interval for a regression, which is the range the data suggests the future value will fall in. The band widens with the scatter in the history, and it widens again as you move further from the data.
 
-For nine months of placeholder history the trend is 8.8 percent a month. Twelve months after the last point, the central estimate is 108.2 requests per second. The 80 percent band runs from 100.7 to 116.2. The model uses a normal quantile of 1.2816 for that band. With only nine points the correct t value is larger, about 1.415 for 7 degrees of freedom, so the real band is roughly 10 percent wider than printed. These two quantiles come from standard statistical tables, not from the gem books, so treat them as unverified. The code uses the normal value and the chapter says so.
+Picture the band as a fan of possible futures drawn around the central line. Near the last real data point, the fan is narrow, because you are still close to what you have measured. Further out, the fan opens up. That shape is why a forecast four months ahead is less trustworthy than a forecast for next month, even when the central line looks equally confident.
 
-The band is for one series and one assumption of steady exponential growth. A product launch or a lost customer breaks that assumption. A band says how noisy the history was. It does not say how wrong the model of the future is. That is what scenarios are for.
+For nine months of placeholder history, the trend is 8.8 percent a month. Twelve months after the last point, the central estimate is 108.2 requests per second. The 80 percent band runs from 100.7 to 116.2. A quantile is a cut point on a probability curve. The model uses a normal quantile of 1.2816 for that band. With only nine points, the correct t value is larger, about 1.415 for 7 degrees of freedom. Degrees of freedom count the data points left over after the fit, so the real band is roughly 10 percent wider than printed. These two quantiles come from standard statistical tables, not from the gem books, so treat them as unverified. The code uses the normal value, and the chapter says so.
+
+The band describes one series and one assumption, which is steady exponential growth. A product launch or a lost customer breaks that assumption, and the band will not show it. A band says how noisy the history was. It does not say how wrong the model of the future might be. That second question is what scenarios are for, and section 6 covers them.
 
 ### 5.2 Choosing the percentile
 
-Planning to the central estimate means you are short about half the time. Planning to the top of the band means you are rarely short and often long. The right percentile depends on the cost of each error. A shortage in inference breaks a customer promise. A surplus costs money for GPUs that sit idle. This estate plans inference to P90, and plans the rest to their modes. Chapter 17.12 uses a flat 30 percent buffer, which is one number standing in for this choice.
+Planning to the central estimate means you are short about half the time. Planning to the top of the band means you are rarely short, but you are often long. The right percentile depends on the cost of each kind of error. A shortage in inference breaks a customer promise. A surplus costs money for GPUs that sit idle. This estate plans inference to P90, which is the high end of the band, and plans the rest to their modes. Chapter 17.12 uses a flat 30 percent buffer. That is one number standing in for this choice, and it hides the trade-off that this section makes visible.
+
+A simple way to choose a percentile is to write down the cost of each error. A missed order might cost a customer and a renewal. An extra order costs idle money every month until demand catches up. Put both costs on one page, and the right percentile usually becomes obvious.
 
 ### 5.3 Lead times
 
-Every purchasing route has a lead time, and the lead time sets how far ahead you must forecast. A route that delivers in a day needs a one-month forecast. A route that delivers in 120 days needs one four months out. The model rounds up to whole 30-day months.
+Every purchasing route has a lead time, and the lead time sets how far ahead you must forecast. A route that delivers in a day needs a forecast one month ahead. A route that delivers in 120 days needs a forecast four months out. The model rounds up to whole 30-day months, so a short route still needs a one-month forecast.
+
+Lead time is easy to forget when you are looking at a spreadsheet. The number in the forecast belongs to the month when the demand arrives, but the decision happens months earlier. The gap between those two dates is where most procurement mistakes happen.
 
 ```text
 on_demand     1 days -> forecast 1 months ahead, P90 QPS 44.2
@@ -305,34 +337,35 @@ reserved     14 days -> forecast 1 months ahead, P90 QPS 44.2
 buy         120 days -> forecast 4 months ahead, P90 QPS 57.5
 ```
 
-The same history gives a P90 of 44.2 requests per second one month ahead and 57.5 four months ahead. The longer the lead time, the larger the number you must plan to, and the wider the band around it. This is the real cost of buying hardware. It is not just the price. It is the commitment to a forecast that is four months more uncertain.
-
-*Systems Performance*, chapter 11, makes the same point about on-premise servers. It says they can take months to reach production because of approvals, parts, shipping and testing, and that capacity planning matters because too small means failure and too large means cost. In the cloud, it says, you can create instances almost instantly and react to real load. It also warns that a capacity study can take weeks and be out of date when it finishes, which is why the model here is a script you rerun and not a document you file.
+The same history gives a P90 of 44.2 requests per second one month ahead, and 57.5 four months ahead. The longer the lead time, the larger the number you must plan to, and the wider the band around it. This is the real cost of buying hardware. It is not just the price. It is a commitment to a forecast that is four months more uncertain than the one you could make today.
 
 ### 5.4 The uncertainty in the pool
 
-Section 1 promised a spread. The model samples four inputs from triangular distributions with a low, a mode and a high, and reruns the plan a thousand times with a fixed seed.
+Section 1 promised a spread, and this is where it comes from. The model samples four inputs from triangular distributions, each with a low, a mode and a high. It then reruns the plan a thousand times with a fixed seed. A seed is the starting value of the random generator. Fixing it means the run gives the same answer every time.
+
+The sampling answers a question that a single plan cannot. What is the plausible range of pool sizes if every uncertain input moves together, each within its own range? The answer is a band of pool sizes. The finance lead can then plan against the upper end without pretending to know which end will happen.
 
 ```text
 pool GPUs P10/P50/P90 168 / 192 / 224
 on-demand USD/yr P10/P50/P90 4,016,872 / 4,586,057 / 5,297,378
 ```
 
-The pool is 168 GPUs at P10, 192 at P50 and 224 at P90. The base plan of 176 sits below the median. That is not a bug. In three of the four ranges the high value is further from the mode than the low value, so the distribution leans toward larger pools. A single-point plan built from modes will usually be too small. The spread is the better answer to give the finance lead.
+The pool is 168 GPUs at P10, 192 at P50 and 224 at P90. The base plan of 176 sits below the median. That is not a bug. In three of the four ranges, the high value sits further from the mode than the low value does, so the distribution leans toward larger pools. A single-point plan built from the modes will usually come out too small. The spread is the better answer to give the finance lead, because it shows the range of outcomes and not a single guess.
 
-**Decision rule:** Plan each workload to a stated percentile, forecast as far ahead as the purchase route's lead time, and show the band, not just the centre.
+**Decision rule:** Plan each workload to a stated percentile. Forecast as far ahead as the purchase route's lead time, and show the band, not just the centre.
 
 **In one minute:** A forecast is a centre and a band. The band comes from the scatter in the history and widens with distance. Longer lead times need larger numbers and wider bands. The sampled pool for this estate runs from 168 to 224 GPUs.
 
 ---
-
 ## 6. Scenarios and sensitivity
 
-A customer signs a large contract. A research lead moves the training run up by a month. A vendor raises the price. None of these is in the forecast, and each one is a conversation you should have had before it happened. Scenarios turn those conversations into runs.
+A customer signs a large contract. A research lead moves the training run up by a month. A vendor raises the price. None of these is in the forecast, and each one is a conversation you should have had before it happened. Scenarios turn those conversations into runs, so the answer is ready when the conversation starts.
 
 ### 6.1 Scenarios
 
-A scenario is a short list of overrides to the base assumptions. The runner reads the JSON file, applies each scenario, and prints one row each. The tests check that every scenario moves the plan in the expected direction.
+A scenario is a short list of overrides to the base assumptions. The runner reads the JSON file, applies each scenario to the base case, and prints one row for each. The tests check that every scenario moves the plan in the expected direction, so a sign error would be caught.
+
+A useful habit is to write each scenario as a plain sentence before you write its JSON. For example, the training run grows by half is a sentence that anyone can read. The override that follows is the same idea in the form the runner needs. Reviewers can then check the sentence, and the code can check the override.
 
 ```text
 scenario                peak  pool  train  infer  best strategy   cost USD/yr
@@ -345,13 +378,17 @@ price_shock            161.2   176    104     24  owned mix         3,708,695
 pricey_hardware        161.2   176    104     24  reserved mix      3,586,841
 ```
 
-Three results are worth reading. A larger training run raises the training cluster from 104 to 160 GPUs and the annual cost by about 1.2 million. A poor MFU of 0.30 instead of 0.40 pushes the training cluster to 136 GPUs. A slow repair of 336 hours adds one spare node and about 185,000 dollars a year, because the spare nodes are owned.
+Three results are worth reading slowly. A larger training run raises the training cluster from 104 to 160 GPUs, and the annual cost rises by about 1.2 million. A poor MFU of 0.30, instead of 0.40, pushes the training cluster to 136 GPUs. A slow repair of 336 hours adds one spare node and about 185,000 dollars a year, because the spare nodes are owned, so each one is paid for every hour.
 
-The last row shows a flip. If the hardware costs 80,000 dollars and the running cost is 2.5 dollars an hour, owning costs 4.78 dollars per GPU-hour, close to the on-demand 5.00 and well above the reserved 3.25. The reserved mix wins at about 3.59 million. A decision that holds for one set of prices and flips for another needs the price as a named line in the memo.
+The last row shows a flip. If the hardware costs 80,000 dollars and the running cost is 2.5 dollars an hour, owning costs 4.78 dollars per GPU-hour. That is close to the on-demand 5.00 and well above the reserved 3.25. The reserved mix wins at about 3.59 million. A decision that holds for one set of prices and flips for another needs the price as a named line in the memo, so that nobody has to reconstruct the reasoning later.
+
+The flip is also a lesson about prices that are not yet signed. If a quote arrives higher than expected, the owned option can lose its advantage quickly. The memo should name that price as the figure to watch, so the change is noticed when it happens.
 
 ### 6.2 Sensitivity
 
-A scenario changes several inputs at once. A sensitivity table changes one at a time, by plus and minus 20 percent, and ranks the inputs by how much the best annual cost moves.
+A scenario changes several inputs at once. A sensitivity table does something different. It changes one input at a time, by plus and minus 20 percent, and then ranks the inputs by how much the best annual cost moves. The ranking tells you where measurement effort pays off.
+
+Sensitivity analysis also guards against false confidence. A model with many inputs can look precise while it depends on one guess. The table exposes that dependence. If a single input dominates the swing, that input deserves the next measurement, and the others can wait.
 
 ```text
 base: pool 176 GPUs, best cost 3,285,036 USD/yr, each parameter moved -20% and +20%
@@ -368,21 +405,22 @@ prices.reserved_discount           176     176    3,285,036    3,285,036        
 spares.mttr_hours                  176     176    3,285,036    3,285,036           0
 ```
 
-Three things stand out. The batch utilisation target moves the cost more than any price. It is a policy, and it is cheap to change. Training tokens, MFU and the deadline sit next to each other. The last two have identical effects because shortening the deadline by 20 percent and cutting MFU by 20 percent both raise the GPU count by the same factor. That is a useful sanity check on the model.
+Three things stand out in the table. First, the batch utilisation target moves the cost more than any price does. It is a policy choice, and it is cheap to change. Second, training tokens, MFU and the deadline sit next to each other. The last two have identical effects. Shortening the deadline by 20 percent and cutting MFU by 20 percent both raise the GPU count by the same factor, so the match is a useful sanity check on the model. Third, the table ranks by swing, not by direction, so read the two columns together.
 
-Two rows show zero swing. The reserved discount does not move the best cost because owned capacity is the winner in the base case. The repair time does not move the cost within this range because the spare count does not change. A parameter that does not move the decision tells you not to spend time refining it.
+Two rows show zero swing. The reserved discount does not move the best cost, because owned capacity is the winner in the base case, so the reserved price never gets used. The repair time does not move the cost within this range, because the spare count does not change. A parameter that does not move the decision tells you not to spend time refining it, at least for now.
 
-**Decision rule:** Run the named scenarios for events you can imagine and the sensitivity table for inputs you can measure, and spend measurement effort on the top of the table.
+**Decision rule:** Run the named scenarios for events you can imagine, and the sensitivity table for inputs you can measure. Spend measurement effort on the top of the table.
 
 **In one minute:** Scenarios change several inputs together and show where the decision flips. Sensitivity changes one at a time and ranks what matters. For this estate the utilisation target, tokens, MFU and the on-demand price dominate. The discount and the repair time do not.
 
 ---
-
 ## 7. The decision memo
 
-The plan is done, and the review meeting starts in ten minutes. Someone will ask what happens if inference doubles, when the order must be placed, and which numbers are guesses. A memo that answers those three questions in advance ends the meeting in fifteen minutes. A memo that does not will start a second one.
+The plan is done, and the review meeting starts in ten minutes. Someone will ask what happens if inference doubles, when the order must be placed, and which numbers are guesses. A memo that answers those three questions in advance ends the meeting in fifteen minutes. A memo that does not will start a second meeting, and the second one usually takes longer.
 
-The template is a file in `code/part19/`. It has eight sections. The ask, the demand with its ranges, the sizing, the options compared, the scenarios, the recommendation with the latest order date, the review plan, and the list of what is not verified. Fill each section from the output of the model. Do not type numbers in by hand.
+A good memo is short enough to read in one sitting and complete enough to act on. Each section should answer one question that a reviewer will ask. If a section cannot answer its question from the model output, the gap is a missing input. The memo should say so in the not-verified list, not hide it in a footnote.
+
+The template is a file in `code/part19/`, and it has eight sections. They cover the ask, the demand with its ranges, the sizing, the options compared, the scenarios, the recommendation with the latest order date, the review plan, and the list of what is not verified. Fill each section from the output of the model. Do not type numbers in by hand, because a retyped number is the most common way a memo drifts away from its model.
 
 ```markdown
 # Capacity decision memo: <estate name>, <planning period>
@@ -420,26 +458,26 @@ The forecast error we will report each month, the threshold that reopens this me
 Every input that is a placeholder or an estimate, and who will replace it with a measurement.
 ```
 
-Two parts of the memo carry the most weight. The recommendation names the latest order date, which is the need date minus the lead time minus a slack. That date is the real deadline, and the section on lead times gave you its number. The review plan names the forecast error you will report each month and the threshold that reopens the memo. Chapter 17.12 already tracks forecast accuracy as a metric. Use the same metric here. If the error exceeds the band, the plan is wrong, and you want to know in month two instead of month ten.
+Two parts of the memo carry the most weight. The recommendation names the latest order date. That date is the need date minus the lead time minus a slack, which is a margin for delays. It is the real deadline, and the section on lead times gave you its number. The review plan names the forecast error you will report each month, and the threshold that reopens the memo. Chapter 17.12 already tracks forecast accuracy as a metric, so use the same metric here. If the error exceeds the band, the plan is wrong. You want to know in month two, not in month ten.
 
-The estate in this chapter would write the following recommendation, with all of the caveats above. Place an order for an owned base of about 93 GPUs, which is 12 nodes after rounding up, keep one spare node, and cover the rest with on-demand capacity. Review at month three. The hardware route has a 120-day lead time, so the order is placed four months before the need date. If the prices in your quote differ, rerun the model before you sign. The numbers above would then be replaced by yours.
+The estate in this chapter would write the following recommendation, with all of the caveats above in mind. Place an order for an owned base of about 93 GPUs. That is 12 nodes after rounding up. Keep one spare node, and cover the rest with on-demand capacity. Review at month three. The hardware route has a 120-day lead time, so the order is placed four months before the need date. If the prices in your quote differ, rerun the model before you sign. Then replace the numbers above with yours, because the memo is only as good as the run behind it.
 
-**Decision rule:** Write the memo from the model output, include the latest order date and the list of unverified inputs, and set the review threshold before you sign.
+If the memo will be read by someone who was not in the room, make sure it stands alone. The reader needs to find the inputs, the run and the review date without asking anyone for them.
+
+**Decision rule:** Write the memo from the model output. Include the latest order date and the list of unverified inputs, and set the review threshold before you sign.
 
 **In one minute:** The memo answers three questions in advance. What do we do, when must we order, and what do we not know. Numbers come from the code. The review plan makes the next version cheaper to write.
 
 ---
-
-
----
-
 ## 8. Hands-on lab
 
-This lab runs the model on a laptop. It needs no GPU and no cloud account. All of it was run here, on macOS with Python 3.12.7 and pytest 8.3.5. What was not run, and why, is listed at the end.
+Picture yourself on a laptop with no GPU and no cloud account, trying to answer a finance question before lunch. This lab lets you do exactly that. It runs the model from start to finish, and every step produces numbers you can compare with the chapter. All of it was run here, on macOS with Python 3.12.7 and pytest 8.3.5. What was not run, and why, is listed at the end of the lab.
 
 ### Step 1: read the model
 
-The model file holds every formula. Each function has a docstring that names its source. Training formulas cite *Distributed AI Systems*, chapter 2. The checkpoint multiplier and Young's formula are marked as my model and as unverified. The inference and spare-pool functions are imported from `code/part20/`.
+Start by reading the model, because it holds every formula in the chapter. Each function has a docstring that names its source. Training formulas cite *Distributed AI Systems*, chapter 2. The checkpoint multiplier and Young's formula are marked as this chapter's own model and as unverified. The inference and spare-pool functions are imported from `code/part20/`, so the numbers match the chapters that own them.
+
+Read the code the way you would read a worked example in a textbook. The functions are short, and each one matches a formula that the chapter has already explained. If a function surprises you, look for its docstring first, then for the chapter section that uses it.
 
 ```python
 """Capacity model for a mixed GPU estate (chapter 19.9). Standard library only.
@@ -738,11 +776,13 @@ def monte_carlo(a, n=1000, seed=19):
             "cost": [percentile(costs, q) for q in (0.1, 0.5, 0.9)]}
 ```
 
-**What to record:** which functions carry a source, and which carry the words "my" or "unverified."
+What to record: which functions carry a source, and which are marked as this chapter's own model or as unverified.
 
 ### Step 2: read the assumptions
 
-The JSON file holds the base case, the scenarios, the sensitivity list and the ranges. Its first field says every price is a placeholder.
+Next, read the assumptions. The JSON file holds the base case, the scenarios, the sensitivity list and the ranges for the uncertainty run. Its first field says every price is a placeholder, so read that field before anything else.
+
+The JSON file is the single place where the numbers live. The model reads its prices and rates from this file, so changing a price means changing one line and rerunning the tables. That design is what makes the scenarios and the sensitivity table cheap to produce.
 
 ```json
 {
@@ -822,9 +862,13 @@ The JSON file holds the base case, the scenarios, the sensitivity list and the r
 }
 ```
 
-**What to record:** every input that you would replace with a measurement or a quote, and the owner who can give it to you.
+What to record: every input you would replace with a measurement or a quote, and the owner who can supply it.
 
 ### Step 3: the scenario runner and sensitivity table
+
+The scenario runner and the sensitivity table are short programs that call the model. Read them first, then run them.
+
+Each program is short on purpose. The scenario runner applies overrides, runs the plan and prints a row. The sensitivity table does the same thing once for each input, moving each one down and then up. If you understand those two loops, the tables stop looking like magic.
 
 ```python
 """Scenario runner (chapter 19.9). Reads c09_assumptions.json, applies each
@@ -929,13 +973,13 @@ python3 c09_scenario_runner.py
 python3 c09_sensitivity.py
 ```
 
-The expected result is the tables in sections 6.1 and 6.2, character for character. If your numbers differ, the cause is a changed input or a different Python version. Report the version.
+The expected result is the tables in sections 6.1 and 6.2, character for character. If your numbers differ, the cause is either a changed input or a different Python version, so report the version with the result.
 
-**What to record:** the best strategy in each scenario and the top three inputs in the sensitivity table.
+What to record: the best strategy in each scenario and the top three inputs in the sensitivity table.
 
 ### Step 4: the worked example
 
-The worked example prints every number this chapter quotes. Run it and compare.
+The worked example prints every number that this chapter quotes. Run it, then compare the output line by line with the chapter.
 
 ```python
 """Worked example for chapter 19.9. Prints every number the chapter quotes.
@@ -1016,44 +1060,53 @@ if __name__ == "__main__":
     main()
 ```
 
+Run the worked example with this command.
+
+The output is long, so pipe it to a file and keep it. You will want to compare it with the next run after you change one input, and a saved file makes that comparison easy.
+
 ```bash
 python3 c09_worked_example.py
 ```
 
-The full output is split across sections 2 to 6 of this chapter. The test `test_worked_example_prints_the_chapter_numbers` fails if the key figures drift.
+The full output is split across sections 2 to 6 of this chapter. If a key figure drifts, the test `test_worked_example_prints_the_chapter_numbers` fails. A changed input then shows up as a red test and not as a quiet difference.
 
-**What to record:** the pool size, the best strategy and its cost, and the P10, P50 and P90 pool sizes.
+What to record: the pool size, the best strategy and its cost, and the P10, P50 and P90 pool sizes.
 
 ### Step 5: run the tests
+
+Run the tests next. They check the formulas against hand calculations and against the code in chapters 20.12 and 20.16.
 
 ```bash
 python3 -m pytest code/part19/test_c09_capacity.py -q
 ```
 
-Result: 20 passed. The tests cover 6ND and MFU against a worked example, the checkpoint arithmetic, Young's interval at the minimum of a grid, the fixed point in the sizing, the forecast band on an exact exponential and on noisy data, agreement with chapters 20.12 and 20.16, hand-computed cost formulas, the commit level on flat and spiky demand, seeded Monte Carlo, scenario directions, a failure case where an unknown override path raises `KeyError`, and a check that the base assumptions are never changed by a run.
+Result: 20 passed. The tests cover 6ND and MFU against a worked example, the checkpoint arithmetic, Young's interval at the minimum of a grid, the fixed point in the sizing, the forecast band on an exact exponential and on noisy data, agreement with chapters 20.12 and 20.16, hand-computed cost formulas, the commit level on flat and spiky demand, seeded Monte Carlo, scenario directions, a failure case where an unknown override path raises `KeyError`, and a check that the base assumptions are never changed by a run. A failing test names the formula that moved, so start there.
 
-**What to record:** the number of tests that passed.
+When a test fails after you change an input, the fix is usually to look at the input and not at the test. The tests are the reference that the model has to keep matching, so a failure is a prompt to ask which of the two changed on purpose.
+
+What to record: the number of tests that passed.
 
 ### Step 6: put in your own numbers
 
-Copy `c09_assumptions.json`, replace every placeholder, and run `python3 c09_scenario_runner.py your_file.json`. Add one scenario for the event you fear most.
+This step is the one that makes the model yours. Copy `c09_assumptions.json`, replace every placeholder with your own number, and run `python3 c09_scenario_runner.py your_file.json`. Then add one scenario for the event you fear most.
 
-**What to record:** the pool size, the best strategy, and which input you were least sure about.
+What to record: the pool size, the best strategy, and which input you are least sure about.
 
 ### What was run and what was not
 
-Run here: every command above and the full test suite. Not run: anything on a real cluster or against a real price list. No GPU, no NCCL run, no checkpoint was written, no quote was requested. The model is arithmetic, and its ceilings are not measurements. Validate MFU, checkpoint write speed and per-GPU inference rate on your own hardware before you rely on any of them.
+A reader who copies these commands onto a real cluster needs to know what has already been checked. Run here: every command above, and the full test suite. Not run: anything on a real cluster, and anything against a real price list. No GPU was used, no NCCL run happened, no checkpoint was written, and no quote was requested. NCCL is the multi-GPU communication library, and it was not exercised here. The model is arithmetic, and its ceilings are not measurements. Validate MFU, checkpoint write speed and the per-GPU inference rate on your own hardware before you rely on any of them, because a placeholder that looks plausible can still be wrong for your site.
 
 ---
-
 ## Exercises
 
-1. **Add a spot tier for training.** Change the cost model so the burst demand from training is bought at a spot price with a rework fraction. *Solution sketch:* use `spot_effective_price` for the training share of demand above the commit, keep on-demand for inference, and add a test where a high rework fraction makes spot lose to on-demand.
-2. **Fit the trend to your own history.** Replace the placeholder QPS with 12 months from your gateway and check the band. *Solution sketch:* run `forecast_band`, compare the width to the 8.8 percent trend here, and note if the log-linear assumption fails because the history curves.
-3. **Find the commit crossover.** At what on-demand price does the reserved mix beat the owned mix in the base case? *Solution sketch:* loop over prices in a script, call `run_plan`, and print the first price at which the cheapest strategy changes. The answer depends on your inputs, so report it with the date and the source of each price.
-4. **Add a latency-driven batch.** Lower the inference batch from 64 to 16 and rerun. *Solution sketch:* change `inference.batch` in the JSON, rerun the scenario runner, and note the per-GPU ceiling and the inference GPU count. Chapter 20.12 explains why the ceiling falls.
-5. **Price an outage.** Add a scenario where a region is lost and half the pool disappears for a week. *Solution sketch:* add a month with doubled on-demand demand, record the cost of the burst, and compare it with the cost of a permanent spare pool from chapter 20.16.
-6. **Write the memo.** Fill in the template with your own numbers and give it to a colleague who did not read the chapter. *Solution sketch:* the test is whether they can find the order date and the list of unverified inputs in under a minute.
+Imagine the review meeting went well, and the finance lead now wants more. The exercises below extend the model in the directions that a real team usually asks about.
+
+1. **Add a spot tier for training.** Change the cost model so that the burst demand from training is bought at a spot price, with a rework fraction. *Solution sketch:* use `spot_effective_price` for the training share of demand above the commit. Keep on-demand for inference. Then add a test in which a high rework fraction makes spot lose to on-demand.
+2. **Fit the trend to your own history.** Replace the placeholder QPS with 12 months of data from your gateway, then check the band. *Solution sketch:* run `forecast_band`, and compare its width with the 8.8 percent trend in this chapter. Note whether the log-linear assumption fails, because your history curves.
+3. **Find the commit crossover.** At what on-demand price does the reserved mix beat the owned mix in the base case? *Solution sketch:* loop over prices in a script, call `run_plan` for each one, and print the first price at which the cheapest strategy changes. The answer depends on your inputs, so report it with the date and the source of each price.
+4. **Add a latency-driven batch.** Lower the inference batch from 64 to 16, then rerun the model. *Solution sketch:* change `inference.batch` in the JSON. Rerun the scenario runner, and note the per-GPU ceiling and the inference GPU count. Chapter 20.12 explains why the ceiling falls.
+5. **Price an outage.** Add a scenario in which a region is lost and half the pool disappears for a week. *Solution sketch:* add a month with doubled on-demand demand. Record the cost of that burst, and compare it with the cost of a permanent spare pool from chapter 20.16.
+6. **Write the memo.** Fill in the template with your own numbers, then give it to a colleague who did not read the chapter. *Solution sketch:* the test is whether that colleague can find the order date and the list of unverified inputs in under a minute.
 
 ---
 
