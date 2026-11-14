@@ -14,19 +14,23 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-You are forty minutes into the coding round. The interviewer has read you a problem about log lines, you have restated it, and the editor is empty. This chapter is the practice set for that moment. Chapter 20.8 covers what to expect and the toolkit, chapter 20.9 teaches the patterns, and chapter 20.10 gives complexity and latency numbers. Here you only practise.
+Picture yourself forty minutes into the coding round. The interviewer has just read you a problem about log lines. You have repeated it back, and the editor in front of you is still empty. This chapter is a practice set for exactly that moment, when the clock is running and the first sentence has not come yet.
 
-Nebius states that the technical interviews include "at least one practical coding / algorithms / data-structures task", in any language, and that you should speak your reasoning aloud, ask for hints and review code before submitting. One candidate reported two LeetCode easy or medium problems in one hour. The brief for this chapter also mentions a Senior Software Engineer report about compressing strings, and sources suggesting medium to hard problems in some loops. I could not verify those two points, so treat them as anecdotes. The plan says to prepare for the hardest version.
+The set sits alongside the rest of the coding material. Chapter 20.8 covers what to expect in the round and the toolkit you will use. Chapter 20.9 teaches the patterns behind the problems. Chapter 20.10 gives the complexity and latency numbers. Here you only practise, so the earlier chapters are where you go when a pattern is new to you.
+
+Nebius states that the technical interviews include "at least one practical coding / algorithms / data-structures task", in any language. The same page says you should speak your reasoning aloud, ask for hints and review code before submitting. One candidate reported two LeetCode easy or medium problems in one hour. The brief for this chapter also mentions a Senior Software Engineer report about compressing strings, and sources suggesting medium to hard problems in some loops. I could not verify those two points, so treat them as anecdotes. The plan says to prepare for the hardest version.
 
 A realistic question in the interviewer's voice: "Given a stream of access-log lines, tell me whether we are burning our error budget too fast. Use any language, and talk me through your choices."
 
-All problems are original, written from scratch. Every solution is Python standard library plus pytest, in `code/part20/c11_solutions/`.
+All problems are original, written from scratch. Every solution is Python standard library plus pytest, in `code/part20/c11_solutions/`. Because you can read every solution, the value is in the reasoning you practise around each one, not in the code itself.
 
 ## The core ideas
 
 ### 1. Run every problem the same way
 
-An empty editor and a running clock make people jump to code. The fix is a fixed routine that you rehearse until it is automatic. Restate the problem in one sentence, write two examples including an empty one, and say the brute-force idea with its cost. Only then look for the pattern that removes the waste.
+Picture the empty editor and the running clock. Most people feel the pull to start typing at once, and that is where the points leak away. The fix is a fixed routine that you rehearse until it runs on its own, without thought, on any problem in the set.
+
+The routine has five steps. Restate the problem in one sentence, so you know what you are answering. Write two examples, one of them empty, so the edge cases are on the page. Say the brute-force idea and its cost out loud. Only then look for the pattern that removes the waste. After the code, trace one example by hand and walk through the edge cases again.
 
 ```mermaid
 flowchart LR
@@ -37,17 +41,19 @@ flowchart LR
   E --> F["Edge cases, then follow-up"]
 ```
 
-Brute force gives you a fallback and, later, an oracle. The tests here use the same idea: where it is cheap, each solution is checked against a slow, obviously correct version on thousands of random small inputs. **Write the slow version first, in your head or on paper.**
+Brute force gives you a fallback and, later, an oracle. An oracle is a slow version you trust because it is obviously correct, and you use it to check the fast version. The tests in this chapter use the same idea: where it is cheap, each solution is checked against a slow, obviously correct version on thousands of random small inputs. **Write the slow version first, in your head or on paper.**
 
 ### 2. How to use the set
 
-Do each problem under its budget, in a plain editor, without the hints. If you are stuck at half time, open hint one and note it. Asking for hints is allowed in the real loop too. Afterwards compare with the reference solution and read the common wrong answer.
+Think of this as a sparring partner, not a quiz. Do each problem under its budget, in a plain editor, without the hints. If you are stuck at half time, open hint one and note that you did. Asking for hints is allowed in the real loop too, so using one is practice, not failure. Afterwards compare your answer with the reference solution and read the common wrong answer for that problem.
 
-Track time to a correct solution and the number of hints used. A problem where you needed hint three goes back on the list for next week. If you are over twice the budget, read the solution, close it, and write it again from memory the next day.
+Track two things. The first is the time to a correct solution. The second is the number of hints you used. A problem where you needed hint three goes back on the list for next week, because the pattern was not yet automatic. If you are over twice the budget, read the solution, close it, and write it again from memory the next day. Writing from memory shows you what you actually kept.
 
 ### 3. The index
 
-The pattern names match chapter 20.9. A file is `c11_` plus the id and a short name, so E2 is `c11_e02_compress_string.py`. Tests are `test_c11_easy.py`, `test_c11_medium.py`, `test_c11_harder.py` and `test_c11_projects.py`.
+Imagine a list of problems pinned above your desk, and you want to find one quickly by its code. The pattern names match chapter 20.9. A file is `c11_` plus the id and a short name, so E2 is `c11_e02_compress_string.py`. Tests are `test_c11_easy.py`, `test_c11_medium.py`, `test_c11_harder.py` and `test_c11_projects.py`.
+
+The tables below group the set by tier. Each row names the problem, and the pattern column tells you what kind of structure to reach for first. Read the pattern column before you read the problem. That habit turns a vague prompt into a short list of candidate tools.
 
 | Easy, 15 min each | Pattern |
 |---|---|
@@ -101,13 +107,17 @@ The pattern names match chapter 20.9. A file is `c11_` plus the id and a short n
 | P3 Time-series store | Sorted lists, downsampling | 90 |
 | P4 Rollout planner | Topological waves | 90 |
 
-Medium and project budgets are in minutes. Before you start a tier, say aloud which pattern you expect each problem to need.
+Medium and project budgets are in minutes. Before you start a tier, say aloud which pattern you expect each problem to need. If your guess is wrong, that is useful information, because it shows which pattern you have not yet learned to recognise.
 
 ### 4. Easy tier: twelve problems, fifteen minutes each
 
-The easy tier is not about cleverness. A candidate who finds the optimal approach but misses the empty input still loses points. Each of these should be solved, tested by hand on two examples, and explained in under fifteen minutes. The solutions are all short. Keep your version as short.
+Picture a short shift on a support desk, where every ticket is small but one careless answer can cost you the whole shift. The easy tier is like that. It is not about cleverness. A candidate who finds the optimal approach but misses the empty input still loses points, and the interviewer notices the miss quickly.
+
+Each of these should be solved, tested by hand on two examples, and explained in under fifteen minutes. The solutions are all short, so keep your version short too. A long answer to a short problem usually means you have solved a harder problem by accident, or you have added code to handle a case that was never asked about.
 
 #### E1. First unique request id
+
+Imagine a batch job that has read a long list of request ids, and an on-call engineer wants the first id that came in only once. The first pass to think of is to look at each id and ask whether it came back again. That question is about counting, and the answer needs the whole list, so the cleverness here is in separating the two jobs.
 
 Given a list of request ids, return the first id that occurs exactly once, or `None`. Example: `["a","b","a","c","b"]` gives `"c"`. Target: O(n) time.
 
@@ -123,6 +133,8 @@ Given a list of request ids, return the first id that occurs exactly once, or `N
 
 #### E2. Compress a string
 
+Picture a metrics agent that is about to ship a line of repeated letters, and it wants to pack the line into fewer characters before sending it. Packing helps only when the packed form is shorter. So the code has to measure its own output before it returns anything, and the rule about returning the original is part of the answer, not an extra.
+
 Compress runs of equal characters: `"aaabcc"` becomes `"a3bc2"`. A run of one keeps no digit. Return the original if the result is not strictly shorter, so `"aabb"` stays `"aabb"`. Input is lowercase letters only. Target: O(n) time. Write the inverse too.
 
 <details><summary>Hints</summary>
@@ -136,6 +148,8 @@ Compress runs of equal characters: `"aaabcc"` becomes `"a3bc2"`. A run of one ke
 **Insight.** The final run is the one people forget to flush. **Common wrong answer.** Appending `+=` to a string in a loop, and always emitting the count even for a run of one, which makes `"abc"` longer. **Follow-up.** "Decode it. What breaks if the input can contain digits?" The answer is that a digit becomes ambiguous, so you need an escape rule or a length prefix. File: `c11_e02_compress_string.py`. The full solution is in the worked scenarios.
 
 #### E3. Count status classes in a log
+
+Picture a nightly job that reads a web access log written by many services over several years. Some lines are cut short, some carry extra fields, and the job must still finish. The question is how to count the good lines, count the bad ones, and never let a single bad line stop the run.
 
 Each line is `<timestamp> <method> <path> <status> <ms>ms`. Return counts for 1xx to 5xx, one bucket for other three-digit codes, and one for malformed lines. Target: O(n) time, O(1) space.
 
@@ -151,6 +165,8 @@ Each line is `<timestamp> <method> <path> <status> <ms>ms`. Return counts for 1x
 
 #### E4. Balanced brackets
 
+Picture a deploy script that reads a config file with nested blocks, and it must reject a broken file before the file reaches a server. Brackets nest, so the check is about order, not about how many of each kind appear. A plain count of each bracket type would pass a file that is badly formed.
+
 Given a config string containing `()`, `[]` and `{}` among other characters, say whether every bracket closes in the right order. `"a(b[c])"` is true, `"(]"` is false. Target: O(n) time.
 
 <details><summary>Hints</summary>
@@ -164,6 +180,8 @@ Given a config string containing `()`, `[]` and `{}` among other characters, say
 **Insight.** Nesting means last in, first out. **Common wrong answer.** Counting each bracket type, which accepts `")("`. **Follow-up.** "Report the index of the first error." Keep indexes on the stack. File: `c11_e04_balanced_brackets.py`.
 
 #### E5. Merge two sorted timestamp lists
+
+Picture two exporters that each write a sorted file of event times, and a reporting job that needs one combined timeline. Sorting everything again would throw away the order each file already has. The better move is to walk the two files together, one step at a time, and take the earlier item each time.
 
 Two lists of sorted timestamps are given. Return one sorted list. Ties take the first list's value first. Target: O(n+m) time.
 
@@ -179,6 +197,8 @@ Two lists of sorted timestamps are given. Return one sorted list. Ties take the 
 
 #### E6. Top k error messages
 
+Picture a dashboard that lists the error messages from the last hour, with the top few and their counts. The on-call engineer wants the most common ones first. The ties need a fixed rule, because otherwise the list can reorder itself every time the page refreshes, and that confuses the people reading it.
+
 Return the k most frequent messages with their counts, ties in alphabetical order. `k` may be zero or larger than the number of distinct messages. Target: O(n + u log k) for u distinct messages.
 
 <details><summary>Hints</summary>
@@ -192,6 +212,8 @@ Return the k most frequent messages with their counts, ties in alphabetical orde
 **Insight.** Put the tie-break inside the sort key, not after it. **Common wrong answer.** `Counter.most_common`, whose tie order follows insertion order, so results vary with input order. **Follow-up.** "The messages contain request ids. How do you group them?" That is problem M6. File: `c11_e06_top_k_errors.py`.
 
 #### E7. Two latencies adding to a budget
+
+Picture a user request that is split into two backend calls, and the total time must fit inside a fixed budget. You need the pair of calls whose times add up to the budget, and you need their positions in the original list, not their values. Sorting would lose those positions, which is the first thing to avoid.
 
 Given a list of latencies and a budget, return indexes `(i, j)` with `i < j` whose values sum to the budget. Choose the smallest `j`, then the smallest `i`. Return `None` if there is none. Target: O(n) time.
 
@@ -207,6 +229,8 @@ Given a list of latencies and a budget, return indexes `(i, j)` with `i < j` who
 
 #### E8. Longest run of successes
 
+Picture a health check that records a status code for each probe. You want the longest streak of probes that stayed healthy. A streak can end on the very last probe, and that is an easy place to make a mistake, because the loop may finish before the streak is counted.
+
 Given a list of status codes, return the longest run of consecutive codes below 500. Target: O(n) time, O(1) space.
 
 <details><summary>Hints</summary>
@@ -220,6 +244,8 @@ Given a list of status codes, return the longest run of consecutive codes below 
 **Insight.** Updating the best inside the loop handles a run that ends at the last element. **Common wrong answer.** Updating the best only on a reset, which misses a final run. **Follow-up.** "Return where the run starts." File: `c11_e08_longest_ok_streak.py`.
 
 #### E9. Nearest-rank percentile
+
+Picture an SLO report that must say what the 99th percentile latency is, and the value decides whether the service passes or fails that week. A rounding slip can turn a pass into a fail, so the arithmetic has to be exact. This problem teaches you to notice where floating-point numbers can mislead you.
 
 Return the p-th percentile of a list by the nearest-rank rule: the value at position `ceil(p/100 * n)` in sorted order, counting from one. `p` is above 0 and at most 100. Raise on empty input. Target: O(n log n) time.
 
@@ -235,6 +261,8 @@ Return the p-th percentile of a list by the nearest-rank rule: the value at posi
 
 #### E10. Moving average
 
+Picture a dashboard that draws a smoothed line over the last few samples of a metric. Recomputing the sum for every point repeats most of the work from the point before. The smoothing should cost about the same for each new sample, however large the window is.
+
 Return the average of every full window of `k` samples. If `k` is larger than the list, return an empty list. Reject `k` of zero or less. Target: O(n) time.
 
 <details><summary>Hints</summary>
@@ -248,6 +276,8 @@ Return the average of every full window of `k` samples. If `k` is larger than th
 **Insight.** An incremental update turns O(nk) into O(n). **Common wrong answer.** `sum(xs[i:i+k])` in a loop. **Follow-up.** "Floating-point samples drift over millions of points. What do you do?" Recompute the sum periodically, or use a compensated sum. File: `c11_e10_moving_average.py`.
 
 #### E11. Missing shard id
+
+Picture a cluster with a numbered set of shards, where one shard has dropped out of the inventory. You need the one id that is absent. The inventory is too large to copy into a new structure, so the answer should come from arithmetic on what you already have.
 
 A cluster has shards `0..n`. You are given `n` distinct ids from that range. Return the missing one. Target: O(n) time, O(1) space.
 
@@ -263,6 +293,8 @@ A cluster has shards `0..n`. You are given `n` distinct ids from that range. Ret
 
 #### E12. Duplicate id within k positions
 
+Picture a deduplication step that drops a request id if the same id shows up again within a short window. Only the recent ids matter, so the memory you need depends on the window size and not on the length of the whole stream. That is the key idea behind the solution.
+
 Return true if any id appears twice with at most `k` positions between the two occurrences. `k` of zero or less gives false. Target: O(n) time, O(k) space.
 
 <details><summary>Hints</summary>
@@ -275,13 +307,15 @@ Return true if any id appears twice with at most `k` positions between the two o
 
 **Insight.** A set that mirrors the window gives O(1) membership. **Common wrong answer.** A dict of last-seen index, which works but needs the careful distance check. **Follow-up.** "The window is in seconds, not positions." Evict by timestamp from a deque. File: `c11_e12_duplicate_within_k.py`.
 
-The easy tier ends here. If any of the twelve took more than twenty minutes, repeat it before you open the medium tier.
+That closes the easy tier. If any of the twelve took more than twenty minutes, repeat it before you open the medium tier.
 
 ### 5. Medium tier: sixteen problems, 25 to 30 minutes each
 
-Medium problems hide a data structure inside a story. The skill is to hear it. "Last used" means ordering. "Overlapping" means sorting by start. "Smallest first among ready" means a heap. Say the structure aloud before you write a line.
+Picture a planning meeting where the story sounds simple, but the solution needs a specific tool hidden inside it. Medium problems work like that. The skill is to hear the structure in the story. "Last used" means ordering. "Overlapping" means sorting by start. "Smallest first among ready" means a heap. Say the structure aloud before you write a line, so the interviewer can hear your plan.
 
 #### M1. Longest window with at most k failures
+
+Picture a canary deployment that tolerates a few failed requests in a row, and you want the longest stretch of traffic that still stays within that allowance. The stretch can start and stop anywhere, so the search has to move forward without going back over old ground.
 
 A list of 0 and 1 marks requests as success or failure. Return the length of the longest contiguous stretch with at most `k` ones. Target: O(n) time, O(1) space.
 
@@ -297,6 +331,8 @@ A list of 0 and 1 marks requests as success or failure. Return the length of the
 
 #### M2. Merge maintenance windows
 
+Picture a scheduling board where maintenance windows can overlap or touch, and the calendar must show each stretch of time once. You want a clean, sorted list of the merged windows, with no double bookings left in it.
+
 Windows are half-open `[start, end)`. Merge any that overlap or touch, so `[1,3)` and `[3,5)` become `[1,5)`. Return them sorted. Target: O(n log n) time.
 
 <details><summary>Hints</summary>
@@ -310,6 +346,8 @@ Windows are half-open `[start, end)`. Merge any that overlap or touch, so `[1,3)
 **Insight.** After sorting, only the last merged window can overlap the next. **Common wrong answer.** Replacing the end instead of taking the maximum, which shrinks a window that contains the next one. **Follow-up.** "Return the gaps instead." The full solution is in the worked scenarios. File: `c11_m02_merge_windows.py`.
 
 #### M3. Peak concurrent jobs
+
+Picture a capacity planner with a list of jobs, each with a start and an end time. The planner asks how many jobs run at once at the busiest moment. A job that ends at the same moment another one starts should not count as overlapping, and that rule shapes the sort order.
 
 Jobs are half-open `[start, end)`. Return the largest number running at the same time. Two jobs that touch do not overlap. Target: O(n log n) time.
 
@@ -325,6 +363,8 @@ Jobs are half-open `[start, end)`. Return the largest number running at the same
 
 #### M4. LRU cache
 
+Picture a service that caches its most recent lookups and must throw out the oldest unused entry when the cache is full. Both reads and writes count as use, so the order changes on every touch. A cache that is slow to reorder becomes the bottleneck it was meant to remove.
+
 Build a cache with `get` and `put` in O(1). On overflow, evict the least recently used key. Both `get` and an overwrite count as use. Target: O(1) per operation.
 
 <details><summary>Hints</summary>
@@ -338,6 +378,8 @@ Build a cache with `get` and `put` in O(1). On overflow, evict the least recentl
 **Insight.** A hash map plus a doubly linked list gives O(1) for both jobs. **Common wrong answer.** A plain list for recency, which makes every touch O(n). **Follow-up.** "Write it without OrderedDict." Fluent Python, chapter 2, explains why a list is a poor queue and where `collections.deque` helps. File: `c11_m04_lru_cache.py`.
 
 #### M5. Kth largest in a stream
+
+Picture a monitor that receives a stream of latency samples and must report the kth largest value at any time. Storing the whole stream in sorted order is wasteful, because the top k is all the monitor ever needs. Keeping only what could still matter is the core move here.
 
 Create an object with `add(x)` that returns the kth largest value seen so far, or `None` before `k` values exist. Target: O(log k) per add, O(k) memory.
 
@@ -353,6 +395,8 @@ Create an object with `add(x)` that returns the kth largest value seen so far, o
 
 #### M6. Group log lines by template
 
+Picture an on-call team that sees a long stream of log lines and wants a count per type of event. Two lines that differ only in their numbers describe the same event. Normalising the numbers first turns a fuzzy clustering question into a simple count.
+
 Replace every run of digits in a line with `<N>`, count the lines per template, and return `(template, count)` sorted by count then template. Target: O(total characters).
 
 <details><summary>Hints</summary>
@@ -366,6 +410,8 @@ Replace every run of digits in a line with `<N>`, count the lines per template, 
 **Insight.** Normalising before counting turns a clustering problem into a group-by. **Common wrong answer.** Replacing single digits, which gives `<N><N>` for `17`. **Follow-up.** "Hex ids and UUIDs are also noise." Add rules, and test that the rules do not merge different events. File: `c11_m06_log_templates.py`.
 
 #### M7. Canonical file path
+
+Picture a tool that receives a messy path with double slashes, dot segments and parent references, and must return the clean path. Think of walking a path in a file manager: a parent step goes back one level, and it never goes above the root. A stack is a natural way to model that walk.
 
 Turn an absolute path like `/a//b/./c/../d/` into `/a/b/d`. Ignore empty parts and `.`. A `..` removes the previous part and does nothing at the root. Target: O(n) time.
 
@@ -381,6 +427,8 @@ Turn an absolute path like `/a//b/./c/../d/` into `/a/b/d`. Ignore empty parts a
 
 #### M8. Count windows summing to k
 
+Picture a billing check that looks for stretches of a usage series that add up to an exact target. Values can dip below zero, and that breaks the simple sliding window that works only for positive values. The prefix sums trick repairs that, and the hash table makes it fast.
+
 Count contiguous windows of an integer list whose sum is `k`. Values may be negative. Target: O(n) time.
 
 <details><summary>Hints</summary>
@@ -394,6 +442,8 @@ Count contiguous windows of an integer list whose sum is `k`. Values may be nega
 **Insight.** At each position you need how many earlier prefixes equal `total - k`. **Common wrong answer.** Two pointers, which only work for non-negative values. **Follow-up.** "Longest window instead of count." Store the first index of each prefix. File: `c11_m08_subarray_sum.py`.
 
 #### M9. Dependency order, smallest name first
+
+Picture a deployment tool where services depend on each other, and it must start them in an order where each dependency comes first. When two services are ready at the same time, the smaller name goes first, so the plan is the same on every run. A cycle means nothing can start, and the tool should say which services are stuck.
 
 A map says which services each service needs first. Return a start order where every dependency comes first and ties go to the smallest name. If there is a cycle, raise an error naming the stuck services. Services that only appear as a dependency still count. Target: O((V+E) log V).
 
@@ -409,6 +459,8 @@ A map says which services each service needs first. Return a start order where e
 
 #### M10. Slowest rate that finishes in time
 
+Picture a team with a backlog of jobs and a deadline in hours. It needs the slowest worker rate that still finishes everything on time, because the slowest rate is the cheapest one to run. The question is the smallest rate that works, and that question has a useful shape.
+
 Jobs have sizes. A worker with rate `r` takes `ceil(size / r)` hours per job, one job at a time. Find the smallest integer `r` so all jobs finish within `hours`. Raise if `hours` is below the number of jobs. Target: O(n log max).
 
 <details><summary>Hints</summary>
@@ -422,6 +474,8 @@ Jobs have sizes. A worker with rate `r` takes `ceil(size / r)` hours per job, on
 **Insight.** When checking an answer is easy and monotone, search over answers. **Common wrong answer.** Trying each rate in turn, which is O(max times n). **Follow-up.** "Rates are real numbers." Search to a tolerance. File: `c11_m10_min_rate.py`.
 
 #### M11. Token bucket
+
+Picture an API gateway that must allow short bursts from each client but cap the steady rate. A token bucket is the usual tool for that. The job is to write it so it can be tested without sleeping, which means the caller passes in the time.
 
 Build a limiter with a rate in tokens per second and a capacity. It starts full. `allow(now, cost)` takes tokens if they exist. The caller passes the time. Handle a clock that moves backwards. Target: O(1) per call.
 
@@ -437,6 +491,8 @@ Build a limiter with a rate in tokens per second and a capacity. It starts full.
 
 #### M12. Consistent hash ring
 
+Picture a cache layer that spreads keys across several servers. Adding or removing one server should move only a small share of the keys. A plain modulo rule moves almost everything when the server count changes, so the placement needs a ring instead.
+
 Build a ring with virtual nodes. `get(key)` returns the owner. Removing a node must only move the keys it owned. Use a stable hash. Target: O(log N) per lookup.
 
 <details><summary>Hints</summary>
@@ -450,6 +506,8 @@ Build a ring with virtual nodes. `get(key)` returns the owner. Removing a node m
 **Insight.** Virtual nodes smooth the load, and sorted points make lookups logarithmic. **Common wrong answer.** `hash(key) % n`, which moves almost every key when `n` changes. Python's built-in string `hash` is also randomised per process, so use `hashlib`. **Follow-up.** "A node is twice as big." Give it twice the points. File: `c11_m12_hash_ring.py`.
 
 #### M13. Retry delays with full jitter
+
+Picture a client that retries a failed call, and many clients retrying on the same schedule can knock the server over again. Random delays spread the retries out. A total budget stops the retries from running past the caller's deadline.
 
 Return a list of delays for `attempts` retries. The ceiling is `min(cap, base * 2**i)`. Each delay is uniform between zero and the ceiling. Accept a random generator for tests. Stop early if the total would exceed a budget. Target: O(attempts).
 
@@ -465,6 +523,8 @@ Return a list of delays for `attempts` retries. The ceiling is `min(cap, base * 
 
 #### M14. Shortest span holding all event types
 
+Picture a trace with events of several types arriving over time, and you want the shortest window that contains every required type. Moving the right edge forward and shrinking from the left is the search pattern that finds it. The trick is to track how many required types are still missing, rather than re-checking the window each time.
+
 Events are `(timestamp, type)` sorted by time. Return the shortest time span `(start, end)` that contains every required type, or `None`. Target: O(n) time.
 
 <details><summary>Hints</summary>
@@ -478,6 +538,8 @@ Events are `(timestamp, type)` sorted by time. Return the shortest time span `(s
 **Insight.** Each element enters and leaves once. **Common wrong answer.** Checking every pair of positions, which is O(n squared) or worse. **Follow-up.** "A type must appear at least twice." Compare counts instead of presence. File: `c11_m14_shortest_span.py`.
 
 #### M15. Expand nested repeat notation
+
+Picture a config tool that receives nested repeat notation and must turn it into the full string before it deploys. Nested means the inner part has to be built before the outer repeat can be applied. A stack keeps the outer context safe while the inner part is being built.
 
 Expand `3[a2[c]]` to `accaccacc`. Counts can have several digits. Input is valid. Target: O(output length).
 
@@ -493,6 +555,8 @@ Expand `3[a2[c]]` to `accaccacc`. Counts can have several digits. Input is valid
 
 #### M16. Value of a key at time t
 
+Picture a config store that keeps a history of values for each key, and a reader asks what the value was at a given moment. The history is already in time order, so the reader can jump straight to the right spot instead of reading the whole history.
+
 Build a store with `set(key, value, ts)` and `get(key, ts)`, where `get` returns the value with the largest timestamp not after `ts`. Timestamps rise per key. Target: O(1) set, O(log n) get.
 
 <details><summary>Hints</summary>
@@ -507,9 +571,11 @@ Build a store with `set(key, value, ts)` and `get(key, ts)`, where `get` returns
 
 ### 6. Harder tier: eight problems, 40 minutes each
 
-Harder problems are not exotic. They are medium ideas with more bookkeeping, and the failure is usually a broken invariant. Before coding, write the invariant in one sentence. Then write the test that would catch you breaking it.
+Picture a harder problem as a medium idea with more bookkeeping. These are not exotic. The usual failure is a broken invariant, which is a rule the data structure must keep true after every step. Before you code, write the invariant in one sentence. Then write the test that would catch you breaking it, because that test is what protects you when you change the code under pressure.
 
 #### H1. LFU cache
+
+Picture a cache full of keys with uneven traffic, and the team wants to keep the keys that are used most often, not just the ones used most recently. Counting uses makes this harder than the LRU cache, because the counts must stay correct as keys move between groups.
 
 Like M4, but evict the least frequently used key. Among keys with the same count, evict the least recently used. Both `get` and an overwrite raise the count. Target: O(1) per operation.
 
@@ -525,6 +591,8 @@ Like M4, but evict the least frequently used key. Among keys with the same count
 
 #### H2. Sliding window maximum
 
+Picture a latency panel that needs the highest value in every window of recent samples as the window slides along. Scanning each window works but repeats most of the work. The sliding structure should remember only the values that could still be the maximum later.
+
 Return the maximum of every window of `k` samples. Target: O(n) time.
 
 <details><summary>Hints</summary>
@@ -538,6 +606,8 @@ Return the maximum of every window of `k` samples. Target: O(n) time.
 **Insight.** Each index is pushed and popped once. **Common wrong answer.** `max()` per window, which is O(nk). **Follow-up.** "How would this feed a peak-latency panel?" File: `c11_h02_sliding_max.py`.
 
 #### H3. Sliding window median
+
+Picture a panel that shows the median of the last few samples as they stream in. The median sits between two heaps, one holding the lower half and one holding the upper half. A heap cannot remove an item from its middle, so removals need a different handling, and that is what this problem teaches.
 
 Return the median of every window of `k` samples. For even `k`, return the mean of the two middle values. Target: O(n log k) time.
 
@@ -553,6 +623,8 @@ Return the median of every window of `k` samples. For even `k`, return the mean 
 
 #### H4. Cheapest route with at most k hops
 
+Picture a network planner who needs the cheapest route between two nodes, with a limit on how many hops the route may use. The cheapest route may need too many hops, so the cost alone is not enough to decide. The hop limit has to shape how the search runs.
+
 Nodes are `0..n-1`. Edges are `(u, v, cost)` with non-negative cost. Return the cheapest cost from `src` to `dst` using at most `k` intermediate nodes, or `-1`. Target: O(k times E).
 
 <details><summary>Hints</summary>
@@ -566,6 +638,8 @@ Nodes are `0..n-1`. Edges are `(u, v, cost)` with non-negative cost. Return the 
 **Insight.** The copy is the whole trick. Without it a round can chain several edges. **Common wrong answer.** Plain Dijkstra, which finds the cheapest path even when it uses too many hops. **Follow-up.** "Do it with Dijkstra." Put `(node, hops used)` in the state. File: `c11_h04_cheapest_route.py`.
 
 #### H5. Edit distance of two config lines
+
+Picture a diff tool that compares two config lines and reports how many edits turn one into the other. The table of answers for prefixes is the standard way to build it. The same pattern appears in spell checkers and in tools that compare files.
 
 Return the least number of insertions, deletions and replacements that turn one string into another. Target: O(nm) time, O(min) space.
 
@@ -581,6 +655,8 @@ Return the least number of insertions, deletions and replacements that turn one 
 
 #### H6. Pack models onto one GPU
 
+Picture a scheduler that must choose which models to load on one GPU. Each model uses a set amount of memory and gives a set value, and the total memory is limited. Taking the best value per unit of memory looks reasonable, but it can fail on small cases, so the table is the honest method here.
+
 Each model has a memory size and a value. One GPU has a memory budget. Return the best total value and which models to load. Each model is loaded at most once. Target: O(n times capacity).
 
 <details><summary>Hints</summary>
@@ -594,6 +670,8 @@ Each model has a memory size and a value. One GPU has a memory budget. Return th
 **Insight.** The state is small because memory is a bounded integer. **Common wrong answer.** Greedy by value per gigabyte, which fails on small cases. **Follow-up.** "The capacity is huge." Then the table is too large, and you discuss branch and bound or scaling the sizes. File: `c11_h06_gpu_pack.py`.
 
 #### H7. Online clusters of failed hosts
+
+Picture hosts that start failing, with some failed hosts linked to each other. An on-call engineer wants the number of failure clusters and the size of the largest one after each event. Redoing a full graph search after every event would waste time, so the answer should update as events arrive.
 
 Hosts fail and links between failed hosts appear one at a time. After each event, report the number of clusters and the largest cluster size. Target: near-constant time per event.
 
@@ -609,6 +687,8 @@ Hosts fail and links between failed hosts appear one at a time. After each event
 
 #### H8. Route table with wildcards
 
+Picture a gateway that matches request paths against a list of routes, some of which contain wildcards. When several routes match, the more specific one should win. A route that looks right can still dead-end, so the search has to be able to step back and try another path.
+
 Routes are paths like `/v1/models/*/infer`. A star matches exactly one segment. When several routes match, prefer static segments over a star at the earliest differing position. Ignore empty segments. Target: O(path length) per match, plus backtracking.
 
 <details><summary>Hints</summary>
@@ -623,9 +703,13 @@ Routes are paths like `/v1/models/*/infer`. A star matches exactly one segment. 
 
 ### 7. Mini-projects: four SRE tasks
 
-These are longer and closer to a take-home or a late part of a coding round. Give yourself an hour to an hour and a half. The goal is a small, tested module with a clear API, and an explanation of what the numbers mean. Nebius has not published a coding task of this kind. These are my reasoning about the sort of work the posting describes: SLOs and alert design, routing and retry logic, telemetry at large volume and automation.
+Picture a take-home exercise, or the late part of a coding round, where you have an hour to an hour and a half and must hand in a small module. These are longer than the problems above and closer to that kind of work. The goal is a small, tested module with a clear interface, and an explanation of what the numbers mean for an operator.
+
+Nebius has not published a coding task of this kind. These are my reasoning about the sort of work the posting describes: SLOs and alert design, routing and retry logic, telemetry at large volume and automation.
 
 #### P1. SLO burn from a log stream
+
+Picture an SRE team that wants to know, from a stream of request logs, whether the service is spending its error budget too fast. The tool must work on a long log without storing every line. It must alert only when the problem is both large and still happening.
 
 Lines look like `<ISO time> <method> <path> <status> <latency_ms>`. A request is bad when the status is 500 or more, or latency is above a limit. Report the burn rate over several windows, where burn rate is the bad fraction divided by the error budget. Alert only when a long window and a short window both exceed a threshold. Memory must stay bounded. Count malformed lines. Target: O(1) per line.
 
@@ -641,6 +725,8 @@ Lines look like `<ISO time> <method> <path> <status> <latency_ms>`. A request is
 
 #### P2. Rate limiter with tests
 
+Picture a product team that needs a per-customer rate limiter for an API, and the code will run in several threads at once. The two common algorithms behave differently at the edges, so the design must choose one on purpose and say why.
+
 Build a per-key limiter with two algorithms: a token bucket and an exact sliding-window log. Each call returns whether it is allowed and a retry-after in seconds. Bound memory by evicting idle keys. Make it safe for threads. Target: O(1) per call for the bucket, amortised O(1) for the log.
 
 <details><summary>Hints</summary>
@@ -654,6 +740,8 @@ Build a per-key limiter with two algorithms: a token bucket and an exact sliding
 **Insight.** An event at exactly one window ago has left the window, and a test should pin that boundary. **Common wrong answer.** A fixed-window counter, which allows twice the limit across a boundary. **Follow-up.** "Now run it on ten gateway replicas." Distributed questions begin here: a shared store, local approximations and the cost of a network hop on every request. Distributed AI Systems, chapter 9, names rate limiting as a gateway duty and a bounded queue with fast 503 as backpressure. Files: `c11_p2_rate_limiter.py`, reusing `c11_m11_token_bucket.py`.
 
 #### P3. Time-series store
+
+Picture a metrics system that stores a stream of points, where points can arrive late or arrive twice. Dashboards ask for ranges of time and for coarse steps, so the store has to answer both kinds of question quickly.
 
 Store named series of `(timestamp, value)`. Support insert with out-of-order and duplicate timestamps, a range query over `[start, end)`, downsampling into fixed steps with `avg`, `sum`, `min`, `max`, `count` or `last`, and a retention call that drops old points. Skip empty buckets. Target: O(log n + k) per range query.
 
@@ -669,6 +757,8 @@ Store named series of `(timestamp, value)`. Support insert with out-of-order and
 
 #### P4. Rollout planner
 
+Picture a release manager with a list of services that must go out in a certain order, who wants the rollout in waves where each wave can run in parallel. A loop in the dependencies would stop the whole plan, so the planner has to report the loop rather than hide it.
+
 Given which services must be rolled out before which, produce waves where each wave can go out at the same time. Detect cycles and print one cycle path. Support a cap on parallel services. After a failure, list every service that is now blocked. Target: O(V+E) for planning without a cap.
 
 <details><summary>Hints</summary>
@@ -683,7 +773,7 @@ Given which services must be rolled out before which, produce waves where each w
 
 ### 8. A four-week schedule
 
-Plan five sessions a week of about ninety minutes, with one rest day. The schedule assumes you also read chapters 20.8 to 20.10. If the loop is sooner, drop week 3.
+Picture the run-up to the loop, with a calendar that has room for about five sessions a week. The schedule below assumes five sessions of about ninety minutes, with one rest day. It also assumes you have already read chapters 20.8 to 20.10. If the loop is sooner, drop week 3.
 
 | Week | Work |
 |---|---|
@@ -692,11 +782,11 @@ Plan five sessions a week of about ninety minutes, with one rest day. The schedu
 | 3 | H1 to H8, two per session, with the invariant said aloud before coding. P2 on the weekend. |
 | 4 | P1, P3 and P4, one every two days. Redo the six problems that cost you most hints. Finish with two timed mock rounds. |
 
-In week 4, record yourself once. Most people go silent exactly when they are stuck, and that is the moment the interviewer most wants to hear you. **Move up a tier when most problems in the current one go clean, not when the calendar says so.**
+In week 4, record yourself once. Most people go silent exactly when they are stuck, and that is the moment the interviewer most wants to hear you. Listen back and mark the silences. **Move up a tier when most problems in the current one go clean, not when the calendar says so.**
 
 ## How to answer out loud
 
-Five prompts you may meet, and the order to speak.
+Picture the interviewer reading you a prompt, and you have a few seconds before you must speak. The five prompts below are the ones you are most likely to meet. For each one, the list shows the order in which to speak, so your first words are a plan and not a guess.
 
 **"Compress a string."** Restate: runs become letter plus count. Ask whether digits can appear and whether a run of one keeps its count. State that you keep the original if the result is not shorter. Say O(n) time and space, trace `"aaabcc"`, then test empty, one character and a run over nine. Expect "now decode it".
 
@@ -710,9 +800,11 @@ Five prompts you may meet, and the order to speak.
 
 ## Worked scenarios
 
+These four cases and one outline show the full path from a prompt to a tested answer. Each case starts with what the interviewer says, then shows the reasoning you would speak, then the code, then the check that proves the code. Read the reasoning first and the code second, because the reasoning is what the interviewer hears.
+
 ### Scenario 1: compress a string, live
 
-The interviewer says: "Compress runs of equal letters, but only if it helps." You restate, ask about digits, and agree on lowercase input. A brute force is obvious, so you go straight to one pass. The solution keeps the current character and its length and flushes when the character changes.
+Picture the interviewer saying, "Compress runs of equal letters, but only if it helps." You restate the problem, ask about digits, and agree that the input is lowercase. A brute force is obvious, so you go straight to one pass over the string. The solution keeps the current character and its length, and flushes a run whenever the character changes.
 
 ```python
 # code/part20/c11_solutions/c11_e02_compress_string.py
@@ -758,7 +850,7 @@ Trace `"aaabcc"`. The runs are `a3`, `b`, `c2`, so the packed text is `a3bc2` wi
 
 ### Scenario 2: the token bucket and its clock
 
-The interviewer says: "Write a limiter that allows 2 requests per second with bursts up to 4." The tempting design is a timer thread that adds tokens, but a missed tick loses tokens. Better to compute the refill when `allow` is called, and to survive a clock that moves backwards.
+Picture the interviewer saying, "Write a limiter that allows 2 requests per second with bursts up to 4." The tempting design is a timer thread that adds tokens on a schedule. A missed tick loses tokens, though, and the timer adds a thread you must manage. A better design computes the refill when `allow` is called, and it survives a clock that moves backwards.
 
 ```python
 # code/part20/c11_solutions/c11_m11_token_bucket.py
@@ -801,11 +893,11 @@ class TokenBucket:
         return max(0.0, (cost - self._tokens) / self.rate)
 ```
 
-The test drives the clock by hand. At time zero, four calls pass and the fifth fails. At 0.5 seconds exactly one token has returned. A property test then runs random call sequences and checks that the number of tokens given out never exceeds `capacity + rate * elapsed`. That inequality is the bucket's contract and does not depend on the implementation. The follow-up is P2.
+The test drives the clock by hand. At time zero, four calls pass and the fifth fails. At 0.5 seconds exactly one token has returned. A property test then runs random call sequences and checks that the number of tokens given out never exceeds `capacity + rate * elapsed`. That inequality is the bucket's contract, and it does not depend on the implementation. The follow-up is P2.
 
 ### Scenario 3: merge windows and the off-by-one
 
-The interviewer says: "Merge overlapping maintenance windows." You must decide aloud whether `[1,3)` and `[3,5)` overlap. Say that they touch, and that touching windows are usually merged for planning. Ask if that is what they want. The solution sorts and merges into a list.
+Picture the interviewer saying, "Merge overlapping maintenance windows." You must decide aloud whether `[1,3)` and `[3,5)` overlap. Say that they touch, and that touching windows are usually merged for planning. Then ask whether that is what they want, because a clear question at this point is worth more than a silent guess. The solution sorts the windows and merges them into a list.
 
 ```python
 # code/part20/c11_solutions/c11_m02_merge_windows.py
@@ -828,7 +920,7 @@ The test compares against a brute force that marks every covered integer cell an
 
 ### Scenario 4: the sliding median that only passes small tests
 
-You write the two-heap solution and it passes the example. The interviewer adds `[2,2,2,2]` with `k=2`. Using the heap length as the size gives wrong medians once dead entries remain. Track live sizes separately and prune dead entries only at a heap top.
+Picture the two-heap solution passing the example you were given. Then the interviewer adds `[2,2,2,2]` with `k=2`, and the answer goes wrong. Using the heap length as the size gives wrong medians once dead entries remain in a heap. Track the live sizes separately, and prune dead entries only when they reach a heap top.
 
 ```python
 # code/part20/c11_solutions/c11_h03_sliding_median.py
@@ -901,7 +993,7 @@ The test compares against sorting each window on 1,500 random inputs with a tiny
 
 ### Scenario 5: the SLO burn tracker, in outline
 
-The interviewer asks: "Are we burning budget too fast?" The key calculation is short, and the file holds the parsing and bucket eviction around it.
+Picture the interviewer asking, "Are we burning budget too fast?" The key calculation is short. The file holds the parsing and the bucket eviction around it, but the interview answer hangs on the burn and alert rules shown below.
 
 ```python
 # excerpt: the burn and alert rules in code/part20/c11_solutions/c11_p1_slo_burn.py
@@ -927,19 +1019,21 @@ Suppose a 99 percent target, so the budget is 0.01. Ten bad requests in 105 give
 
 ## Hands-on lab
 
+Imagine a laptop with the repository open, a terminal, and a few minutes to spare. The steps below run the reference tests, check the files, and then break one solution on purpose to see what the tests catch.
+
 Steps 1, 2, 3, 4 and 5 below were run on this Mac with Python 3.12.7 and pytest 8.3.5. You need a Python 3 and pytest.
 
 1. From the repository root, run all tests: `python3 -m pytest -q code/part20/c11_solutions`. Expect `61 passed`.
 2. Check the files with `python3 -I tools/check_code_files.py code/part20/c11_solutions`. Expect `0 problems`.
 3. Run one problem alone with `python3 -m pytest -q code/part20/c11_solutions/test_c11_easy.py -k e02`. Expect `1 passed`. To test your own attempt, write your function in a file with the same module and function names in a scratch copy of the folder.
-4. Break the reference on purpose. In `c11_m02_merge_windows.py`, replace the two lines under `if e > out[-1][1]:` with the unconditional `out[-1][1] = e` and run the medium tests. I ran this: `test_m02` fails with `[(1, 3)] == [(1, 10)]`. This shows what the brute-force oracle buys you.
-5. In `c11_h03_sliding_median.py`, change `sizes[0] -= 1` in `remove` to `sizes[1] -= 1`. I ran this too: `test_h03` fails with an `IndexError`. Restore both files afterwards.
+4. Break the reference on purpose. In `c11_m02_merge_windows.py`, replace the two lines under `if e > out[-1][1]:` with the unconditional `out[-1][1] = e` and run the medium tests. This was run, and the observed result was that `test_m02` fails with `[(1, 3)] == [(1, 10)]`. This shows what the brute-force oracle buys you.
+5. In `c11_h03_sliding_median.py`, change `sizes[0] -= 1` in `remove` to `sizes[1] -= 1`. This was run too, and the observed result was that `test_h03` fails with an `IndexError`. Restore both files afterwards.
 
 Not run: pytest on another Python version, and any timing benchmark.
 
 ## Drill questions
 
-Answer each without notes.
+Imagine a friend with a whiteboard asking you these ten questions in a row. Answer each one out loud before you open the answer, and notice which ones you could only answer by looking.
 
 1. Why does E9 use `Decimal`?
 
@@ -1023,21 +1117,26 @@ Minimising waves under a parallelism cap is hard in general. Starting the longes
 
 ## Common mistakes and weak answers
 
-Typing before restating the problem loses more points than a wrong line. Say the problem back and write two examples first.
+Imagine the interviewer's notes at the end of the round. The same few weak habits appear on most candidates' pages, and each one has a short fix you can rehearse before the day.
 
-Ignoring empty input is the cheapest loss. Say "empty returns empty" as you write the loop.
+Typing before restating the problem loses more points than a wrong line. Say the problem back and write two examples first, because the interviewer needs to see that you understood the question.
 
-Giving only the clever solution leaves no fallback if you get stuck. Describe the brute force and its cost first.
+Ignoring empty input is the cheapest loss of all. Say "empty returns empty" as you write the loop, so the case is handled and the interviewer hears you handle it.
 
-Going quiet is a failure, because the official page says to speak aloud and ask for hints. Say what you tried and what you suspect.
+Giving only the clever solution leaves no fallback if you get stuck. Describe the brute force and its cost first, so the interviewer knows you have a correct answer in hand before you attempt the better one.
 
-Treating malformed input as impossible is an SRE-specific error. In E3 and P1 the bad line is counted and the loop goes on.
+Going quiet is a failure, because the official page says to speak aloud and ask for hints. Say what you tried and what you suspect, even when the suspicion is weak.
 
-Calling a heuristic optimal, as with the capped plan in P4, looks worse than saying "greedy, and here is when it fails".
+Treating malformed input as impossible is an SRE-specific error. In E3 and P1 the bad line is counted and the loop goes on, and that habit is what an operations interviewer is listening for.
+
+Calling a heuristic optimal, as with the capped plan in P4, looks worse than saying "greedy, and here is when it fails". Naming the limit of your method is a sign of experience, not of weakness.
 
 ## Connections to the rest of the handbook
 
+Suppose the coding round is over and you want to find where each idea is taught in more depth. The pointers below send you to the right chapter for each topic.
+
 The pattern catalogue for these problems is chapter 20.9. The Python toolkit and what to expect in the round are chapter 20.8. Complexity and latency numbers, and how to test aloud, are chapter 20.10. The SLO and burn-rate meaning behind P1 is chapter 20.19, and request retry behaviour behind M13 is chapter 20.21. Telemetry at high volume, and the series cardinality that P3 ignores at small scale, is chapter 20.15. Rollout safety behind P4 is chapter 20.14. The log-parsing flavour of E3 and M6 also appears in the Linux console round, chapters 20.3 and 20.7.
+
 
 ## Sources and review notes
 
