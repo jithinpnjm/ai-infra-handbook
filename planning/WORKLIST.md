@@ -87,3 +87,6 @@ Part 11 (GPU Kubernetes): 11.1-11.3 done, 11.4-11.6 and 11.7-11.9 delegated, res
 
 ## Part 11 status (2026-11-14)
 Chapters 11.1-11.30 rewritten in the warm voice (+37% words, guard 0 hard, chain <=0.1, spans 0 lost, Mermaid 776 ok, build ok). 11.31-11.34 (NVKE) untouched on purpose. Open: "(tested here)" headings in 11.21-11.27, 11.25 time-slicing field names. Part 12 in progress (12.1-12.6 running).
+
+## Part 12 status (2026-11-14)
+Chapters 12.1-12.24 rewritten and committed (6 commits, +28-34% words, guard 0 hard, chain <=0.1, spans 0 lost, Mermaid 776 ok, build ok). Open: the guard flagged one bare "100" lost in 12.12 exercise titles (unidentified); "(untested here)"/"(tested here)" spans kept in locked headings and code comments (span check wins); 21.x "the book" attributions now name the gem book, owner to confirm; 12.22 checkpoint answers contain `$...$` with stray backticks (locked tail). Part 13 (9 chapters) next.
