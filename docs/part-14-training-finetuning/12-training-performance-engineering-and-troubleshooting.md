@@ -25,7 +25,9 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A distributed training job that runs without crashing is not necessarily a healthy job. Picture a team that trains a foundation model on sixty-four GPUs for two weeks. The job finishes and the loss converges, but scaling efficiency was only 52 percent. The team paid for sixty-four GPUs and received the compute of about thirty-three, which wasted over fifty thousand dollars on idle silicon. No dashboard light turned red along the way.
+A distributed training job that runs without crashing is not necessarily a healthy job. Picture a team that trains a foundation model on sixty-four GPUs for two weeks. The job finishes and the loss converges, but scaling efficiency was only 52 percent. The team paid for sixty-four GPUs and received the compute of about thirty-three, which wasted over fifty thousand dollars on idle silicon. No dashboard light turned red along the way, and nobody was paged, because nothing crashed.
+
+The block below works through that case with the numbers, so you can see where the waste comes from and check the arithmetic yourself.
 
 ```text
 Quantitative Stakes of Distributed Training Performance Engineering:
@@ -43,48 +45,51 @@ Quantitative Stakes of Distributed Training Performance Engineering:
   all GPU hardware categories = 268 (64.0%), Software bugs = 54 (12.9%), Network switch/cable = 35 (8.4%)
 ```
 
-Two traps hide slowdowns like this from the people on call.
+Two traps hide slowdowns like this from the people on call. Both of them look reasonable at first glance, and both of them lead a careful engineer to the wrong conclusion.
 
-The first is the utilization counter. The GPU utilization figure in `nvidia-smi` only says that at least one kernel was active on the device during a sampling window. A GPU can report 99 percent while it spends four-fifths of its time spinning inside an NCCL wait loop. It can also report a high figure while it runs tiny memory-bound kernels that leave its Tensor Cores almost idle.
+The first trap is the utilization counter. The GPU utilization figure in `nvidia-smi` only says that at least one kernel was active on the device during a sampling window. It says nothing about how much of the chip did useful math. A GPU can report 99 percent while it spends four-fifths of its time spinning inside an NCCL wait loop. It can also report a high figure while it runs tiny memory-bound kernels that leave its Tensor Cores almost idle. A number that looks healthy can hide a job that is badly starved.
 
-The second is how collectives amplify one slow device. AllReduce, AllGather, ReduceScatter, and AllToAll are synchronization barriers across every rank. Suppose one GPU out of 512 throttles its clocks because of a warm heatsink or a degraded PCIe link. The other 511 GPUs wait for it on every step.
+The second trap is how collectives amplify one slow device. AllReduce, AllGather, ReduceScatter, and AllToAll are synchronization barriers across every rank. A barrier cannot finish until its slowest member arrives. Suppose one GPU out of 512 throttles its clocks because of a warm heatsink or a degraded PCIe link. The other 511 GPUs wait for it on every step. The loss is paid by the whole cluster, but the cause sits on one machine.
 
-Measure Model FLOPs Utilization and Goodput instead of trusting the utilization percentage, and then narrow the bottleneck from the cluster level down to a single kernel.
+The fix is to measure Model FLOPs Utilization and Goodput instead of trusting the utilization percentage. Then narrow the bottleneck from the cluster level down to a single kernel. The rest of this chapter follows that order.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Hardware profiling fundamentals from Chapter 10.20 covering DCGM, Nsight Systems, and Nsight Compute.
-- NCCL collective algorithms, topologies, and `nccl-tests` benchmarking from Chapters 12.15 through 12.17.
-- Distributed training parallelism, PyTorch compiler tuning, multi-node Slurm orchestration, and checkpointing from Chapters 14.4 through 14.11.
+
+You will get more from this chapter if a few earlier topics already feel familiar. Each bullet names a topic and the question it answers for you.
+
+- What does a profiler actually record? Hardware profiling fundamentals from Chapter 10.20 cover DCGM, Nsight Systems, and Nsight Compute.
+- What happens inside a collective? NCCL collective algorithms, topologies, and `nccl-tests` benchmarking from Chapters 12.15 through 12.17 explain it.
+- How is the job split and launched? Distributed training parallelism, PyTorch compiler tuning, multi-node Slurm orchestration, and checkpointing from Chapters 14.4 through 14.11 cover those steps.
 
 ### Outcomes
-After completing this chapter, you will be able to do five things.
-1. Show why the `nvidia-smi` utilization figure misleads by computing Model FLOPs Utilization, Hardware FLOPs Utilization, Goodput, and the Effective Training Time Ratio for a multi-node run.
-2. Work through a top-down triage that tells apart four causes of slow steps: a starved DataLoader, unfused memory-bound kernels, allocator fragmentation, and exposed collective communication.
-3. Line up four views of one training iteration: PyTorch Profiler tables, Nsight Systems NVTX projections, Nsight Compute Roofline charts, and Linux `perf` CPU profiles.
-4. Find compute and network stragglers across dozens of nodes by looking for uneven NCCL wait times in Nsight Systems and Holistic Trace Analysis.
-5. Diagnose six common production failures, such as thermal clock drift, a stopped Fabric Manager, PCIe AER errors, Xid 48 and 63 ECC faults, and MoE AllToAll router collapse.
+
+Imagine a slow job on a Monday morning, with a manager asking whether the cluster is broken or the code is. This chapter gives you a way to answer that question with evidence. It starts with the `nvidia-smi` utilization figure and explains why it misleads, then computes Model FLOPs Utilization, Hardware FLOPs Utilization, Goodput, and the Effective Training Time Ratio for a multi-node run. Next comes a top-down triage that separates four causes of slow steps, which are a starved DataLoader, unfused memory-bound kernels, allocator fragmentation, and exposed collective communication. The chapter then lines up four views of one training iteration, from PyTorch Profiler tables and Nsight Systems NVTX projections to Nsight Compute Roofline charts and Linux `perf` CPU profiles. After that, it shows how to find compute and network stragglers across dozens of nodes by looking for uneven NCCL wait times. It ends with six common production failures, such as thermal clock drift, a stopped Fabric Manager, PCIe AER errors, Xid 48 and 63 ECC faults, and MoE AllToAll router collapse.
 
 ---
 
 ## 1. The Utilization Lie: MFU, HFU, Goodput, and Step-Time Anatomy
 
+Imagine a car whose tachometer is pinned at eight thousand revolutions per minute while its tires spin in deep mud. The engine is busy, but the car is barely moving. That is the trap the utilization column sets, and it is the first thing to unlearn when you read a training dashboard.
+
 ### 1.1 Why `nvidia-smi` Lies About Training Speed
 
-Imagine a car whose tachometer is pinned at eight thousand revolutions per minute while its tires spin in deep mud. The engine is busy, but the car is barely moving. The utilization column in `nvidia-smi` is that tachometer. It measures the share of time slices in which at least one CUDA kernel was resident on any Streaming Multiprocessor. It tells you the GPU is busy, not that it is doing useful matrix math.
+You open a dashboard, see 99 percent GPU utilization on every rank, and assume the job is in good shape. Nothing on that screen tells you how much of the chip is doing matrix math. The utilization column in `nvidia-smi` is the tachometer in the story above. It measures the share of time slices in which at least one CUDA kernel was resident on any Streaming Multiprocessor. It tells you the GPU is busy, not that it is doing useful matrix math.
 
-A GPU at 99 percent utilization can still train badly, for two reasons.
+A GPU at 99 percent utilization can still train badly, for two reasons. Both reasons are common, and the dashboard looks the same for each.
 
-One reason is waiting. When a rank waits at an NCCL collective for a slow neighbor, NCCL runs a persistent communication kernel that polls device memory. That kernel occupies a few Streaming Multiprocessors, so `nvidia-smi` reports 99 to 100 percent while the GPU does no math at all.
+The first reason is waiting. When a rank waits at an NCCL collective for a slow neighbor, NCCL runs a persistent communication kernel that polls device memory. That kernel occupies a few Streaming Multiprocessors, so `nvidia-smi` reports 99 to 100 percent while the GPU does no math at all. The counter counts the waiting as work.
 
-The other reason is memory traffic. If the model launches thousands of tiny, unfused elementwise or attention kernels, they saturate memory bandwidth, and the Tensor Cores sit idle for more than four-fifths of every step.
+The second reason is memory traffic. If the model launches thousands of tiny, unfused elementwise or attention kernels, they saturate memory bandwidth, and the Tensor Cores sit idle for more than four-fifths of every step. Every kernel is short, but together they keep the chip busy without letting it compute. A profile of such a job shows many small bars and very little overlap, which is the visual signature of this problem.
 
-To see whether the car is really moving, engineers compute **Model FLOPs Utilization**. It divides the mathematical operations the model needs per second by the theoretical peak floating-point rate of the hardware. The sources behind this chapter treat 35 to 55 percent as the range published runs reach, with 40 to 50 percent a good target, for large language model training. A figure near 15 to 20 percent points to a severe bottleneck that starves the Tensor Cores.
+To see whether the car is really moving, engineers compute **Model FLOPs Utilization**. It divides the mathematical operations the model needs per second by the theoretical peak floating-point rate of the hardware. Model FLOPs Utilization is usually shortened to MFU. The sources behind this chapter treat 35 to 55 percent as the range published runs reach, with 40 to 50 percent a good target, for large language model training. A figure near 15 to 20 percent points to a severe bottleneck that starves the Tensor Cores. When you see that number, the question changes from "is the GPU busy?" to "where is the time going?"
 
 ### 1.2 Worked Math: Computing MFU, HFU, and Goodput
 
-For a dense Transformer with N non-embedding parameters, each training token costs about 2N floating-point operations in the forward pass and 4N in the backward pass. Together that is the common 6N rule of thumb per token. With full activation checkpointing, the backward pass first recomputes the forward activations. The hardware then does about 8N operations per token.
+Before you can compare your job with the range above, you need the arithmetic. For a dense Transformer with N non-embedding parameters, each training token costs about 2N floating-point operations in the forward pass and 4N in the backward pass. Together that is the common 6N rule of thumb per token. The rule is an estimate, but it is the one most teams use when they plan a run. With full activation checkpointing, the backward pass first recomputes the forward activations. The hardware then does about 8N operations per token, even though the model's own math did not change.
+
+That difference is the reason for two utilization numbers. MFU counts the model's math. Hardware FLOPs Utilization, or HFU, counts the work the chip actually performed, including the recomputation. The block below lists the equations and then works two examples from start to finish.
 
 ```text
 MFU, HFU, and Goodput Reference Equations (Volume 13 Ch. 11 & ASP Ch. 1):
@@ -113,11 +118,19 @@ Worked Example 2 — Cluster Goodput and Effective Training Time Ratio (ASP Ch. 
                                               Meta's Revisiting Reliability finding of 70%-75% lost compute)
 ```
 
-Model FLOPs Utilization tells you how fast a step runs while the loop is running. **Goodput** tells you how many useful tokens you process per second of wall-clock time, over the whole run. It discounts time lost to checkpoint pauses, preemptions, node failures, and restarts. Meta calls the same idea the Effective Training Time Ratio. *AI Systems Performance Engineering* Chapter 1 cites Meta's analysis for a case in which a cluster looked 100 percent allocated while 70 to 75 percent of its compute was lost to communication stalls, data delays, and fault recovery.
+Read the first example slowly. The cluster peak is eight times the per-GPU peak, which gives 7,912 TFLOPS. The achieved rate comes from the token rate, which is 3,200 tokens per second before the fix. Divide the achieved rate by the peak, and you get the MFU figure shown in the block, which the chapter treats as severe. After the DataLoader fix, the same arithmetic gives the healthy figure in the block. The jump from 3,200 to 9,000 tokens per second is the whole improvement, and the model did not change at all. HFU runs higher than MFU, because the chip does extra recomputation work that the model does not count as progress.
+
+To read the HFU line, think of recomputation as doing the same lecture twice. The student learns nothing new the second time, but the classroom is still busy. HFU counts the busy room, and MFU counts the lesson. Because the ratio is eight over six, HFU is always at least as large as MFU, and the gap is the recomputation share.
+
+The second example is about the time a cluster spends on useful work, which is a different question. A node that processes 100,000 tokens in 10 seconds has a realized rate of 10,000 tokens per second. Compared with a theoretical peak of 12,000 tokens per second, the efficiency is the figure shown in the block. A pipeline-starved job tells a similar story, with 300 samples per second against a possible 1,000.
+
+Model FLOPs Utilization tells you how fast a step runs while the loop is running. **Goodput** tells you how many useful tokens you process per second of wall-clock time, over the whole run. It discounts time lost to checkpoint pauses, preemptions, node failures, and restarts. Meta calls the same idea the Effective Training Time Ratio. *AI Systems Performance Engineering* Chapter 1 cites Meta's analysis for a case in which a cluster looked 100 percent allocated while 70 to 75 percent of its compute was lost to communication stalls, data delays, and fault recovery. A job can have a healthy MFU during the steps it runs and still have poor goodput, because it spends most of its wall-clock time restarting. Track both numbers.
 
 ### 1.3 Step-Time Phase Decomposition and Scaling Efficiency
 
-Every distributed training step has five phases: host data loading, forward computation, backward computation, collective communication, and optimizer updates. When you move a workload from one GPU to sixteen, the step gets shorter, but the share of it spent on communication grows quickly.
+Every distributed training step has five phases: host data loading, forward computation, backward computation, collective communication, and optimizer updates. The phases do not all shrink at the same rate. When you move a workload from one GPU to sixteen, the step gets shorter, but the share of it spent on communication grows quickly. Adding GPUs is not the same as adding speed.
+
+The table compares a 1-GPU baseline with a 16-GPU run, and it also shows two reference steps from the published profiles. Read each column down. Look for which phase grew, and ask why that phase grew.
 
 | Metric or phase | 1 GPU baseline (*Distributed AI Systems*, Ch. 10) | 16 GPUs scaled (*Distributed AI Systems*, Ch. 10) | MLPerf 24.0 ms step (*AI Systems Performance Engineering*, Table 13-6) | 64-expert MoE 138.0 ms step (*AI Systems Performance Engineering*, Table 13-3) |
 |---|---|---|---|---|
@@ -126,6 +139,10 @@ Every distributed training step has five phases: host data loading, forward comp
 | Exposed Collective Communication | 0.0 ms (0.0%) | 18.15 ms (55.0% AllReduce tax) | 4.0 ms AllReduce (16.7%, 1/6 of step) | 30.80 ms MoE `dispatch` + `combine` (22.32% of CUDA time) |
 | Optimizer / Other Overhead | Included in compute | Included in compute | 0.5 ms other / data loading (2.1%) | 19.2 ms `optimizer_step` (13.91%, 64 `aten::add_` kernels) |
 | Scaling Efficiency Tier | 100.0% reference | 29.36% (< 50% Poor tier) | > 80% Good tier | Improved 1.43x via `torch.compile` (248.0 -> 173.0 ms) |
+
+Before you tune anything, split the step time into its five phases. Optimizing a 2 percent phase cannot fix a 55 percent communication stall. Each phase has a different fix, so a phase breakdown tells you which fix to try first.
+
+A quick reading rule helps here. If the communication phase grows faster than the compute phase shrinks, adding GPUs buys you less than it looks like. If the compute phase shrinks along with the step, the communication is still hidden and the scaling is healthy. The scaling math below turns the same numbers into an efficiency score that you can compare across job sizes.
 
 ```text
 Scaling Efficiency and Amdahl's Law Reference (Distributed AI Systems, Chapter 10):
@@ -142,17 +159,19 @@ Scaling Efficiency and Amdahl's Law Reference (Distributed AI Systems, Chapter 1
     Max speedup as N -> inf = 1 / 0.10 = 10.0x; at N = 64 GPUs, Speedup(64) = 1 / (0.10 + 0.90 / 64) = 8.77x
 ```
 
-Before you tune anything, split the step time into its five phases. Optimizing a 2 percent phase cannot fix a 55 percent communication stall.
+The efficiency formula compares the speed you got with the speed the cluster should have given you. A perfect run would make the step N times faster on N GPUs, and the efficiency tells you how close you came. Amdahl's Law puts a ceiling on the result. If ten percent of the work cannot be parallelized, the speedup can never pass 10x, no matter how many GPUs you add.
 
 ---
 
 ## 2. Top-Down Bottleneck Hunting: From Cluster Telemetry to Kernel Roofline
 
+When a 512-GPU job runs slowly, the temptation is to open the kernel profiler and start reading kernel names. That habit wastes hours. You might spend an afternoon studying matrix multiply tile sizes on rank 0 while the real problem is a single-threaded Python DataLoader, or a dirty fiber transceiver on node 14. The fix for each of those problems sits in a different place, so the first job is to find out which place holds the problem.
+
 ### 2.1 The Three-Level Diagnostic Funnel and Decision Tree
 
-When a 512-GPU job runs slowly, jumping straight into a kernel profiler wastes hours. You might spend an afternoon studying matrix multiply tile sizes on rank 0 while the real problem is a single-threaded Python DataLoader, or a dirty fiber transceiver on node 14.
+Hunt the bottleneck from the outside in, in three levels. Each level costs more time than the one before it, so you only move down when the level above has narrowed the problem. Start with system telemetry in Prometheus, Grafana, DCGM, and `nvidia-smi`. It tells you whether the host CPU starves the job, the network blocks it, or the GPU runs inefficiently. Next, capture a multi-rank timeline in PyTorch Profiler, Nsight Systems, or Holistic Trace Analysis, to find idle gaps, transfers that do not overlap, and straggler ranks. Last, run Nsight Compute on the hot kernels the timeline revealed, and read the Roofline chart to see whether each one is memory-bound or compute-bound.
 
-Hunt the bottleneck from the outside in, in three levels. Start with system telemetry in Prometheus, Grafana, DCGM, and `nvidia-smi`. It tells you whether the host CPU starves the job, the network blocks it, or the GPU runs inefficiently. Next, capture a multi-rank timeline in PyTorch Profiler, Nsight Systems, or Holistic Trace Analysis, to find idle gaps, transfers that do not overlap, and straggler ranks. Last, run Nsight Compute on the hot kernels the timeline revealed, and read the Roofline chart to see whether each one is memory-bound or compute-bound.
+The flowchart below turns those three levels into a decision tree. Start at the top with the symptom you see, and follow the answers down until you reach a fix.
 
 ```mermaid
 flowchart TD
@@ -167,11 +186,17 @@ flowchart TD
     CheckTC -->|Yes| FixScale["Compute Bound & Healthy (40-50%+ MFU)<br/>Fix: Increase batch size, AsyncTP,<br/>or SimpleFSDP overlap"]
 ```
 
+The tree asks the cheapest questions first. Is the GPU busy? Is the host CPU pinned or the disk waiting? Only after those answers does it ask about the clocks and the Tensor Cores. This order is deliberate, because a cheap check that rules out a whole branch saves more time than a deep check on a branch that was never the cause.
+
+A simple way to remember the three levels is to match each one to a question. Level one asks whether the job is starved, blocked or slow on the GPU. Level two asks which rank or which phase owns the wait. Level three asks why one kernel is slow. If you cannot answer the question for a level, you have not finished that level, and moving down will only add noise.
+
 ### 2.2 Host CPU, DataLoader, and Storage I/O Bottlenecks
 
-Suppose GPUs sit at 30 percent utilization and Model FLOPs Utilization is 10 to 17 percent. The accelerators are starving for input batches. Low GPU utilization together with high CPU use or disk I/O wait shows that the input pipeline cannot keep up. High CPU wait does not prove the storage array is slow, though. A single-threaded Python tokenizer or image augmentation loop produces the same starvation signature.
+Suppose GPUs sit at 30 percent utilization and Model FLOPs Utilization is 10 to 17 percent. The accelerators are starving for input batches. Low GPU utilization together with high CPU use or disk I/O wait shows that the input pipeline cannot keep up. High CPU wait does not prove the storage array is slow, though. A single-threaded Python tokenizer or image augmentation loop produces the same starvation signature, and the disk can be idle the whole time. That is why the next check looks at the disk directly, before anyone rewrites the storage layer.
 
-To tell storage from host CPU overhead, first run `iostat -x 1` and check whether the NVMe drives or parallel filesystem mounts are saturated. Then sample the host CPU with `perf stat` and `perf record` to see instructions per cycle and Python call stacks. On an NVIDIA Grace-Blackwell superchip, you can also read the NVLink-C2C performance monitoring units, which show whether host-to-device traffic saturates the chip-to-chip link.
+To tell storage from host CPU overhead, first run `iostat -x 1` and check whether the NVMe drives or parallel filesystem mounts are saturated. If the disks are quiet, the problem is in the code path between the disk and the GPU. Then sample the host CPU with `perf stat` and `perf record` to see instructions per cycle and Python call stacks. On an NVIDIA Grace-Blackwell superchip, you can also read the NVLink-C2C performance monitoring units, which show whether host-to-device traffic saturates the chip-to-chip link.
+
+The reference profile below shows what those numbers look like on one host. Read the IPC line and the top hotspots together. A low instruction rate with a hot DataLoader frame is the pattern to watch for.
 
 ```text
 Host CPU and Grace-Blackwell Linux perf Reference Profile (ASP Chapter 13):
@@ -189,20 +214,22 @@ Host CPU and Grace-Blackwell Linux perf Reference Profile (ASP Chapter 13):
     nvidia_nvlink_c2c0_pmu_0/cycles/: 3,567,890,123 cycles (45,678,901 CPU cycles, 7,890,123 cache misses)
 ```
 
-Once you confirm a DataLoader bottleneck, apply four fixes in order.
+Once you confirm a DataLoader bottleneck, apply four fixes in order. The order matters, because the first two are cheap configuration changes, and the last two change the code.
 
 1. Set `num_workers` to two to four per GPU, with `persistent_workers=True` and `prefetch_factor=4`. Workers then stay alive across epochs and stage batches ahead of time.
 2. Turn on `pin_memory=True` with non-blocking copies, so the GPU copies batches straight from page-locked host memory without CPU staging.
 3. Move heavy preprocessing and image augmentation to the GPU with NVIDIA DALI.
 4. Remove accidental host-device syncs, such as `tensor.item()`, `tensor.cpu()`, or `print(loss)` in the inner loop.
 
-Time GPU intervals with `torch.cuda.Event(enable_timing=True)` and not with Python `time.time()`.
+Measure after each fix, not only at the end. A change that moves the bottleneck from the DataLoader to the GPU is progress, but the dashboard will look the same unless you check the phase numbers again.
+
+Time GPU intervals with `torch.cuda.Event(enable_timing=True)` and not with Python `time.time()`. The GPU runs asynchronously, so a Python timer measures how long the CPU took to queue the work, not how long the GPU took to run it. A CUDA event records the moment the GPU reaches it, which is the number you actually need.
 
 ### 2.3 Kernel Roofline, `torch.compile`, and Memory Allocator Tuning
 
 Suppose `nvidia-smi` reports 98 to 100 percent utilization on every rank, yet Model FLOPs Utilization is stuck at 22 percent and steps run twice as slow as expected. That is the usual signature of a memory-bandwidth-bound workload. The GPU runs kernels all the time, but they spend their time reading and writing intermediate activations in HBM instead of feeding the Tensor Cores.
 
-Putting the `torch.profiler` operator tables next to the Nsight Systems NVTX projections and the Nsight Compute Roofline metrics shows why. The table below summarizes what each layer reveals.
+Putting the `torch.profiler` operator tables next to the Nsight Systems NVTX projections and the Nsight Compute Roofline metrics shows why. Each tool answers one part of the question. The profiler tells you which operators cost time, Nsight Systems tells you which Python region they belong to, and Nsight Compute tells you whether a single kernel is limited by memory or by math. The table below summarizes what each layer reveals.
 
 | Profiling layer and table (*AI Systems Performance Engineering*, Ch. 13) | Measured Metrics & Breakdown | Diagnosis & Optimization Action |
 |---|---|---|
@@ -212,15 +239,25 @@ Putting the `torch.profiler` operator tables next to the Nsight Systems NVTX pro
 | `torch.compile` & Regional Compilation (Table 13-5) | Eager MoE step: 248.0 ms -> Compiled (`max-autotune`): 173.0 ms (75.0 ms saved, 30.24% / ~30% reduction, 1.43x speedup vs < 10% on single-GEMM dense models). Modes: `default`, `reduce-overhead`, `max-autotune`, `max-autotune-no-cudagraphs`. | Apply `@torch.compiler.nested_compile_region` to `TransformerBlock` and persist artifacts via `TORCHINDUCTOR_CACHE_DIR` / `save_cache_artifacts()` across nodes. |
 | `PYTORCH_ALLOC_CONF` & Shared CUDA Graph Pool | `roundup_power2_divisions` (`512:2` and `1024:4`) splits the 512 to 1024 MB range into 2 buckets of 256 MB (`[512, 768, 1024]`), rounding a 600 MB request up to 768 MB. Setting `expandable_segments:True,max_split_size_mb:128,garbage_collection_threshold:0.8` keeps reserved VRAM at 600 MB (saving 168 MB / 21.88%). FireworksAI shared CUDA Graph pool captures batch sizes in decreasing order `[8, 4, 2, 1]` (or handles 96 worst-case vs 64 normal max batch). | Decreasing capture order `[8, 4, 2, 1]` allocates the high-water-mark buffer on batch 8 first so smaller graphs reuse the same memory pool without fragmentation. |
 
-When GPU utilization is near 100 percent but MFU is below 30 percent, profile with Nsight Compute. Then apply `torch.compile`, FlashAttention, and `expandable_segments:True` to turn memory-bound launches into fused Tensor Core compute.
+The table is dense, so read one row at a time. The first row shows where the time goes, the second row shows which Python region owns it, and the third row shows why a kernel is slow. The last two rows cover the fixes that the first three rows point to.
+
+When GPU utilization is near 100 percent but MFU is below 30 percent, profile with Nsight Compute. Then apply `torch.compile`, FlashAttention, and `expandable_segments:True` to turn memory-bound launches into fused Tensor Core compute. The fused kernels do the same math with fewer trips to memory, and that is the whole point.
+
+The Roofline chart is a simple picture with two limits. A kernel that moves a lot of data for each unit of math sits under the sloped memory roof, and its speed is set by bandwidth. A kernel with enough reuse can reach the flat compute roof, where its speed is set by the Tensor Cores. Tile reuse, fusion, and lower precision move a kernel from the first case toward the second.
 
 ---
 
 ## 3. Distributed Communication Profiling, Straggler Detection, and Overlap
 
+Even when every kernel is compute-bound, training stalls if collective communication is set up badly. This section covers three habits that cause those stalls, and the tools that find them. The first is rebuilding communicators, the second is hunting one slow rank, and the third is hiding communication behind compute.
+
 ### 3.1 NCCL Collectives, Communicator Lifecycle, and In-Network SHARP
 
-Even when every kernel is compute-bound, training stalls if collective communication is set up badly. A common bug in custom loops is creating and destroying a process group inside every step. Creating an NCCL communicator across nodes takes 48.0 milliseconds. If the loop calls `init_process_group` and `destroy_process_group` around a 0.5-millisecond AllReduce, each step takes 48.5 milliseconds. Creating the communicator once at startup removes nearly 99 percent of that time.
+A common bug in custom loops is creating and destroying a process group inside every step. The loop looks clean, and the code reads like a textbook example, but the cost hides in the setup call. Creating an NCCL communicator across nodes takes 48.0 milliseconds. If the loop calls `init_process_group` and `destroy_process_group` around a 0.5-millisecond AllReduce, each step takes 48.5 milliseconds. Creating the communicator once at startup removes nearly 99 percent of that time. The lesson is to pay the setup cost once and reuse the result.
+
+Think of a communicator as a phone line that takes time to dial. Dialing once for a whole call is cheap, while redialing for every sentence costs more than the sentences themselves. The same logic applies to every process group you create inside a loop.
+
+The reference block below holds the communicator numbers, the ring and tree comparison, and the offload and overlap settings that appear in the rest of this section.
 
 ```text
 NCCL Communicator Lifecycle, Topology, and SHARP Reference (ASP Ch. 4 & V13 Ch. 8):
@@ -249,13 +286,19 @@ NCCL Communicator Lifecycle, Topology, and SHARP Reference (ASP Ch. 4 & V13 Ch. 
   AsyncTP SM-wave overlap: 12.0 ms compute + 4.0 ms AllGather = 16.0 ms sequential -> 12.6 ms at 85% overlap (-21.25%)
 ```
 
-When you combine PyTorch distributed training with `torch.compile`, you must keep the overlap between compute and communication. DDP groups gradients into 25 MB buckets, set by `bucket_cap_mb=25`, and TorchDynamo breaks the graph on purpose between buckets. The AllReduce of one bucket then overlaps with the backward pass of the next. In FSDP, wrapping at transformer-block granularity materializes one block at a time and overlaps AllGather and ReduceScatter with block compute. In TorchTitan, SimpleFSDP lowers peak GPU memory by 28 percent and raises throughput by 69 percent compared with eager FSDP2. AsyncTP overlaps Tensor Parallelism collectives with matrix multiplications and cuts the sequential phase latency by over 21 percent.
+The Ring and Tree numbers repeat the story from the multi-node chapter. A ring is efficient on a small group, but its hop count grows with the number of ranks. A tree keeps the hop count small. The in-network reduction goes one step further, because the switch adds the values as they pass through, so each GPU receives less data. When you read these numbers, check the units first. Milliseconds, seconds and gigabytes per second describe different parts of the same step, and mixing them up is a common way to misjudge which cost matters most.
+
+When you combine PyTorch distributed training with `torch.compile`, you must keep the overlap between compute and communication. DDP groups gradients into 25 MB buckets, set by `bucket_cap_mb=25`, and TorchDynamo breaks the graph on purpose between buckets. The AllReduce of one bucket then overlaps with the backward pass of the next. In FSDP, wrapping at transformer-block granularity materializes one block at a time and overlaps AllGather and ReduceScatter with block compute. In TorchTitan, SimpleFSDP lowers peak GPU memory by 28 percent and raises throughput by 69 percent compared with eager FSDP2. AsyncTP overlaps Tensor Parallelism collectives with matrix multiplications and cuts the sequential phase latency by over 21 percent. Each of these tricks only works if the communication is allowed to run while the GPU computes something else.
 
 ### 3.2 Multi-GPU Straggler Detection with Nsight Systems and HTA
 
 In a synchronous 64-node job, the whole cluster runs at the speed of its slowest GPU. Suppose Nsight Systems shows that GPUs on sixty-three nodes spend an extra 200 milliseconds per step in an NCCL wait kernel during AllReduce. It is tempting to blame the network switches on those nodes. The long wait bars actually show that those sixty-three nodes finished on time and are waiting for the sixty-fourth. **To find the straggler, look for the one rank with zero NCCL wait time.**
 
-Meta's Holistic Trace Analysis automates this multi-rank alignment across `torch.profiler` Kineto JSON traces. Because the legacy TensorBoard profiler trace viewer is deprecated, production teams load rank-aligned JSON traces into Holistic Trace Analysis and Perfetto to compare compute, communication, and idle time across every rank side by side.
+The reasoning feels backwards at first. The busy-looking nodes are the innocent ones, and the quiet node is the guilty one. Think of a relay race where every runner waits at the handoff. The runner who never waits is the one who arrived last, because everyone else was already standing there.
+
+Meta's Holistic Trace Analysis automates this multi-rank alignment across `torch.profiler` Kineto JSON traces. Because the legacy TensorBoard profiler trace viewer is deprecated, production teams load rank-aligned JSON traces into Holistic Trace Analysis and Perfetto to compare compute, communication, and idle time across every rank side by side. The side-by-side view is what makes the zero-wait rank easy to see. Perfetto is a trace viewer that runs in the browser, so the same view can be shared with a teammate who does not have the profiling tools installed.
+
+The block below shows the straggler signature on a 64-node cluster, and an 8-rank breakdown from the same method.
 
 ```text
 Multi-Rank Straggler Identification in HTA and Nsight Systems (ASP Ch. 13 & V13 Ch. 11):
@@ -270,9 +313,17 @@ Multi-Rank Straggler Identification in HTA and Nsight Systems (ASP Ch. 13 & V13 
   Rank 7 (Compute Straggler):   21.0 ms compute + 3.0 ms AllReduce + 0.0 ms idle wait = 24.0 ms
 ```
 
+Read the 8-rank breakdown as a table of three numbers per rank. Rank 0 is the most idle, because it finishes its compute first and then waits. Rank 7 is the compute straggler, because it has the longest compute time and almost no idle time. The method works the same way at 64 nodes, except that the single zero-wait node stands out much more clearly.
+
 ### 3.3 Continuous Performance Regression Gates (`TorchBench`, `PyTorch HUD`, `MLPerf`)
 
-Tuning a pipeline once is not enough, because small commits and framework upgrades can quietly erode throughput. Before you time a benchmark, run warmup iterations so JIT compilation and CUDA Graph capture settle. Call `torch.cuda.synchronize()` before and after the timed region, and collect at least 100 iterations so you can report P50, P95, and P99 latency. Also compare accuracy between single-GPU and distributed runs to catch silent numerical bugs.
+Tuning a pipeline once is not enough, because small commits and framework upgrades can quietly erode throughput. A change that adds one slow operator might cost a few percent, and nobody notices until the monthly bill arrives. Regression gates catch that drift while it is still small.
+
+Before you time a benchmark, run warmup iterations so JIT compilation and CUDA Graph capture settle. Call `torch.cuda.synchronize()` before and after the timed region, and collect at least 100 iterations so you can report P50, P95, and P99 latency. P50 is the typical step, and P99 is the slow step that users feel. Also compare accuracy between single-GPU and distributed runs to catch silent numerical bugs. A fast benchmark that quietly changes the answer is not a win.
+
+Report all three percentiles, not only the average. An average can look fine while the slow tail, which is P99, makes every synchronous step wait.
+
+The block below lists the warmup counts, the significance check, and the rule the CI gate uses.
 
 ```text
 Benchmark Warmup, Statistical Accuracy, and PyTorch HUD CI Gate Reference (DAI Ch. 10 & ASP Ch. 13):
@@ -286,7 +337,7 @@ Benchmark Warmup, Statistical Accuracy, and PyTorch HUD CI Gate Reference (DAI C
   Example (10,000 tok/s baseline): [9400, 9450, 9800] -> PASS (2 runs); [9400, 9450, 9480] -> FAIL (3 runs)
 ```
 
-In continuous integration, run `torchbench` on dedicated hardware runners and enforce the PyTorch HUD regression rule. That rule fails the build whenever throughput regresses by 5 percent or more across three consecutive runs.
+In continuous integration, run `torchbench` on dedicated hardware runners and enforce the PyTorch HUD regression rule. That rule fails the build whenever throughput regresses by 5 percent or more across three consecutive runs. The three-run requirement is what keeps a single noisy run from failing the build. A gate that fails too often gets ignored, so the threshold and the run count are a trade-off. Set them from the noise you measured on your own runners, not from a default.
 
 Align multi-rank timelines in Holistic Trace Analysis to find the rank with zero collective wait, and protect your gains with a CI gate that fails on a 5 percent regression over three runs.
 
@@ -294,9 +345,15 @@ Align multi-rank timelines in Holistic Trace Analysis to find the rank with zero
 
 ## 4. Production Reliability, Silent Degradation, and Failure Triage
 
+Performance problems on a large cluster are often reliability problems in disguise. A node that has started to fail does not crash the job on day one. It slows the job down for hours, and the slowdown looks like a software problem. This section looks at the failure data from a real large run, and then gives you a lookup table for the most common production symptoms. Keep in mind that a failure does not announce its category. The category is something you learn after the fact, from the logs and the ledger. That is why the lookup table below starts from the symptom instead.
+
 ### 4.1 Lessons from Meta's 54-Day Llama 3 405B Interruption Ledger
 
-At a thousand GPUs, hardware faults are a daily event. During a 54-day pretraining run of Llama 3 405B, Meta recorded 419 unexpected job interruptions. Nearly two-thirds came from GPU hardware. Faulty GPUs and HBM3 memory errors led the list. Network switches, cables, and unplanned host maintenance caused another 16 percent.
+At a thousand GPUs, hardware faults are a daily event. During a 54-day pretraining run of Llama 3 405B, Meta recorded 419 unexpected job interruptions. Nearly two-thirds came from GPU hardware. Faulty GPUs and HBM3 memory errors led the list. Network switches, cables, and unplanned host maintenance caused another 16 percent. The ledger is useful because it tells you where to spend your reliability effort, instead of guessing.
+
+Read a ledger like this for the shape, not for the exact percentages. Your cluster will have a different size, a different age and a different software stack. What carries over is the order of the categories and the habit of tracking each one.
+
+The table below breaks the 419 interruptions into categories. Each row also gives the mitigation that the category calls for, so you can see which alarms and which runbooks belong on your own list.
 
 | Component and category (*AI Systems Performance Engineering*, Table 4-4) | Interruption Count (54 Days) | Share of 419 Interruptions | Primary Operational Mitigation |
 |---|---|---|---|
@@ -307,9 +364,15 @@ At a thousand GPUs, hardware faults are a daily event. During a 54-day pretraini
 | GPU SRAM (19, 4.5%) + GSP (17, 4.1%) + SDC (6, 1.4%) + Thermal sensor (6, 1.4%) | 48 | 11.5% (Total GPU categories = 268 / 64.0%) | DCGM health watches, thermal clock monitoring, and periodic per-layer checksums |
 | NCCL watchdog timeouts (`Unknown`) + SSD/PSU (3 each) + Chassis/IO/CPU/RAM (2 each) | 7 (1.7%) + 6 (1.4%) + 8 (1.9%) = 21 | 5.0% | Explicit `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` and Flight Recorder ring buffer dumps |
 
+The table shows a pattern. Most of the stops come from hardware, so the best investment is hardware health monitoring with fast draining, not a faster training loop. Software stops are the second group, and they are the ones your team can prevent with testing and pinned images.
+
+A ledger also shows what is out of reach. Hardware stops cannot be fixed by a better training loop, so they set a floor under the goodput you can expect from the cluster as it is. A checkpoint strategy sits underneath all of them, because it decides how much work each stop throws away.
+
 ### 4.2 Quick-Reference: Production Symptom to First Diagnostic Command
 
-When you are paged for a stalled or slow training job, look up the symptom in this table to find the likely cause and the first command to run.
+When you are paged for a stalled or slow training job, look up the symptom in this table to find the likely cause and the first command to run. The table is organized by what you see, not by what is broken, because a page starts with a symptom. Find the row that matches, run the first command, and check the healthy signal before you change anything.
+
+A good runbook entry names the healthy signal next to the red flag. When the page is loud and the hour is late, the healthy signal is what tells you that the alarm is noise.
 
 | Production symptom (NVIDIA Zero-to-Hero Volume 13, Chapters 1, 11, and 12) | Most Likely Root Cause | Healthy vs Red-Flag Signal | First Diagnostic Command |
 |---|---|---|---|
@@ -320,13 +383,17 @@ When you are paged for a stalled or slow training job, look up the symptom in th
 | Single-node `all_reduce_perf` `busbw` drops from 800 GB/s (or 400 GB/s) to 90 GB/s (or 20 GB/s) | Broken NVLink bridge (`PIX` instead of `NV#`), BIOS ACS on, or stopped `nvidia-fabricmanager` | Healthy: ≥ 32 MB `busbw` near 800–900 GB/s NVLink 4. Red flag: 20–90 GB/s PCIe Gen4 x16 speed. | `nvidia-smi topo -m` and `systemctl status nvidia-fabricmanager` |
 | CUDA OOM at 79,456 / 79,559 MiB (103 MiB free, tried 2.45 GiB) or GPU 0 at 89% vs GPUs 1–2 at 45%/52% | 7B FP32 state (180–190 GB > 80 GB), coarse FSDP wrap, `FULL_STATE_DICT` gather, or missing DDP wrap | Healthy: 70–90% flat working set. Red flag: >95% VRAM, climbing leak, or asymmetric GPU 0 load. | `nvidia-smi pmon` and `nvidia-smi --query-gpu=index,memory.used,memory.total,utilization.gpu --format=csv -l 2` |
 
-Give every production job `TORCH_NCCL_ASYNC_ERROR_HANDLING=1`, per-step JSON timing logs, and automated ECC and thermal checks. Then silent hardware degradation does not pass as a slow model.
+Give every production job `TORCH_NCCL_ASYNC_ERROR_HANDLING=1`, per-step JSON timing logs, and automated ECC and thermal checks. Then silent hardware degradation does not pass as a slow model. The three settings cost little, and they turn a mystery into an alert.
 
 ---
 
 ## 5. Commands and configurations that matter
 
+The commands in this section are the ones you will reach for first, in the order you are likely to need them. The telemetry commands come first, then the profilers, and then the environment flags that tune the runtime. Keep the healthy-range comments next to each command, because a number without a range tells you nothing late at night.
+
 ### 5.1 Macro Telemetry, Thermal / ECC Health, and Fabric Verification (`untested here`)
+
+Start with the telemetry watch and the health checks. They take a minute to run, and they tell you whether the hardware is the first suspect. The comments on each line give the healthy range, so you can compare the output against it directly. Run the watch in a second terminal while the job starts up, because the first few minutes show the startup pattern most clearly. A healthy job settles into a steady band, and a sick one drifts out of it.
 
 ```bash
 # 1. Continuous 2-second GPU memory and utilization watch (healthy: 70-90% mem, 80-95% util)
@@ -352,6 +419,10 @@ systemctl status nvidia-fabricmanager
 
 ### 5.2 Multi-Level Profiling (`torch.profiler`, `nsys`, `ncu`, Linux `perf`) (`untested here`)
 
+When telemetry points at a specific layer, use the profilers. Start with the system-wide timeline, then zoom into the hot kernel with Nsight Compute, and check the host with Linux `perf`. Each command answers one question from the triage path above.
+
+Start with the Nsight Systems timeline when you do not yet know which layer is slow. Move to Nsight Compute only when one kernel has been named. Use Linux perf when the host, not the GPU, is the suspect. Running the heavy tools in that order keeps the profiling overhead from changing the very behavior you are measuring.
+
 ```bash
 # 1. System-wide Nsight Systems timeline with CUDA, OS runtime, and NVTX projection summary
 nsys profile --trace=cuda,nvtx,osrt --output=training_profile.nsys-rep python train.py
@@ -368,6 +439,10 @@ perf stat -e nvidia_nvlink_c2c0_pmu_0/cycles/,cycles,cache-misses -a -- sleep 2.
 ```
 
 ### 5.3 Production NCCL, Allocator, and Compiler Environment Flags
+
+The last block sets the environment for the runtime. These flags change how NCCL, the caching allocator, and TorchInductor behave, so set them once in the job script and keep them under version control. Each line has a short comment that says what it changes.
+
+These flags are a starting point, not a recipe. Each one changes a behavior that the earlier sections measured, so keep a flag only if the measurement that motivated it still holds on your cluster.
 
 ```bash
 # Memory allocator tuning: eliminate 768 MB power-of-two rounding -> 600 MB reserved VRAM (-21.88%)
@@ -390,7 +465,7 @@ export NCCL_DEBUG=WARN
 
 ## How it fails
 
-Each row below is a runbook that goes from the first symptom, through the evidence that proves the cause, to the fix.
+Each row below is a runbook that goes from the first symptom, through the evidence that proves the cause, to the fix. The third column is the important one. It separates what looks like proof from what actually proves the cause, which is the step that most runbooks skip.
 
 | # | Failure Mode & Symptom | Evidence vs. Proof | Root-Cause Fix & Commands |
 |---|---|---|---|
@@ -405,12 +480,16 @@ Each row below is a runbook that goes from the first symptom, through the eviden
 
 ## Hands-on lab
 
+This lab checks the chapter's arithmetic on your own machine, then points you to the cluster steps that need real GPUs. Read the venue notes first, so you know which part runs today and which part waits for hardware.
+
 ### Venue and Scope
 - **Venue:** Local Python Verification Lab (`code/part14/training_performance_troubleshooting.py` and `code/part14/training_performance_troubleshooting_lab.py`; `tested`). It also includes a Nebius GPU multi-rank benchmark and checkpoint verification workflow (`untested here` on live multi-GPU hardware).
 
+The local lab checks every equation in this chapter against fixed inputs. The Nebius steps were not run on a live cluster, so treat them as a plan until you have run them yourself.
+
 ### Part 1: Run the Self-Checking Performance Engineering Lab
 
-Run the deterministic verification suite from the repository root.
+Run the deterministic verification suite from the repository root. The command needs only Python, so it is the safest first step. A pass means the equations and the classification rules agree with the chapter. Each check compares a computed value with the value the chapter states, so a failing line points to one equation or one rule. Read the failing line before you change any code.
 
 ```bash
 python3 -B code/part14/training_performance_troubleshooting_lab.py
@@ -450,7 +529,7 @@ Summary: 25 passed, 0 failed
 
 ### Part 2: Nebius GPU Lab Workflows (`Labs 01–04` Integration, `untested here`)
 
-On a multi-GPU Nebius node, run the four operational verification drills from Volume 13 Labs 01 through 04 to validate DDP scaling, NCCL P2P fallback, FSDP sharding, and deterministic checkpoint recovery.
+On a multi-GPU Nebius node, run the four operational verification drills from Volume 13 Labs 01 through 04. The drills check DDP scaling, NCCL P2P fallback, FSDP sharding, and deterministic checkpoint recovery. Each drill answers one question about the node, so a failure in one drill points you to one part of the stack. Run them in order, so that each drill starts from a node you already checked. Record the output of each drill next to the chapter's expected range, so that a later regression has a baseline to compare against.
 
 ```bash
 # Lab 01: Launch 2-GPU DDP baseline, verify 80-95% scaling efficiency and identical per-rank loss
@@ -471,13 +550,15 @@ torchrun --nproc_per_node=4 train.py --resume-from ./checkpoints/epoch_3.pt
 
 ## Key takeaways
 
-Coarse GPU utilization misleads, and MFU and Goodput do not. A GPU can report 99 to 100 percent in `nvidia-smi` while it spins in an NCCL wait kernel or runs unfused memory-bound operations. Compute MFU, with 40 to 50 percent as a good target inside the 35 to 55 percent range that published runs report, next to cluster Goodput.
+Most of the chapter comes down to a few ideas that you can apply the next time a job is slow. Keep them in mind when you read a dashboard.
 
-Hunt bottlenecks from the macro level to the micro level. Start with Prometheus, DCGM, `nvidia-smi`, and `iostat -x 1` to separate DataLoader starvation from GPU or network trouble. Then align multi-rank timelines in Nsight Systems and Holistic Trace Analysis, and only then read per-kernel Roofline charts in Nsight Compute.
+Coarse GPU utilization misleads, and MFU and Goodput do not. A GPU can report 99 to 100 percent in `nvidia-smi` while it spins in an NCCL wait kernel or runs unfused memory-bound operations. Compute MFU, with 40 to 50 percent as a good target inside the 35 to 55 percent range that published runs report, next to cluster Goodput. Read the utilization number as a question, not an answer.
 
-In a synchronous collective, the straggler is the rank that never waits. When sixty-three of sixty-four nodes show 200-millisecond NCCL wait bars, those nodes are healthy, and the sixty-fourth node with zero wait is the culprit.
+Hunt bottlenecks from the macro level to the micro level. Start with Prometheus, DCGM, `nvidia-smi`, and `iostat -x 1` to separate DataLoader starvation from GPU or network trouble. Then align multi-rank timelines in Nsight Systems and Holistic Trace Analysis, and only then read per-kernel Roofline charts in Nsight Compute. The order keeps cheap checks ahead of expensive ones.
 
-Fusing compute, tuning the allocator, and overlapping communication work together. `torch.compile`, `expandable_segments:True`, block-wrapped FSDP or SimpleFSDP, and AsyncTP remove host dispatch overhead, VRAM rounding waste, and exposed collective stalls.
+In a synchronous collective, the straggler is the rank that never waits. When sixty-three of sixty-four nodes show 200-millisecond NCCL wait bars, those nodes are healthy, and the sixty-fourth node with zero wait is the culprit. Ask the same question of every rank before you blame the cluster.
+
+Fuse the compute, tune the allocator, and overlap the communication. `torch.compile`, `expandable_segments:True`, block-wrapped FSDP or SimpleFSDP, and AsyncTP remove host dispatch overhead, VRAM rounding waste, and exposed collective stalls. Each change targets a different cost, so measure the effect of each one before you stack the next.
 
 Plan for hardware faults and regressions. In Meta's 54-day Llama 3 405B run, GPU hardware caused 64.0 percent of the 419 unexpected stops. Pair sharded checkpoint recovery behind `dist.barrier()` with automated ECC and thermal checks and a 3-run, 5 percent CI regression gate.
 
@@ -485,19 +566,21 @@ Plan for hardware faults and regressions. In Meta's 54-day Llama 3 405B run, GPU
 
 ## Exercises
 
-1. A 70B dense Transformer trains on an eight-GPU H100 SXM node rated at 989 TFLOPS dense BF16 per GPU. Throughput is 3,200 tokens per second before the DataLoader fix and 9,000 after it. Calculate the cluster peak, the achieved TFLOPS, and the MFU before and after.
+Each exercise starts from a situation you might meet at work, and the questions after it come from that situation. Work the numbers on paper before you check the chapter.
+
+1. You are sizing a 70B dense Transformer on an eight-GPU H100 SXM node. Each GPU is rated at 989 TFLOPS dense BF16. The job runs at 3,200 tokens per second before the DataLoader fix. What is the cluster peak? What are the achieved TFLOPS and the MFU before the fix? What are they after the fix at 9,000 tokens per second?
 2. Using the 9,000 tokens per second run, what is the HFU with full activation checkpointing?
-3. An eight-GPU node completes 100,000 useful tokens in ten seconds, and each GPU can reach 1,500 tokens per second. What is its Goodput efficiency?
-4. A 64-GPU job runs across eight nodes for two weeks at 45 percent GPU utilization and 52 percent scaling efficiency. How many GPUs were effectively used, and how many were wasted? How many GPU-hours and how many dollars were wasted at four to five dollars per GPU-hour?
-5. Moving from one GPU to sixteen cuts step time from 155.0 ms to 33.0 ms, and 55.0 percent of the step is exposed AllReduce. What are the speedup and the scaling efficiency? How many milliseconds go to compute and to communication? What speedup ceiling does Amdahl's Law give for a serial fraction of ten percent?
-6. In the 138.00 ms MoE profile of Table 13-2, what are the time and share of the GEMM operations, of the MoE routing, and of the remaining six operators? How does the total match Nsight Systems `nvtx_gpu_proj_sum` in Table 13-3, and why do sixty-four `aten::add_` calls show up as one NVTX `optimizer_step` instance?
+3. An eight-GPU node completes 100,000 useful tokens in ten seconds. Each GPU can reach 1,500 tokens per second. What is its Goodput efficiency?
+4. A 64-GPU job runs across eight nodes for two weeks. It runs at 45 percent GPU utilization and 52 percent scaling efficiency. How many GPUs were effectively used? How many were wasted? How many GPU-hours and how many dollars were wasted at four to five dollars per GPU-hour?
+5. Your team moves from one GPU to sixteen, and the step time drops from 155.0 ms to 33.0 ms. Exposed AllReduce takes 55.0 percent of the step. What are the speedup and the scaling efficiency? How many milliseconds go to compute and to communication? What speedup ceiling does Amdahl's Law give for a serial fraction of ten percent?
+6. In the 138.00 ms MoE profile of Table 13-2, what are the time and share of the GEMM operations? What are the time and share of the MoE routing? What are they for the remaining six operators? How does the total match Nsight Systems `nvtx_gpu_proj_sum` in Table 13-3? Why do sixty-four `aten::add_` calls show up as one NVTX `optimizer_step` instance?
 7. In the 24.0 ms MLPerf step of Table 13-6, what are the compute and communication shares? How do the Nsight Compute Roofline numbers in Table 13-4 tell the memory-bound baseline from the compute-bound kernel?
-8. `torch.compile` lowers an MoE step from 248.0 ms to 173.0 ms. How many milliseconds are saved, what is the percentage reduction, and what is the speedup? Why does FireworksAI capture shared CUDA Graph pools in decreasing batch order?
+8. `torch.compile` lowers an MoE step from 248.0 ms to 173.0 ms. How many milliseconds are saved? What is the percentage reduction, and what is the speedup? Why does FireworksAI capture shared CUDA Graph pools in decreasing batch order?
 9. Why does `roundup_power2_divisions` round a 600 MB allocation up to 768 MB? How much VRAM does `expandable_segments:True` save? What peak memory and throughput does SimpleFSDP reach, and what step latency does AsyncTP reach in Section 3.1?
-10. Using Table 4-3, by what percentage does iteration time fall when `init_process_group` moves out of the training loop? Then compare Ring AllReduce on 28.0 GB of FP32 gradients across eight GPUs on NVLink and 512 GPUs on InfiniBand, in data moved, time, and hops.
-11. On a 64-node job, sixty-three nodes show 200 ms of NCCL wait and node 14 shows none. Which node is the straggler, and which diagnostic and remediation commands do you run?
+10. Using Table 4-3, by what percentage does iteration time fall when `init_process_group` moves out of the training loop? Then compare Ring AllReduce on 28.0 GB of FP32 gradients across eight GPUs on NVLink and 512 GPUs on InfiniBand. How do the two compare in data moved, time, and hops?
+11. On a 64-node job, sixty-three nodes show 200 ms of NCCL wait and node 14 shows none. Which node is the straggler? Which diagnostic and remediation commands do you run?
 12. From the interruption table in Section 4.1, what are the combined count and share of faulty GPUs plus HBM3 memory? What is the total across all six GPU hardware categories?
-13. Thermal throttling degrades a run from 45.0 percent to 28.0 percent MFU, and a stopped Fabric Manager degrades a node from 950 to 310 tokens per second. What are the two relative drops? Does the PyTorch HUD gate fail on the two three-run sequences in Section 3.3?
+13. Thermal throttling degrades a run from 45.0 percent to 28.0 percent MFU. A stopped Fabric Manager degrades a node from 950 to 310 tokens per second. What are the two relative drops? Does the PyTorch HUD gate fail on the two three-run sequences in Section 3.3?
 
 ---
 

@@ -25,67 +25,74 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A pretraining run is on day nineteen of thirty when a power supply trips on one node. The job stops. If the last saved checkpoint is from this morning, you lose a few hours of work. If the last good save is from three days ago, you lose three days on every GPU in the job. Checkpointing is how you decide which of those two outcomes you get.
+A pretraining run is on day nineteen of thirty when a power supply trips on one node. The job stops. If the last saved checkpoint is from this morning, you lose a few hours of work. If the last good save is from three days ago, you lose three days on every GPU in the job. Checkpointing is the practice that decides which of those two outcomes you get, so it is worth understanding before the first failure arrives.
 
-Think of saving a long video game. You save often enough that a power cut costs little, but not so often that you spend your evenings watching the save screen. In training, the save screen is real: while a synchronous checkpoint writes, every GPU sits idle.
+Think of saving a long video game. You save often enough that a power cut costs little, but not so often that you spend your evenings watching the save screen. In training, the save screen is real. While a synchronous checkpoint writes, every GPU sits idle, and the cost of that idle time grows with the size of the cluster.
 
-At scale the failures are certain, not unlucky. Suppose each GPU has a 99.9 percent chance of surviving a day. A job on 1,024 GPUs then has about a 36 percent chance of getting through one day without a single failure. This reliability figure is an assumption for the arithmetic. Real fleets also lose hosts, network cards, cables and switches, so observed failure rates are usually worse.
+At scale the failures are certain, not unlucky. Suppose each GPU has a 99.9 percent chance of surviving a day. A job on 1,024 GPUs then has about a 36 percent chance of getting through one day without a single failure. This reliability figure is an assumption that makes the arithmetic easy to follow. Real fleets also lose hosts, network cards, cables and switches, so observed failure rates are usually worse.
 
-Three problems make checkpointing at this scale an engineering task.
+Three problems make checkpointing at this scale an engineering task. Each one shows up on a different part of the cluster, so each needs its own answer.
 
-- **Size.** A 70-billion-parameter model has a checkpoint close to one terabyte.
-- **The pause.** A five-minute save every hour wastes about eight percent of the cluster.
-- **Scattered state.** Under FSDP, ZeRO-3 or Megatron-LM, no GPU holds the whole model, so the shards must be saved and later reassembled, possibly on fewer GPUs.
+- **Size.** How big is the file, and how long does it take to write? A 70-billion-parameter model has a checkpoint close to one terabyte.
+- **The pause.** How much training time does each save cost? A five-minute save every hour wastes about eight percent of the cluster.
+- **Scattered state.** Where does the state live? Under FSDP, ZeRO-3 or Megatron-LM, no GPU holds the whole model, so the shards must be saved and later reassembled, possibly on fewer GPUs.
 
 **Save sharded and asynchronously, detect failures in seconds, and restart automatically, so a hardware failure costs minutes instead of days.**
 
-This chapter owns the training side: what a checkpoint must contain, how often to save, how to survive failures and how to resume on a different number of GPUs. Chapter 13.7 owns the storage side: where the bytes go, striping, publication, retention and driver-level snapshots. Chapter 19.4 puts the two together in a capstone.
+This chapter owns the training side: what a checkpoint must contain, how often to save, how to survive failures and how to resume on a different number of GPUs. Chapter 13.7 owns the storage side, which covers where the bytes go, striping, publication, retention and driver-level snapshots. Chapter 19.4 puts the two together in a capstone, so you can see the training and storage halves working as one system.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Memory and compute anatomy from chapters 14.1 to 14.3.
-- Data and model parallelism from chapters 14.4 to 14.7.
-- NCCL collectives and watchdogs from chapters 12.15 to 12.18, and multi-node orchestration from chapter 14.10.
+
+Before you start, a few earlier chapters should feel familiar. Each bullet asks a question, and the chapter assumes you can answer it.
+
+- Do you know what fills GPU memory during training? Memory and compute anatomy from chapters 14.1 to 14.3 answer that.
+- Do you know how a model is split across GPUs? Data and model parallelism from chapters 14.4 to 14.7 explain it.
+- Do you know how a stuck collective gets detected? NCCL collectives and watchdogs from chapters 12.15 to 12.18 cover it, and multi-node orchestration from chapter 14.10 covers the cluster side.
 
 ### Outcomes
-After this chapter you can do the following.
-1. List what a checkpoint must contain to resume a run exactly, and size it without counting gradients.
-2. Explain why every rank writes its own shard, and estimate the pause for both approaches.
-3. Compute a checkpoint interval from the cluster failure rate and the blocking write time, and see what asynchronous saving changes.
-4. Run two-phase asynchronous saves without exhausting host memory, and reshard a checkpoint onto a different GPU count.
-5. Configure fast failure detection, elastic restarts and preemption handling that keep the global batch stable.
+
+Imagine a job that must survive a node failure in the middle of the night and still come back with the same loss curve. This chapter follows that job from the contents of a checkpoint to the restart. It explains what a checkpoint must hold to resume a run exactly, and how to size it without counting gradients. It shows why every rank writes its own shard, and how to estimate the pause for both approaches. It then turns the cluster failure rate and the blocking write time into a checkpoint interval, and shows what asynchronous saving changes. Next come two-phase asynchronous saves that do not exhaust host memory, and reshaping a checkpoint onto a different GPU count. The chapter ends with fast failure detection, elastic restarts and preemption handling that keep the global batch stable.
 
 ---
 
 ## 1. What a checkpoint must contain
 
-A common first mistake is saving only the model weights. The job then resumes without any error, but the loss jumps or slowly drifts away from where an uninterrupted run would have been. To continue as if the crash never happened, the checkpoint needs five kinds of state.
+A common first mistake is saving only the model weights. The job then resumes without any error, but the loss jumps or slowly drifts away from where an uninterrupted run would have been. The weights are only part of the training state. To continue as if the crash never happened, the checkpoint needs five kinds of state.
 
-1. **Model weights**, the learned parameters.
-2. **Optimizer state**, which for Adam or AdamW is the running average of gradients and the running average of squared gradients. Without it the optimizer starts cold and the loss spikes.
-3. **Learning-rate scheduler state**, so the resumed run is at the right point on the warmup and decay curve.
-4. **Data loader state**, the position in the dataset, so the job neither repeats samples nor skips them.
-5. **Random number generator state for every rank.** Dropout masks and shuffling depend on it. Each rank has its own CUDA generator, so saving only rank 0's state leaves every other rank on a different random stream.
+1. Model weights, the learned parameters, are the obvious one.
+2. Optimizer state is the second. For Adam or AdamW, it holds the running average of gradients and the running average of squared gradients. Without it, the optimizer starts cold and the loss spikes.
+3. Learning-rate scheduler state keeps the resumed run at the right point on the warmup and decay curve. Without it, the learning rate restarts from the beginning of the schedule.
+4. Data loader state records the position in the dataset. It keeps the job from repeating samples or skipping them after a restart.
+5. Random number generator state, for every rank, controls dropout masks and shuffling. Each rank has its own CUDA generator, so saving only rank 0's state leaves every other rank on a different random stream.
 
-Gradients are not part of a checkpoint. They are recomputed by the next backward pass, and a checkpoint is taken after the optimizer step, when they are no longer needed.
+Gradients are not part of a checkpoint. The next backward pass recomputes them, and a checkpoint is taken after the optimizer step, when they are no longer needed.
+
+A simple way to check your list is to ask what the first step after a restart needs. The optimizer needs its moments, the scheduler needs its position, the loader needs its place in the data, and every rank needs its random stream. If any answer is missing, the resumed run looks fine for a few steps and then drifts.
 
 ### 1.1 How big is it
 
-Active training memory is larger than the checkpoint. With mixed precision, training holds 2 bytes of BF16 weights, 2 bytes of BF16 gradients, 4 bytes of FP32 master weights and 8 bytes for the two Adam moments, which is 16 bytes per parameter. The checkpoint leaves out the gradients.
+Your first estimate of disk space is often wrong in one direction, and the reason is that training memory is not the same as checkpoint size. Active training memory is larger, because it also holds the gradients. With mixed precision, training holds 2 bytes of BF16 weights, 2 bytes of BF16 gradients, 4 bytes of FP32 master weights and 8 bytes for the two Adam moments, which is 16 bytes per parameter. The checkpoint leaves out the gradients, so it is smaller than the working memory.
+
+The table shows the two ways a checkpoint can be laid out, and the bytes each one spends per parameter.
 
 | What is saved | Bytes per parameter | When it applies |
 |---|---|---|
 | BF16 weights, FP32 master weights, two FP32 Adam moments | 14 | A separate BF16 copy is saved with the FP32 master copy |
 | FP32 master weights and two FP32 Adam moments | 12 | The BF16 copy is rebuilt from the master copy on load |
 
-The planning figure in this chapter is 14 bytes per parameter. A 70-billion-parameter model is then 980 GB. Spread over 128 GPUs, each GPU writes a shard of about 7.66 GB. Frameworks differ in what they save, so check your own checkpoint directory before you plan capacity.
+The planning figure in this chapter is 14 bytes per parameter. A 70-billion-parameter model is then 980 GB. Spread over 128 GPUs, each GPU writes a shard of about 7.66 GB. Frameworks differ in what they save, so check your own checkpoint directory before you plan capacity. The directory is the final judge, and the planning table is only a starting point.
 
 ---
 
 ## 2. Why every rank writes its own shard
 
-Under FSDP or ZeRO-3, each GPU holds only its own slice. If you ask for a full state dictionary, every shard is sent to rank 0 first and rank 0 writes one big file. For a small model this is fine. For a large one it is a bottleneck in two places: the network into rank 0 and the single writer out of it. It can also run rank 0 out of memory.
+Your 980 GB checkpoint is sitting on one server, the rank 0 machine, while every other GPU waits for it to finish. That is the usual shape of the first save a team writes by hand. Under FSDP or ZeRO-3, each GPU holds only its own slice of the model. If you ask for a full state dictionary, every shard is sent to rank 0 first, and rank 0 writes one big file. For a small model this works. For a large one, it is a bottleneck in two places: the network into rank 0 and the single writer out of it. It can also run rank 0 out of memory, because that machine has to hold the whole model at once.
+
+Think of the save as a group of people each carrying boxes to the same warehouse. The warehouse door is the filesystem, and it has a limit on how fast it can take boxes in. If one person carries every box, the walk becomes the bottleneck. If everyone carries a box, the door becomes the bottleneck, which is a much better problem to have.
+
+The diagram shows the two shapes side by side. The top path funnels everything through one node. The bottom path lets every GPU write its own piece to the same filesystem at the same time.
 
 ```mermaid
 flowchart TB
@@ -103,7 +110,7 @@ flowchart TB
     end
 ```
 
-The worked numbers use the 980 GB checkpoint on 128 GPUs. They are assumed link and filesystem rates, not measurements.
+The worked numbers use the 980 GB checkpoint on 128 GPUs. They are assumed link and filesystem rates, not measurements, so use them to see the shape of the problem rather than as a benchmark.
 
 ```text
 Gather to rank 0:
@@ -120,15 +127,19 @@ Every rank writes its shard:
 Speedup: 235.2 / 2.45 = 96 times
 ```
 
-The sharded write is limited by the filesystem, not by one writer. What decides that ceiling, how to stripe the directory and where to stage the bytes is covered in chapter 13.7. For training, the rule is simple: never gather a large model to rank 0, and write sharded with PyTorch Distributed Checkpoint.
+Read the sharded result carefully. The sharded write is limited by the filesystem, not by any single writer. Each of the 128 writers would ask for 5 GB/s, which adds up to far more than the 400 GB/s the filesystem can absorb. So each GPU gets its fair share of that ceiling, as the block shows, and the write finishes in about 2.45 seconds. What decides that ceiling, how to stripe the directory and where to stage the bytes is covered in chapter 13.7. For training, the rule is simple. Never gather a large model to rank 0, and write sharded with PyTorch Distributed Checkpoint.
 
 ---
 
 ## 3. How often to save: failure arithmetic and the Young-Daly interval
 
+A job that ran for a week on one node may fail about once a day when it grows to 1,024 GPUs. Nothing in the code changed. The number of parts grew, and the chance that one of them breaks grew with it. This section turns that observation into a number you can use to choose a save interval.
+
 ### 3.1 Why failures cluster at scale
 
-A synchronous job is a chain. If any GPU, network card, cable or host fails, the collective stops and the whole job stops. With a per-GPU daily survival probability of 0.999 as an assumption, the chance that the whole fleet survives a day falls quickly with size.
+A synchronous job is a chain. If any GPU, network card, cable or host fails, the collective stops and the whole job stops. Each link in the chain has a small chance of failing on a given day, and the chance that every link survives the day gets smaller as the chain gets longer. With a per-GPU daily survival probability of 0.999 as an assumption, the chance that the whole fleet survives a day falls quickly with size.
+
+The table turns that assumption into the numbers you need for planning. The last column is the mean time between failures, which is the average gap between two failures for the whole job.
 
 | GPUs | All survive 24 hours | Expected failures per day | Implied MTBF |
 |---|---|---|---|
@@ -138,13 +149,13 @@ A synchronous job is a chain. If any GPU, network card, cable or host fails, the
 | 10,000 | 0.0045% | 10 | about 2.4 hours |
 | 100,000 | 3.5 x 10 to the power of minus 44 | 100 | 14.4 minutes |
 
-MTBF means mean time between failures. Measured clusters often see shorter MTBF than this table, because hosts, network cards and switches fail too. Use your own measured value when you have it.
+MTBF means mean time between failures. Measured clusters often see a shorter MTBF than this table shows, because hosts, network cards and switches fail too, and the table only counts the GPUs. Use your own measured value when you have it, and treat the table as the lower bound on your risk.
 
 ### 3.2 Why an optimal interval exists
 
-If you save every five minutes, you lose almost nothing on a crash, but the GPUs spend a large share of their time writing. If you save once a day, writing costs almost nothing, but a crash at hour 23 throws away a day. Somewhere between those two, the sum of write cost and expected lost work is smallest.
+Picture the two extremes first. If you save every five minutes, you lose almost nothing on a crash, but the GPUs spend a large share of their time writing. If you save once a day, writing costs almost nothing, but a crash at hour 23 throws away a day. Somewhere between those two, the sum of write cost and expected lost work is smallest. That middle point is the one you want. The MTBF sets how much work is at risk, so a cluster that fails every few hours needs frequent saves, while one that fails every few days can save less often. The write time sets what each save costs. A short write makes frequent saves cheap, and a long write pushes the best interval out.
 
-Young and Daly worked out where. The interval is the square root of twice the MTBF times the write time, minus the write time.
+Young and Daly worked out where that point is. The interval is the square root of twice the MTBF times the write time, minus the write time. The block below works the formula for two example clusters.
 
 ```text
 T_opt = sqrt(2 * M * T_c) - T_c
@@ -160,9 +171,9 @@ Example B: M = 6 h = 21,600 s, T_c = 240 s
   T_opt = 3,220 - 240 = 2,980 s, about 49.7 minutes
 ```
 
-The result is the compute time between saves. Real failures arrive in bursts, for example when a cooling loop warms up or a firmware update reaches a rack, so teams round the answer down, often to 30 to 40 minutes.
+The result is the compute time between saves. Real failures arrive in bursts, for example when a cooling loop warms up or a firmware update reaches a rack, so teams round the answer down, often to 30 to 40 minutes. A shorter interval costs a little more writing, and it protects you against the bursts that the formula does not model.
 
-The goodput below is the first-order estimate from the formulas, for M = 8 hours and T_c = 180 seconds. Goodput means the share of time spent on useful training after write overhead and expected lost work.
+The goodput table below is a first-order estimate from the formulas, for an MTBF of 8 hours and a write time of 180 seconds. Goodput means the share of time spent on useful training after write overhead and expected lost work. Read the rows from top to bottom. The gap between the first row and the last row is the value of making the pause short.
 
 | Policy | Interval | Write overhead | Expected rework per crash | Goodput |
 |---|---|---|---|---|
@@ -171,7 +182,7 @@ The goodput below is the first-order estimate from the formulas, for M = 8 hours
 | Every 4 hours | 14,400 s | 1.2% | 7,290 s | 73.8% |
 | Young-Daly, asynchronous (2 s pause) | 3,040 s | 0.07% | 1,521 s | 94.7% |
 
-The last row is the reason to make the blocking part short. Chapter 19.4 and chapter 20.17 use this result and do not derive it again.
+The last row is the reason to make the blocking part short. Chapter 19.4 and chapter 20.17 use this result and do not derive it again. When you present a save plan to your team, start with this table, because it shows the trade in one place.
 
 **Measure your MTBF and your blocking pause, apply the formula, then shorten the pause with asynchronous saving.**
 
@@ -179,10 +190,12 @@ The last row is the reason to make the blocking part short. Chapter 19.4 and cha
 
 ## 4. Asynchronous checkpointing and host memory
 
-A three-minute blocking write still leaves a thousand GPUs idle for several percent of every hour. And on a shared filesystem, a neighbour's large write can stretch your ninety-second save to twelve minutes. Asynchronous checkpointing takes the storage write off the training path in two phases.
+A checkpoint is a copy of the training state, and the slow part of that copy is the trip to storage. A three-minute blocking write still leaves a thousand GPUs idle for several percent of every hour. On a shared filesystem, a neighbour's large write can stretch your ninety-second save to twelve minutes, and the GPUs wait the whole time. Asynchronous checkpointing takes the storage write off the training path, and it does this in two phases.
 
-1. **Stage.** Training pauses while each GPU copies its shard over PCIe into pinned host memory. About 100 GB across the eight GPUs of a node takes one to two seconds.
-2. **Flush.** The GPUs go back to the next step. Background threads write the staged copy to storage while the GPUs compute.
+1. Stage. Training pauses while each GPU copies its shard over PCIe into pinned host memory. About 100 GB across the eight GPUs of a node takes one to two seconds. This is the only part of the save that stops the GPUs.
+2. Flush. The GPUs go back to the next step. Background threads write the staged copy to storage while the GPUs compute, so the slow disk write overlaps with useful work.
+
+The sequence diagram shows the handoff between the GPU, the host memory and the storage. The staging pause is short, and the flush runs in the background.
 
 ```mermaid
 sequenceDiagram
@@ -196,9 +209,11 @@ sequenceDiagram
     RAM-->>FS: Flush in the background, 20 to 180 s
 ```
 
-PyTorch Distributed Checkpoint also caches the save plan, which is the shape and sharding metadata, so later saves skip recomputing it. The PyTorch team reports large speedups from this and from background threads. Treat the exact factor as workload dependent and measure it.
+PyTorch Distributed Checkpoint also caches the save plan, which is the shape and sharding metadata, so later saves skip recomputing it. The PyTorch team reports large speedups from this and from background threads. Treat the exact factor as workload dependent and measure it on your own job before you quote it.
 
-The new risk is host memory. While the flush runs, the staged copy sits in RAM next to your data loader workers. If the next save starts before the previous flush ends, two copies are staged, and the Linux out-of-memory killer can end the training process.
+The new risk is host memory. While the flush runs, the staged copy sits in RAM next to your data loader workers. If the next save starts before the previous flush ends, two copies are staged at the same time, and the Linux out-of-memory killer can end the training process. The out-of-memory killer is the kernel's last resort when RAM runs out, and it chooses a process to kill without asking you.
+
+The block below works the memory budget for one node.
 
 ```text
 Node with 512 GB RAM, 380 GB already used by the OS and data loader workers
@@ -208,15 +223,19 @@ Node with 512 GB RAM, 380 GB already used by the OS and data loader workers
     Out of memory: Killed process 1234 (python)
 ```
 
-Pinned memory is locked in RAM and cannot be swapped out, so a swap file does not help here. The fix is a rule: allow one save in flight, wait for the previous flush with the future that `dcp.async_save` returns, and check that free RAM exceeds the staged size before you enable asynchronous saves.
+Think of pinned memory as a shelf that the operating system is not allowed to move. Staged copies sit on that shelf until the flush finishes. If two saves are staged, the shelf needs room for both, and that room is the limit the budget block checks.
+
+Pinned memory is locked in RAM and cannot be swapped out, so a swap file does not help here. The fix is a rule. Allow one save in flight, wait for the previous flush with the future that `dcp.async_save` returns, and check that free RAM exceeds the staged size before you enable asynchronous saves.
 
 ---
 
 ## 5. Resuming on a different number of GPUs, and checking what you load
 
-Suppose a 64-GPU job loses two nodes and the scheduler restarts it on 48 GPUs. If the checkpoint is 64 raw per-rank files with no layout information, the resume fails at once with a shard-count mismatch, or worse, silently ignores some shards.
+Suppose a 64-GPU job loses two nodes and the scheduler can only restart it on 48 GPUs. The job itself is still healthy. The question is whether the checkpoint can be read by a different number of processes. If the checkpoint is 64 raw per-rank files with no layout information, the resume fails at once with a shard-count mismatch, or worse, silently ignores some shards.
 
-PyTorch Distributed Checkpoint and DeepSpeed Universal Checkpointing avoid this by separating the on-disk layout from the running process group. Next to the shard files, a metadata file records each tensor's global shape, type and the position of every slice. On load, each rank builds a template of the slice it now owns, and `dcp.load` reads exactly those byte ranges from the old shards.
+PyTorch Distributed Checkpoint and DeepSpeed Universal Checkpointing avoid this by separating the on-disk layout from the running process group. Next to the shard files, a metadata file records each tensor's global shape, type and the position of every slice. On load, each rank builds a template of the slice it now owns, and `dcp.load` reads exactly those byte ranges from the old shards. The new ranks never need to match the old ones, because the metadata describes the whole tensor.
+
+The block below shows the arithmetic for the 64 to 48 case.
 
 ```text
 980 GB checkpoint, 64 GPUs to 48 GPUs
@@ -224,7 +243,7 @@ PyTorch Distributed Checkpoint and DeepSpeed Universal Checkpointing avoid this 
   Read by 48 ranks:     980 / 48 = 20.42 GB per rank, built from overlapping old shards
 ```
 
-Two habits protect you from loading something bad. First, a load that completes is not proof the state is right, so validate before trusting a checkpoint: check the step number, the world size recorded at save time and that every expected key is present. Second, keep the last few good checkpoints, so a corrupt latest one does not end the run. Chapter 13.7 covers atomic publication, checksums and retention, which are the storage half of this.
+Each new rank reads a larger slice than it wrote before, and each slice is assembled from overlapping parts of the old files. That is more reading per rank than before, which is the price of the flexible layout, and it is usually a good trade. Two habits protect you from loading something bad. First, a load that completes is not proof that the state is right, so validate before you trust a checkpoint. Check the step number, the world size recorded at save time, and that every expected key is present. Second, keep the last few good checkpoints, so a corrupt latest one does not end the run. Validation is cheap compared with a lost run. Reading the metadata and checking the keys takes seconds, while a bad resume can waste hours of GPU time before anyone notices the loss is wrong. Chapter 13.7 covers atomic publication, checksums and retention, which are the storage half of this.
 
 **Use sharded saves with global metadata, so a restart on any GPU count can load the checkpoint, and validate it on load.**
 
@@ -232,30 +251,36 @@ Two habits protect you from loading something bad. First, a load that completes 
 
 ## 6. Fault tolerance and elastic training
 
+A rank dies in the middle of an AllReduce, and every other GPU in the job waits for it. This section covers how the job notices, how it recovers and how it comes back on fewer GPUs without losing its place.
+
 ### 6.1 Why try and except cannot repair a broken NCCL group
 
-New engineers sometimes wrap the training step in a Python try block to catch a failure and carry on. That fails at multi-GPU scale. Once a communicator exists, every collective needs every rank. If rank 7 dies from a page fault, falls off the bus or hits an uncorrectable ECC error, the other ranks block inside their collective kernels waiting for it. The communicator state is broken, and an exception handler cannot skip the dead rank. The whole process group must be torn down, formed again among healthy nodes and restored from the last checkpoint.
+New engineers sometimes wrap the training step in a Python try block, so that a failure can be caught and the job can carry on. That idea fails at multi-GPU scale. Once a communicator exists, every collective needs every rank to take part. If rank 7 dies from a page fault, falls off the bus or hits an uncorrectable ECC error, the other ranks block inside their collective kernels, waiting for a partner that will never answer. The communicator state is broken, and an exception handler cannot skip the dead rank. The whole process group must be torn down, formed again among healthy nodes and restored from the last checkpoint.
 
 ### 6.2 Detecting the failure quickly
 
-How long does the job sit stuck before anything notices? PyTorch's NCCL process group has a default timeout of 10 minutes, set by the `timeout` argument of `init_process_group`. Chapter 12.18 describes the watchdog behind it. For up to ten minutes, a thousand GPUs draw power and do nothing.
+A node fails late at night, and the job sits there with its GPUs idle until someone wakes up. How long does it stay stuck before anything notices? PyTorch's NCCL process group has a default timeout of 10 minutes, set by the `timeout` argument of `init_process_group`. Chapter 12.18 describes the watchdog behind it. For up to ten minutes, a thousand GPUs draw power and do nothing. That is a long time to pay for silence, and it is the reason to tune the timeout.
 
-Production stacks combine three layers.
+Production stacks combine three layers, and each one catches a different kind of stall.
 
-1. **Bounded collective timeouts.** Set the process group timeout to a value that matches your slowest legitimate collective, and enable the Flight Recorder so each hung rank dumps the collective where it stopped.
-2. **An application heartbeat.** Workers send a signal every 2 seconds, and a supervisor acts after four misses. That is 8 seconds, 75 times faster than the 600-second default.
-3. **Scheduler signals.** Slurm can send a warning signal before a time limit or on preemption. A handler finishes the current step, writes a fast sharded checkpoint and resubmits the job.
+1. Bounded collective timeouts. Set the process group timeout to a value that matches your slowest legitimate collective, and enable the Flight Recorder so each hung rank dumps the collective where it stopped.
+2. An application heartbeat. Workers send a signal every 2 seconds, and a supervisor acts after four misses. That is 8 seconds, 75 times faster than the 600-second default.
+3. Scheduler signals. Slurm can send a warning signal before a time limit or on preemption. A handler finishes the current step, writes a fast sharded checkpoint and resubmits the job.
 
-When a failure is a hardware fault, the driver also leaves evidence. An uncorrectable double-bit ECC error shows as Xid 48 and a GPU that fell off the bus as Xid 79. Xid 63 is not a failure. It records that a memory row was remapped, which is the GPU repairing itself, and chapter 10.8 lists it as a tier 1 event to trend. Drain the node for Xid 48, 79 and 95, and read the full tiering in chapter 10.21.
+When a failure is a hardware fault, the driver also leaves evidence in the kernel log. An uncorrectable double-bit ECC error shows as Xid 48, and a GPU that fell off the bus shows as Xid 79. A simple habit helps here. When a stall happens, check the kernel log before the training code, because a hardware error will not show up in your Python traceback. Xid 63 is not a failure. It records that a memory row was remapped, which is the GPU repairing itself, and chapter 10.8 lists it as a tier 1 event to trend. Drain the node for Xid 48, 79 and 95, and read the full tiering in chapter 10.21.
 
 ### 6.3 Fault tolerant and elastic launch
 
-Torch Distributed Elastic, behind `torchrun`, runs an agent on each node that watches local workers and uses a rendezvous store to re-form the group. It has two modes.
+Your job runs on four nodes, and one of them has a bad network card. You want the job to recover without a human restarting it. Torch Distributed Elastic, behind `torchrun`, does this. It runs an agent on each node that watches its local workers and uses a rendezvous store to re-form the group. The launcher has two modes, and they make different trade-offs.
 
 | Mode | Flag | On a failure | Effect on batch and learning rate |
 |---|---|---|---|
 | Fault tolerant, fixed size | `--nnodes=4 --max_restarts=3` | Stops survivors, waits for all four nodes to rejoin the rendezvous, restarts up to three times | World size is constant, so batch and schedule do not change |
 | Elastic, variable size | `--nnodes=2:4 --max_restarts=3` | Re-forms at once with the surviving nodes, scales up again when nodes return | World size changes, so you must adjust accumulation or learning rate |
+
+The fixed-size mode keeps the world size constant, so the batch and the schedule do not change. The elastic mode keeps the job running with fewer nodes, but the batch shrinks with the world size, and you must correct for it. The flow below shows one recovery from a crash.
+
+Here is what the agent does during one recovery. It notices that a worker has exited, stops the surviving workers on its node, and asks the rendezvous store for a new group. The group re-forms with the nodes that answer, each worker loads the latest checkpoint, and training resumes from the saved step. You do not type any of those steps. You do decide the node range and the restart limit, so choose them with the batch in mind.
 
 ```mermaid
 flowchart LR
@@ -268,14 +293,14 @@ flowchart LR
 
 In elastic mode, fewer GPUs means a smaller global batch. With 32 GPUs and a micro-batch of 2, the batch is 64 sequences per step. At 24 GPUs it is 48, which changes gradient noise and can cause a loss spike. There are two ways to keep training stable.
 
-- **Keep the global batch fixed with gradient accumulation.** For a target of 192 sequences, 32 GPUs use 3 accumulation steps and 24 GPUs use 4.
-- **Scale the learning rate with the batch.** The square-root rule is a heuristic, not a law. Going from batch 32 to batch 8,192 is 256 times larger, which raises the learning rate 16 times, from 1e-4 to 1.6e-3.
+- How do you keep the batch the same? Use gradient accumulation. For a target of 192 sequences, 32 GPUs use 3 accumulation steps and 24 GPUs use 4.
+- How do you adjust the learning rate instead? Scale it with the batch. The square-root rule is a heuristic, not a law. Going from batch 32 to batch 8,192 is 256 times larger, which raises the learning rate 16 times, from 1e-4 to 1.6e-3.
 
-The step arithmetic is simple. With a save every 500 steps and a crash at step 5,243, the launcher loads step 5,000, resumes at 5,001 and loses 243 steps, never more than 500.
+The step arithmetic is simple. With a save every 500 steps and a crash at step 5,243, the launcher loads step 5,000, resumes at 5,001 and loses 243 steps, which is never more than the 500-step interval.
 
 ### 6.4 Beyond disk checkpoints
 
-Disk checkpoints are the durable fallback, but they are slow to reload at large scale. Two ideas reduce recovery time further. In-memory or peer checkpointing keeps a recent copy in the memory of other nodes, so a restart reads from a neighbour instead of storage. Fault-tolerant data parallel designs let healthy replica groups keep training while a failed group recovers, which PyTorch explores in its torchft project. Treat both as additions to a disk checkpoint, not replacements, and check the maturity of the tool before you depend on it.
+Disk checkpoints are the durable fallback, but they are slow to reload at large scale. The safe pattern is to let a failed job stop cleanly and restart it from the last good checkpoint. Catching the error inside the step rarely leaves you with a usable state. Every node reading the same checkpoint at once can make the filesystem the bottleneck of the recovery. Two ideas reduce recovery time further. In-memory or peer checkpointing keeps a recent copy in the memory of other nodes, so a restart reads from a neighbour instead of storage. Fault-tolerant data parallel designs let healthy replica groups keep training while a failed group recovers, which PyTorch explores in its torchft project. Treat both as additions to a disk checkpoint, not replacements, and check the maturity of the tool before you depend on it.
 
 **Combine elastic restarts, fast failure detection, metadata-based resharding and scheduler signal handlers so a node fault costs minutes.**
 
@@ -283,9 +308,11 @@ Disk checkpoints are the durable fallback, but they are slow to reload at large 
 
 ## Commands and configurations that matter
 
+When a save or a restart goes wrong, you want the exact code and commands in one place. The three blocks below are the ones to start from. Each one is written so you can read the saved state and the launch flags before you trust them.
+
 ### 1. Saving the full state: sharded model and optimizer, plus per-rank state
 
-The sharded model and optimizer go through Distributed Checkpoint. The state that belongs to one rank, such as its random generators and its data loader position, goes into a small per-rank file in the same directory. The whole directory is written under a temporary name and renamed only after every rank has finished.
+The sharded model and optimizer go through Distributed Checkpoint. The state that belongs to one rank, such as its random generators and its data loader position, goes into a small per-rank file in the same directory. The whole directory is written under a temporary name and renamed only after every rank has finished. That order matters, because a half-written directory must never look like a valid checkpoint.
 
 ```python
 import os, random
@@ -322,9 +349,11 @@ def save_checkpoint(model, optimizer, loader, scheduler, step, root):
     dist.barrier()
 ```
 
-On resume, each rank reads its own `rank_<rank>.pt`, restores the generators, calls `loader.load_state_dict`, and loads the scheduler. If the world size changed, the per-rank files no longer match the ranks. In that case restore the data loader position from the global sample count and re-seed the generators from the step number, and accept that the run is no longer bit-for-bit identical to an uninterrupted one.
+On resume, each rank reads its own `rank_<rank>.pt`, restores the generators, calls `loader.load_state_dict`, and loads the scheduler. If the world size changed, the per-rank files no longer match the ranks. In that case restore the data loader position from the global sample count and re-seed the generators from the step number, and accept that the run is no longer bit-for-bit identical to an uninterrupted one. An exact match needs the same number of ranks.
 
 ### 2. Asynchronous sharded save and resharding load
+
+The second block adds two functions. The first starts a save without blocking the training loop. The second loads a checkpoint into a different layout. Read the save function first, because the wait on the previous save is the line that keeps host memory safe.
 
 ```python
 import torch.distributed.checkpoint as dcp
@@ -347,9 +376,11 @@ def load_resharded(model, optimizer, path):
                    model_state_dict=state["model"], optim_state_dict=state["optimizer"])
 ```
 
-When you combine this with the atomic rename above, wait for `pending.result()` before the barrier and the rename, so you never publish a directory that is still being written.
+When you combine this with the atomic rename above, wait for `pending.result()` before the barrier and the rename, so you never publish a directory that is still being written. The rename is the moment a checkpoint becomes visible to a restart, so it must come last.
 
 ### 3. Launching with torchrun and Slurm
+
+The third block contains the launch flags for both modes, plus two checks to run before a resume. Read the first two commands as a pair. They differ mainly in the node range, and in whether the rendezvous points at the local machine or at the master node.
 
 ```bash
 # Fixed size, up to 2 restarts on one node
@@ -371,11 +402,13 @@ nvidia-smi -q -d ECC
 scontrol update nodename=gpu-node-05 state=drain reason="GPU ECC errors Xid 48"
 ```
 
-A slow restart is often a data loader or storage problem, not NCCL. Chapter 13.6 and chapter 14.12 give the triage path.
+A slow restart is often a data loader or storage problem, not NCCL. Chapter 13.6 and chapter 14.12 give the triage path, so start there before you blame the network.
 
 ---
 
 ## How it fails
+
+A restart fails with an error that looks unrelated to checkpoints, and the first question is whether the checkpoint itself is at fault. The table starts from the symptom you see and leads to the cause and the check. Read one row at a time, and confirm the cause before you change the code.
 
 | # | Symptom | Cause | Check and fix |
 |---|---|---|---|
@@ -391,7 +424,11 @@ A slow restart is often a data loader or storage problem, not NCCL. Chapter 13.6
 
 ## Hands-on lab
 
+You want to check the arithmetic in this chapter before you rely on it in a capacity plan. The lab is split into two parts. The first part needs only Python 3 and checks the numbers. The second part needs a real GPU node and tests the restart behavior.
+
 **Venue:** any machine with Python 3. The lab in `code/part14/checkpoint_fault_tolerance.py` runs the arithmetic and the resume rules in this chapter. A multi-GPU fault-injection run on a Nebius GPU node is described below and needs real hardware.
+
+These steps were not run on a live cluster. Run the local check first, and compare its output with the expected block.
 
 ```bash
 python3 -B code/part14/checkpoint_fault_tolerance_lab.py
@@ -425,7 +462,7 @@ Expected output.
 Summary: 21 passed, 0 failed
 ```
 
-**Fault-injection runbook (needs a four-GPU node).** Run a five-epoch baseline, then run a second job that stops after epoch 3 and resumes. The epoch 4 and 5 losses of the resumed run should match the baseline. Then remove the optimizer state, then the per-rank RNG state, and watch each break the match in a different way. This runbook was not executed for this edit.
+The fault-injection runbook needs a four-GPU node. Run a five-epoch baseline first. Then run a second job that stops after epoch 3 and resumes. The epoch 4 and 5 losses of the resumed run should match the baseline. After that, remove the optimizer state, then the per-rank RNG state, and watch each break the match in a different way. That comparison teaches you which piece of state each failure depends on.
 
 ```bash
 torchrun --nproc_per_node=4 train.py --epochs 5 --batch-size 32 --save-dir ./checkpoints_control
@@ -437,21 +474,25 @@ torchrun --nproc_per_node=4 train.py --epochs 5 --batch-size 32 --resume-from ./
 
 ## Key takeaways
 
-1. **Failures are certain at scale.** At an assumed 99.9 percent daily reliability per GPU, a 1,024-GPU job expects about one failure a day.
-2. **A checkpoint is five kinds of state, without gradients.** Weights, optimizer, scheduler, data loader position and the random state of every rank.
-3. **Never gather to rank 0.** Sharded writes on 128 GPUs finish about 96 times faster in the worked example.
-4. **Derive the interval, then round down.** Young-Daly gives about 50 minutes for an 8-hour MTBF and a 180-second pause, and teams save every 30 to 40.
-5. **Detect in seconds, not minutes.** The default NCCL timeout is 10 minutes, and a heartbeat can act in 8 seconds.
+Most of the chapter comes down to a handful of ideas. These are the ones to keep when you plan your next save.
+
+1. Failures are certain at scale. At an assumed 99.9 percent daily reliability per GPU, a 1,024-GPU job expects about one failure a day.
+2. A checkpoint is five kinds of state, without gradients. It holds the weights, the optimizer, the scheduler, the data loader position and the random state of every rank.
+3. Never gather to rank 0. Sharded writes on 128 GPUs finish about 96 times faster in the worked example.
+4. Derive the interval, then round down. Young-Daly gives about 50 minutes for an 8-hour MTBF and a 180-second pause, and teams save every 30 to 40 minutes in practice.
+5. Detect in seconds, not minutes. The default NCCL timeout is 10 minutes, and a heartbeat can act in 8 seconds.
 
 ---
 
 ## Exercises
 
-1. **Size and pause.** A 70-billion-parameter model trains on 128 GPUs and the checkpoint is 14 bytes per parameter. Calculate the total size and the shard per GPU. Then compare the gather-to-rank-0 pause with a sharded write capped at 400 GB/s, using 25 GB/s for the gather and 5 GB/s for one writer.
-2. **Diagnose a drifting resume.** A job resumes from a checkpoint without error, but its loss is higher than before the crash and it keeps drifting. The checkpoint holds model weights, optimizer state and the scheduler. Name two missing pieces of state and say how you would confirm each from the saved keys.
-3. **Choose an interval.** A cluster has an observed MTBF of 8 hours and a blocking write time of 180 seconds. Calculate the Young-Daly interval. Then explain why you would choose 35 minutes in production, and what the interval becomes if asynchronous saving shortens the pause to 5 seconds.
-4. **Decide on host memory.** A node has 512 GB of RAM with 380 GB in use. Each asynchronous save stages 100 GB. State whether one save fits and whether two overlapping saves fit, give the dmesg line you would see if they do not, and name the rule that prevents it. Explain why a swap file is not the answer.
-5. **Elastic resize.** A job with a global batch of 192 and a micro-batch of 2 per GPU shrinks from 32 to 24 GPUs. Give the accumulation steps before and after. Then, with a save every 500 steps and a crash at step 5,243, say which step loads and how many steps are lost, and compare detection by an 8-second heartbeat with the 10-minute default timeout.
+Each of these exercises starts from a plan or a symptom you might meet at work. Work the numbers on paper, then check your answers against the sections above.
+
+1. You are sizing a save for a 70-billion-parameter model on 128 GPUs. The checkpoint is 14 bytes per parameter. What is the total size, and what is the shard per GPU? Compare the gather-to-rank-0 pause with a sharded write capped at 400 GB/s. Use 25 GB/s for the gather and 5 GB/s for one writer.
+2. A job resumes from a checkpoint without error, but its loss is higher than before the crash, and it keeps drifting. The checkpoint holds model weights, optimizer state and the scheduler. Which two pieces of state might be missing? How would you confirm each one from the saved keys?
+3. A cluster has an observed MTBF of 8 hours and a blocking write time of 180 seconds. What is the Young-Daly interval? Why would you choose 35 minutes in production? What does the interval become if asynchronous saving shortens the pause to 5 seconds?
+4. A node has 512 GB of RAM, and 380 GB of it is in use. Each asynchronous save stages 100 GB. Does one save fit, and do two overlapping saves fit? What dmesg line would you see if they do not fit? Which rule prevents that failure, and why is a swap file not the answer?
+5. A job with a global batch of 192 and a micro-batch of 2 per GPU shrinks from 32 to 24 GPUs. How many accumulation steps does it use before and after? With a save every 500 steps and a crash at step 5,243, which step loads and how many steps are lost? How does an 8-second heartbeat compare with the 10-minute default timeout?
 
 ---
 

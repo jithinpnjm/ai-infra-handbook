@@ -25,11 +25,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A single HGX server is a tightly coupled island, with its GPUs joined by fast NVLink. Yet neither the memory nor the compute of one server is enough to train a modern foundation model. The first server you outgrow shows you two limits.
+Picture the night your first training run outgrows its server. The job started on one eight-GPU machine, the loss curve looked healthy, and then someone asked for a bigger model. The bigger model would not fit. That moment is where multi-node training begins, and it teaches two hard lessons before you write a single line of distributed code.
 
-The first is memory. Llama-3-70B needs more memory for its weights alone than one GPU has, and over a terabyte during an AdamW step. Even a seven-billion-parameter model in single precision needs far more than the 80 GB on one device.
+An HGX server is a tightly coupled island. Its GPUs talk to each other over NVLink, which is very fast, but the island has a fixed size. Neither the memory nor the compute of one server is enough to train a modern foundation model, and the first server you outgrow shows you two limits.
 
-The second is compute. In the GPT-3 example below, one training step at batch size 2,048 takes about 78 minutes on a single A100 GPU at its peak rate. Spread over 128 A100 GPUs, the same step would take about 37 seconds if communication cost nothing.
+The first limit is memory. Think of the weights as the model's learned knowledge, and think of the optimizer as a notebook that keeps extra numbers for every weight. Llama-3-70B needs more memory for its weights alone than one GPU has, and it needs over a terabyte during an AdamW step. AdamW is the optimizer that most large language model runs use. Even a seven-billion-parameter model in single precision needs far more than the 80 GB on one device, because the weights, the gradients, and the optimizer notebook all compete for the same memory.
+
+The second limit is time. The GPT-3 example below works out what one training step costs. A batch size of 2,048 means each step processes 2,048 examples at once. On one A100 GPU running at its peak rate, that step takes about 78 minutes. Spread the same step over 128 A100 GPUs and it would take about 37 seconds, if communication cost nothing. That last condition is the catch that the rest of this chapter is about.
 
 ```text
 Memory and Compute Wall Reference Numbers (Volume 13, Chapter 1):
@@ -45,48 +47,51 @@ Memory and Compute Wall Reference Numbers (Volume 13, Chapter 1):
   Device trace before crash: 79,456 MiB / 79,559 MiB used, 103 MiB free -> RuntimeError: CUDA out of memory. Tried to allocate 2.45 GiB
 ```
 
-Crossing the server boundary changes the physics of training. Inside an H100 server, each GPU gets 900 GB/s of NVLink bandwidth. Across servers in a rail-optimized fabric with NDR InfiniBand or RoCEv2 NICs, each GPU gets 50 GB/s. That is an **18x bandwidth cliff per GPU** at the server boundary.
+Crossing the server boundary changes the physics of training. Inside an H100 server, each GPU gets 900 GB/s of NVLink bandwidth. Across servers in a rail-optimized fabric with NDR InfiniBand or RoCEv2 NICs, each GPU gets 50 GB/s. The drop is an **18x bandwidth cliff per GPU** at the server boundary, and it is the reason multi-node jobs need careful design.
 
-Small orchestration mistakes turn that cliff into a cluster-wide slowdown. Three of them are common.
+Small orchestration mistakes turn that cliff into a cluster-wide slowdown. Three of them show up again and again, and each one looks harmless in a single-node test.
 
-Misordered parallelism ranks are the first. Placing Tensor Parallelism across the server boundary over InfiniBand, instead of inside the NVLink domain, slows step time by 16.7x.
+The first mistake is misordered parallelism ranks. If you place Tensor Parallelism across the server boundary over InfiniBand, instead of inside the NVLink domain, the step time grows by 16.7x. Nothing crashes. The job simply runs much slower than the math says it should.
 
-Broken PCIe and NUMA locality is the second. If the host binds the first GPU to a remote NIC instead of its local PCIe switch partner, GPUDirect RDMA traffic crosses the CPU interconnect. In the reference measurements, one such misbinding cut AllReduce bus bandwidth from 300 GB/s to 40 GB/s, a 7.5x loss.
+The second mistake is broken PCIe and NUMA locality. Imagine the host binds the first GPU to a NIC that sits behind the other CPU socket, instead of the NIC on its own PCIe switch partner. GPUDirect RDMA traffic then crosses the CPU interconnect on every transfer. In the reference measurements, one such misbinding cut AllReduce bus bandwidth from 300 GB/s to 40 GB/s, a 7.5x loss.
 
-The third is launcher oversubscription with a broken rendezvous. Eight tasks per node in Slurm plus eight processes per node in `torchrun` start sixty-four worker processes per node. If the master address is left as `127.0.0.1`, every node forms its own single-node process group, and gradients never synchronize.
+The third mistake is launcher oversubscription with a broken rendezvous. Eight tasks per node in Slurm plus eight processes per node in `torchrun` start sixty-four worker processes per node. If the master address is left as `127.0.0.1`, every node forms its own single-node process group, and gradients never synchronize. The job looks busy, the loss goes down on each node, and the nodes quietly train separate models.
 
-Before you scale a job past one server, align the network rails, the process-group ranks, and the NUMA bindings with the cluster topology.
+Before you scale a job past one server, align the network rails, the process-group ranks, and the NUMA bindings with the cluster topology. Each of the next sections handles one of those three alignments. The order matters too. Fix the wiring first, then the rank order, then the binding, because each step assumes the one before it is correct.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Cluster scheduling fundamentals from Chapter 6.12 on Slurm. Review Chapters 11.7 through 11.9 on Kubernetes gang scheduling, Volcano, Kueue, `PyTorchJob`, and `JobSet`.
-- GPU interconnect hierarchy and NCCL collectives from Chapters 12.15 through 12.17.
-- Distributed training parallelism dimensions from Chapters 14.4 through 14.7.
+
+Before this chapter makes sense, you need a few ideas from earlier chapters. Each bullet names one of them, and the chapter refers back to it without repeating it.
+
+- Do you know how a cluster scheduler places a job on nodes? Cluster scheduling fundamentals from Chapter 6.12 on Slurm answer that. Review Chapters 11.7 through 11.9 on Kubernetes gang scheduling, Volcano, Kueue, `PyTorchJob`, and `JobSet` if your cluster runs on Kubernetes.
+- Do you know why GPUs in one server are faster to reach than GPUs in another? The GPU interconnect hierarchy and NCCL collectives from Chapters 12.15 through 12.17 explain that.
+- Do you know which dimension of parallelism splits which tensor? The distributed training parallelism dimensions from Chapters 14.4 through 14.7 cover it.
 
 ### Outcomes
-After completing this chapter, you will be able to:
-1. Describe and verify a rail-optimized multi-node GPU network, with independent leaf-spine rails and one NIC paired to each GPU. Work out the bandwidth cliff between intra-node NVLink and inter-node NDR InfiniBand.
-2. Set up and debug `c10d` `TCPStore` rendezvous under Slurm, under Enroot and Pyxis unprivileged containers, and on Kubernetes.
-3. Launch multi-node DDP, FSDP, DeepSpeed, and Megatron-LM jobs on Slurm without GPU oversubscription. Use a virtual multi-node setup, interactive allocations, job arrays, and dependency pipelines.
-4. Build multi-dimensional rank grids that keep tensor parallelism (TP) inside NVLink and line up pipeline parallelism (PP) and data parallelism (DP) with the network rails. Model scaling efficiency, and pin each rank to its CPU cores, NUMA node, PCIe switch, and NIC.
-5. Design sharded checkpoint storage and preemption recovery with `.distcp` or PyTorch DCP files and Slurm signal handlers.
+
+Imagine a training job that has to survive a node failure in the middle of the night. This chapter follows that kind of job from the wiring up to the checkpoint. It covers the rail-optimized network and the bandwidth cliff between intra-node NVLink and inter-node NDR InfiniBand. It then covers the `c10d` `TCPStore` rendezvous under Slurm, under Enroot and Pyxis unprivileged containers, and on Kubernetes. Next comes launching DDP, FSDP, DeepSpeed, and Megatron-LM on Slurm without GPU oversubscription, using a virtual multi-node setup, interactive allocations, job arrays, and dependency pipelines. The chapter then builds the rank grids that keep tensor parallelism (TP) inside NVLink, lines up pipeline parallelism (PP) and data parallelism (DP) with the network rails, and pins each rank to its CPU cores, NUMA node, PCIe switch, and NIC. It ends with sharded checkpoint storage and preemption recovery, using `.distcp` or PyTorch DCP files and Slurm signal handlers.
 
 ---
 
 ## 1. End-to-End Multi-Node System Architecture and Rail-Optimized Fabrics
 
+Imagine you are asked to run one training job across a row of GPU servers. Your first instinct is to plug every server into one large switch and let the traffic sort itself out. This section explains why that instinct fails and what the reference designs do instead.
+
 ### 1.1 The Hardware Hierarchy: Why Standard Top-of-Rack Networks Fail
 
-In a traditional enterprise data center, each server has one or two network ports connected to a shared Top-of-Rack switch. Placing eight H100 GPUs inside a server and funneling their traffic through a single shared uplink would immediately choke the network. Distributed training does not generate random web traffic. Instead, it generates synchronized collective waves where every rank blocks on the slowest participant.
+Your first multi-server plan probably looks like the one you use for web servers. Each machine gets one network port, and all of them share a Top-of-Rack switch in the same rack. In a traditional enterprise data center, each server has one or two network ports connected to that shared switch. That design works well for web traffic, because web requests are small and spread out in time.
 
-To remove cross-GPU contention at the node boundary, NVIDIA DGX SuperPOD and HGX reference architectures use a rail-optimized network topology. Every GPU gets its own network card, and the design has three parts.
+Now place eight H100 GPUs inside one server and funnel their traffic through a single shared uplink. The uplink chokes at once. Distributed training does not generate random web traffic. It generates synchronized collective waves, where every rank waits at a barrier until the slowest participant finishes its share. One congested uplink slows down every rank in the job, not just the ranks that use it.
 
-Inside each HGX server, all eight GPUs are fully connected through NVSwitch over NVLink. This is the compute plane.
+To remove cross-GPU contention at the node boundary, NVIDIA DGX SuperPOD and HGX reference architectures use a rail-optimized network topology. The word rail means an independent lane of network. Every GPU gets its own network card, and the design has three parts.
 
-Each GPU also shares a dedicated PCIe switch, shown as `PIX` in topology tools, with its own NDR InfiniBand or RoCEv2 NIC. Through GPUDirect RDMA, the NIC reads and writes directly into the partner GPU's HBM across that switch. The path bypasses the host CPU cores, system DRAM, and the Linux kernel TCP/IP stack.
+The first part is the compute plane inside each HGX server. All eight GPUs are fully connected through NVSwitch over NVLink, so any GPU can reach any other GPU in the same server at high speed.
 
-Finally, the eight NICs of a server do not plug into one leaf switch. The first GPU of every server connects to the first leaf switch rail, the second GPU of every server to the second rail, and so on across eight independent rails.
+The second part is the GPU-to-NIC pairing. Each GPU shares a dedicated PCIe switch, shown as `PIX` in topology tools, with its own NDR InfiniBand or RoCEv2 NIC. Through GPUDirect RDMA, the NIC reads and writes directly into the partner GPU's HBM across that switch. The path bypasses the host CPU cores, system DRAM, and the Linux kernel TCP/IP stack, so the data moves without the CPU copying it.
+
+The third part is the rail itself. The eight NICs of a server do not plug into one leaf switch. The first GPU of every server connects to the first leaf switch rail, the second GPU of every server connects to the second rail, and so on across eight independent rails. The diagram below shows the layout for two nodes.
 
 ```mermaid
 flowchart TB
@@ -126,11 +131,13 @@ flowchart TB
     N1G7 <==>|"GPUDirect RDMA (50 GB/s)"| Rail7
 ```
 
-This eight-lane highway design matches how NCCL runs hierarchical collectives across nodes. First, the GPUs inside each node exchange and reduce data chunks locally over NVLink. Second, all first-index GPUs across nodes communicate with each other over the first rail. Meanwhile, all second-index GPUs communicate over the second rail in parallel. Because each rail has its own dedicated leaf switch, cross-node AllReduce traffic on one rail never contends for switch buffers with traffic on another rail. Within a Scalable Unit of thirty-two nodes, same-index ranks communicate in a single non-blocking leaf switch hop. They never even traverse the spine layer.
+This eight-lane design matches how NCCL runs hierarchical collectives across nodes. Here is what happens during one AllReduce. First, the GPUs inside each node exchange and reduce data chunks locally over NVLink. Second, all first-index GPUs across nodes communicate with each other over the first rail. At the same time, all second-index GPUs communicate over the second rail in parallel. Because each rail has its own dedicated leaf switch, cross-node AllReduce traffic on one rail never contends for switch buffers with traffic on another rail. Within a Scalable Unit of thirty-two nodes, same-index ranks communicate in a single non-blocking leaf switch hop. They never even traverse the spine layer.
 
 ### 1.2 Worked Bandwidth Math: The 18x Intra-Node vs Inter-Node Cliff
 
-Consider a standard eight-GPU H100 node equipped with eight NDR InfiniBand NICs:
+A colleague once asked why a job slowed down when the team moved from one server to two, even though the new network cards were faster than the old ones. The answer is in the bandwidth ratio. Work through it once, and the cliff stops being a surprise.
+
+Consider a standard eight-GPU H100 node equipped with eight NDR InfiniBand NICs. Start with the per-GPU number, because the GPU is the unit that waits for data. The block below converts line rates from gigabits to gigabytes, so you can compare them with NVLink numbers.
 
 ```text
 Per-GPU cross-node bandwidth (NDR IB):  400 Gbps * 0.125 GB/Gbps =  50.0 GB/s per GPU (1 Gbps = 0.125 GB/s)
@@ -143,11 +150,15 @@ NIC-to-GPU ratios:                      1:1 (full 50 GB/s per GPU) vs 1:2 (25 GB
 Per-GPU Bandwidth Ratio (NVLink / IB):  900.0 GB/s / 50.0 GB/s   =  18.0x drop at node boundary
 ```
 
-The 18.0x per-GPU bandwidth drop at the node boundary is the most important hardware ratio in multi-node training. It explains why letting Tensor Parallelism cross the node boundary caused a 16.7x slowdown in the reference benchmark. Tensor Parallelism runs two synchronous collectives per Transformer layer on the critical path, with no compute overlap. Latency-sensitive TP and Context Parallelism therefore stay inside the NVLink domain. Pipeline Parallelism sends activations point to point, and DP or FSDP synchronizes gradients. Both run across the rail-optimized fabric, where they can be pipelined or overlapped with backward computation. Check your real fabric rate and NIC-to-GPU ratio with `ibstat` and `all_reduce_perf`.
+The 18.0x per-GPU bandwidth drop at the node boundary is the most important hardware ratio in multi-node training. It explains why letting Tensor Parallelism cross the node boundary caused a 16.7x slowdown in the reference benchmark. Tensor Parallelism runs two synchronous collectives per Transformer layer on the critical path, with no compute overlap. That means the GPU stops and waits for each collective before it can move on. Latency-sensitive TP and Context Parallelism therefore stay inside the NVLink domain.
+
+Pipeline Parallelism is a different case. It sends activations from one stage to the next, point to point, so it is more tolerant of a slower link. Data parallelism, or FSDP, synchronizes gradients. Both of those run across the rail-optimized fabric, where they can be pipelined or overlapped with backward computation. Check your real fabric rate and NIC-to-GPU ratio with `ibstat` and `all_reduce_perf`, because a cable or a card can quietly run below its label.
 
 ### 1.3 InfiniBand vs RoCEv2 at Multi-Node Scale
 
-At fifty gigabytes per second per GPU, standard kernel TCP/IP over Ethernet cannot keep up. Copying packets through kernel socket buffers and processing TCP retransmissions on host CPUs would saturate every core and starve the GPUs. Multi-node training requires Remote Direct Memory Access via either InfiniBand or RoCEv2:
+Your network engineer suggests reusing the Ethernet network that already serves your web tier, because it is familiar and cheap to extend. That suggestion sounds reasonable until you do the arithmetic. At fifty gigabytes per second per GPU, standard kernel TCP/IP over Ethernet cannot keep up. Copying packets through kernel socket buffers and processing TCP retransmissions on host CPUs would saturate every core and starve the GPUs. Multi-node training requires Remote Direct Memory Access (RDMA), which lets one machine read or write another machine's memory without going through the remote kernel. You get RDMA either through InfiniBand or through RoCEv2, which is RDMA carried over Ethernet.
+
+The table below compares the two options on the dimensions that matter most during a design review.
 
 | Architectural Dimension | InfiniBand (HDR / NDR / XDR) | RoCEv2 (RDMA over Converged Ethernet) |
 |---|---|---|
@@ -156,21 +167,27 @@ At fifty gigabytes per second per GPU, standard kernel TCP/IP over Ethernet cann
 | Control Plane & Routing | Centralized Subnet Manager (`opensm`) programs deterministic LID tables, Adaptive Routing, and SHARP | Distributed Ethernet routing (BGP, ECMP hashing, or NVIDIA Spectrum-X adaptive routing) |
 | Failure Mode Under Misconfiguration | Degraded cable or transceiver raises `SymbolErrorCounter` or `LinkErrorRecoveryCounter`; SM sweep delays if master SM lags | PFC disabled on even a single switch hop turns the fabric lossy; RDMA `Go-Back-N` retransmission collapses throughput by 3x–10x |
 
-Before you attempt multi-node training at scale, wire the rails as a lossless RDMA fabric and verify it.
+Read the table as a set of trade-offs rather than a winner list. InfiniBand is lossless by design, because its hardware refuses to send a packet until the receiver has room for it. RoCEv2 gets the same behavior by tuning the Ethernet switches, and that tuning has to be correct on every hop. If one hop is wrong, the whole fabric becomes lossy. Before you attempt multi-node training at scale, wire the rails as a lossless RDMA fabric and verify it.
 
 ---
 
 ## 2. Distributed Rendezvous (`c10d` `TCPStore`) and Slurm / Container Orchestration
 
+A job starts, the logs show every process launching, and then nothing moves for a long time. Nothing in the training code is wrong. The processes simply cannot find each other. This section explains how they find each other, and how the launcher decides which process is which.
+
 ### 2.1 How `c10d` Rendezvous and `RANK` Assignment Actually Work
 
-Before NCCL can allocate a single GPU ring or tree buffer across multiple servers, all Python worker processes must discover one another. They must also agree on their global rank. If even one process fails to reach the control plane or uses a loopback address, the job hangs or trains disconnected model copies.
+A job that hangs at startup often has one bad address in its environment variables. Before NCCL can allocate a single GPU ring or tree buffer across multiple servers, all Python worker processes must discover one another. They must also agree on their global rank, which is the number that identifies each process in the whole job. If even one process fails to reach the control plane, or uses a loopback address, the job hangs or trains disconnected model copies.
 
-In PyTorch, this control-plane handshake is called rendezvous, and `c10d` `TCPStore` backs it. It runs in three steps.
+In PyTorch, this control-plane handshake is called rendezvous, and `c10d` `TCPStore` backs it. Think of it as a meeting room with a sign-in sheet. Every process has to reach the room, sign in, and wait until the whole group has arrived. The rendezvous runs in three steps.
 
-The launcher or first rank on the master node opens a TCP listening socket on the master address and port. Each process then connects to that endpoint and reports its world size, node rank, local rank, and global rank. Never set the master address to `127.0.0.1` on a multi-node job, and randomize the master port on shared nodes so ports do not collide.
+The first step is the listening socket. The launcher, or the first rank on the master node, opens a TCP listening socket on the master address and port. Each process then connects to that endpoint and reports its world size, node rank, local rank, and global rank. Never set the master address to `127.0.0.1` on a multi-node job, because that address means "this machine" to every node. Randomize the master port on shared nodes as well, so two jobs that land on the same node do not collide on one port.
 
-Once all ranks enter `init_process_group`, the first rank creates a bootstrap handle and writes it into `TCPStore`. Every rank reads the handle and starts its NCCL communicator. From then on, traffic moves off the TCP control socket onto NVLink and RDMA.
+The second step is the bootstrap handle. Once all ranks enter `init_process_group`, the first rank creates a bootstrap handle and writes it into `TCPStore`. The handle is the small piece of information that lets NCCL set up its communicators.
+
+The third step is the hand-off. Every rank reads the handle and starts its NCCL communicator. From then on, traffic moves off the TCP control socket and onto NVLink and RDMA. TCP is only needed for the meeting. The heavy data never travels over it.
+
+The block below shows how the rank numbers follow from the node layout. Use it as a check when a rank looks wrong in your logs.
 
 ```text
 Deterministic Rank Coordinate Formulas and Bootstrap Reference:
@@ -187,11 +204,15 @@ Worked Example (4 nodes x 8 GPUs/node -> WORLD_SIZE = 32):
   RANK = 29 -> NODE_RANK = 29 // 8 = 3, LOCAL_RANK = 29 % 8 = 5 (Node 3 spans ranks 24..31)
 ```
 
+Read the worked example slowly. The rank is the node's starting offset plus the local position. Node 2 starts after the ranks of the nodes before it, and adding local rank 5 gives the global rank shown in the block above. The reverse trip uses integer division and remainder. Rank 29 divided by 8 gives node 3, and the remainder 5 gives local rank 5.
+
 ### 2.2 Slurm Architecture and Launch Patterns (`sbatch`, `srun`, Enroot, Pyxis)
 
-Cloud-native teams often orchestrate multi-node training on Kubernetes using Volcano or Kueue gang scheduling, Kubeflow `PyTorchJob`, or Kubernetes `JobSet`. In Kubernetes `JobSet`, the controller creates replicated headless pods and sets the master address to the first pod's DNS record. On large dedicated AI clusters and NVIDIA DGX SuperPODs, teams predominantly use Slurm.
+A new engineer copies a launch script from a blog post and submits it to the shared queue on a Monday morning. The script works on a laptop, but on the cluster it starts too many processes and the job fails within minutes. The fix is not in the model code. It is in how the launcher and the scheduler count processes.
 
-From the point of view of a training job, Slurm has three daemons and two resource abstractions.
+Cloud-native teams often orchestrate multi-node training on Kubernetes, using Volcano or Kueue for gang scheduling, the Kubeflow `PyTorchJob`, or the Kubernetes `JobSet`. Gang scheduling means all pods of a job start together or not at all. In a Kubernetes `JobSet`, the controller creates replicated headless pods and sets the master address to the first pod's DNS record. On large dedicated AI clusters and NVIDIA DGX SuperPODs, teams predominantly use Slurm, which is an open-source workload manager built for exactly this kind of queue.
+
+From the point of view of a training job, Slurm has three daemons and two resource abstractions. Each daemon runs in a different place, and each one answers a different question.
 
 | Component | What it does |
 |---|---|
@@ -200,6 +221,10 @@ From the point of view of a training job, Slurm has three daemons and two resour
 | `slurmdbd` | Stores job accounting and GPU-hours in MySQL or MariaDB for `sacct` queries. |
 | Partitions and GRES | Partitions group similar nodes, such as `gpu-h100`. Generic Resource Scheduling maps requested GPUs to device files through `gres.conf` and sets `CUDA_VISIBLE_DEVICES`. |
 
+The controller decides when a job runs. The node daemon decides what happens on each server once the job is allowed to run. The accounting database keeps the record, so you can later ask how many GPU-hours a job used. The partitions and GRES entries are the labels that let you ask for "eight H100 GPUs" and get the right machines.
+
+The block below lists the states a job and a node move through. When a job is stuck, the state tells you which daemon to look at.
+
 ```text
 Slurm Job and Node State Reference:
 - Job lifecycle states (slurmctld): PENDING (PD) -> RUNNING (R) -> COMPLETING -> COMPLETED (or FAILED / CANCELLED / TIMEOUT)
@@ -207,16 +232,20 @@ Slurm Job and Node State Reference:
 - Historical accounting fields (slurmdbd / sacct): Elapsed, MaxRSS, MaxVMSize, State, NNodes, AllocGRES
 ```
 
-Slurm offers two launch patterns for PyTorch. Pick one, and do not mix their task counts.
+Slurm offers two launch patterns for PyTorch. Pick one, and do not mix their task counts. The table compares them side by side, and the important column is the one that sets the number of tasks per node.
 
 | Launch Pattern | `#SBATCH --ntasks-per-node` | Command Inside Script | How `RANK` & `LOCAL_RANK` Are Set | When to Use |
 |---|---|---|---|---|
 | Pattern A: `srun` + `torchrun` (Recommended) | `--ntasks-per-node=1` (1 launcher per node; `SLURM_NTASKS == NNODES`) | `srun torchrun --nnodes=$SLURM_NNODES --nproc_per_node=8 --node_rank=$SLURM_NODEID --rdzv_id=$SLURM_JOB_ID --rdzv_backend=c10d --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT train.py` | `srun` starts 1 `torchrun` supervisor per node; `torchrun` spawns 8 local GPU workers and assigns `LOCAL_RANK=0..7` and `RANK=0..31` | Standard for DDP, FSDP, Megatron-LM, and elastic `--max-restarts` |
 | Pattern B: Direct `srun python` (MPI-style) | `--ntasks-per-node=8` (8 tasks per node; `SLURM_NTASKS == WORLD_SIZE`) | Export `RANK=$SLURM_PROCID`, `LOCAL_RANK=$SLURM_LOCALID`, `WORLD_SIZE=$SLURM_NTASKS` inside the per-task shell and run `srun python train.py` | `slurmd` directly forks all 8 worker processes per node (`SLURM_PROCID=0..31`, `SLURM_LOCALID=0..7`) | Standard for DeepSpeed (`python train.py --deepspeed`) and raw MPI or C++ `nccl-tests` |
 
+Pattern A is the one most teams should start with. Slurm starts one `torchrun` supervisor on each node, and that supervisor takes care of the local GPU workers. Pattern B skips the supervisor, so Slurm itself creates one process per GPU. Both are valid. Mixing them is the mistake.
+
 :::danger Never combine `--ntasks-per-node=8` with `torchrun --nproc_per_node=8`
-Suppose you specify `#SBATCH --ntasks-per-node=8` and also run `srun torchrun --nproc_per_node=8`. Slurm starts eight `torchrun` supervisors on every node, and each spawns eight workers. That makes 64 processes per node, an eightfold GPU oversubscription. The job crashes at once with out-of-memory or port-collision errors.
+Suppose you set `#SBATCH --ntasks-per-node=8` and also run `srun torchrun --nproc_per_node=8`. Slurm then starts eight `torchrun` supervisors on every node, and each supervisor spawns eight workers. The node ends up with 64 processes, an eightfold GPU oversubscription. The job crashes at once with out-of-memory or port-collision errors, and the first error message rarely says that the task count is the cause.
 :::
+
+The next table maps the Slurm environment variables to the PyTorch names you will see in your code. Read down the Pattern A column first, then the Pattern B column, and notice how the same job reports different numbers.
 
 | Slurm Variable | Scope | Value in Pattern A (4 nodes, `--ntasks-per-node=1` + `torchrun`) | Value in Pattern B (4 nodes, `--ntasks-per-node=8` + `srun python`) | PyTorch / `c10d` Equivalent |
 |---|---|---|---|---|
@@ -229,13 +258,19 @@ Suppose you specify `#SBATCH --ntasks-per-node=8` and also run `srun torchrun --
 | `SLURM_LOCALID` | Task | 0 (single launcher per node) | 0 .. 7 (intra-node task rank) | `LOCAL_RANK` (directly in Pattern B) |
 | `SLURM_CPUS_PER_TASK` | Task | 64 or 128 (split across 8 workers) | 8 or 16 (dedicated to 1 worker) | `OMP_NUM_THREADS`, `DataLoader(num_workers=...)` |
 
-On shared multi-tenant Slurm supercomputers, users do not have root access and cannot run a privileged Docker daemon. NVIDIA solved this problem with Enroot and Pyxis. Enroot is an unprivileged container runtime that converts an OCI or Docker image into a flattened SquashFS image. It runs the image inside Linux user namespaces with zero daemon overhead. Pyxis is a Slurm SPANK plugin that integrates Enroot directly into `srun`. Passing container image and mount flags to `srun` automatically materializes the container on every allocated node. The container runs inside the job's `cgroup` and GRES GPU allocation.
+Read the table one row at a time, because each row answers a different question. The job ID names the run in logs and checkpoint folders. The node count is the same in both patterns, but the task count is not, and that difference is why the two patterns cannot be mixed. The Pattern A column shows rank numbers that `torchrun` assigns, and the Pattern B column shows rank numbers that come straight from Slurm. The last column gives the PyTorch name to search for in your code.
+
+On shared multi-tenant Slurm supercomputers, users do not have root access and cannot run a privileged Docker daemon. That rule protects the other users on the machine, and it is why a normal Docker workflow does not work here. NVIDIA solved this problem with Enroot and Pyxis. Enroot is an unprivileged container runtime that converts an OCI or Docker image into a flattened SquashFS image. It runs the image inside Linux user namespaces with zero daemon overhead. Pyxis is a Slurm SPANK plugin that integrates Enroot directly into `srun`. Passing container image and mount flags to `srun` automatically materializes the container on every allocated node. The container runs inside the job's `cgroup` and GRES GPU allocation, so it cannot reach GPUs the job did not ask for.
+
+The block below shows the two steps. The first step builds the image file once. The second step starts it for each job.
 
 ```text
 Enroot and Pyxis Container Workflow:
   enroot import docker://nvcr.io#nvidia/pytorch:24.01-py3 -> nvidia+pytorch+24.01-py3.sqsh
   enroot create -> enroot start (or automatic via Pyxis: srun --container-image=nvcr.io#nvidia/pytorch:24.01-py3 --container-mounts=/data:/data)
 ```
+
+Each framework calls the distributed setup in a slightly different way. The table shows the launcher and the setup call for the frameworks you are most likely to meet. Use it to decide which launch script to copy, and read the last column first when something goes wrong.
 
 | Framework | Primary Launcher | Distributed Init Call | Slurm Environment Handling |
 |---|---|---|---|
@@ -244,17 +279,19 @@ Enroot and Pyxis Container Workflow:
 | DeepSpeed (`ZeRO-1/2/3`) | `srun bash -c "python train.py --deepspeed ..."` | Automatic (`deepspeed.init_distributed()`) | Reads Slurm vars, but requires explicit `export LOCAL_RANK=$SLURM_LOCALID`, `RANK=$SLURM_PROCID`, `WORLD_SIZE=$SLURM_NTASKS` inside the `srun` subshell |
 | Megatron-LM (`megatron.core` + `megatron.training`) | `srun` + `torchrun` | Automatic inside Megatron launcher (`pretrain_gpt.py`) | Clone from GitHub (`pip install --no-build-isolation '.[mlm,dev]'`, copy `pretrain_gpt.py`, `gpt_builders.py`, `model_provider.py`); pass `--tensor-model-parallel-size`, `--pipeline-model-parallel-size` |
 
-Standardize on `--ntasks-per-node=1` with `srun torchrun --nproc_per_node=8`, and derive `MASTER_ADDR` from `scontrol show hostnames`.
+Standardize on `--ntasks-per-node=1` with `srun torchrun --nproc_per_node=8`, and derive `MASTER_ADDR` from `scontrol show hostnames`. That single rule prevents the two most common launch failures in this section.
 
 ---
 
 ## 3. Multi-Dimensional Rank Assignment (3D/4D Parallelism) Across NVLink and Network Rails
 
+You have a model that needs four kinds of parallelism at once, and a list of hostnames in a file. The question is which GPU gets which slice of the work, and whether the slices talk to each other over fast or slow links. This section shows how the rank order answers that question.
+
 ### 3.1 Mapping `(DP, PP, CP, TP)` onto Physical Hardware
 
-Frontier model training combines Tensor Parallelism, Context Parallelism, Pipeline Parallelism, and Data Parallelism or FSDP. A naive rank ordering can scatter latency-sensitive tensor shards across different physical racks. How we map the multi-dimensional coordinate to the linear global rank determines which collective operations stay on intra-node NVLink and which cross the InfiniBand rails.
+A tensor shard that lands on the wrong node pays the InfiniBand price on every single step. Frontier model training combines Tensor Parallelism, Context Parallelism, Pipeline Parallelism, and Data Parallelism or FSDP. A naive rank ordering can scatter latency-sensitive tensor shards across different physical racks. How you map the multi-dimensional coordinate to the linear global rank decides which collective operations stay on intra-node NVLink and which cross the InfiniBand rails.
 
-In Megatron-LM and the TorchTitan `DeviceMesh`, the rule is that the inner-most dimension, with `stride = 1`, goes to the traffic that needs the most bandwidth:
+Think of the rank order as a seating chart. The people who talk the most should sit next to each other. In Megatron-LM and the TorchTitan `DeviceMesh`, the rule is that the inner-most dimension, with `stride = 1`, goes to the traffic that needs the most bandwidth. Inner-most means the dimension whose neighbors have consecutive rank numbers. The block below gives the formula and then works one example by hand.
 
 ```text
 3D/4D Rank Grid Mapping and 32-GPU (4-Node x 8-GPU) Worked Example:
@@ -280,6 +317,8 @@ In Megatron-LM and the TorchTitan `DeviceMesh`, the rule is that the inner-most 
 - Anti-Pattern Reversed Order (order = "dp-pp-cp-tp", DP stride = 1, TP stride = 4):
   TP group 0 becomes [0, 4, 8, 12, 16, 20, 24, 28], spanning all 4 physical nodes over 50 GB/s IB -> 16.7x slowdown!
 ```
+
+The mermaid diagram below shows the same layout as a picture. Read each node box as one server, and read each arrow as the one kind of traffic that uses it.
 
 ```mermaid
 flowchart LR
@@ -311,9 +350,15 @@ flowchart LR
     R15 <==>|"DP AllReduce (Rail 7)"| R31
 ```
 
+The worked example in the block above is the one to memorize. To check a layout like this yourself, start from the rank formula and fill in one example by hand. Pick a rank, compute its tensor-parallel group first, and then find its pipeline partner and its data-parallel partner. If the partners sit on the same local rank across nodes, the rail rule holds. If a tensor-parallel partner sits on another node, the ordering is wrong, and the fix belongs in the rank ordering, not in the model code. With TP set to 8 and stride 1, every tensor-parallel group fills exactly one node, so its traffic never leaves NVLink. The pipeline groups then reach across to the next node on the same rail, and the data-parallel groups reach across to the matching node on the same rail. Each dimension has a fixed place on the hardware.
+
 ### 3.2 Scaling Efficiency and Ring vs Tree Collectives from 16 to 16,384 GPUs
 
-A flat Ring AllReduce is bandwidth-optimal on a single server, but its latency scales linearly with the number of ranks. Across hundreds or thousands of GPUs, waiting for a message to hop sequentially through every rank destroys multi-node scaling efficiency. That is why NCCL dynamically switches from Ring to a Double Binary Tree as a job scales across nodes.
+Your scaling chart from 16 GPUs looks excellent. You run the same job on a much larger cluster, and the efficiency drops. The drop is not a bug in your model. It is the collective algorithm slowly losing ground as the number of ranks grows.
+
+A flat Ring AllReduce is bandwidth-optimal on a single server, but its latency scales linearly with the number of ranks. Picture a bucket brigade in which every person passes the bucket one step at a time. A short line is fast. A long line means the last person waits for everyone ahead. Across hundreds or thousands of GPUs, waiting for a message to hop sequentially through every rank destroys multi-node scaling efficiency. That is why NCCL dynamically switches from Ring to a Double Binary Tree as a job scales across nodes. A tree lets the messages fan out in levels, so the depth grows slowly.
+
+The block below does the arithmetic for one 7B model at both ends of the scale.
 
 ```text
 Ring vs Tree AllReduce Cost Model (Volume 13, Chapter 8 — 7B Model with 28.0 GB of FP32 Gradients = 7B * 4 B):
@@ -328,7 +373,9 @@ Ring vs Tree AllReduce Cost Model (Volume 13, Chapter 8 — 7B Model with 28.0 G
   Double Binary Tree (or CollNet SHARP): Reduces inter-node hop depth logarithmically to log2(512) = 9 hops
 ```
 
-The table below shows the multi-node scaling curve modeled by `compute_multinode_scaling_curve()` from sixteen GPUs up to sixteen thousand GPUs. The model uses four seconds of base compute per step and an intra-node sharded gradient payload over NDR InfiniBand. It also assumes seventy-five percent backward-pass communication overlap:
+Read the two cases side by side. On one node, the Ring finishes in about 54 ms, and the hop count hardly matters. Across 64 nodes, the Ring still moves almost the same volume of data, but it now has to pass through 512 hops and the InfiniBand link is much slower. The tree keeps the depth near 9 hops, which is why NCCL chooses it at that scale.
+
+The table below shows the multi-node scaling curve modeled by `compute_multinode_scaling_curve()` from sixteen GPUs up to sixteen thousand GPUs. The model uses four seconds of base compute per step and an intra-node sharded gradient payload over NDR InfiniBand. It also assumes seventy-five percent backward-pass communication overlap, which means most of the communication hides behind compute that is already running.
 
 | Total GPUs (`WORLD_SIZE`) | Nodes (8 GPUs/node) | Inter-Node Tree Depth (`log2(Nodes)`) | Inter-Node AllReduce Volume (GB/GPU) | Raw Inter-Node Comm Time (s) | Exposed Comm Time (s, 75% Overlap) | Step Time (s) | Compute-to-Comm Ratio | Multi-Node Scaling Efficiency |
 |---|---|---|---|---|---|---|---|---|
@@ -339,6 +386,8 @@ The table below shows the multi-node scaling curve modeled by `compute_multinode
 | 4,096 | 512 | 9 hops | 34.932 GB | 0.7425 s | 0.2185 s | 4.2185 s | 5.39 | 94.82% |
 | 16,384 | 2,048 | 11 hops | 34.983 GB | 0.7615 s | 0.2367 s | 4.2367 s | 5.25 | 94.41% |
 
+Scan the efficiency column from top to bottom. It falls slowly, from 97.81% at 16 GPUs to 94.41% at 16,384 GPUs. The drop is small because the communication is mostly hidden. The hidden share depends on the overlap assumption, so treat the curve as a model and check your own job before you trust it.
+
 Maintaining high scaling efficiency across thousands of GPUs requires three architectural invariants. First, keep TP and FSDP AllGather sharding inside the NVLink domain. That layout ensures cross-node collectives move only one-eighth of the gradient state. Second, scale the global batch size or gradient accumulation steps so the compute time per step stays much larger than the collective communication time. Third, overlap DP gradient synchronization with backward compute and set `CUDA_DEVICE_MAX_CONNECTIONS=1` in Megatron-LM.
 
 Put TP inner-most inside the NVLink node, and give PP and DP ranks the same `LOCAL_RANK` so they share a network rail.
@@ -347,9 +396,13 @@ Put TP inner-most inside the NVLink node, and give PP and DP ranks the same `LOC
 
 ## 4. Host CPU, NUMA, PCIe Switch, and NIC Affinity Binding per Rank
 
+An engineer runs the NCCL benchmark on the new cluster and sees a number far below the one on the data sheet. The cables are fine, the switches are fine, and every link shows Active. The problem is inside the server, in how the operating system places each process.
+
 ### 4.1 Inside an 8-GPU Dual-Socket Node: Why `GPU 0 -> NIC 3` Tanks Throughput by 7.5x
 
-Even when every InfiniBand cable is active and rail-aligned, multi-node throughput will collapse if the host OS misbinds CPU cores, NUMA nodes, or RDMA NICs. On a standard dual-socket HGX server, the first CPU socket directly hosts the first four PCIe switches. Those switches connect the first four GPUs to the first four NICs. The second CPU socket directly hosts the remaining four PCIe switches, connecting the upper four GPUs to the upper four NICs.
+Even when every InfiniBand cable is active and rail-aligned, multi-node throughput will collapse if the host OS misbinds CPU cores, NUMA nodes, or RDMA NICs. NUMA stands for non-uniform memory access. It means a CPU core reaches the memory attached to its own socket faster than the memory on the other socket. On a standard dual-socket HGX server, the first CPU socket directly hosts the first four PCIe switches. Those switches connect the first four GPUs to the first four NICs. The second CPU socket directly hosts the remaining four PCIe switches, connecting the upper four GPUs to the upper four NICs.
+
+Picture each GPU, its NIC, and its CPU socket as one team that sits in the same room. The team works fast when the GPU and its NIC share a switch. The block below shows the local binding for each rank on the reference server.
 
 ```text
 Optimal Per-Rank Hardware Binding Table (128-Core Dual-Socket 8-GPU HGX Server, 16 Cores/GPU):
@@ -366,23 +419,27 @@ Optimal Per-Rank Hardware Binding Table (128-Core Dual-Socket 8-GPU HGX Server, 
   Path types: PIX = single PCIe switch (optimal); PXB/NODE = traverses PCIe host bridge/CPU root complex; SYS = crosses inter-socket QPI/UPI/xGMI bus
 ```
 
-Now suppose PCIe Access Control Services is left enabled in the BIOS, or a wrong topology file makes the first GPU use a non-local NIC. Every packet then crosses the CPU interconnect instead of staying on the shared PCIe switch. In the reference troubleshooting case, AllReduce bandwidth fell from **300 GB/s to 40 GB/s**, which is 7.5x slower. The same happens on the data side. If a worker on the second NUMA node runs its data loader threads on the first node's cores, every memory copy crosses the inter-socket link.
+Now suppose PCIe Access Control Services is left enabled in the BIOS, or a wrong topology file makes the first GPU use a non-local NIC. Every packet then crosses the CPU interconnect instead of staying on the shared PCIe switch. The team has to walk to the other room for every message. In the reference troubleshooting case, AllReduce bandwidth fell from **300 GB/s to 40 GB/s**, which is 7.5x slower. The same thing happens on the data side. If a worker on the second NUMA node runs its data loader threads on the first node's cores, every memory copy crosses the inter-socket link.
 
 ### 4.2 Verifying Topology and Enforcing Strict NUMA and NIC Binding
 
-Before launching a multi-node job, check the GPU-to-NIC matrix with `nvidia-smi topo -m`. All GPUs should show NVLink to each other, and each GPU should show a single PCIe switch hop (`PIX`) to its paired NIC.
+Before you launch a multi-node job, check the wiring the way a technician checks a cable run before a live event. You want to see the layout with your own eyes, not assume it. Start with the GPU-to-NIC matrix that `nvidia-smi topo -m` prints. All GPUs should show NVLink to each other, and each GPU should show a single PCIe switch hop (`PIX`) to its paired NIC. If a GPU shows `SYS` to its NIC, the traffic is crossing the socket, and the job will be slow no matter how good the fabric is.
 
-Then enforce the locality. Export `NCCL_NET_GDR_LEVEL=5` so NCCL uses GPUDirect RDMA whenever the GPU and NIC share a PCIe switch. Export `NCCL_CROSS_NIC=0` on rail-optimized fabrics so NCCL never mixes traffic between rails. In Slurm, pass `--cpu-bind=numa` to `srun`, or wrap the worker command in `numactl`, and set `OMP_NUM_THREADS` so the CPU cores divide evenly among the GPU workers on the node.
+Then enforce the locality, so the runtime cannot choose a bad path on its own. Export `NCCL_NET_GDR_LEVEL=5` so NCCL uses GPUDirect RDMA whenever the GPU and NIC share a PCIe switch. Export `NCCL_CROSS_NIC=0` on rail-optimized fabrics so NCCL never mixes traffic between rails. In Slurm, pass `--cpu-bind=numa` to `srun`, or wrap the worker command in `numactl`. Set `OMP_NUM_THREADS` as well, so the CPU cores divide evenly among the GPU workers on the node. Without that setting, each worker may start more threads than its share of cores.
 
-On every multi-node job, confirm `PIX` pairing in `nvidia-smi topo -m`, and set `--cpu-bind=numa` and `NCCL_NET_GDR_LEVEL=5`.
+On every multi-node job, confirm `PIX` pairing in `nvidia-smi topo -m`, and set `--cpu-bind=numa` and `NCCL_NET_GDR_LEVEL=5`. Treat those three checks as the standing routine before any long run.
 
 ---
 
 ## 5. Storage, Sharded Checkpointing, Preemption Co-Design, and Advanced Slurm Workflows
 
+A checkpoint save starts at the exact moment the cluster sends a warning that your job is about to be reclaimed. If the save takes too long, the job is killed in the middle of the write, and the checkpoint you were trying to save is now a broken file. This section explains how to size the save so it finishes inside the warning window.
+
 ### 5.1 Distributed Checkpoint Sizing and Parallel Storage Bandwidth (8.03B to 70B+)
 
-A checkpoint write stops every GPU in the job, so slow storage costs GPU-hours directly. It also makes preemption dangerous. If Slurm sends a warning and storage is too slow, the job is killed in the middle of the write.
+Your checkpoint takes long enough that the GPUs sit idle for the whole write. A checkpoint write stops every GPU in the job, so slow storage costs GPU-hours directly. Every minute of a slow save is a minute you pay for on hardware that does nothing. It also makes preemption dangerous. If Slurm sends a warning and storage is too slow, the job is killed in the middle of the write.
+
+The block below sizes one real checkpoint, from the raw weights and optimizer state up to what lands on disk.
 
 ```text
 Megatron-LM 8B (8.03B Parameter) GPT Checkpoint Breakdown (Distributed AI Systems, Chapter 8):
@@ -400,16 +457,22 @@ Megatron-LM 8B (8.03B Parameter) GPT Checkpoint Breakdown (Distributed AI System
   convert_megatron_checkpoint.py or Megatron-Bridge (https://github.com/NVIDIA-NeMo/Megatron-Bridge) -> 16.06 GB BF16 model.pt (checkpoint['model_config'], checkpoint['model_state_dict'])
 ```
 
-Multi-node jobs should write sharded checkpoints, in the Megatron-LM `.distcp` format or with PyTorch Distributed Checkpoint (DCP), instead of gathering state onto the first rank. There are four reasons.
+Read the breakdown from the bottom up. The raw state is the weights plus the Adam states, which comes to 80.30 GB. The files on disk add 27.70 GB of metadata and alignment padding, which brings the total to 108.0 GB. That padding is the cost of writing in parallel, and it is small compared with the state itself.
+
+Multi-node jobs should write sharded checkpoints, in the Megatron-LM `.distcp` format or with PyTorch Distributed Checkpoint (DCP), instead of gathering state onto the first rank. Gathering means collecting every piece of the model onto one machine before writing, which is slow and risky. Sharding means every rank writes its own slice at the same time. There are four reasons to prefer it.
 
 1. Gathering weights and optimizer state onto one rank can exhaust its GPU or host memory. Sharded writes spread the payload evenly over all ranks and write in parallel.
 2. The preemption window is short. With `#SBATCH --signal=SIGUSR1@90`, the controller sends a warning ninety seconds before the time limit. Cancellation or a node drain sends `SIGTERM` instead. A sharded write to a parallel Lustre, WEKA, or GPFS filesystem takes a few seconds, which leaves time to resubmit.
 3. A usable checkpoint holds four things behind a distributed barrier: model weights, optimizer states, learning-rate scheduler state, and random-number-generator states. Without optimizer state, loss jumps after resume. Without RNG state, data shuffling and dropout quietly diverge.
 4. Sharded `.distcp` files are tied to Megatron's distributed layout. To serve a model in standalone PyTorch, vLLM, or SGLang, convert it with a script or Megatron-Bridge. The conversion drops the optimizer states and writes a compact BF16 model file.
 
+The last point matters at the end of a project. The training checkpoint is for resuming, and the inference file is for serving. They are different files with different jobs.
+
 ### 5.2 Simulating a Multi-Node Slurm Cluster on a Single Machine (`MultipleSlurmd`)
 
-Testing multi-node Slurm batch scripts directly on a large production queue wastes cluster quota on simple syntax or rendezvous bugs. Instead, you can test multi-node Slurm scripts, hostname expansion, and `c10d` rendezvous on a single eight-GPU machine. Compile Slurm with `--enable-multiple-slurmd` and run multiple node daemons on that machine.
+You have written a new multi-node launch script and want to test it before you use the production queue. Testing directly on a large production queue wastes cluster quota on simple syntax or rendezvous bugs. Instead, you can test multi-node Slurm scripts, hostname expansion, and `c10d` rendezvous on a single eight-GPU machine. The trick is to compile Slurm with `--enable-multiple-slurmd` and run several node daemons on that one machine, so Slurm believes it has several servers.
+
+The block below shows the virtual node definitions and the commands that check them. Keep in mind that all virtual nodes share one hostname, so this setup proves the Slurm plumbing but not the real network. Keep the virtual cluster for checking scripts and rendezvous, and move the bandwidth test to real hardware. The virtual nodes share one network stack, so they cannot show you how a real rail behaves under load.
 
 ```text
 Virtual Multi-Node Slurm Configuration on a Single Physical Host (MultipleSlurmd):
@@ -428,15 +491,17 @@ Virtual Multi-Node Slurm Configuration on a Single Physical Host (MultipleSlurmd
 
 ### 5.3 Advanced Slurm Workflows: `salloc`, `--array`, `--dependency=afterok`, and Monitoring
 
-Slurm also gives you the tools around the training run itself.
+A training run is rarely one job. You debug it, you sweep it, and you chain it into stages. Slurm gives you tools for each of those jobs, and each tool answers a different need.
 
-- For interactive debugging, reserve nodes with `salloc`, run the script with `srun` in a fast edit-test loop, and type `exit` to release the nodes.
-- For hyperparameter sweeps, spawn independent jobs from one script with `#SBATCH --array`, write per-task metrics to disk, and rank runs by validation loss.
+- For interactive debugging, reserve nodes with `salloc`, run the script with `srun` in a fast edit-test loop, and type `exit` to release the nodes. This is useful when a script fails after a few minutes and you want to fix it without queuing again.
+- For hyperparameter sweeps, spawn independent jobs from one script with `#SBATCH --array`, write per-task metrics to disk, and rank runs by validation loss. Each array task is a full job, so one bad setting does not stop the others.
 - For multi-stage pipelines, chain jobs with `sbatch --dependency=afterok`. Use `afterok` to run only after a clean exit, `afterany` to run regardless, and `afternotok` to run after a failure. Use `singleton` to stop two copies of an auto-resubmitting job from running at once.
-- For resumption, combine `#SBATCH --signal=SIGUSR1@90` with a bash `trap` or a Python signal handler that catches both `SIGUSR1` and `SIGTERM`, then resume from the latest checkpoint directory.
+- For resumption, combine `#SBATCH --signal=SIGUSR1@90` with a bash `trap` or a Python signal handler that catches both `SIGUSR1` and `SIGTERM`, then resume from the latest checkpoint directory. The handler should only set a flag or save state, and the training loop should do the heavy work at a safe point.
 - For failures and hangs, set an explicit timeout in `init_process_group` and wrap shared-filesystem data loading in retries. If a job stays pending, inspect node states with `sinfo`. If a running job prints nothing, attach to the job step and check GPU activity with detailed debug logs.
 
-Automated monitors can poll the job's nodes for GPU utilization and memory. When you profile with the PyTorch profiler, export the Chrome trace only from the first rank, so that concurrent ranks do not corrupt the JSON file on shared storage.
+Automated monitors can poll the job's nodes for GPU utilization and memory. When you profile with the PyTorch profiler, export the Chrome trace only from the first rank, so that concurrent ranks do not corrupt the JSON file on shared storage. Several ranks writing one trace file is a quiet way to lose the profile you spent an hour collecting.
+
+The block below holds the exact commands for each of these workflows, so you can copy them when you need them.
 
 ```text
 Advanced Slurm Commands and Job Array Indexing Reference (Distributed AI Systems, Chapter 8):
@@ -455,13 +520,19 @@ Advanced Slurm Commands and Job Array Indexing Reference (Distributed AI Systems
   LRS = (0.001, 0.0001, 0.00001, 0.000001), LR = ${LRS[$((SLURM_ARRAY_TASK_ID % 4))]}, BATCH_SIZE = $((32 * (SLURM_ARRAY_TASK_ID / 4 + 1)))
 ```
 
+The sweep example shows how a single array index becomes two settings. The task number is split with a remainder for the learning rate and a division for the batch size. Work one case by hand, and the rest of the array follows the same pattern.
+
 Trap both `SIGUSR1` and `SIGTERM`, and write sharded checkpoints that hold model, optimizer, scheduler, and RNG state behind a distributed barrier.
 
 ---
 
 ## Commands and configurations that matter
 
+When something breaks late at night, you want the exact commands in one place, not scattered across several sections. The four blocks below are the ones to copy first.
+
 ### 1. Production Slurm + Pyxis/Enroot + `torchrun` Launch Script (4 Nodes x 8 H100 GPUs)
+
+Your first real launch is a 70B model on four nodes. The script below is the one to start from. Each comment explains why its line is there, so you can change the paths and keep the safety settings.
 
 ```bash
 #!/bin/bash
@@ -510,6 +581,8 @@ srun --label \
 
 ### 2. DeepSpeed (`ZeRO-3` + Offload) and Megatron-LM Slurm Launch Patterns (*Distributed AI Systems*, Chapter 8)
 
+Your team also trains with DeepSpeed, and DeepSpeed launches differently from `torchrun`. It reads the Slurm variables directly, so the script has to pass the per-task values into each shell. The second half of the block shows the Megatron-LM launch with its parallel sizes.
+
 ```bash
 # --- DeepSpeed ZeRO-3 Slurm Launch (Pattern B: direct srun subshell without torchrun) ---
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -544,6 +617,8 @@ srun --chdir="$SCRIPT_DIR" --label bash -c "
 
 ### 3. Cluster Health, Fabric Verification, and Profiling Commands
 
+When a job is slow, the first questions are simple. Is the queue moving, and are the GPUs busy? The commands below answer those questions, then check the fabric and the benchmark.
+
 ```bash
 # 1. Inspect Slurm queue, node GRES allocations, and job GPU-hour accounting
 squeue -u $USER
@@ -569,6 +644,8 @@ ibportstate mlx5_0 1 | grep "LinkErrorRecoveryCounter"
 
 ### 4. Production Monitoring Signals Table (Volume 13 Ch. 1 & Ch. 12)
 
+You need to know what healthy looks like before you can spot a problem late at night. The table lists the healthy range, the red flag, and the first command to run for each signal.
+
 | Signal / Metric | Healthy Production Range | Red Flag / Action Required | First Diagnostic Command |
 |---|---|---|---|
 | GPU Memory Used / Total | 70–90% steady working set after warmup | > 95% (OOM risk on peak buffer); < 30% (over-sharded); climbing linearly (memory leak) | `nvidia-smi --query-gpu=index,memory.used,memory.total,utilization.gpu --format=csv -l 2` |
@@ -580,7 +657,7 @@ ibportstate mlx5_0 1 | grep "LinkErrorRecoveryCounter"
 
 ## How it fails
 
-Multi-node failures often masquerade as slow training iterations or mysterious collective timeouts. Use the table below and the diagnostic traces that follow to isolate hardware, fabric, and orchestration bugs rapidly.
+A job freezes in the middle of the night with no error on the screen. Multi-node failures often look like slow training iterations or mysterious collective timeouts. The symptoms do not point at one component, so the table below starts from the symptom and leads to the root cause. Use it with the log signatures that follow to tell hardware, fabric, and orchestration bugs apart. The table is organized around symptoms, not components, because the symptom is what you see first. Read one row at a time. Match the symptom to a log line, and run the first diagnostic command before you change anything. The production fix in the last column is the change to try once the diagnostic confirms the cause.
 
 | # | Failure Mode & Symptom | Root Cause | First Diagnostic Command & Production Fix |
 |---|---|---|---|
@@ -590,6 +667,8 @@ Multi-node failures often masquerade as slow training iterations or mysterious c
 | 4 | Node drains mid-job or ECC error causes collective hang: a 4-node job (481203 on `dgx-[012-015]`) freezes; `squeue -j 481203` shows 3 nodes (`dgx-[012,014-015]`) and `dgx-013` is `drained`. | Node `dgx-013` suffered a double-bit ECC error (`Xid 48` or `Xid 63` in `dmesg -T`), a GPU fallen off the bus (`Xid 79`), an illegal memory access (`Xid 13`), or an OOM kill. Surviving ranks block until watchdog timeout. | Check `scontrol show node dgx-013 \| grep -i reason` and `nvidia-smi -q -d ECC`. Drain faulty hardware, set `timeout=timedelta(minutes=15)`, and resume from `#SBATCH --signal=SIGUSR1@90` sharded checkpoints. |
 | 5 | Post-reboot 3.1x throughput drop (950 tok/s to 310 tok/s) from broken NVLink: single-node `all_reduce_perf` reports 90 GB/s or 20 GB/s instead of 800 GB/s (or 400+ GB/s) and logs `NCCL INFO Using PCIe interface`. | The `nvidia-fabricmanager` service failed to start after reboot or an NVLink bridge failed to train, showing `PIX`/`SYS` instead of `NV#` and falling back from 900 GB/s NVLink to 32 GB/s PCIe Gen4 x16. | Run `nvidia-smi topo -m` and `systemctl status nvidia-fabricmanager`. Reset GPUs (`nvidia-smi -r`) and restart `sudo systemctl restart nvidia-fabricmanager`. |
 | 6 | MoE `AllToAll` token-routing collapse: multi-node MoE job runs at 25% of expected throughput with every GPU sitting uniformly at 40–50% utilization and no hardware straggler. | Router collapse sends most tokens to a few hot experts due to a missing load-balancing auxiliary loss. The GPUs hosting those hot experts bottleneck synchronous `AllToAll` while other GPUs wait idle. | Inspect `torch.load('router_stats.pt')['tokens_per_expert']`, restore the load-balancing auxiliary loss coefficient, and tune `NCCL_ALGO=Tree` for small `AllToAll` messages. |
+
+The log lines below are the signatures to search for. If your log matches one of them, the table row tells you what to check next.
 
 ```text
 Key NCCL Failure Log Signatures:
@@ -606,12 +685,16 @@ Key NCCL Failure Log Signatures:
 
 ## Hands-on lab
 
+You want to check the ideas in this chapter on your own machine before you spend GPU hours on a cluster. The lab is split into a local part that runs anywhere Python runs and a cluster part that needs real GPUs. Read the venue notes first, so you know which part you can run today.
+
 ### Venue and Scope
 - **Venue:** Local Python Verification Lab (`code/part14/multinode_training_arch.py` and `code/part14/multinode_training_arch_lab.py`; `tested`). It also includes a Multi-Node Slurm reference diagnostic script (`untested here` on live multi-node IB hardware).
 
+The local lab checks the arithmetic and the rank rules. The Slurm script needs a real multi-node GPU cluster, and these steps were not run on a live cluster in this build.
+
 ### Part 1: Run the Self-Checking Architecture Verification Lab
 
-Run the verification suite from the repository root:
+Run the verification suite from the repository root. The command needs only Python, so it is the safest first step.
 
 ```bash
 python3 -B code/part14/multinode_training_arch_lab.py
@@ -651,7 +734,7 @@ Summary: 25 passed, 0 failed
 
 ### Part 2: Multi-Node Slurm NCCL Bandwidth + Preemption Signal Verification (`untested here`)
 
-On a multi-node Nebius GPU Slurm cluster, run `diagnose_multinode.py` across two nodes to verify AllReduce bandwidth across message sizes. The script also checks point-to-point rank latency and graceful preemption signal handling:
+On a multi-node Nebius GPU Slurm cluster, run `diagnose_multinode.py` across two nodes. You want to see the AllReduce bandwidth at several message sizes before a long run. The script also checks point-to-point rank latency and graceful preemption signal handling, so one run covers both the network and the shutdown path.
 
 ```python
 import os, signal, time, torch
@@ -700,6 +783,8 @@ if __name__ == "__main__":
 
 ## Common first mistakes
 
+Most multi-node bugs come from a small set of habits that look harmless on a single node. Each item below names the habit, shows what it causes, and gives the fix.
+
 1. Combining eight tasks per node in Slurm with eight processes per node in `torchrun`. That starts eight `torchrun` supervisors per node and sixty-four workers on an eight-GPU server. Set `--ntasks-per-node=1` with `torchrun`, and use `--ntasks-per-node=8` only when you call `srun python` directly.
 2. Using `127.0.0.1` as the master address, or a fixed port on a shared cluster. The loopback address gives silent single-node process groups that never sync gradients. A fixed port collides when two jobs land on one node. Derive `MASTER_ADDR` from `scontrol show hostnames` and randomize `MASTER_PORT`.
 3. Comparing `algbw` instead of `busbw` in `nccl-tests`. Algorithm bandwidth leaves out the ring traffic multiplier and under-reports link use by nearly half. Compare `busbw` at message sizes of 32 MB or more against the NVLink or NDR spec.
@@ -710,31 +795,35 @@ if __name__ == "__main__":
 
 ## Exercises
 
-1. An H100 server has 900.0 GB/s of bidirectional NVLink bandwidth per GPU and eight 400 Gbps NDR InfiniBand NICs. What is the cross-node bandwidth per GPU, and what is the aggregate per node? What is the NVLink-to-InfiniBand ratio per GPU?
-2. Why does letting Tensor Parallelism cross the node boundary cause a 16.7x slowdown? Then show how `all_reduce_perf` turns an `algbw` of 514.3 GB/s on eight GPUs into `busbw`.
+You have finished the chapter, and now you want to check that the numbers make sense in your own hands. Work each exercise on paper first, then compare your answer with the chapter. Each exercise starts with a short situation, and the questions after it come from that situation.
+
+1. You are sizing the network for an H100 server. The GPU has 900.0 GB/s of bidirectional NVLink bandwidth. The node has eight 400 Gbps NDR InfiniBand NICs. What is the cross-node bandwidth per GPU? What is the aggregate per node? What is the NVLink-to-InfiniBand ratio per GPU?
+2. Your team wants to split tensor parallelism across the node boundary. Why does that cause a 16.7x slowdown? How does `all_reduce_perf` turn an `algbw` of 514.3 GB/s on eight GPUs into `busbw`?
 3. A job runs on four nodes with eight GPUs each. What is the global rank for node rank 2 and local rank 5? Which node rank and local rank belong to global rank 29?
-4. Compare `SLURM_NTASKS`, `SLURM_PROCID`, and `SLURM_LOCALID` under Pattern A and Pattern B. If an engineer combines `--ntasks-per-node=8` with `torchrun --nproc_per_node=8`, how many worker processes start across the cluster?
-5. A 32-GPU cluster uses 2-way DP, 2-way PP, 1-way CP, and 8-way TP with `tp-cp-pp-dp` ordering. List all TP groups, the first two PP groups, and the first two DP groups. Check that every TP group stays on NVLink and every PP and DP hop stays on one InfiniBand rail.
-6. Reverse the ordering to `dp-pp-cp-tp`. Which ranks form the first TP group, and how many physical nodes does that group span?
-7. A model has 28.0 GB of FP32 gradients. How much data does a Ring AllReduce move per GPU on eight GPUs over 900 GB/s NVLink, and how long does it take? Answer the same for 512 GPUs over 25.0 GB/s InfiniBand, and compare the Ring hop count with a binary tree.
-8. Use `compute_multinode_scaling_curve()` at 16 GPUs and at 16,384 GPUs. How do the tree hops, exposed communication time, and scaling efficiency compare?
-9. On a dual-socket node with 128 cores and eight GPUs, give the CPU core range, NUMA node, and NIC for local rank 0 and for local rank 4.
-10. NCCL logs that GPU 0 uses NIC 3 or NIC 7. What happens to the PCIe path type and to `nccl-tests` bus bandwidth? Which NCCL and Slurm settings enforce locality?
-11. What is the theoretical size of the Megatron-LM 8.03B GPT checkpoint, and how does it compare with the 108.0 GB on disk across four `.distcp` shards? How long does the write take at 25.0 GB/s, relative to the preemption window?
-12. A twelve-task job array sweeps four learning rates and three batch sizes. Which learning rate and batch size run on array task 5, and which on task 11?
+4. Your launch scripts use both launch patterns. How do `SLURM_NTASKS`, `SLURM_PROCID`, and `SLURM_LOCALID` differ under Pattern A and Pattern B? If an engineer combines `--ntasks-per-node=8` with `torchrun --nproc_per_node=8`, how many worker processes start across the cluster?
+5. You plan a 32-GPU cluster for one training job. The layout uses 2-way DP and 2-way PP. It also uses 1-way CP and 8-way TP, with `tp-cp-pp-dp` ordering. Which ranks form each TP group? Which ranks form the first two PP groups? Which ranks form the first two DP groups? Does every TP group stay on NVLink? Does every PP and DP hop stay on one InfiniBand rail?
+6. Your team reverses the ordering to `dp-pp-cp-tp`. Which ranks form the first TP group? How many physical nodes does that group span?
+7. Your model has 28.0 GB of FP32 gradients. How much data does a Ring AllReduce move per GPU on eight GPUs over 900 GB/s NVLink? How long does that take? Answer the same two questions for 512 GPUs over 25.0 GB/s InfiniBand. How does the Ring hop count compare with a binary tree?
+8. You want to compare scaling at 16 GPUs and at 16,384 GPUs, using `compute_multinode_scaling_curve()`. How do the tree hops compare? How do the exposed communication time and the scaling efficiency compare?
+9. Your server is a dual-socket node with 128 cores and eight GPUs. What are the CPU core range, NUMA node, and NIC for local rank 0? What are they for local rank 4?
+10. Your NCCL log says that GPU 0 uses NIC 3. What happens to the PCIe path type in that case? What happens to `nccl-tests` bus bandwidth? Which NCCL and Slurm settings enforce locality?
+11. You want the theoretical size of the Megatron-LM 8.03B GPT checkpoint. How does that compare with the 108.0 GB on disk across four `.distcp` shards? How long does the write take at 25.0 GB/s, relative to the preemption window?
+12. Your team runs a job array that sweeps four learning rates and three batch sizes. Which learning rate and batch size run on array task 5? Which run on array task 11?
 
 ---
 
 ## Interview angles
 
+An interview question about multi-node training usually asks you to walk through a path, from the scheduler to the checkpoint. Each answer below follows the path once, so you can practice telling it in order.
+
 1. **"Walk me through how you launch a containerized multi-node training job on a Slurm-managed GPU cluster."**
-   - *Strong answer:* Think of the launch as three stacked layers. Slurm allocates the physical hardware via an `sbatch` script. That script requests four nodes, eight GPUs per node, one task per node, and exclusive access on the H100 partition. Pyxis and Enroot provide the unprivileged container runtime. Passing the container image and mount flags to `srun` unpacks the SquashFS image inside user namespaces on each node. That container is scoped strictly to the allocated GPUs bound via `cgroup` and GRES. Then `torchrun` and `c10d` bootstrap the process group. The script derives `MASTER_ADDR` from `scontrol show hostnames` and picks a randomized `MASTER_PORT`. Then `srun` starts one `torchrun` supervisor per node. Each supervisor spawns eight GPU workers and initializes NCCL over NVLink and InfiniBand. Last, trap `SIGUSR1` and `SIGTERM` to write sharded checkpoints so the job resumes automatically if preempted.
+   - *Strong answer:* Picture a launch on four nodes that must all start together. Think of the launch as three stacked layers. Slurm allocates the physical hardware via an `sbatch` script. That script requests four nodes, eight GPUs per node, one task per node, and exclusive access on the H100 partition. Pyxis and Enroot provide the unprivileged container runtime. Passing the container image and mount flags to `srun` unpacks the SquashFS image inside user namespaces on each node. That container is scoped strictly to the allocated GPUs bound via `cgroup` and GRES. Then `torchrun` and `c10d` bootstrap the process group. The script derives `MASTER_ADDR` from `scontrol show hostnames` and picks a randomized `MASTER_PORT`. Then `srun` starts one `torchrun` supervisor per node. Each supervisor spawns eight GPU workers and initializes NCCL over NVLink and InfiniBand. Last, trap `SIGUSR1` and `SIGTERM` to write sharded checkpoints so the job resumes automatically if preempted.
 2. **"Why does a rail-optimized network topology exist instead of connecting every GPU server to a single large switch, and how does 3D parallelism map onto it?"**
-   - *Strong answer:* Inside an eight-GPU H100 node, NVLink provides 900 GB/s per GPU. By contrast, a 400 Gbps NDR InfiniBand NIC provides 50 GB/s per GPU. That creates an 18x bandwidth drop at the node boundary. In a rail-optimized topology, the first GPU on every node connects to the first leaf switch rail. The second GPU connects to the second rail, continuing through the eighth rail. Map 3D and 4D parallelism with `tp-cp-pp-dp` ordering so eight-way TP stays 100 percent inside the intra-node NVLink domain. That placement avoids the 16.7x TP-across-nodes penalty. Meanwhile, PP point-to-point transfers and DP or HSDP gradient AllReduce always pair identical local rank indices across nodes. Those transfers stay on the same rail in a single non-blocking hop.
+   - *Strong answer:* Picture a team that wants to add a second server to a working job. Inside an eight-GPU H100 node, NVLink provides 900 GB/s per GPU. By contrast, a 400 Gbps NDR InfiniBand NIC provides 50 GB/s per GPU. That creates an 18x bandwidth drop at the node boundary. In a rail-optimized topology, the first GPU on every node connects to the first leaf switch rail. The second GPU connects to the second rail, continuing through the eighth rail. Map 3D and 4D parallelism with `tp-cp-pp-dp` ordering so eight-way TP stays 100 percent inside the intra-node NVLink domain. That placement avoids the 16.7x TP-across-nodes penalty. Meanwhile, PP point-to-point transfers and DP or HSDP gradient AllReduce always pair identical local rank indices across nodes. Those transfers stay on the same rail in a single non-blocking hop.
 3. **"You confirmed via `nvidia-smi topo -m` that GPU-NIC affinity is `PIX` on every node and `ibstat` shows all NDR ports Active, yet cross-node AllReduce is 3x slower than baseline. What do you check next?"**
-   - *Strong answer:* Once physical topology and link state are verified, move up to lossless transport health, physical error counters, and rail contention. First, on InfiniBand, an active link can still suffer symbol errors or link recoveries from a dirty transceiver. Run `ibportstate` and `perfquery` across all ports to check `LinkErrorRecoveryCounter`. Second, on RoCEv2, verify that Priority Flow Control and ECN are enabled on every leaf and spine hop. A single lossy hop triggers RDMA `Go-Back-N` retransmissions that collapse collective throughput by three to ten times. Third, check for noisy-neighbor congestion on shared spine links by ensuring exclusive node allocation. Also inspect `NCCL_DEBUG=INFO` logs to confirm GPUDirect RDMA is active.
+   - *Strong answer:* Picture a job that passes every hardware check and still runs slowly. Once physical topology and link state are verified, move up to lossless transport health, physical error counters, and rail contention. First, on InfiniBand, an active link can still suffer symbol errors or link recoveries from a dirty transceiver. Run `ibportstate` and `perfquery` across all ports to check `LinkErrorRecoveryCounter`. Second, on RoCEv2, verify that Priority Flow Control and ECN are enabled on every leaf and spine hop. A single lossy hop triggers RDMA `Go-Back-N` retransmissions that collapse collective throughput by three to ten times. Third, check for noisy-neighbor congestion on shared spine links by ensuring exclusive node allocation. Also inspect `NCCL_DEBUG=INFO` logs to confirm GPUDirect RDMA is active.
 4. **"How do DDP, FSDP, DeepSpeed, and Megatron-LM differ when launched under Slurm?"**
-   - *Strong answer:* Both DDP and FSDP use the identical Slurm script with one task per node and `torchrun`. They call `init_process_group` manually in Python. DeepSpeed uses `deepspeed.init_distributed()` and can be launched via `srun` with eight tasks per node. In that mode, you explicitly export `LOCAL_RANK`, `RANK`, and `WORLD_SIZE` from the Slurm task variables inside the subshell. Megatron-LM requires source installation, sets `CUDA_DEVICE_MAX_CONNECTIONS=1`, and launches via `srun` and `torchrun`. It writes sharded `.distcp` checkpoints that convert to standalone inference weights via Megatron-Bridge.
+   - *Strong answer:* Picture a team that wants to change frameworks without rewriting the launch script. Both DDP and FSDP use the identical Slurm script with one task per node and `torchrun`. They call `init_process_group` manually in Python. DeepSpeed uses `deepspeed.init_distributed()` and can be launched via `srun` with eight tasks per node. In that mode, you explicitly export `LOCAL_RANK`, `RANK`, and `WORLD_SIZE` from the Slurm task variables inside the subshell. Megatron-LM requires source installation, sets `CUDA_DEVICE_MAX_CONNECTIONS=1`, and launches via `srun` and `torchrun`. It writes sharded `.distcp` checkpoints that convert to standalone inference weights via Megatron-Bridge.
 
 ---
 
