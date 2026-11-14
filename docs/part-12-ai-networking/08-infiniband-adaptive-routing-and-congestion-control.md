@@ -23,13 +23,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Picture a training run that is crawling, while every port on the fabric reports a healthy state. Every physical port can report an `Active` logical state, with a `LinkUp` physical state, and still show zero symbol errors or packet drops. Yet collective step times double whenever multiple jobs run together. A lossless InfiniBand fabric can still bring a multi-thousand-GPU training run to its knees.
+Picture a training run that is crawling, while every port on the fabric reports a healthy state. Every physical port can report an `Active` logical state, with a `LinkUp` physical state, and still show zero symbol errors or packet drops. Yet collective step times double whenever multiple jobs run together. A lossless InfiniBand fabric can still bring a multi-thousand-GPU training run to its knees. The on-call engineer checks the links, finds nothing wrong, and then wonders where the time is going. This chapter explains where it goes.
 
-Lossless flow control avoids drops by pausing the sender instead of discarding packets. In Credit-Based Flow Control, a sender transmits only when the link partner downstream advertises free 64-byte buffer credits for the target Virtual Lane. Losslessness protects packets in flight. It does not create infinite link bandwidth or infinite switch buffer depth.
+Lossless flow control avoids drops by pausing the sender instead of discarding packets. In Credit-Based Flow Control, a sender transmits only when the link partner downstream advertises free 64-byte buffer credits for the target Virtual Lane. A credit is a unit of permission, and each one stands for a fixed amount of receive buffer space. Losslessness protects packets in flight. It does not create infinite link bandwidth or infinite switch buffer depth. A pause is a delay, and a delay that lasts long enough still slows the whole job down.
 
-Now picture synchronized AllReduce rings, Mixture-of-Experts AllToAll bursts, and parallel storage checkpoints all converging on the same switch egress ports. The downstream receive buffers fill up. Credits stop returning to the upstream switch, its transmit queues stall, and the backpressure spreads backward across several switch tiers as a congestion tree. Innocent jobs that merely share an upstream spine link or Virtual Lane behind the hot spot suffer Head-of-Line blocking and sharp tail-latency spikes.
+Now picture synchronized AllReduce rings, Mixture-of-Experts AllToAll bursts, and parallel storage checkpoints all converging on the same switch egress ports. An AllToAll is the collective where every GPU sends a different slice of its data to every other GPU. Each of those traffic patterns is normal on its own. Together they all aim at the same few ports at the same moment. The downstream receive buffers fill up. Credits stop returning to the upstream switch, its transmit queues stall, and the backpressure spreads backward across several switch tiers as a congestion tree. Innocent jobs that merely share an upstream spine link or Virtual Lane behind the hot spot suffer Head-of-Line blocking and sharp tail-latency spikes. Head-of-Line blocking means a packet at the front of a queue holds up every packet behind it, even when those packets are headed somewhere free.
 
-Modern NVIDIA Quantum-2 and Quantum-X800 fabrics attack this problem with three hardware mechanisms, coordinated by OpenSM or Unified Fabric Manager. The first is Adaptive Routing, which spreads packets across equal-cost paths. ConnectX Host Channel Adapters (HCAs) reorder out-of-order Packet Sequence Numbers (PSNs) in silicon while that happens. The second is Fast Notification and the Self-Healing Interconnect, which prune failed or congested ports from forwarding groups in microseconds, rather than waiting for control-plane sweeps. The third is InfiniBand Congestion Control. It marks congested packets in flight and paces the offending source Queue Pairs before downstream credits run dry.
+Modern NVIDIA Quantum-2 and Quantum-X800 fabrics attack this problem with three hardware mechanisms, coordinated by OpenSM or Unified Fabric Manager. The first is Adaptive Routing, which spreads packets across equal-cost paths. ConnectX Host Channel Adapters (HCAs) reorder out-of-order Packet Sequence Numbers (PSNs) in silicon while that happens. A PSN is the counter that numbers the packets of one connection, so the receiver can tell what order they were sent in. The second is Fast Notification and the Self-Healing Interconnect, which prune failed or congested ports from forwarding groups in microseconds, rather than waiting for control-plane sweeps. The third is InfiniBand Congestion Control. It marks congested packets in flight and paces the offending source Queue Pairs before downstream credits run dry.
 
 ```text
 NVIDIA Quantum Fabric Scale & Hardware Control Mechanisms (superpod-gb300-ra, ADC Ch. 9, V8 Ch. 7):
@@ -40,19 +40,17 @@ NVIDIA Quantum Fabric Scale & Hardware Control Mechanisms (superpod-gb300-ra, AD
   - 3. Congestion Control (IB CC):  Congested switch sets 1-bit BTH FECN -> receiver reflects BECN -> source HCA advances CCTI (0..127 across 128-entry CCT) until CCTI_Timer recovery
 ```
 
-This chapter builds on the InfiniBand addressing and link-layer foundations in Chapter 12.6, and on the Subnet Manager architectures in Chapter 12.7. Here we derive the credit-based flow-control equations and the Virtual Lane victim-buffer isolation. We also work through Adaptive Routing group selection, SHIELD failover math, ConnectX hardware reordering windows, the FECN/BECN/CCTI state machine, and production counter diagnostics.
+This chapter builds on the InfiniBand addressing and link-layer foundations in Chapter 12.6, and on the Subnet Manager architectures in Chapter 12.7. Here we derive the credit-based flow-control equations and the Virtual Lane victim-buffer isolation. We also work through Adaptive Routing group selection, SHIELD failover math, ConnectX hardware reordering windows, the FECN/BECN/CCTI state machine, and production counter diagnostics. Read the chapter in the order it is written, because each part uses the vocabulary of the one before it. The credit rules explain the congestion tree, the tree explains why static routing hurts, and the routing fixes lead to the congestion control loop.
+
+A useful way to hold the whole chapter in your head is to think of a highway system. The credits are the traffic lights at each on-ramp. The congestion tree is the queue that forms behind a closed lane. Adaptive Routing is the set of detour signs that send drivers onto a quieter road, and Congestion Control is the metering light that slows the cars entering the highway when the exits are full. Each tool covers a different part of the same jam.
 
 ## Prerequisites and outcomes
 
-Before you start, review three earlier chapters. Chapter 12.2 covers RDMA Queue Pairs and completions. Chapter 12.6 covers InfiniBand link layers, LIDs, P_Keys, Service Levels and Virtual Lanes. Chapter 12.7 covers OpenSM and fat-tree topologies.
+Before you start, review three earlier chapters. Chapter 12.2 covers RDMA Queue Pairs and completions. Chapter 12.6 covers InfiniBand link layers, LIDs, P_Keys, Service Levels and Virtual Lanes. Chapter 12.7 covers OpenSM and fat-tree topologies. A Service Level, or SL, is the label on each packet that picks which Virtual Lane it travels on. A P_Key is the Partition Key that groups ports into a tenant partition.
 
-By the end of this chapter, you will be able to do the following:
+The chapter starts with the credit mechanics, then shows how a congestion tree forms and how Virtual Lanes keep one traffic class from blocking another. It then moves to the counters that tell congestion apart from a broken cable, and to the Adaptive Routing and SHIELD features that route around a hot spot. It finishes with the Congestion Control loop, the decision between routing, control and capacity, and the multi-tenant and telemetry practices that keep a shared fabric honest. Along the way it works through the arithmetic, so you can check each number yourself.
 
-- Calculate the credits available on each Virtual Lane, counted in 64-byte units. You will trace how running out of credits builds a multi-tier congestion tree, and isolate victim traffic classes using deadlock-free Service Level to Virtual Lane mappings.
-- Tell pure fabric congestion apart from physical link faults using `perfquery`, and locate the root port of a congestion tree. You will do this by sampling counter deltas across switch tiers without clearing hardware registers.
-- Explain how OpenSM and UFM program static Linear Forwarding Tables alongside Adaptive Routing groups. You will see why static routing creates 20-to-1 uplink skews, and how ConnectX hardware packet reordering prevents tail-latency spikes.
-- Compare autonomous hardware link-failure recovery under SHIELD and Fast Notification with control-plane OpenSM Trap 128 heavy-sweep reconvergence.
-- Trace the closed-loop InfiniBand Congestion Control state machine, from switch FECN marking to receiver BECN reflection and source CCTI rate pacing. Then choose between Adaptive Routing, Congestion Control, rank placement and capacity expansion.
+When you meet a number in this chapter, ask where it came from. Most of the numbers are a product of a size and a rate, such as bytes in a buffer divided by bytes in a credit, or bytes per second multiplied by a time. Once you can rebuild a number from its parts, you can tell whether a reading from your own fabric makes sense.
 
 ```text
 Quantitative Targets Verified in This Chapter (V8 Ch. 2, 5, 6, 7, 9, 10, 11 & Labs 01-04):
@@ -63,25 +61,30 @@ Quantitative Targets Verified in This Chapter (V8 Ch. 2, 5, 6, 7, 9, 10, 11 & La
   - IB CC State Machine:      FECN -> BECN -> CCTI (0..127 in 128-entry CCT) pacing 400.0 Gbps down to 266.67 Gbps, 200.0 Gbps, and 80.5 Gbps before CCTI_Timer decay
 ```
 
-Each line in this block is verified later in the chapter. Use it as a checklist when you work through the labs.
+Each line in this block is verified later in the chapter. Use it as a checklist when you work through the labs. A line that you cannot reproduce from the chapter text is a sign that you should reread the section that owns it.
 
 ---
 
 ## 1. Credit-based flow control, congestion trees, and Virtual Lane isolation
 
+A fabric that never drops a packet still has to explain why a job slowed down. The answer starts with the credit system, because the credits decide when a sender may transmit at all. This section builds that system from the bottom up. It shows how credits work on one link, how one busy port spreads its backlog across tiers, and how Virtual Lanes keep unrelated traffic from paying for that backlog.
+
 ### 1.1 Link-level Credit-Based Flow Control and 64-byte credit blocks
 
-Picture a burst of RDMA writes hitting a switch port faster than the egress link can drain. Dropping even one packet forces transport timeouts and costly retransmissions across the synchronized GPU ranks. Standard Ethernet sends frames without checking first, and relies on reactive IEEE 802.1Qbb Priority Flow Control pause frames when a downstream ingress buffer nears overflow. InfiniBand takes the opposite approach. It prevents buffer overflow on every hop before it happens, using link-level Credit-Based Flow Control between HCAs, leaf switches and spine switches.
+Picture a burst of RDMA writes hitting a switch port faster than the egress link can drain. Dropping even one packet forces transport timeouts and costly retransmissions across the synchronized GPU ranks. A timeout is the wait the sender spends before it decides a packet was lost, and every rank that waits for the lost packet waits too. Standard Ethernet sends frames without checking first, and relies on reactive IEEE 802.1Qbb Priority Flow Control pause frames when a downstream ingress buffer nears overflow. InfiniBand takes the opposite approach. It prevents buffer overflow on every hop before it happens, using link-level Credit-Based Flow Control between HCAs, leaf switches and spine switches. Think of it as a parking garage that counts the free spaces before any car is allowed to enter the ramp, rather than one that lets cars in and then has to tow the ones that do not fit.
 
-An InfiniBand physical link carries up to 16 logical Virtual Lanes, which are multiplexed onto the same cable. The first 15, VL0 through VL14, carry application RDMA and storage payloads. Each packet's 4-bit Service Level field selects its lane through the switch SL-to-VL table. VL15 is reserved for unrouted Subnet Management Packets.
+An InfiniBand physical link carries up to 16 logical Virtual Lanes, which are multiplexed onto the same cable. A Virtual Lane is a separate channel with its own buffers and its own credits, sharing the one physical wire. The first 15, VL0 through VL14, carry application RDMA and storage payloads. Each packet's 4-bit Service Level field selects its lane through the switch SL-to-VL table. VL15 is reserved for unrouted Subnet Management Packets.
 
-Because VL15 has independent buffer space and is exempt from data-lane credit stalls, OpenSM or UFM can always query and reprogram switches. That holds even when every data lane is fully stalled by congestion. Receivers advertise their buffer space per Virtual Lane, using flow-control packets in the Link Layer Header. The unit is the Flow Control Credit Unit, and one credit equals 64 bytes of receive buffer space. Before an upstream port sends a packet on a given lane, hardware checks that the available credits cover the packet's length, rounded up to 64-byte blocks:
+Because VL15 has independent buffer space and is exempt from data-lane credit stalls, OpenSM or UFM can always query and reprogram switches. That holds even when every data lane is fully stalled by congestion. A fabric that cannot be managed during congestion cannot be repaired during congestion, so this separate lane matters.
+
+In practice, this means the first command you run during an incident still works. Your query goes out on VL15 while the data lanes are jammed, and the answer comes back. Without that guarantee, the team would be trying to repair a fabric with the tools that the congestion has already locked away. Receivers advertise their buffer space per Virtual Lane, using flow-control packets in the Link Layer Header. The unit is the Flow Control Credit Unit, and one credit equals 64 bytes of receive buffer space. Before an upstream port sends a packet on a given lane, hardware checks that the available credits cover the packet's length, rounded up to 64-byte blocks:
 
 $$
 C_{\text{avail}}(v) = \left\lfloor \frac{B_{\text{buf}}(v) - B_{\text{occ}}(v)}{64} \right\rfloor \ge \left\lceil \frac{B_{\text{pkt}}}{64} \right\rceil
 $$
 
-When the available credits cover the packet, the port sends immediately at full wire speed. If the downstream drain slows and free credits fall short, the upstream transmitter pauses on that Virtual Lane. It does not drop the packet. Each clock tick that a lane has packets queued but too few credits, hardware increments the `PortXmitWait` counter.
+
+In plain words, the free space on the lane is divided into 64-byte credits, and the packet needs at least its own length in credits. When the available credits cover the packet, the port sends immediately at full wire speed. If the downstream drain slows and free credits fall short, the upstream transmitter pauses on that Virtual Lane. It does not drop the packet. Each clock tick that a lane has packets queued but too few credits, hardware increments the `PortXmitWait` counter. That counter is the signature of a port that is waiting for room, not one that is broken.
 
 Consider a 4,096-byte packet, which needs 64 credits. The buffer below shows two cases for that packet.
 
@@ -94,11 +97,13 @@ Per-VL Credit Accounting Example for a 4,096-Byte (4 KB) InfiniBand MTU (ADC Ch.
   - Case 2 (Credit Stalled):    B_occ(0) = 63,488 bytes -> 2,048 bytes free = 32 credits < 64 -> Port A pauses VL0 transmission and increments PortXmitWait on every clock tick
 ```
 
-In the first case, 32,768 bytes occupied leave 512 credits, far more than the 64 the packet needs. In the second case, 63,488 bytes occupied leave only 32 credits, half of what the packet requires. The port pauses and counts the wait, and no packet is lost. As you read the two cases, notice which number decides the outcome.
+In the first case, 32,768 bytes occupied leave 512 credits, far more than the 64 the packet needs. In the second case, 63,488 bytes occupied leave only 32 credits, half of what the packet requires. The port pauses and counts the wait, and no packet is lost. As you read the two cases, notice which number decides the outcome. It is the free space on the lane, not the speed of the link, and that is why a fast link can still stall. The same 400 Gbps wire that sends the first packet at once has to wait for room in the second case.
+
+A simple check on a live switch is to read the buffer occupancy before you read the wait counter. If the buffer is nearly full, the wait counter is telling the truth. If the buffer has room, a rising wait counter points to something else, such as a credit return that is delayed by a fault further along the path.
 
 ### 1.2 Backpressure propagation, congestion trees, and Head-of-Line blocking
 
-Credit-Based Flow Control never drops packets when buffers fill. So if offered load stays above the drain rate, the extra traffic simply queues upstream. A single hot destination port can quickly grow into a slowdown across several switch tiers. You may see unrelated jobs stall, even though those jobs never talk to the overloaded node.
+Credit-Based Flow Control never drops packets when buffers fill. So if offered load stays above the drain rate, the extra traffic simply queues upstream. A single hot destination port can quickly grow into a slowdown across several switch tiers. You may see unrelated jobs stall, even though those jobs never talk to the overloaded node. The queue is not in the place where the problem is. It sits upstream, where the blocked traffic is waiting for credits.
 
 ```mermaid
 flowchart LR
@@ -118,15 +123,15 @@ flowchart LR
 | **Transit Switch (`Spine 1` ingress from `Leaf 1` & `Leaf 2`)** | Cannot drain packets toward `Leaf 3`; ingress `VL0` buffers fill and stop returning credits to `Leaf 1` & `Leaf 2` | Backpressure spreads one tier upstream away from the actual bottleneck | Elevated `PortXmitWait` on `Leaf 1` and `Leaf 2` uplinks feeding `Spine 1` |
 | **Victim Flow (`Rack A -> Leaf 4` via `Spine 1` on `VL0`)** | Shares `Leaf 1 -> Spine 1` uplink and `VL0` buffer with congested flows `S1` & `S2` | **Head-of-Line (`HoL`) blocking:** delayed behind stalled `VL0` packets even though `Leaf 4` is completely idle | Victim job latency spikes (`p99` `1.8 ms -> 14.2 ms`) with zero packet loss |
 
-The table shows where each effect lands. Read the first row to find the root, and the last row to see who pays for it.
+The table shows where each effect lands.
 
-This chain reaction has five steps. First, a downstream root port receives traffic from several senders faster than its wire rate, and its receive buffer credits run out. Second, the upstream spine port runs out of downstream credits for that leaf port. It pauses transmission on that Virtual Lane and increments `PortXmitWait`. Third, packets bound for the hot leaf port pile up in the spine's ingress buffers.
+The victim row is the one that surprises people. The victim flow sends nothing toward the hot port, and its destination is idle. Its job still slows down because it shares a road and a lane with the hot traffic. A good way to remember this is that a traffic jam does not check where each car is going before it slows them all. Read the first row to find the root, and the last row to see who pays for it. The diagram above shows the same story as a picture. The congested leaf port is the root, the spine is the middle tier that absorbs the backlog, and the idle leaf is the place where the victim's packets never needed to go.
 
-Fourth, the spine stops returning credits to the upstream leaf switches, so their uplinks pause and build queues of their own. Fifth, victim flows that use those same uplinks on the same Virtual Lane, bound for an idle destination, sit trapped behind the stalled packets. That is a classic Head-of-Line block.
+This chain reaction has five steps. First, a downstream root port receives traffic from several senders faster than its wire rate, and its receive buffer credits run out. Second, the upstream spine port runs out of downstream credits for that leaf port. It pauses transmission on that Virtual Lane and increments `PortXmitWait`. Third, packets bound for the hot leaf port pile up in the spine's ingress buffers. Fourth, the spine stops returning credits to the upstream leaf switches, so their uplinks pause and build queues of their own. Fifth, victim flows that use those same uplinks on the same Virtual Lane, bound for an idle destination, sit trapped behind the stalled packets. That is a classic Head-of-Line block. The victim never saw the hot port, but it shares the road that leads there.
 
 ### 1.3 Isolating victim flows with Virtual Lanes and preventing credit loops
 
-Suppose a large training collective and a latency-sensitive inference service share the same default Virtual Lane. The training bursts use up the buffer credits on shared uplinks, and inference is left with none. Separating the two onto distinct Service Levels and Virtual Lanes fixes this. Each class then gets its own 64-byte credit counter and buffer partition on every physical link. When a synchronized training burst drives VL0 available credits to zero, VL1 keeps its own free credits, and it keeps forwarding inference packets over the same physical cable.
+Suppose a large training collective and a latency-sensitive inference service share the same default Virtual Lane. The training bursts use up the buffer credits on shared uplinks, and inference is left with none. Separating the two onto distinct Service Levels and Virtual Lanes fixes this. Each class then gets its own 64-byte credit counter and buffer partition on every physical link. When a synchronized training burst drives VL0 available credits to zero, VL1 keeps its own free credits, and it keeps forwarding inference packets over the same physical cable. The two classes share the wire, but they no longer share the parking spaces.
 
 ```text
 Virtual Lane Victim-Buffer Isolation & Deadlock Prevention (V8 Ch. 11 Scenario 3, code/part12/infiniband_ar_cc.py):
@@ -138,15 +143,15 @@ Virtual Lane Victim-Buffer Isolation & Deadlock Prevention (V8 Ch. 11 Scenario 3
   - Acyclic VL Split (Deadlock-Free DAG):                      SW1_VL0 -> SW2_VL0 -> SW3_VL1 -> SW1_VL1 (routing engines updn, ftree, dfsssp, dor break credit cycles)
 ```
 
-Separating the lanes removes buffer Head-of-Line blocking and recovers nearly ninety percent of the tail-latency regression. The leftover gap above the idle baseline shows a real hardware limit. Virtual Lanes isolate switch buffers and flow-control credits, but they still arbitrate for the same physical serial wire.
+Separating the lanes removes buffer Head-of-Line blocking and recovers nearly ninety percent of the tail-latency regression. The leftover gap above the idle baseline shows a real hardware limit. Virtual Lanes isolate switch buffers and flow-control credits, but they still arbitrate for the same physical serial wire. A separate lane is not a separate cable, so a small wait remains even in the best case.
 
-The mappings must also be consistent and deadlock-free across every switch hop in the subnet. Credit-Based Flow Control holds upstream buffers while it waits for downstream credits. So a cyclic buffer dependency across switches creates a permanent credit loop. In that loop, every switch in the ring waits forever for the next one to free 64-byte credits. Topology-aware routing engines also prevent credit loops. They restrict turns under the Up/Down rule, or they split upward and downward hops onto separate Virtual Lanes. Either way, the channel dependency graph becomes a Directed Acyclic Graph.
+The mappings must also be consistent and deadlock-free across every switch hop in the subnet. Credit-Based Flow Control holds upstream buffers while it waits for downstream credits. So a cyclic buffer dependency across switches creates a permanent credit loop. In that loop, every switch in the ring waits forever for the next one to free 64-byte credits. Picture three people in a revolving door, each holding a door that the next person needs. Nobody can move, and nobody can let go first. Topology-aware routing engines also prevent credit loops. They restrict turns under the Up/Down rule, or they split upward and downward hops onto separate Virtual Lanes. Either way, the channel dependency graph becomes a Directed Acyclic Graph, which is a map of who waits for whom that has no circle in it.
 
-Before you tune anything in a congested fabric, confirm that the Virtual Lane mappings are consistent on every hop.
+Before you tune anything in a congested fabric, confirm that the Virtual Lane mappings are consistent on every hop. A mapping that differs on one switch can create a loop that the other switches never see.
 
 ## 2. Congestion versus physical link faults: reading `perfquery` evidence
 
-Suppose a job slows down while every link reports Active. The on-call engineer sees high link utilization and reaches for a new optical cable. That is one of the most expensive mistakes on an InfiniBand cluster. Replacing transceivers because utilization is high wastes maintenance windows and leaves the real bottleneck in place. The opposite mistake costs just as much. Tuning congestion control while a degraded fiber lane is corrupting symbols leaves a broken physical link in production.
+Suppose a job slows down while every link reports Active. The on-call engineer sees high link utilization and reaches for a new optical cable. That is one of the most expensive mistakes on an InfiniBand cluster. Replacing transceivers because utilization is high wastes maintenance windows and leaves the real bottleneck in place. The opposite mistake costs just as much. Tuning congestion control while a degraded fiber lane is corrupting symbols leaves a broken physical link in production. The two problems look alike from the job's point of view, so the counters are the only way to tell them apart.
 
 ```mermaid
 flowchart TD
@@ -159,7 +164,7 @@ flowchart TD
     Q3 -->|Alternate path idle| A4["Routing imbalance: enable/verify<br/>AR_group and ar_sl_mask"]
 ```
 
-The flowchart above is the decision order for these cases. Start at the top and follow the question that matches what your counters show.
+The flowchart above is the decision order for these cases. Start at the top and follow the question that matches what your counters show. Each diamond asks one question about one counter, and each answer points you to a different fix.
 
 | Diagnostic Dimension | Pure Fabric Congestion (`CBFC` Backpressure) | Physical / Link Layer Fault |
 |---|---|---|
@@ -169,11 +174,13 @@ The flowchart above is the decision order for these cases. Start at the top and 
 | **Scope & Reproducibility** | Appears under concurrent multi-node collectives or specific rank placements | Tied to a specific physical cable, transceiver cage, switch port, or HCA port even in 2-node tests |
 | **Correct Remediation** | Trace congestion-tree gradient; enable/tune `AR` and `CC`; fix rank placement or oversubscription | Reseat or replace cable/transceiver; isolate faulty port before touching routing or `CC` |
 
-Use the table to tell the two cases apart. Read each row as one piece of evidence, and look at the two columns side by side. Congestion shows up as a rising wait counter with clean error counters. A fault shows up as rising error counters.
+Use the table to tell the two cases apart. Read each row as one piece of evidence, and look at the two columns side by side. Congestion shows up as a rising wait counter with clean error counters. A fault shows up as rising error counters. Notice that the scope row is often the fastest clue. A fault follows one cable or one port wherever it is connected, while congestion moves with the traffic pattern.
+
+This difference is the most useful thing to remember from the table. When you move a job to another rack and the slowdown moves with it, you are probably looking at congestion. When the slowdown stays on one physical port even after the job has moved away, you are looking at the port or its cable. Watching where the problem goes is often faster than reading any single counter.
 
 ### 2.1 Distinguishing congestion from hardware faults on the same switch
 
-When a job slows down across a leaf switch, ask one question first. Are the ports waiting for downstream credits, or are they suffering physical bit errors? To answer it, take two read-only snapshots of the `perfquery` counters across an active workload window, then compute the difference. During incident triage, never pass the `-R` reset flag to `perfquery`, and never pass `-k` or `-K` to `ibqueryerrors`. Clearing the hardware registers destroys the evidence you need.
+When a job slows down across a leaf switch, ask one question first. Are the ports waiting for downstream credits, or are they suffering physical bit errors? To answer it, take two read-only snapshots of the `perfquery` counters across an active workload window, then compute the difference. A snapshot is a copy of the counters at one moment, and the difference is what changed in between. During incident triage, never pass the `-R` reset flag to `perfquery`, and never pass `-k` or `-K` to `ibqueryerrors`. Clearing the hardware registers destroys the evidence you need.
 
 ```text
 Switch Port Telemetry Comparison (V8 Ch. 2 Scenario 3 & Ch. 7, perfquery deltas):
@@ -186,11 +193,15 @@ Switch Port Telemetry Comparison (V8 Ch. 2 Scenario 3 & Ch. 7, perfquery deltas)
 
 Compare `switch port 3` with `switch port 4` to see why counter families must never be mixed up. On port 3, `SymbolErrorCounter` and `LinkDownedCounter` stay flat at zero, while `PortXmitWait` climbs to nearly one million ticks. That cable is clean. Its transmitter is simply waiting for downstream buffer credits.
 
-Port 4 is different. Its `PortXmitWait` is small, but the port has accumulated symbol errors and two forced link-down events. That is a physical media fault. Reseat or replace the cable or optical transceiver before anyone touches routing or congestion settings.
+The wait is a sign of a busy path, and it does not say that anything broke. An analogy helps here. A car waiting at a long red light is not a broken car. It is a car in a queue. The fix is to change the timing of the lights or to send some cars another way, not to take the car to a mechanic. A busy port that is still clean is a port with a traffic problem, and the fix is in the routing, the placement or the congestion settings.
+
+Port 4 is different. Its `PortXmitWait` is small, but the port has accumulated symbol errors and two forced link-down events. A symbol error is a bit that arrives damaged on the wire, and a forced link-down is the link dropping and retraining. That is a physical media fault. Reseat or replace the cable or optical transceiver before anyone touches routing or congestion settings. A quiet wait counter does not make a port healthy when its error counters are climbing.
+
+Think of a car that drives smoothly but leaks oil. The smooth ride is real, but it does not mean the car is safe to keep on the road. The error counters are the oil leak, and they deserve attention even when the ride feels fine. The wait counter tells you about traffic. The error counter tells you about the car.
 
 ### 2.2 Tracing a congestion tree to its root via the `PortXmitWait` gradient
 
-When a congestion tree spreads across several switch tiers, dozens of upstream ports can show nonzero `PortXmitWait` deltas at the same time. You need a reliable way to find the downstream port that started the backup. Credit backpressure weakens as it fans out upstream across links. So the port closest to the true bottleneck always records the largest `PortXmitWait` delta.
+When a congestion tree spreads across several switch tiers, dozens of upstream ports can show nonzero `PortXmitWait` deltas at the same time. You need a reliable way to find the downstream port that started the backup. Credit backpressure weakens as it fans out upstream across links. So the port closest to the true bottleneck always records the largest `PortXmitWait` delta. The farther a port sits from the bottleneck, the smaller its share of the wait. That falling gradient points you back toward the source, the way a rising smell points you toward a fire.
 
 ```text
 Leaf Switch PortXmitWait Delta Gradient During Slow Collective (V8 Ch. 7 Scenario 1):
@@ -201,7 +212,9 @@ Leaf Switch PortXmitWait Delta Gradient During Slow Collective (V8 Ch. 7 Scenari
   port 5: delta 312
 ```
 
-In this snapshot, ports 1, 2 and 5 stay near a quiet baseline of roughly three hundred ticks. Ports 3 and 4 record deltas roughly 150 times higher. Cross-check those two ports against the `iblinkinfo` topology map. That shows which downstream rack or destination node pair is the root of the congestion tree.
+In this snapshot, ports 1, 2 and 5 stay near a quiet baseline of roughly three hundred ticks. Ports 3 and 4 record deltas roughly 150 times higher. Cross-check those two ports against the `iblinkinfo` topology map. That shows which downstream rack or destination node pair is the root of the congestion tree. The map turns a port number into a machine name, and that name is what the scheduler and the on-call team can act on.
+
+Once you have the name, the next steps are practical. You can check which job was placed on that rack, whether its ranks all sit under one leaf, and whether the congestion appeared after a placement change. Each of those checks narrows the search without touching any hardware.
 
 If a job slows with clean links, trace the congestion tree before you replace any hardware.
 
@@ -209,15 +222,17 @@ If a job slows with clean links, trace the congestion tree before you replace an
 
 ## 3. Adaptive Routing, SHIELD self-healing, and ConnectX OOO reordering
 
+Routing is the part of the fabric that decides which path each packet takes. When routing is static, the path is fixed in advance, and a busy path stays busy even when a free one sits next to it. This section shows how a static table creates a hot uplink, how Adaptive Routing spreads the load, how the switches heal around a failed link, and how the adapters put out-of-order packets back into order.
+
 ### 3.1 Why static Linear Forwarding Tables create 20-to-1 uplink hot spots
 
-Picture a fully nonblocking fat-tree with plenty of idle spine bandwidth. Static routing can still starve a distributed training job. Under classic InfiniBand forwarding, OpenSM programs a deterministic Linear Forwarding Table (LFT) on every switch. The LFT is a flat lookup array. It is indexed by the 16-bit Destination LID, and it maps each destination to one fixed egress port:
+Picture a fully nonblocking fat-tree with plenty of idle spine bandwidth. Static routing can still starve a distributed training job. Under classic InfiniBand forwarding, OpenSM programs a deterministic Linear Forwarding Table (LFT) on every switch. The LFT is a flat lookup array. It is indexed by the 16-bit Destination LID, and it maps each destination to one fixed egress port. A deterministic table gives the same answer every time, which makes it easy to debug and easy to overload:
 
 $$
 \text{EgressPort} = \text{LFT}[\text{DLID}]
 $$
 
-A leaf switch may have four, eight or sixteen equal-cost uplinks to the spine tier. Static forwarding still pins every packet for a given Destination LID onto one pre-assigned uplink. Suppose GPU ranks in an AllReduce or AllToAll collective exchange data with peers whose Destination LIDs hash to the same spine uplink. Those flows collide in one large queue, while the sibling uplinks sit nearly idle.
+A leaf switch may have four, eight or sixteen equal-cost uplinks to the spine tier. Static forwarding still pins every packet for a given Destination LID onto one pre-assigned uplink. Suppose GPU ranks in an AllReduce or AllToAll collective exchange data with peers whose Destination LIDs hash to the same spine uplink. Those flows collide in one large queue, while the sibling uplinks sit nearly idle. The picture is a supermarket with four checkout lanes where every shopper is sent to lane one at the door. Lane one grows long, and the other three lanes stay empty even though the store has plenty of staff.
 
 ```text
 Static LFT Uplink Collision on Four 400 Gbps Leaf Uplinks (V8 Ch. 6 Scenario 1, PortXmitData 4-octet words):
@@ -228,11 +243,13 @@ Static LFT Uplink Collision on Four 400 Gbps Leaf Uplinks (V8 Ch. 6 Scenario 1, 
   Imbalance Ratio:       21,489,234,432 / 1,073,741,824 = 20.01:1 max/min uplink traffic skew
 ```
 
-Keep in mind that `PortXmitData` in `perfquery` counts 4-octet words. To get transmitted bytes, multiply the raw counter delta by 4. Uplinks 5 and 6 carry about twenty times the traffic of uplinks 7 and 8, which are identical links on the same leaf switch. When two large elephant flows collide on uplink 5 while uplink 7 sits nearly empty, static forwarding cuts collective throughput in half. The spine has spare capacity the whole time.
+Keep in mind that `PortXmitData` in `perfquery` counts 4-octet words. To get transmitted bytes, multiply the raw counter delta by 4.
+
+The conversion matters because a word-based counter looks small at first glance. A reader who forgets the factor compares the wrong quantities and may decide that two uplinks are balanced when they are not. Converting both sides to bytes before you compare them keeps the comparison honest, and it lets you check the result against the link speed. Uplinks 5 and 6 carry about twenty times the traffic of uplinks 7 and 8, which are identical links on the same leaf switch. When two large elephant flows collide on uplink 5 while uplink 7 sits nearly empty, static forwarding cuts collective throughput in half. The spine has spare capacity the whole time. An elephant flow is one very large, long-lived transfer, and it is the kind of flow that can fill a link for a long stretch without any help from its neighbors.
 
 ### 3.2 Adaptive Routing groups, Private LFTs, and the Service Level mask
 
-You can avoid static uplink collisions without waiting for the Subnet Manager to recompute tables. NVIDIA Quantum switches do this with Adaptive Routing, which replaces single-port lookups. Instead of binding a Destination LID to one fixed port, OpenSM or UFM programs a two-stage hardware lookup. It maps each destination to an Adaptive Routing group (AR group) of equal-cost egress ports.
+You can avoid static uplink collisions without waiting for the Subnet Manager to recompute tables. NVIDIA Quantum switches do this with Adaptive Routing, which replaces single-port lookups. Instead of binding a Destination LID to one fixed port, OpenSM or UFM programs a two-stage hardware lookup. It maps each destination to an Adaptive Routing group (AR group) of equal-cost egress ports. The first stage finds the group. The second stage picks one port from the group, using the load the switch can see right now.
 
 ```mermaid
 flowchart LR
@@ -251,7 +268,7 @@ flowchart LR
 | **Adaptive Routing Group (`AR_group`)** | OpenSM / UFM + Switch ASIC | Group of equal-cost egress ports (e.g., `{5, 6, 7, 8}`) | Lists all topologically valid, loop-free shortest-path ports reaching `DLID` |
 | **Switch ASIC AR Selector** | Quantum-2 / Quantum-X800 hardware | Sub-microsecond per-packet or per-flowlet evaluation | Evaluates local egress port utilization, `VL` queue depth, and downstream `FRN` notifications to pick the least-congested port (e.g., `Port 7` at `40 Gbps` instead of `Port 5` at `380 Gbps`) |
 
-When a packet arrives, the switch ASIC first checks the 16-bit Service Level bitmask, `ar_sl_mask`. It looks at the bit that matches the packet's Service Level. If that bit is one, the switch finds the destination's Adaptive Routing group and picks the least-loaded egress port. It judges load by local link load and transmit queue depth. If the bit is zero, hardware uses the static Linear Forwarding Table entry instead. This per-SL mask lets you keep bulk training collectives adaptive, while pinning legacy or diagnostic traffic to deterministic single-path forwarding.
+When a packet arrives, the switch ASIC first checks the 16-bit Service Level bitmask, `ar_sl_mask`. An ASIC is the custom switch chip that does the forwarding. It looks at the bit that matches the packet's Service Level. If that bit is one, the switch finds the destination's Adaptive Routing group and picks the least-loaded egress port. It judges load by local link load and transmit queue depth. If the bit is zero, hardware uses the static Linear Forwarding Table entry instead. This per-SL mask lets you keep bulk training collectives adaptive, while pinning legacy or diagnostic traffic to deterministic single-path forwarding. The mask is the switch that you turn per traffic class, rather than all at once for the whole fabric.
 
 ```text
 Static LFT vs Adaptive Routing Port Selection on Four 400.0 Gbps Leaf Uplinks (code/part12/infiniband_ar_cc.py):
@@ -264,17 +281,19 @@ Static LFT vs Adaptive Routing Port Selection on Four 400.0 Gbps Leaf Uplinks (c
   - Mode 3 (Selective Mask 0xFFF7):   Clears bit 3 (SL3) -> forces SL3 onto static LFT port 5 (580.0 Gbps, 180.0 Gbps excess) while SL0..2 and SL4..15 stay adaptive
 ```
 
-Compare the modes. Static forwarding pushes the flow onto port 5, which reaches 580.0 Gbps of offered load. Adaptive Routing sends the same flow to port 7 instead, so no uplink exceeds 380.0 Gbps. The selective mask keeps SL3 on static forwarding, while the other Service Levels stay adaptive.
+Compare the modes. Static forwarding pushes the flow onto port 5, which reaches 580.0 Gbps of offered load. Adaptive Routing sends the same flow to port 7 instead, so no uplink exceeds 380.0 Gbps. The selective mask keeps SL3 on static forwarding, while the other Service Levels stay adaptive. Read the three modes as three decisions about one arriving flow. The first decision is the worst, the second is the best, and the third shows that you can mix the two on purpose.
 
-Use `ar_sl_mask` to decide which traffic classes get adaptive routing.
+Use `ar_sl_mask` to decide which traffic classes get adaptive routing. Enable it for the classes that can tolerate reordering, and think carefully before you pin any class that carries large collectives.
 
 ### 3.3 Fast Notification and Self-Healing Interconnect
 
-Local port-load sensing fixes collisions on the uplinks attached to a leaf switch. It cannot see a broken cable or a saturated downlink beyond the spine. Suppose a link between a spine switch and a remote leaf switch fails. Every microsecond of a training step spent forwarding packets into that dead path stalls thousands of GPUs.
+Local port-load sensing fixes collisions on the uplinks attached to a leaf switch. It cannot see a broken cable or a saturated downlink beyond the spine. Suppose a link between a spine switch and a remote leaf switch fails. Every microsecond of a training step spent forwarding packets into that dead path stalls thousands of GPUs. A microsecond is one millionth of a second, which is too short to see on a clock but long enough to matter to a packet train on a 400 Gbps wire.
 
-Without autonomous healing in the switches, a link failure sends an InfiniBand Trap 128 message to the master Subnet Manager. OpenSM then runs a heavy sweep. It rediscovers the topology, recomputes forwarding tables and pushes updated blocks across the fabric. In a large cluster that loop takes roughly half a second. During that time, gigabytes of line-rate traffic pile up behind the dead port.
+Without autonomous healing in the switches, a link failure sends an InfiniBand Trap 128 message to the master Subnet Manager. OpenSM then runs a heavy sweep. It rediscovers the topology, recomputes forwarding tables and pushes updated blocks across the fabric. In a large cluster that loop takes roughly half a second. During that time, gigabytes of line-rate traffic pile up behind the dead port. The control plane is correct, but it is slow compared with the traffic it protects.
 
-On Quantum-2 and Quantum-X800 switches, the Self-Healing Interconnect and Fast Routing Notification run in switch silicon. When a switch detects a local link failure, or severe downstream congestion toward a destination group, it removes the failed port from its local Adaptive Routing group at once. It then sends hardware notification packets to neighboring switches. Upstream switches prune the affected path from their forwarding sub-tables in about ten microseconds. That cuts the data at risk by fifty thousand times compared with a control-plane sweep.
+This gap in speed is why the chapter keeps returning to hardware. Software can make the right decision and still arrive too late. A fast path that lives in the silicon is the only kind that can act inside the time a training step is willing to wait.
+
+On Quantum-2 and Quantum-X800 switches, the Self-Healing Interconnect and Fast Routing Notification run in switch silicon. When a switch detects a local link failure, or severe downstream congestion toward a destination group, it removes the failed port from its local Adaptive Routing group at once. It then sends hardware notification packets to neighboring switches. Upstream switches prune the affected path from their forwarding sub-tables in about ten microseconds. That cuts the data at risk by fifty thousand times compared with a control-plane sweep. The fix happens in the hardware, so no software has to wake up and decide first.
 
 ```text
 Link-Failure Recovery Comparison on a 400.0 Gbps (50,000 B/us) Link (V8 Ch. 5, superpod-gb300-ra, code/part12/infiniband_ar_cc.py):
@@ -285,15 +304,17 @@ Link-Failure Recovery Comparison on a 400.0 Gbps (50,000 B/us) Link (V8 Ch. 5, s
                                         In-flight data at risk at 400.0 Gbps = 10 us x 50,000 B/us = 500,000 bytes (500 KB) -> 50,000x (50,000.0x) speedup
 ```
 
-Work through the block. Control-plane recovery leaves 25 GB in flight. Hardware pruning leaves 500 KB, which is the fifty-thousand-fold difference.
+Work through the block. Control-plane recovery leaves 25 GB in flight. Hardware pruning leaves 500 KB, which is the fifty-thousand-fold difference. The reason is simple. The data at risk is the rate multiplied by the time, so a shorter time gives a proportionally smaller pile of data.
 
 ### 3.4 Out-of-Order packet delivery and ConnectX HCA hardware reordering
 
-Adaptive Routing spreads the packets of one Queue Pair across several paths. Those paths have different queue depths, so packets reach the destination HCA out of sequence. Under strict traditional InfiniBand Reliable Connection transport, a packet with a higher Packet Sequence Number than expected triggers a sequence-gap Negative Acknowledgment (NAK). That forces a Go-Back-N retransmission. The retransmissions waste link bandwidth and destroy collective tail latency.
+Adaptive Routing spreads the packets of one Queue Pair across several paths. Those paths have different queue depths, so packets reach the destination HCA out of sequence. Think of two cars sent on different roads to the same town. The car on the faster road can arrive first, even though it left second. Under strict traditional InfiniBand Reliable Connection transport, a packet with a higher Packet Sequence Number than expected triggers a sequence-gap Negative Acknowledgment (NAK). A NAK is the receiver's message that says a packet is missing. That forces a Go-Back-N retransmission, which means the sender replays everything from the missing packet onward. The retransmissions waste link bandwidth and destroy collective tail latency.
 
-Modern ConnectX-6, ConnectX-7, ConnectX-8 and BlueField-3 adapters eliminate this penalty with hardware out-of-order packet reordering. During Queue Pair setup, the adapter turns on an on-chip reorder buffer window. That window lets RDMA Write and Send payloads land out of order. When slightly out-of-order packets arrive inside the window, the HCA places each payload straight into target memory. It holds the completion until the missing sequence number arrives.
+Modern ConnectX-6, ConnectX-7, ConnectX-8 and BlueField-3 adapters eliminate this penalty with hardware out-of-order packet reordering. During Queue Pair setup, the adapter turns on an on-chip reorder buffer window. That window lets RDMA Write and Send payloads land out of order. When slightly out-of-order packets arrive inside the window, the HCA places each payload straight into target memory. It holds the completion until the missing sequence number arrives. The application sees the packets complete in order, even though they arrived out of order.
 
-Now consider an adapter where hardware reordering is disabled, or where the reordering limit is exceeded. Adaptive Routing or aggressive congestion settings can raise average bandwidth there, while tail latency degrades badly. Every rank in a synchronized collective waits at a barrier for the slowest rank. So a fivefold jump in 99th-percentile latency slows the whole training step, even when median latency improves.
+Now consider an adapter where hardware reordering is disabled, or where the reordering limit is exceeded. Adaptive Routing or aggressive congestion settings can raise average bandwidth there, while tail latency degrades badly. Every rank in a synchronized collective waits at a barrier for the slowest rank. So a fivefold jump in 99th-percentile latency slows the whole training step, even when median latency improves. The median describes a typical packet, but the barrier waits for the worst one.
+
+That is why a benchmark that reports only an average can look like a success while the training job gets slower. An engineer who sees a better median should ask a second question at once, which is what happened to the slowest packets. The answer usually determines whether the change is safe to keep.
 
 ```text
 ConnectX Hardware OOO Reordering & Tail-Latency Regression (V8 Ch. 7 Scenario 3, ADC Ch. 6, code/part12/infiniband_ar_cc.py):
@@ -307,7 +328,7 @@ ConnectX Hardware OOO Reordering & Tail-Latency Regression (V8 Ch. 7 Scenario 3,
       Impact:         p50 improved (3.1 us -> 2.4 us), but p99 inflated 5.36x (7.2 us -> 38.6 us) and max inflated 12.35x (9.1 us -> 112.4 us)
 ```
 
-In the trace, the reorder window absorbs the out-of-order arrivals, so the stream is delivered in order with no NAKs. The median improved after tuning, but the p99 rose 5.36 times and the maximum rose 12.35 times. Those tail numbers are what the barrier waits for.
+In the trace, the reorder window absorbs the out-of-order arrivals, so the stream is delivered in order with no NAKs. The median improved after tuning, but the p99 rose 5.36 times and the maximum rose 12.35 times. Those tail numbers are what the barrier waits for. A percentile is the value that a given share of the packets stay under, so p99 describes the slowest one packet in a hundred.
 
 Before you enable aggressive Adaptive Routing settings, confirm that hardware reordering is on for every adapter. Then judge the result by tail percentiles, not medians.
 
@@ -315,13 +336,17 @@ Before you enable aggressive Adaptive Routing settings, confirm that hardware re
 
 ## 4. InfiniBand Congestion Control
 
+Adaptive Routing moves traffic to free paths, but a free path is not always there. Some bottlenecks sit at the very end of the route, where no other path exists. This section explains why routing cannot fix those cases, and it walks through the hardware loop that slows the senders down instead.
+
 ### 4.1 Why Adaptive Routing needs Congestion Control
 
-Adaptive Routing spreads traffic across alternate spine paths. That fixes uplink imbalance when spare links exist. It cannot fix two structural bottlenecks, though, and both appear constantly in production AI clusters.
+Adaptive Routing spreads traffic across alternate spine paths. That fixes uplink imbalance when spare links exist. It cannot fix two structural bottlenecks, though, and both appear constantly in production AI clusters. A structural bottleneck is one that exists in the shape of the network, rather than in how the traffic is spread across it.
 
-The first is destination incast. Suppose eight or sixty-four senders write RDMA data to one storage server, or to one parameter-server HCA port, at the same moment. Every alternate spine path eventually converges on that one destination leaf egress port. No alternate path exists for the final hop to the target host. So spreading packets across the spine does nothing for the bottleneck.
+The first is destination incast. Suppose eight or sixty-four senders write RDMA data to one storage server, or to one parameter-server HCA port, at the same moment. Every alternate spine path eventually converges on that one destination leaf egress port. No alternate path exists for the final hop to the target host. So spreading packets across the spine does nothing for the bottleneck. The whole crowd has to pass through the same single door at the end.
 
-The second is an oversubscribed topology cut. Suppose a leaf switch has twice as much downlink bandwidth from compute nodes as uplink bandwidth to the spine tier. If every node runs a cross-rack AllReduce at once, the offered load exceeds the uplink capacity. That holds even when every uplink is balanced perfectly.
+The second is an oversubscribed topology cut. Suppose a leaf switch has twice as much downlink bandwidth from compute nodes as uplink bandwidth to the spine tier. If every node runs a cross-rack AllReduce at once, the offered load exceeds the uplink capacity. That holds even when every uplink is balanced perfectly. Balancing cannot create bandwidth that the wires do not have.
+
+The practical lesson is to measure the ratio of downlink to uplink capacity before you blame the routing. If the ratio is already high, no routing table can make the job run at full speed. In that case the right conversation is about adding uplinks, moving work to another rack or accepting a slower step for that job.
 
 ```text
 Structural Bottlenecks That Adaptive Routing Cannot Solve (V8 Ch. 6 & Ch. 7):
@@ -331,13 +356,19 @@ Structural Bottlenecks That Adaptive Routing Cannot Solve (V8 Ch. 6 & Ch. 7):
                                         Paired ib_write_bw drops from 397.62 Gbps (same-leaf) to 201.18 Gbps (cross-rack, 1.98:1 ratio)
 ```
 
-Here is the arithmetic for the oversubscribed case. Sixteen 400 Gbps downlinks carry 6,400 Gbps. Eight uplinks of the same speed carry 3,200 Gbps. That 2:1 ratio caps each node at 200.0 Gbps. A 2 GB AllReduce step therefore doubles in time. It goes from 40.0 ms to 80.0 ms. The paired `ib_write_bw` test shows the same effect. Throughput drops from 397.62 Gbps on the same leaf to 201.18 Gbps across racks. That is a 1.98:1 ratio.
+Here is the arithmetic for the oversubscribed case.
 
-Without source rate regulation, both cases do the same damage. The bottleneck egress buffer fills, downstream 64-byte credits run out, and a congestion tree grows across the fabric. InfiniBand Congestion Control stops that growth. It throttles only the offending source Queue Pairs, before downstream credits run out.
+The arithmetic is worth doing slowly once, because the same pattern appears in many designs. Start with the downlink total, then the uplink total, then the ratio. Only after the ratio is clear should you divide the job's data by the per-node rate to get a step time. Each step is simple, and skipping one of them is how people end up with a plausible but wrong estimate. Sixteen 400 Gbps downlinks carry 6,400 Gbps. Eight uplinks of the same speed carry 3,200 Gbps. That 2:1 ratio caps each node at 200.0 Gbps. A 2 GB AllReduce step therefore doubles in time. It goes from 40.0 ms to 80.0 ms. The paired `ib_write_bw` test shows the same effect. Throughput drops from 397.62 Gbps on the same leaf to 201.18 Gbps across racks. That is a 1.98:1 ratio.
+
+Without source rate regulation, both cases do the same damage.
+
+It helps to name the two cases side by side. In the first, many senders share one destination port. In the second, many nodes share too few uplinks. The two look different on the topology diagram, yet both fill the same kind of buffer and both start the same congestion tree. A single control loop can respond to either one, which is why Congestion Control is worth understanding even when routing looks healthy. The bottleneck egress buffer fills, downstream 64-byte credits run out, and a congestion tree grows across the fabric. InfiniBand Congestion Control stops that growth. It throttles only the offending source Queue Pairs, before downstream credits run out. The throttle is the brake that the senders apply to themselves, after a signal tells them the road ahead is full.
+
+Self-regulation has a major advantage over a central controller. The sender sees the congestion within a few round trips, and it reacts without waiting for a manager to decide. That speed is what lets the fabric stay ahead of the credit exhaustion described earlier in the chapter.
 
 ### 4.2 The 3-stage FECN, BECN, and CCTI hardware control loop
 
-InfiniBand Congestion Control runs as a closed hardware loop with three stages. It spans Quantum switches and ConnectX HCAs. When a switch egress queue crosses its configured congestion threshold, and that port is the true root of contention, the switch marks outgoing packets. The receiver then reflects a notification back to the sender. The source HCA paces its packet injection rate in response.
+InfiniBand Congestion Control runs as a closed hardware loop with three stages. It spans Quantum switches and ConnectX HCAs. When a switch egress queue crosses its configured congestion threshold, and that port is the true root of contention, the switch marks outgoing packets. The receiver then reflects a notification back to the sender. The source HCA paces its packet injection rate in response. A loop here means the signal goes out and comes back, and the sender uses the returning signal to adjust itself.
 
 ```mermaid
 sequenceDiagram
@@ -359,17 +390,19 @@ sequenceDiagram
 | **2. Notification / Reflection (Destination HCA)** | `BTH` `BECN` (`1` bit, Backward Explicit Congestion Notification) | Destination HCA receives a packet with `FECN == 1` | Destination HCA increments its Marked Packet counter and transmits an `ACK` or explicit Congestion Notification Packet (`CNP`) back to the source `LID`/`QP` with `BECN = 1` |
 | **3. Source Reaction & Recovery (Source HCA)** | Congestion Control Table (`CCT`, `128` entries `0..127`) & `CCTI` | Source HCA receives `BECN == 1` or its periodic `CCTI_Timer` expires without `BECN` | On `BECN = 1`: `CCTI = min(CCTI_Limit, CCTI + CCTI_Increase)`, increasing inter-packet injection delay. On `CCTI_Timer` expiry: `CCTI = max(CCTI_Min, CCTI - 1)`, smoothly restoring full line rate |
 
-If you read the table top to bottom, you see one loop. Stage 1 marks the packet, stage 2 returns the signal, and stage 3 slows the sender and then lets it recover.
+If you read the table top to bottom, you see one loop. Stage 1 marks the packet, stage 2 returns the signal, and stage 3 slows the sender and then lets it recover. The diagram shows the same three steps in time order, so you can follow one packet from the sender to the receiver and back.
 
 ### 4.3 Worked numerical trace of the CCTI rate-throttling state machine
 
-The Congestion Manager in OpenSM or UFM programs each HCA with a 128-entry Congestion Control Table (CCT). It also sets four control registers for each Service Level: a minimum index, a maximum index limit, an index step increase, and a recovery timer. The standard inter-packet delay model gives the effective injection rate on a line-rate port:
+The Congestion Manager in OpenSM or UFM programs each HCA with a 128-entry Congestion Control Table (CCT). A table entry is a row that says how much to slow down at that index. The manager also sets four control registers for each Service Level: a minimum index, a maximum index limit, an index step increase, and a recovery timer. The index that the sender is currently using is called the CCTI. The standard inter-packet delay model gives the effective injection rate on a line-rate port:
 
 $$
 R_{\text{inj}}(\text{CCTI}) = \frac{R_{\text{line}}}{1 + \frac{\text{CCTI}}{32}}
 $$
 
-While switch queue occupancy stays below the threshold, the index stays at zero. The sender then transmits at full line rate. Each arriving BECN packet raises the index by the configured step. The extra delay between packets lets the downstream buffer drain before flow-control credits run out. After BECN notifications stop, each recovery timer expiry lowers the index by one. The Queue Pair returns smoothly to full line rate.
+While switch queue occupancy stays below the threshold, the index stays at zero. The sender then transmits at full line rate. Each arriving BECN packet raises the index by the configured step. The extra delay between packets lets the downstream buffer drain before flow-control credits run out. After BECN notifications stop, each recovery timer expiry lowers the index by one. The Queue Pair returns smoothly to full line rate. The rise is quick and the recovery is gradual, which keeps the fabric from swinging back and forth between full speed and a stall.
+
+The asymmetry is a deliberate design choice. If the sender recovered as quickly as it slowed, a burst of traffic would push it down, a short quiet period would push it back up, and the cycle would repeat. That swing is called oscillation, and it wastes capacity on both ends of the swing. A slow recovery gives the buffers time to drain before the sender pushes again.
 
 ```text
 Worked 5-Step Trace of the IB Congestion Control State Machine on a 400.0 Gbps NDR Port (code/part12/infiniband_ar_cc.py):
@@ -381,7 +414,11 @@ Worked 5-Step Trace of the IB Congestion Control State Machine on a 400.0 Gbps N
   - Step 5 (CCTI_Timer Recovery):      switch_queue = 20% (< 50%), CCTI: 32..1->0  -> FECN = 0, BECN = 0, timer decrements CCTI by 1 per tick -> R_inj = 400.0 Gbps restored at CCTI = 0
 ```
 
-Walk the five steps in order. The index climbs as the queue fills, and the sender's rate falls at each step. At the severe-incast step, the CCTI_Limit of 127 clamps the index. When the queue drains below the threshold, the timer brings the index back to zero.
+Walk the five steps in order.
+
+Read the steps as a short story. The network starts calm, then a wave of traffic arrives, then the wave grows, then the wave peaks at the ceiling, and finally the wave passes and the network calms again. Each step is one moment in that story, and the rate column shows how much the sender gave up at that moment. The recovery at the end matters just as much as the slowdown, because it proves that the loop has a way back to full speed. The index climbs as the queue fills, and the sender's rate falls at each step. At the severe-incast step, the CCTI_Limit of 127 clamps the index. When the queue drains below the threshold, the timer brings the index back to zero. Notice that the sender never has to guess the cause.
+
+This is a useful design principle outside InfiniBand too. A control loop works best when each side acts only on signals it can actually observe, and when it relaxes as soon as those signals stop. A sender that tried to guess the reason for a slowdown would often guess wrong. It reacts only to the marks it receives, and it stops reacting when the marks stop.
 
 ### 4.4 Architectural comparison: Adaptive Routing vs Congestion Control vs Placement vs Capacity
 
@@ -394,19 +431,23 @@ The table compares four tools. Use it to pick the right one for each bottleneck.
 | **Workload / Rank Placement** | Scheduler co-locates communicating ranks under the same leaf or aligns rails | Avoidable cross-rack traffic concentration and multi-tenant uplink sharing | Full-cluster synchronous `AllToAll` or `AllReduce` spanning every rack simultaneously |
 | **Physical Capacity Expansion** | Add spine switches, leaf uplinks (`8 -> 16`), or upgrade NDR (`400G`) to XDR (`800G`) | Structural oversubscription (`2:1 -> 1:1`) when all uplinks are already balanced and saturated | Static routing hash collisions or faulty transceivers |
 
-When a bottleneck is structural, choose capacity or placement. The other mechanisms cannot fix missing bandwidth in the topology.
+When a bottleneck is structural, choose capacity or placement. The other mechanisms cannot fix missing bandwidth in the topology. Adaptive Routing and Congestion Control are the right tools when the bandwidth exists but is unevenly used. Placement and capacity are the right tools when it does not exist at all.
 
 ---
 
 ## 5. Multi-tenancy, SuperPOD scale, and operational observability
 
+A shared fabric serves more than one team, and its counters serve more than one purpose. This section covers how tenants share a fabric safely, how the largest reference designs use the same mechanisms, and how to read counters that only ever go up.
+
 ### 5.1 Multi-tenant isolation: why Partition Keys do not prevent congestion interference
 
-Suppose a shared InfiniBand cluster runs training collectives, latency-sensitive inference and GPUDirect Storage on one fabric. Architects often assume that Partition Keys isolate tenant performance. That assumption fails under load. Partition Keys enforce logical addressability and security membership. They stop a Queue Pair in Tenant A from reading or writing memory in Tenant B.
+Suppose a shared InfiniBand cluster runs training collectives, latency-sensitive inference and GPUDirect Storage on one fabric. Architects often assume that Partition Keys isolate tenant performance. That assumption fails under load. Partition Keys enforce logical addressability and security membership. They stop a Queue Pair in Tenant A from reading or writing memory in Tenant B. A partition is a fence around who may talk to whom, and the fence does its job well.
 
-Partition Keys do not split physical link bandwidth or switch buffer credits, though. Say two tenants land on nodes under the same leaf switches, and both map to the same default Service Level and Virtual Lane. One tenant's AllToAll burst can then exhaust VL0 credits on the shared spine links. The congestion tree stalls the other tenant.
+Partition Keys do not split physical link bandwidth or switch buffer credits, though.
 
-True isolation for multi-tenant or mixed workloads needs four operational controls, layered together. The first is topology-aware scheduler placement. Give a large training job entire leaf switches or Scalable Units whenever possible. The second is dedicated Service Levels and Virtual Lanes for latency-sensitive inference and storage traffic. Those classes also get weighted arbitration and independent 64-byte credit pools. The third is Adaptive Routing with Congestion Control, so no single tenant pins a spine uplink or monopolizes downstream buffers. The fourth is joining per-port telemetry counters with scheduler placement metadata and hardware GUID inventory.
+This is a point that often surprises teams who are new to shared InfiniBand clusters. A Partition Key is a checkpoint at the door of each tenant, and it checks the ticket before a packet enters. The checkpoint does not decide how many packets can share a road once they are inside. For that, the fabric needs lanes, credits and placement, which are separate tools with separate jobs. Say two tenants land on nodes under the same leaf switches, and both map to the same default Service Level and Virtual Lane. One tenant's AllToAll burst can then exhaust VL0 credits on the shared spine links. The congestion tree stalls the other tenant. Two tenants can be fenced apart on paper and still wait in the same line at the same checkout.
+
+True isolation for multi-tenant or mixed workloads needs four operational controls, layered together. The first is topology-aware scheduler placement. Give a large training job entire leaf switches or Scalable Units whenever possible. A Scalable Unit is a block of nodes and switches that is built and managed as one piece. The second is dedicated Service Levels and Virtual Lanes for latency-sensitive inference and storage traffic. Those classes also get weighted arbitration and independent 64-byte credit pools. Arbitration is the switch's rule for which waiting packet goes next. The third is Adaptive Routing with Congestion Control, so no single tenant pins a spine uplink or monopolizes downstream buffers. The fourth is joining per-port telemetry counters with scheduler placement metadata and hardware GUID inventory. A GUID is the permanent identifier of a device, so it ties a counter to a physical box even after its LID changes.
 
 ```text
 Multi-Tenant & Storage Protocol Context on Shared InfiniBand Fabrics (ADC Ch. 9, V8 Ch. 7 & Ch. 11):
@@ -415,11 +456,13 @@ Multi-Tenant & Storage Protocol Context on Shared InfiniBand Fabrics (ADC Ch. 9,
   - 4-Layer Isolation Stack:     (1) Topology-aware SU/leaf placement, (2) SL2VL + VLArbitration credit separation, (3) AR + IB CC (FECN/BECN/CCTI), (4) GUID-joined telemetry
 ```
 
-The four layers in the block match the four controls above, in the same order.
+The four layers in the block match the four controls above, in the same order. Read them as a stack. Each layer covers a gap that the layer below it leaves open.
+
+Stacks like this are easy to build and easy to forget. A team may set up the placement layer and assume the isolation layer is handled, or enable adaptive routing and assume the telemetry layer will reveal problems on its own. Walking the stack from the bottom up, and asking which gap each layer leaves, is a good review habit before a new tenant moves in.
 
 ### 5.2 Scale-out reference points: DGX B200 NDR and DGX GB300 Quantum-X800 SuperPODs
 
-Production cluster geometry shows how Adaptive Routing and Congestion Control get used at scale. Compare the NVIDIA DGX B200 NDR SuperPOD with the NVIDIA DGX GB300 Quantum-X800 SuperPOD. In the DGX B200 design, each Scalable Unit uses 400 Gbps Quantum-2 switches. One physical UFM appliance goes into the first Scalable Unit, which displaces one compute node. In the DGX GB300 design, 144-port Quantum-X800 switches run at 800 Gbps. They scale a two-layer, rail-aligned fat-tree up to 9,216 GPUs. That design uses Adaptive Routing and SHARP in-network reductions, with SHIELD self-healing enabled across all rails.
+Production cluster geometry shows how Adaptive Routing and Congestion Control get used at scale. Compare the NVIDIA DGX B200 NDR SuperPOD with the NVIDIA DGX GB300 Quantum-X800 SuperPOD. In the DGX B200 design, each Scalable Unit uses 400 Gbps Quantum-2 switches. One physical UFM appliance goes into the first Scalable Unit, which displaces one compute node. In the DGX GB300 design, 144-port Quantum-X800 switches run at 800 Gbps. They scale a two-layer, rail-aligned fat-tree up to 9,216 GPUs. That design uses Adaptive Routing and SHARP in-network reductions, with SHIELD self-healing enabled across all rails. SHARP is the in-network reduction feature that lets the switches add up the data while it passes through them.
 
 ```text
 Reference SuperPOD Fabric Topologies & Cabling Envelopes (superpod-b200-dc, superpod-gb300-ra, V8 Ch. 12):
@@ -436,13 +479,17 @@ Reference SuperPOD Fabric Topologies & Cabling Envelopes (superpod-b200-dc, supe
      - 16 SUs (9,216 GPUs): 128 leaf switches, 72 spine switches (two-layer fat-tree with AR, SHARP, and SHIELD enabled)
 ```
 
-Read the B200 rows for cable counts and the GB300 rows for switch counts. Each row adds Scalable Units and grows the leaf and spine tiers with them.
+Read the B200 rows for cable counts and the GB300 rows for switch counts. Each row adds Scalable Units and grows the leaf and spine tiers with them. The rows show the scale of a design, not a parts list you can copy. Check each row against the power and cable rules before you order anything.
+
+Reference designs are useful because they show how the parts fit together, but they assume a specific building, power budget and cable run. Before you copy a row, confirm that your room can supply the power and that your cable lengths stay inside the stated limits. A design that fits on paper but not in the room will cost time later.
 
 ### 5.3 Rate-of-change alerting versus cumulative counter scar tissue
 
-Counters from `perfquery` and UFM only go up, counting from the last counter clear or switch reboot. If you alert whenever a counter is above zero, you get two bad outcomes. You get false alarms about old history, and you miss slowly dying optics.
+Counters from `perfquery` and UFM only go up, counting from the last counter clear or switch reboot. If you alert whenever a counter is above zero, you get two bad outcomes. You get false alarms about old history, and you miss slowly dying optics. Scar tissue is the name for an old error count that stays on the counter long after the event that caused it.
 
-Suppose two snapshots, taken five minutes apart under active traffic, show the same nonzero `SymbolErrorCounter`. The delta is zero. That number is old scar tissue from an earlier cable seating event, not an active fault. Now take a port that starts with a tiny error count on Day 1. If its error rate accelerates forty-five times over a single week, and link-down recoveries rise with it, the optical transceiver is failing. It has to be replaced before it triggers continuous Trap 128 sweeps.
+Suppose two snapshots, taken five minutes apart under active traffic, show the same nonzero `SymbolErrorCounter`. The delta is zero. That number is old scar tissue from an earlier cable seating event, not an active fault. Now take a port that starts with a tiny error count on Day 1. If its error rate accelerates forty-five times over a single week, and link-down recoveries rise with it, the optical transceiver is failing. It has to be replaced before it triggers continuous Trap 128 sweeps. The rate of change is the signal, and the total is only the history.
+
+In practice, the simplest alert is a rate check over a fixed window. Compare the counter now with the counter at the start of the window, and page the on-call engineer only when the difference crosses an agreed threshold. The historical total stays on the dashboard for context, where it can explain a trend without raising false alarms.
 
 ```text
 Cumulative Scar Tissue vs Error-Rate Acceleration in perfquery (V8 Ch. 9):
@@ -465,9 +512,13 @@ Alert on the rate of change, not on the raw counter total.
 
 Every fabric diagnostic command below is read-only unless noted. Each one is marked `(untested here)`, because no live InfiniBand HCA or Quantum switch is attached to this build environment.
 
+The honest status is simple. The commands and their outputs were not run against a live InfiniBand adapter or switch, so the values in this section are the expected reference rather than a record of a measured fabric. When you run them on your own hardware, record the real output and compare it with the reference, field by field. Treat the commands as a checklist to run in order on a real node, and keep the output next to the expected values in this section.
+
+Keeping the outputs side by side makes each later incident faster to read. A new reading that matches the baseline closes a question quickly, and a reading that differs points you straight at the field that changed.
+
 ### 1. Endpoint HCA, port state, and SM authority baseline
 
-Before you investigate routing or congestion, check that every local HCA is in the Active logical state. Its physical state should be LinkUp at the design rate, with valid endpoint and Subnet Manager LIDs. Then confirm with `sminfo` that one authoritative Master Subnet Manager is active. Its activity count should keep rising.
+Before you investigate routing or congestion, check that every local HCA is in the Active logical state. Its physical state should be LinkUp at the design rate, with valid endpoint and Subnet Manager LIDs. Then confirm with `sminfo` that one authoritative Master Subnet Manager is active. Its activity count should keep rising. A baseline is the set of known-good values that every later reading is measured against, so write these down while the fabric is healthy.
 
 ```text
 Expected Endpoint HCA & Subnet Manager Baseline Values (V8 Lab 01 & Ch. 5):
@@ -492,9 +543,11 @@ sminfo
 
 Compare your own output against these values before you move on.
 
+Compare each field as a pair. A field that matches the baseline needs no further action. A field that differs needs a short note, which records whether the difference is a fault or a valid change in the design. Keeping those notes is what makes the next incident faster to read. If a value differs, decide whether the difference is a real fault or a different but valid design, and write the reason down.
+
 ### 2. Inspecting OpenSM Adaptive Routing, SHIELD, and SL2VL configuration
 
-Open `/etc/opensm/opensm.conf` first. Check that an Adaptive Routing engine is active, and that `ar_sl_mask` enables the Service Levels you intend. Then run `ibroute` and `ibdiagnet`. They confirm valid Adaptive Routing groups and zero credit loops across the subnet.
+Open `/etc/opensm/opensm.conf` first. Check that an Adaptive Routing engine is active, and that `ar_sl_mask` enables the Service Levels you intend. Then run `ibroute` and `ibdiagnet`. They confirm valid Adaptive Routing groups and zero credit loops across the subnet. The configuration file is the intent, and the two tools show whether the hardware agrees with that intent.
 
 ```ini
 # (untested here) /etc/opensm/opensm.conf excerpt for Adaptive Routing + SHIELD + QoS
@@ -518,7 +571,7 @@ ibdiagnet --routing
 
 ### 3. Sampling `PortXmitData`, `PortXmitWait`, and physical errors without clearing counters
 
-During live incident triage, never pass `-R` to `perfquery`, and never pass `-k` or `-K` to `ibqueryerrors`. Resetting counters erases the historical gradient you need to locate the root port. Sample before and after a fixed observation window instead, and compute the deltas.
+During live incident triage, never pass `-R` to `perfquery`, and never pass `-k` or `-K` to `ibqueryerrors`. Resetting counters erases the historical gradient you need to locate the root port. Sample before and after a fixed observation window instead, and compute the deltas. A window is the stretch of time you watch, and the deltas tell you what happened inside it.
 
 ```bash
 # (untested here) Compare PortXmitWait, SymbolErrorCounter, and LinkDownedCounter on a switch
@@ -535,7 +588,7 @@ ibqueryerrors > counters_after.txt
 
 ### 4. Benchmarking NUMA-pinned pairwise bandwidth and tail latency
 
-Always bind RDMA microbenchmarks to the CPU and memory of the NUMA node local to the HCA under test. Read the 99% and 99.9% latency percentiles in `ib_write_lat`. A normal median can hide packet-reordering or credit-wait tail spikes, so look at the tails.
+Always bind RDMA microbenchmarks to the CPU and memory of the NUMA node local to the HCA under test. NUMA stands for non-uniform memory access, which means a CPU reaches the memory on its own socket faster than the memory on the other socket. Read the 99% and 99.9% latency percentiles in `ib_write_lat`. A normal median can hide packet-reordering or credit-wait tail spikes, so look at the tails.
 
 ```text
 Expected Pairwise Bandwidth & Tail-Latency Benchmarks (V8 Ch. 6 Scenario 3, Ch. 10 Step 6, Labs 02 & 04):
@@ -555,9 +608,11 @@ numactl --cpunodebind=0 --membind=0 ib_write_lat -d mlx5_0 -i 1 -F <server-ip>
 
 Run the read-only commands first, and change the config file only after the baselines match.
 
+Each benchmark in this section is a test of the path, not a test of the application. A slow result is a reason to check the path before blaming the training code. The `perfquery` counters from the earlier commands should tell you whether the path was busy during the run, which is the context you need to read the benchmark correctly.
+
 ## How it fails
 
-Each row pairs a symptom with the evidence that points to its cause. Find the symptom in the first column, then check the evidence before you act on the remediation. If you skip the evidence, you may fix the wrong layer.
+Each row pairs a symptom with the evidence that points to its cause. Find the symptom in the first column, then check the evidence before you act on the remediation. If you skip the evidence, you may fix the wrong layer. The six rows cover the failures that show up most often on a healthy-looking fabric.
 
 | Failure Mode | Observable Symptom | Root Cause & Diagnostic Evidence | Remediation |
 |---|---|---|---|
@@ -572,13 +627,17 @@ Work from the symptom to the root cause, confirm the evidence, and only then app
 
 Fix the physical layer first when the error counters rise, and tune congestion only after they stay flat.
 
+A practical habit is to write the decision down before you change anything. Record the counter values, the symptom, the hypothesis and the change you plan to make. When the result comes in, compare it to the written hypothesis. That habit keeps a long incident from turning into a series of guesses.
+
 ---
 
 ## Hands-on lab
 
 ### Venue and scope
 
-This is a self-checking Python simulation. It runs on any workstation or Nebius GPU instance, and it uses only the Python 3 standard library. The code lives in `code/part12/infiniband_ar_cc.py` and `code/part12/infiniband_ar_cc_lab.py`. The lab models per-Virtual-Lane 64-byte credit accounting and Head-of-Line victim-buffer isolation. It checks credit-loop cycle detection, and it compares static LFT forwarding with dynamic Adaptive Routing group selection. It also covers SHIELD against OpenSM link-failure recovery, ConnectX out-of-order PSN reordering, the FECN/BECN/CCTI rate-control loop, and `perfquery` counter classification. There are 28 automated assertions in total.
+This is a self-checking Python simulation. It runs on any workstation or Nebius GPU instance, and it uses only the Python 3 standard library. The code lives in `code/part12/infiniband_ar_cc.py` and `code/part12/infiniband_ar_cc_lab.py`. The lab models per-Virtual-Lane 64-byte credit accounting and Head-of-Line victim-buffer isolation. It checks credit-loop cycle detection, and it compares static LFT forwarding with dynamic Adaptive Routing group selection. It also covers SHIELD against OpenSM link-failure recovery, ConnectX out-of-order PSN reordering, the FECN/BECN/CCTI rate-control loop, and `perfquery` counter classification. There are 28 automated assertions in total. The simulator checks the rules offline, so you can rehearse the arithmetic before you touch a fabric.
+
+Each group of checks in the lab maps to one part of the chapter. The credit checks follow the first section, the routing checks follow the third, and the congestion loop checks follow the fourth. The telemetry checks at the end follow the second section. Reading the check names with that map in mind shows you which part of the chapter to reread when a check fails.
 
 ### Run the lab (tested here)
 
@@ -588,7 +647,7 @@ python3 -B code/part12/infiniband_ar_cc_lab.py
 
 ### Expected output (28 passed, 0 failed)
 
-Your output should match this block, with all 28 checks passing and none failing.
+Your output should match this block, with all 28 checks passing and none failing. The lab steps in this section were not run on a live fabric, so the block is the reference you compare against.
 
 ```text
 === Chapter 12.8 Lab: InfiniBand Adaptive Routing and Congestion Control ===
@@ -626,11 +685,15 @@ Summary: 28 passed, 0 failed out of 28 checks.
 
 The summary line at the bottom is the one to check first.
 
+Treat the summary as a gate for the whole lab. If the count matches, the simulator agrees with the chapter, and you can trust the worked examples that depend on it. If the count does not match, do not move on to the exercises until the difference is explained, because the exercises reuse the same rules. If it reads anything other than 28 passed and 0 failed, find the failing check and reread the section that owns it.
+
 ---
 
 ## Common first mistakes
 
 Each of the five mistakes below sends you to the wrong fix.
+
+Several of these mistakes share one root. Each one treats a single number as the whole story, whether that number is a counter total, a median latency or a link LED. The fix in every case is to read the evidence in context, and to check the second number before acting on the first. They are common because each one looks like a reasonable first move when the job is slow and the links look healthy.
 
 1. Clearing hardware counters during an active incident is a mistake. Passing `-R` to `perfquery`, or `-k` to `ibqueryerrors`, destroys the accumulated `PortXmitWait` gradient and the `SymbolErrorCounter` acceleration history. That history is what separates multi-day optical degradation from a transient burst. Always sample two read-only snapshots and subtract them. If you do, the history stays intact for the diagnosis.
 2. Replacing optical cables on ports with high `PortXmitWait` and zero symbol errors is a mistake. High `PortXmitWait` with zero `SymbolErrorCounter` and zero `LinkDownedCounter` measures time spent waiting for downstream flow-control credits. It does not measure physical media errors. Ignoring rising symbol and link-down counters on a port, just because its `PortXmitWait` is small, leaves a broken link in the fabric.
@@ -642,26 +705,40 @@ Each of the five mistakes below sends you to the wrong fix.
 
 ## Exercises
 
-Work through these yourself. You will need the parameters given below each exercise, so check your working against them as you go.
+Work through these yourself.
 
+These exercises are designed to be worked on paper first. The arithmetic is short, but each step depends on the step before it, so an early slip carries into the answer. Keep a small table of the parameters beside you, and write each intermediate value on its own line. When you finish, compare your final answer with the chapter text rather than with a memory of it. You will need the parameters given below each exercise, so check your working against them as you go. Read each exercise once without a pencil, then work the arithmetic on paper. Each question below asks for one result, so answer them in order.
 
 1. Work through per-VL credit accounting and victim buffer isolation.
-   - Say how many Virtual Lanes InfiniBand supports per link, which lane is reserved for Subnet Management Packets, and how many bytes one credit represents.
-   - Compute the total credits, the available credits, and whether a packet can transmit, using the VL0 buffer parameters below.
-   - Work out the victim tail-latency inflation and the percentage recovery from the shared and separated Virtual Lane parameters below.
+   How many Virtual Lanes does InfiniBand support per link, and which lane is reserved for Subnet Management Packets?
+   How many bytes does one credit represent?
+   Compute the total credits and the available credits for the VL0 buffer parameters below.
+   Decide whether a packet can transmit in that state.
+   Work out the victim tail-latency inflation from the shared and separated Virtual Lane parameters below.
+   Then work out the percentage recovery.
 2. Work out the static LFT uplink imbalance, then compare Adaptive Routing with Service Level masking.
-   - Compute the transmitted byte delta on each port, and the max-to-min imbalance ratio, from the 4-octet word deltas below.
-   - Compare the selected port, the peak uplink load and the excess queued bandwidth across static LFT, full Adaptive Routing and selective SL masking, using the parameters below.
+   Compute the transmitted byte delta on each port from the 4-octet word deltas below.
+   Compute the max-to-min imbalance ratio from those byte values.
+   Compare the selected port across static LFT, full Adaptive Routing and selective SL masking, using the parameters below.
+   Then compare the peak uplink load and the excess queued bandwidth for the same three modes.
 3. Compare SHIELD self-healing with the OpenSM Trap 128 heavy sweep.
-   - Compare the surviving Adaptive Routing group ports, the failover latency in microseconds, the speedup factor, and the in-flight bytes at risk for hardware SHIELD and for an OpenSM heavy sweep.
+   Name the surviving Adaptive Routing group ports after the failure described below.
+   Compute the failover latency in microseconds for hardware SHIELD and for an OpenSM heavy sweep.
+   Compute the speedup factor between them.
+   Then compute the in-flight bytes at risk for each.
 4. Trace ConnectX out-of-order reordering and the tail-latency percentiles.
-   - Trace the arrival PSN stream below with hardware reordering enabled and disabled. Find the maximum reorder distance, the delivered sequence and the NAK count.
-   - Explain why the tuning change below degraded distributed training step time, and compute the exact 99th-percentile and maximum inflation factors.
+   Trace the arrival PSN stream below with hardware reordering enabled.
+   Then trace the same stream with reordering disabled.
+   Find the maximum reorder distance, the delivered sequence and the NAK count in each case.
+   Explain why the tuning change below degraded distributed training step time.
+   Then compute the exact 99th-percentile and maximum inflation factors.
 5. Work through the InfiniBand Congestion Control state machine.
-   - Compute `FECN`, `BECN`, `new_ccti`, the inter-packet delay multiplier and the injected rate in Gbps across the five queue-occupancy transitions below.
+   Compute `FECN`, `BECN`, `new_ccti`, the inter-packet delay multiplier and the injected rate in Gbps across the five queue-occupancy transitions below.
 6. Triage production telemetry.
-   - Classify the two switch ports below, and locate the congestion tree root ports from the leaf delta profile.
-   - Contrast active error acceleration with cumulative scar tissue, and with leaf oversubscription.
+   Classify the two switch ports below as congestion or fault.
+   Locate the congestion tree root ports from the leaf delta profile.
+   Contrast the active error acceleration with the cumulative scar tissue.
+   Then contrast both with the leaf oversubscription case.
 
 ```text
 Exercise Input Parameters & Function Entry Points (code/part12/infiniband_ar_cc.py):
@@ -687,6 +764,8 @@ Exercise Input Parameters & Function Entry Points (code/part12/infiniband_ar_cc.
 
 Practice answering each of these three questions out loud.
 
+Each question is a chance to show that you can connect a symptom to a mechanism. Good answers name the first check, explain why that check is the right one, and then say what each outcome would mean for the next step. An interviewer listens for the order of your reasoning, so say the first check you would make before you give the answer.
+
 1. Explain why concurrent job slowdowns happen on a lossless fabric with zero symbol errors, and how you would find the cause.
    - Credit-Based Flow Control, with its 64-byte credits per Virtual Lane, prevents packet drops. It does so by pausing upstream transmitters, which increments `PortXmitWait`, whenever downstream credits run out. Under concurrent jobs, static route collisions or destination incast build a congestion tree. That tree causes Head-of-Line blocking for innocent flows that share VL0.
    - Sample `PortXmitWait` deltas across switch tiers without resetting counters. Follow the gradient to the highest-wait downstream ports, and map those ports with `iblinkinfo`. Then remediate with Adaptive Routing for path skew, Congestion Control for destination incast, or job placement.
@@ -703,8 +782,6 @@ Key Quantitative Anchors for Technical Interviews (V8 Ch. 6, 7, 10):
   - Static LFT vs AR Skew:          20:1 (20.01:1) PortXmitData imbalance; SHIELD/FRN prunes failed links in ~10 us vs ~500 ms OpenSM Trap 128 sweep
   - Tail-Latency Regression:        Average ib_write_bw rose 15% and p50 dropped 3.1 us -> 2.4 us, but p99 jumped 5.36x (7.2 -> 38.6 us) and max jumped 12.35x (9.1 -> 112.4 us)
 ```
-
----
 
 ## Checkpoint questions (20)
 

@@ -23,9 +23,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Picture a training job that stays green on every reachability dashboard, yet slows a little more each day. An InfiniBand fabric can behave exactly like that, and the erosion is hard to see. Every rank in a collective barrier waits for the slowest link in the cluster. When one cable negotiates down to a single lane, or starts piling up physical bit errors, the stalls spread across thousands of GPUs. If you only check whether a port is up, or you keep tuning collective timeout variables, you can lose hours while the real link keeps degrading.
+Picture a training job that stays green on every reachability dashboard, yet slows a little more each day. An InfiniBand fabric can behave exactly like that, and the erosion is hard to see. Every rank in a collective barrier waits for the slowest link in the cluster. A barrier is the point where every rank stops until all of them have arrived, so one slow link holds up the whole crowd. When one cable negotiates down to a single lane, or starts piling up physical bit errors, the stalls spread across thousands of GPUs. If you only check whether a port is up, or you keep tuning collective timeout variables, you can lose hours while the real link keeps degrading. The dashboard is not lying, but it is answering a much smaller question than the one you need answered.
 
-Three production incidents from our operational archives show why shallow checks fail at cluster scale. In the first, every port reported active status, yet step times varied widely because one cable had trained at reduced width. In the second, multi-day throughput declined while a switch port's physical symbol errors grew faster and faster. In the third, engineers spent hours raising collective timeouts while a narrow, error-prone link corrupted RDMA retries underneath.
+Think of the dashboard as a smoke detector that only senses one kind of smoke. It goes quiet for many real fires, and its silence is not proof that the building is safe. The fabric has many more failure modes than the one a port-state check can see, so a green port tells you that one door is locked, not that the building is secure.
+
+Three production incidents show why shallow checks fail at cluster scale. In the first, every port reported active status, yet step times varied widely because one cable had trained at reduced width. In the second, multi-day throughput declined while a switch port's physical symbol errors grew faster and faster. In the third, engineers spent hours raising collective timeouts while a narrow, error-prone link corrupted RDMA retries underneath. Each one looked healthy from the top of the stack, and each one was obvious from the bottom.
+
+That pattern is the reason this chapter starts at the bottom of the stack. The physical layer carries evidence that the higher layers cannot show, and the evidence is cheap to read once you know the counter names. An engineer who learns to read it can often end a long investigation much sooner.
 
 The table below sets out each incident as a surface symptom, the root cause in the fabric, and the telemetry that exposed it.
 
@@ -35,23 +39,33 @@ The table below sets out each incident as a surface symptom, the root cause in t
 | **2. "The Fabric Failed Slowly" (`V8` Ch. 9)** | Multi-day training throughput declined steadily while every switch and HCA link remained `State: Active` | Switch port `12` suffered accelerating physical symbol errors and repeated link downs before hard failure | `SymbolErrorCounter`: Day `1: 4` -> Day `4: 890` (`+886`, `295.33`/day) -> Day `7: 41,200` (`+40,310`, `13,436.67`/day, **`45.5x` acceleration**); `LinkDownedCounter`: `0 -> 3 -> 11` |
 | **3. "The NCCL Timeout That Was Not an NCCL Problem" (`V8` Ch. 10)** | Engineers repeatedly increased `NCCL` timeout variables while multi-node jobs hung and aborted | An `Active` port running at `1x` width with rising physical symbol errors triggered RDMA transport timeouts | `1x` vs `4x` negotiated width (`25%` bandwidth) plus rising `SymbolErrorCounter` and `LinkErrorRecoveryCounter` deltas |
 
-Read each row from left to right, from the symptom to the root cause and the numbers that prove it.
+Read each row from left to right, from the symptom to the root cause and the numbers that prove it. The first column is what the application team reported, the second is what the fabric was actually doing, and the last column is the evidence that connects the two.
 
-Operating a production AI fabric takes two capabilities that work together. First, you need to know the low-level diagnostic utilities from OpenFabrics Enterprise Distribution, `rdma-core`, and Mellanox Firmware Tools. You must know which tool reads local host state, which one crawls the subnet, and which one reads hardware error counters or optical power. Second, you need centralized fabric management through NVIDIA Unified Fabric Manager, plus a strict seven-gate bottom-up troubleshooting workflow. That workflow stops at the lowest unproven layer and preserves counter evidence before any port reset. Treat a green port as the start of your investigation, not the end of it.
+Operating a production AI fabric takes two capabilities that work together. First, you need to know the low-level diagnostic utilities from OpenFabrics Enterprise Distribution, `rdma-core`, and Mellanox Firmware Tools. OpenFabrics Enterprise Distribution, usually called OFED, is the driver and utility package for RDMA hardware. `rdma-core` is the userspace library for RDMA verbs, and Mellanox Firmware Tools, or MFT, is the set of utilities that talk to the adapter firmware. You must know which tool reads local host state, which one crawls the subnet, and which one reads hardware error counters or optical power. Second, you need centralized fabric management through NVIDIA Unified Fabric Manager, plus a strict seven-gate bottom-up troubleshooting workflow. That workflow stops at the lowest unproven layer and preserves counter evidence before any port reset. Treat a green port as the start of your investigation, not the end of it.
+
+In practice, a green port should move your attention downward to the counters and the optics, not upward to the application. The application team is usually right that something is slow, and the fabric is usually where the slowness starts.
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** This chapter builds on the RDMA verbs, Queue Pairs and Completion Queues from Chapter 12.2. You also need the InfiniBand link speeds, addressing families, partition keys and credit flow control from Chapter 12.6. Finally, you should know the Subnet Manager routing engines from Chapter 12.7, and the Adaptive Routing and congestion control mechanisms from Chapter 12.8.
+**Prerequisites:** This chapter builds on the RDMA verbs, Queue Pairs and Completion Queues from Chapter 12.2. You also need the InfiniBand link speeds, addressing families, partition keys and credit flow control from Chapter 12.6. Finally, you should know the Subnet Manager routing engines from Chapter 12.7, and the Adaptive Routing and congestion control mechanisms from Chapter 12.8. A partition key, or P_Key, is the tag that groups ports into a tenant partition, and the earlier chapters explain how that works.
 
-**Outcomes:** By the end of this chapter, you will be able to reach five operational goals. First, you can classify and run all twenty-seven core InfiniBand utilities. Those cover local HCA inspection, subnet inventory, path verification, control-plane auditing and physical counter diagnostics. Second, you can tell port state apart from cumulative counters and rates of change, using `perfquery` and `ibqueryerrors`. That distinction separates old damage from active physical degradation, and from plain credit congestion. Third, you can diagnose physical SERDES and optical transceiver faults with `mst` and `mlxlink`. You will compare raw and effective BER, and check optical power, bias current, voltage and temperature against hardware limits. Fourth, you can audit Subnet Manager consistency. You compare live node responses from `smpquery` against cached Subnet Administration records from `saquery`, and you isolate degraded ports with `ibportstate`. Fifth, you can operate NVIDIA UFM Enterprise, UFM Telemetry and UFM Cyber-AI across DGX SuperPOD clusters. You can also run the seven-gate bottom-up troubleshooting workflow with percentile latency verification.
+The chapter starts by separating the observability layers, then tells apart state, cumulative counters and rates of change. It then lays out the toolkit of core utilities and shows how to read the counter families and the optical telemetry. Next it covers the UFM tiers, the high-availability rules and the SuperPOD sizing numbers, and it closes with the seven-gate method, the percentile check, the evidence bundle and the post-repair checklist. Each part ends with a short set of commands or checks, so you can practice the method as you read.
+
+Along the way you will meet the counter and optics commands, `perfquery`, `ibqueryerrors`, `mst`, `mlxlink`, `smpquery`, `saquery` and `ibportstate`, each with the mode that makes it safe to run.
+
+If you have access to a test fabric, run each command as you reach it. If you do not, read the output blocks slowly and predict the values before you look. Prediction is a good test of understanding, because a wrong guess shows you exactly which idea is still unclear.
 
 ---
 
 ## 1. InfiniBand observability layers: state, counters, rates, and inventory context
 
+Think of a fabric as a stack of layers, where each layer depends on the one below it. A problem in a lower layer can look like a problem in a higher one. The first section explains how to walk that stack from the bottom, how to read the data each layer gives you, and why identifiers matter as much as the numbers themselves.
+
 ### 1.1 The six-layer observability stack and why "port Active" is never enough
 
-A simple up-or-down port check misses the failures that hurt most AI clusters. A four-lane cable that trains down to one lane still shows an active link, but it has lost three quarters of its bandwidth. A transceiver with a rising pre-FEC bit error rate looks green on basic dashboards too, and so does a switch with imbalanced static routes. Production observability has to connect six layers, from physical inventory up to distributed collectives. Each layer needs an explicit baseline check, so you can prove it is not the source of performance drift.
+Picture a Friday afternoon when a team notices that a large job is running about a fifth slower than it did last week. The port dashboard is green everywhere. A simple up-or-down port check misses the failures that hurt most AI clusters. A four-lane cable that trains down to one lane still shows an active link, but it has lost three quarters of its bandwidth. A transceiver with a rising pre-FEC bit error rate looks green on basic dashboards too, and so does a switch with imbalanced static routes. FEC is forward error correction, the extra coding that repairs small bit errors before they reach the software. Production observability has to connect six layers, from physical inventory up to distributed collectives. Each layer needs an explicit baseline check, so you can prove it is not the source of performance drift.
+
+A baseline is the set of values you recorded while the fabric was healthy. Without it, every reading is just a number with no reference point. With it, a single comparison can clear a layer in seconds, and that is how the walk up the stack stays fast.
 
 The diagram shows how the layers link together, and where a walk from the bottom up would stop.
 
@@ -68,7 +82,9 @@ flowchart TB
     Walk -->|"L1-L6 all match baseline"| FixApp["Outside Fabric:<br/>Storage, CPU Loader, or Model"]
 ```
 
-Walk the diagram from layer 1 upward. The first layer that deviates from its baseline is where you stop and fix things.
+Walk the diagram from layer 1 upward. The first layer that deviates from its baseline is where you stop and fix things. A walk from the top would start with the application, and every symptom would look like a software problem. Starting at the bottom makes each layer prove itself before the next one is trusted.
+
+A useful picture is a building inspection. The inspector checks the foundation before the walls, and the walls before the wiring. Nobody signs off on the wiring while the foundation is cracked, even if the wiring itself looks new.
 
 The table lists, for each layer, its identifiers, how you verify its baseline, and what a divergence proves.
 
@@ -81,13 +97,17 @@ The table lists, for each layer, its identifiers, how you verify its baseline, a
 | **5. RDMA Transport (`Verbs`)** | Protection Domains (`PD`), Memory Regions (`MR`), Queue Pairs (`QP`, `max_qp: 262144`), Completion Queues (`CQ`), `RNR` NAK / timeout retries | `ib_write_bw` average tracks peak; `ib_write_lat` `99%` (`1.71 µs`) and `99.9%` (`1.98 µs`) percentiles match baseline; `CQE == IBV_WC_SUCCESS` | `Failed to modify QP to RTR` (`MTU`/`P_Key`/`GID` mismatch), `IBV_WC_RETRY_EXC_ERR` (`0x81`), or `2.91x` `p99.9` tail stall (`5.77 µs`) |
 | **6. GPUDirect & Collectives** | PCIe root complex, NUMA affinity (`numactl`), `nvidia-peermem` / `DMA-BUF`, `IPoIB` (`ib0`, `20`-byte MAC, `4 KB` datagram vs `64 KB` connected), `SHARP`, `NCCL` | `nvidia-smi topo -m` shows `PIX`/`NODE` GPU-to-HCA affinity; multi-node `AllReduce` bus bandwidth scales within baseline | Cross-socket NUMA hairpin (`NUMA 1` vs `NUMA 0`), silent host-staged buffer copy, or single-rank compute straggler |
 
-Check the rows in order, because a fault in a lower layer can hide behind the symptoms of a higher one.
+Check the rows in order, because a fault in a lower layer can hide behind the symptoms of a higher one. A slow collective often looks like a routing problem at layer 4, but the cause turns out to be a degraded cable at layer 3. The table gives you the question to ask at each level, so you do not have to guess which level to start from.
+
+Each row of the table is a question you can answer with one or two commands. Asking the questions in order keeps the investigation short, because a lower layer that is clean removes a whole branch of possible causes at once.
 
 ### 1.2 State versus cumulative counters versus rates of change
 
-In the middle of a slowdown, it is tempting to stare at a port counter and treat any large non-zero number as proof. A big total can be old news. Swapping a cable because of an old total wastes a maintenance window and leaves the real failing link in place. The opposite mistake is just as costly. A small error count that climbs fast can mean a dying transceiver, and that transceiver can stall the whole job. You need to separate three telemetry primitives: instantaneous state, cumulative counters, and rates of change over time.
+Picture an engineer staring at a port counter during a slowdown. The counter reads a very large number, and the engineer assumes it is the cause. In the middle of a slowdown, it is tempting to stare at a port counter and treat any large non-zero number as proof. A big total can be old news. Swapping a cable because of an old total wastes a maintenance window and leaves the real failing link in place. The opposite mistake is just as costly. A small error count that climbs fast can mean a dying transceiver, and that transceiver can stall the whole job. You need to separate three telemetry primitives: instantaneous state, cumulative counters, and rates of change over time.
 
-State is the condition of a port at one instant. It covers the physical link state, the logical port state, the negotiated link rate, the lane width, the assigned Local ID and the routing table entries. Cumulative counters are hardware registers that only go up. Each port's Performance Management Agent keeps them. They accumulate since the last reboot or explicit clear, so a non-zero total proves only that something happened at some point. Rates and deltas measure change across an observation window $\Delta t = t_1 - t_0$. They show whether a fault is active right now.
+State is the condition of a port at one instant. It covers the physical link state, the logical port state, the negotiated link rate, the lane width, the assigned Local ID and the routing table entries. A snapshot is a reading of state at one moment, so it answers a question about now. Cumulative counters are hardware registers that only go up. Each port's Performance Management Agent keeps them. They accumulate since the last reboot or explicit clear, so a non-zero total proves only that something happened at some point. Rates and deltas measure change across an observation window $\Delta t = t_1 - t_0$. They show whether a fault is active right now.
+
+A delta is simple to compute. Read the counter, wait for a fixed time, read it again, and subtract. The difference tells you how many errors happened in that window, and dividing by the window length gives a rate. A rate that rises from one window to the next is the sign of a fault that is getting worse.
 
 The table compares the three primitives, with an example for each.
 
@@ -98,6 +118,8 @@ The table compares the three primitives, with an example for each.
 | **3. Rate & Acceleration** | $\Delta C = C(t_1) - C(t_0)$, rate $\Delta C / \Delta t$, and ratio of consecutive rates | Scenario A (`port 9` over `300 s`): `12,034 -> 12,034` ($\Delta = 0$); Scenario B (`port 12` over `6` days): `4 -> 890` (`+886`, `295.33`/day) -> `41,200` (`+40,310`, `13,436.67`/day, **`45.5x` acceleration**) | Proves whether physical degradation or credit backpressure is actively occurring and accelerating |
 
 Only the rate tells you whether the problem is still happening.
+
+Picture a water tank that has been filling for a year. The total tells you how much water has ever come in, but the flow rate tells you whether the tank is overflowing right now. Engineers who alert on totals are watching the history of the tank, while the flow rate is what protects the floor. A total can only tell you that something happened once, and a delta tells you that it is happening during the window you watched.
 
 Consider two real production counter stories. They look identical to a naive non-zero alert rule, yet they need opposite actions.
 
@@ -120,7 +142,7 @@ SymbolErrorCounter:.............41200
 LinkDownedCounter:..............11
 ```
 
-In Scenario A, switch port nine reads `12,034`. Two snapshots taken five minutes apart, under active traffic, show no change at all. Those errors are historical scar tissue from an old cable reseat. Replacing the cable would waste time, and it could introduce a real fault. In Scenario B, switch port twelve starts with a count of only four on day one. Over two consecutive three-day windows, the daily error rate jumps by a factor of 45.5x. Link-down events climb to eleven in the same period.
+In Scenario A, switch port nine reads `12,034`. Two snapshots taken five minutes apart, under active traffic, show no change at all. Those errors are historical scar tissue from an old cable reseat. Replacing the cable would waste time, and it could introduce a real fault. In Scenario B, switch port twelve starts with a count of only four on day one. Over two consecutive three-day windows, the daily error rate jumps by a factor of 45.5x. Link-down events climb to eleven in the same period. A link-down event is the moment the physical link drops and has to retrain, which is much more serious than a small symbol error.
 
 Here is the arithmetic for port twelve:
 
@@ -128,13 +150,17 @@ Here is the arithmetic for port twelve:
 Acceleration Factor = (40,310 / 3 days) / (886 / 3 days) = 13,436.67 / 295.33 = 45.5x
 ```
 
-An alert built on the rate of change and its acceleration flags port twelve on Day 4. That is days before the degrading transceiver drags down training throughput across the cluster. The same rule leaves port nine alone, because its static total is harmless. Alert on the rate and the acceleration of errors, not on the raw total.
+An alert built on the rate of change and its acceleration flags port twelve on Day 4. That is days before the degrading transceiver drags down training throughput across the cluster. The same rule leaves port nine alone, because its static total is harmless. Alert on the rate and the acceleration of errors, not on the raw total. The alert is a simple comparison between two readings, and it runs on the same counters you already collect.
+
+That simplicity is what makes the approach practical. You do not need a new data source, and you do not need a machine learning model to start. Two readings, a window and a threshold are enough to catch a dying transceiver days before it stalls the training job.
 
 ### 1.3 Why inventory context and immutable GUIDs anchor every metric
 
-An alert that names a switch LID is only useful if you can find the cable behind it. If that takes an hour of tracing, the alert has lost most of its value. Local IDs can change. The Subnet Manager may reassign them during a heavy sweep, or after a failover to a standby appliance. Suppose your monitoring database keys each time series by Local ID. A subnet resweep would then scramble the historical trends across ports. Production monitoring should anchor every metric to immutable hardware Global Unique Identifiers, and join those to rack, rail and cable metadata.
+Picture a page that fires at two in the morning and names a switch by its LID. The on-call engineer has to find the rack, the rail and the cable behind that name before anything can be fixed. An alert that names a switch LID is only useful if you can find the cable behind it. If that takes an hour of tracing, the alert has lost most of its value. Local IDs can change. The Subnet Manager may reassign them during a heavy sweep, or after a failover to a standby appliance. Suppose your monitoring database keys each time series by Local ID. A subnet resweep would then scramble the historical trends across ports. Production monitoring should anchor every metric to immutable hardware Global Unique Identifiers, and join those to rack, rail and cable metadata. A GUID is burned into the device, so it stays the same through every reboot and resweep.
 
-InfiniBand uses three address families, one for each layer. Hardware identifiers are 64 bits wide, and they are burned in at the factory. They label every adapter, port and switch chassis. Subnet Local IDs are 16 bits wide, and the Subnet Manager assigns them dynamically. They give compact forwarding addresses inside one subnet. Global IDs are 128 bits wide, and IP over InfiniBand link addresses are 20 bytes long. Together they make global routing and TCP/IP encapsulation possible.
+InfiniBand uses three address families, one for each layer. Hardware identifiers are 64 bits wide, and they are burned in at the factory. They label every adapter, port and switch chassis. Subnet Local IDs are 16 bits wide, and the Subnet Manager assigns them dynamically. They give compact forwarding addresses inside one subnet. Global IDs are 128 bits wide, and IP over InfiniBand link addresses are 20 bytes long. Together they make global routing and TCP/IP encapsulation possible. The three families answer three different questions.
+
+The hardware GUID is the name tag on the device, and it never changes. The LID is the street address inside the current subnet, and it can change when the map is redrawn. The GID is the full address that another network uses to reach the device. Keeping the three questions apart stops you from using the wrong identifier in the wrong place. The hardware GUID says which device this is, the LID says where it is inside one subnet right now, and the GID says how to reach it from outside that subnet.
 
 The table lists each family, its width, and the rules that matter in practice.
 
@@ -146,13 +172,17 @@ The table lists each family, its width, and the rules that matter in practice.
 
 Key your inventory and time-series databases by `PortGUID`, not by LID. That one choice keeps your history intact through every resweep.
 
+A useful test is to ask what happens to your dashboard after a failover. If every series survives the failover unchanged, the keys are right. If the history splits or merges, the keys are tied to something that changes, and the fix is to re-key before the next incident. The rule costs almost nothing when you build the database, and it saves a great deal of confusion when a failover reassigns addresses.
+
 ## 2. The complete InfiniBand diagnostic toolkit (`OFED`, `rdma-core`, and `MFT`)
 
-During a live outage, the wrong diagnostic tool can stall the management plane, or erase the evidence you need. Some utilities read local kernel files in microseconds. Others crawl the whole subnet over the management Virtual Lane. Two utilities can change live port states or non-volatile adapter firmware. Call one of them carelessly, and it can trigger a fabric-wide rerouting sweep. Learn the mechanism and the safety profile of all twenty-seven core utilities, and you can inspect any layer without causing harm.
+During a live outage, the wrong diagnostic tool can stall the management plane, or erase the evidence you need. Picture a technician who runs a reset command on a switch port to clear a noisy counter, and then finds that the evidence of the earlier fault is gone. Some utilities read local kernel files in microseconds. Others crawl the whole subnet over the management Virtual Lane. Two utilities can change live port states or non-volatile adapter firmware. Call one of them carelessly, and it can trigger a fabric-wide rerouting sweep. Learn the mechanism and the safety profile of all twenty-seven core utilities, and you can inspect any layer without causing harm.
 
 ### 2.1 Functional taxonomy of the 27 InfiniBand utilities
 
 Consider how the table groups the utilities by layer. Its "Mutates state?" column tells you which tools can change something on the fabric.
+
+Read the column as a safety check before any command. A tool that reads state is safe to run during an investigation. A tool that mutates state needs a reason, a saved snapshot and usually a change approval before it runs on production hardware. Think of the groups as drawers in a toolbox. The first drawer holds the tools that read the local host, the second holds the tools that map the subnet, and the last drawer holds the tools that change things. You reach for the first drawers while you investigate, and you open the last drawer only after the evidence is saved.
 
 | Category | Utility | Target / mechanism | Mutates state? | Primary operational use and key flags |
 |---|---|---|---|---|
@@ -187,12 +217,14 @@ Consider how the table groups the utilities by layer. Its "Mutates state?" colum
 Most rows are read-only. Only `perfquery`, `ibqueryerrors`, `mlxlink`, `mlxconfig` and `ibportstate` can change anything, and then only with the flags shown in the table.
 
 :::tip Selecting the Adapter (`-C`) and Port (`-P`) on Multi-Rail Hosts
-Multi-rail GPU servers connect each Host Channel Adapter to a separate InfiniBand rail and subnet. Because Local IDs are scoped to a single subnet, the same numerical LID can refer to different servers on different rails. Nearly all diagnostic utilities accept `-C` for the adapter name and `-P` for the one-indexed port number to target a specific rail.
+Multi-rail GPU servers connect each Host Channel Adapter to a separate InfiniBand rail and subnet. Because Local IDs are scoped to a single subnet, the same numerical LID can refer to different servers on different rails. Nearly all diagnostic utilities accept `-C` for the adapter name and `-P` for the one-indexed port number to target a specific rail. Always pass both flags on a multi-rail host, so you know which rail the number came from. Even those tools are read-only in their default form. The risk comes from one flag, so read the flag before you run the command.
 :::
+
+The reset flags are the usual trap. A command that only reads becomes a command that erases history the moment a reset flag is added to it. Before you run any tool in the mutating group, read its help text, find the flag that clears or changes state, and decide whether you really need it.
 
 ### 2.2 Local HCA inspection: `ibstat` versus `ibstatus`, `ibdev2netdev`, and `ibv_devinfo`
 
-Formatting differences between local tools often cause false alarms. When you compare host output with switch tables, a mismatch may mean nothing at all. `ibstat` and `ibstatus` read the same kernel files under `/sys/class/infiniband/`. One prints decimal addresses, and the other prints hexadecimal. `ibstat` also shows only a bare rate integer. That hides whether a link reached full four-lane width or fell back to one lane. Run both tools alongside `ibdev2netdev`, and you can settle addressing, lane width and kernel interface mapping in seconds.
+Formatting differences between local tools often cause false alarms. Picture two engineers who read the same port on two different screens, and one of them thinks the link is broken because the numbers look different. When you compare host output with switch tables, a mismatch may mean nothing at all. `ibstat` and `ibstatus` read the same kernel files under `/sys/class/infiniband/`. One prints decimal addresses, and the other prints hexadecimal. `ibstat` also shows only a bare rate integer. That hides whether a link reached full four-lane width or fell back to one lane. Run both tools alongside `ibdev2netdev`, and you can settle addressing, lane width and kernel interface mapping in seconds.
 
 The block below shows `ibstat` and then `ibstatus` on the same dual-port FDR HCA.
 
@@ -258,6 +290,8 @@ The table compares what each tool prints for the same port.
 
 Convert the hexadecimal values before you compare them with `ibroute` or `saquery` output. That one conversion keeps addressing mismatches from turning into false alarms.
 
+The conversion is worth practicing once on paper. Take a hexadecimal value, multiply each digit by its place value, and add the results. Then compare your answer with the decimal field from the other tool. Doing this a few times makes the mismatch easy to spot in a live incident. A quick way to check a conversion is to write the hexadecimal digits in place values, the same way you would for a decimal number, and then compare the total.
+
 Servers that mix Ethernet and InfiniBand ports need one more mapping. You need to know which RDMA device backs each network interface. `ibdev2netdev` prints that mapping straight from the kernel.
 
 ```text
@@ -269,9 +303,11 @@ mlx5_1 port 1 ==> ib0 (Up)
 
 The output tells you two things. `mlx5_0` runs in Ethernet or RoCE mode and maps to `eth0`, so you read its hardware counters with `ethtool -S eth0`. `mlx5_1` runs in native InfiniBand mode and maps to `ib0`, so you query its fabric counters with `perfquery` and `ibqueryerrors`. Confirm the mapping before you read any counter, so you query the right device.
 
+A short habit prevents most of these mistakes. Run the mapping tool first, write the device name next to the port you care about, and only then run the counter command. The extra minute is cheaper than an hour spent reading the wrong card. Reading a counter from the wrong device is one of the quickest ways to chase a problem that does not exist.
+
 ### 2.3 Comparing `smpquery` versus `saquery` to detect Subnet Manager database drift
 
-Suppose a job cannot resolve a path, or a technician swapped cables during maintenance. The Subnet Manager database may no longer match the physical fabric. If you query only the Subnet Manager cache, stale records can send you to the wrong server. They can also hide a wedged control plane. Pair a direct node query from `smpquery` with a Subnet Administration query from `saquery`. The comparison shows at once whether the control plane matches physical reality.
+Suppose a job cannot resolve a path, or a technician swapped cables during maintenance. The Subnet Manager database may no longer match the physical fabric. Picture the Subnet Manager as a receptionist with a card file. The card file may be out of date after a move, and the receptionist will still read from it confidently. If you query only the Subnet Manager cache, stale records can send you to the wrong server. They can also hide a wedged control plane. Pair a direct node query from `smpquery` with a Subnet Administration query from `saquery`. The comparison shows at once whether the control plane matches physical reality.
 
 ```text
 # 1. Direct VL15 SMP query to the node itself (bypasses SM database, from SCL Ch. 5; untested here):
@@ -300,6 +336,8 @@ NodeRecord dump:
 
 The two commands take different paths, and they ask different agents. `smpquery` sends a Subnet Management Packet on Virtual Lane 15 straight to the target port. The adapter on compute node `n51001` builds the reply itself. `saquery` sends a General Services Interface query to the Subnet Manager, which returns the node record it cached in memory. Comparing the two replies isolates three distinct control-plane states.
 
+The three states are the healthy case, the stale case and the unreachable case. Each one points at a different part of the control plane, so the right repair depends on which state you see. A reply that matches tells you the database and the hardware agree, which is the outcome you want before any change.
+
 | `smpquery nodedesc 914` Result | `saquery 914` Result | Operational Diagnosis & Meaning |
 |---|---|---|
 | Returns `n51001 HCA-1` | Returns `NodeDescription: n51001 HCA-1` (`sys_guid 0x0012345600003740`, `partition_cap 0x80 = 128` P_Keys, `device_id 0x1011 = 4113` `MT4113`, `vendor_id 0x2C9`) | **`CONSISTENT_NODE_AND_SA_RECORD`:** Physical node and cached Subnet Administration database agree |
@@ -308,13 +346,19 @@ The two commands take different paths, and they ask different agents. `smpquery`
 
 Use the table as a decision rule. Whichever row matches tells you which part of the control plane to repair.
 
+Work through the rows in order, and write down which one matched before you touch anything. A written decision makes the next step clear to the rest of the team, and it stops two engineers from repairing the same thing in different ways. The first row is the healthy case, the second means the card file is stale, and the third means the receptionist is not answering at all.
+
 ---
 
 ## 3. Deep counter semantics (`perfquery`, `ibqueryerrors`) and optical/SERDES telemetry (`mlxlink`, `ibdiagnet`)
 
+When a distributed training job slows down, you need to know quickly whether the bottleneck is a bad optical cable, a routing black hole or lossless credit congestion. Each of those three causes leaves a different trace in the counters, and each trace points to a different fix. This section explains how to read the counters that matter, how to read the optical and SERDES telemetry, and how to run one audit across the whole subnet.
+
 ### 3.1 `perfquery` and `ibqueryerrors`: counter families, units, and diagnostic matrix
 
-When a distributed training job slows down, you need to know quickly whether the bottleneck is a bad optical cable, a routing black hole or lossless credit congestion. Misreading a counter name can send a team to pull clean fibers, when the real culprit is backpressure further downstream. `perfquery` reads Performance Management Agent registers over the fabric. So one engineer on a single management node can inspect any remote switch or host port. You do not have to log into each compute server during an incident.
+Picture a training run that loses speed on one leaf switch, and an engineer who has to decide in ten minutes whether to pull a fiber. Misreading a counter name can send a team to pull clean fibers, when the real culprit is backpressure further downstream. `perfquery` reads Performance Management Agent registers over the fabric. So one engineer on a single management node can inspect any remote switch or host port. You do not have to log into each compute server during an incident. The same tool also reads the congestion counters that tell you whether the port is busy or broken.
+
+That single tool covers both questions. A busy port shows high wait counters with clean error counters, and a broken port shows the opposite. Reading both families in one pass is what lets you separate the two cases quickly.
 
 The table maps each counter to what it measures, its most likely root cause when the delta is above zero, and the action to take.
 
@@ -329,11 +373,15 @@ The table maps each counter to what it measures, its most likely root cause when
 | **`PortXmitWait`** | Clock ticks where the port had packets ready to transmit but **zero downstream `64`-byte `CBFC` credits** on that Virtual Lane | **Lossless fabric congestion** (downstream N:1 incast, `2:1` oversubscription cut, or `LFT` route collision) | If `SymbolErrorCounter == 0` and `LinkDownedCounter == 0`, **do NOT replace cables**. Trace the `PortXmitWait` gradient to the congestion root |
 | **`PortXmitData` / `PortRcvData`** | Total payload/framing data transmitted or received, measured in **`4`-octet (`32`-bit) words** (use `perfquery -x` for `64`-bit extended counters so counters do not wrap at `16 GiB` in `< 0.35 s` at `400G`) | Normal traffic flow; **`20:1` ratio across equal-cost uplinks** (`5,368,709,120` words = `21,474,836,480` B vs `268,435,456` words = `1,073,741,824` B) proves static routing concentration | Multiply raw counter delta by **`4`** to get bytes: $\text{Bytes} = \Delta\text{Words} \times 4$; check `AR_group` and `LFT` balance |
 
-When you read each row, look at its delta, not at its total. A rising `SymbolErrorCounter` points at the cable or optic. A rising `PortXmitWait`, with clean error counters, points at congestion.
+When you read each row, look at its delta, not at its total. A rising `SymbolErrorCounter` points at the cable or optic. A rising `PortXmitWait`, with clean error counters, points at congestion. The table is a matrix, so read across a row to see the counter, the meaning and the action.
+
+Read down a column when you want to compare counters that behave alike. The error counters sit together, and the congestion counters sit together. That grouping shows you which family a given symptom belongs to, before you pick a single counter to chase. Read down a column to compare how the counters behave.
 
 ### 3.2 `mlxlink` and `mst`: SERDES Bit Error Rate (`BER`) and optical DDM link budgets
 
-A fast link can start to degrade at the SERDES or optical layer days before `perfquery` shows a single symbol error. Modern adapters and switches use Forward Error Correction, or FEC. FEC quietly repairs a growing burst of raw bit errors on a failing lane. Then, once the correction threshold is saturated, the damage shows up all at once. `mlxlink`, from Mellanox Firmware Tools, lets you read the pre-FEC bit error rate on each lane. It also reads the transceiver's own sensors for optical power, bias current, voltage and temperature.
+A fast link can start to degrade at the SERDES or optical layer days before `perfquery` shows a single symbol error. SERDES stands for serializer and deserializer, the circuit that turns parallel data into a fast serial stream and back. Modern adapters and switches use Forward Error Correction, or FEC. FEC quietly repairs a growing burst of raw bit errors on a failing lane. Then, once the correction threshold is saturated, the damage shows up all at once. A cliff like that is why the raw rate matters more than the clean result.
+
+The FEC repair is like a seawall. It holds back small waves without anyone noticing, and the wall looks perfect until a large storm arrives. The raw rate shows how much water is hitting the wall, so it is the early warning that the wall is about to be overtopped. `mlxlink`, from Mellanox Firmware Tools, lets you read the pre-FEC bit error rate on each lane. It also reads the transceiver's own sensors for optical power, bias current, voltage and temperature. A bit error rate, or BER, is the share of bits that arrive damaged, and it is the measure of how close a lane is to that cliff.
 
 The first block shows the SERDES counters. The second shows the optical module's own telemetry.
 
@@ -398,7 +446,9 @@ Rx Power Current [dBm]          : 0,0,0,0 [-14..6]
 Tx Power Current [dBm]          : 0,0,0,0 [-12..6]
 ```
 
-Experienced fabric engineers check three groups of fields in this output. First, they compare the raw pre-FEC error rates with the effective post-FEC rates on all four lanes. Second, they check every Digital Diagnostic Monitoring reading against the alarm bracket printed in square brackets. Third, they read the part and serial numbers from the module EEPROM. That way, a technician can replace the exact cable without guessing on the data center floor.
+Experienced fabric engineers check three groups of fields in this output. First, they compare the raw pre-FEC error rates with the effective post-FEC rates on all four lanes. Second, they check every Digital Diagnostic Monitoring reading against the alarm bracket printed in square brackets. Digital Diagnostic Monitoring, or DDM, is the transceiver's built-in sensor set, and the bracket is the safe range for each reading. Third, they read the part and serial numbers from the module EEPROM. That way, a technician can replace the exact cable without guessing on the data center floor. An EEPROM is the small memory chip in the module that stores its identity.
+
+The table sets the healthy baseline against the degraded signature for each field group.
 
 | `mlxlink` Field Group | Healthy Baseline (*Supercomputers for Linux Sysadmins* Ch. 5) | Degraded Fault Signature | What It Proves |
 |---|---|---|---|
@@ -406,11 +456,13 @@ Experienced fabric engineers check three groups of fields in this output. First,
 | **2. Optical DDM Threshold Brackets (`[min..max]`)** | `Temperature [C]: 38 [-10..80]`, `Voltage [mV]: 3255.2 [3100..3500]`, `Bias Current [mA]: 6.750 [5.492..8.5]`, `Rx Power [dBm]: 0,0,0,0 [-14..6]`, `Tx Power [dBm]: 0,0,0,0 [-12..6]` | Lane 2 `Rx Power Current` drops to `-16.8 dBm` (below `-14 dBm` floor; `rx_power_dbm_per_lane = (-1.2, -1.4, -16.8, -1.3)`) while peer `Tx Power` is normal (`0.4 dBm`), or temperature nears `70..80 C` | Optical attenuation/contamination on Lane 2 (`OPTICAL_POWER_OUT_OF_SPEC`) or thermal laser drift |
 | **3. EEPROM Provenance** | `QSFP+`, `850 nm VCSEL`, `Vendor Part Number: MFXXXXX-EXXX`, `Vendor Serial Number: MT2135FT12345`, `Transfer Distance [m]: 10`, `Power Class: 2.5 W max`, speed mask `0x0000003f` | Negotiated `Width: 1x` on a `4x` cable (`LANE_WIDTH_DEGRADED`) or mismatched cable speed mask | Allows generating an exact RMA ticket with serial `MT2135FT12345` before touching the rack |
 
-Use the healthy column as your baseline. If a reading looks like the degraded column, suspect the optic or lane behind it.
+Use the healthy column as your baseline.
+
+A practical habit is to save a copy of the healthy column for every lane and every optic in the fabric, when the fabric is new. Then a future reading can be compared with the exact values of that port, rather than with a general rule that may not fit the hardware. If a reading looks like the degraded column, suspect the optic or lane behind it. The last column tells you what each reading proves, so you can explain your finding to the people who will act on it.
 
 ### 3.3 `ibdiagnet`: multi-stage fabric-wide auditing
 
-Checking ports one at a time, with `perfquery` and `mlxlink`, is too slow after a maintenance window. You want one command that sweeps every switch and adapter. It should check link widths, measure counter deltas across a timed pause, and audit routing tables for credit loops. NVIDIA's `ibdiagnet` runs that full multi-stage check from a management or UFM host. It writes structured, machine-readable reports to `/var/tmp/ibdiagnet2/`.
+Checking ports one at a time, with `perfquery` and `mlxlink`, is too slow after a maintenance window. Picture a cluster with several hundred ports, where a technician has just finished a day of cable moves. You want one command that sweeps every switch and adapter. It should check link widths, measure counter deltas across a timed pause, and audit routing tables for credit loops. NVIDIA's `ibdiagnet` runs that full multi-stage check from a management or UFM host. It writes structured, machine-readable reports to `/var/tmp/ibdiagnet2/`. A stage is one pass of the audit, and the stages run in order, so the first one that fails tells you where to look.
 
 | `ibdiagnet` Stage | What It Audits Across the Subnet | Key Output File in `/var/tmp/ibdiagnet2/` | Failure Signature |
 |---|---|---|---|
@@ -423,13 +475,19 @@ Checking ports one at a time, with `perfquery` and `mlxlink`, is too slow after 
 
 Note which stage fails first, because that is where your investigation starts.
 
+A stage that fails after an earlier one may only be repeating the same problem. The first failure is the one to chase. Once it is fixed, rerun the audit, because the later stages often clear on their own when the first problem is gone. A failure in the discovery stage means the audit cannot see the subnet at all, so the later stages would only repeat the problem. Start at the earliest failing stage, and only move down the list once it passes.
+
 ---
 
 ## 4. NVIDIA Unified Fabric Manager (`UFM`) architecture and production operations
 
+A cluster of this size needs more than a set of command-line tools. Someone has to watch the counters all day, keep a standby ready, and tie the fabric to the scheduler. This section explains how NVIDIA Unified Fabric Manager fits around the Subnet Manager and the CLI tools, and how the high-availability and cluster-manager pieces work together.
+
 ### 4.1 How UFM relates to OpenSM and the CLI tools: Enterprise, Telemetry, and Cyber-AI
 
-Many people assume that NVIDIA Unified Fabric Manager replaces the Subnet Manager, along with the low-level diagnostic tools. That belief is risky. If you treat UFM as a black box and forget the command-line tools, you are helpless when the management network itself goes down. In reality, UFM is the central operations platform, built directly on top of OpenSM and the diagnostic mechanisms. It packages subnet management, high-frequency counter collection, topology-aware routing and predictive analytics into three modular tiers.
+Many people assume that NVIDIA Unified Fabric Manager replaces the Subnet Manager, along with the low-level diagnostic tools. That belief is risky. If you treat UFM as a black box and forget the command-line tools, you are helpless when the management network itself goes down. In reality, UFM is the central operations platform, built directly on top of OpenSM and the diagnostic mechanisms.
+
+A helpful analogy is a hospital monitoring station. The station collects the readings, raises the alarms and keeps the records. The bedside instruments still do the measuring, and a nurse who has never used the bedside instruments cannot tell when the station itself is wrong. It packages subnet management, high-frequency counter collection, topology-aware routing and predictive analytics into three modular tiers. Think of UFM as the control room, and the command-line tools as the hand tools that the control room still depends on.
 
 The table shows what each tier runs, what it is responsible for, and where other systems connect to it.
 
@@ -439,13 +497,15 @@ The table shows what each tier runs, what it is responsible for, and where other
 | **2. UFM Enterprise** | Authoritative `OpenSM` (`updn`, `ftree`, `ar_ftree`, `dor`, `dfsssp`) + `SHARP` Aggregation Manager (`AM`) | Supervises the Subnet Manager and switch-offloaded collective reductions; joins counter deltas with physical rack/rail/cable BOM and Slurm/Kubernetes job placement; enforces `Unhealthy Ports Policy` isolation | WebUI and REST API (`/ufmRest/resources/systems`, `/ufmRest/resources/ports`, `/ufmRest/resources/pkeys`, `/ufmRest/app/events`, `/ufmRest/actions`) |
 | **3. UFM Cyber-AI** | Machine-learning analytics and baseline correlation engine | Ingests historical UFM Telemetry and job logs to learn cluster baselines, predict impending cable failures from multi-day BER/thermal/power drift (catching the Day `1 -> 4 -> 7` curve automatically), and correlate degraded jobs with spine/leaf cuts | Automated predictive maintenance alerts and security anomaly feeds |
 
-You can think of the three tiers as three jobs: collect the data, run the fabric, and predict failures.
+You can think of the three tiers as three jobs: collect the data, run the fabric, and predict failures. The first tier feeds the other two, so a broken telemetry feed also blinds the enterprise and analytics tiers. Keep that dependency in mind when a dashboard goes quiet.
+
+A quiet dashboard can mean that the fabric is fine, or it can mean that the telemetry tier has stopped. Check the collector before you trust the silence. A short test is to look for a recent timestamp on any series, and to confirm that the timestamp moves forward.
 
 ### 4.2 UFM High Availability (`HA`), SM priority handover, and Base Command Manager (`BCM 11`) integration
 
-The Subnet Manager and the SHARP Aggregation Manager control path creation and in-network reductions for the whole cluster. So a single management node failure must never take down the fabric. A standby that takes over with a different routing configuration or partition file is just as dangerous. Tenant jobs can silently lose connectivity, or suffer severe routing congestion. For that reason, production clusters deploy UFM Enterprise on redundant appliance pairs. The two appliances sit in separate rack and power failure domains.
+The Subnet Manager and the SHARP Aggregation Manager control path creation and in-network reductions for the whole cluster. So a single management node failure must never take down the fabric. Picture a failover at the worst possible moment, when the standby appliance comes up with a different partition file than the primary had. A standby that takes over with a different routing configuration or partition file is just as dangerous. Tenant jobs can silently lose connectivity, or suffer severe routing congestion. For that reason, production clusters deploy UFM Enterprise on redundant appliance pairs. The two appliances sit in separate rack and power failure domains, so one power event cannot take out both.
 
-The two UFM appliances form an active-passive High Availability cluster. They share DRBD replicated storage, and Pacemaker or Corosync manages a floating Virtual IP. OpenSM elects the master instance by priority, from zero to fifteen. When priorities tie, the numerically lowest `64`-bit Port GUID wins. Both appliances must hold identical checksums for `opensm.conf` and `partitions.conf`. That way, a failover keeps the same routing engine and partition keys. At cluster scale, NVIDIA DGX SuperPOD reference architectures and Base Command Manager build UFM appliances and topology discovery into rack layouts and Slurm job scheduling.
+The two UFM appliances form an active-passive High Availability cluster. They share DRBD replicated storage, and Pacemaker or Corosync manages a floating Virtual IP. DRBD is the software that mirrors a disk between two machines, Pacemaker and Corosync decide which machine is active, and the floating Virtual IP is the address that follows the active one. OpenSM elects the master instance by priority, from zero to fifteen. When priorities tie, the numerically lowest `64`-bit Port GUID wins. Both appliances must hold identical checksums for `opensm.conf` and `partitions.conf`. That way, a failover keeps the same routing engine and partition keys. At cluster scale, NVIDIA DGX SuperPOD reference architectures and Base Command Manager build UFM appliances and topology discovery into rack layouts and Slurm job scheduling.
 
 The table gives the HA rules, the sizing numbers for each SuperPOD reference, and the Base Command Manager settings.
 
@@ -456,15 +516,19 @@ The table gives the HA rules, the sizing numbers for each SuperPOD reference, an
 | **3. DGX GB300 SuperPOD Scaling (`superpod-gb300-ra`)** | `800 Gbps` XDR Quantum-X800 `Q3400-RD` `144`-port switches with `SHARP`, `AR`, and `SHIELD` in a two-layer fat-tree under UFM | Scales across **`2, 4, 8, and 16` Scalable Units** (**`1,152, 2,304, 4,608, and 9,216` GPUs**) using **`16, 32, 64, and 128` leaf switches** and **`8, 18, 36, and 72` spine switches**. |
 | **4. Base Command Manager (`bcm11-admin` §3.6.3 & §7.5)** | `cmsh` `subnetmanager` role (`device roles <node>; assign subnetmanager`; `opensm` `autostart yes`, `monitored yes`), `ibnet` (`10.149.0.0/16`), and `topograph` (`topograph4`) daemon | `topograph` listens on HTTPS port **`49021`** (`/etc/topograph/topograph-config.yaml`, `Fetch timeout: 20 s`, `Fetch attempts: 12`, `Fetch wait time: 15 s`), exports **`26` Prometheus measurables** at `https://localhost:49021/metrics`, and writes `/cm/shared/apps/slurm/etc/<cluster>/topology.conf` for Slurm `topology/tree` and `topology/block`. |
 
-The HA row is the one to check after any change to `opensm.conf` or `partitions.conf`.
+The HA row is the one to check after any change to `opensm.conf` or `partitions.conf`. Do the checksum comparison every time, even when the change looks trivial, because a one-line difference is enough to change routing after a failover.
+
+Make the checksum comparison part of the change review. The person who edits the file should not be the only one who checks it, and the comparison should be recorded with the change. That habit catches the one-line drift that a human reviewer would otherwise miss.
 
 ---
 
 ## 5. The 7-gate bottom-up production troubleshooting methodology
 
+Incidents usually arrive as complaints from the application side, and the complaint rarely names the layer that is broken. The gate method turns that complaint into an ordered list of questions, and it stops at the first question that the evidence cannot answer. This section explains the method, the percentile check that goes with it, the evidence bundle you collect before any change, and the checklist that closes out a repair.
+
 ### 5.1 Stopping at the first unproven layer (`V8` Ch. 10, Ch. 12, and Lab 04)
 
-InfiniBand incidents usually arrive as vague complaints from applications. A collective timed out, a rank is straggling, or training throughput dropped after switch maintenance. If you react by tuning collective environment variables, or by swapping cables at random, you can waste hours on layers above the real fault. Consider a physical link that runs at single-lane width. Every transport and collective benchmark on that path is meaningless until the link is fixed. So walk a strict seven-gate bottom-up sequence. Stop at the first gate whose evidence differs from a known-good baseline.
+InfiniBand incidents usually arrive as vague complaints from applications. A collective timed out, a rank is straggling, or training throughput dropped after switch maintenance. If you react by tuning collective environment variables, or by swapping cables at random, you can waste hours on layers above the real fault. Consider a physical link that runs at single-lane width. Every transport and collective benchmark on that path is meaningless until the link is fixed. So walk a strict seven-gate bottom-up sequence. Stop at the first gate whose evidence differs from a known-good baseline. A gate is a yes-or-no check that either passes against the baseline or stops the investigation right there.
 
 The diagram shows the order of the gates, and where each one stops the investigation.
 
@@ -499,9 +563,13 @@ The table gives each gate, the layer it checks, the pass criterion, and what a f
 
 Treat every gate as a yes-or-no question, and never skip ahead when a gate fails.
 
+A gate that fails is a stop sign, and the right response is to fix that gate before you read the next one. When the team agrees on this rule in advance, the incident has a clear sequence, and nobody argues about whether the higher layers are worth checking first. Skipping ahead is the habit that turns a one-hour fix into a two-day investigation, because the higher gates look interesting and the lower gate is easy to ignore.
+
 ### 5.2 Reading `ib_write_lat` percentile tails against a baseline (`V8` Ch. 10 Step 6 & Lab 02)
 
-Gate 5 has a trap. If you check only the typical or average latency from `ib_write_lat`, you may declare the RDMA transport healthy too early. Every rank in a collective waits at barriers for the slowest transfer. So short stalls in the ninety-ninth percentile slow down every step. Consider the degraded trace, and compare it with the known-good baseline. Both use a two-byte, thousand-iteration Reliable Connected test. The comparison shows how averages hide tail regressions.
+Gate 5 has a trap. If you check only the typical or average latency from `ib_write_lat`, you may declare the RDMA transport healthy too early. Every rank in a collective waits at barriers for the slowest transfer. So short stalls in the ninety-ninth percentile slow down every step. Consider the degraded trace, and compare it with the known-good baseline. Both use a two-byte, thousand-iteration Reliable Connected test. The comparison shows how averages hide tail regressions. A percentile tells you the latency that a given share of the transfers stayed under. The ninety-ninth percentile is the value that ninety-nine out of every one hundred transfers beat.
+
+That is the ninety-ninth percentile in plain words, and it is the number that matters for a barrier. One slow transfer in a hundred can hold up a whole collective, so a tail number is closer to the training job's experience than an average is.
 
 The first block is the degraded run from the incident. The last line is the known-good baseline from Lab 02, on the same node pair with the same parameters.
 
@@ -530,9 +598,13 @@ The table sets the baseline against the incident run, metric by metric.
 
 The average looks healthy, but the tail does not. Judge Gate 5 by its percentiles.
 
+A simple way to remember the rule is to ask what the slowest one percent is doing. If the answer is worse than the baseline, the transport has a tail problem, even when the median looks calm. Write the percentile next to the median in every report, so nobody reads only the friendly number. A median that matches the baseline says the typical transfer is fine, but it says nothing about the one transfer in a hundred that holds up the barrier.
+
 ### 5.3 Incident evidence bundle and post-repair verification checklist
 
 Resetting a switch port, restarting OpenSM, or running `perfquery -R` before you save telemetry destroys the evidence you need. Once counters are cleared, neither your peers nor vendor support can tell whether a link had symbol errors or downstream credit stalls. So before you change any fabric state, capture a timestamped, read-only Incident Evidence Bundle. It covers all seven layers.
+
+Each layer adds one folder to the bundle, so the evidence is organized by the same stack you use during the investigation. A reader who opens the bundle can walk the layers in order, without needing to ask which command produced which file. A bundle is a folder you can hand to someone else, and it lets them see exactly what you saw without rerunning the commands on a fabric that has already changed.
 
 The bundle is a folder with one subfolder for each kind of evidence, as shown below.
 
@@ -553,7 +625,9 @@ incident-id/
   recent-changes/       # Diff against pre-maintenance topology/config snapshot
 ```
 
-Replacing a degraded cable, or fixing a configuration error, is not the end of the job. Never return nodes to production just because the link light is green. A repair is complete only when all nine post-repair verification gates pass against the cluster baseline.
+Replacing a degraded cable, or fixing a configuration error, is not the end of the job.
+
+The post-repair checks are the proof that the fix worked. A cable that trains at full width and carries traffic without error deltas is a repaired cable. A cable that only shows a green light is still a suspect, and the checklist is what separates the two. Never return nodes to production just because the link light is green. A repair is complete only when all nine post-repair verification gates pass against the cluster baseline. The checklist below is the list of those gates.
 
 | Post-Repair Gate | Verification Check |
 |---|---|
@@ -569,13 +643,17 @@ Replacing a degraded cable, or fixing a configuration error, is not the end of t
 
 Keep each gate's result with the evidence bundle, so the repair is documented.
 
+When a repair is documented this way, the next incident on the same rail starts with a baseline that someone already checked. That saves time, and it stops the same fault from being rediscovered from scratch. A future engineer who reads the bundle can tell what was broken, what was changed and what proved the repair.
+
 ---
 
 ## Commands and configurations that matter
 
+The commands in this section follow the same order as the investigation. Start with the inventory, then check the Subnet Manager and the routes, then sample the counters and the optics, and finally check the UFM API. Each block is marked `(untested here)`, because these commands were not run against a live fabric in this build. Run them on a maintenance host that has the right access, and save the output before you change anything.
+
 ### 1. Host & Fabric Inventory Bundle (`V8` Lab 01 & *Supercomputers for Linux Sysadmins* Ch. 5)
 
-Run these commands first. They take a snapshot of the host and the fabric before anything changes.
+Run these commands first. They take a snapshot of the host and the fabric before anything changes. The snapshot is the reference you will compare against after any repair. Create one folder per incident, so every snapshot has a clear home.
 
 ```bash
 # Create a read-only timestamped inventory workspace (untested here)
@@ -604,9 +682,11 @@ ibnetdiscover -p | tee volume08-lab01/fabric/ibnetdiscover-ports.txt
 iblinkinfo | tee volume08-lab01/fabric/iblinkinfo.txt
 ```
 
+The commands write each output into the folder, so the snapshot survives the session. Keep the timestamp file with the rest, because the timestamp is what lets you line this snapshot up with the switch logs later.
+
 ### 2. Subnet Manager, Addressing, Path Tracing, and `smpquery` vs `saquery` (*Supercomputers for Linux Sysadmins* Ch. 5 & `V8` Lab 03)
 
-These commands check the Subnet Manager, test reachability to a node, and trace a path through the switches.
+These commands check the Subnet Manager, test reachability to a node, and trace a path through the switches. Run them from the management host, and read the outputs in the order they appear. The first command tells you who is in charge, and the later ones test the paths that the Subnet Manager programmed.
 
 ```bash
 # Verify authoritative Master SM (`state 3 SMINFO_MASTER`, `priority 15`, climbing `activity count`; untested here)
@@ -629,9 +709,13 @@ ibtracert 12 81
 ibroute 44 | head -n 30
 ```
 
+Compare each reply with the baseline before you act.
+
+Keep a short note of the comparison in the incident log. Write the value you expected, the value you received and the decision you made. A reader who joins the incident later can then follow the reasoning without rerunning the commands. A reachable node with a stale database record is a different problem from an unreachable node, and the comparison is what tells you which one you have.
+
 ### 3. Hardware Counter Delta Collection, Optical DDM (`mlxlink`), `ibdiagnet`, and Safe Port Isolation
 
-Take counter snapshots without a reset, check optical health, and fence a port only after the evidence is saved.
+Take counter snapshots without a reset, check optical health, and fence a port only after the evidence is saved. Fencing means disabling the port so it stops flapping and disturbing the subnet. It is a deliberate step, and it should happen only after the snapshots exist.
 
 ```bash
 # Capture read-only before/after counter snapshots WITHOUT `-R` reset (untested here)
@@ -657,9 +741,13 @@ ibportstate 44 4 disable
 ibportstate 44 4 enable
 ```
 
+Save each snapshot in a place that survives the session, because the temporary files in this example are not kept after a reboot. The fence command is the only one here that changes the fabric, so run it only after the evidence bundle is complete.
+
+Fencing is a deliberate action, and it should have a named owner and a rollback plan. Write down the command that re-enables the port before you disable it, so the reversal is ready when the cable is replaced.
+
 ### 4. NUMA-Pinned Pairwise RDMA Baseline & UFM Enterprise REST API (`V8` Labs 02 & 04)
 
-Pin the benchmarks to the HCA's local NUMA node, and query the UFM REST API for fabric health.
+Pin the benchmarks to the HCA's local NUMA node, and query the UFM REST API for fabric health. The benchmark tells you what the path can carry, and the REST API tells you what UFM has already noticed. Compare both with the baseline before you decide anything.
 
 ```bash
 # Pin host-memory RDMA latency & bandwidth benchmarks to the HCA's local NUMA node (untested here)
@@ -676,11 +764,15 @@ curl -sk -u admin:<password> https://ufm-vip.cluster.local/ufmRest/resources/pke
 
 Start with the inventory bundle, and keep its output before you run any command that changes state.
 
+Benchmarks and REST queries are read-only, but they still generate traffic. Running them during a busy window can add load to the same links you are trying to measure. Schedule them for a quiet window whenever the job allows it, and note the load in the log so the result is read in context. The benchmark and REST commands are read-only, but they still add load, so run them in a quiet window.
+
 ---
 
 ## How it fails
 
-The table lists six failure modes you are likely to meet. Each row gives what you see, the gate and tool that prove the cause, and the fix.
+Each failure below has a symptom that the application team sees, a gate that proves the cause, and a fix that matches the proof. The table lists six failure modes you are likely to meet. Each row gives what you see, the gate and tool that prove the cause, and the fix. Read the table as a set of stories, where each row starts with a complaint and ends with a repair.
+
+Each row also tells you how much evidence you need before you act. Some rows need only one counter, while others need a counter, an optical reading and a route check together. The more evidence a row asks for, the more carefully you should document the decision before the fix goes in.
 
 | Failure Mode | Observable Symptom | Root-Cause Diagnosis (`Gate` & Tool Evidence) | Production Remediation |
 |---|---|---|---|
@@ -693,11 +785,15 @@ The table lists six failure modes you are likely to meet. Each row gives what yo
 
 Start with the row whose symptom matches what your jobs show, then walk the gate it names.
 
+When two rows seem to match, do not guess which one is right. Walk the gates named by both rows, starting from the lowest, and let the first failing gate decide. The method is designed to make that choice mechanical. If two rows seem to match, walk the gates in order and let the first failing gate decide.
+
 ---
 
 ## Hands-on lab
 
-This chapter's deterministic verification lab runs locally, using only the Python 3 standard library. It checks the logic in `code/part12/infiniband_diagnostics_ufm.py` and `code/part12/infiniband_diagnostics_ufm_lab.py`. You can run it on Nebius GPU, or on any Linux or macOS workstation. It runs twenty-eight self-checks. Those cover every diagnostic utility, the counter delta equation, the optical DDM thresholds, the Subnet Manager audit, the UFM High Availability rule and the seven-gate troubleshooting scenario.
+This chapter's deterministic verification lab runs locally, using only the Python 3 standard library. It checks the logic in `code/part12/infiniband_diagnostics_ufm.py` and `code/part12/infiniband_diagnostics_ufm_lab.py`. You can run it on Nebius GPU, or on any Linux or macOS workstation. It runs twenty-eight self-checks. Those cover every diagnostic utility, the counter delta equation, the optical DDM thresholds, the Subnet Manager audit, the UFM High Availability rule and the seven-gate troubleshooting scenario. The lab does not touch any hardware, so it is safe to run anywhere. Its job is to confirm that the rules you have just read agree with the code.
+
+A useful way to use the lab is to change one input at a time and watch which check fails. That exercise shows you how each rule connects to a result, which is much easier to remember than a list of rules read once.
 
 Run the lab with this command.
 
@@ -705,7 +801,7 @@ Run the lab with this command.
 python3 -B code/part12/infiniband_diagnostics_ufm_lab.py
 ```
 
-Each check prints one line, marked PASS or FAIL, and the run ends with a summary. The expected output looks like this.
+Each check prints one line, marked PASS or FAIL, and the run ends with a summary. The expected output looks like this. The steps in this section were not run on a live fabric, so the block below is the reference for what a clean run should print.
 
 ```text
 === Chapter 12.9 Lab: InfiniBand Diagnostics, UFM and Operations ===
@@ -743,15 +839,23 @@ Summary: 28 passed, 0 failed
 
 If the summary reports any failures, start with the first FAIL line.
 
+A failure in an early check often explains failures that appear later in the list. Fix the first one, rerun the lab, and only then look at the rest. Reading the list from the top keeps the work in the same order as the chapter. The check name tells you which section of the chapter owns the rule, so reread that section before you change any code.
+
 ---
 
 ## Common first mistakes
 
+These five mistakes are the ones that cost the most time on a real fabric. Each one feels reasonable at the moment someone makes it, which is why they keep coming back.
+
 1. The first mistake is clearing counters before you capture a delta. Resetting hardware counters with `perfquery -R` or `ibqueryerrors -k` during an incident erases the cumulative error and wait history. That history proves which port degraded. The reset also blinds peer engineers and UFM Telemetry collectors. Take two read-only snapshots separated by a defined window, and compute the difference.
+
+Most of the time, a window of a few minutes is enough to show an active fault. Shorter windows can miss a burst, and longer windows can blend two events into one number. Pick the window to match how fast the job is slowing, and say which window you used in the incident notes.
+
+A defined window is a fixed number of seconds, chosen before you start, so that the two snapshots can be compared fairly. Write the window length next to the result, so the rate you calculate can be reproduced later by someone else.
 
 2. The second mistake is replacing optical cables based on a single non-zero cumulative total. A counter of several thousand on a switch port that has been up for weeks may have a current delta of zero. A port with a modest total can still be actively failing if its daily error rate has accelerated forty-five-fold. Alert on the rate of change and the acceleration, not on the raw total.
 
-3. The third mistake is tuning collective timeouts while a physical port runs at single-lane width. In our opening production incident, raising the collective retry and timeout variables only made the job hang longer before it aborted. The physical link at Gate 2 was already degraded. No amount of higher-layer tuning could restore the lost bandwidth.
+3. The third mistake is tuning collective timeouts while a physical port runs at single-lane width. In the opening production incident, raising the collective retry and timeout variables only made the job hang longer before it aborted. The physical link at Gate 2 was already degraded. No amount of higher-layer tuning could restore the lost bandwidth. A timeout only changes how long you wait, not how fast the wire is.
 
 4. The fourth mistake is relying on `ibstat` alone for link width, or on typical latency alone in `ib_write_lat`. On many adapters, `ibstat` prints an active state and a rate integer. It does not flag a four-lane port that fell back to one lane. When you check the lane width, use `iblinkinfo`, `ibstatus` or `mlxlink`. A normal typical latency can also hide a nearly threefold regression in the tail percentile.
 
@@ -761,7 +865,7 @@ If the summary reports any failures, start with the first FAIL line.
 
 ## Exercises
 
-Work through the six exercises below. They use the functions in `code/part12/infiniband_diagnostics_ufm.py` and the test cases in `code/part12/infiniband_diagnostics_ufm_lab.py`. Every input parameter, counter snapshot, optical DDM reading and topology table sits in the reference table that follows the list.
+Work through the six exercises below. They use the functions in `code/part12/infiniband_diagnostics_ufm.py` and the test cases in `code/part12/infiniband_diagnostics_ufm_lab.py`. Every input parameter, counter snapshot, optical DDM reading and topology table sits in the reference table that follows the list. Read the reference table once before you start, so you know where each input lives.
 
 1. You begin with the OFED utility selection and addressing audit. For Exercise 1 in the table below, convert the decimal LIDs from `ibstat` to the hexadecimal format shown by `ibstatus`. Explain why the effective four-lane FDR user bandwidth is lower than the raw rate. State what the two different Subnet Manager LIDs prove about the cabling. Then classify all three `smpquery` versus `saquery` outcomes on `LID 914`.
 
@@ -771,9 +875,9 @@ Work through the six exercises below. They use the functions in `code/part12/inf
 
 4. Check the multi-stage fabric audit and the post-maintenance topology drift. For Exercise 4 in the table below, evaluate the six-stage `ibdiagnet` summary. State whether the fabric is healthy, which stage failed first and the total error count. Then compare the expected four-link rail map against the post-maintenance `iblinkinfo` snapshot. Identify the missing, swapped and width-downgraded links.
 
-5. Next, work through the UFM High Availability election and the SuperPOD scaling. For Exercise 5 in the table below, determine which UFM appliance wins master election, and whether High Availability is ready, in both scenarios. Then explain the DGX B200 and DGX GB300 SuperPOD scaling numbers, and how Base Command Manager updates the Slurm topology configuration.
+5. Next, work through the UFM High Availability election and the SuperPOD scaling. For Exercise 5 in the table below, determine which UFM appliance wins master election, and whether High Availability is ready, in both scenarios. Then explain the DGX B200 and DGX GB300 SuperPOD scaling numbers. Then explain how Base Command Manager updates the Slurm topology configuration.
 
-6. Finish with the seven-gate bottom-up triage and the percentile latency audit. For Exercise 6 in the table below, compute the typical, ninety-ninth and ninety-nine-point-ninth percentile latency ratios, and explain why average latency misleads operators. Then identify the exact stopping gate and layer number for each of the five incident profiles.
+6. Finish with the seven-gate bottom-up triage and the percentile latency audit. For Exercise 6 in the table below, compute the typical, ninety-ninth and ninety-nine-point-ninth percentile latency ratios. Explain why average latency misleads operators. Then identify the exact stopping gate and layer number for each of the five incident profiles.
 
 The reference table holds every input for the six exercises.
 
@@ -792,7 +896,7 @@ The reference table holds every input for the six exercises.
 | **Exercise 6 (Part A)** | `evaluate_ib_write_lat_percentiles` (`2` B, `1,000` iters) | `t_typical = 1.58 µs` vs `1.55 µs` baseline; `99% = 2.90 µs` vs `1.71 µs`; `99.9% = 5.77 µs` vs `1.98 µs` |
 | **Exercise 6 (Part B)** | `run_seven_gate_bottom_up_triage` (`GATE_1..GATE_7`, layers `1..7`) | (i) `1x` width cable causing NCCL timeouts; (ii) port with `LinkUp` + `State: Initializing` (`Base lid: 0`); (iii) `P_Key` mismatch (`0x8021` vs `0x8035`); (iv) host RDMA `p99.9` tail regression; (v) benchmark bound to `NUMA node 1` while `mlx5_0` is on `NUMA node 0` |
 
-Start with Exercise 1, and keep the numbers from the table in front of you as you work.
+Start with Exercise 1, and keep the numbers from the table in front of you as you work. Write each intermediate result on its own line, so a slip in one step is easy to find.
 
 ---
 
@@ -806,7 +910,7 @@ Finally, you may be asked to walk the seven-gate workflow when a 128-node NCCL j
 
 In an interview, lead with the gate order, because it shows you stop at the first unproven layer.
 
----
+A strong answer also says what you would not do. You would not replace a cable before the physical gate fails, and you would not change a timeout before the transport gate is proven. Naming the actions you avoid shows that you understand the method, rather than just reciting it.
 
 ## Checkpoint questions (20)
 

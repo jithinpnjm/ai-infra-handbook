@@ -23,39 +23,39 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Suppose you bring up a new InfiniBand cluster. Every optical cable is seated, and every switch port shows a green physical link LED. The fabric can still fail to move a single byte of training data. Even when every port reaches an active logical state, a large training run can take twice as long per step. That slowdown happens when static forwarding tables pile twenty gigabytes of traffic onto two leaf uplinks while the adjacent uplinks sit nearly idle.
+Suppose you bring up a new InfiniBand cluster on a quiet Monday morning. Every optical cable is seated, and every switch port shows a green physical link LED. The fabric can still fail to move a single byte of training data. Even when every port reaches an active logical state, a large training run can take twice as long per step. That slowdown happens when static forwarding tables pile twenty gigabytes of traffic onto two leaf uplinks while the adjacent uplinks sit nearly idle. The cables are fine. The problem is in how the fabric decides where packets go.
 
-Ethernet switches run distributed routing protocols on every switch CPU. InfiniBand works differently. Its switches depend on one central control plane, the Subnet Manager. OpenSM or NVIDIA Unified Fabric Manager can implement it. The Subnet Manager discovers the topology over Virtual Lane fifteen, the management lane, and assigns Local Identifiers (LIDs) to the ports. It then programs the switch Linear Forwarding Tables and Multicast Forwarding Tables, applies Partition Keys and Service Level maps, and moves ports into the active state. Until an authoritative Master Subnet Manager finishes that sequence, the physical fabric remains logically dark.
+Ethernet switches run distributed routing protocols on every switch CPU. Each switch talks to its neighbors, and the whole network settles on a shared picture of the paths. InfiniBand works differently. Its switches depend on one central control plane, the Subnet Manager. The control plane is the part of the network that decides where traffic should go, and the data plane is the part that moves the packets. In an InfiniBand fabric, the Subnet Manager is the control plane. OpenSM or NVIDIA Unified Fabric Manager can implement it. The Subnet Manager discovers the topology over Virtual Lane fifteen, the management lane, and assigns Local Identifiers (LIDs) to the ports. A LID is the short address that InfiniBand uses to name a port inside one subnet. The Subnet Manager then programs the switch Linear Forwarding Tables and Multicast Forwarding Tables, applies Partition Keys and Service Level maps, and moves ports into the active state. Until an authoritative Master Subnet Manager finishes that sequence, the physical fabric remains logically dark. Light is present on the fiber, but no traffic is allowed to move.
 
-Once the subnet is active, delivered collective bandwidth depends on three architectural layers working together. Layer 1 of 3 is the Subnet Manager and its routing engine. The Subnet Manager elects a single master by priority, using the lowest GUID to break ties, and it sweeps link state changes. It also prevents credit loops across Virtual Lanes and spreads destination LIDs across spine uplinks.
+Once the subnet is active, delivered collective bandwidth depends on three architectural layers working together. You can picture them as a city. The Subnet Manager is the traffic controller, the switch topology is the road layout, and the rail geometry is the way each house connects to the nearest road.
 
-Layer 2 of 3 is switch topology, radix and oversubscription. Three-stage and five-stage folded Clos and Fat-Tree fabrics, Scheduled Fabrics, Dragonfly pods, and Torus rings scale from small pods to tens of thousands of GPUs. Oversubscription or a single spine failure directly cuts cross-rack bandwidth.
+Layer 1 of 3 is the Subnet Manager and its routing engine. The Subnet Manager elects a single master by priority, using the lowest GUID to break ties, and it sweeps link state changes. A GUID is a sixty-four-bit hardware identifier burned into each device, so it does not change when a cable moves. The routing engine is the algorithm inside the Subnet Manager that chooses the path for each destination. The engine also prevents credit loops across Virtual Lanes and spreads destination LIDs across spine uplinks.
 
-Layer 3 of 3 is the rail-optimized geometry that connects server NICs to leaf switches, along with its IP fabric counterparts. Mapping eight server NICs across eight independent rail switches behaves very differently from connecting all eight NICs to one top-of-rack switch or breaking out ports across multiple planes. AI Ethernet fabrics solve these same routing and multi-tenancy problems using dynamic IP protocols.
+Layer 2 of 3 is switch topology, radix and oversubscription. The radix is the number of ports on one switch, and it sets how many switches you need for a given number of GPUs. Three-stage and five-stage folded Clos and Fat-Tree fabrics, Scheduled Fabrics, Dragonfly pods, and Torus rings scale from small pods to tens of thousands of GPUs. Oversubscription means that a switch has more downlink capacity than uplink capacity, so the uplinks become a shared bottleneck. A single spine failure directly cuts cross-rack bandwidth, because the traffic that used that spine has to fit into what remains.
 
-Before you blame a cable for a stuck port, check whether a master Subnet Manager has finished its sequence.
+Layer 3 of 3 is the rail-optimized geometry that connects server NICs to leaf switches, along with its IP fabric counterparts. A NIC is the network card that gives each GPU its path to the fabric. Mapping eight server NICs across eight independent rail switches behaves very differently from connecting all eight NICs to one top-of-rack switch or breaking out ports across multiple planes. AI Ethernet fabrics solve these same routing and multi-tenancy problems using dynamic IP protocols.
+
+Before you blame a cable for a stuck port, check whether a master Subnet Manager has finished its sequence. That one check saves more time than any amount of cable swapping.
+
+A useful way to think about it is a delivery route. A package that stops at a closed depot does not need a new truck. It needs someone to tell the drivers where the depot is and which roads lead to it. In the same way, a port that stops at Initialize needs the Subnet Manager to tell it where it sits in the subnet and how to reach the rest of the fabric.
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** Read Chapter 12.2 on RDMA Queue Pairs and Completion Queues first. You will also need Chapter 12.6, which covers InfiniBand physical signaling, addressing and credit-based Virtual Lane flow control.
+**Prerequisites:** Read Chapter 12.2 on RDMA Queue Pairs and Completion Queues first. You will also need Chapter 12.6, which covers InfiniBand physical signaling, addressing and credit-based Virtual Lane flow control. Those two chapters supply the vocabulary, such as Queue Pair, LID and Virtual Lane, that this chapter uses without re-explaining.
 
-**Outcomes:** By the end of this chapter, you will be able to:
-- Explain the ten-stage Subnet Manager lifecycle, read `sminfo` output, and apply the OpenSM master election and lowest-GUID tie-breaker rules.
-- Configure redundant OpenSM instances on Linux and in NVIDIA Base Command Manager.
-- Trace the InfiniBand port state machine together with Directed Route SMP hop-pointer traversal and LMC multipath LID blocks.
-- Inspect switch Linear Forwarding Tables and Multicast Forwarding Tables with `ibroute`, `ibtracert`, `smpquery`, `saquery` and `perfquery`, and choose the right OpenSM routing engine.
-- Size non-blocking and oversubscribed three-stage and five-stage Fat-Tree and Clos fabrics, and compare rail-optimized, rail-only, rail-unified, multi-planar, scheduled, dragonfly, and torus designs.
-- Compare InfiniBand OpenSM routing with AI Ethernet routing protocols, and integrate topology discovery with Slurm through Topograph in Base Command Manager.
-
----
+The chapter follows the path of a fabric from first power-on to a tuned, tenant-aware network. It starts with the Subnet Manager lifecycle, which you can read through `sminfo` output, the port states and the high-availability rules that decide which Subnet Manager is in charge. It then explains how the forwarding tables and the routing engines choose paths, how the oversubscription arithmetic sizes a leaf and a spine, and how rail-optimized and multi-planar layouts change the failure picture. It closes with the Ethernet routing protocols that do the same job on AI Ethernet fabrics, the multi-tenant isolation tools, and the commands you run to check each layer on a live node, such as `sminfo`, `ibtracert`, `smpquery`, `saquery` and `perfquery`.
 
 ## 1. Centralized subnet management, port states, and the OpenSM lifecycle
 
+Every InfiniBand cluster starts in the same state, with cables connected and no one yet in charge of the paths. The first job of the Subnet Manager is to change that state. This section explains who does that job, what it does in order, and how you can tell from the outside whether it has finished.
+
 ### 1.1 Why InfiniBand requires a Subnet Manager
 
-Consider a switch or server that reboots on an InfiniBand cluster while no Subnet Manager is working. Its ports negotiate a physical link, but they never receive a Local Identifier or a forwarding path. Any distributed PyTorch or NCCL job that touches those nodes hangs right away, during rendezvous or Queue Pair initialization.
+Consider a switch or server that reboots on an InfiniBand cluster while no Subnet Manager is working. Its ports negotiate a physical link, but they never receive a Local Identifier or a forwarding path. Any distributed PyTorch or NCCL job that touches those nodes hangs right away, during rendezvous or Queue Pair initialization. A rendezvous is the start-up handshake where the processes in a job find each other, and a Queue Pair is the pair of send and receive queues that one RDMA connection uses.
 
-InfiniBand switches do not learn their forwarding paths with Spanning Tree, OSPF or BGP. A single daemon, the Subnet Manager, does that work. It handles topology discovery, LID assignment and deadlock-free path calculation. It also programs the forwarding tables, distributes Partition Keys and maps Service Levels to Virtual Lanes. In normal operation, data packets never pass through the Subnet Manager. Switches forward frames in hardware at full wire speed, using the tables the Subnet Manager has already written.
+InfiniBand switches do not learn their forwarding paths with Spanning Tree, OSPF or BGP. Those are the protocols that Ethernet networks use, and each switch runs its own copy of them. A single daemon, the Subnet Manager, does that work for the whole subnet instead. It handles topology discovery, LID assignment and deadlock-free path calculation. A deadlock here means a set of packets waiting on each other in a loop, so none of them can ever move. The Subnet Manager also programs the forwarding tables, distributes Partition Keys and maps Service Levels to Virtual Lanes. In normal operation, data packets never pass through the Subnet Manager. Switches forward frames in hardware at full wire speed, using the tables the Subnet Manager has already written. The Subnet Manager is therefore busy during start-up and during failures, and quiet the rest of the time.
+
+The diagram below shows the parts that take part in that work. Read the dashed lines first, because they carry the management traffic. The solid lines carry the user data.
 
 ```mermaid
 flowchart TD
@@ -72,7 +72,9 @@ flowchart TD
     Q2 -->|"Climbing and Swept"| A4["Control Plane Healthy:<br/>Check LFTs and P_Keys"]
 ```
 
-The LID space is fixed, and the Subnet Manager works inside it. The block below shows how the 16-bit range is divided.
+Follow the diamond at the bottom of the diagram. It starts from a symptom, a job that hangs at initialization, and then asks how many Masters the subnet has. Each answer leads to a different cause. The diagram is a good habit to build, because the first question in any incident is almost always the same one.
+
+The LID space is fixed, and the Subnet Manager works inside it. A LID is a sixteen-bit number, so the space has a fixed size. The block below shows how the sixteen-bit range is divided between reserved values, unicast ports, multicast groups and the permissive address that discovery uses.
 
 ```text
 # InfiniBand single-subnet LID address space managed by the Subnet Manager:
@@ -83,7 +85,9 @@ LID 0xFFFF (65,535)             : Permissive LID for Directed Route SMPs on VL15
 Data-plane line rates           : 200 Gbps HDR, 400 Gbps NDR, 800 Gbps XDR
 ```
 
-The table below lists the control-plane entities that keep this design healthy. Check each row when a fabric misbehaves. The healthy state needs exactly one Master, and zero masters leaves new or rebooted ports stuck in `Initialize`.
+Each range has a different job. The unicast range holds the addresses of end ports and switches, so most of the space is used for normal traffic. The multicast range is for groups that receive the same packet, such as a collective that sends one copy to many members. The permissive LID is a special value that lets the earliest discovery packets travel before any real addressing exists.
+
+The table below lists the control-plane entities that keep this design healthy. Check each row when a fabric misbehaves. Each row names one part of the control plane, the wire mechanism it uses, what healthy looks like and what a broken state looks like. The healthy state needs exactly one Master, and zero masters leaves new or rebooted ports stuck in `Initialize`.
 
 | Control-plane entity or check | Identifier / wire mechanism | Healthy production state | Failure symptom when broken |
 |---|---|---|---|
@@ -93,13 +97,15 @@ The table below lists the control-plane entities that keep this design healthy. 
 | **Switch Management Port (Port `0`)** | Virtual switch port `0` (`SwitchGUID` / switch LID) | Every switch is assigned `1` switch-wide LID (`LMC = 0`) on virtual Port `0` for SMP management | Unreachable Port `0` prevents OpenSM from writing `LinearFDBTop` and LFT blocks to that switch |
 | **HCA End Port (`mlx5_0` Port `1`)** | PortGUID (`64`-bit), `Base lid` (`16`-bit), `SM lid` | `Physical state: LinkUp (5)`, `State: Active (4)`, `Base lid >= 1`, `SM lid` matching Master SM | `Physical state: LinkUp` with `State: Initialize (2)` or `Armed (3)` blocks all VL0..VL14 user Queue Pairs |
 
+Read the table row by row, starting with the Master. If the Master row is healthy, the rest of the table is worth checking. If it is not, the other rows will look broken for the same reason, and fixing the Master first saves time.
+
 ### 1.2 The ten-stage Subnet-Management lifecycle and the port state machine
 
-Suppose a marginal optical cable flaps every few seconds on a large cluster. Each flap triggers another heavy sweep in OpenSM, and those sweeps stall collective latency across every running job. To see why, you need the ten stages of the Subnet Manager lifecycle and the four logical port states. Together they show that physical link up is only the start of fabric initialization.
+Suppose a marginal optical cable flaps every few seconds on a large cluster. Each flap triggers another heavy sweep in OpenSM, and those sweeps stall collective latency across every running job. A heavy sweep is a full rediscovery of the subnet, which is much more work than a light update. To see why the flap hurts so much, you need the ten stages of the Subnet Manager lifecycle and the four logical port states. Together they show that physical link up is only the start of fabric initialization.
 
-When OpenSM or NVIDIA UFM starts, it binds to a local port and sweeps the fabric over Virtual Lane fifteen. It then assigns LIDs, computes deadlock-free routes, programs the switch forwarding and partition tables, and activates the ports. After that, it listens for asynchronous link-state traps such as `Trap 128`. It also runs periodic sweeps, so routes are recalculated whenever links change.
+When OpenSM or NVIDIA UFM starts, it binds to a local port and sweeps the fabric over Virtual Lane fifteen. It then assigns LIDs, computes deadlock-free routes, programs the switch forwarding and partition tables, and activates the ports. After that, it listens for asynchronous link-state traps such as `Trap 128`. A trap is a message that a switch or port sends to the Subnet Manager without being asked. It also runs periodic sweeps, so routes are recalculated whenever links change.
 
-The ten stages run in order, and you can inspect the artifact each one leaves. The table below lists them.
+The ten stages run in order, and you can inspect the artifact each one leaves. An artifact here is a file, a table or a state value that you can read after the stage has run. The table below lists them.
 
 | SM lifecycle stage | Control-plane action and wire SMPs | Key configuration or state artifact |
 |---|---|---|
@@ -114,7 +120,7 @@ The ten stages run in order, and you can inspect the artifact each one leaves. T
 | **9. Monitor for traps and periodic sweeps** | Listen for asynchronous traps such as `Trap 128` (link state change) and run periodic sweeps (`sweep_interval`, default `10 s`). | `/var/log/opensm.log` trap counters |
 | **10. Recalculate affected state on change** | Re-run discovery and route programming on `Trap 128` or `SIGHUP`, updating LFTs and P_Key tables so surviving paths absorb traffic. | Updated LFTs after link event |
 
-Stage 9 leaves its trap counters in `/var/log/opensm.log`. The port state table below shows what each logical state allows. Physical link up is only the start.
+Stage 9 leaves its trap counters in `/var/log/opensm.log`. That log is the first place to look when a link keeps changing, because every trap is recorded there with the LID and port that sent it. The port state table below shows what each logical state allows. Physical link up is only the start.
 
 | Layer | State code and name in `ibstat` / `ibstatus` | Allowed traffic | What drives the transition to the next state |
 |---|---|---|---|
@@ -124,15 +130,15 @@ Stage 9 leaves its trap counters in `/var/log/opensm.log`. The port state table 
 | **Logical link layer** | **`3: Armed`** | **VL15 SMPs** + link-local readiness; user RDMA (VL0..VL14) still blocked | Master SM finishes programming switch LFTs along the path and sends `SubnSet(PortInfo)` setting `PortState = 4 (Active)` |
 | **Logical link layer** | **`4: Active`** | **All traffic (VL0..VL14 user RDMA + VL15 SMPs)** | Port remains `Active` unless physical link drops (`-> Down`) or SM re-initializes the port |
 
-If you read the table from top to bottom, you follow a port from startup to traffic. Traffic stays blocked until the Subnet Manager moves the port to `Active`, so do not treat a link LED as the finish line.
+If you read the table from top to bottom, you follow a port from startup to traffic. The physical layer comes up first, and it only proves that the signal reaches the other end cleanly. The logical layer then moves through Initialize and Armed before it reaches Active. Traffic stays blocked until the Subnet Manager moves the port to `Active`, so do not treat a link LED as the finish line. A port with a lit LED and a Base LID of zero is waiting for the control plane, not for a repair crew.
 
 ### 1.3 Directed Route SMPs: how OpenSM discovers an unaddressed fabric
 
-Think about a cold boot. No switch has a forwarding table yet, and no port has a Local Identifier. If OpenSM depended on normal address lookups to reach a switch, it would have no way to discover or program the fabric.
+Think about a cold boot. No switch has a forwarding table yet, and no port has a Local Identifier. If OpenSM depended on normal address lookups to reach a switch, it would have no way to discover or program the fabric. It would be like trying to find a house by its street number before anyone has painted the numbers on the doors.
 
-Chapter 12.6 introduced the answer, Directed Route addressing. It runs on Virtual Lane fifteen and uses permissive source and destination LIDs, so the packet can travel before any forwarding table exists. The outbound request carries its own route, an explicit array of switch egress port numbers called the Initial Path. Each transit switch sends the packet out the port at the current hop pointer. It then records its own receiving ingress port in the Return Path array and increments the hop pointer.
+Chapter 12.6 introduced the answer, Directed Route addressing. A Subnet Management Packet, or SMP, is the small management message that the Subnet Manager uses for discovery and programming. In directed routing, the SMP carries its own route. It runs on Virtual Lane fifteen and uses permissive source and destination LIDs, so the packet can travel before any forwarding table exists. The outbound request carries its own route, an explicit array of switch egress port numbers called the Initial Path. Each transit switch sends the packet out the port at the current hop pointer. The hop pointer is the index that tells the switch which entry of the array to read next. The switch then records its own receiving ingress port in the Return Path array and increments the hop pointer.
 
-When the request reaches the destination node, the target processes the management attribute, flips the direction bit from zero to one, and sends the response back. On the return trip, each switch reads its recorded ingress port from the Return Path array and decrements the hop pointer. The reply eventually reaches the Subnet Manager. Combined directed routing adds one more option. OpenSM can use normal LID forwarding across a core that is already configured, then step onto an unconfigured branch.
+When the request reaches the destination node, the target processes the management attribute, flips the direction bit from zero to one, and sends the response back. The direction bit is the flag that says whether the packet is a request or a reply. On the return trip, each switch reads its recorded ingress port from the Return Path array and decrements the hop pointer. The reply eventually reaches the Subnet Manager. The reply does not need any forwarding table, because the request left a complete map of the way back. Combined directed routing adds one more option. OpenSM can use normal LID forwarding across a core that is already configured, then step onto an unconfigured branch. That lets the Subnet Manager reach new hardware at the edge without rebuilding the whole route map.
 
 The sketch below follows one request across three switch hops. Read the forward pass first, then the reverse pass.
 
@@ -156,15 +162,15 @@ Header fields:
    - hop_pointer decrements 3 -> 2 -> 1 -> 0 until reply reaches the SM
 ```
 
-If you follow the forward pass first, the reverse pass makes sense. The reply retraces the request's path, using the Return Path array as its map.
+If you follow the forward pass first, the reverse pass makes sense. The reply retraces the request's path, using the Return Path array as its map. Each step in the sketch shows one switch doing two things: forwarding the packet, and writing down the port it came in on.
 
 ### 1.4 Master and Standby election, split authority, and HA architecture
 
-Consider two ways this goes wrong. In the first, the only Subnet Manager host loses power and no standby is running. Any rebooted compute node, or any newly replaced cable, stays stuck in the initialize state. In the second, a standby takes over with an outdated configuration file, or a compute node boots an enabled `opensm` daemon at maximum priority. In both cases, routing tables and tenant partitions can change silently across the entire cluster.
+Consider two ways this goes wrong. In the first, the only Subnet Manager host loses power and no standby is running. Any rebooted compute node, or any newly replaced cable, stays stuck in the initialize state. In the second, a standby takes over with an outdated configuration file, or a compute node boots an enabled `opensm` daemon at maximum priority. In both cases, routing tables and tenant partitions can change silently across the entire cluster. High availability, or HA, means that a second instance can take over when the first one fails. It only helps if the takeover is correct.
 
-A production subnet should run two or three Subnet Manager instances for high availability. Exactly one acts as Master, and the others wait in Standby. OpenSM elects the Master with a two-step rule carried in `SMInfo` packets. The instance with the highest configured integer priority, from zero to fifteen, wins outright. If two instances share that highest priority, the port with the numerically lowest sixty-four-bit GUID wins the tie-breaker.
+A production subnet should run two or three Subnet Manager instances for high availability. Exactly one acts as Master, and the others wait in Standby. OpenSM elects the Master with a two-step rule carried in `SMInfo` packets. An `SMInfo` packet is the message in which each Subnet Manager announces its priority and its state. The instance with the highest configured integer priority, from zero to fifteen, wins outright. If two instances share that highest priority, the port with the numerically lowest sixty-four-bit GUID wins the tie-breaker.
 
-Standby instances poll the Master at regular intervals. If the Master stops responding, the highest-priority standby takes over and sweeps the subnet to update every port's SM LID. Always verify in `sminfo` that exactly one Master exists and that its activity count is still climbing, not frozen.
+Standby instances poll the Master at regular intervals. If the Master stops responding, the highest-priority standby takes over and sweeps the subnet to update every port's SM LID. The SM LID is the field on each port that records which LID the active Subnet Manager uses. Always verify in `sminfo` that exactly one Master exists and that its activity count is still climbing, not frozen. The activity count is a counter that rises with each sweep and query, so a counter that stops rising means the daemon has stopped doing work.
 
 The example below shows a Master report and the election rules behind it. Read the state codes as the key to the output.
 
@@ -182,7 +188,7 @@ sminfo: sm lid 1 sm guid 0x0002c903004a1b20, activity count 184223 priority 15 s
 4. Frozen activity count : If state == 3 but activity count (184223) never increments across sweeps, the SM daemon is wedged
 ```
 
-The tie-breaker only matters when priorities are equal. A frozen activity count with `state 3` means the daemon is wedged, even though it still claims mastership. The table below sets out four production rules that keep your HA design sound. Each row names the failure you avoid by following its rule.
+The tie-breaker only matters when priorities are equal. In the example, both candidates have priority 14, so the lower GUID wins. A frozen activity count with `state 3` means the daemon is wedged, even though it still claims mastership. That combination is easy to miss, because the output looks healthy at a glance. The table below sets out four production rules that keep your HA design sound. Each row names the failure you avoid by following its rule.
 
 | Production HA rule | Operational requirement | What goes wrong if violated |
 |---|---|---|
@@ -193,17 +199,21 @@ The tie-breaker only matters when priorities are equal. A frozen activity count 
 
 Before you bring a new Subnet Manager into service, decide which host will be its standby and confirm that the two configurations match.
 
+A useful test is to ask a simple question during the review. If the primary failed right now, which host would take over, and would it route traffic the same way? If the answer is unclear, the standby is not yet ready, no matter how many processes are running on it. Those two steps prevent most of the failures in the table above.
+
 ---
 
 ## 2. Linear Forwarding Tables, LMC multipathing, and OpenSM routing engines
 
+Picture a collective that runs at full speed on a small test pod and then crawls on the production pod. The hardware is the same, and the cabling looks the same. The difference is in the forwarding tables, which decide which uplink each destination uses. This section explains how a switch looks up a destination, how the Subnet Manager can spread traffic over several paths, and how the routing engine chooses those paths.
+
 ### 2.1 Destination-based LID lookup, LFTs, MFTs, and LMC
 
-Start with a simple rule. In a classical InfiniBand fabric without adaptive routing, each destination LID maps to one fixed outgoing port. Picture a naive routing setup where all active compute nodes get destination LIDs that map onto the same two leaf uplinks. A multi-rack collective then bottlenecks at a fraction of the switch's total spine capacity.
+Start with a simple rule. In a classical InfiniBand fabric without adaptive routing, each destination LID maps to one fixed outgoing port. Picture a naive routing setup where all active compute nodes get destination LIDs that map onto the same two leaf uplinks. A multi-rack collective then bottlenecks at a fraction of the switch's total spine capacity. The other uplinks are connected and healthy, but no destination is sending traffic through them.
 
-Every InfiniBand switch routes unicast packets with a flat hardware table, the Linear Forwarding Table. When a frame arrives, the switch reads the sixteen-bit Destination LID from the Local Route Header. It then looks up `LFT[DLID]` and sends the frame out a single eight-bit port number. Multicast frames work differently. They use the Multicast Forwarding Table, which stores a bitmask of outgoing ports for each multicast LID across a loop-free spanning tree.
+Every InfiniBand switch routes unicast packets with a flat hardware table, the Linear Forwarding Table. Unicast means one sender to one receiver. When a frame arrives, the switch reads the sixteen-bit Destination LID from the Local Route Header. The Local Route Header is the part of the packet that carries the source and destination LIDs. The switch then looks up `LFT[DLID]` and sends the frame out a single eight-bit port number. The lookup is a single array read, which is why the switch can do it at wire speed. Multicast frames work differently. They use the Multicast Forwarding Table, which stores a bitmask of outgoing ports for each multicast LID across a loop-free spanning tree. A bitmask here is a row of yes-or-no flags, one per port, so one lookup can copy a frame to several ports at once.
 
-A single HCA port with LMC at zero owns just one LID, so all of its traffic follows one path. LID Mask Control, or LMC, changes that. The Subnet Manager uses it to spread one HCA port across several parallel spine links, and the table stays deterministic. Setting LMC above zero gives each HCA port a contiguous block of LIDs. The block holds 2 to the power of LMC LIDs. The Subnet Manager then maps each LID in that block to a different switch uplink port in the Linear Forwarding Table. Communication libraries can open several Queue Pairs, each bound to a different path LID on the same physical adapter port.
+A single HCA port with LMC at zero owns just one LID, so all of its traffic follows one path. An HCA is the host channel adapter, which is the InfiniBand network card in a server. LID Mask Control, or LMC, changes that. The Subnet Manager uses it to spread one HCA port across several parallel spine links, and the table stays deterministic. Deterministic means the same destination always takes the same path, so the behavior is predictable and easy to debug. Setting LMC above zero gives each HCA port a contiguous block of LIDs. The block holds 2 to the power of LMC LIDs. The Subnet Manager then maps each LID in that block to a different switch uplink port in the Linear Forwarding Table. Communication libraries can open several Queue Pairs, each bound to a different path LID on the same physical adapter port. Each Queue Pair then travels a different route through the same card.
 
 The reference block below lists the lookup rule and the LMC arithmetic that you will need.
 
@@ -217,15 +227,17 @@ LMC range  : [Base LID, Base LID + 2^LMC - 1] where lower LMC bits of Base LID a
   - LMC = 3: 2^3 = 8 LIDs (Base lid 64 -> LIDs 64..71)
 ```
 
-Notice the LMC = 2 line. A Base LID of 16 covers four consecutive LIDs, and each one lands on a different uplink.
+Notice the LMC = 2 line. A Base LID of 16 covers four consecutive LIDs, and each one lands on a different uplink. The LMC = 3 line uses the same idea with eight LIDs. The pattern is always the same, so once you read one line, you can work out the others.
+
+Think of the LMC block as a set of parallel lanes on one road. A single lane means every car uses the same exit, so a jam at that exit stops the whole road. Several lanes let different cars take different exits, even though they all start from the same on-ramp. A Queue Pair that is bound to one path LID uses one lane, and a second Queue Pair bound to another path LID uses another lane. The traffic is spread without the application having to know anything about the lanes.
 
 ### 2.2 Comparing OpenSM routing engines: `minhop`, `updn`, `ftree`, `dor`, and `dfsssp`
 
-InfiniBand relies on lossless, link-level credit flow control. That design has a sharp edge. A cyclic path of buffer waits across switches locks up every port in the loop permanently. Picking a routing engine that does not match your physical topology can therefore cause credit deadlocks or a severe uplink imbalance.
+Start from a deadlock. InfiniBand relies on lossless, link-level credit flow control. A credit is permission to send one more block of data to the neighbor. Because the link never drops packets, a sender waits instead of dropping when the neighbor is full. That design has a sharp edge. A cyclic path of buffer waits across switches locks up every port in the loop permanently, because each port is waiting for another port in the loop to free a buffer that will never be freed. Picking a routing engine that does not match your physical topology can therefore cause credit deadlocks or a severe uplink imbalance.
 
-OpenSM offers several topology-aware routing engines. You choose them with `routing_engine` in `/etc/opensm/opensm.conf`. The setting accepts a fallback list, such as `routing_engine ftree,updn,minhop`. In tree-based topologies, the Up/Down rule prevents credit loops using a single Virtual Lane. Packets travel up toward the root spine switches, then down toward the leaves. The rule strictly forbids any downward-to-upward turn through a leaf switch.
+OpenSM offers several topology-aware routing engines. A routing engine is the algorithm that computes the path for every destination. You choose them with `routing_engine` in `/etc/opensm/opensm.conf`. The setting accepts a fallback list, such as `routing_engine ftree,updn,minhop`. The list tells OpenSM to use the first engine that fits the topology, and to fall back to the next one if it does not. In tree-based topologies, the Up/Down rule prevents credit loops using a single Virtual Lane. Packets travel up toward the root spine switches, then down toward the leaves. The rule strictly forbids any downward-to-upward turn through a leaf switch. A turn here means a change of direction inside a switch.
 
-Why does that rule work? Every cycle in a tree-derived graph has at least one top peak at a spine and one bottom valley at a leaf. Forbidding downward-to-upward turns therefore breaks every possible credit loop, and it needs no extra Virtual Lanes. That guarantee holds only if `/etc/opensm/root_guids.conf` never labels a leaf switch as a root. On symmetric folded Clos AI clusters, `ftree` and its adaptive variant `ar_ftree` improve on generic `updn`. They balance destination LIDs evenly across all spine uplinks, in a deterministic way.
+Why does that rule work? Every cycle in a tree-derived graph has at least one top peak at a spine and one bottom valley at a leaf. Forbidding downward-to-upward turns therefore breaks every possible credit loop, and it needs no extra Virtual Lanes. That guarantee holds only if `/etc/opensm/root_guids.conf` never labels a leaf switch as a root. The root file names the switches that sit at the top of the tree. On symmetric folded Clos AI clusters, `ftree` and its adaptive variant `ar_ftree` improve on generic `updn`. They balance destination LIDs evenly across all spine uplinks, in a deterministic way. A symmetric Clos is one where every leaf has the same number of uplinks, which makes the balancing rule simple to apply.
 
 The table compares the five routing engines by target topology, path method and deadlock protection. Notice that `minhop` provides no deadlock protection once the topology has cycles, so match the engine to the wiring, not to habit.
 
@@ -237,23 +249,27 @@ The table compares the five routing engines by target topology, path method and 
 | **`dor`** (Dimension-Ordered Routing) | `1D`, `2D`, or `3D` Torus and Mesh fabrics (`X`, `Y`, `Z` coordinates) | Routes packets completely along Dimension `X` first, then `Y`, then `Z` (`X -> Y -> Z`) | Dimension ordering prevents cross-dimension cycles; wrap-around torus links split across `>= 2` Virtual Lanes (VL0/VL1) at a dateline to break intra-ring loops | `>= 2` VLs for torus (`ar_dor` / `torus-2QoS`) |
 | **`dfsssp`** (Deadlock-Free Single-Source Shortest-Path) | Arbitrary or irregular graphs and Dragonfly-style topologies | Computes Dijkstra shortest paths across any topology graph and builds a channel dependency graph (CDG) | Breaks cycles in the CDG by assigning SL-to-VL transitions across multiple Virtual Lanes | `>= 2` VLs (`None`) |
 
-Match the routing engine to your cabling before you enable it, because a mismatch can deadlock the fabric.
+Match the routing engine to your cabling before you enable it, because a mismatch can deadlock the fabric. The safest habit is to write down the topology first, then pick the engine from the table, then check the choice with `ibroute` after the sweep.
+
+Here is how that habit looks in practice. Start by sketching the switch tiers and writing down whether the wiring is a clean tree or has shortcuts that form cycles. If the sketch is a clean tree, `ftree` is usually the first choice. If the wiring has irregular links or a failed spine that cannot be repaired right away, `updn` is the safer fallback. Only after the engine is chosen should you run the sweep. The check with `ibroute` then confirms that the table matches the sketch, and any surprise at that point tells you the wiring is not what the diagram said.
 
 ---
 
 ## 3. Topologies, oversubscription math, and three-stage versus five-stage scale
 
+Suppose a team plans a new AI pod on a whiteboard. They draw the servers, the leaves and the spines, and they count the ports. The counting decides how much the pod can do before the first job starts. This section shows the arithmetic behind that count, so you can check a design before you buy it.
+
 ### 3.1 Leaf oversubscription and its exact cost on AllReduce
 
-Picture a leaf switch with twice as many server downlinks as spine uplinks. Every single-pair bandwidth test inside the rack still runs at full line rate. The trouble starts when a multi-rack training job runs an AllReduce across the spine tier. Each GPU's effective network bandwidth drops in half. Losing one of two spine switches then cuts throughput in half again.
+Picture a leaf switch with twice as many server downlinks as spine uplinks. Every single-pair bandwidth test inside the rack still runs at full line rate. The trouble starts when a multi-rack training job runs an AllReduce across the spine tier. An AllReduce is the collective where every GPU ends up with the sum of everyone's gradients, so every GPU sends and receives a large share of the data. Each GPU's effective network bandwidth drops in half. Losing one of two spine switches then cuts throughput in half again.
 
-The oversubscription ratio of a switch tier is its total southbound downlink capacity divided by its total northbound uplink capacity. When every server under an oversubscribed leaf transmits across the spine at once, they share the smaller uplink pool equally. You can check this yourself with a paired `ib_write_bw` test. Run one inside the same leaf, then run one across two racks.
+The oversubscription ratio of a switch tier is its total southbound downlink capacity divided by its total northbound uplink capacity. Southbound means toward the servers, and northbound means toward the spines. When every server under an oversubscribed leaf transmits across the spine at once, they share the smaller uplink pool equally. You can check this yourself with a paired `ib_write_bw` test. Run one inside the same leaf, then run one across two racks. The first test shows what the leaf can do locally, and the second shows what the shared uplinks allow.
 
 $$\text{Oversubscription Ratio} = \frac{\text{Total Downlink Bandwidth}}{\text{Total Uplink Bandwidth}} = \frac{N_{\text{down}} \times R_{\text{down}}}{N_{\text{up}} \times R_{\text{up}}}$$
 
-A ratio of 2.0 means the leaf offers half as much uplink as downlink.
+A ratio of 2.0 means the leaf offers half as much uplink as downlink. In plain words, every uplink has to carry the traffic of two downlinks when all of them are busy.
 
-The example below follows one leaf through three cases, using the leaf numbers from the Volume 08 analysis. Read the arithmetic line by line.
+The example below follows one leaf through three cases, using the leaf numbers from the earlier analysis of this design. Read the arithmetic line by line. The first case is the nominal design, the second shows the cost for one AllReduce step, and the third shows what a spine failure does to the same leaf.
 
 ```text
 # Production leaf switch oversubscription and AllReduce step-time math (Volume 08 analysis):
@@ -275,19 +291,21 @@ Leaf uplinks (2:1 design)    : 8 x 400 Gbps  = 3,200 Gbps (split 4 and 4 across 
    Degraded per-node rate    = 1,600 Gbps / 16 = 100 Gbps (12.5 GB/s -> 160.0 ms per 2 GB AllReduce step)
 ```
 
-Notice that the 2:1 leaf needs twice as long per step as the non-blocking one. Losing one spine doubles the ratio to 4:1.
+Notice that the 2:1 leaf needs twice as long per step as the non-blocking one. Losing one spine doubles the ratio to 4:1. The arithmetic is simple, but the result is easy to overlook when the cluster looks healthy on a normal day.
 
-Before you size a leaf, decide how much oversubscription your AllReduce jobs can tolerate.
+A practical way to remember this is to picture a bridge with two lanes that suddenly loses one lane. The cars do not stop, but they queue, and the queue grows with every car that arrives. The leaf behaves the same way. Each surviving uplink carries more of the same traffic, so the step time rises for every job that crosses the spine.
+
+Before you size a leaf, decide how much oversubscription your AllReduce jobs can tolerate. Some teams accept a small ratio for lower cost, and others need a non-blocking leaf for their largest jobs.
 
 ### 3.2 Scaling three-stage and five-stage folded Clos and Fat-Tree fabrics
 
-Suppose you try to grow a two-tier leaf-spine network past the radix of its spine switches. The radix is the port count of the switch. Some leaves can no longer reach every spine. A third super-spine tier fixes that radix limit for very large clusters. The cost is more optical transceivers, more power draw, and possible super-spine oversubscription.
+Suppose you try to grow a two-tier leaf-spine network past the radix of its spine switches. The radix is the port count of the switch. Some leaves can no longer reach every spine, because the spine has no free ports left for them. A third super-spine tier fixes that radix limit for very large clusters. The cost is more optical transceivers, more power draw, and possible super-spine oversubscription. An optical transceiver is the module that turns electrical signals into light and back, and each one costs money and power.
 
-Modern AI clusters grow in modular building blocks, called rows and blocks, built from eight-GPU servers and sixty-four-port switches. A single rail row connects thirty-two servers across eight leaf switches and four spine switches. Now stack eight rows. They fill all sixty-four ports of the spine tier. That sets the maximum non-blocking scale of a three-stage Clos with sixty-four-port switches at two thousand forty-eight GPUs. Swapping fixed sixty-four-port spines for two-hundred-fifty-six-port chassis spines cuts the spine switch count by four times.
+Modern AI clusters grow in modular building blocks, called rows and blocks, built from eight-GPU servers and sixty-four-port switches. A single rail row connects thirty-two servers across eight leaf switches and four spine switches. Now stack eight rows. They fill all sixty-four ports of the spine tier. That sets the maximum non-blocking scale of a three-stage Clos with sixty-four-port switches at two thousand forty-eight GPUs. Swapping fixed sixty-four-port spines for two-hundred-fifty-six-port chassis spines cuts the spine switch count by four times. A chassis switch is one large box that acts like many smaller switches, so it needs fewer boxes for the same ports.
 
-Past two thousand forty-eight GPUs, architects group four rows into a one-thousand-twenty-four-GPU block. A third tier of super-spine switches connects those blocks, and the scale can reach thirty-two thousand GPUs and beyond. The number of super-spine switches and blocks sets the inter-block oversubscription. It runs from non-blocking `1:1` up to `7:1`.
+Past two thousand forty-eight GPUs, architects group four rows into a one-thousand-twenty-four-GPU block. A third tier of super-spine switches connects those blocks, and the scale can reach thirty-two thousand GPUs and beyond. The number of super-spine switches and blocks sets the inter-block oversubscription. It runs from non-blocking `1:1` up to `7:1`. A non-blocking ratio means every server can send at full speed at the same time. A ratio of `7:1` means the inter-block links are heavily shared, so a job that spans blocks is slowed down a lot.
 
-The sizing sheet below uses eight-GPU servers and 64 by 400 Gbps switches, with 32 ports down and 32 up at 1:1.
+The sizing sheet below uses eight-GPU servers and 64 by 400 Gbps switches, with 32 ports down and 32 up at 1:1. Read it as a list of tiers. Each tier is a building block you can combine, and each one has its own switch count.
 
 ```text
 # Modular building blocks with 8-GPU servers (NIC 1..8) and 64 x 400 Gbps switches (32 down + 32 up at 1:1):
@@ -298,7 +316,7 @@ The sizing sheet below uses eight-GPU servers and 64 by 400 Gbps switches, with 
 - 32-Block Supercluster : 32 blocks x 1,024 GPUs = 32,768 GPUs (32K; extendable to 32K–128K GPUs)
 ```
 
-The table walks through each scale tier, from one row up to the five-stage Clos.
+The table walks through each scale tier, from one row up to the five-stage Clos. Each row answers a sizing question. How many servers and GPUs does this tier hold? How many leaves and spines does it need? What oversubscription does it carry?
 
 | Architecture and scale tier | Rows and blocks | Total servers / GPUs | Server / spine / super-spine ports | Leaf switches (`64 x 400G`) | Spine switches | Super-spine switches (`64 x 400G`) | Super-spine oversubscription |
 |---|---|---|---|---|---|---|---|
@@ -314,15 +332,17 @@ The table walks through each scale tier, from one row up to the five-stage Clos.
 | **5-stage Clos (`10`..`14` blocks)** | `40..56` rows (`10..14` blocks) | `1,280..1,792` servers / **`10,240..14,336` GPUs** | `10,240..14,336` / `10,240..14,336` / `2,048` | `320..448` | `320..448` (`64 x 400G`) | `32` | **`5:1` to `7:1`** |
 | **5-stage Clos (`16` blocks, chassis SS)** | `64` rows (`16` blocks) | `2,048` servers / **`16,384` GPUs** | `16,384` / `16,384` / `16,384` | `512` (`64/blk`) | `512` (`32/blk`) | Chassis SS | **`1:1`** |
 
-The chassis spine option is the one to notice. It cuts the spine count from 32 to 8 at 2,048 GPUs, and the ratio stays at 1:1.
+The chassis spine option is the one to notice. It cuts the spine count from 32 to 8 at 2,048 GPUs, and the ratio stays at 1:1. That is the trade you make when you pay for larger boxes in exchange for fewer of them.
 
-Before you choose a scale tier, work out how many spine ports your row count actually needs.
+The same reasoning helps when you compare a row of fixed spines with a row of chassis spines. A fixed spine is a box you add one at a time. A chassis spine is a larger box that holds many of those ports inside one frame. The total number of ports stays the same, but the number of boxes to cable, power and maintain drops sharply. The trade is that a single chassis failure now affects a larger share of the fabric, so the failure domain grows even as the box count shrinks.
+
+Before you choose a scale tier, work out how many spine ports your row count actually needs. Count the ports first, and only then count the boxes.
 
 ### 3.3 Alternative topologies: Scheduled Fabric, Dragonfly, and Torus
 
-A five-stage Clos that grows past sixteen thousand GPUs pays for every extra spine-to-super-spine optical hop, in cost, power and latency. Some architects therefore look at non-Clos fabrics. Those include cell-scheduled fabrics, Dragonfly groups, and direct Torus rings. Each one trades optical count against routing complexity and vendor lock-in.
+A five-stage Clos that grows past sixteen thousand GPUs pays for every extra spine-to-super-spine optical hop, in cost, power and latency. Some architects therefore look at non-Clos fabrics. Those include cell-scheduled fabrics, Dragonfly groups, and direct Torus rings. Each one trades optical count against routing complexity and vendor lock-in. Vendor lock-in means that the parts only work well with one supplier's equipment, so switching later is expensive.
 
-Each alternative handles traffic differently. A Scheduled Fabric chops arriving packets at the ingress leaf into small, fixed-size cells. It sprays those cells across all spine links, using Virtual Output Queues and credit grants, and reassembles them at the egress leaf. Dragonfly topologies connect groups of switches with a global mesh of inter-group links. When a direct link congests, they fall back on non-minimal adaptive routing. Torus topologies wire each node straight to its neighbors, in one, two or three dimensions. They need Dimension-Ordered Routing across at least two Virtual Lanes to break wrap-around credit loops.
+Each alternative handles traffic differently. A Scheduled Fabric chops arriving packets at the ingress leaf into small, fixed-size cells. The ingress leaf is the switch where traffic enters the fabric. The fabric sprays those cells across all spine links, using Virtual Output Queues and credit grants, and reassembles them at the egress leaf. A Virtual Output Queue keeps traffic for each destination in its own line, so one busy destination does not block the others. Dragonfly topologies connect groups of switches with a global mesh of inter-group links. When a direct link congests, they fall back on non-minimal adaptive routing, which means the traffic takes a longer but emptier route. Torus topologies wire each node straight to its neighbors, in one, two or three dimensions. They need Dimension-Ordered Routing across at least two Virtual Lanes to break wrap-around credit loops. A wrap-around link is the edge link that connects the last node of a row back to the first.
 
 The table compares the three designs by mechanism, main advantage and trade-off. Notice that each advantage comes with a lock-in or routing cost.
 
@@ -332,21 +352,23 @@ The table compares the three designs by mechanism, main advantage and trade-off.
 | **Dragonfly (`DF` / `DF+` / `Dragonfly Sparse`)** | Modular pods (full-graph mesh or `2`-tier Clos / `Butterfly+` bipartite group) interconnected by a global full mesh between spine or router nodes | Cuts network diameter and long-haul optical links vs a `5`-stage super-spine Clos | Requires global non-minimal adaptive routing (`UGAL`) or RIFT Dragonfly Sparse (`draft-przygienda-rift-dragonfly`) under congestion |
 | **`1D`, `2D`, and `3D` Torus** | Direct neighbor links with wrap-around edges: `1D` torus ring = `2` connections/node; `2D` torus grid = `4` connections/node; `3D` torus (`X`, `Y`, `Z` cube) = `6` connections/node | Slashes switch and optics cost for nearest-neighbor (`stencil` / `3D` halo or `1D` inter-rail leaf rings) traffic | Larger hop diameter for all-to-all traffic; requires OpenSM `dor` with `>= 2` VLs to prevent wrap-around ring deadlocks |
 
-Before you pick a non-Clos fabric, price the routing work and the vendor lock-in it brings with it.
+Before you pick a non-Clos fabric, price the routing work and the vendor lock-in it brings with it. A design that saves optics on paper can cost more in engineering time and in the freedom to change suppliers.
 
 ---
 
 ## 4. Rail-optimized, Rail-Only, Rail-Unified, and Multi-Planar designs
 
+A leaf switch fails in the middle of a training run. Some servers keep running at reduced speed, and others drop out of the job completely. How far the damage spreads depends on how you wired the eight network adapters of each eight-GPU server. The wiring decision happens months before the failure, and it is easy to make without thinking about this question.
+
 ### 4.1 ROD versus Rail-Only versus RUD: GPU-to-leaf cabling and failure blast radius
 
-A leaf switch fails in the middle of a training run. How far the damage spreads depends on how you wired the eight network adapters of each eight-GPU server. Wiring all eight NICs to one Top-of-Rack leaf keeps the cables short inside the rack. The cost shows up on failure. One leaf outage knocks four entire servers and thirty-two GPUs out of the job.
+Wiring all eight NICs to one Top-of-Rack leaf keeps the cables short inside the rack. A Top-of-Rack leaf is the switch placed at the top of the same rack as the servers it serves. The cost shows up on failure. One leaf outage knocks four entire servers and thirty-two GPUs out of the job. The blast radius is the set of servers and GPUs that one failure takes down, so this design has a large blast radius.
 
-Start inside one server. Its eight GPUs talk at high speed over an internal NVSwitch domain. Each GPU also pairs one-to-one, through a local PCIe switch, with its own dedicated network adapter. In a Rail-Optimized Design, adapter `k` on every server in a row connects to rail leaf switch `k`. Same-index GPUs across thirty-two servers exchange tensors in a single leaf switch hop. Losing one leaf switch costs each server only one-eighth of its network capacity.
+Start inside one server. Its eight GPUs talk at high speed over an internal NVSwitch domain. NVSwitch is the switch chip inside the server that connects its GPUs to each other. Each GPU also pairs one-to-one, through a local PCIe switch, with its own dedicated network adapter. PCIe is the bus that connects the GPU and the NIC to the server's CPU. In a Rail-Optimized Design, adapter `k` on every server in a row connects to rail leaf switch `k`. A rail is one lane of the fabric that carries the traffic of one GPU index across all servers. Same-index GPUs across thirty-two servers exchange tensors in a single leaf switch hop. A hop is one trip through a switch. Losing one leaf switch costs each server only one-eighth of its network capacity. The servers keep running, because seven rails are still healthy.
 
-Rail-Only designs go further. They drop the inter-rail spine connections entirely, so cross-rail traffic travels through the server's internal NVSwitch. Multi-Planar architectures take a different route. They break out each high-speed adapter into four independent fabric planes. The NIC sprays packets across all four planes. If one plane fails, bandwidth falls by only twenty-five percent.
+Rail-Only designs go further. They drop the inter-rail spine connections entirely, so cross-rail traffic travels through the server's internal NVSwitch. The rails then never meet in the spine, which keeps each rail's failures contained. The cost is that a transfer between two different GPU indexes has to hop through the server first. Multi-Planar architectures take a different route. They break out each high-speed adapter into four independent fabric planes. A plane is a complete, separate fabric that carries its share of the traffic. The NIC sprays packets across all four planes. If one plane fails, bandwidth falls by only twenty-five percent.
 
-The diagram below sets the Rail-Optimized and Rail-Unified wiring side by side.
+The diagram below sets the Rail-Optimized and Rail-Unified wiring side by side. Trace one server's NICs in each half. In the top half, each NIC goes to a different leaf. In the bottom half, all NICs go to one leaf.
 
 ```mermaid
 flowchart TB
@@ -364,7 +386,7 @@ flowchart TB
     end
 ```
 
-The server envelope below gives the physical baseline. It compares the DGX H100 with the DGX A100, and it shows why rack power becomes a design question.
+The server envelope below gives the physical baseline. It compares the DGX H100 with the DGX A100, and it shows why rack power becomes a design question. A DGX is NVIDIA's complete GPU server, with the GPUs, NICs and internal switching already built in.
 
 ```text
 # Server physical envelope and intra-node fabric baseline (DGX H100 vs DGX A100):
@@ -382,13 +404,15 @@ The table sets the four designs side by side, with their switch hops, blast radi
 | **Rail-Unified Design (RUD)** | All `8` NICs (`NIC 1..8`) of a server connect to `1` single ToR leaf (or `4` NICs to `2` leaves); `4` servers (`32` GPUs) share `1` `32`-downlink leaf | **`1` switch hop** for both intra-rail and inter-rail among the `4` servers on the same ToR; **`3` switch hops** via spine to all other servers | **High blast radius:** losing `1` ToR leaf completely isolates **`4` entire servers (`32` GPUs)** from the cluster | Simplest intra-rack cabling (short low-cost copper DAC or AEC cables within `1` rack); requires BGP DPF or P_Key coloring to segregate rails on the shared leaf |
 | **Multi-Planar Architecture (`FP1..FP4`)** | Each `800 Gbps` NIC breaks out into **`4 x 200 Gbps`** links connecting to `4` independent 2-tier Fabric Planes (`FP1..FP4`) via shuffle cables | `1` or `2` tier hops inside each independent plane (`64 x 800G` leaf provides `128 x 200G` server downlinks + `32 x 800G` / `64 x 400G` spine uplinks) | Losing an entire switch or plane reduces bandwidth by `25%` (`600 Gbps` survives across the other `3` planes) with **zero control-plane coupling** | NIC hardware sprays packets across `FP1..FP4` and reorders or coalesces out-of-order completions in firmware before delivering in-order RDMA to the GPU |
 
-Decide how many servers you can afford to lose with one leaf, because that number decides which wiring pattern fits.
+Decide how many servers you can afford to lose with one leaf, because that number decides which wiring pattern fits. A training team that cannot afford to lose four servers at once should not choose the Rail-Unified layout, even though its cables are the simplest.
+
+The same question applies to any team that shares one leaf among several jobs. If one leaf failure would stop two unrelated jobs at once, those jobs share a blast radius. Placing each job on its own rail set, rather than on one shared leaf, shrinks that radius without changing the total hardware count.
 
 ### 4.2 Rack placement trade-offs for rail rows
 
-A Rail-Optimized row of thirty-two servers spread over eight racks needs cables from every server to eight separate leaf switches. Where you put those leaf switches decides which limit you hit. Either you exceed the power budget of the GPU racks, or you exceed the reach of low-cost copper cables.
+A Rail-Optimized row of thirty-two servers spread over eight racks needs cables from every server to eight separate leaf switches. Where you put those leaf switches decides which limit you hit. Either you exceed the power budget of the GPU racks, or you exceed the reach of low-cost copper cables. Copper cables are cheap, but they only reach a short distance before the signal fades.
 
-Top of Rack saves floor space. You put one leaf switch at the top of each of the eight server racks. The price is heat and power. Those switches add load to racks that already draw up to sixty kilowatts, and the horizontal cables then span eight racks. Middle of Row moves the switch power out of the server racks. Two dedicated network racks sit in the center, and the longest cable run drops to six racks. End of Row keeps switch power out of the server racks too, but the longest cable now spans ten racks. Those runs need optical transceivers or Linear Pluggable Optics.
+Top of Rack saves floor space. You put one leaf switch at the top of each of the eight server racks. The price is heat and power. Those switches add load to racks that already draw up to sixty kilowatts, and the horizontal cables then span eight racks. Middle of Row moves the switch power out of the server racks. Two dedicated network racks sit in the center, and the longest cable run drops to six racks. End of Row keeps switch power out of the server racks too, but the longest cable now spans ten racks. Those runs need optical transceivers or Linear Pluggable Optics. Linear Pluggable Optics are simpler optical modules that rely on the switch chip for part of the signal work, so they draw less power, but they only work over short distances.
 
 The table gives the physical layout and the trade-off for each option. Notice that the middle layout gives the shortest maximum cable span of the three, at six racks.
 
@@ -398,19 +422,19 @@ The table gives the physical layout and the trade-off for each option. Notice th
 | **Middle-of-Row (`MoR`)** | `4` server racks left + `2` network switch racks center + `4` server racks right | `10` racks | **`6` racks** | Removes switch heat from server racks and minimizes horizontal cable reach |
 | **End-of-Row (`EoR`)** | `8` server racks followed by `2` dedicated network switch racks at row end | `10` racks | **`10` racks** | Keeps switch power out of server racks; longest cables require optics or LPO/LRO (removing `2` or `1` DSPs) |
 
-Before you choose a rack layout, decide whether power headroom or copper reach is the tighter limit in your room.
+Before you choose a rack layout, decide whether power headroom or copper reach is the tighter limit in your room. The answer changes from one data hall to the next, so measure both before you commit.
 
 ---
 
 ## 5. AI fabric IP routing counterparts, multi-tenancy, and topology-aware scheduling
 
-Ethernet AI fabrics must solve the same Clos multipathing, rail isolation and multi-tenancy problems that OpenSM handles on InfiniBand. They do so with distributed or controller-driven IP routing protocols. Understanding both sides lets you compare InfiniBand and RoCEv2 designs on equal footing.
+Imagine a team that runs an Ethernet AI fabric beside an InfiniBand fabric in the same building. Both need to route traffic over a Clos, keep tenants apart and place jobs sensibly. The mechanisms are different, but the problems are the same. Ethernet AI fabrics must solve the same Clos multipathing, rail isolation and multi-tenancy problems that OpenSM handles on InfiniBand. They do so with distributed or controller-driven IP routing protocols. Understanding both sides lets you compare InfiniBand and RoCEv2 designs on equal footing. RoCEv2 is RDMA carried over routed Ethernet and UDP.
 
 ### 5.1 Dynamic IP routing options: eBGP unnumbered, BGP DPF, RIFT, IS-IS Flex Algo, and SRv6
 
-Suppose an engineer gives every spine switch in an Ethernet Clos its own BGP Autonomous System Number. A multi-link failure can then route BGP traffic down into a transit leaf and back up to another spine. That valley turn congests the transit leaf's server ports and causes severe packet hunting.
+Suppose an engineer gives every spine switch in an Ethernet Clos its own BGP Autonomous System Number. BGP is the routing protocol that Ethernet data centers use, and an Autonomous System Number, or ASN, is the label that identifies one routing domain. A multi-link failure can then route BGP traffic down into a transit leaf and back up to another spine. A transit leaf is a leaf that carries traffic between two spines, which it should never do in a Clos. That valley turn congests the transit leaf's server ports and causes severe packet hunting. Packet hunting is the way routing keeps trying longer and longer detours after a failure, and every detour loads the links again.
 
-The fix is an ASN layout. Give all spine switches one shared BGP ASN, and give each leaf its own. Standard AS-PATH loop detection then blocks valley routing through a transit leaf. AI Ethernet fabrics pair this layout with other tools. BGP unnumbered runs over IPv6 link-local addresses, and Link Bandwidth Extended Communities support weighted packet spraying. Other options cover rail coloring, link-state fabrics and central traffic engineering. Those are BGP Deterministic Path Forwarding, RIFT or IS-IS Flex Algo, and compressed SRv6 micro-SIDs.
+The fix is an ASN layout. Give all spine switches one shared BGP ASN, and give each leaf its own. Standard AS-PATH loop detection then blocks valley routing through a transit leaf. The AS-PATH is the list of ASNs a route has crossed, and a switch rejects any route that already contains its own ASN. AI Ethernet fabrics pair this layout with other tools. BGP unnumbered runs over IPv6 link-local addresses, which means the two ends of a link find each other without a dedicated IPv4 address block. Link Bandwidth Extended Communities support weighted packet spraying. Weighted spraying sends more traffic to the faster links. Other options cover rail coloring, link-state fabrics and central traffic engineering. Those are BGP Deterministic Path Forwarding, RIFT or IS-IS Flex Algo, and compressed SRv6 micro-SIDs. A color here is a label that keeps one class of traffic on its own set of links.
 
 The table compares the protocols by standard, peering model and advanced capabilities. If you look at the eBGP row, notice that it depends on the same-ASN and unique-ASN layout, because that layout is what prevents path hunting.
 
@@ -422,13 +446,13 @@ The table compares the protocols by standard, peering model and advanced capabil
 | **IS-IS (`Flood Reduction` + `Flex Algo`)** | `RFC 9350`, `RFC 9502`, `draft-ietf-lsr-distoptflood`, `draft-ietf-lsr-flex-algo-bw-con` (up to `2,500` switches) | Elects a single spine neighbor to flood LSP fragments (`Optimal Distributed Flooding`), slashing control-plane replication across `32..64` spines | **`Flex Algo` (`FAD`s `128`, `129`, `130` + `MTID`)** computes constrained SPF planes (e.g., `min-bandwidth` or `max-link-delay`) for storage, inference, and training on a pure IP fabric without MPLS |
 | **Segment Routing (`SR-MPLS` and `SRv6` `uSID`)** | `RFC 8754` (`SRH`), `RFC 8986` (`SRv6`), `draft-filsfils-spring-net-pgm-extension-srv6-usid-16`, `draft-filsfils-srv6ops-srv6-ai-backend` | Central controller learns topology via `BGP-LS`/IGP and pushes explicit segment lists (`Node SID`s + `Adjacency SID`s, e.g., `SID 5 -> SID 1`) to ingress leaves via `PCEP` | `SRv6` encodes `[Locator : Function : Argument]` in `128`-bit IPv6 addresses; **Compressed `SRv6 uSID` (`micro-SID`)** shrinks each hop instruction from `128` bits to **`16` bits** to eliminate MTU overhead while steering GPU collectives around congested links |
 
-Choose the ASN layout first, and do not borrow ASN rules from a different design.
+Choose the ASN layout first, and do not borrow ASN rules from a different design. A layout that works for a campus network can fail badly in a Clos that carries GPU collectives.
 
 ### 5.2 Multi-tenancy and Slurm topology-aware scheduling via BCM Topograph
 
-If you run a multi-tenant GPU cloud, tenants may share the same physical switches or even the same eight-GPU server. They must never read each other's memory or congest each other's network rails. Slurm can add a different risk. It may place nodes across distant switch blocks even when a single leaf had enough free GPUs. Collective latency and spine congestion then jump for no good reason.
+If you run a multi-tenant GPU cloud, tenants may share the same physical switches or even the same eight-GPU server. They must never read each other's memory or congest each other's network rails. Slurm can add a different risk. Slurm is the job scheduler that places work on nodes. It may place nodes across distant switch blocks even when a single leaf had enough free GPUs. Collective latency and spine congestion then jump for no good reason. The scheduler did not know where the wires were, so it made a placement that the hardware could not serve well.
 
-On InfiniBand, OpenSM isolates tenants in hardware with sixteen-bit Partition Keys. Ethernet AI fabrics use a different toolset. They combine EVPN-VXLAN Layer 2 and Layer 3 virtual routing instances with Multi-Instance GPU VLAN tags and VXLAN Group-Based Policy tags. On either fabric, job placement has to match the physical switch tree. NVIDIA Base Command Manager runs the `topograph` service to keep that match. The service discovers the switch or cloud placement topology and updates Slurm's `topology.conf` automatically.
+On InfiniBand, OpenSM isolates tenants in hardware with sixteen-bit Partition Keys. A Partition Key is a tag on each packet that says which partition it belongs to, and the hardware drops traffic that does not match. Ethernet AI fabrics use a different toolset. They combine EVPN-VXLAN Layer 2 and Layer 3 virtual routing instances with Multi-Instance GPU VLAN tags and VXLAN Group-Based Policy tags. EVPN-VXLAN is the Ethernet overlay that carries tenant networks across the routed fabric. Multi-Instance GPU, or MIG, is the NVIDIA feature that slices one GPU into smaller isolated instances. On either fabric, job placement has to match the physical switch tree. NVIDIA Base Command Manager runs the `topograph` service to keep that match. The service discovers the switch or cloud placement topology and updates Slurm's `topology.conf` automatically. Once the file is updated, Slurm can prefer nodes that sit under the same leaf.
 
 The table lists the three isolation and scheduling domains, with their mechanisms and scale numbers. Notice that the Topograph row is what keeps Slurm's placement aligned with the wiring.
 
@@ -440,9 +464,13 @@ The table lists the three isolation and scheduling domains, with their mechanism
 
 Decide which isolation domain your tenants need before you pick the fabric, since the tools for each one differ.
 
+Think of the isolation domains as locks on different doors. A Partition Key is a lock built into the InfiniBand hardware, and it works the same way for every packet. A VLAN and a VXLAN tag are locks built into the Ethernet overlay, and they depend on the switches and host software agreeing on the same policy. Both kinds of lock work, but they fail in different ways, so you need to know which door you are protecting before you choose the lock. A tenant that needs strict separation at the hardware level should be placed on a fabric where that separation is built in, not added later as a policy.
+
 ---
 
 ## Commands and configurations that matter
+
+Each command in this section answers one question about the fabric. Run them in order on a node or a switch, and read the output before you move to the next command. The commands are safe to run on a live system because they only read state, except where the text says otherwise.
 
 ### 1. Inspecting HCA readiness, LIDs, and OpenSM master state: `ibv_devinfo`, `ibstat`, `ibstatus`, and `sminfo`
 
@@ -467,7 +495,7 @@ hca_id: mlx5_0
     max_sge:                    30
 ```
 
-The fields `max_qp` and `max_qp_wr` set how many Queue Pairs and work requests the adapter supports. Next, check the physical and logical state of the port.
+The fields `max_qp` and `max_qp_wr` set how many Queue Pairs and work requests the adapter supports. A work request is one instruction that the application hands to the adapter, such as a send or a write. Next, check the physical and logical state of the port.
 
 ```bash
 # 2. Verify physical (LinkUp) vs logical (Active) state, Base LID, LMC, and SM LID (untested here)
@@ -494,11 +522,11 @@ CA 'mlx5_0'
 sminfo: sm lid 1 sm guid 0x0002c903004a1b20, activity count 184223 priority 15 state 3 SMINFO_MASTER
 ```
 
-In this sample, the port reports `LinkUp` and `Active`, with Base lid 12 and SM lid 1. The `sminfo` line confirms which Subnet Manager is the Master.
+In this sample, the port reports `LinkUp` and `Active`, with Base lid 12 and SM lid 1. The `sminfo` line confirms which Subnet Manager is the Master. If the port showed `LinkUp` with `State: Initialize`, you would go back to the control plane, as the first section described.
 
 ### 2. Comparing direct node SMP queries versus the Subnet Administration database: `smpquery` and `saquery`
 
-Say a node vanishes from path lookups right after a cable swap. Start with `smpquery`, which asks the node's own hardware over Virtual Lane fifteen. Then run `saquery` to see what the Subnet Manager's cached database says. If `smpquery` succeeds while `saquery` fails or returns a stale record, the Subnet Administration database is wedged or out of sync.
+Say a node vanishes from path lookups right after a cable swap. Start with `smpquery`, which asks the node's own hardware over Virtual Lane fifteen. Then run `saquery` to see what the Subnet Manager's cached database says. The Subnet Administration database, or SA database, is the table the Subnet Manager keeps about every node and path. If `smpquery` succeeds while `saquery` fails or returns a stale record, the Subnet Administration database is wedged or out of sync. Stale means the record is older than the hardware it describes.
 
 The two queries below ask about LID 914. The first sends a live SMP, and the second reads the Subnet Manager's database.
 
@@ -524,11 +552,11 @@ NodeRecord dump:
     NodeDescription.........n51001 HCA-1
 ```
 
-Both outputs describe the same node. If they ever disagree, the database is the suspect.
+Both outputs describe the same node. If they ever disagree, the database is the suspect. The live answer from the node is the one closer to the truth, so trust it and then investigate why the database did not match.
 
 ### 3. Inspecting switch LFTs, path traces, and uplink balance: `ibroute`, `ibtracert`, and `perfquery`
 
-Suppose a collective runs slowly across a leaf, yet all four spine uplinks are active. Start by reading the switch's Linear Forwarding Table with `ibroute`. Next, trace the exact hop path between two LIDs with `ibtracert`. Then sample `PortXmitData` across the leaf uplinks with `perfquery`. Do not pass `-R` to `perfquery` on a shared production switch without change approval. That flag zeroes the hardware counters for every monitoring collector.
+Suppose a collective runs slowly across a leaf, yet all four spine uplinks are active. Being active is not the same as carrying a fair share of the load. Start by reading the switch's Linear Forwarding Table with `ibroute`. Next, trace the exact hop path between two LIDs with `ibtracert`. Then sample `PortXmitData` across the leaf uplinks with `perfquery`. `PortXmitData` is the counter of data words a port has sent, so comparing it across uplinks shows which ones carry the load. Do not pass `-R` to `perfquery` on a shared production switch without change approval. That flag zeroes the hardware counters for every monitoring collector, which means the other tools lose their history.
 
 The two commands below dump the table and sample the counters without resetting anything.
 
@@ -544,11 +572,11 @@ for p in 5 6 7 8; do
 done
 ```
 
-Notice that the loop reads ports 5 through 8, the four uplinks, and prints only the transmit word count for each.
+Notice that the loop reads ports 5 through 8, the four uplinks, and prints only the transmit word count for each. Compare the four numbers. If two of them are far larger than the other two, the table is concentrating traffic, and the routing engine is the next thing to check.
 
 ### 4. Configuring OpenSM, BCM `opensm`, and BCM Topograph
 
-Two habits prevent most configuration surprises. The first is to keep `/etc/opensm/opensm.conf` identical on the primary and standby Subnet Managers, so failover does not drift the routing. The second is to enable Slurm Topograph in NVIDIA Base Command Manager, so job placement follows the topology.
+Two habits prevent most configuration surprises. The first is to keep `/etc/opensm/opensm.conf` identical on the primary and standby Subnet Managers, so failover does not drift the routing. The second is to enable Slurm Topograph in NVIDIA Base Command Manager, so job placement follows the topology. Base Command Manager, or BCM, is the cluster manager that installs and runs these services.
 
 The primary's configuration file is shown below. Your standby should match it, so you can compare the two files line by line.
 
@@ -564,9 +592,9 @@ part_config_file /etc/opensm/partitions.conf
 root_guid_file /etc/opensm/root_guids.conf
 ```
 
-Notice the `routing_engine` fallback list and the `root_guid_file` path. Those are the two settings the earlier sections warned about.
+Notice the `routing_engine` fallback list and the `root_guid_file` path. Those are the two settings the earlier sections warned about. The `sm_priority` line is the one that decides the election, so keep it at the value you planned for this instance.
 
-The `cmsh` commands below assign the Subnet Manager role, enable the OpenSM service, and turn on Topograph for Slurm.
+The `cmsh` commands below assign the Subnet Manager role, enable the OpenSM service, and turn on Topograph for Slurm. The `cmsh` tool is the command-line interface for BCM.
 
 ```bash
 # Configure OpenSM and Slurm Topograph in NVIDIA Base Command Manager (BCM 11 cmsh) (untested here)
@@ -576,13 +604,13 @@ cmsh -c "wlm use slurm; topologysettings; set topologyplugin tree; set topologys
 cmsh -c "wlm use slurm; topology update; topology print"
 ```
 
-The last two commands run the topology update and print the result, so you can confirm the change. Keep the standby's configuration a copy of the primary's, and version it alongside the rest of the fabric.
+The last two commands run the topology update and print the result, so you can confirm the change. Keep the standby's configuration a copy of the primary's, and version it alongside the rest of the fabric. A configuration that lives only on one host is the kind that drifts without anyone noticing.
 
 ---
 
 ## How it fails
 
-When a control-plane, routing or topology incident hits an InfiniBand cluster, match the symptom against the six signatures below. Each row pairs what the hosts show with the evidence that confirms it, and with the fix.
+When a control-plane, routing or topology incident hits an InfiniBand cluster, the hosts usually complain first. Jobs hang, collectives slow down, or a tenant reports a denied connection. The table turns those complaints into the six signatures you are most likely to meet. Each row pairs what the hosts show with the evidence that confirms it, and with the fix.
 
 | Failure mode | Symptoms on hosts and jobs | Exact diagnostic evidence (`sminfo`, `ibstat`, `perfquery`, logs) | Root cause and production fix |
 |---|---|---|---|
@@ -593,13 +621,15 @@ When a control-plane, routing or topology incident hits an InfiniBand cluster, m
 | **5. Inter-rack `2:1` oversubscription or spine loss (`2:1 -> 4:1` collapse)** | Same-rack `8`-node jobs achieve full speed, but `2`-rack `16`-node jobs run `2x` slower (`4x` slower after a spine maintenance event) | Paired `ib_write_bw` (`2,097,152` B) drops from **`397.62 Gbps`** (same leaf) to **`201.18 Gbps`** (cross-rack); leaf has `16 x 400G` downlinks (`6,400 Gbps`) and `8 x 400G` uplinks (`3,200 Gbps`, dropping to `4` uplinks = `1,600 Gbps` when `1` of `2` spines is down) | Structural `2:1` leaf oversubscription, compounded to `4:1` by losing `1` of `2` spines. Restore the failed spine, configure Slurm `topology/tree` or `topology/block` via Topograph to pack jobs within leaves and blocks, or add spine uplinks |
 | **6. Multi-rail collapse or remote NUMA binding (`One Rail Hot, Others Idle`)** | `8`-GPU nodes have `8` `Active` `400G` HCAs, yet multi-node collectives bottleneck at single-HCA throughput | Per-HCA `perfquery` shows `mlx5_0` saturated while `mlx5_1..mlx5_7` sit near zero, or `numactl --hardware` + `lspci` shows the process bound to NUMA node `1` while driving `mlx5_0` on NUMA node `0` | Process or NCCL environment variables (`NCCL_IB_HCA`) restricted traffic to one HCA or crossed the CPU socket interconnect. Restore full multi-rail `NCCL_IB_HCA` visibility and pin each rank to its local GPU and HCA NUMA node |
 
-If you look at row 2, it looks healthy from `ibping`, so its drift shows up only in bandwidth and authorization. When you see a symptom, start with the symptom column, then move to the evidence column before you change anything.
+If you look at row 2, it looks healthy from `ibping`, so its drift shows up only in bandwidth and authorization. A simple reachability test passes, and that is exactly why the drift is dangerous. When you see a symptom, start with the symptom column, then move to the evidence column before you change anything.
 
 ---
 
 ## Hands-on lab
 
-The companion simulator runs anywhere with the Python standard library. Its two files are `code/part12/infiniband_sm_routing.py` and `code/part12/infiniband_sm_routing_lab.py`. You need InfiniBand hardware only for the live `sminfo`, `ibroute` and `ibtracert` commands. Those are marked `(untested here)` earlier in the chapter.
+The companion simulator runs anywhere with the Python standard library. Its two files are `code/part12/infiniband_sm_routing.py` and `code/part12/infiniband_sm_routing_lab.py`. You need InfiniBand hardware only for the live `sminfo`, `ibroute` and `ibtracert` commands. Those commands are marked `(untested here)` in their code blocks, which means these steps were not run on a live cluster. The simulator checks the same rules offline, so you can learn the logic before you touch a switch.
+
+Each lab check is a small test of one rule, and the output tells you whether the simulator and the chapter agree. Think of it as a rehearsal. You can make the mistakes here, where they cost nothing, before you make them on a fabric that carries production jobs.
 
 Run the self-checking lab, which has twenty-seven checks:
 
@@ -640,16 +670,20 @@ python3 -B code/part12/infiniband_sm_routing_lab.py
 Summary: 27 passed, 0 failed
 ```
 
-A clean run ends with `Summary: 27 passed, 0 failed`. Any other total means one of the checks needs a closer look.
+A clean run ends with `Summary: 27 passed, 0 failed`. Any other total means one of the checks needs a closer look. Read the failing line first, because each check name says which rule it tests.
+
+Each check name is written to point at one rule from this chapter. A failure in an LMC check, for example, points you to the LID arithmetic in the second section, while a failure in an election check points you to the priority and GUID rules in the first section. Treat the names as a map back into the text, and reread the matching section before you change any code.
 
 ---
 
 ## Common first mistakes
 
-1. Do not replace a cable just because `ibstat` shows the physical link up while the logical state is initializing. `LinkUp` proves that the transceiver, fiber and SERDES lanes negotiated cleanly. A port stuck in initializing with a Base LID of zero points to a Subnet Manager control-plane problem. Check for zero active masters, a wrong SM port binding or an isolated fabric branch.
-2. Do not key your cluster inventory on LIDs. Unicast LIDs are mutable forwarding addresses, and they can change after an SM resweep or a failover. Anchor the inventory on the persistent NodeGUID and PortGUID values, and treat the Base LID as runtime state you observe.
-3. Do not run `perfquery -R` during live incident triage. The flag resets cumulative hardware counters on the queried switch port, which destroys evidence that other engineers and monitoring collectors still need. Sample `perfquery` at two timestamps, subtract the deltas, and multiply the word count by four bytes.
-4. Do not assume two running `opensm` processes give you safe high availability. A standby may carry a drifted `/etc/opensm/opensm.conf` that uses `minhop` instead of `ftree`, or an outdated `partitions.conf`. Failover then keeps the subnet up while routing quietly degrades or tenant isolation breaks.
+These five mistakes show up again and again in new InfiniBand and Ethernet AI deployments. Each one looks reasonable at the moment someone makes it.
+
+1. Do not replace a cable just because `ibstat` shows the physical link up while the logical state is initializing. `LinkUp` proves that the transceiver, fiber and SERDES lanes negotiated cleanly. A port stuck in initializing with a Base LID of zero points to a Subnet Manager control-plane problem. Check for zero active masters, a wrong SM port binding or an isolated fabric branch. A replaced cable will not change any of those three.
+2. Do not key your cluster inventory on LIDs. Unicast LIDs are mutable forwarding addresses, and they can change after an SM resweep or a failover. Anchor the inventory on the persistent NodeGUID and PortGUID values, and treat the Base LID as runtime state you observe. A GUID stays with the hardware, so it is the safer key for a record that has to last for years.
+3. Do not run `perfquery -R` during live incident triage. The flag resets cumulative hardware counters on the queried switch port, which destroys evidence that other engineers and monitoring collectors still need. Sample `perfquery` at two timestamps, subtract the deltas, and multiply the word count by four bytes. The subtraction gives you the traffic during the window, and the multiplication converts words to bytes.
+4. Do not assume two running `opensm` processes give you safe high availability. A standby may carry a drifted `/etc/opensm/opensm.conf` that uses `minhop` instead of `ftree`, or an outdated `partitions.conf`. Failover then keeps the subnet up while routing quietly degrades or tenant isolation breaks. Two processes that disagree are worse than one process that is clearly down.
 5. Do not give each spine its own eBGP ASN in an AI Ethernet Clos. Distinct spine ASNs let BGP route around multi-link failures through a transit-leaf valley turn, and that turn saturates the transit leaf's server pod. One shared ASN across all spines enforces AS-PATH loop prevention, so traffic never bounces through a transit leaf.
 
 Check the control plane and the counters before you order new hardware.
@@ -658,9 +692,13 @@ Check the control plane and the counters before you order new hardware.
 
 ## Exercises
 
+Work through these exercises with the tables and commands from this chapter open beside you. Each one gives you a small scenario and asks one question at a time.
+
+Read each scenario through once without the answers in front of you. Then work the arithmetic on paper, because the numbers only make sense when you trace each step. Check your Subnet Manager answers against the election rules in section 1, and check your path answers against the Directed Route walkthrough. If an answer surprises you, return to the section that explains that step rather than guessing.
+
 1. Three Subnet Manager instances start on the same subnet, as the block below shows.
-   - Part A: Which instance wins Master state, which become Standby, and why?
-   - Part B: If `sm-c` has its priority raised to fifteen, how does the election outcome change? Verify with `elect_master_sm` in `code/part12/infiniband_sm_routing.py`.
+   Which instance wins Master state, and which instances become Standby? Explain the reason in one sentence.
+   If `sm-c` has its priority raised to fifteen, how does the election outcome change? Verify your answer with `elect_master_sm` in `code/part12/infiniband_sm_routing.py`.
 
 ```text
 sm-a : GUID 0x08c0eb0300f1a2c3, priority 14
@@ -670,8 +708,10 @@ States: state 3 = SMINFO_MASTER, state 2 = SMINFO_STANDBY
 ```
 
 2. You will follow a port through its logical states, then trace a Directed Route SMP through three hops.
-   - Part A: Trace the four logical port states and explain why a port in the initialize state can answer `smpquery` on VL15 while blocking `ib_write_bw` on VL0.
-   - Part B: For the Directed Route SMP hop parameters below, write the exact Initial Path, Return Path, forward hop pointer sequence, and reverse hop pointer sequence.
+   Trace the four logical port states, one at a time.
+   Explain why a port in the initialize state can answer `smpquery` on VL15 while blocking `ib_write_bw` on VL0.
+   For the Directed Route SMP hop parameters below, write the exact Initial Path first.
+   Then write the Return Path, the forward hop pointer sequence and the reverse hop pointer sequence.
 
 ```text
 Part A constants : Initialize (state 2), VL15 (DLID 0xFFFF), VL0 user data
@@ -680,8 +720,11 @@ Part B hop lists : switch egress ports = [1, 7, 14], switch ingress ports = [18,
 ```
 
 3. You will work out the LID ranges for two LMC settings, then check the uplink balance from a sample of counters.
-   - Part A: Derive the maximum number of unicast LIDs and compute the consecutive LID ranges for the two LMC configurations below.
-   - Part B: Given the `perfquery` word deltas on leaf uplinks five through eight below, convert each to bytes, calculate the max-to-min imbalance ratio, and identify the hot versus idle uplinks.
+   Derive the maximum number of unicast LIDs for the two LMC configurations below.
+   Then compute the consecutive LID ranges for each configuration.
+   Given the `perfquery` word deltas on leaf uplinks five through eight below, convert each one to bytes.
+   Calculate the max-to-min imbalance ratio from those byte values.
+   Identify which uplinks are hot and which are idle.
 
 ```text
 Part A inputs : Base LID = 16, LMC = 2 | Base LID = 64, LMC = 3
@@ -690,29 +733,41 @@ Part B deltas : Uplink port 5 = 5,368,709,120 words | Uplink port 6 = 5,372,308,
 ```
 
 4. A leaf switch has sixteen server downlinks and eight uplinks split evenly across two spine switches, at four hundred gigabits per second per port. Work out the oversubscription and the cost of a large AllReduce.
-   - Part A: Calculate the oversubscription ratio, per-node cross-leaf bandwidth, and communication time for a two-gigabyte per-node AllReduce step. Compare it against a non-blocking leaf with sixteen uplinks.
-   - Part B: If one of the two spine switches fails, what is the new oversubscription ratio and new AllReduce step time?
+   Calculate the oversubscription ratio for this leaf first.
+   Then calculate the per-node cross-leaf bandwidth.
+   Then calculate the communication time for a two-gigabyte per-node AllReduce step.
+   Compare that time against a non-blocking leaf with sixteen uplinks.
+   If one of the two spine switches fails, what is the new oversubscription ratio?
+   What is the new AllReduce step time?
 
 5. You need to size a rail-optimized Clos from sixty-four-port switches. Each switch has 32 downlinks and 32 uplinks at 400 Gbps, and the servers have eight GPUs each.
-   - Part A: Calculate the number of servers, leaf switches, and spine switches for one row, two rows, and eight rows with fixed sixty-four-port spines versus two-hundred-fifty-six-port chassis spines.
-   - Part B: In a five-stage Clos built from one-thousand-twenty-four-GPU blocks and thirty-two fixed super-spine switches, compute the super-spine oversubscription ratio for two, four, eight, and fourteen blocks.
+   Calculate the number of servers, leaf switches, and spine switches for one row first.
+   Repeat the calculation for two rows.
+   Repeat it again for eight rows with fixed sixty-four-port spines.
+   Then repeat it for eight rows with two-hundred-fifty-six-port chassis spines.
+   In a five-stage Clos built from one-thousand-twenty-four-GPU blocks and thirty-two fixed super-spine switches, compute the super-spine oversubscription ratio for two blocks.
+   Then compute it for four, eight and fourteen blocks.
 
 6. Use what you have learned about the designs in this chapter to compare their failure domains and routing options.
-   - Part A: Compare the single-leaf-failure blast radius of Rail-Optimized Design versus Rail-Unified Design, and explain how Multi-Planar breakout across four planes changes fault isolation.
-   - Part B: Compare how eBGP unnumbered, BGP DPF, RIFT, IS-IS Flex Algo, and SRv6 micro-SIDs provide loop-free multipathing and tenant isolation alongside EVPN-VXLAN and MIG VLANs.
+   Compare the single-leaf-failure blast radius of Rail-Optimized Design with Rail-Unified Design.
+   Explain how Multi-Planar breakout across four planes changes fault isolation.
+   Compare how eBGP unnumbered, BGP DPF, RIFT, IS-IS Flex Algo and SRv6 micro-SIDs provide loop-free multipathing.
+   Then explain how they provide tenant isolation alongside EVPN-VXLAN and MIG VLANs.
 
 ---
 
 ## Interview angles
 
-1. **"All switch and HCA ports show physical link up, but half the cluster has a Base LID of zero and sits in the initializing state. Where do you look first?"**
-   - *Strong answer:* Leave the cables alone, because physical link up already shows that Layer 1 lane training succeeded. Go straight to the Subnet Manager control plane. Run `sminfo` and `ibstat` to inspect the SM LID. Three things can explain the symptom. Zero Subnet Managers are responding, the active Master's activity count is frozen, or the physical link to the SM branch is down. Without Directed Route SMP sweeps on VL15 reaching those ports, they cannot receive LIDs or move from armed to active.
-2. **"Why does OpenSM's Up/Down routing engine forbid downward-to-upward turns? When should you use Fat-Tree or Dimension-Ordered Routing instead?"**
-   - *Strong answer:* InfiniBand is lossless at the link level, so any cycle in the channel dependency graph can become a permanent credit deadlock. In a tree rooted at the spine, allowing upward-to-downward transitions gives full connectivity. Forbidding downward-to-upward turns breaks every cycle without extra Virtual Lanes. On symmetric folded Clos AI fabrics, `ftree` beats generic `updn`, because it spreads destination LIDs evenly across all spine uplinks. On Torus topologies, use `dor` with at least two Virtual Lanes, split at a wrap-around dateline.
-3. **"Compare Rail-Optimized Design and Rail-Unified Design for a thirty-two-server cluster."**
-   - *Strong answer:* In ROD, adapter `k` on all thirty-two servers connects to rail leaf switch `k` across eight leaves. Same-index GPUs across all thirty-two servers talk in a single leaf hop. If one leaf fails, each server loses only one-eighth of its bandwidth, and no server is cut off. RUD connects all eight NICs of four servers to a single ToR leaf with short intra-rack copper cables. That cabling is simpler. But if that leaf fails, four servers and thirty-two GPUs are cut off completely.
+These three questions are the kind an interviewer uses to see whether you can reason from symptoms to the control plane. Try to answer each one out loud before you read the strong answer.
 
----
+An interviewer is less interested in a memorized definition than in the order of your questions. A strong answer names the first thing to check, explains why that check comes first, and then describes what each possible result would mean next.
+
+1. "All switch and HCA ports show physical link up, but half the cluster has a Base LID of zero and sits in the initializing state. Where do you look first?"
+   - *Strong answer:* Leave the cables alone, because physical link up already shows that Layer 1 lane training succeeded. Go straight to the Subnet Manager control plane. Run `sminfo` and `ibstat` to inspect the SM LID. Three things can explain the symptom. Zero Subnet Managers are responding, the active Master's activity count is frozen, or the physical link to the SM branch is down. Without Directed Route SMP sweeps on VL15 reaching those ports, they cannot receive LIDs or move from armed to active.
+2. "Why does OpenSM's Up/Down routing engine forbid downward-to-upward turns? When should you use Fat-Tree or Dimension-Ordered Routing instead?"
+   - *Strong answer:* InfiniBand is lossless at the link level, so any cycle in the channel dependency graph can become a permanent credit deadlock. In a tree rooted at the spine, allowing upward-to-downward transitions gives full connectivity. Forbidding downward-to-upward turns breaks every cycle without extra Virtual Lanes. On symmetric folded Clos AI fabrics, `ftree` beats generic `updn`, because it spreads destination LIDs evenly across all spine uplinks. On Torus topologies, use `dor` with at least two Virtual Lanes, split at a wrap-around dateline.
+3. "Compare Rail-Optimized Design and Rail-Unified Design for a thirty-two-server cluster."
+   - *Strong answer:* In ROD, adapter `k` on all thirty-two servers connects to rail leaf switch `k` across eight leaves. Same-index GPUs across all thirty-two servers talk in a single leaf hop. If one leaf fails, each server loses only one-eighth of its bandwidth, and no server is cut off. RUD connects all eight NICs of four servers to a single ToR leaf with short intra-rack copper cables. That cabling is simpler. But if that leaf fails, four servers and thirty-two GPUs are cut off completely.
 
 ## Checkpoint questions (20)
 
