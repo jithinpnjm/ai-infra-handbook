@@ -22,19 +22,19 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A training job can look healthy on every GPU server and still run slower than it should. The cause is often in how the servers exchange data. RDMA over Converged Ethernet version 2, or RoCEv2, is the transport most Ethernet AI fabrics use to keep gradient, activation, and weight buffers in sync across GPU servers at line rate.
+A training job can look healthy on every GPU server and still run slower than it should. The cause is often in how the servers exchange data. Picture a dashboard where every GPU shows full utilization, yet the step time keeps creeping upward week after week. The GPUs are not the problem. They are waiting on the network. RDMA over Converged Ethernet version 2, or RoCEv2, is the transport most Ethernet AI fabrics use to keep gradient, activation, and weight buffers in sync across GPU servers at line rate. RDMA over Converged Ethernet is the name for running RDMA on Ethernet, and "version 2" is the routable form of it.
 
-RoCEv2 works by encapsulation, which means wrapping one set of headers inside another. It places InfiniBand transport headers inside connectionless UDP and IP frames, using UDP destination port 4791. Direct Memory Access then moves data straight between GPU or host memory and the ConnectX or BlueField network adapter. Because the transfer bypasses the server CPU and operating system kernel, RoCEv2 scales to thousands of parallel collective sessions far better than TCP transports.
+RoCEv2 works by encapsulation, which means wrapping one set of headers inside another. Think of it as putting a letter inside an envelope that the post office already knows how to route. It places InfiniBand transport headers inside connectionless UDP and IP frames, using UDP destination port 4791. Direct Memory Access then moves data straight between GPU or host memory and the ConnectX or BlueField network adapter. Because the transfer bypasses the server CPU and operating system kernel, RoCEv2 scales to thousands of parallel collective sessions far better than TCP transports. A collective session is one group operation, such as an AllReduce, that many GPUs take part in at once.
 
-Running a lossless RDMA transport on top of lossy Ethernet creates four ways for a training job to stall. Each one has its own symptom.
+Running a lossless RDMA transport on top of lossy Ethernet creates four ways for a training job to stall. Each one has its own symptom, and each one shows up in a different place in the logs and the switch counters. The rest of this chapter takes them one at a time, so you can learn to recognize each symptom before you reach for a fix.
 
-The first is the straggler. In a synchronous collective such as AllReduce, every worker waits at a barrier for the slowest one. If one congested flow stalls for 1 second, every other GPU thread sits idle for 999 ms, and the job completion time collapses.
+The first is the straggler. In a synchronous collective such as AllReduce, every worker waits at a barrier for the slowest one. If one congested flow stalls for 1 second, every other GPU thread sits idle for 999 ms, and the job completion time collapses. A straggler does not have to be broken. It only has to be the one flow that the fabric happened to delay.
 
-The second is a wrong Global Identifier index. It can break RDMA connections even when ICMP `ping` and SSH succeed over the kernel routing table. After a VLAN or interface change, a hard-coded GID index can bind one node to an untagged interface while its peer binds to a VLAN sub-interface. A GID index is a local table position discovered at boot, not a portable cluster identity.
+The second is a wrong Global Identifier index. It can break RDMA connections even when ICMP `ping` and SSH succeed over the kernel routing table. After a VLAN or interface change, a hard-coded GID index can bind one node to an untagged interface while its peer binds to a VLAN sub-interface. A GID index is a local table position discovered at boot, not a portable cluster identity. The ping works because the kernel uses its own routing table, and the RDMA stack uses a different table that the reboot reordered.
 
-The third is congestion inside the fabric. Elephant flows are large, long-lived transfers. When several of them with low entropy collide, they congest six distinct points of a Clos fabric, even when the topology is 1:1 non-oversubscribed. If a switch buffer then overflows and drops one packet on a fast link, classic Go-Back-N error recovery discards the entire in-flight window. The sender must retransmit hundreds of intact packets, which adds load at the worst possible moment.
+The third is congestion inside the fabric. Elephant flows are large, long-lived transfers. When several of them with low entropy collide, they congest six distinct points of a Clos fabric, even when the topology is 1:1 non-oversubscribed. If a switch buffer then overflows and drops one packet on a fast link, classic Go-Back-N error recovery discards the entire in-flight window. The sender must retransmit hundreds of intact packets, which adds load at the worst possible moment. Low entropy means the traffic looks the same to the hash, so the switch cannot spread it out.
 
-The fourth is congestion thresholds set in the wrong order. Explicit Congestion Notification marks packets end to end, and the receiver returns a Congestion Notification Packet. That round trip takes time, so a queue protected only by ECN still loses packets under microbursts. Priority Flow Control prevents drops with hop-by-hop pause frames, but it freezes every flow that shares the traffic class, including flows from unrelated jobs. Without ordered DCQCN thresholds and a PFC Watchdog, a pause wave can deadlock the whole fabric.
+The fourth is congestion thresholds set in the wrong order. Explicit Congestion Notification marks packets end to end, and the receiver returns a Congestion Notification Packet. That round trip takes time, so a queue protected only by ECN still loses packets under microbursts. Priority Flow Control prevents drops with hop-by-hop pause frames, but it freezes every flow that shares the traffic class, including flows from unrelated jobs. Without ordered DCQCN thresholds and a PFC Watchdog, a pause wave can deadlock the whole fabric. The order of the thresholds decides which mechanism reacts first, and getting that order wrong is an easy mistake to make.
 
 The table below lists each failure mode with its mechanism and the evidence that shows it, so you can match a symptom to its cause.
 
@@ -45,36 +45,33 @@ The table below lists each failure mode with its mechanism and the evidence that
 | **3. Clos Incast & Go-Back-N Amplification** | `6` Clos congestion points + classic `Go-Back-N` vs `Selective Repeat` on a `400 Gbps` link with `20.48 us` RTT (`1 MB` BDP = `250` packets of `4096 B`) | Dropping `1` packet forces `Go-Back-N` to discard and retransmit all `250` in-flight packets (`250x` retransmission amplification vs `1` packet under `Selective Repeat`) |
 | **4. Misordered DCQCN, PFC Storms & HoL Blocking** | `ECN` + `CNP` (`IB BTH` opcode `129` / `0x81`) vs `PFC` (EtherType `0x8808`, opcode `0x0101`, MAC `01:80:c2:00:00:01`, `65,535` quanta) | Pauses all flows in Traffic Class `3` (`HoL` blocking) or cascades into a fabric-wide `PFC storm` unless `DCQCN` (`XON < ECN < XOFF`), `PFC Watchdog` (`Detection`, `Mitigation`, `Restoration`), `SFC` (`IEEE 802.1Qdw`), or `CSIG` (`draft-ravi-ippm-csig-01`) are active |
 
-Notice that each row pairs a failure with the evidence that reveals it. If your job shows one of these symptoms, you can start with its row. That pairing is what the rest of this chapter builds on.
+Notice that each row pairs a failure with the evidence that reveals it. If your job shows one of these symptoms, you can start with its row. That pairing is what the rest of this chapter builds on. When you are unsure which row fits, read the evidence column first, because it names the counter or message you can check in a minute.
 
 ## Prerequisites and outcomes
 
+*Suppose a colleague asks you why ping works but the RDMA job will not start. Before you can answer, you need the groundwork in this section.*
+
 ### Prerequisites
-Before you start, finish Chapter 12.1, which covers Ethernet architecture and Clos fabric topologies for AI. Chapter 12.2 on RDMA fundamentals should also be behind you: Verbs, Queue Pairs, Memory Regions, and Completion Queues. You will need to read IPv4 and IPv6 headers, UDP ports, and IEEE 802.1Q VLAN tagging without trouble. You should also be comfortable with the Linux commands `ip` and `ethtool` and with the `rdma-core` package.
+Before you start, finish Chapter 12.1, which covers Ethernet architecture and Clos fabric topologies for AI. Chapter 12.2 on RDMA fundamentals should also be behind you: Verbs, Queue Pairs, Memory Regions, and Completion Queues. You will need to read IPv4 and IPv6 headers, UDP ports, and IEEE 802.1Q VLAN tagging without trouble. IEEE 802.1Q is the standard for tagging Ethernet frames with a VLAN number. You should also be comfortable with the Linux commands `ip` and `ethtool` and with the `rdma-core` package. The `rdma-core` package is the set of user-space RDMA libraries and tools that the commands in this chapter depend on.
 
 ### Outcomes
-By the end of this chapter, you will be able to do the following:
-- Contrast the wire headers of InfiniBand, RoCEv1, RoCEv2, and iWARP. You will also trace the 13-step RDMA Write and 11-step RDMA Read connection and packet sequences.
-- Audit per-port GID tables with `show_gids` and `ibv_devinfo`, and resolve IPv4-mapped RoCEv2 GIDs. You will also enforce end-to-end jumbo MTU and DSCP-to-CoS QoS trust boundaries.
-- Identify all six Clos congestion points in 3-stage and 5-stage AI fabrics. You will configure ECN, PFC, the PFC Watchdog, and DCQCN threshold ordering.
-- Quantify Go-Back-N versus Selective Repeat retransmission amplification. You will also evaluate Source Flow Control and Congestion Signaling.
-- Run a 5-layer link-to-application evidence ladder to isolate silent congestion and endpoint-selection faults. That lets you fix a node without blindly tuning live switch buffers.
+The chapter moves from the wire format to the fabric. It starts with how RoCEv1, RoCEv2, and iWARP differ on the wire, and then it shows how the GID table decides which address an RDMA connection really uses. To audit that table on a host, you read it with `show_gids` and `ibv_devinfo` on both ends, because the two tools show the same entries from different angles. From there it covers the six congestion points in a Clos fabric and how ECN, PFC, and DCQCN respond to them. It then compares the retransmission strategies and the newer signaling standards, and it ends with a five-layer ladder for isolating a fault without touching live switch settings. Each part builds on the one before it, so read the sections in order the first time through.
 
 ---
 
 ## 1. RoCEv1 vs RoCEv2 encapsulation, wire headers, and RDMA session flows
 
-Suppose you try to carry early RDMA traffic across a Layer 3 leaf-spine boundary. The packets either fail to route or suffer from static hash polarization. Platform operators feel this at once, because Layer 2 domains are non-routable and cannot scale beyond a single pod without broadcast storms. RoCEv2 solves this by replacing the InfiniBand network layer with standard UDP and IP headers. That encapsulation lets RDMA cross Layer 3 routers and helps switches balance elephant flows.
+Suppose you try to carry early RDMA traffic across a Layer 3 leaf-spine boundary. The packets either fail to route or suffer from static hash polarization. Hash polarization means every switch makes the same hash choice, so traffic piles onto one path. Platform operators feel this at once, because Layer 2 domains are non-routable and cannot scale beyond a single pod without broadcast storms. RoCEv2 solves this by replacing the InfiniBand network layer with standard UDP and IP headers. That encapsulation lets RDMA cross Layer 3 routers and helps switches balance elephant flows.
 
 ### 1.1 Comparing InfiniBand, RoCEv1, RoCEv2, and iWARP
 
-When a collective communication library such as NCCL, RCCL, Gloo, or OpenUCX starts a transfer, it posts a Work Queue Element through the Verbs API. A Work Queue Element is a structure that holds a pointer to a registered, pinned memory buffer. The RDMA driver places that work request onto a Send Queue, Receive Queue, or Completion Queue. From there, the RDMA NIC handles segmentation and reliability in hardware, and it does so across four transport variants.
+When a collective communication library such as NCCL, RCCL, Gloo, or OpenUCX starts a transfer, it posts a Work Queue Element through the Verbs API. A Work Queue Element is a structure that holds a pointer to a registered, pinned memory buffer. The RDMA driver places that work request onto a Send Queue, Receive Queue, or Completion Queue. From there, the RDMA NIC handles segmentation and reliability in hardware, and it does so across four transport variants. Segmentation means cutting a large message into packets that fit the link.
 
-Native InfiniBand is governed by the InfiniBand Trade Association. It supports SDR, DDR, QDR, FDR, EDR, HDR, NDR, and XDR link rates. Its link layer uses credit-based flow control, which makes it inherently lossless. It also relies on per-packet Adaptive Routing and a centralized Subnet Manager, such as OpenSM or UFM. Its framing wraps the payload in a Local Routing Header, an optional Global Routing Header, a Base Transport Header, an Invariant CRC, and a Variant CRC.
+Native InfiniBand is governed by the InfiniBand Trade Association. It supports SDR, DDR, QDR, FDR, EDR, HDR, NDR, and XDR link rates. Its link layer uses credit-based flow control, which makes it inherently lossless. It also relies on per-packet Adaptive Routing and a centralized Subnet Manager, such as OpenSM or UFM. Its framing wraps the payload in a Local Routing Header, an optional Global Routing Header, a Base Transport Header, an Invariant CRC, and a Variant CRC. Each of those headers has one job, and reading them in order is a good way to learn the format.
 
-RoCEv1 is also standardized by the InfiniBand Trade Association, and it runs directly over Layer 2 Ethernet. It swaps the InfiniBand Local Routing Header for an Ethernet II header that uses EtherType 0x8915. It keeps the 40-byte InfiniBand Global Routing Header and the 12-byte Base Transport Header, though. Because RoCEv1 has no IP header, it stays inside a single Layer 2 broadcast domain and cannot cross Layer 3 routers.
+RoCEv1 is also standardized by the InfiniBand Trade Association, and it runs directly over Layer 2 Ethernet. It swaps the InfiniBand Local Routing Header for an Ethernet II header that uses EtherType 0x8915. It keeps the 40-byte InfiniBand Global Routing Header and the 12-byte Base Transport Header, though. Because RoCEv1 has no IP header, it stays inside a single Layer 2 broadcast domain and cannot cross Layer 3 routers. That single limit is why RoCEv1 is rare in modern leaf-spine fabrics.
 
-RoCEv2 replaces the 40-byte InfiniBand Global Routing Header with standard IPv4 or IPv6 headers and an 8-byte UDP header. The UDP destination port is fixed at 4791, which tells the receiver that an InfiniBand Base Transport Header follows immediately. The sender also hashes the Queue Pair state into the UDP source port. That gives the switches 5-tuple ECMP entropy, which spreads flows across equal-cost paths in routed leaf-spine and super-spine fabrics. A fourth option, iWARP, carries RDMA over connection-oriented TCP/IP. That extra state adds latency, and it sees little adoption in GPU training clusters.
+RoCEv2 replaces the 40-byte InfiniBand Global Routing Header with standard IPv4 or IPv6 headers and an 8-byte UDP header. The UDP destination port is fixed at 4791, which tells the receiver that an InfiniBand Base Transport Header follows immediately. The sender also hashes the Queue Pair state into the UDP source port. Here is why that matters. A switch that hashes on the five-tuple sees the source port as one of the fields it can use to split traffic. If every RoCEv2 flow used the same fixed source port, that field would add no variety, and the hash would collapse. Deriving the source port from the Queue Pair means each connection carries its own value, so the switches get some variety to work with, even though the destination port never changes. That gives the switches 5-tuple ECMP entropy, which spreads flows across equal-cost paths in routed leaf-spine and super-spine fabrics. Remember that the five-tuple is the set of fields a switch hashes to choose a path. A fourth option, iWARP, carries RDMA over connection-oriented TCP/IP. That extra state adds latency, and it sees little adoption in GPU training clusters.
 
 ```mermaid
 flowchart LR
@@ -85,6 +82,8 @@ flowchart LR
     EXT --> PAY["IB Payload<br/>(e.g., 1024B or 4096B)"]
     PAY --> CRC["ICRC (4B) +<br/>Eth FCS (4B)"]
 ```
+
+Read the diagram as a stack of envelopes, from the outermost one that the switches read first to the innermost one that the receiving NIC opens. The Ethernet and IP layers are what the network uses to move the packet. The UDP layer tells the receiver that RDMA follows. The BTH and the extended headers tell the NIC what to do with the payload.
 
 The table below compares the four variants layer by layer, so you can see which header each one adds or replaces.
 
@@ -99,13 +98,13 @@ The table below compares the four variants layer by layer, so you can see which 
 | **Checksums (`ICRC` + `FCS`)** | `ICRC` (`4 B`) + `VCRC` (`2 B`) | `ICRC` (`4 B`) + `FCS` (`4 B`) | `ICRC` (`4 B`) + `FCS` (`4 B`) | `ICRC` (`4 B`) + `FCS` (`4 B`) | `32-bit` end-to-end Invariant CRC (`ICRC`) masking mutable IP TTL/DSCP/ECN fields + `32-bit` link `FCS`. |
 | **Total Non-Payload Overhead (no VLAN/RETH)** | `26 B` (local) / `66 B` (with GRH) | `74 B` (`4170 B` wire frame at `4096 B` payload; `98.23%` efficiency) | `62 B` (`4158 B` wire frame at `4096 B` payload; `98.51%` efficiency vs `94.29%` at `1024 B`) | `82 B` (`4178 B` wire frame at `4096 B` payload; `98.04%` efficiency) | `RoCEv2-IPv4` saves `12 B` per packet over `RoCEv1` while adding full Layer 3 IP routability. |
 
-Read the Total Non-Payload Overhead row to see how much each variant adds to every packet. For example, you can see that `RoCEv2-IPv4` saves `12 B` per packet over `RoCEv1` while keeping full Layer 3 routability.
+Read the Total Non-Payload Overhead row to see how much each variant adds to every packet. For example, you can see that `RoCEv2-IPv4` saves `12 B` per packet over `RoCEv1` while keeping full Layer 3 routability. Overhead matters because every packet pays it. A larger payload spreads the same overhead over more data, which is why the efficiency rises when the payload grows.
 
 ### 1.2 Inside the IB BTH, RETH, and AETH headers and session state machines
 
-A packet capture of RoCEv2 raises a fair question. UDP is connectionless and unreliable, so how does RoCEv2 guarantee in-order delivery and remote memory protection? Without hardware sequence tracking and memory keys, a corrupted or reordered packet could overwrite arbitrary GPU memory. RoCEv2 therefore embeds reliability, sequence numbering, and virtual memory keys inside the InfiniBand Base Transport Header and its extended headers.
+A packet capture of RoCEv2 raises a fair question. UDP is connectionless and unreliable, so how does RoCEv2 guarantee in-order delivery and remote memory protection? Without hardware sequence tracking and memory keys, a corrupted or reordered packet could overwrite arbitrary GPU memory. RoCEv2 therefore embeds reliability, sequence numbering, and virtual memory keys inside the InfiniBand Base Transport Header and its extended headers. The UDP layer carries the packet, and the BTH carries the guarantees.
 
-Before any payload moves across the wire, the RDMA Connection Manager sets up a Queue Pair state machine between the client and server. Whether the workload runs a 13-step RDMA Write or an 11-step RDMA Read, Phase 1 is always a three-way Connection Manager handshake. The client and server exchange Queue Pair Numbers and starting Packet Sequence Numbers across those three messages. That handshake moves the Queue Pair through the `INIT`, `RTR`, and `RTS` states.
+Before any payload moves across the wire, the RDMA Connection Manager sets up a Queue Pair state machine between the client and server. Whether the workload runs a 13-step RDMA Write or an 11-step RDMA Read, Phase 1 is always a three-way Connection Manager handshake. The client and server exchange Queue Pair Numbers and starting Packet Sequence Numbers across those three messages. That handshake moves the Queue Pair through the `INIT`, `RTR`, and `RTS` states. Those three states are the same ones described in the earlier RDMA chapter, and the handshake is what drives them.
 
 You will see the same phases in the capture below, so you can match each packet to its step. In Phase 2, the data transfer begins. During an RDMA Write session, the client sends the transfer size, remote address, and memory region metadata before it pushes the payload, and the server acknowledges each of those steps. During an RDMA Read session, the client sends one read request that names the remote virtual address, memory key, and length. The server then streams the requested data back. In Phase 3, both operations end with a four-step bidirectional Connection Manager disconnect handshake.
 
@@ -132,17 +131,17 @@ RDMA Session State Machine & Wire Captures (ADC Ch. 1 Figs 1-12..1-16, Client 20
        AETH (Syndrome: 0 [Ack], OpCode: Ack 0, Credit Count: 0, Message Sequence Number [MSN]: 1) + ICRC: 0x33e6e2af.
 ```
 
-Use the Phase and step numbers as a checklist when you read a capture, so you know which packet should come next.
+Use the Phase and step numbers as a checklist when you read a capture, so you know which packet should come next. Walk one RDMA Read session from start to finish. The client opens the connection with a connect request, and the server answers with a reply that carries its own Queue Pair number. The client then confirms that it is ready to use. Only after that confirmation does the client send the read request, with the address and key that name the memory it wants. The server answers with the data in one or more response packets, and each one carries a sequence number so the client can put them back in order. The disconnect at the end is the same four-message exchange that closed the setup. Once you can narrate that flow, a capture stops looking like a wall of hex. Keep a short written copy of the flow next to your capture tools, so a new engineer can follow the same steps without reconstructing them from memory. A capture that stops at a step tells you where the session got stuck. A capture that shows a step twice can mean a retransmission, which is worth noting before you change anything.
 
 ---
 
 ## 2. Addressing, GID tables, MTU, and end-to-end QoS trust boundaries
 
-A common trap appears right after a host network reconfiguration or VLAN change. You check that ICMP `ping` and SSH work between two GPU nodes. Then you launch a distributed job or `ib_write_bw`, and it fails right away. Standard kernel utilities only test the operating system routing table with small packets. They never touch the RDMA Global Identifier table, the 9000-byte jumbo MTU requirement, or the switch QoS trust boundary.
+A common trap appears right after a host network reconfiguration or VLAN change. You check that ICMP `ping` and SSH work between two GPU nodes. Then you launch a distributed job or `ib_write_bw`, and it fails right away. Standard kernel utilities only test the operating system routing table with small packets. They never touch the RDMA Global Identifier table, the 9000-byte jumbo MTU requirement, or the switch QoS trust boundary. A trust boundary is the point where a switch decides whether to believe the priority marking a packet arrives with.
 
 ### 2.1 Why the GID index is a local table position, not a portable identity
 
-Every RDMA port exposes a Global Identifier table with 128-bit IPv6-formatted entries. The driver creates a separate entry for every combination of RoCE version, address family, and Linux network device. Those devices include base interfaces, 802.1Q VLAN sub-interfaces, and SR-IOV Virtual Functions. The output below comes from a production host, where base interface `eth0` and VLAN sub-interface `eth0.100` share the IPv4 address `10.20.4.15`.
+Every RDMA port exposes a Global Identifier table with 128-bit IPv6-formatted entries. The driver creates a separate entry for every combination of RoCE version, address family, and Linux network device. Those devices include base interfaces, 802.1Q VLAN sub-interfaces, and SR-IOV Virtual Functions. An SR-IOV Virtual Function is a lightweight slice of a physical NIC that can be given to a virtual machine or container. The output below comes from a production host, where base interface `eth0` and VLAN sub-interface `eth0.100` share the IPv4 address `10.20.4.15`.
 
 ```text
 $ show_gids
@@ -156,11 +155,11 @@ mlx5_0  1       3       fe80:0000:0000:0000:...                 n/a             
 
 Reading this table correctly takes three rules.
 
-The first rule is about encoding. An IPv4 address sits in the lower 32 bits of an IPv4-mapped IPv6 GID, written in hexadecimal. The address `10.20.4.15` ends in `0a14:040f`.
+The first rule is about encoding. An IPv4 address sits in the lower 32 bits of an IPv4-mapped IPv6 GID, written in hexadecimal. The address `10.20.4.15` ends in `0a14:040f`. Each decimal octet becomes two hex digits: 10 becomes 0a, 20 becomes 14, 4 becomes 04, and 15 becomes 0f. If you know that conversion, you can read the table without a calculator.
 
-The second rule is that one address can appear twice. Two GID indices can show the same IPv4 address and RoCEv2 version while binding to different Layer 2 interfaces. In the output above, index 1 binds to untagged `eth0` and index 2 binds to VLAN-tagged `eth0.100`. The Linux kernel fills the table in the order interfaces come up at boot. Hard-coding `NCCL_IB_GID_INDEX=2` or `-x 2` across nodes can therefore bind one peer to `eth0.100` and the other to a `v1` entry. The connection then fails with `Failed to modify QP to RTR`.
+The second rule is that one address can appear twice. Two GID indices can show the same IPv4 address and RoCEv2 version while binding to different Layer 2 interfaces. In the output above, index 1 binds to untagged `eth0` and index 2 binds to VLAN-tagged `eth0.100`. The Linux kernel fills the table in the order interfaces come up at boot. Hard-coding `NCCL_IB_GID_INDEX=2` or `-x 2` across nodes can therefore bind one peer to `eth0.100` and the other to a `v1` entry. The connection then fails with `Failed to modify QP to RTR`. The fix is to choose the GID by its attributes, not by its number. Select the entry whose version is v2, whose address matches the peer, and whose netdev is the interface you intend to use. Do that on each host separately, because the index can differ between them even when the attributes match. A small script that prints the matching index on each node, and then passes that index to the job, removes the guesswork.
 
-Third, Completion Queue status codes tell you who owns an RDMA failure. Only `IBV_WC_SUCCESS` proves that an end-to-end RDMA transfer completed. Every non-zero work completion error points to a specific fault domain. That distinction separates fabric packet loss from remote memory permission bugs and local buffer sizing mistakes.
+Third, Completion Queue status codes tell you who owns an RDMA failure. Only `IBV_WC_SUCCESS` proves that an end-to-end RDMA transfer completed. Every non-zero work completion error points to a specific fault domain. That distinction separates fabric packet loss from remote memory permission bugs and local buffer sizing mistakes. A fault domain is the part of the system that owns the problem, such as the fabric, the remote host, or the local application.
 
 The table maps each code to its root cause, so you can see which side of the path to check first.
 
@@ -172,15 +171,15 @@ The table maps each code to its root cause, so you can see which side of the pat
 | **`IBV_WC_REM_ACCESS_ERR`** | Remote Access Error | Remote Memory Region (`MR`) registration or `RKey` permission mismatch |
 | **`IBV_WC_LOC_LEN_ERR`** | Local Length Error | Local application buffer length programming bug; not a network fault |
 
-Notice that only `IBV_WC_SUCCESS` reports a clean transfer. Each of the error rows names a different owner.
+Notice that only `IBV_WC_SUCCESS` reports a clean transfer. A success status is the only one that tells you the data is in the remote memory. Any other status means the transfer did not finish, even if the application saw no crash. Log the raw status for every failed work completion, and treat a missing status as a bug in your logging rather than as good news. Each of the error rows names a different owner. The retry error points at the path, the remote access error points at the peer's memory setup, and the length error points at your own code. Reading the code first saves you from searching the wrong side of the connection.
 
 ### 2.2 End-to-end MTU and QoS classification
 
-Even when two peers select matching RoCEv2 GID entries, one misconfigured switch port on the transit path can silently destroy throughput. If a routed hop defaults to a 1500-byte MTU or resets the incoming QoS marking, small handshake packets still succeed. Full-sized RDMA data frames, however, drop in default lossy queues. Both effective MTU and QoS classification must therefore be enforced as end-to-end path invariants. When you check a path, you have to look at every hop, not only the two hosts.
+Even when two peers select matching RoCEv2 GID entries, one misconfigured switch port on the transit path can silently destroy throughput. If a routed hop defaults to a 1500-byte MTU or resets the incoming QoS marking, small handshake packets still succeed. Full-sized RDMA data frames, however, drop in default lossy queues. Both effective MTU and QoS classification must therefore be enforced as end-to-end path invariants. When you check a path, you have to look at every hop, not only the two hosts. A hop is any switch or router the packet crosses, and each one has its own MTU and QoS setting. Most outages of this kind are not in the host at all. They are in a transit switch that someone configured for a different workload years ago and never updated. The handshake succeeding is not proof that the data path works, because the handshake packets are small and the data packets are not.
 
-RoCEv2 frames carry power-of-two InfiniBand payloads of 1024, 2048, or 4096 bytes. A 4096-byte InfiniBand payload needs 4158 bytes on the wire for IPv4, or 4178 bytes for IPv6. Host interfaces such as `ens1f0` and VLAN sub-interfaces such as `eth0.100` must therefore be standardized to a 9000-byte jumbo MTU. Every leaf, spine, and super-spine switch port along the route must match that jumbo setting. If any hop stays below 4200 bytes, 64-byte `ping` and Connection Manager setup packets still pass. The 4096-byte RDMA Write frames drop, and they trigger `IBV_WC_RETRY_EXC_ERR`.
+RoCEv2 frames carry power-of-two InfiniBand payloads of 1024, 2048, or 4096 bytes. A 4096-byte InfiniBand payload needs 4158 bytes on the wire for IPv4, or 4178 bytes for IPv6. Host interfaces such as `ens1f0` and VLAN sub-interfaces such as `eth0.100` must therefore be standardized to a 9000-byte jumbo MTU. Every leaf, spine, and super-spine switch port along the route must match that jumbo setting. If any hop stays below 4200 bytes, 64-byte `ping` and Connection Manager setup packets still pass. The 4096-byte RDMA Write frames drop, and they trigger `IBV_WC_RETRY_EXC_ERR`. Think of the jumbo MTU as a road that every truck must be able to use. One narrow bridge on the route stops the big trucks even though the small cars pass without trouble.
 
-For QoS classification, the 8-bit IPv4 Type of Service or IPv6 Traffic Class byte splits into two fields. The upper 6 bits carry the Differentiated Services Code Point, and the lower 2 bits carry the Explicit Congestion Notification state. Production AI fabrics map RoCEv2 traffic into lossless Traffic Class 3 using DSCP 26 or DSCP 24. Every switch ingress port must trust the incoming DSCP value or 802.1p Priority Code Point 3, and it must place those frames into lossless egress queue 3.
+For QoS classification, the 8-bit IPv4 Type of Service or IPv6 Traffic Class byte splits into two fields. The upper 6 bits carry the Differentiated Services Code Point, and the lower 2 bits carry the Explicit Congestion Notification state. Production AI fabrics map RoCEv2 traffic into lossless Traffic Class 3 using DSCP 26 or DSCP 24. Every switch ingress port must trust the incoming DSCP value or 802.1p Priority Code Point 3, and it must place those frames into lossless egress queue 3. A switch that does not trust the marking will classify the packet by default and place it in a lossy queue, where it can be dropped.
 
 ```text
 End-to-End MTU & IP ToS / Traffic Class Byte Encoding:
@@ -190,17 +189,17 @@ End-to-End MTU & IP ToS / Traffic Class Byte Encoding:
   - DSCP 24 (CS3,  binary 011000)                   -> alternative lossless Class 3 marking (802.1p PCP = 3 / CoS 3).
 ```
 
-Treat MTU and DSCP as path-wide settings. A single hop that differs is enough to break the path.
+Treat MTU and DSCP as path-wide settings. A single hop that differs is enough to break the path. A simple way to test the MTU is a ping with the don't-fragment flag set and a payload sized to the largest frame the path should carry. If that ping fails while a smaller one succeeds, you have found a hop that is still on the old MTU. Run the test in both directions, because a path can carry packets one way and drop them the other way when the two directions are configured differently. To check a path, walk it from the sender to the receiver and write down the MTU and the trust setting at every hop. Then compare the list against the design, and fix the first hop that does not match.
 
 ---
 
 ## 3. Six Clos congestion points, ECN, and PFC
 
-If you design a non-blocking, 1:1 non-oversubscribed Clos fabric with 400 Gbps or 800 Gbps links, you may expect congestion to disappear. During distributed training, however, synchronized GPUs burst elephant flows at line rate, and only a few flows are involved. Those bursts cause hash collisions and endpoint incast bottlenecks at six distinct locations across 3-stage and 5-stage Clos fabrics.
+If you design a non-blocking, 1:1 non-oversubscribed Clos fabric with 400 Gbps or 800 Gbps links, you may expect congestion to disappear. During distributed training, however, synchronized GPUs burst elephant flows at line rate, and only a few flows are involved. Those bursts cause hash collisions and endpoint incast bottlenecks at six distinct locations across 3-stage and 5-stage Clos fabrics. A non-oversubscribed design guarantees enough total capacity, but it does not guarantee that the capacity is spread evenly across the links that a burst happens to use.
 
 ### 3.1 The six Clos congestion points in 3-stage and 5-stage AI fabrics
 
-RoCEv2 flows carry large payloads over a small number of parallel Queue Pairs. Because of that, static 5-tuple ECMP hashing often maps several line-rate flows onto the same physical link. Worse, when multiple senders target one receiver at once, the traffic converges onto a single south-facing port, where fabric load balancing cannot help at all. Every stage of a 3-stage leaf-spine or 5-stage super-spine fabric has its own failure mechanism.
+RoCEv2 flows carry large payloads over a small number of parallel Queue Pairs. Because of that, static 5-tuple ECMP hashing often maps several line-rate flows onto the same physical link. Worse, when multiple senders target one receiver at once, the traffic converges onto a single south-facing port, where fabric load balancing cannot help at all. Every stage of a 3-stage leaf-spine or 5-stage super-spine fabric has its own failure mechanism. A south-facing port is one that points down the tree, toward the servers.
 
 ```mermaid
 flowchart TD
@@ -212,7 +211,9 @@ flowchart TD
     LF -->|"CP4: Leaf-to-Server Egress<br/>(Multi-Spine Incast -> LeafD Host)"| SRV["Destination GPU Server<br/>Attached to LeafD"]
 ```
 
-The table walks through the six points in order. For each one, it gives the traffic pattern, why load balancing fails to prevent it, and the main mitigation.
+The diagram places each congestion point on the link where it happens. Some points sit between tiers, and some sit on the last hop into a server. Follow the arrows and labels to see which traffic pattern lands on each one.
+
+The table walks through the six points in order. Read the points as places where a queue can fill, not as places where a cable can fail. The cables can be perfect and every one of these six can still congest, because congestion comes from traffic arriving faster than a link can drain it. That is why the mitigations focus on spreading traffic and on slowing senders rather than on repairing hardware. For each one, it gives the traffic pattern, why load balancing fails to prevent it, and the main mitigation.
 
 | Congestion Point (`ADC` Ch 7) | Topology Stage & Direction | Traffic Pattern & Why Load Balancing Fails to Prevent It | Primary Mitigation |
 |---|---|---|---|
@@ -223,17 +224,17 @@ The table walks through the six points in order. For each one, it gives the traf
 | **5. Spine-to-super spine link congestion** | 5-stage Clos uplink (`SpineA -> SuperSpineA`) | Across an `8`-leaf (`LeafA..LeafH`), `4`-spine (`SpineA..SpineD`), `2`-super-spine (`SuperSpineA`, `SuperSpineB`) fabric, flows from `LeafA` and `LeafB` reach `SpineA` uncongested and hash onto the same `SpineA -> SuperSpineA` link while `SuperSpineB` is underutilized. | Multi-stage adaptive routing / `DLB` across `SuperSpineA` and `SuperSpineB` plus `ECN`/`PFC`. |
 | **6. Super spine-to-spine link congestion** | 5-stage Clos downlink (`SuperSpineA -> SpineC`) | Flows from `LeafA` and `LeafB` traverse `SpineA`/`SpineB` and reach `SuperSpineA` without congestion, but converge onto a single `SuperSpineA -> SpineC` downlink toward `LeafE`. | End-to-end congestion notification (`DCQCN` / `CSIG`) and inter-pod adaptive load balancing. |
 
-Notice that load balancing handles some of these points but not all. For example, when you see incast at a single NIC, as in Point 4, you know load balancing will not help. Points 1 and 4 need congestion control at the endpoints.
+Notice that load balancing handles some of these points but not all. A useful habit is to take your own cluster's wiring and mark which of the six points each job can reach. A job that stays on one leaf can only hit point 1. A job that spans several leaves can hit points 2 through 6. Once you have that map, you know where to look first when a specific job slows down, and you know which of the mitigations the fabric can actually apply. For example, when you see incast at a single NIC, as in Point 4, you know load balancing will not help. Points 1 and 4 need congestion control at the endpoints. Points 2, 3, 5, and 6 are the ones where a smarter path choice can spread the load. Knowing which group a congestion point belongs to tells you whether to tune the fabric or the endpoints.
 
 ### 3.2 Explicit Congestion Notification and Congestion Notification Packets
 
-When a switch egress queue starts to fill at any of those six points, dropping packets would cause long RDMA retransmission stalls. The network needs a way to tell the sending GPU NIC to slow down before the buffer overflows. Explicit Congestion Notification provides that end-to-end, flow-aware feedback across routed IP fabrics, using the lower 2 bits of the IP ToS byte.
+When a switch egress queue starts to fill at any of those six points, dropping packets would cause long RDMA retransmission stalls. The network needs a way to tell the sending GPU NIC to slow down before the buffer overflows. Explicit Congestion Notification provides that end-to-end, flow-aware feedback across routed IP fabrics, using the lower 2 bits of the IP ToS byte. The advantage of ECN is that it marks the packet and lets it through, so nothing is lost on the way. The cost is time. A useful comparison is a warning light on a dashboard versus a stop sign on the road. The light tells the driver to ease off, but only after the car has already started to move. The signal depends on a return trip that takes as long as the distance and the queueing on the way back, so the sender reacts after the burst has already happened. ECN is a good first response for steady contention, and it is a weaker response for a sudden spike that fills the buffer in a few microseconds.
 
-Suppose a server on `LeafA` transmits RoCEv2 packets toward `LeafD`. It marks the ECN bits as ECN-capable, so you can follow the marking from the sender onward. If the `SpineA` to `LeafD` egress queue crosses its Weighted Random Early Detection marking threshold, `SpineA` rewrites the ECN bits to Congestion Experienced and forwards the packet normally. When the destination RDMA NIC on `LeafD` receives that marked packet, it generates a Congestion Notification Packet back to the sender on `LeafA`. On receiving the CNP, the sender NIC throttles the injection rate for only that congested Queue Pair.
+Suppose a server on `LeafA` transmits RoCEv2 packets toward `LeafD`. It marks the ECN bits as ECN-capable, so you can follow the marking from the sender onward. If the `SpineA` to `LeafD` egress queue crosses its Weighted Random Early Detection marking threshold, `SpineA` rewrites the ECN bits to Congestion Experienced and forwards the packet normally. When the destination RDMA NIC on `LeafD` receives that marked packet, it generates a Congestion Notification Packet back to the sender on `LeafA`. On receiving the CNP, the sender NIC throttles the injection rate for only that congested Queue Pair. Only the one congested flow slows down, and the other flows keep their rate.
 
-Even with this precision, a queue protected only by ECN still counts as a lossy queue. The marked data packet must first travel forward from the congested switch to the receiver. Then the CNP must travel all the way back to the sender before rate reduction begins. During that round-trip signaling delay, a fast incast microburst can still overflow the switch buffer and drop packets. And if any transit switch along the path lacks ECN support, end-to-end congestion marking breaks completely.
+Even with this precision, a queue protected only by ECN still counts as a lossy queue. The marked data packet must first travel forward from the congested switch to the receiver. Then the CNP must travel all the way back to the sender before rate reduction begins. During that round-trip signaling delay, a fast incast microburst can still overflow the switch buffer and drop packets. And if any transit switch along the path lacks ECN support, end-to-end congestion marking breaks completely. Marking is only as good as the least capable switch on the path.
 
-The table lists the four ECN codepoints, which are the two bits that switches and NICs read. You can read each row as one codepoint and the behavior it triggers.
+The table lists the four ECN codepoints, which are the two bits that switches and NICs read. Keep in mind that the two bits are part of the IP header, so they travel with every packet and can be read by any switch on the path. That is what makes ECN work end to end, and it is also why a single switch that does not understand the bits can break the chain. You can read each row as one codepoint and the behavior it triggers.
 
 | `ECT` Bit | `CE` Bit | Binary Codepoint | Standard Name | Operational Behavior & CNP Wire Format (`ADC` Ch 7 Table 7-1) |
 |---|---|---|---|---|
@@ -242,15 +243,15 @@ The table lists the four ECN codepoints, which are the two bits that switches an
 | `1` | `0` | `10` | `ECT(0)` | Transport ECN capability enabled. Set by the sender on forward data packets toward the receiver (and may also be used on `CNPs`). Switches mark instead of dropping upon congestion. |
 | `1` | `1` | `11` | `CE` (Congestion Experienced) | Set by an intermediate congested switch when egress queue utilization crosses the configured `ECN` marking threshold (`WRED` curve), triggering a `CNP` (`UDP 4791`, `ECN = 01`, `IB BTH` opcode `129` / `0x81` / binary `10000001`, plus congested `QP` number). |
 
-Notice that only `11` means a switch has marked the packet. The receiver sets `01` on its CNPs.
+Notice that only `11` means a switch has marked the packet. Follow one marked packet through the loop to see why. The switch sets the bits to 11 on the way to the receiver. The receiver sees the 11, builds a CNP, and sets the bits to 01 on that outgoing packet. The sender reads the CNP, identifies the Queue Pair in it, and slows that one flow. The two 01 values appear in different places, which is why reading the direction of a packet matters before you interpret its bits. The receiver sets `01` on its CNPs. The two bits are easy to mix up, so when you read a capture, check which side sent the packet before you decide what the codepoint means. A `01` on a data packet and a `01` on a CNP mean different things.
 
 ### 3.3 Priority Flow Control, frame format, and the PFC Watchdog
 
-ECN feedback takes a full network round trip to slow a sender down. That means microbursts can overflow a switch buffer while the CNP is still in flight. To prevent drops during that window, Priority Flow Control works hop by hop at Layer 2 under IEEE 802.1Qbb. It creates a lossless queue for Traffic Class 3 by pausing the immediate upstream neighbor whenever ingress headroom crosses a high-water mark.
+ECN feedback takes a full network round trip to slow a sender down. Picture the feedback as a note passed back along a long line of people. The note cannot arrive before the time it takes to walk the line twice, and the water keeps rising while the note is on its way. PFC is the faster but blunter tool that tells the neighbor to stop passing water right now. That means microbursts can overflow a switch buffer while the CNP is still in flight. To prevent drops during that window, Priority Flow Control works hop by hop at Layer 2 under IEEE 802.1Qbb. It creates a lossless queue for Traffic Class 3 by pausing the immediate upstream neighbor whenever ingress headroom crosses a high-water mark. A high-water mark is a fill level that triggers an action, here the pause.
 
-When a switch buffer crosses its `XOFF` threshold, the port transmits a Layer 2 pause frame upstream. That frame halts Traffic Class 3 for up to 65,535 pause quanta. Once the congested queue drains below the lower `XON` threshold, the switch sends an un-pause frame with the pause timer set to zero. That zero timer tells the upstream neighbor to resume transmission immediately. Setting `XOFF` requires dedicated headroom buffer, so packets already in flight on the fiber do not drop before the upstream MAC halts. Many switch ASICs manage this threshold dynamically using a shared-buffer alpha parameter.
+When a switch buffer crosses its `XOFF` threshold, the port transmits a Layer 2 pause frame upstream. That frame halts Traffic Class 3 for up to 65,535 pause quanta. A quantum is a unit of pause time on the link, so a larger number pauses for longer. Once the congested queue drains below the lower `XON` threshold, the switch sends an un-pause frame with the pause timer set to zero. That zero timer tells the upstream neighbor to resume transmission immediately. Setting `XOFF` requires dedicated headroom buffer, so packets already in flight on the fiber do not drop before the upstream MAC halts. The MAC is the link-layer part of the port that actually stops sending. Many switch ASICs manage this threshold dynamically using a shared-buffer alpha parameter.
 
-PFC prevents packet loss, but it brings two severe hazards: Head-of-Line blocking and fabric-wide pause storms. Because PFC pauses the entire traffic class on a link rather than a single Queue Pair, congestion at one receiver can propagate hop by hop across spines. That propagation freezes unrelated GPU flows that share the same class. Worse, if a malfunctioning NIC or routing loop emits continuous `XOFF` frames, backpressure can lock the entire fabric at zero percent GPU utilization. Modern switches prevent this catastrophe with a hardware PFC Watchdog. The watchdog detects stalled queues, drops or drains the wedged traffic, and restores normal operation once the storm subsides.
+PFC prevents packet loss, but it brings two severe hazards: Head-of-Line blocking and fabric-wide pause storms. Head-of-Line blocking means one blocked packet holds up everything queued behind it. Because PFC pauses the entire traffic class on a link rather than a single Queue Pair, congestion at one receiver can propagate hop by hop across spines. That propagation freezes unrelated GPU flows that share the same class. Worse, if a malfunctioning NIC or routing loop emits continuous `XOFF` frames, backpressure can lock the entire fabric at zero percent GPU utilization. Modern switches prevent this catastrophe with a hardware PFC Watchdog. The watchdog detects stalled queues, drops or drains the wedged traffic, and restores normal operation once the storm subsides.
 
 ```text
 IEEE 802.1Qbb Priority Flow Control (PFC) Wire Anatomy & Watchdog State Machine (ADC Ch. 7 Figs 7-10..7-15):
@@ -272,17 +273,17 @@ IEEE 802.1Qbb Priority Flow Control (PFC) Wire Anatomy & Watchdog State Machine 
      - Block 3 (Restoration): Monitors port and restores normal lossless PFC once incoming pause frames drop below recovery threshold.
 ```
 
-As you read the three watchdog blocks, notice that you move from detection to mitigation to restoration, in that order. Before you change any ECN threshold, compare it against the PFC XOFF threshold, because the ordering decides which mechanism fires first.
+As you read the three watchdog blocks, notice that you move from detection to mitigation to restoration, in that order. Before you change any ECN threshold, compare it against the PFC XOFF threshold, because the ordering decides which mechanism fires first. Detection finds the storm, mitigation stops the spread, and restoration puts normal lossless behavior back once the pauses stop arriving.
 
 ---
 
 ## 4. DCQCN, Go-Back-N vs Selective Repeat, Source Flow Control, and CSIG
 
-Relying on ECN alone risks buffer overflow drops during microbursts. Relying on PFC alone freezes entire switch ports with Head-of-Line blocking. Network engineers need one control loop that throttles only the offending sender early, and that saves link-level pauses for emergencies. Data Center Quantized Congestion Notification and newer hardware signaling standards solve this coordination problem.
+Suppose you have tuned a fabric with ECN and PFC, and a training run still shows short stalls during bursts. Relying on ECN alone risks buffer overflow drops during microbursts. Relying on PFC alone freezes entire switch ports with Head-of-Line blocking. Network engineers need one control loop that throttles only the offending sender early, and that saves link-level pauses for emergencies. Data Center Quantized Congestion Notification and newer hardware signaling standards solve this coordination problem. The stalls you see are often the gap where the two mechanisms are not yet working together.
 
 ### 4.1 Data Center Quantized Congestion Notification
 
-Data Center Quantized Congestion Notification combines flow-aware, end-to-end ECN with hop-by-hop lossless PFC over DSCP-marked queues. The trick lies in the thresholds. By ordering switch buffer thresholds so that ECN marks packets well below the PFC pause threshold, DCQCN handles the vast majority of congestion events gracefully through sender rate reduction. PFC then acts strictly as a last-resort safety net, for the case where an abrupt microburst outpaces the ECN round-trip loop.
+Data Center Quantized Congestion Notification combines flow-aware, end-to-end ECN with hop-by-hop lossless PFC over DSCP-marked queues. The trick lies in the thresholds. By ordering switch buffer thresholds so that ECN marks packets well below the PFC pause threshold, DCQCN handles the vast majority of congestion events gracefully through sender rate reduction. PFC then acts strictly as a last-resort safety net, for the case where an abrupt microburst outpaces the ECN round-trip loop. Think of ECN as a gentle speed bump and PFC as the barrier at the end of the road. You want drivers to slow down on the bump, and you want the barrier to stay down only in an emergency.
 
 The diagram shows the thresholds in the order a buffer fills, from XON up to XOFF.
 
@@ -294,6 +295,8 @@ flowchart LR
     XOFF --> Max["Buffer Max (4096 KB)<br/>(Headroom Absorbs In-Flight)"]
 ```
 
+Read the diagram from left to right as the queue filling up. The first threshold lets the switch say that the queue is calm. The middle band is where ECN marks packets and the senders slow down. The last threshold is where the switch must pause the upstream link, and the top region is headroom for packets that are already on their way.
+
 Each row of the table is one buffer stage, with what the switch does there and what happens to other flows in Class 3.
 
 | Buffer Threshold Stage (`XON < ECN < XOFF`) | Representative Setting (`Mellanox Onyx` / Spectrum) | Switch & Endpoint Action (`99%+` handled by ECN) | Impact on Unrelated Flows in Class `3` |
@@ -302,17 +305,17 @@ Each row of the table is one buffer stage, with what the switch does there and w
 | **Between `ECN_min` and `XOFF` (`150 KB .. 1500 KB`)** | `congestion-control ecn minimum-absolute 150 maximum-absolute 1500` | Switch marks `ECN = 11` (`CE`) probabilistically via WRED curve; receiver `RNIC` returns `CNP` (`opcode 129`); sender `RNIC` cuts rate for **only the congested `QP`**. | **Zero Head-of-Line blocking**—other flows sharing `Class 3` continue at full speed. |
 | **Above `XOFF` (`>= 3000 KB`)** | `XOFF` below `Max` (preserving headroom) | Egress congestion causes ingress lossless headroom on upstream port to breach `XOFF`; switch emits `PFC XOFF` (`timer = 65535`) hop-by-hop toward source. | **Pauses entire `Class 3` queue** on the paused link (`HoL` blocking), preventing packet loss while `DCQCN` catches up. |
 
-Notice that the middle row is the only one where ECN works without any Head-of-Line blocking. As you tune these thresholds, keep that ordering in mind, because it decides which mechanism reacts first.
+Notice that the middle row is the only one where ECN works without any Head-of-Line blocking. When you tune a fabric, the middle band is the one to protect. If the band is too narrow, the switch goes from marking to pausing with little warning. If it is too wide, the switch lets the queue grow before any sender hears about it, and the headroom is the only thing left to absorb the burst. As you tune these thresholds, keep that ordering in mind, because it decides which mechanism reacts first. The table's first column is the ordering rule itself, and each later column shows what that rule costs or saves.
 
-When a switch receives a PFC pause frame on an egress interface, backpressure spreads in five sequential steps. First, the pause frame arrives on the egress port. Second, the switch halts transmission on egress queue 3. Third, packets from upstream keep filling the switch's own ingress lossless buffers until they cross their `XOFF` threshold. Fourth, those ingress ports send new PFC pause frames upstream. Fifth, the pause wave reaches the sender NIC. Because of this blast radius, production clusters choose among three profiles. They either enable ECN and PFC on all switches, restrict PFC to leaves and NICs with fabric-wide ECN, or run ECN-only with adaptive routing.
+When a switch receives a PFC pause frame on an egress interface, backpressure spreads in five sequential steps. First, the pause frame arrives on the egress port. Second, the switch halts transmission on egress queue 3. Third, packets from upstream keep filling the switch's own ingress lossless buffers until they cross their `XOFF` threshold. Fourth, those ingress ports send new PFC pause frames upstream. Fifth, the pause wave reaches the sender NIC. Because of this blast radius, production clusters choose among three profiles. Each one reflects a judgment about which failure is worse. Ask your team which outcome they would rather handle at 3 a.m. A pause storm is loud and easy to spot, while an unnecessary drop can hide inside a slow job for weeks. Your answer to that question is a better guide to the profile than any benchmark number. A fabric that enables PFC everywhere is the most protected against drops, but it has the widest blast radius. A fabric that restricts PFC to leaves and NICs keeps the pause inside a smaller area. An ECN-only fabric avoids pause storms completely, but it relies on adaptive routing and on senders reacting quickly enough to every burst. They either enable ECN and PFC on all switches, restrict PFC to leaves and NICs with fabric-wide ECN, or run ECN-only with adaptive routing. Each profile trades a little safety margin for a smaller blast radius, and the right one depends on how much unrelated traffic you can afford to pause.
 
 ### 4.2 Go-Back-N vs Selective Repeat retransmission amplification
 
-Why do Ethernet AI fabrics go to such lengths to prevent a single packet drop? Picture a 400 Gbps RoCEv2 link with a 20.48 microsecond round-trip time. More than one megabyte of data is simultaneously in flight on the wire. Under classic RDMA hardware recovery, losing the first packet of that window forces the receiver to discard every later packet already in flight.
+Why do Ethernet AI fabrics go to such lengths to prevent a single packet drop? Picture a 400 Gbps RoCEv2 link with a 20.48 microsecond round-trip time. More than one megabyte of data is simultaneously in flight on the wire. Under classic RDMA hardware recovery, losing the first packet of that window forces the receiver to discard every later packet already in flight. The link is full of data that is about to be thrown away.
 
-Consider what happens with classic Go-Back-N error recovery when packet 1 drops at a congested switch. Packet 2 then arrives with an out-of-order Packet Sequence Number. The receiver NIC immediately raises a sequence error. It increments `packet_seq_err` or `out_of_sequence`, returns a negative acknowledgement, and drops all 249 following packets in the flight window. The sender must rewind its Send Queue and retransmit all 250 packets, a 250-fold retransmission amplification. Modern NICs such as ConnectX-6 Dx, ConnectX-7, and BlueField-3 support Selective Repeat instead. Those adapters buffer out-of-order packets in NIC memory and request retransmission of only the single missing packet. If your cluster runs one of these NICs, you get that Selective Repeat behavior.
+Consider what happens with classic Go-Back-N error recovery when packet 1 drops at a congested switch. Packet 2 then arrives with an out-of-order Packet Sequence Number. The receiver NIC immediately raises a sequence error. It increments `packet_seq_err` or `out_of_sequence`, returns a negative acknowledgement, and drops all 249 following packets in the flight window. The sender must rewind its Send Queue and retransmit all 250 packets, a 250-fold retransmission amplification. Modern NICs such as ConnectX-6 Dx, ConnectX-7, and BlueField-3 support Selective Repeat instead. The difference is where the out-of-order packets wait. Under Go-Back-N the receiver throws them away, so the sender has to send them again. Under Selective Repeat the NIC keeps them in its own memory, fills in the one gap when the missing packet arrives, and asks for only that packet. The NIC needs enough memory to hold the window, which is a hardware choice you make when you buy the cards. Those adapters buffer out-of-order packets in NIC memory and request retransmission of only the single missing packet. If your cluster runs one of these NICs, you get that Selective Repeat behavior.
 
-The block below shows the arithmetic. The 250 packets of 4096 bytes make 1,024,000 bytes in flight, and Go-Back-N retransmits all of them while Selective Repeat resends one.
+The block below shows the arithmetic. The 250 packets of 4096 bytes make 1,024,000 bytes in flight, and Go-Back-N retransmits all of them while Selective Repeat resends one. Walk the numbers in order. First compute the bandwidth-delay product, which is how much data the pipe holds. Then divide by the packet size to get the packet count, and finally compare the two recovery strategies against that count.
 
 ```text
 Bandwidth-Delay Product (BDP) & Retransmission Amplification Math (code/part12/rocev2_transport.py):
@@ -322,13 +325,15 @@ Bandwidth-Delay Product (BDP) & Retransmission Amplification Math (code/part12/r
   - Selective Repeat Recovery (ConnectX-7 / BF-3):     Buffers packets #2..#250 -> retransmits only 1 missing packet (4096 bytes = 1x).
 ```
 
+The key idea is the gap between the two bars. Go-Back-N makes one lost packet cost the whole window, while Selective Repeat makes it cost only that one packet. The gap grows with the size of the window, so the faster and longer the link, the more the older scheme loses. That is why the newer NICs are worth the price on large fabrics, even though a small cluster with short links may never feel the difference. Go-Back-N makes one lost packet cost the whole window, while Selective Repeat makes it cost only that one packet. That difference is why a single drop on a long, fast link can be so costly under the older scheme.
+
 ### 4.3 Source Flow Control and Congestion Signaling
 
-Even a well-tuned DCQCN loop has two structural limits. ECN feedback is slow because it must bounce off the receiver, and PFC is coarse because it pauses an entire traffic class. Two emerging standards address those bottlenecks directly. One signals the sender faster, and the other embeds fine-grained telemetry in the packet header.
+Even a well-tuned DCQCN loop has two structural limits. ECN feedback is slow because it must bounce off the receiver, and PFC is coarse because it pauses an entire traffic class. Two emerging standards address those bottlenecks directly. One signals the sender faster, and the other embeds fine-grained telemetry in the packet header. Both are still maturing, so treat them as directions to watch and test rather than defaults to rely on today.
 
-Source Flow Control, standardized as IEEE 802.1Qdw, removes both the receiver round-trip delay and class-wide Head-of-Line blocking. When a transit switch such as `SpineA` sees that its `SpineA` to `LeafD` queue has crossed the SFC threshold, it does not wait for the receiver to generate a CNP. Instead, `SpineA` trims the packet payload and swaps the source and destination IP addresses. It then sends a flow-specific SFC signal straight back to the ingress leaf and sender. Ingress `LeafA` can pause that individual flow, forward the SFC frame to an SFC-capable NIC, or translate it into a local PFC pause on the server port.
+Source Flow Control, standardized as IEEE 802.1Qdw, removes both the receiver round-trip delay and class-wide Head-of-Line blocking. When a transit switch such as `SpineA` sees that its `SpineA` to `LeafD` queue has crossed the SFC threshold, it does not wait for the receiver to generate a CNP. Instead, `SpineA` trims the packet payload and swaps the source and destination IP addresses. It then sends a flow-specific SFC signal straight back to the ingress leaf and sender. Ingress `LeafA` can pause that individual flow, forward the SFC frame to an SFC-capable NIC, or translate it into a local PFC pause on the server port. The trimmed packet is a short notice that carries the problem back to the source, so the source can react without waiting for the destination to answer.
 
-Congestion Signaling, defined in IETF `draft-ravi-ippm-csig-01`, takes an In-Band Network Telemetry approach. It inserts a fixed-length Layer 2.5 CSIG tag between the Layer 2 Ethernet header and the Layer 3 IP header. As a packet crosses each switch from sender to receiver, that hop updates the CSIG tag whenever its local bottleneck state is worse than the value already recorded in the packet. The destination NIC then reflects that summarized telemetry back to the sender in CSIG reflection headers. The sender uses it to pace its injection rate and steer around congested paths.
+Congestion Signaling, defined in IETF `draft-ravi-ippm-csig-01`, takes an In-Band Network Telemetry approach. The idea is to let the path describe its own state, instead of relying on the receiver to guess. A sender that knows the narrowest point on its path can choose a different path or slow down by the right amount. Because the standard is a draft, expect the details to change, and check the current text before you build tooling on the field layout. In-band telemetry means the measurement rides inside the data packets themselves. It inserts a fixed-length Layer 2.5 CSIG tag between the Layer 2 Ethernet header and the Layer 3 IP header. As a packet crosses each switch from sender to receiver, that hop updates the CSIG tag whenever its local bottleneck state is worse than the value already recorded in the packet. The destination NIC then reflects that summarized telemetry back to the sender in CSIG reflection headers. The sender uses it to pace its injection rate and steer around congested paths. The tag keeps the worst bottleneck seen along the path, so the sender learns about the narrowest point, not an average.
 
 ```text
 Next-Generation Congestion Control Specs (ADC Ch. 7 Figs 7-18..7-21):
@@ -344,21 +349,21 @@ Next-Generation Congestion Control Specs (ADC Ch. 7 Figs 7-18..7-21):
      - Section 3 — Locator Metadata (4 fields): (a) Capacity of bottlenecks, (b) Stage of bottlenecks, (c) Device ID, (d) Link identification (uplink or downlink).
 ```
 
-For your fabric, decide early whether ECN-only marking with adaptive routing or PFC on all switches fits the blast radius you can tolerate.
+Read the SFC latency line as a race between two messages. The SFC notice travels only as far as the congested switch and back, while the ECN path has to reach the receiver and return. The longer route is where the extra microseconds go. For your fabric, decide early whether ECN-only marking with adaptive routing or PFC on all switches fits the blast radius you can tolerate. Write the decision down with the failure you are trying to prevent beside it. A decision made with the failure in view is much easier to defend in a review than a setting copied from another cluster.
 
 ---
 
 ## 5. Production inventory, baseline benchmarking, and the 5-layer RoCEv2 evidence ladder
 
-Picture an on-call engineer in the middle of a production training slowdown. The pull to tweak switch ECN thresholds or reboot nodes is strong. Blindly changing fabric parameters mid-incident, though, destroys forensic state. It often turns a single-node configuration bug into a cluster-wide outage. Before you run `perftest` benchmarks or change switch queues, capture a five-layer endpoint-to-endpoint path inventory and follow a disciplined evidence ladder.
+Picture an on-call engineer in the middle of a production training slowdown. The pull to tweak switch ECN thresholds or reboot nodes is strong. Blindly changing fabric parameters mid-incident, though, destroys forensic state. Forensic state is the record of how the system looked before the change, and once it is gone you cannot tell whether your change helped, hurt, or changed nothing. A short capture taken first keeps that record, and it also gives the next engineer something to compare against. It often turns a single-node configuration bug into a cluster-wide outage. Before you run `perftest` benchmarks or change switch queues, capture a five-layer endpoint-to-endpoint path inventory and follow a disciplined evidence ladder. The ladder is a fixed order of checks, and it tells you when to stop.
 
 ### 5.1 Building an endpoint-to-endpoint RoCEv2 path inventory
 
 Investigations stall when a team cannot prove which physical port, VLAN, GID entry, and PCIe root complex a collective job actually used. Before you launch `ib_write_bw`, `ib_send_lat`, or NCCL, capture a timestamped baseline across five layers on both endpoints. First, verify host link negotiation and IPv4 or IPv6 addressing with `ip` and `ethtool`. Second, map the Linux network device to its RDMA device and port state using `rdma link show`, `ibv_devinfo`, and `ibstat`.
 
-When you read `ibstat`, watch for a key difference between InfiniBand and Ethernet RDMA fabrics. On native InfiniBand, a centralized Subnet Manager assigns non-zero Local Identifiers, such as `Base lid: 32` and `SM lid: 1`. On RoCEv2 Ethernet ports, `Base lid: 0` and `SM lid: 0` are completely normal when the port is `Active` and `LinkUp`. That happens because RoCEv2 uses distributed IP routing rather than a Subnet Manager.
+When you read `ibstat`, watch for a key difference between InfiniBand and Ethernet RDMA fabrics. On native InfiniBand, a centralized Subnet Manager assigns non-zero Local Identifiers, such as `Base lid: 32` and `SM lid: 1`. On RoCEv2 Ethernet ports, `Base lid: 0` and `SM lid: 0` are completely normal when the port is `Active` and `LinkUp`. That happens because RoCEv2 uses distributed IP routing rather than a Subnet Manager. A zero LID on a RoCEv2 port is therefore not an error, and treating it as one sends you chasing a problem that does not exist.
 
-Third, verify the active Layer 3 route, the 9000-byte jumbo MTU, and the semantic `v2` GID index. Fourth, inspect `nvidia-smi topo -m` to confirm that the target GPU and RDMA NIC share the same PCIe switch or root complex. Crossing the CPU socket interconnect degrades GPUDirect RDMA bandwidth. Fifth, snapshot NIC and RDMA hardware counters with a UTC timestamp. Never reset shared hardware counters on a multi-tenant node.
+Third, verify the active Layer 3 route, the 9000-byte jumbo MTU, and the semantic `v2` GID index. Fourth, inspect `nvidia-smi topo -m` to confirm that the target GPU and RDMA NIC share the same PCIe switch or root complex. Crossing the CPU socket interconnect degrades GPUDirect RDMA bandwidth. Fifth, snapshot NIC and RDMA hardware counters with a UTC timestamp. Never reset shared hardware counters on a multi-tenant node. A snapshot with a timestamp lets you compute the change over a window, which is what you actually need.
 
 The block shows what each of the five steps looks like on a real host, so you can compare your own output line by line.
 
@@ -374,13 +379,15 @@ The block shows what each of the five steps looks like on a real host, so you ca
                              tx_bytes: 481029120384, fec_corrected_blocks: 412, fec_uncorrected_blocks: 0, rx_ecn_marked_prio3: 0, rx_pfc_prio3: 0, tx_pfc_prio3: 0.
 ```
 
+The five lines map to the five layers in order. Keep the output in a file with the timestamp in its name, so you can compare it with a later run from the same host.
+
 ### 5.2 Interpreting controlled contention and the 5-layer evidence ladder
 
-Network dashboards that alert only on interface packet drops miss RoCEv2 congestion throttling. When DCQCN and PFC work as designed, physical drop counters stay at zero while sender injection rates are quietly cut in half. To see congestion in action, you have to compute per-second or per-run deltas across the priority-specific ECN, CNP, and PFC hardware counters.
+Network dashboards that alert only on interface packet drops miss RoCEv2 congestion throttling. When DCQCN and PFC work as designed, physical drop counters stay at zero while sender injection rates are quietly cut in half. To see congestion in action, you have to compute per-second or per-run deltas across the priority-specific ECN, CNP, and PFC hardware counters. A delta is the difference between two snapshots, and it tells you what happened during the window.
 
-Consider a controlled contention test where two senders drive a 400 Gbps RoCEv2 receiver on Priority 3 for 60 seconds. Physical drop counters stay at zero, yet `rx_ecn_marked_prio3` jumps by 47,829 packets, and `rx_pfc_prio3` increments by 412 frames. Those feedback signals converge both senders to fair rates near 88 Gbps apiece. Similarly, a 1-second `mlnx_perf` sample during a slow training job may show zero buffer drops alongside 118 priority-3 congestion events per second. That counter proves that CNP throttling is inflating tail latency.
+Consider a controlled contention test where two senders drive a 400 Gbps RoCEv2 receiver on Priority 3 for 60 seconds. Physical drop counters stay at zero, yet `rx_ecn_marked_prio3` jumps by 47,829 packets, and `rx_pfc_prio3` increments by 412 frames. Those feedback signals converge both senders to fair rates near 88 Gbps apiece. The point of the test is the shape of the result. Neither sender was dropped, neither was starved, and the marks and pauses did their job of sharing the link between the two flows. A dashboard that only counts drops would have shown this test as perfectly healthy, which is exactly why the marking counters need watching too. Similarly, a 1-second `mlnx_perf` sample during a slow training job may show zero buffer drops alongside 118 priority-3 congestion events per second. That counter proves that CNP throttling is inflating tail latency. A zero drop count with a high marking count is the signature of a fabric that is working, but working hard.
 
-When throughput drops or retries spike on a single rail, walk the five-layer evidence ladder from physical optics up to GPU locality. Always stop at the first layer that diverges from baseline. In Lab 04, a benchmark dropped from 392 Gb/s to 156 Gb/s. It also logged 24 retry errors, because the command invoked `-d mlx5_1` on a cross-socket rail instead of `-d mlx5_0`. Walking the ladder caught the wrong device at Layer 3 and restored 392 Gb/s in 2.1 seconds, without touching switch ECN or PFC settings.
+When throughput drops or retries spike on a single rail, walk the five-layer evidence ladder from physical optics up to GPU locality. Always stop at the first layer that diverges from baseline. In one controlled rail test, a benchmark dropped from 392 Gb/s to 156 Gb/s. It also logged 24 retry errors, because the command invoked `-d mlx5_1` on a cross-socket rail instead of `-d mlx5_0`. Walking the ladder caught the wrong device at Layer 3 and restored 392 Gb/s in 2.1 seconds, without touching switch ECN or PFC settings. The ladder found a wrong argument, and nothing on the fabric needed to change.
 
 The block below shows the counter deltas from that contention test and the 1-second live sample.
 
@@ -416,11 +423,13 @@ The table lists what each layer asks, the command that answers it, and the safe 
 | **Layer 4 — QoS & Congestion** | Is traffic landing in `TC 3` and is `ECN` firing before `PFC`? | `ethtool -S ens1f0` (`rx_ecn_marked_prio3`, `rx_pfc_prio3`, `tx_pfc_prio3`, `rx_prio3_congestion_events: 118`); switch buffer histograms (`gNMI` / `NetQ` / `bcm11-admin` PromQL). | If `PFC` fires with `0` `ECN` marks, lower switch `ECN minimum-absolute` (`150 KB`) or fix `DSCP 26 -> TC 3` trust. |
 | **Layer 5 — Host RAM vs GPU** | Does host-memory `ib_write_bw` pass while GPU collective lags? | Host-memory `ib_write_bw` (`65536 B`, `5000` iters -> `23500.2 MB/sec` peak / `23450.5 MB/sec` avg, `0.375208 Mpps` on `200G HDR`) vs `nvidia-smi topo -m` (`PIX` vs `SYS`). | Fix GPU-to-NIC PCIe/NUMA binding (`PIX`) or verify `nvidia-peermem` (`GPUDirect RDMA`). |
 
-Notice that the Layer 3 row fixes the process, not the fabric. When a rail slows down, start at Layer 1 and stop at the first layer that differs from your baseline.
+Notice that the Layer 3 row fixes the process, not the fabric. When a rail slows down, start at Layer 1 and stop at the first layer that differs from your baseline. Each layer rules out a whole group of causes at once, so the order saves time even when the fault turns out to be at a lower layer.
 
 ---
 
 ## Commands and configurations that matter
+
+The commands below are reference patterns for a live fabric, and they are covered by the status note in the lab section. Read each block for the intent, then adapt the device names and addresses to your own hosts before you run anything.
 
 ### 1. Host RoCEv2 path inventory, GID inspection, and hardware counter baselines
 
@@ -447,6 +456,8 @@ date -u && ethtool -S ens1f0 | egrep "rx_bytes|tx_bytes|fec_uncorrected|ecn_mark
 grep -H . /sys/class/infiniband/mlx5_0/ports/1/hw_counters/* 2>/dev/null || true
 ```
 
+The first group checks the link and the route, the second maps the netdev to the RDMA device and reads the GID table, and the third checks the PCIe affinity. The last group records counters with a timestamp, so later comparisons have a fixed starting point.
+
 ### 2. Host-memory perftest smoke test and UDP 4791 packet capture
 
 ```bash
@@ -460,6 +471,8 @@ ib_write_bw -d mlx5_0 -i 1 -x 1 -F --report_gbits 10.20.8.5
 # Note: hardware-offloaded RDMA bypasses the host kernel, so use ibdump or switch port mirroring for data packets
 sudo tcpdump -i ens1f0 -nn -e -v udp port 4791
 ```
+
+Start the listener on the server before the client. The client's `-x 1` selects the GID index in this example, and the capture commands show the two places you can look at the packets.
 
 ### 3. Switch lossless RoCEv2 queue configuration
 
@@ -477,9 +490,13 @@ switch (config) # interface ethernet 1/1 dcb priority-flow-control mode on force
 switch (config) # interface ethernet 1/1-1/32 traffic-class 3 bind strict-priority
 ```
 
+The three steps set the marking thresholds, turn on PFC for priority 3 only, and bind the class to strict priority. Apply them in that order on a test switch first, because a wrong threshold changes the behavior of every lossless flow on the device.
+
 ---
 
 ## How it fails
+
+When a RoCEv2 fabric misbehaves, the first sign is usually a job that slows down or refuses to start, and the cause is rarely the one you first suspect. The table below maps five common failures to what you see, what is actually wrong, and the fix that matches it. Each row starts from a symptom you can observe, so you can match your own logs to a row before you change any setting.
 
 | Failure Mode | Symptom & Telemetry Evidence | Root Cause | Fix & Verification |
 |---|---|---|---|
@@ -489,13 +506,15 @@ switch (config) # interface ethernet 1/1-1/32 traffic-class 3 bind strict-priori
 | **4. Entire training job hangs at `0%` GPU utilization (`ib_write_bw` hangs indefinitely)** | Switch ports show massive `PFC Tx/Rx` pause frame counts (`EtherType 0x8808`, `opcode 0x0101`, `timer = 65535`) and `0` data packets forwarded. | **`PFC` Pause Storm or Cyclical Buffer Deadlock:** A wedged downstream NIC (`GPU102` on `LeafC`) or routing loop caused `PFC XOFF` backpressure to cascade across `SpineA` to `LeafA`/`LeafB` (`Switch A -> B -> C -> D -> A`). | Enforce strictly loop-free Clos topologies and enable the **`PFC Watchdog`** (e.g., `50 ms` storm timer) in `drop` mitigation mode to flush the wedged queue and suppress upstream pause propagation. |
 | **5. `RoCEv2` traffic experiences heavy packet drops (`packet_seq_err` / `Go-Back-N` stalls) despite `PFC` and `ECN` being configured on `TC 3`** | `ethtool -S` shows `rx_prio3_packets: 0` while `rx_prio0_packets` increments and default queue `0` drops packets during collectives. | **Broken QoS Trust or `DSCP` Mapping Boundary:** Host `RoCEv2` packets (`DSCP 26` / `AF31`) were remarked to `0` or classified via untrusted L2 `PCP = 0` at a switch ingress port, landing in lossy default queue `0` instead of lossless `TC 3`. | Configure `cma_roce_tos` / `mlx5_core` DSCP marking (`26` or `24`) on the host and verify `trust dscp` -> `traffic-class 3` mapping on every leaf, spine, and super-spine hop. |
 
+Read the rows as a set of questions. Each row begins with a symptom you can see from the job or the switch, and each one names the question you should ask first. If the symptom is a job that will not connect, start with the GID question. If the symptom is a slow rail with retries, start with the device question. This way the table works like a triage sheet, not a list of facts to memorize. Row 1 asks whether the two ends picked the same GID, row 2 asks whether the process picked the right device, and row 4 asks whether any pause frames are circulating in a loop. Start with the question that matches what you see, and the table will point you to the right layer.
+
 ---
 
 ## Hands-on lab
 
 ### Venue and scope
 
-You can run this lab on your own machine. It uses only the Python 3 standard library, through `code/part12/rocev2_transport.py` and `code/part12/rocev2_transport_lab.py`. The lab verifies all 25 quantitative checks from this chapter. Those checks cover RoCEv1 versus RoCEv2 header efficiency, IPv4-mapped GID resolution, DSCP and ECN byte encoding, the six Clos congestion points, and DCQCN threshold ordering. The script also validates PFC frame constants, the PFC Watchdog, Go-Back-N versus Selective Repeat amplification, Source Flow Control, and Congestion Signaling. Every live cluster and switch command earlier in the chapter is a reference pattern marked untested here.
+You can run this lab on your own machine. It uses only the Python 3 standard library, through `code/part12/rocev2_transport.py` and `code/part12/rocev2_transport_lab.py`. The lab verifies all 25 quantitative checks from this chapter. Those checks cover RoCEv1 versus RoCEv2 header efficiency, IPv4-mapped GID resolution, DSCP and ECN byte encoding, the six Clos congestion points, and DCQCN threshold ordering. The script also validates PFC frame constants, the PFC Watchdog, Go-Back-N versus Selective Repeat amplification, Source Flow Control, and Congestion Signaling. The live cluster and switch commands earlier in the chapter were not run here, because no fabric is attached to the build environment. They are reference patterns, and the lab checks the model behind them.
 
 ### Step 1: Run the self-checking RoCEv2 transport and congestion management lab
 
@@ -538,7 +557,7 @@ The captured output below shows what a passing run looks like.
 Summary: 25 passed, 0 failed out of 25 checks.
 ```
 
-The last line gives the total. A run that reports 25 passed and 0 failed out of 25 checks matches the captured output. If your summary differs, compare your run against this output before you rely on the rest of the chapter.
+The last line gives the total. A run that reports 25 passed and 0 failed out of 25 checks matches the captured output. If your summary differs, compare your run against this output before you rely on the rest of the chapter. The lines that name a volume are labels from the source material, and they show which check covers which claim.
 
 ---
 
@@ -546,7 +565,7 @@ The last line gives the total. A run that reports 25 passed and 0 failed out of 
 
 These five slips are easy to make at the start, so watch for them as you work through the chapter.
 
-1. Treating a successful `ping` as proof that a RoCEv2 path is healthy. Standard ICMP `ping` tests 64-byte packets over whatever interface the kernel routing table selected. It never exercises GID table selection, the 9000-byte jumbo MTU, DSCP-to-CoS queue mapping, or GPUDirect PCIe locality.
+1. Treating a successful `ping` as proof that a RoCEv2 path is healthy. Standard ICMP `ping` tests 64-byte packets over whatever interface the kernel routing table selected. It never exercises GID table selection, the 9000-byte jumbo MTU, DSCP-to-CoS queue mapping, or GPUDirect PCIe locality. A passing ping only tells you that the IP path exists. It does not tell you that the RDMA path works. Treat ping as the first check in a short list, and never as the last one. The RDMA-specific checks in this chapter are the ones that catch the failures that matter for training.
 2. Hard-coding a numeric GID index across all cluster nodes. The kernel assigns GID indices dynamically as interfaces and VLAN sub-interfaces come up. Index 2 on one node can therefore map to a different VLAN or to a RoCEv1 entry on a peer. Resolve the GID index from semantic attributes instead, including protocol version, network device, and IPv4 address.
 3. Setting ECN marking thresholds above PFC `XOFF`, or setting `XOFF` equal to the maximum buffer. If the ECN threshold sits above `XOFF`, PFC pauses the entire traffic class before DCQCN ever sends a Congestion Notification Packet. If `XOFF` equals the maximum buffer with zero headroom, in-flight packets drop while the pause frame travels upstream.
 4. Resetting live interface or switch counters during an active investigation. Clearing shared hardware counters destroys the historical baselines that other operators and Prometheus monitoring agents depend on. Record UTC timestamps with `date -u`, and compute counter deltas between snapshots instead.
@@ -556,16 +575,14 @@ These five slips are easy to make at the start, so watch for them as you work th
 
 ## Exercises
 
-The reference block after the six exercises gives every function signature, input parameter, and target verification output. Check it when you want to confirm an expected value.
+The reference block after the six exercises gives every function signature, input parameter, and target verification output. Check it when you want to confirm an expected value. Work through the exercises in order, because later ones reuse numbers from earlier ones.
 
-1. Header overhead. Take a 4096-byte payload and calculate the non-payload bytes, the wire frame size, and the payload efficiency for RoCEv1, RoCEv2 over IPv4, and RoCEv2 over IPv6. Repeat the calculation at 1024 bytes. Then explain why RoCEv2 over IPv4 saves 12 bytes per packet compared with RoCEv1 while adding full Layer 3 routability.
+1. Header overhead. Take a 4096-byte payload and calculate the non-payload bytes for RoCEv1. Calculate the wire frame size for RoCEv1. Calculate the payload efficiency for RoCEv1. Repeat the same three calculations for RoCEv2 over IPv4 and then over IPv6. Repeat the calculation at 1024 bytes. Then explain why RoCEv2 over IPv4 saves 12 bytes per packet compared with RoCEv1 while adding full Layer 3 routability.
 2. A GID index after a VLAN change. A host shows four `show_gids` rows for `mlx5_0` port 1, from base interface `eth0` and VLAN interface `eth0.100`. Write out the 128-bit IPv4-mapped RoCEv2 GID for the host address. Then explain why `ib_write_bw` with a hard-coded `-x 2` failed to move the Queue Pair to the Ready to Receive state.
-3. The ToS byte and the buffer thresholds. Compute the hexadecimal IP ToS byte for DSCP 26 with ECN-capable marking, and again with Congestion Experienced marking. Give the BTH opcode and the ECN bits of the resulting CNP. Then say what the switch queue does at 40 KB, 500 KB, and 3200 KB of occupancy under the standard DCQCN profile.
-4. Six congestion points and a pause storm. List the six Clos congestion points. Explain why spine load balancing cannot help with local leaf congestion or with incast at the destination server. Then trace the three blocks of the PFC Watchdog when a downstream GPU port starts a pause storm lasting more than 50 milliseconds.
-5. One dropped packet and one slow task. Show why a single dropped 4096-byte packet on a 400 Gbps path with a 20.48 microsecond round-trip time makes Go-Back-N retransmit 250 packets, and how many Selective Repeat retransmits. Then compute the serial and the parallel job completion time when one of ten 1-millisecond tasks stalls for 1 second.
-6. Faster congestion signals. Calculate how much faster Source Flow Control notifies the sender than ECN plus CNP, using the sample hop delays. Explain why SFC avoids both the round-trip delay and class-wide Head-of-Line blocking. Finally, name the three CSIG signal types and the four bottleneck locator fields.
-
-The block lists the target values to check your answers against. If your answer differs, you can trace the difference back to the step where your arithmetic changed.
+3. The ToS byte and the buffer thresholds. Compute the hexadecimal IP ToS byte for DSCP 26 with ECN-capable marking. Compute it again with Congestion Experienced marking. Give the BTH opcode of a CNP, and give the ECN bits it carries. Then say what the switch queue does at 40 KB of occupancy. Do the same for 500 KB and for 3200 KB, using the standard DCQCN profile.
+4. Six congestion points and a pause storm. List the six Clos congestion points. Explain why spine load balancing cannot help with local leaf congestion. Explain why it cannot help with incast at the destination server. Then trace the three blocks of the PFC Watchdog when a downstream GPU port starts a pause storm lasting more than 50 milliseconds.
+5. One dropped packet and one slow task. Show why a single dropped 4096-byte packet on a 400 Gbps path with a 20.48 microsecond round-trip time makes Go-Back-N retransmit 250 packets. Then count how many packets Selective Repeat retransmits. Finally, compute the serial and the parallel job completion time when one of ten 1-millisecond tasks stalls for 1 second.
+6. Faster congestion signals. Calculate how much faster Source Flow Control notifies the sender than ECN plus CNP, using the sample hop delays. Explain why SFC avoids the round-trip delay. Explain why SFC avoids class-wide Head-of-Line blocking. Finally, name the three CSIG signal types and the four bottleneck locator fields.
 
 ```text
 Exercise Function Signatures & Expected Verification Targets (code/part12/rocev2_transport.py):
@@ -577,6 +594,8 @@ Exercise Function Signatures & Expected Verification Targets (code/part12/rocev2
   - Ex 6 (compare_congestion_signaling_latency(2.0, 6.0, 8.0)): SFC = 2.0 us vs ECN+CNP = 14.0 us (6.0 + 8.0 us) -> 7.0x speedup. CSIG (draft-ravi-ippm-csig-01) L2.5 tag carries 3 signal types (min(ABW/C), min(ABW), max(PD)) and 4 locator fields (Capacity, Stage, Device ID, Link ID uplink/downlink).
 ```
 
+The block lists the target values to check your answers against. Read the targets as a way to confirm your own arithmetic, not as the only correct path to an answer. If your value matches the target, you can move on. If it does not, find the step where your number first differs from the one listed. If your answer differs, you can trace the difference back to the step where your arithmetic changed. Most differences come from a unit slip, such as bytes where the target uses kilobytes, so check units before you check logic.
+
 ---
 
 ## Interview angles
@@ -584,6 +603,8 @@ Exercise Function Signatures & Expected Verification Targets (code/part12/rocev2
 1. Diagnosing wild AllReduce step-time swings when SNMP link utilization looks idle and drop counters are zero. Interviewers present an 8,000-GPU RoCEv2 cluster where NCCL AllReduce steps swing from 10 ms to 500 ms. At the same time, 60-second SNMP polling shows under 40 percent utilization and zero interface drops. Synchronized GPU incast microbursts fill switch buffers in microseconds. You would never see that in averages taken over a minute, because the averages smooth the burst out completely. Check high-frequency gNMI buffer histograms, `mlnx_perf` per-second congestion events, `ethtool -S` priority-3 ECN and PFC counters, and switch `Tx Pause` counts. If PFC triggers with few ECN marks, lower the switch ECN minimum threshold so DCQCN throttles senders before PFC halts the queue.
 2. Walking the 5-layer evidence ladder when `ping` and SSH succeed after a VLAN change but NCCL fails to initialize RDMA. Rather than guessing at PFC settings or numeric GID flags, you should walk from Layer 1 to Layer 5 in order. You can stop at the first layer that looks wrong. Verify physical link state and zero uncorrected FEC blocks at Layer 1. Next, check `ip route get` and the 9000-byte jumbo MTU on every VLAN and switch hop at Layer 2. At Layer 3, inspect `show_gids` and `ibv_devinfo` to see whether the VLAN change shifted GID table positions. If one peer selected a link-local RoCEv1 or mismatched VLAN entry, it fails with `Failed to modify QP to RTR`. Finally, confirm DSCP-to-CoS queue mapping at Layer 4 and GPU-to-NIC PCIe affinity in `nvidia-smi topo -m` at Layer 5.
 3. Comparing ECN, PFC, DCQCN, Source Flow Control, and Congestion Signaling across latency, granularity, and failure modes. Start with end-to-end, flow-based ECN, which avoids Head-of-Line blocking but leaves an ECN-only queue lossy during the CNP round-trip delay. Contrast that with hop-by-hop, class-based PFC, which prevents drops but risks Head-of-Line blocking and pause storms that need a PFC Watchdog. Show how DCQCN orders `XON < ECN < XOFF`, so ECN handles routine contention while PFC catches microbursts. Then explain how IEEE 802.1Qdw Source Flow Control signals the sender directly from the congested switch, per flow, and how CSIG embeds Layer 2.5 bottleneck telemetry that the receiver reflects.
+
+Each of these answers starts with the mechanism and ends with the tool that checks it. Practice saying the mechanism first, so the interviewer hears the reasoning before the product names.
 
 ---
 
