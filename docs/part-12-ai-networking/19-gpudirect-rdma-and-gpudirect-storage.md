@@ -23,13 +23,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Suppose your GPUs finish their math and then sit idle, waiting for the network card or the storage array to deliver the next batch. The cause is older than most of the hardware in the rack. Standard Remote Direct Memory Access and standard Linux POSIX file I/O were designed for a time when the host CPU and its system DRAM were the final destination of every packet and storage block.
+Suppose your GPUs finish their math and then sit idle, waiting for the network card or the storage array to deliver the next batch. You pay for each of those GPUs by the hour, so every idle second is money spent on nothing. The cause of the wait is older than most of the hardware in the rack. Standard Remote Direct Memory Access (RDMA), the method a network card uses to move data into memory without the CPU copying it, and standard Linux POSIX file I/O, the file interface that ordinary programs use for reads and writes, were designed for a time when the host CPU and its system DRAM were the final destination of every packet and storage block.
 
-In an AI factory, that is no longer true. Network collective payloads and training datasets never get computed in host DRAM. Matrix multiplications, attention kernels and optimizer updates all run inside GPU High-Bandwidth Memory (HBM), so that is where the data has to end up.
+In an AI factory, that is no longer true. Network collective payloads and training datasets never get computed in host DRAM. Matrix multiplications, attention kernels and optimizer updates all run inside GPU High-Bandwidth Memory (HBM), so that is where the data has to end up. Think of host DRAM as a storage room between the loading dock and the cooks. A pallet that goes through the storage room has to be unloaded, shelved, and loaded again before a cook can use it. Each extra handling step takes time and uses up room, and that cost is what this chapter measures.
 
-When an RDMA Network Interface Card (NIC) or an NVMe drive cannot reach GPU HBM directly, each byte has to stop in a host memory bounce buffer in CPU DRAM first. That extra copy doubles the traffic on the PCIe root complex. It also saturates the memory controllers of a dual-socket CPU. The result is that a 400 Gbps network link or a 200 GB/s storage array delivers only a fraction of its rated speed.
+When an RDMA Network Interface Card (NIC) or an NVMe drive cannot reach GPU HBM directly, each byte has to stop in a host memory bounce buffer in CPU DRAM first. That extra copy doubles the traffic on the PCIe root complex, which is the hub inside the CPU that connects PCIe devices such as GPUs and NICs. It also saturates the memory controllers of a dual-socket CPU. The result is that a 400 Gbps network link or a 200 GB/s storage array delivers only a fraction of its rated speed.
 
-The table below shows where the cost lands on each data path, using the figures from this chapter. Notice the last column: the hardware is the same, but the measured impact changes once the data has to pass through host memory.
+Imagine two identical trucks on the same road. One drives straight to the dock, and the other stops at the storage room on the way. The trucks are the same, but the trip is not. The table below shows where the cost lands on each data path, using the figures from this chapter. Notice the last column: the hardware is the same, but the measured impact changes once the data has to pass through host memory.
 
 | Subsystem or Data Path | Hardware Specification or Bottleneck | Measured Impact |
 |---|---|---|
@@ -39,14 +39,18 @@ The table below shows where the cost lands on each data path, using the figures 
 | GPUDirect RDMA zero-copy path | Exposes HBM on PCIe via BAR1 and registers pages with `mlx5_core` / `ib_core` via `nvidia-peermem` or Linux `dma-buf` (`ibv_reg_dmabuf_mr`) | Enables direct P2P DMA between NIC and GPU HBM across a shared PCIe switch (`PIX`/`PXB`) at full `50.0 GB/s` line rate |
 | GPUDirect Storage zero-copy path | Replaces buffered POSIX `read()`/`write()` with CUDA `cuFile` (`cuFileDriverOpen`, `cuFileHandleRegister`, `cuFileBufRegister`, `cuFileRead`, `cuFileWrite`) and `nvidia-fs.ko` | `gdsio -x 0` achieves `9.6 GB/s` at `1.00 ms` average latency vs `8.0 GB/s` at `1.25 ms` with CPU-staged `gdsio -x 2` (`+20.0%` throughput, `-20.0%` latency) |
 
-GPUDirect RDMA and GPUDirect Storage are the two halves of the NVIDIA Magnum IO zero-copy architecture. Together they take the host memory bounce buffer out of the data plane. The CPU stays in the control plane, but it no longer touches the bytes. GPUDirect RDMA maps GPU HBM directly to the network adapter over the local PCIe switch. GPUDirect Storage streams dataset shards and checkpoints straight between NVMe or NVMe-oF storage and GPU memory.
+The names can sound like marketing, so it helps to strip them down. Both features let a device and a GPU exchange data without the CPU copying it. The difference is the other end of the trip. One talks to another machine's memory through the network card, and the other talks to a disk or a file system.
 
-Before you size a network or storage tier, check whether its data path stages through host DRAM, because that decides how much of the rated hardware you actually get.
+GPUDirect RDMA and GPUDirect Storage are the two halves of the NVIDIA Magnum IO zero-copy architecture. Together they take the host memory bounce buffer out of the data plane. The CPU stays in the control plane, which is the part that decides what moves and when, but it no longer touches the bytes. Think of the control plane as the dispatcher who tells each truck where to go, and the data plane as the trucks that carry the freight. GPUDirect RDMA maps GPU HBM directly to the network adapter over the local PCIe switch. GPUDirect Storage streams dataset shards and checkpoints straight between NVMe or NVMe-oF storage and GPU memory.
+
+A vendor brochure might quote a storage array at 200 GB/s, and your team might plan a cluster around that figure. The brochure number is the best case, and the path decides how close you get to it. Before you size a network or storage tier, check whether its data path stages through host DRAM, because that decides how much of the rated hardware you actually get.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-Before you start, a few ideas from earlier chapters need to feel familiar. You should be able to read PCIe root complexes, switches and NUMA socket layout from the distance codes that `nvidia-smi topo -m` prints. You also need the RDMA basics from Chapters 12.14 and 12.15: Queue Pairs, Memory Regions, key registration, and the RoCEv2 and InfiniBand transports. Finally, you should understand how NCCL collectives work, and how Linux block and file storage behaves, including NVMe, direct I/O and the VFS page cache.
+Imagine you have just been handed a GPU node and asked why one of its links runs slow. Answering that question needs a few ideas from earlier chapters, so check that they feel familiar before you start. Read the PCIe root complexes, switches and NUMA (non-uniform memory access, where each CPU socket has its own nearby memory) layout from the distance codes that `nvidia-smi topo -m` prints. Those codes are the quickest map of the box you are looking at. You also need the RDMA basics from Chapters 12.14 and 12.15: Queue Pairs, Memory Regions, key registration, and the RoCEv2 and InfiniBand transports. Finally, you should understand how NCCL collectives work, and how Linux block and file storage behaves, including NVMe, direct I/O and the VFS page cache.
+
+Vocabulary is the first hurdle on a new topic. The terms in this block show up in almost every log line and command in the rest of the chapter, so take a minute to match each one to its meaning before you start.
 
 The block below lists the distance codes, keys, flags and collectives this chapter uses, so you can check your vocabulary before you read on.
 
@@ -58,22 +62,19 @@ Prerequisite distance codes, keys, flags, and collectives:
 ```
 
 ### Outcomes
-By the end of this chapter, you will be able to do five things:
-1. Measure the PCIe hop count, the DRAM bandwidth amplification and the transfer latency that host bounce-buffer staging costs, and compare them with GPUDirect RDMA.
-2. Explain how BAR1 aperture mapping, `nvidia-peermem.ko` and upstream Linux `dma-buf` pin and translate GPU HBM pages for RDMA NICs.
-3. Diagnose and tune NCCL GPUDirect RDMA path selection with `NCCL_NET_GDR_LEVEL`, `NCCL_NET_GDR_READ`, and PCIe Access Control Services remediation.
-4. Trace the NVMe-oF and GPUDirect Storage data path through `libcufile.so`, `nvidia-fs.ko` and `/etc/cufile.json`.
-5. Validate and benchmark both paths in production with `lsmod`, `nvidia-smi -q`, `ib_write_bw --use_cuda`, `gdscheck -p`, and `gdsio`.
-
-Start with the first outcome. The numbers it gives you are the yardstick for judging every later result.
+Picture a new GPU node that a colleague hands you on a Monday morning with one question: is this node ready for training? This chapter walks through the answer in order. It begins with what host bounce-buffer staging costs in PCIe hops, DRAM operations and latency, and how GPUDirect RDMA compares. It then explains how BAR1 mapping, `nvidia-peermem.ko` and upstream Linux `dma-buf` let an RDMA NIC reach GPU memory. Next it shows how `NCCL_NET_GDR_LEVEL` and `NCCL_NET_GDR_READ` decide which path NCCL takes, and how PCIe Access Control Services (ACS) can switch the fast path off. After that, it traces the NVMe-oF and GPUDirect Storage path through `libcufile.so`, `nvidia-fs.ko` and `/etc/cufile.json`. The last step validates and benchmarks both paths with `lsmod`, `nvidia-smi -q`, `ib_write_bw --use_cuda`, `gdscheck -p`, and `gdsio`. Start with the first step, because the numbers it gives you are the yardstick for judging every later result.
 
 ---
 
 ## 1. The Host Bounce-Buffer Bottleneck vs GPUDirect Zero-Copy
 
+Consider a training run on two nodes that runs slower than the spreadsheet predicted. The GPUs look busy on the dashboard, yet each step takes longer than it should. The first question to ask is where the bytes actually travel.
+
 Picture a traditional CPU-centric server. The host operating system treats the GPU and the network or storage controller as separate PCIe endpoints, and they cannot exchange data directly. Every transfer between them has to go through system DRAM. On a multi-rail AI node, that memory becomes a severe bottleneck.
 
 ### 1.1 The 5-Step Traditional Network Bounce-Buffer Path
+
+Follow one tensor on its trip, because a single trip shows every stop the bytes make. You do not need a special tool for this. You need a clear picture of where each copy of the data lives at each moment, and the steps below give you exactly that picture.
 
 Consider what happens when GPU A on Node A sends a tensor to GPU B on Node B using standard RDMA, with no GPUDirect RDMA. The payload crosses five stages between the two hosts.
 
@@ -83,11 +84,11 @@ Consider what happens when GPU A on Node A sends a tensor to GPU B on Node B usi
 4. NIC B receives the packets and DMAs the payload across the PCIe bus into a pinned bounce buffer in Host RAM B.
 5. The CUDA driver on Node B starts a `cudaMemcpyAsync` DMA that moves the data across PCIe from Host RAM B into GPU B HBM.
 
-Notice that the data lands in host memory on each side before it moves on. That detour is exactly what GPUDirect removes.
+A tensor is just a block of numbers, such as the gradients for one layer, and it can be large. Each of the five stages above has its own queue and its own wait, so the tensor stops at every stage rather than moving in one smooth motion. Notice that the data lands in host memory on each side before it moves on. That detour is exactly what GPUDirect removes.
 
 ### 1.2 The 3-Step GPUDirect RDMA Zero-Copy Path
 
-With GPUDirect RDMA active, the path gets much shorter. Host RAM and the CPU memory controllers drop out of the data path entirely.
+Now picture the same tensor on a node where GPUDirect RDMA is switched on. The network card reaches into the GPU's memory window directly, so the trip looks like a short cut across the yard. With GPUDirect RDMA active, the path gets much shorter. Host RAM and the CPU memory controllers drop out of the data path entirely.
 
 1. NIC A issues a PCIe Peer-to-Peer DMA read straight against GPU A's exposed BAR1 address space, across the local PCIe switch.
 2. NIC A sends the RDMA frames at line rate across the fabric to NIC B.
@@ -112,7 +113,9 @@ flowchart LR
     end
 ```
 
-The table sets the two paths side by side, so you can see what each step costs you. As you read it, start with the PCIe traversals and DRAM operations, since they explain the throughput and latency rows below them.
+The table sets the two paths side by side, so you can see what each step costs you. Read each row as a question. How many stops does the data make, and how many of those stops are copies through DRAM? As you read it, start with the PCIe traversals and DRAM operations, since they explain the throughput and latency rows below them.
+
+Use this table when a colleague asks what GPUDirect actually changes. It answers in counts of stops and bytes rather than in general claims. Each row is a number you can check on your own node with the tools in the commands section, which makes the table a useful checklist before a design review.
 
 | Path Characteristic | Standard RDMA (Host Bounce Buffer) | GPUDirect RDMA (`GDR` Zero-Copy) |
 |---|---|---|
@@ -125,7 +128,7 @@ The table sets the two paths side by side, so you can see what each step costs y
 
 ### 1.3 Quantitative Bandwidth and PCIe Generation Math
 
-Before you trust a network number, check the PCIe slot the NIC sits in. A slot that is too slow caps the NIC, however fast the network is. Here is the arithmetic. A single ConnectX-7 400 Gbps NIC delivers 50.0 GB/s, and it fits inside one PCIe Gen5 x16 slot rated at 63.02 GB/s.
+A NIC rated at 400 Gbps can still underperform, and a slot that is too slow is one common reason. Before you trust a network number, check the PCIe slot the NIC sits in. A slot that is too slow caps the NIC, however fast the network is, much like a wide highway that narrows to one lane at a bridge. Here is the arithmetic. A single ConnectX-7 400 Gbps NIC delivers 50.0 GB/s, and it fits inside one PCIe Gen5 x16 slot rated at 63.02 GB/s.
 
 | PCIe Generation or Node Configuration | Per-Lane Rate & Encoding | Unidirectional / Aggregate Bandwidth | Operational Consequence |
 |---|---|---|---|
@@ -136,9 +139,11 @@ Before you trust a network number, check the PCIe slot the NIC sits in. A slot t
 | **8-GPU DGX/HGX H100 with GPUDirect RDMA** | 8 dedicated ConnectX-7 `400 Gbps` NICs (`Rail 1..8`) on local PCIe switches (`PIX`) | `8 x 50.0 GB/s = 400.0 GB/s` (`3.2 Tbps`) network bandwidth | `0.0 GB/s` host DRAM traffic |
 | **8-GPU DGX/HGX H100 Host-Staged Fallback** | `400.0 GB/s` `NIC -> DRAM` writes + `400.0 GB/s` `DRAM -> GPU` reads | Demands `800.0 GB/s` host DRAM traffic + `800.0 GB/s` CPU root-complex PCIe traffic | Saturates dual-socket CPU memory controllers and throttles each `400 Gbps` rail to `~50 Gbps` (`6.25 GB/s`) |
 
+A worked example makes the table real. Suppose you are sizing one node for a training team, and the question is how much network the GPUs really get. Take the 8-GPU DGX/HGX H100 node as a worked example.
+
 Take the 8-GPU DGX/HGX H100 node as a worked example. With GPUDirect RDMA, eight ConnectX-7 NICs each deliver 50.0 GB/s. Together that is 400.0 GB/s of network bandwidth, and the host DRAM sees none of it. Without GPUDirect, the same 400.0 GB/s has to be written into DRAM and then read back out. That adds up to 800.0 GB/s of host DRAM traffic, which is why the rails slow down to about 50 Gbps each.
 
-For a node like this, confirm that each NIC sits behind the same PCIe switch as its GPU before you count on the full rate.
+Walk through the arithmetic once more, since it explains the slow rails. The eight NICs can carry 400.0 GB/s together. A host-staged design writes that traffic into DRAM and reads it back out, so the memory system must handle 800.0 GB/s. That load saturates the CPU memory controllers, as the table above showed, which is why each rail falls to about 50 Gbps. For a node like this, confirm that each NIC sits behind the same PCIe switch as its GPU before you count on the full rate.
 
 ---
 
@@ -146,13 +151,19 @@ For a node like this, confirm that each NIC sits behind the same PCIe switch as 
 
 Suppose an NCCL job fails with an `ibv_reg_mr` error, or NCCL quietly stops using GPUDirect RDMA. The fault usually sits in one of three layers. For an RDMA NIC to run a one-sided RDMA WRITE or RDMA READ straight against GPU HBM, three hardware and kernel mechanisms have to cooperate. If any one of them is missing or disabled in BIOS, `ibv_reg_mr` fails on device pointers, or NCCL silently turns GPUDirect RDMA off.
 
+Think of the three steps as a relay race. The first runner hands the GPU's memory to the PCIe bus, the second runner pins that memory so it cannot move, and the third runner hands an address list to the RDMA stack. If the first runner drops the baton, the later steps have nothing to work with. Each step is short on its own, but the chain only works when all three are present.
+
 1. The GPU must expose its HBM physical pages in the system's 64-bit PCIe Memory-Mapped I/O address space, through Base Address Register 1 (BAR1).
 2. The GPU driver must pin the virtual CUDA allocation from `cudaMalloc` or `cuMemCreate`. Pinning keeps the physical HBM pages from being migrated or evicted while the RDMA Memory Region is active.
 3. A kernel bridge must translate the GPU virtual address range into PCIe BAR1 physical bus addresses. It then hands that scatter-gather table to the RDMA ib_core subsystem.
 
 ### 2.1 PCIe `BAR1` Aperture and `Above 4G Decoding`
 
+A PCIe endpoint is any device that plugs into the bus, such as a GPU, a NIC or an NVMe drive. Each endpoint describes the memory windows it offers in a small configuration header, and the Base Address Registers (BARs) are the entries in that header that point to those windows. When you read a BAR size, you are reading how big a window the device has opened on the bus.
+
 Every PCIe endpoint advertises up to six Base Address Registers in its configuration header. On NVIDIA data center GPUs, BAR0 maps the control registers, and BAR1 maps an aperture of GPU HBM onto the PCIe bus. That aperture is what lets external PCIe masters read and write HBM through MMIO transactions.
+
+Suppose a colleague says the GPUs are ready for GPUDirect RDMA because the BIOS screen looks fine. The first thing to check is how much of the GPU memory the PCIe bus can actually see. The BAR1 total answers that in one short block of output.
 
 The size of that aperture depends on the BIOS. In legacy 32-bit BIOS mode, BAR1 is limited to 256 MiB. That window is far too small for multi-gigabyte NCCL communication buffers or GPUDirect Storage tensor shards. Modern data center GPUs use Large BAR1, which you enable with Above 4G Decoding and Resizable BAR in the server BIOS. The setting exposes the entire HBM capacity in the 64-bit PCIe address space. You can inspect the total and used BAR1 memory with `nvidia-smi -q -d MEMORY`:
 
@@ -168,9 +179,13 @@ BAR1 Memory Usage
     Free                              : 129024 MiB
 ```
 
+Think of BAR1 as a window in the wall of a warehouse. A small window lets a forklift reach only a few pallets, however many pallets are inside. A large window lets the network card reach the whole stock. The BIOS setting decides how big that window is, and no NCCL variable can enlarge it after the fact.
+
 If the Total line reads 256 MiB, fix the BIOS before you touch any NCCL setting. Registrations above about 200 MiB will fail or fall back to host bounce buffers.
 
 ### 2.2 The Legacy/OFED Path: `nvidia-peermem.ko`
+
+You will meet this path in older runbooks and in clusters built before the upstream option was available. Knowing both paths helps you read the logs of either kind of node, because the names of the modules and the log lines differ.
 
 For a long time, Linux had no upstream subsystem that let a proprietary GPU driver share PCIe peer memory with an InfiniBand or RoCE driver. Mellanox and NVIDIA filled that gap with the Peer Memory Client API inside MLNX_OFED and DOCA-OFED. They shipped it as the `nvidia-peermem.ko` kernel module, which replaced the older standalone `nv_peer_mem` DKMS package. The module works in five steps.
 
@@ -186,9 +201,13 @@ nvidia-peermem.ko callback table and registration call:
 - Registration call: ibv_reg_mr(pd, gpu_va, size, access_flags) -> 64 KiB BAR1 pages -> mlx5_ib NIC MTT / MKey (lkey, rkey)
 ```
 
+Think of the invalidate callback as a rule that the GPU driver and the RDMA stack agreed on. If the owner of the memory tries to free it while a network card still holds a key to it, the driver first tells the network stack to drop that key. Without that rule, a card could keep writing into memory that the GPU has already given back.
+
 Notice the callback in step 5. It is what stops the NIC from touching memory the GPU has already freed.
 
 ### 2.3 The Upstream Kernel Path: Linux `dma-buf` (`ibv_reg_dmabuf_mr`)
+
+Now suppose you are building a fresh node image and want to avoid an out-of-tree module that must be rebuilt after every kernel upgrade. The upstream path is the one that fits that goal, provided the rest of the stack meets its requirements.
 
 Starting with Linux kernel 5.12, rdma-core v34+, CUDA 11.7+, and the NVIDIA Open GPU Kernel Modules, GPUDirect RDMA has a fully upstream, vendor-neutral path through the Linux `dma-buf` subsystem. This path needs neither `nvidia-peermem.ko` nor the out-of-tree MLNX_OFED peer-memory hooks. It runs in four steps.
 
@@ -204,7 +223,11 @@ Upstream dma-buf API sequence (Linux >= 5.12, rdma-core >= 34, CUDA 11.7+, nvidi
 3. ibv_reg_dmabuf_mr(pd, offset, length, iova, dmabuf_fd, access_flags) -> dma_buf_map_attachment() -> sg_table
 ```
 
+Before you read the rows, ask what each path depends on. The rows about the kernel module and the driver answer that for the legacy path, while the rows about the kernel version and rdma-core answer it for the upstream path.
+
 The table compares the two paths. The main difference is that the `dma-buf` path needs no out-of-tree module, but it works only with the open GPU kernel modules.
+
+Use this comparison when you plan a node image. Each row is a requirement that either exists on your stack or does not, so you can answer the question for each node type without guessing. Read the NCCL log indicator row last, because it is the proof you will look for in the job output.
 
 | Feature / Requirement | `nvidia-peermem` (`peer_memory_client`) | Upstream Linux `dma-buf` (`ibv_reg_dmabuf_mr`) |
 |---|---|---|
@@ -215,15 +238,21 @@ The table compares the two paths. The main difference is that the `dma-buf` path
 | `BIOS` hardware requirement | `Above 4G Decoding` + `Large BAR1` | `Above 4G Decoding` + `Large BAR1` |
 | `NCCL` log indicator (`NCCL_DEBUG=INFO`) | `NET/IB : GPU Direct RDMA Enabled for GPU ...` | `NET/IB : DMA-BUForte` / `DMA-BUF support enabled` |
 
+Read the table as a checklist for a new image. Each row names something that must be present or absent. The last row is the one you will see in your job logs, so note its exact text now.
+
 If your stack meets the `dma-buf` requirements, the table shows you can drop the out-of-tree module.
 
 ---
 
 ## 3. PCIe Topology, Rail Alignment, and `NCCL_NET_GDR_LEVEL`
 
+Picture a node that passes every module check and still runs slowly. The software is usually fine by then, and the cause is more often the wiring than the drivers.
+
 Loading `nvidia-peermem` or `dma-buf` makes GPUDirect RDMA possible. It does not guarantee that NCCL uses it. The physical layout of the motherboard decides that for each GPU and NIC pair. If a GPU and a NIC sit on opposite sides of a CPU Root Complex or an inter-socket link, peer-to-peer DMA can stall or deadlock. So NCCL turns GPUDirect RDMA off on that path.
 
 ### 3.1 `nvidia-smi topo -m` Distance Codes and `NCCL_NET_GDR_LEVEL`
+
+Suppose you are about to launch a job and want to know which GPU and NIC pairs get the fast path. NCCL answers that question on its own when the communicator starts, and you can read the same answer before the job runs.
 
 When `ncclCommInitRank` starts, NCCL reads `/sys/class/pci_bus/`, `/sys/class/infiniband/` and NVML to build an internal topology graph. It then assigns a distance code between every GPU and every RDMA NIC. The table lists those codes, what each one means physically, and what NCCL does with GPUDirect RDMA writes and reads on each path. When you run `nvidia-smi topo -m` on your own node, find the code for each GPU and NIC pair and look it up here.
 
@@ -236,13 +265,17 @@ When `ncclCommInitRank` starts, NCCL reads `/sys/class/pci_bus/`, `/sys/class/in
 | **`NODE`** | `4` | Traverses interconnect between multiple `PCIe` host bridges inside a single `NUMA` node | **Disabled** unless `NCCL_NET_GDR_LEVEL=NODE` (`4`) | **Disabled** |
 | **`SYS`** | `5` | Crosses the **inter-socket `NUMA` link (`Intel UPI` / `AMD Infinity Fabric xGMI`)** | **Disabled** (`P2P` over `UPI`/`xGMI` deadlocks or severely degrades bandwidth; `NCCL` forces host bounce buffer) | **Disabled** |
 
-Read the table from the top. The closer a NIC sits to its GPU, the more likely NCCL keeps the zero-copy path.
+Read the table from the top. The closer a NIC sits to its GPU, the more likely NCCL keeps the zero-copy path. Think of the distance code as a count of how many doors the data must pass through. Each door adds delay, and the far doors also add risk. The rows from PIX to SYS follow that order.
+
+The write and read rules look like fine print, but they decide whether a slow link is slow for a reason you can fix.
 
 NCCL treats GPUDirect RDMA writes and reads differently. A write happens when the NIC pushes incoming network data into GPU BAR1. A read happens when the NIC pulls outgoing data out of GPU BAR1.
 
 The two also differ at the PCIe level. A PCIe Posted Write is a one-way Memory Write Transaction Layer Packet that needs no completion. A PCIe Non-Posted Read is a split round trip. The NIC sends a Memory Read Request, and it must hold completion buffers while it waits for Completion with Data packets to return.
 
-That difference decides which paths allow reads. Inside a dedicated PCIe switch on a PIX or PXB path, P2P reads run at full 400 Gbps speed. Across a CPU Root Complex on a PHB path, P2P reads suffer severe credit starvation. So NCCL leaves GDR reads disabled on PHB unless you force `NCCL_NET_GDR_READ=1`.
+That difference decides which paths allow reads, and the reason is about waiting. A write can leave and forget about it, while a read has to wait for the reply to come back. Inside a dedicated PCIe switch on a PIX or PXB path, P2P reads run at full 400 Gbps speed. Across a CPU Root Complex on a PHB path, P2P reads suffer severe credit starvation. So NCCL leaves GDR reads disabled on PHB unless you force `NCCL_NET_GDR_READ=1`.
+
+The block below names the two packet types behind that difference. Keep them in mind when a path looks fast on paper but slow in a log. The write is a one-way message, and the read is a question with an answer that must come back.
 
 ```text
 PCIe Transaction Layer Packet (TLP) behavior for GPUDirect RDMA:
@@ -252,7 +285,11 @@ PCIe Transaction Layer Packet (TLP) behavior for GPUDirect RDMA:
 
 ### 3.2 The 8-NIC Rail-Optimized Architecture (`DGX` / `HGX`)
 
+Suppose you are racking a new eight-GPU server and need to decide which cable goes to which port. The rail layout answers that question before you touch a cable.
+
 NVIDIA DGX and HGX servers are built so that every GPU has a distance-1 PIX path to its RDMA NIC. That path never crosses a CPU Root Complex or an inter-socket link. Each server pairs 8 GPUs with 8 dedicated NICs across 4 PCIe switches. Those 8 NICs connect to 8 independent leaf switch planes, designated Rail 1 through Rail 8.
+
+Think of the rail design as a set of separate lanes on a highway. Each lane has its own car, its own on-ramp, and its own exit. Traffic in one lane never has to merge with another lane, which keeps every pair on the short route.
 
 Read the diagram one NUMA socket at a time. Each GPU and its NIC share a PCIe switch, so every pair stays on the PIX path. The line between the two sockets marks the CPU's inter-socket link, which the pairs never cross.
 
@@ -274,6 +311,8 @@ Intra-node interconnect and InfiniBand GPUDirect Async (IBGDA) specs:
 - IBGDA (InfiniBand GPUDirect Async) in NCCL and NIXL: GPU SMs ring NIC doorbells directly over PCIe without waking a host CPU proxy thread
 ```
 
+A rail is only as good as its weakest pairing. If a single GPU lands on the wrong switch, its traffic has to cross the CPU, and that one pair can slow a whole synchronized step, because every other GPU waits for it.
+
 Keep each GPU on the same switch as its NIC when you cable or schedule a node. The rail design only works while every pair stays together.
 
 ---
@@ -284,17 +323,23 @@ Imagine a GPU and a ConnectX-7 NIC plugged into slots behind the same PCIe switc
 
 ### 4.1 How PCIe ACS Breaks Peer-to-Peer Switching
 
+Why would a security feature touch GPU traffic at all? The answer starts with virtual machines. A feature built to keep one tenant out of another tenant's memory can also get in the way of two devices that are meant to talk directly.
+
 PCIe Access Control Services was designed for multi-tenant hypervisors. It stops a PCIe device inside one virtual machine from DMA-reading the BAR memory of a device in a sibling VM. The access is blocked unless the CPU's IOMMU, such as Intel VT-d or AMD-Vi, validates it first.
 
-When ACS redirection or source validation bits are enabled on a PCIe switch downstream port, direct peer-to-peer switching breaks down in three steps.
+When ACS redirection or source validation bits are enabled on a PCIe switch downstream port, direct peer-to-peer switching breaks down in three steps. Picture a letter that should go straight from one desk to the desk next to it, while the rule says every letter must first go to the head office. The letter still arrives, only later and by a longer route.
 
 1. NIC 0 issues a PCIe P2P DMA write that targets GPU 0's BAR1 address on the same PCIe switch.
 2. Instead of switching the packet straight to the GPU port inside the switch ASIC, the switch intercepts the TLP. It forces the packet upstream, over the PCIe root port, to the CPU Root Complex and IOMMU.
 3. The CPU Root Complex sends the translated packet back down through the same root port, into the PCIe switch, and finally to GPU 0.
 
-This hairpin sends 400 Gbps of traffic across the PCIe root port twice. That cuts effective P2P bandwidth by 50% to 80%. Worse, when NCCL inspects the PCIe bridge ACS bits during topology discovery, it downgrades the GPU-to-NIC path from PIX to PHB or SYS. That downgrade turns GPUDirect RDMA off completely and forces a fallback to host DRAM bounce buffers.
+A hairpin is a turn that sends you back the way you came. Here the packet goes up to the CPU and then comes back down to the same switch, which is why it crosses the same root port twice.
+
+This hairpin sends 400 Gbps of traffic across the PCIe root port twice. That cuts effective P2P bandwidth by 50% to 80%. Worse, and this is the part that surprises most engineers, when NCCL inspects the PCIe bridge ACS bits during topology discovery, it downgrades the GPU-to-NIC path from PIX to PHB or SYS. That downgrade turns GPUDirect RDMA off completely and forces a fallback to host DRAM bounce buffers.
 
 ### 4.2 Auditing and Disabling ACS (`lspci -vvv` and `setpci`)
+
+Suppose the topology output shows PHB where you expected PIX. Before you change anything, confirm the ACS bits on each bridge between the GPU and the NIC.
 
 To check whether ACS blocks P2P on your PCIe switch ports, inspect `ACSCtl` in the output of `lspci -vvv` `(untested here)`:
 
@@ -302,6 +347,8 @@ To check whether ACS blocks P2P on your PCIe switch ports, inspect `ACSCtl` in t
 # Audit PCIe Access Control Services (ACS) control bits across all PCIe bridges (untested here)
 sudo lspci -vvv | grep -E "^[0-9a-f]{2}:|ACSCap|ACSCtl"
 ```
+
+Read the flags as a set of warning lights on a dashboard. A plus sign means the feature is on, and a minus sign means it is off. The goal is to see only minus signs on the path between your GPU and your NIC, because any plus sign on that path can send the traffic back up to the CPU.
 
 Look at the redirection and validation flags on every downstream port between your GPUs and your NICs or NVMe drives. If any of those ports reports a plus sign on a redirection or validation flag, ACS is actively redirecting P2P traffic upstream. The example below shows a bridge with those flags set.
 
@@ -312,6 +359,8 @@ Look at the redirection and validation flags on every downstream port between yo
     (Blocking flags: ReqRedir+, CmpltRedir+, SrcValid+, TransBlk+, UpFwd+ / UpstreamFwd+)
 ```
 
+The fix you choose depends on how long the node will stay in service. A runtime change is useful for testing a theory, but it does not survive a reboot. A BIOS and GRUB change is the one you keep.
+
 The permanent fix happens in two places. First, disable ACS in the server BIOS. Second, set `iommu=pt` through `intel_iommu=on iommu=pt` or `amd_iommu=on iommu=pt` in `/etc/default/grub`. Passthrough mode lets host bare-metal DMA skip dynamic IOMMU translation, and it still supports SR-IOV Virtual Functions. For an immediate fix that needs no reboot before NCCL starts, clear the 16-bit ACS Control register at offset `+0x6` of `ECAP_ACS` on each PCIe bridge `(untested here)`:
 
 ```bash
@@ -321,13 +370,19 @@ for BDF in $(lspci -d "*:*:0604" | awk '{print $1}'); do
 done
 ```
 
+A short example helps here. Imagine a bridge that reports a plus sign on a redirect flag. Every packet that crosses it takes the long route up to the CPU and back, even though both devices sit on the same switch. The fix is to clear that bit, and the next topology run shows the path as PIX again.
+
 After you clear `ECAP_ACS+0x6.w=0000`, `ACSCtl` shows minus signs across all redirection bits. The `nvidia-smi topo -m` output shows PIX across every rail again. The `setpci` change is a runtime fix, so for any node you plan to keep, make the BIOS change too.
 
 ---
 
 ## 5. GPUDirect Storage (`GDS`), `NVMe-oF`, and the `cuFile` Pipeline
 
+Picture a dataloader where the GPUs spend most of each minute waiting for the next batch. The GPUs are not slow. The batch is still on its way through the host.
+
 GPUDirect RDMA moves data between GPUs across the training fabric. An AI cluster also has to move data to and from storage. It ingests petabytes of training samples and writes multi-terabyte checkpoints. When those reads and writes go through the host CPU page cache, dataloader workers saturate the host cores while the GPUs sit idle, waiting for batches.
+
+Think of the four tiers as a ladder, with the fastest and smallest storage at the top and the slowest and largest at the bottom. A job climbs down the ladder when the data it needs does not fit higher up.
 
 The table lists the four tiers a training job can draw on, from GPU HBM down to the object store. Tier 2 is where the 200 GB/s arrays from the first section live, so keep it in mind as you read.
 
@@ -340,11 +395,15 @@ The table lists the four tiers a training job can draw on, from GPU HBM down to 
 
 ### 5.1 `NVMe-oF` State Machines (`NVMe/TCP` vs `NVMe/RDMA`)
 
+Suppose the storage team says the array sits on the same network as your GPUs, and you need to know whether that link can drop packets. The transport you pick decides the answer.
+
 When Tier 1 or Tier 2 storage sits across a fabric, NVMe over Fabrics wraps native 64-byte NVMe Submission Queue Entries and 16-byte Completion Queue Entries inside fabric capsules. If you do not understand how NVMe-oF maps memory descriptors and transport ports, you cannot tell a lossy TCP replication link from a lossless RoCEv2 storage fabric.
 
 1. Every NVMe command specifies a logical volume Namespace ID and buffer descriptors. Native PCIe NVMe often uses 64-bit Physical Region Page pointers, whereas NVMe-oF uses Scatter-Gather Lists to describe discontinuous initiator memory regions.
 2. NVMe/TCP runs over standard lossy IP and Ethernet fabrics, using MTU 9000 jumbo frames, and it needs neither PFC nor DCQCN. That makes it a good fit for long-haul inter-site replication. Each NVMe Submission and Completion Queue pair maps one-to-one onto a TCP connection, and a host CPU core handles that connection.
 3. NVMe/RDMA runs over a lossless RoCEv2 or native InfiniBand fabric. Discovery happens over TCP port 8009. Queue Pair negotiation uses RDMA CM over UDP port 4420, and capsule and target-initiated RDMA transfers use RoCEv2 UDP port 4791. This hardware-offloaded path achieves roughly 66% lower write latency than NVMe/TCP.
+
+Put plainly, the TCP choice trades speed for simplicity, because it runs on ordinary Ethernet and needs no special switch settings. The RDMA choice trades simplicity for speed, because the fabric must be lossless and the card does more of the work. Neither choice is wrong. The question is which trade-off your storage network can support.
 
 ```text
 NVMe-oF capsule, NVMe/TCP, and NVMe/RDMA protocol specifications:
@@ -357,9 +416,13 @@ NVMe-oF capsule, NVMe/TCP, and NVMe/RDMA protocol specifications:
   * Connection & Data: RDMA CM Request / Reply / Ready to Use over UDP port 4420; target-initiated RDMA_READ / RDMA_WRITE over RoCEv2 UDP port 4791
 ```
 
+You do not need to memorize every field in the block. Think of it as a reference card that the storage engineer keeps on the desk, and look up the ports when you need them.
+
 Most of this block is protocol detail. The port numbers and the 66% latency figure are the parts to keep.
 
 ### 5.2 Why Legacy `POSIX` I/O Starves GPUs
+
+A DataLoader is the part of a training script that hands batches to the GPU, and it runs on the host CPU. When it reads through the normal file path, every batch takes the long route described above, and the CPU does the copying work. That is why a loader problem often looks like a CPU problem at first.
 
 Picture a Python DataLoader that calls `open()` and then `read()` or `pread()`. Linux sends each request through the Virtual File System. Even when the storage behind it is a 200 GB/s WEKA or Lustre cluster, the POSIX path makes the storage NIC or NVMe drive DMA every block into the Linux Page Cache in host DRAM. The CPU then copies those bytes into a user-space buffer, pins it, and issues `cudaMemcpyAsync` across the PCIe bus into GPU HBM. GPUDirect Storage removes both the host page cache and the CPU bounce buffer.
 
@@ -379,7 +442,11 @@ flowchart LR
     end
 ```
 
+Think of the page cache as a second warehouse that Linux keeps for files. It helps when the same file is read again, but a one-time streaming read pays for the warehouse without gaining anything.
+
 The table compares the two paths attribute by attribute. The rows that matter most are the host DRAM copies and the measured throughput and latency.
+
+Use the rows that count copies and throughput first. A storage path that makes two host copies per read will rarely match a benchmark on the vendor's slide, however well the array is tuned. The last row shows that the gain depends on the platform, so measure your own system before you promise a number.
 
 | Storage Data Path Attribute | Legacy `POSIX` (`open` / `read` + `cudaMemcpy`) | GPUDirect Storage (`cuFile` + `nvidia-fs.ko`) |
 |---|---|---|
@@ -390,9 +457,13 @@ The table compares the two paths attribute by attribute. The rows that matter mo
 | Measured `gdsio` average I/O latency | **`1.25 ms`** (`gdsio -x 2`) | **`1.00 ms`** (`gdsio -x 0`, **`-20.0%` latency**) |
 | Enterprise NAS / PFS measured gains (`VAST` / `3FS`) | Baseline CPU-bound (`Ceph ~1.1 TB/s` on `68` nodes) | `+20%` (`A100`), `+30%+` (`H100`); `DeepSeek 3FS` `6.6 TB/s` (`+1.4 TB/s` bg, up to `7.3 TB/s`) |
 
+The gdsio tool is NVIDIA's benchmark for this path, so its numbers show what the hardware can do under a controlled read. Your own loader will differ, but the same comparison applies.
+
 Take the `gdsio` rows as a worked example. The GDS path reaches 9.6 GB/s. The CPU-staged path reaches 8.0 GB/s. Measure the gap against the 8.0 GB/s baseline, and you get the 20 percent throughput gain in the table. Latency runs the other way: it falls from 1.25 ms to 1.00 ms, and that drop is the same 20 percent of the baseline. If your training jobs spend their time waiting in dataloader workers, check whether the storage path still goes through the page cache.
 
 ### 5.3 The 10-Stage `cuFile` API and `nvidia-fs.ko` Lifecycle
+
+Picture a training team that rewrites its loader to call cuFile. A few steps later, the job still shows the old throughput. That is the moment to walk through the lifecycle below and find the step that was skipped.
 
 An application, or a framework plugin such as NVIDIA DALI, PyTorch v2.7.0+, kvikio, cuDF, or the NIXL GDS backend, runs the `cuFile` API sequence to use GPUDirect Storage. One limit matters before you start. If a filesystem is mounted through user-space FUSE rather than a kernel module with direct I/O support, `nvidia-fs.ko` cannot intercept the DMA mapping callbacks. True zero-copy GDS is therefore impossible on FUSE mounts.
 
@@ -403,6 +474,8 @@ An application, or a framework plugin such as NVIDIA DALI, PyTorch v2.7.0+, kvik
 5. Call `cuFileBufRegister` once to pin the GPU HBM pages in BAR1 and build the PCIe scatter-gather mapping.
 6. Call `cuFileRead` or `cuFileWrite`, or their asynchronous stream variants. `nvidia-fs.ko` then substitutes the GPU BAR1 physical addresses, and it DMAs directly into HBM.
 7. Deregister the buffer and the handle, close the file descriptor, and close the driver at shutdown. That releases the BAR1 pinning.
+
+The sketch is short on purpose, so the order of the calls is easy to see. Read it from top to bottom, and notice that the close and release calls come after the read, in the reverse order of how the resources were opened.
 
 The C sketch below runs that sequence for a single read. Notice that the buffer registration happens once, outside the read itself, so the pinned pages can be reused across I/Os. Treat it as illustrative and test it on your own stack first.
 
@@ -438,6 +511,8 @@ int gds_read_chunk(const char *path, size_t bytes, off_t file_offset) {
 }
 ```
 
+Two tools in this area have similar names and very different jobs. Mixing them up leads to wrong expectations about where the bytes go.
+
 Do not confuse GPUDirect Storage with `cuda-checkpoint`, which is a different tool. NVIDIA's `cuda-checkpoint` utility pairs with CRIU to snapshot a running CUDA process for fault tolerance. It drains GPU work and copies device memory to host memory first. Framework tensor checkpoints written through `cuFile` do go straight from GPU HBM to disk. `cuda-checkpoint` does not.
 
 ```text
@@ -445,6 +520,8 @@ Supported GDS filesystems vs cuda-checkpoint API:
 - Supported GDS filesystems: EXT4, XFS, WEKA, Lustre, VAST, BeeGFS, IBM Storage Scale (FUSE cannot use native GDS)
 - cuda-checkpoint + CRIU host-staged API: cuCheckpointProcessLock -> cuCheckpointProcessCheckpoint -> cuCheckpointProcessRestore -> cuCheckpointProcessUnlock
 ```
+
+FUSE, short for Filesystem in Userspace, lets a program outside the kernel serve a file system. That flexibility is useful, but it means the data takes a detour through a user-space process, and GDS cannot run zero-copy on that detour.
 
 If your filesystem is a FUSE mount, plan on the host-staged path, because GDS cannot run zero-copy there.
 
@@ -454,7 +531,11 @@ If your filesystem is a FUSE mount, plan on the host-staged path, because GDS ca
 
 ### 1. Verifying and Loading GPUDirect RDMA (`nvidia-peermem`, `dma-buf`, `BAR1`, and `ib_write_bw`)
 
+A new node has just been imaged. Before any job goes near it, you want proof that the fast path is ready.
+
 Run these checks in order on a new node. The first confirms the modules, the second confirms the BAR1 size, and the last two confirm the GPU-to-NIC layout and the RDMA bandwidth.
+
+Work through the four numbered checks in order. The first two tell you whether the kernel side is ready, and the last two tell you whether the GPUs and NICs line up and perform.
 
 ```bash
 # 1. Check whether nvidia-peermem or OpenRM is loaded (untested here)
@@ -476,7 +557,11 @@ ib_write_bw -d mlx5_0 --use_cuda=0 --use_cuda_dmabuf -a -F --report_gbits 10.10.
 
 ### 2. Essential `NCCL` GPUDirect RDMA Environment Variables
 
+Suppose a job that ran at full speed last week now runs at half speed after a node reboot. The environment variables are a good first place to look, because the launcher may have dropped or changed them.
+
 Export these variables in the environment that launches your job, and check each one against the comment beside it.
+
+Each variable has one job, and the comment beside it names that job. Change only the ones you understand, and keep a copy of the launcher file before you edit it.
 
 ```bash
 # Verify GPUDirect RDMA activation and dump detected PCIe/NVLink topology XML (untested here)
@@ -498,11 +583,17 @@ export NCCL_IB_QPS_PER_CONNECTION=4
 export NCCL_IGNORE_CPU_AFFINITY=1   # Let NCCL spread proxy threads within the local NUMA domain
 ```
 
+Most of these variables are safe defaults that you rarely need to change. The two below carry the most risk because they change which path NCCL is allowed to take.
+
 Two of these need the most care. Leave `NCCL_P2P_DISABLE` at 0 in production, and set `NCCL_NET_GDR_LEVEL` to the widest distance you have verified on your own topology.
 
 ### 3. Verifying and Benchmarking GPUDirect Storage (`gdscheck`, `/etc/cufile.json`, `gdsio`, `fio`, `nsys`)
 
+Your storage team has just mounted a new parallel file system, and the first training job reads more slowly than the vendor promised. Start with the same ordered checks you used for RDMA.
+
 Check GDS in the same order as RDMA. Confirm the kernel module, confirm the platform, then measure the throughput.
+
+The storage checks follow the same pattern as the RDMA checks. The module check comes first, then the platform check, and the benchmark comes last, so a failure at the first step saves you from reading misleading numbers.
 
 ```bash
 # 1. Verify nvidia-fs.ko is loaded and inspect GDS platform compatibility (untested here)
@@ -525,6 +616,8 @@ nsys profile --trace=cuda,nvtx,gds -o gds_timeline python3 train.py
 ```
 
 #### Hardened `/etc/cufile.json` Configuration
+
+A cufile.json file copied from an old blog post can quietly change how the library behaves. Read the hardened version below as a set of reasons, not as a file to paste in unchanged.
 
 The `cufile.json` file controls how `libcufile` behaves at run time. The hardened version below turns on logging and profiling, caps the pinned BAR1 memory, and refuses silent fallbacks to POSIX I/O.
 
@@ -559,6 +652,8 @@ The `cufile.json` file controls how `libcufile` behaves at run time. The hardene
 }
 ```
 
+Each key in the table answers one question about memory, polling, or fallback behavior. Read the Operational Behavior column first, since it says what the key does in plain words.
+
 The three keys below carry most of the risk, so the table explains what each one does.
 
 | `/etc/cufile.json` Key | Configured Value | Operational Behavior |
@@ -567,13 +662,17 @@ The three keys below carry most of the risk, so the table explains what each one
 | `use_poll_mode` and `poll_mode_max_size_kb` | `false` and `4` (`4 KiB`) | When `use_poll_mode` is `true`, only I/Os `<= 4 KiB` use CPU polling; `1 MiB`–`8 MiB` AI reads/writes still use interrupts |
 | `allow_compat_mode` | `false` during validation | Forces `libcufile` to fail loudly if `nvidia-fs.ko` or the mount cannot execute direct DMA, preventing silent fallback to POSIX host bounce buffers |
 
-Keep `allow_compat_mode` at `false` while you validate a node. A broken setup then fails loudly instead of quietly slowing down.
+Keep `allow_compat_mode` at `false` while you validate a node. A broken setup then fails loudly instead of quietly slowing down. A loud failure is easy to find on day one, while a quiet slowdown can hide for weeks, and by then the training team has already planned around the slow numbers.
 
 ---
 
 ## How it fails
 
+A GPUDirect problem is often silent, because the job keeps running and simply finishes later than it should. That is why the table below is worth bookmarking. It turns a vague complaint about slow training into a short list of checks you can run in order.
+
 Most GPUDirect problems show up as slow training rather than as errors. The table lists six failure modes, what you will observe, how to confirm the cause, and how to fix it. When you see one of these symptoms on your own cluster, find its row and work from the diagnosis column.
+
+The table below is a lookup for the moment when a job is slow and you need a starting point. Each row begins with the symptom people usually report first, then gives the check that confirms the cause, and then the fix. Rows 1 and 2 cover most of the GPUDirect RDMA cases, and rows 4 and 5 cover most of the storage cases.
 
 | # | Failure Mode | Observable Symptom | Root-Cause Diagnosis | Remediation |
 |---|---|---|---|---|
@@ -584,6 +683,8 @@ Most GPUDirect problems show up as slow training rather than as errors. The tabl
 | **5** | **Metadata Server (`MDS`) Saturation ("Small File Problem")** | GPU SM activity drops from `95%` to `30%`; storage throughput is only `5 GB/s` on a `400 GB/s` array while `MDS` CPU hits `100%`. | `strace -c -p <worker_pid>` reveals `85.12%` of syscall time in `stat()` (`452 us/call`), `10.05%` in `openat()`, `4.02%` in `close()`, and only `0.81%` in `read()` across `14 million` `20 KB` `.png` files. | Pack small files into contiguous `1 GB` `WebDataset` `.tar` shards (`50,000` images/shard reduces `stat()` calls by **`50,000x`**), `TFRecord`, `Parquet`, or Megatron `.bin`/`.idx` files, or stage onto Tier 1 local `NVMe` (`hostPath`). |
 | **6** | **Cascading `D`-State (`Uninterruptible Sleep`) Storage Hang** | `4` nodes in a `64`-node `DDP` run stop responding; `top` shows load average `500+` with `0%` CPU; hundreds of `python3` processes sit in state `D` and ignore `kill -9`. | `dmesg -T` shows `INFO: task python3:12345 blocked for more than 120 seconds` in `rpc_wait_bit_killable [sunrpc]`; `ibstat` / `ibv_devinfo -d mlx5_0` shows link `DOWN` or `symbol_error_counter > 1000` on a storage AOC cable. | Replace the faulty optical cable, hard-reset locked nodes via `ipmitool chassis power reset`, and mount read-only dataset shares with bounded/soft timeouts (`rsize=1048576,wsize=1048576,noatime,actimeo=60,lookupcache=pos`) while reserving hard mounts for checkpoints. |
 
+The table is long, so use it as a lookup rather than a story to read in order. Find the symptom that matches what your dashboard shows, and then follow that row's diagnosis column.
+
 When a multi-node job runs far below line rate, start with row 1. It checks the BAR1 size and the `nvidia-peermem` path that the earlier sections covered, and so confirm them before you look anywhere else.
 
 ---
@@ -591,15 +692,21 @@ When a multi-node job runs far below line rate, start with row 1. It checks the 
 ## Hands-on lab
 
 ### Venue and Scope
+Suppose you want to check the arithmetic in this chapter before you touch a GPU node. The local lab gives you that chance on a laptop. The cluster commands in this lab were not run on a live cluster, so treat them as a guide until you run them on your own hardware.
+
 You can run the local lab on any machine with Python 3, because it uses only the standard library. The lab lives in `code/part12/gpudirect_rdma_storage.py` and `code/part12/gpudirect_rdma_storage_lab.py`, and it runs 28 automated self-checks that cover the arithmetic and decision logic from this chapter. The cluster commands in the configuration section need live GPU and RDMA hardware, so each one carries the `(untested here)` marker.
 
 ### Run the Verification Lab
+
+You have just read the bounce-buffer and BAR1 sections, and this run checks the arithmetic behind them. Nothing in the run touches a GPU, so it is safe to repeat as often as you like.
 
 Run the lab with this single command.
 
 ```bash
 python3 -B code/part12/gpudirect_rdma_storage_lab.py
 ```
+
+The output below is what you should see if every check agrees with the chapter. A surprise in one line is more useful than a long pass, because it points to the exact claim that does not hold on your machine.
 
 The expected output below shows what a clean run looks like. Each line names one check.
 
@@ -637,13 +744,17 @@ The expected output below shows what a clean run looks like. Each line names one
 Summary: 28 passed, 0 failed
 ```
 
+Read the output line by line, as you would read a checklist. Each line is one claim from this chapter, so a FAIL points you straight to the part of the chapter that needs review.
+
+Think of the summary line as the signature at the bottom of a test report. It says how many checks passed, and it does not tell you why any check failed. For that reason, read the individual lines first and the summary last. A single FAIL is more useful than a summary that looks clean but hides a claim you never read.
+
 A clean run ends with the summary line reading 0 failed. Any other result points to the check whose line says FAIL.
 
 ---
 
 ## Common first mistakes
 
-Each mistake below is easy to make on a first run. Each entry names the mistake, why it hurts and what to change.
+Picture your first week with a GPU node. Each mistake below is easy to make on a first run, and each one looks fine until a benchmark or a training log shows the cost. Each entry names the mistake, why it hurts and what to change.
 
 1. Plain RDMA without `--use_cuda` only shows that the NIC can reach host RAM without an extra copy. If `nvidia-peermem` or `dma-buf` is missing, or ACS is enabled, NCCL still runs over InfiniBand. It then stages every GPU tensor through a host DRAM bounce buffer. Check for the `GPU Direct RDMA Enabled` line in your debug logs, and run `ib_write_bw --use_cuda=0` to confirm the path.
 2. Forcing P2P DMA across an inter-socket link, such as Intel UPI or AMD Infinity Fabric, causes severe credit stalls, high tail latency or PCIe completion timeouts. When you see a `SYS` path, fix the physical slot assignment or the NUMA rank binding instead of raising `NCCL_NET_GDR_LEVEL=SYS`.
@@ -651,11 +762,15 @@ Each mistake below is easy to make on a first run. Each entry names the mistake,
 4. Calling `cuFileBufRegister()` and `cuFileBufDeregister()` on every step pins BAR1 pages and rebuilds the PCIe scatter-gather mappings again and again. Register reusable GPU staging buffers once at startup, and pass device offset slices to `cuFileRead` and `cuFileWrite`.
 5. Default 4 KiB buffered `fio` tests measure the Linux DRAM page cache and OLTP IOPS, not the streaming throughput of a parallel file system. Benchmark dataset reads and checkpoint bursts with multi-megabyte block sizes and `direct=1` instead.
 
+The two profiles below differ in what they try to stress. The first one reads large blocks in parallel, which matches how a training job streams a dataset. The second one writes large blocks in bursts, which matches how a checkpoint is written. Run each one against the storage path your job actually uses.
+
 ```text
 Production fio benchmark profiles for AI storage (untested here):
 - Streaming dataset read: fio --rw=read --bs=2M --size=500G --numjobs=32 --iodepth=128 --direct=1
 - Checkpoint write burst: fio --rw=write --bs=8M --size=100G --numjobs=8 --iodepth=64 --direct=1 --fsync=1000
 ```
+
+A fio run is a synthetic test, so it shows what the storage can do under the pattern you chose. Pick the pattern that matches your job, not the default one that fio uses when you leave out the options.
 
 Use the streaming profile to check dataset reads and the checkpoint profile to check write bursts. Compare each result with the rate your job actually needs.
 
@@ -663,18 +778,20 @@ Use the streaming profile to check dataset reads and the checkpoint profile to c
 
 ## Exercises
 
-Work through the six exercises in order. The parameters you need for each one are in the block at the end of this section.
+Imagine your manager asks you to validate a new GPU rack before the training team arrives on Monday. The six exercises below follow that same path, from node wiring to the storage budget. Work through them in order. The parameters you need for each one are in the block at the end of this section.
 
 1. Bounce-buffer vs GPUDirect RDMA traffic amplification. Start with the 8-GPU node parameters in the block below.
-   - (a) Work out the per-GPU and whole-node PCIe and host DRAM traffic under bounce-buffer staging, and then under GPUDirect RDMA.
-   - (b) Work out how long it takes to move 10.0 GB per rail when host staging throttles each rail to 6.25 GB/s. Then compare that with the time at 50.0 GB/s under GPUDirect RDMA.
+   - Work out the per-GPU and whole-node PCIe and host DRAM traffic under bounce-buffer staging.
+   - Work out the same traffic under GPUDirect RDMA.
+   - Work out how long it takes to move 10.0 GB per rail when host staging throttles each rail to 6.25 GB/s.
+   - Compare that time with the time at 50.0 GB/s under GPUDirect RDMA.
 2. Kernel backend eligibility. Use `evaluate_gdr_kernel_backend()` to find the selected backend for each of the four node configurations in the problem block.
 3. The `NCCL_NET_GDR_LEVEL` and `NCCL_NET_GDR_READ` matrix. For the PIX, PXB, PHB and SYS paths, work out whether GDR Write and GDR Read are enabled under each of the three environment configurations.
-4. PCIe ACS hairpin diagnosis and remediation. Read the `lspci -vvv` dump in the problem block. Explain how bridge `0000:16:00.0` changes a physical PIX path under `NCCL_NET_GDR_LEVEL=PXB`. Then write the `setpci` command and the GRUB kernel parameter that restore direct P2P switching.
-5. `gdsio` performance and `/etc/cufile.json` audit. From the `gdsio` results in the problem block, compute the percentage throughput improvement, the percentage latency reduction, and the time saved on a 10.0 GB read. Then explain why polling mode with a 4 KiB cap has no effect on this 1 MiB workload.
+4. PCIe ACS hairpin diagnosis and remediation. Picture a node whose PIX path has started to look like PHB. Read the `lspci -vvv` dump in the problem block. Explain how bridge `0000:16:00.0` changes a physical PIX path under `NCCL_NET_GDR_LEVEL=PXB`. Write the `setpci` command that restores direct P2P switching. Name the GRUB kernel parameter that restores direct P2P switching.
+5. `gdsio` performance and `/etc/cufile.json` audit. Your team wants proof that GDS helps before it changes the loader. From the `gdsio` results in the problem block, compute the percentage throughput improvement. Compute the percentage latency reduction. Compute the time saved on a 10.0 GB read. Explain why polling mode with a 4 KiB cap has no effect on this 1 MiB workload.
 6. Checkpoint burst and WebDataset metadata sizing.
-   - (a) Work out the minimum aggregate write bandwidth, in GB/s, that finishes the 2.0 TB checkpoint in 60 s for the cluster described below.
-   - (b) Work out the reduction factor in metadata `stat()` and `open()` syscalls when you pack 50,000 files into each 1.0 GB WebDataset `.tar` shard.
+   - Work out the minimum aggregate write bandwidth, in GB/s, that finishes the 2.0 TB checkpoint in 60 s for the cluster described below.
+   - Work out the reduction factor in metadata `stat()` and `open()` syscalls when you pack 50,000 files into each 1.0 GB WebDataset `.tar` shard.
 
 ```text
 Exercise problem parameters and datasets:
@@ -701,18 +818,26 @@ Exercise problem parameters and datasets:
   * Vision dataset: 14 million raw 20 KB .png files packed at 50,000 files per 1.0 GB WebDataset .tar shard
 ```
 
+Work on paper before you check with a calculator. The exercises are short, and the habit of writing each step down makes the answers easier to defend in a design review.
+
 Start with exercise 1. Its arithmetic reuses the staged and GPUDirect figures from the first section.
 
 ---
 
 ## Interview angles
 
+These questions come up in design reviews and hiring loops. Practice saying each answer in your own words, and keep the numbers in your answer tied to the chapter.
+
 1. **"If standard RDMA already bypasses the Linux kernel TCP/IP stack, why do we still need GPUDirect RDMA?"**
    - *What they are testing:* Whether you can tell kernel-bypass networking between the NIC and host DRAM apart from host-memory-bypass PCIe peer-to-peer DMA.
    - *Senior answer:* Standard RDMA bypasses the OS kernel so that it can write into host DRAM. GPU compute kernels run out of GPU HBM, so standard RDMA forces a host bounce buffer. Every byte crosses the PCIe bus twice per node and passes through the CPU memory controller twice. On an 8x 400 Gbps node, that demands 800.0 GB/s of host DRAM bandwidth, which squeezes 400 Gbps links down to roughly 50 Gbps. GPUDirect RDMA pins GPU HBM into the PCIe BAR1 aperture through `nvidia-peermem` or dma-buf. The NIC can then DMA straight to and from GPU HBM across the local PCIe switch, with zero host DRAM traffic.
+A strong answer names the mechanism first and the kernel module second. The module is only the way the mechanism is delivered on one kind of stack.
+
 2. **"We upgraded our Ubuntu nodes to the NVIDIA Open GPU Kernel Modules on kernel 6.8 and noticed `nvidia-peermem` is not loaded, yet GPUDirect RDMA works. How?"**
    - *What they are testing:* Modern Linux dma-buf versus legacy `nvidia-peermem`.
    - *Senior answer:* On Linux kernels 5.12 and newer, with rdma-core 34+ and CUDA 11.7+, the NVIDIA Open GPU Kernel Modules support the upstream Linux dma-buf framework. NCCL exports a file descriptor with `cuMemGetHandleForAddressRange` and passes it to `ibv_reg_dmabuf_mr()`. That call maps the BAR1 P2P pages natively, so the out-of-tree `nvidia-peermem.ko` module is not needed. The proprietary `nvidia.ko` driver does not export dma-buf to ib_core, so it still requires `nvidia-peermem.ko`.
+Strong interview answers follow the path an engineer would walk on a real node. Check the software state first, then the hardware state, and then the trace of a single worker.
+
 3. **"A team rewrote their loader to use `cuFileRead` for GPUDirect Storage on a 200 GB/s WEKA array, but throughput is stuck at 10 GB/s and host DRAM traffic is still high. How do you prove whether GDS is actually active?"**
    - *What they are testing:* Practical debugging of silent GDS fallbacks and PCIe topology violations.
    - *Senior answer:* Start with `/usr/local/cuda/gds/tools/gdscheck -p` and `lsmod`, which confirm `nvidia-fs.ko` and filesystem support. Next, set `"allow_compat_mode": false` in `/etc/cufile.json`. Compatibility mode silently falls back to POSIX host-DRAM copies when `O_DIRECT` or alignment is missing. Then trace the worker with `strace -c` or `nsys profile --trace=gds`, and read `/var/log/gds/cufile.log`. You want zero-copy operations, not VFS `read()` syscalls. Finally, check `nvidia-smi topo -m` and `lspci -vvv` to confirm that the storage NICs share a PCIe switch with the GPUs, rather than crossing UPI or ACS redirection.
