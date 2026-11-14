@@ -25,13 +25,15 @@ lab_venue: "Laptop"
 
 ## Why this matters for AI infrastructure
 
-The night before an interview you open your notes and find forty pages. You cannot reread them, and you do not know which numbers matter. A cheat sheet fixes that, but only if you can trust it. A sheet that holds one wrong figure, such as a link rate or an Xid action, costs you more than having no sheet, because you will say it with confidence.
+The night before an interview you open your notes and find forty pages. You cannot reread them, and you do not know which numbers matter. You feel the familiar panic of a student before an exam, with too much material and too little time. A cheat sheet fixes that, but only if you can trust it. A sheet that holds one wrong figure, such as a link rate or an Xid action, costs you more than having no sheet, because you will say it with confidence and the interviewer will remember.
 
-This chapter gives you one general sheet for an AI-infrastructure interview. Every row names the handbook chapter it came from, and a script refuses any row that does not. Anything those chapters labelled unverified is left out. The chapter then teaches the part that notes alone cannot: how to memorise the rows, and what order to say them in when someone is watching.
+This chapter gives you one general sheet for an AI-infrastructure interview. Every row names the handbook chapter it came from, and a script refuses any row that does not. Anything those chapters labelled unverified is left out. The chapter then teaches the part that notes alone cannot: how to memorise the rows, and what order to say them in when someone is watching. The sheet is only as good as the habit of using it, so the second half of the chapter matters as much as the first.
 
-The Nebius site reliability interview has its own sheet in [chapter 20.29](../part-20-nebius-sre-interview/29-the-8-week-plan-the-final-week-and-the-cheat-sheet.md). This one is the general version for any loop that mixes Linux, Kubernetes, GPUs, networking, training, inference and design. Where the two share a fact, both chapters sourced it.
+The Nebius site reliability interview has its own sheet in [chapter 20.29](../part-20-nebius-sre-interview/29-the-8-week-plan-the-final-week-and-the-cheat-sheet.md). This one is the general version for any loop that mixes Linux, Kubernetes, GPUs, networking, training, inference and design. Where the two share a fact, both chapters sourced it, so the two sheets should agree on the numbers they share.
 
-No source says what any specific company asks. This chapter says what each topic tests and how to answer. It never claims that a named employer asks a named question.
+No source says what any specific company asks. This chapter says what each topic tests and how to answer. It never claims that a named employer asks a named question. If you hear a rumour about a company's questions, treat it as a rumour and prepare for the general topic instead.
+
+The sheet also protects you from a quieter risk, which is over-preparing for the wrong thing. A long set of notes can make you feel ready while you practise only the parts you already know. A short, checked sheet points you at the gaps. It tells you which rows you cannot explain, and those rows are where the next hour of study belongs. Think of it as a map of what you know well and what you only recognise, drawn by someone who checked each entry against a source.
 
 ## Prerequisites and outcomes
 
@@ -43,21 +45,15 @@ No source says what any specific company asks. This chapter says what each topic
 
 ### Outcomes
 
-After this chapter you will be able to:
-
-1. Read any row of the sheet and name the chapter that holds the full explanation.
-2. Redo the sheet's arithmetic on a blank page: link rates, 6ND, KV cache, decode ceiling, burn rate, checkpoint interval.
-3. Run a timed mock round, score it with a stated rubric and keep a session log.
-4. Say an answer in a fixed order: clarify, estimate, answer, trade-off, check.
-5. Extend the sheet without breaking its rule that every row has a resolvable source.
+Picture yourself on the evening before a loop, with a laptop, a notebook and a timer. This chapter walks you through what you need to do with the sheet that night and in the days before. It shows how to read any row and name the chapter that holds its full explanation. It shows how to redo the sheet's arithmetic on a blank page, covering link rates, 6ND, the KV cache, the decode ceiling, burn rate and the checkpoint interval. It then covers how to run a timed mock round, score it with a stated rubric and keep a session log. The chapter also covers saying an answer in a fixed order of clarify, estimate, answer, trade-off and check. Last, it shows how to extend the sheet without breaking its rule that every row has a source you can resolve.
 
 ---
 
 ## 1. How the sheet is built, and why every row has a source id
 
-A candidate says in an interview that a 400 Gbps link moves 400 GB per second. The interviewer waits. The mistake is one factor of eight, and it came from a note written in a hurry. After that, the interviewer has reason to doubt every other number you say.
+A candidate says in an interview that a 400 Gbps link moves 400 GB per second. The interviewer waits. The mistake is one factor of eight, and it came from a note written in a hurry. After that, the interviewer has reason to doubt every other number you say. A single unit slip can cost more credibility than a dozen correct figures can earn back.
 
-The sheet is built to prevent that. Each row is one fact with one source chapter id, such as 20.12 or 19.5. Most rows also carry an anchor: a short string that must appear in the cited chapter. The validator `c15_sheet_validator.py` reads the sheet and fails on four things. A row with no id. An id that matches no chapter file. An id that is not in the form `N.M`. An anchor that is missing from the cited chapter.
+The sheet is built to prevent that. Each row is one fact with one source chapter id, such as 20.12 or 19.5. Most rows also carry an anchor: a short string that must appear in the cited chapter. The validator `c15_sheet_validator.py` reads the sheet and fails on four things. A row with no id. An id that matches no chapter file. An id that is not in the form `N.M`. An anchor that is missing from the cited chapter. Each check is cheap, and together they stop most copying errors before they reach your mouth.
 
 ```mermaid
 flowchart LR
@@ -76,9 +72,11 @@ flowchart LR
 | Simulator | Timed rounds, random draw, rubric, session log | `c15_simulate_interview.py` |
 | Walkthrough | Runs all of the above once, with scripted answers | `c15_walkthrough.py` |
 
-An anchor proves less than it seems to. It shows that the figure appears in the chapter, not that the chapter is right. So the rows lean on chapters sourced against vendor pages or gem books, and the ledger records which figures I also checked against a book.
+An anchor proves less than it seems to. It shows that the figure appears in the chapter, not that the chapter is right. A chapter can repeat a wrong number consistently, and the validator will happily confirm it. So the rows lean on chapters sourced against vendor pages or gem books, and the ledger records which figures were also checked against a book. When you use the sheet, treat a passed validator as a check on copying, not a check on truth.
 
-If a chapter labelled a claim as unverified, my reasoning, or not run, the claim is not on the sheet. The validator rejects the words unverified and TBD in a row. It cannot catch a label that sat in another paragraph, so I checked that by reading.
+Go back to the 400 Gbps story at the top of this section. The row that would have prevented the mistake reads as a bit-to-byte conversion, with the link rate in bits and the answer in bytes. Writing the units into the row is what makes the slip visible. A row that says only "400 Gbps is 50" hides the conversion, while a row that says "divide bits by eight" shows you the step you must not skip. Read your own rows with that test in mind, and rewrite any row whose units are unclear.
+
+If a chapter labelled a claim as unverified, the author's own reasoning, or not run, the claim is not on the sheet. The validator rejects the words unverified and TBD in a row. It cannot catch a label that sat in another paragraph, so that check was done by reading the source chapters.
 
 **Decision rule:** put a fact on your own sheet only when you can name the page it came from, and leave it off when you cannot.
 
@@ -88,11 +86,13 @@ If a chapter labelled a claim as unverified, my reasoning, or not run, the claim
 
 ## 2. The sheet
 
-You are on a call and the interviewer asks what Xid 79 means and what to do. You do not need a paragraph. You need the row: the code, the catalog action, and the chapter to open afterwards. The sheet below is arranged by the topic that the question will arrive under.
+You are on a call and the interviewer asks what Xid 79 means and what to do. You do not need a paragraph. You need the row: the code, the catalog action, and the chapter to open afterwards. The sheet below is arranged by the topic that the question will arrive under, so you can find a row by the kind of question you were asked rather than by the fact you are trying to recall.
 
-Figures from worked examples are inputs, not measurements. Where chapters disagree, the row says so, as for Xid 79.
+Figures from worked examples are inputs, not measurements. Where chapters disagree, the row says so, as for Xid 79. A row that says the chapters disagree is more useful in an interview than a row that picks one side silently, because it shows you know where the uncertainty is.
 
 ### A. Linux triage
+
+This group answers the first question on a misbehaving host: what is slow, and where is it stuck. Read the rows in the order of the command list, because that order is the order you would type them.
 
 | Fact | Source |
 |---|---|
@@ -109,6 +109,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 
 ### B. Networking
 
+These rows cover the two questions networking questions usually hide: is the connection refused or dropped, and is the fabric carrying what it should. Most of the networking rows are about telling those two cases apart.
+
 | Fact | Source |
 |---|---|
 | Connection refused is an immediate answer, usually nothing listening. A timeout means a packet or its reply was dropped | 20.6 |
@@ -123,6 +125,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 | Pause frames rising by millions per second in `ethtool -S` point to a PFC storm from badly tuned ECN | 12.4 |
 
 ### C. Kubernetes debug order
+
+The first table asks you to find the owner of a symptom before you read any logs. Each symptom has one controller or component that is the usual suspect, and naming it first keeps you from restarting the wrong thing. The second table holds the facts that tend to come up around those symptoms.
 
 | Symptom | Owner and first object to read | Source |
 |---|---|---|
@@ -144,6 +148,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 
 ### D. GPU facts
 
+These rows are the hardware figures that interviewers quote back at you. The most common mistake here is mixing a datasheet figure with an operating figure, so watch for rows that say which one they are.
+
 | Fact | Source |
 |---|---|
 | H100 SXM: 80 GB memory, 3.35 TB/s bandwidth (NVIDIA H100 page) | 20.12 |
@@ -158,6 +164,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 | In `nvidia-smi topo -m` on a healthy DGX H100, GPU pairs show `NV18`. A GPU and NIC pair to benchmark shows `PIX`. `SYS` crosses the CPU socket link | 19.5, 9.2 |
 
 ### E. NCCL and fabric
+
+These rows support a collective bandwidth test. Learn the busbw rule first, then the silent-fallback signature, because those two catch most of the wrong answers a candidate gives about a fabric.
 
 | Fact | Source |
 |---|---|
@@ -175,6 +183,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 
 ### F. Training numbers
 
+These rows are the training formulas and the checkpoint arithmetic. A formula row is worth more than a result row, because a formula still works when the question changes its inputs.
+
 | Fact | Source |
 |---|---|
 | Training compute is about 6 x parameters x tokens FLOPs | 9.10 |
@@ -188,6 +198,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 | FSDP shards parameters, gradients and optimiser state across all GPUs instead of replicating them on every rank | 14.5 |
 
 ### G. Inference numbers
+
+These rows cover the serving side: the memory the cache needs, the speed a single request can reach, and the latency arithmetic. Keep the units beside every figure, because serving questions mix bytes, tokens and seconds in one answer.
 
 | Fact | Source |
 |---|---|
@@ -203,6 +215,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 
 ### H. Storage and bandwidth arithmetic
 
+These rows turn a size and a bandwidth into a time. Most storage questions reduce to that one division, so practise it until it is automatic.
+
 | Fact | Source |
 |---|---|
 | A 112 GB checkpoint on a shared file system absorbing 5 GB/s blocks the job for about 22.5 s. Time is size over bandwidth | 19.4 |
@@ -211,6 +225,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 | GPUDirect Storage removes the host bounce buffer between storage and GPU memory | 13.3 |
 
 ### I. Observability and SLOs
+
+These rows cover error budgets, burn rates and alert windows. The arithmetic is short, but the wording is easy to mix up, so say each term in full the first time you use it.
 
 | Fact | Source |
 |---|---|
@@ -223,6 +239,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 | Alert on DCGM exporter counters for Xid and ECC, and keep label cardinality inside a budget | 19.7 |
 
 ### J. Failure signatures and Xid actions
+
+These rows map a signal to what the catalog or the chapter says to do about it. Read the action as a starting point and check the live catalog for your driver before you act, because the action depends on the version you run.
 
 | Signal | What the catalog or chapter says to do | Source |
 |---|---|---|
@@ -239,6 +257,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 
 ### K. Design speaking plan, 45 minutes
 
+These rows are the time plan for a design round. Use them as a clock you carry in your head, so you know when to stop talking about boxes and start talking about failure.
+
 | Minutes | What to say | Source |
 |---|---|---|
 | 0 to 5 | Requirements, assumptions and a back-of-envelope estimate. Start with numbers, not boxes | 20.13 |
@@ -250,6 +270,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 
 ### L. Behavioural and closing
 
+These rows cover the parts of an interview that are about you rather than the system. They matter more than candidates expect, because a clear story and a sensible question for the panel often decide the close of a loop.
+
 | Fact | Source |
 |---|---|
 | Project deep dive, "what would you change": name one change, the evidence, what you would measure first, and what you would leave alone | 20.28 |
@@ -259,6 +281,8 @@ Figures from worked examples are inputs, not measurements. Where chapters disagr
 
 The sheet leaves out vendor prices, because no cited chapter gives a current one. It has no claim of the form "company X asks Y". Its NCCL variables are only those that [chapter 19.5](./05-capstone-an-nccl-tests-fabric-lab.md) checked against the NCCL documentation.
 
+Use the omissions as well as the rows. A missing price is not a gap you should fill from memory, because a price you recall from last year is the kind of figure that sounds confident and is out of date. The same rule covers company-specific claims. If you want to know what a particular employer values, the answer belongs in the company's own material and in the drills of chapter 20, not on a general sheet.
+
 **Decision rule:** read one section of the sheet aloud per day, and open the cited chapter for any row you cannot explain in two sentences.
 
 **In one minute:** twelve sections, about a hundred rows, one source id on each. The Xid rows follow the NVIDIA catalog as captured in chapter 19.6. The MIG rows follow the NVIDIA MIG guide as captured in chapter 19.8. The Nebius-specific sheet stays in chapter 20.29.
@@ -267,9 +291,9 @@ The sheet leaves out vendor prices, because no cited chapter gives a current one
 
 ## 3. The arithmetic behind the numbers
 
-The interviewer says: "Roughly how long to train a 70-billion-parameter model on 100 billion tokens with 128 H100s?" There is no table to read. You have to produce a number from three inputs and explain it. Candidates who memorised only the answer fail the follow-up, which changes one input.
+The interviewer says: "Roughly how long to train a 70-billion-parameter model on 100 billion tokens with 128 H100s?" There is no table to read. You have to produce a number from three inputs and explain it. Candidates who memorised only the answer fail the follow-up, which changes one input. The skill being tested is the formula, because the formula survives a change in the question and a memorised answer does not.
 
-The sheet therefore stores formulas and one worked example for each. The script `c15_numbers.py` recomputes every example, and its tests pin each figure. The output below is from a real run. The inputs come from the cited chapters and are examples, not measurements.
+The sheet therefore stores formulas and one worked example for each. The script `c15_numbers.py` recomputes every example, and its tests pin each figure. The output below is from a real run. The inputs come from the cited chapters and are examples, not measurements. If the script and the sheet ever disagree, the script wins, because it is the one that was run.
 
 ```text
 400 Gbps link in GB/s                      50
@@ -290,15 +314,17 @@ bisect rounds, 8 and 128 nodes             3 and 7
 16384 GPUs, write 2.0 s: Daly s, waste     209 s, 7.22%
 ```
 
-The 6ND rule says compute is about six times parameters times tokens, which gives 4.2e22 floating-point operations here. Divide by the usable rate: 128 GPUs, 989 trillion operations per second each for BF16 dense, times a utilisation of 0.40. The answer is 9.6 days. Say the assumption aloud, because the 0.40 is a planning figure and not a guarantee.
+The 6ND rule says compute is about six times parameters times tokens, which gives 4.2e22 floating-point operations here. Divide by the usable rate: 128 GPUs, 989 trillion operations per second each for BF16 dense, times a utilisation of 0.40. The answer is 9.6 days. Say the assumption aloud, because the 0.40 is a planning figure and not a guarantee. A good habit is to write the three inputs on the page before you multiply anything, so the interviewer can see where each number came from.
 
-The inference lines follow the same pattern. KV cache bytes per token are two, for keys and values, times layers, times KV heads, times head dimension, times bytes per element. For Llama 3.1 8B that is 2 x 32 x 8 x 128 x 2, which is 131,072 bytes. The decode ceiling is memory bandwidth over weight bytes. At 3,350 GB/s and 16.4 GB that is about 204 tokens per second for one request, and no real system beats it.
+The inference lines follow the same pattern. KV cache bytes per token are two, for keys and values, times layers, times KV heads, times head dimension, times bytes per element. For Llama 3.1 8B that is 2 x 32 x 8 x 128 x 2, which is 131,072 bytes. The decode ceiling is memory bandwidth over weight bytes. At 3,350 GB/s and 16.4 GB that is about 204 tokens per second for one request, and no real system beats it. The lesson in that line is that bandwidth sets the limit for a single user, while the number of users changes the picture only once you batch.
 
-Burn rate is the error ratio divided by one minus the SLO. At 99.9 percent a 1 percent error ratio is a burn of 10, which empties a 30-day budget in 72 hours.
+Burn rate is the error ratio divided by one minus the SLO. At 99.9 percent a 1 percent error ratio is a burn of 10, which empties a 30-day budget in 72 hours. Read it as a spending pace. A burn of 10 spends the monthly allowance at that multiple of the normal pace, so the allowance is gone long before the month ends.
 
 The checkpoint lines come from chapter 19.4, which scales a published interruption rate to 16,384 GPUs. At that size the Daly interval is 685 seconds and waste is 11.47 percent. Cutting the blocking write from 22.5 s to 2 s with asynchronous staging takes waste to 7.22 percent. The chapter labels the scaling as its own reasoning, so say "about" and "if failures are independent".
 
-Two habits make these answers safe. Write the units next to every number, because the factor-of-eight error is a units error. And state your assumptions, because an interviewer can change one but cannot argue with it.
+Two habits make these answers safe. Write the units next to every number, because the factor-of-eight error is a units error. And state your assumptions, because an interviewer can change one but cannot argue with it. An interviewer who changes an input is asking whether you understand the formula, and a formula you can rerun in your head is the answer they want.
+
+The 6ND example also shows why a formula beats a memorised answer. If the interviewer says the team is larger instead, you change one input and rerun the division. A candidate who memorised 9.6 days has to start again from nothing, and that gap is what the follow-up is designed to reveal.
 
 **Decision rule:** never give a figure without its formula and its inputs, and keep the units in your hand.
 
@@ -308,9 +334,9 @@ Two habits make these answers safe. Write the units next to every number, becaus
 
 ## 4. Memorising the sheet
 
-It is three days before the interview. You have read the sheet five times and feel fluent. Then a friend asks for the busbw factor for AllReduce and you freeze. Reading felt like knowing, but it was only recognition. Recall is a different skill, and only recall works under pressure.
+It is three days before the interview. You have read the sheet five times and feel fluent. Then a friend asks for the busbw factor for AllReduce and you freeze. Reading felt like knowing, but it was only recognition. Recall is a different skill, and only recall works under pressure. The gap between the two is the reason this section exists.
 
-The method below is my reasoning. No source in this handbook measured how well it works, so treat it as a plan and adjust it to what you find. It uses three passes.
+The method below is this chapter's reasoning. No source in this handbook measured how well it works, so treat it as a plan and adjust it to what you find. It uses three passes, and each pass asks more of your memory than the one before.
 
 | Pass | What you do | Stop when |
 |---|---|---|
@@ -318,11 +344,15 @@ The method below is my reasoning. No source in this handbook measured how well i
 | Blank page | Close the sheet and write the section from memory, formulas and units included | You miss no more than one row |
 | Spoken | Answer the section's likely question aloud against a timer, then compare with the row | The first sentence is right without a pause |
 
-Space the passes: read on day one, blank page on days two and four, spoken pass on days three and five. Missed rows go into a box you review the next day. Chapter 20.29 has a flashcard extractor and a schedule generator you can reuse.
+A realistic week with these passes looks like this. You spend an evening reading one section aloud and opening the chapters behind the rows you cannot explain. The next day you close the sheet and write the same section from memory, which is harder than it sounds, and you mark what you missed. Later you answer the section's likely question out loud with a timer running. Each pass is short, and the discipline is in doing all three rather than rereading the page a fourth time.
 
-Learn the formulas of sections E to I first, because they let you rebuild many rows. Learn the Xid and failure rows next, because they are lookups. Learn the design plan last, because the mock rounds practise it.
+Space the passes: read on day one, blank page on days two and four, spoken pass on days three and five. Spacing works because you forget a little between sessions, and the effort of recalling it is what fixes it in memory. Missed rows go into a box you review the next day. Chapter 20.29 has a flashcard extractor and a schedule generator you can reuse.
 
-Do not memorise a row you cannot explain. If you say "Xid 79, restart the node" and are asked why, you need the next sentence. The Xid 79 row is a prompt to say "I would read the live catalog for my driver".
+Learn the formulas of sections E to I first, because they let you rebuild many rows. Learn the Xid and failure rows next, because they are lookups. Learn the design plan last, because the mock rounds practise it. A formula gives you a dozen rows at once, while a lookup gives you exactly one, so the order of learning follows the amount of work each item saves.
+
+Do not memorise a row you cannot explain. If you say "Xid 79, restart the node" and are asked why, you need the next sentence. The Xid 79 row is a prompt to say "I would read the live catalog for my driver". A row you can only recite is a trap, because the first follow-up question will expose it.
+
+One test helps with all of this. Explain a row to someone who does not know the topic, in two sentences and without reading the sheet. If you can do that, the row is yours. If you find yourself reaching for the sheet halfway through, the row needs another pass with its chapter open. Explaining the row aloud to a friend is also the closest thing to a real interview that a laptop can give you.
 
 **Decision rule:** test yourself on a blank page, because recognising a row is not the same as recalling it.
 
@@ -332,9 +362,9 @@ Do not memorise a row you cannot explain. If you say "Xid 79, restart the node" 
 
 ## 5. The order to say things aloud
 
-The interviewer asks, "A training job is slow. What do you do?" You name ten checks in ninety seconds, and none is tied to the symptom. The interviewer cannot tell whether you reason or recite.
+The interviewer asks, "A training job is slow. What do you do?" You name ten checks in ninety seconds, and none is tied to the symptom. The interviewer cannot tell whether you reason or recite. A list of checks with no order sounds like a person who is guessing very fast.
 
-An answer needs an order that the interviewer can follow. The order below is my reasoning, shaped by the speaking plans in chapters 20.13, 20.26 and 20.29. It has five steps.
+An answer needs an order that the interviewer can follow. The order below is this chapter's reasoning, shaped by the speaking plans in chapters 20.13, 20.26 and 20.29. It has five steps, and each one gives the interviewer something to check you against.
 
 | Step | Say | Example |
 |---|---|---|
@@ -344,13 +374,15 @@ An answer needs an order that the interviewer can follow. The order below is my 
 | 4 Trade-off | What your answer costs or assumes | "A full benchmark takes the node out of service." |
 | 5 Check | How you would know you are right | "Busbw should match the saved baseline." |
 
-For a debugging question, steps 2 and 3 repeat as you move down the layers. The sheet's Kubernetes table and the NCCL validation ladder in chapter 19.5 are the frames. For an estimate, step 2 is the formula and step 3 the arithmetic. For a design question, use the 45-minute plan in section K, and spend the first five minutes on requirements and numbers.
+Here is the training-job question run through the five steps. You clarify first and ask whether slow means slower than last week or slower than the plan. You state the assumption, which is last week. You frame the answer by layer, from the node up to the framework. Then you give the first check with its unit, which is a topology query on the node. You name the cost of a wire test as the trade-off, and you say that the saved baseline is how you will know you are right. The whole answer takes about a minute, and the interviewer can follow every step.
 
-For a behavioural question, use the situation, task, action and result form, known as STAR. This is a common interview convention and no handbook source tests it, so it is my advice. Spend most of the time on your own action and a measured result. Chapter 20.28 gives the probe that follows a project story. Prepare one story that survives it.
+For a debugging question, steps 2 and 3 repeat as you move down the layers. The sheet's Kubernetes table and the NCCL validation ladder in chapter 19.5 are the frames. For an estimate, step 2 is the formula and step 3 the arithmetic. For a design question, use the 45-minute plan in section K, and spend the first five minutes on requirements and numbers. The clarifying step at the start is the one candidates skip most often, and it is the one that saves the most time, because it keeps you from solving the wrong problem.
+
+For a behavioural question, use the situation, task, action and result form, known as STAR. This is a common interview convention and no handbook source tests it, so it is advice from this chapter. Spend most of the time on your own action and a measured result. Chapter 20.28 gives the probe that follows a project story. Prepare one story that survives it.
 
 When you do not know, say what you do know, name the nearest mechanism, and say how you would check. Chapter 20.29 states the rule that you never present a guessed flag or default as certain. Saying "I would look that up in the man page" costs nothing. A wrong flag said with confidence costs a lot.
 
-At the end the interviewer asks if you have questions. Ask about things that teach you the real constraints. Chapter 20.28 lists four: how the on-call rota is built and how many pages need a human, who owns the SLOs, the last major incident and what changed, and how failing GPUs are found and replaced. Ask two, and listen to the answers.
+At the end the interviewer asks if you have questions. Ask about things that teach you the real constraints. Chapter 20.28 lists four: how the on-call rota is built and how many pages need a human, who owns the SLOs, the last major incident and what changed, and how failing GPUs are found and replaced. Ask two, and listen to the answers. The answers tell you whether the team is a place you want to work, which is also the reason the interviewer is there.
 
 **Decision rule:** say the clarifying question and your assumption before any technical content.
 
@@ -360,11 +392,11 @@ At the end the interviewer asks if you have questions. Ask about things that tea
 
 ## 6. The mock-interview simulator
 
-A mock interview with a friend is worth a lot and is hard to schedule. The simulator gives you a cheaper first pass. It draws random questions, starts a timer, scores your typed answer against a stated rubric and writes a session log. It does not understand your answer, so it cannot replace a person.
+A mock interview with a friend is worth a lot and is hard to schedule. Friends get busy, and a practice round at midnight is easy to skip. The simulator gives you a cheaper first pass that you can run alone at any hour. It draws random questions, starts a timer, scores your typed answer against a stated rubric and writes a session log. It does not understand your answer, so it cannot replace a person, but it does make you type, time and count, which is the discipline a mock round needs.
 
-The question source is `c14_question_bank.json`, the bank from chapter 19.14, when that file exists and has a usable shape. Otherwise the simulator uses twelve built-in questions across Linux, networking, Kubernetes, GPU, training, inference, observability, failure, design and behavioural topics. Each question has a source chapter id and groups of key words. The first output line names the source used.
+The question source is `c14_question_bank.json`, the bank from chapter 19.14, when that file exists and has a usable shape. Otherwise the simulator uses twelve built-in questions across Linux, networking, Kubernetes, GPU, training, inference, observability, failure, design and behavioural topics. Each question has a source chapter id and groups of key words. The first output line names the source used, so you always know which question set you practised on.
 
-The rubric has five parts and sums to 100.
+The rubric has five parts and sums to 100. Each part measures something you can improve, and the table shows what earns the points.
 
 | Part | Points | Awarded when |
 |---|---|---|
@@ -374,9 +406,11 @@ The rubric has five parts and sums to 100.
 | Opening | 10 | A clarifying step or an assumption appears in the first 300 characters |
 | Time | 20 | Full marks within the limit, half up to one and a half times the limit, none beyond |
 
-The limits are real. Key-word matching rewards the right words in the wrong sentence and punishes a correct answer in other words. The number check accepts a wrong number. Use the score to see habits, and use the sheet to judge content.
+The limits are real. Key-word matching rewards the right words in the wrong sentence and punishes a correct answer in other words. The number check accepts a wrong number. Use the score to see habits, and use the sheet to judge content. A high score tells you that you spoke in the right shape, and it does not tell you that the shape held true facts.
 
-Each run appends one JSON line to a log. The line holds the date, the question source, and for each round the question id, topic, elapsed time, score parts, missed key groups, notes and the word count of the answer. After a week the log shows which topics you avoid. In the scripted run below the elapsed time is near zero because nothing was typed, so ignore the time score there.
+Each run appends one JSON line to a log. The line holds the date, the question source, and for each round the question id, topic, elapsed time, score parts, missed key groups, notes and the word count of the answer. After a week the log shows which topics you avoid. In the scripted run below the elapsed time is near zero because nothing was typed, so ignore the time score there. A real session will show the time score mean something.
+
+The best use of the log is to read it once a week, not once a session. Look for the key groups you missed most often and the notes that repeat. A note such as "no clarifying step" that appears in every round is a habit, and habits are what the interviewer hears first. Fix the habit with a deliberate opening line, then watch the note disappear in the next week's log. The simulator cannot tell you whether an answer is correct, but it can show you whether you started it the way a good engineer would.
 
 **Decision rule:** use the simulator to find habits and gaps, then use the sheet and a person to judge content.
 
@@ -386,9 +420,9 @@ Each run appends one JSON line to a log. The line holds the date, the question s
 
 ## 7. Hands-on lab
 
-This lab runs everything on a laptop. It needs Python 3 and pytest. It uses no GPU, no network and no secrets. Not run: anything that needs GPUs. The sheet's facts about GPUs, NCCL and MIG come from the cited chapters and were not measured here.
+It is the evening before a loop, and you want to be sure your laptop, your sheet and your scripts all still agree. This lab checks exactly that, on a laptop, with nothing else. It needs Python 3 and pytest. It uses no GPU, no network and no secrets. Not run: anything that needs GPUs. The sheet's facts about GPUs, NCCL and MIG come from the cited chapters and were not measured here.
 
-The file `code/part19/c15_lab.sh` holds the steps. Run it from the repository root.
+The file `code/part19/c15_lab.sh` holds the steps. Run it from the repository root, because the paths in the script are relative to that folder. A run from another folder fails on the first missing file, and the error message points you to the path that is wrong.
 
 ```bash
 #!/usr/bin/env bash
@@ -408,27 +442,27 @@ python3 code/part19/c15_simulate_interview.py --rounds 3 --seed 3 --seconds 120 
 
 ### Step 1. Run the tests
 
-The first command runs the tests for the sheet, the numbers, the simulator and the walkthrough. Expected result: all pass. On the author's Mac the chapter's own test files gave 45 passed, and the full `code/part19` run gave 627 passed and 4 skipped.
+The first command runs the tests for the sheet, the numbers, the simulator and the walkthrough. Expected result: all pass. On the author's Mac the chapter's own test files gave 45 passed. The full `code/part19` run gave 627 passed. It also gave 4 skipped.
 
-What to record: the pass count and the Python and pytest versions.
+What to record: the pass count and the Python and pytest versions. If a count differs from the one here, the difference is information, so write it down before you change anything. A changed count often means a test was skipped or added, and that is worth knowing before the interview rather than during it.
 
 ### Step 2. Validate the sheet
 
 The second command validates the sheet. Expected result: `102 rows, 0 problems`. Now break it on purpose: delete one source id, or change one to 99.9. The validator should name the line and the section. Restore the row afterwards.
 
-What to record: the message for each kind of break you tried.
+What to record: the message for each kind of break you tried. Breaking the sheet on purpose is the fastest way to learn what the validator really checks, and it shows you that a bad id fails loudly rather than silently.
 
 ### Step 3. Read the arithmetic
 
-The third command prints the sixteen lines shown in section 3. Expected result: the same values. Change one input in `c15_numbers.py`, such as MFU from 0.40 to 0.30, and predict the days before you run it. The answer should rise to 12.8 days, because 9.6 divided by 0.75 is 12.8.
+The third command prints the sixteen lines shown in section 3. Expected result: the same values. Change one input in `c15_numbers.py`, such as MFU from 0.40 to 0.30. Predict the days before you run it. The answer should rise to 12.8 days. The reason is that 9.6 divided by 0.75 is 12.8.
 
-What to record: your prediction and the gap.
+What to record: your prediction and the gap. A prediction that misses is the most useful result in this step, because it points at the part of the formula you have not yet understood.
 
 ### Step 4. Run the walkthrough
 
-The fourth command validates the sheet, prints the arithmetic and runs three scripted answers: a good one, a one-line one and one that takes 200 seconds. Expected result: scores of 100, 32.5 and 0.0 and a session mean of 44.2. The scripted clock stands in for real time.
+The fourth command validates the sheet, prints the arithmetic and runs three scripted answers: a good one, a one-line one and one that takes 200 seconds. Expected result: scores of 100, 32.5 and 0.0 and a session mean of 44.2. Read the three scores side by side. The gap between them shows which rubric parts carry the most weight, and the printed notes say which parts each weak answer missed. The scripted clock stands in for real time, which is why the time score looks odd here.
 
-What to record: which rubric part cost the weak answers the most.
+What to record: which rubric part cost the weak answers the most. For the one-line answer, that is usually coverage and the opening, which is the pattern the rubric is designed to catch.
 
 ### Step 5. Run a mock round
 
@@ -455,36 +489,38 @@ Session mean 86.7/100 over 3 rounds
 
 Now do it for real. Remove `--answers`, add `--rounds 5`, and type each answer, ending with an empty line. If `code/part19/c14_question_bank.json` exists, drop `--bank /nonexistent` to use the 19.14 bank. This chapter's run used the built-in set because that file did not exist yet.
 
-What to record: the mean score, the notes that repeat, and the topic with the lowest score. Make that topic tomorrow's blank-page section.
+What to record: the mean score, the notes that repeat, and the topic with the lowest score. Make that topic tomorrow's blank-page section. Notes that repeat are the habit to fix first, because they will appear in every answer until you change them. A single bad round is noise, while the same note across three rounds is a pattern you should act on tomorrow.
 
-**What was run here and what was not:** steps 1 to 5 ran on a Mac without a GPU, with the scripted answers. No live interview, human interviewer or typed timed session was run. The rubric weights are my choice and are not validated against real interview outcomes.
+**What was run here and what was not:** steps 1 to 5 ran on a Mac without a GPU, with the scripted answers. No live interview, human interviewer or typed timed session was run. The rubric weights are this chapter's choice and are not validated against real interview outcomes.
 
 ---
 
 ## How to answer out loud
 
-These questions ask about your preparation and about how you use notes. Rehearse the order, not the words.
+The panel has just asked, "How do you keep numbers straight under pressure?" and is waiting for your reply. These questions ask about your preparation and about how you use notes. Rehearse the order, not the words, because a memorised paragraph falls apart the moment a follow-up changes one detail.
+
+These five questions come up in many loops in one form or another, because they test how you work and not only what you know. Answer each one in a few sentences, and keep the answer short enough to say in under a minute. The panel is usually more interested in your method than in your memory.
 
 **Question 1. "How do you keep numbers straight under pressure?"** Say that you store formulas, not answers. Give one example, the 6ND rule with units. Say that you state the assumption aloud and that you recompute with a script before the interview. Name the trade-off: a formula is slower than a remembered figure but survives a changed input. Expect "what if MFU is 30 percent".
 
-**Question 2. "What do you do when two sources disagree?"** Use the Xid 79 example. Say that the NVIDIA catalog is the authority, that two handbook chapters worded the action differently, and that you read the live catalog for your driver version before acting. Add that you would say this to an interviewer and not pick one wording.
+**Question 2. "What do you do when two sources disagree?"** Use the Xid 79 example. Say that the NVIDIA catalog is the authority, that two handbook chapters worded the action differently, and that you read the live catalog for your driver version before acting. Add that you would say this to an interviewer and not pick one wording. Saying that two sources disagree, and what you did about it, is a strong answer in its own right.
 
 **Question 3. "Walk me through a 400 Gbps fabric test."** Clarify whether it is a single node or many. Say the ladder: topology, wire, GPU memory path, single-node collective, multi-node collective, application. State that busbw, not algbw, compares with the 50 GB/s link, and that a run with non-zero `#wrong` is discarded. Name the trade-off: the full ladder takes nodes out of service. Say how you would check: against a saved baseline.
 
-**Question 4. "Tell me about your project."** Use STAR. Pick the result you measured, say the number and its unit, then say what you would change and what you would leave alone. If you have no number, say so and say how you would measure it.
+**Question 4. "Tell me about your project."** Use STAR. Pick the result you measured, say the number and its unit, then say what you would change and what you would leave alone. If you have no number, say so and say how you would measure it. An honest gap with a plan to measure it beats a number you cannot defend.
 
-**Question 5. "Why should we trust your preparation?"** Say that every row of your sheet has a source and that your mock log named your weakest topic. Do not claim a score as proof of knowledge. It is a habit check.
+**Question 5. "Why should we trust your preparation?"** Say that every row of your sheet has a source and that your mock log named your weakest topic. Do not claim a score as proof of knowledge. It is a habit check, and saying so shows the panel that you know the difference.
 
 ---
 
 ## Exercises
 
-1. **Add three rows.** Add three rows to section C from [chapter 20.23](../part-20-nebius-sre-interview/23-kubernetes-failure-drills-for-gpu-platforms.md), each with an anchor, and run the validator. *Solution sketch:* copy the row format, pick a figure that appears in the chapter text, such as a back-off value, and use it as the anchor. If the validator reports "anchor not found", the string differs from the chapter's wording, so copy it exactly.
-2. **Break the validator on purpose.** Write four bad rows in a scratch file: no id, id 99.9, id "chapter five", and a valid id with an invented anchor. *Solution sketch:* run `python3 code/part19/c15_sheet_validator.py scratch.md`. Expect four problems and exit status 1. `test_c15_sheet.py` does the same in code.
-3. **Recompute the burn table.** For a 99.95 percent SLO over 30 days, give the error budget in minutes and the hours to empty at a 0.5 percent error ratio. *Solution sketch:* budget is 43,200 x 0.0005, which is 21.6 minutes. Burn is 0.005 over 0.0005, which is 10. Hours to empty is 720 over 10, which is 72.
-4. **Change the training example.** Train a 13B model on 300B tokens with 64 H100s at 35 percent MFU. How many days? *Solution sketch:* FLOPs are 6 x 13e9 x 300e9 = 2.34e22. Rate is 64 x 989e12 x 0.35 = 2.215e16 per second. Days are 2.34e22 over 2.215e16 over 86,400, about 12.2.
-5. **Run a typed session.** Run five rounds without `--answers`, then read the log. *Solution sketch:* open the JSON line and find the part with the lowest mean across rounds. Write one sentence on the habit, such as never opening with an assumption, and run the topic again tomorrow.
-6. **Add a question to the built-in set.** Add a MIG question with key-word groups and a source id, plus a test. *Solution sketch:* append a dict to `BUILTIN`, draw its topic with `--topic`, and score one good and one empty answer.
+1. **Add three rows.** Add three rows to section C from [chapter 20.23](../part-20-nebius-sre-interview/23-kubernetes-failure-drills-for-gpu-platforms.md), each with an anchor, and run the validator. A colleague asks you to extend the Kubernetes table before the next review. *Solution sketch:* copy the row format, pick a figure that appears in the chapter text, such as a back-off value, and use it as the anchor. If the validator reports "anchor not found", the string differs from the chapter's wording, so copy it exactly.
+2. **Break the validator on purpose.** A skeptical reviewer asks whether the validator really catches bad rows. Write four bad rows in a scratch file: no id, id 99.9, id "chapter five", and a valid id with an invented anchor. *Solution sketch:* run `python3 code/part19/c15_sheet_validator.py scratch.md`. Expect four problems and exit status 1. `test_c15_sheet.py` does the same in code.
+3. **Recompute the burn table.** The planning meeting has just set a target. For a 99.95 percent SLO, give the error budget in minutes over 30 days. Then give the hours to empty at a 0.5 percent error ratio. *Solution sketch:* the budget is 43,200 x 0.0005, which is 21.6 minutes. Burn is 0.005 over 0.0005, which is 10. Hours to empty is 720 over 10, which is 72.
+4. **Change the training example.** A manager asks for a quick estimate before a budget call. Train a 13B model on 300B tokens. Use 64 H100s at 35 percent MFU. How many days does it take? *Solution sketch:* FLOPs are 6 x 13e9 x 300e9, which is 2.34e22. The rate is 64 x 989e12 x 0.35, which is 2.215e16 per second. Days are 2.34e22 over 2.215e16 over 86,400. That is about 12.2.
+5. **Run a typed session.** Run five rounds without `--answers`, then read the log. A friend has asked you to explain what the log shows. *Solution sketch:* open the JSON line and find the part with the lowest mean across rounds. Write one sentence on the habit, such as never opening with an assumption, and run the topic again tomorrow.
+6. **Add a question to the built-in set.** A study partner wants a question on MIG, which the built-in set lacks. Add a MIG question with key-word groups and a source id, plus a test. *Solution sketch:* append a dict to `BUILTIN`, draw its topic with `--topic`, and score one good and one empty answer.
 
 ---
 

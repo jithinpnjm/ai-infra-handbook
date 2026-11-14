@@ -25,21 +25,25 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-An interviewer says: "Design the infrastructure for an ML research team. They run notebooks, experiments, sweeps, training and evaluation. Today it is five people. Next year it is a hundred." This capstone chapter serves that design round. It does not claim that any particular company asks this question. It says what the question can test and how to answer it.
+An interviewer leans back and says: "Design the infrastructure for an ML research team. They run notebooks, experiments, sweeps, training and evaluation. Today it is five people. Next year it is a hundred." That is the whole question, and it is deliberately vague. Your first job is to notice how little it tells you. This chapter prepares you for that design round. It does not claim that any particular company asks this question. It says what the question can test and how to answer it.
 
-The question tests whether you can serve people who want opposite things. Researchers want a GPU now, with no questions. The platform owner wants every GPU busy and every dollar traced to a team. A senior answer shows that you see both pressures and picks mechanisms that satisfy each. It also tests whether you keep the research loop honest, so that a result from last month can be reproduced this month.
+The question tests whether you can serve people who want opposite things. Researchers want a GPU now, with no questions asked. The platform owner wants every GPU busy and every dollar traced to a team. A senior answer shows that you see both pressures and picks mechanisms that satisfy each. It also tests whether you keep the research loop honest, so that a result from last month can be reproduced this month. A candidate who speaks only to the first pressure sounds like a researcher. A candidate who speaks only to the second sounds like an accountant.
 
-A good answer follows this order, in about 45 minutes. Minutes 0 to 5 are requirements and numbers. Minutes 5 to 10 are the platform shape. Minutes 10 to 20 are compute sharing, because that is where the hard trade-offs live. Minutes 20 to 33 are environments, reproducibility, tracking and data. Minutes 33 to 40 are security and cost. The last minutes are growth from 5 to 100 people and what breaks first.
+A good answer follows this order, in about 45 minutes. Minutes 0 to 5 are requirements and numbers. Minutes 5 to 10 are the platform shape. Minutes 10 to 20 are compute sharing, because that is where the hard trade-offs live. Minutes 20 to 33 are environments, reproducibility, tracking and data. Minutes 33 to 40 are security and cost. The last minutes are growth from 5 to 100 people and what breaks first. The clock matters because the interviewer can follow it. Spend the early minutes on numbers, since every later choice depends on them.
 
-The common mistakes are easy to list. Candidates draw boxes before asking who the users are. They say "Kubernetes with quotas" and never say what happens when a quota sits idle. They treat notebooks like batch jobs, though a notebook holds a GPU while its owner is at lunch. They quote versions and defaults from memory. This chapter pins every version it quotes.
+The common mistakes are easy to list, and each one is easy to avoid once you have seen it. Candidates draw boxes before asking who the users are. They say "Kubernetes with quotas" and never say what happens when a quota sits idle. They treat notebooks like batch jobs, though a notebook holds a GPU while its owner is at lunch. They quote versions and defaults from memory. This chapter pins every version it quotes, so you can see what a pinned answer looks like.
+
+Here is a simple way to avoid all four slips at once. Before you name a single tool, say who the users are, what they run at night, and what would make them angry. Then say the numbers you are assuming. Only after that should you draw a box. A candidate who does this in the first two minutes has already shown the interviewer that the design will fit real people, and that is worth more than any particular product name.
 
 ## Why this matters for AI infrastructure
 
-A research team does not fail because the GPUs are slow. It fails in quieter ways. One team's sweep fills the cluster for a day. A notebook holds a GPU over a weekend. A model that scored well in March cannot be rebuilt in May because nobody recorded the dataset. The invoice arrives and nobody can say who spent what.
+Picture a Friday afternoon. A large sweep starts on the shared cluster and fills every GPU. By Monday, a notebook owner has lost a weekend of work to a preempted pod, another team has no GPUs at all, and the finance office is asking who ran up the bill. Nothing in that week was a hardware failure. The GPUs were fast enough. The team simply had no shared rules for who could use them, for how long, and with what record.
 
-Production Kubernetes calls tenancy a spectrum. A research team inside one company is the soft end, a family sharing a kitchen. That lets you use namespaces and quotas where hostile tenants would need separate clusters.
+A research team does not fail because the GPUs are slow. It fails in quieter ways. One team's sweep fills the cluster for a day. A notebook holds a GPU over a weekend. A model that scored well in March cannot be rebuilt in May because nobody recorded the dataset. The invoice arrives and nobody can say who spent what. Each of these failures looks small on its own, and together they are the reason a research platform needs a design.
 
-Designing Machine Learning Systems adds that the development environment is where engineers spend their day. Improvements there pay back directly. That is why this chapter starts with notebooks and environments before it reaches schedulers.
+Production Kubernetes calls tenancy a spectrum. A research team inside one company is the soft end, a family sharing a kitchen. The family trusts each other, so it can share a kitchen with a shared fridge and a shared timetable. That lets you use namespaces and quotas where hostile tenants would need separate clusters. The same idea shapes the rest of this chapter.
+
+Designing Machine Learning Systems adds that the development environment is where engineers spend their day. Improvements there pay back directly, because every hour saved in setup is an hour the researcher spends on the model. That is why this chapter starts with notebooks and environments before it reaches schedulers.
 
 ## Prerequisites and outcomes
 
@@ -52,14 +56,7 @@ Designing Machine Learning Systems adds that the development environment is wher
 
 ### Outcomes
 
-After this chapter you can:
-
-1. State assumptions and size a shared research pool for three team sizes.
-2. Configure JupyterHub on Kubernetes with profiles, culling and spare capacity, and check the values against the chart schema.
-3. Explain what a quota, a cohort, borrowing and preemption do, and read a simulation that compares four policies.
-4. Design reproducibility as a checklist that a program can run, not as a hope.
-5. Attribute cost to teams and explain who pays for idle capacity.
-6. Say out loud how the platform grows from 5 to 100 researchers and what to build at each step.
+A new research platform often starts with a single question: how many GPUs does a team of this size really need, and how should they be shared? This chapter walks through that question in order. It sizes a shared research pool for three team sizes, sets up JupyterHub on Kubernetes with profiles, culling and spare capacity, and explains what a quota, a cohort, borrowing and preemption do. It then shows how to read a simulation that compares four policies. After that it turns reproducibility into a checklist that a program can run, attributes cost to teams, and ends with how the platform grows from 5 to 100 researchers and what to build at each step.
 
 ---
 
@@ -67,7 +64,7 @@ After this chapter you can:
 
 A new lead joins a team of five researchers. They share one eight-GPU server and a spreadsheet for booking it. Last week two people trained on the same GPUs at the same time and both runs crashed. The lead asks what "fair" should mean before buying anything.
 
-Start the interview the same way. Ask who the users are, what they run, and what they cannot tolerate. Then write down the numbers you assume and say that they are assumptions. Everything in the table below is my assumption for a worked example. None of it is a measurement of a real organisation.
+Start the interview the same way. Ask who the users are, what they run, and what they cannot tolerate. Then write down the numbers you assume and say that they are assumptions. Treat everything in the table below as an assumption for a worked example, not as a measurement of a real organisation. The table gives you a shape to talk about, and the interviewer can change any cell and ask how your answer moves.
 
 | Input | Stage 1 | Stage 2 | Stage 3 |
 |---|---|---|---|
@@ -77,9 +74,11 @@ Start the interview the same way. Ask who the users are, what they run, and what
 | Typical work | notebooks, short runs | sweeps, 8 to 12 GPU training | many teams, some 64 GPU jobs |
 | Who runs the platform | the researchers | one part-time engineer | a platform team |
 
-The stage 2 pool is the one the rest of the chapter simulates. It has 64 GPUs. Eight are a notebook pool and 56 are batch GPUs split evenly across four teams, so each team owns 14. The split is my choice. The arithmetic behind it is simple. A month has 720 hours, so 64 GPUs give 46,080 GPU-hours. If a GPU-hour costs 2.50 in whatever currency you use, the pool costs 115,200 a month. That price is a placeholder, not a quote.
+The stage 2 pool is the one the rest of the chapter simulates. It has 64 GPUs. Eight are a notebook pool and 56 are batch GPUs split evenly across four teams, so each team owns 14. The split is a choice made for this example, and you should say so when you give it. The arithmetic behind it is simple. A month has 720 hours, so 64 GPUs give 46,080 GPU-hours. If a GPU-hour costs 2.50 in whatever currency you use, the pool costs 115,200 a month. That price is a placeholder, not a quote. Its only job is to make the cost of an idle GPU visible in money, which is the thing the interviewer wants to hear about.
 
-Four requirements follow from the story. Work must start quickly when a team is inside its share. Idle capacity must not be wasted. A team must be able to take back what it lent. Every result must be traceable to the code, data and environment that made it. The rest of the design serves those four lines.
+Four requirements follow from the story. Work must start quickly when a team is inside its share. Idle capacity must not be wasted. A team must be able to take back what it lent. Every result must be traceable to the code, data and environment that made it. The rest of the design serves those four lines, so when you are unsure which tool to pick, ask which of the four it serves.
+
+Writing the requirements down also protects you later. Each one becomes a check you can point at. If a design choice cannot be traced to a requirement, it is either extra work or a hidden requirement that nobody agreed to. Both are worth finding before the first sweep is submitted. The lead in the story above wants exactly this kind of clarity, because the spreadsheet was never a rule, only a habit that broke under load.
 
 **Decision rule:** Write the assumptions and the four requirements on the board before you draw any component.
 
@@ -89,7 +88,7 @@ Four requirements follow from the story. Work must start quickly when a team is 
 
 ## 2. The shape of the platform
 
-A researcher starts a notebook, tries an idea, then submits a sweep of 100 runs. Next week a colleague asks which data trained the best one. Four systems answer those steps, and they must agree on who the person is and which team pays.
+A researcher starts a notebook, tries an idea, then submits a sweep of 100 runs. Next week a colleague asks which data trained the best one. Four systems answer those steps, and they must agree on who the person is and which team pays. If any one of them uses a different identity, the answer to the colleague's question becomes guesswork.
 
 ```mermaid
 flowchart TB
@@ -121,7 +120,9 @@ flowchart TB
 | Sharing GPUs | MIG slices for small work | Cheap isolated GPU shares | 19.8 |
 | Cost | Usage records and a calculator | Showback and chargeback | 16.14, section 8 |
 
-Designing Machine Learning Systems separates schedulers, which decide when a job runs, from orchestrators, which decide where resources come from. Kueue is the scheduler here and Kubernetes is the orchestrator. Slurm is a legitimate alternative for pure batch research, and chapter 19.1 builds it. I choose Kubernetes because notebooks and tracking services already live there.
+Designing Machine Learning Systems separates schedulers, which decide when a job runs, from orchestrators, which decide where resources come from. Kueue is the scheduler here and Kubernetes is the orchestrator. The split is useful in a design answer because it tells the interviewer which part to look at when a job waits. Slurm is a legitimate alternative for pure batch research, and chapter 19.1 builds it. This chapter chooses Kubernetes because notebooks and tracking services already live there, and moving them would cost more than the scheduler difference saves.
+
+Follow one request through the diagram to see why the arrows matter. A researcher clicks start in JupyterHub, so the request goes to the notebook layer. The notebook asks Kubernetes for a GPU, and the notebook namespace quota caps how many notebooks can hold one at a time, which is a separate rule from the batch queues. The notebook also writes its runs to MLflow, so the tracking record and the cost record name the same team. When the colleague asks a question a week later, every layer can answer it, because every layer agreed on who the person was on the first day. A diagram with a missing arrow is usually a design that will fail that question.
 
 **Decision rule:** Pick one scheduler for GPUs and make every other layer ask it, never bypass it.
 
@@ -131,11 +132,11 @@ Designing Machine Learning Systems separates schedulers, which decide when a job
 
 ## 3. Notebooks with JupyterHub
 
-On Monday morning twenty researchers log in within ten minutes. Three of the notebooks ask for a GPU. By Tuesday, six notebooks hold GPUs that their owners are not using. The first problem is spawning. The second is idle holding.
+On Monday morning twenty researchers log in within ten minutes. Three of the notebooks ask for a GPU. By Tuesday, six notebooks hold GPUs that their owners are not using. The first problem is spawning, because the cluster has to start a pod for every login at once. The second is idle holding, because a notebook keeps its GPU until someone stops it. This section deals with both.
 
-Zero to JupyterHub for Kubernetes, the Helm chart `jupyterhub`, is the standard way to run JupyterHub on Kubernetes. This chapter uses chart 4.4.5, which packages JupyterHub 5.5.5, fetched 2026-11-10. The chart already wires the hub, proxy and user scheduler together, so there is no hand-written Deployment.
+Zero to JupyterHub for Kubernetes, the Helm chart `jupyterhub`, is the standard way to run JupyterHub on Kubernetes. This chapter uses chart 4.4.5, which packages JupyterHub 5.5.5, fetched 2026-11-10. The chart already wires the hub, proxy and user scheduler together, so there is no hand-written Deployment to maintain. That matters in an interview, because a hand-written Deployment is a sign that the candidate will be maintaining plumbing that the chart already tests.
 
-The values file below is the whole configuration. Read it in four parts.
+The values file below is the whole configuration. Read it in four parts, because each part answers a different question: who may log in, what a researcher can choose, when an idle server stops, and how spare capacity is kept warm.
 
 ```yaml
 # JupyterHub for the research platform. Helm values for the jupyterhub chart 4.4.5 (app 5.5.5).
@@ -233,15 +234,15 @@ cull:
   concurrency: 10
 ```
 
-Authentication is the first part. The hub delegates login to GitHub OAuth and allows only members of one organisation. The OAuth client secret is not in the file. The chart documents putting secrets in a separate values file that you keep out of git. Use mode 600 and keep it with the engineer who runs helm. Any identity provider that oauthenticator supports works the same way.
+Authentication is the first part. The hub hands login to GitHub OAuth and allows only members of one organisation. Think of it as a door with a guest list: the hub does not check passwords itself, it asks GitHub who you are and then checks the organisation. The OAuth client secret is not in the file. The chart documents putting secrets in a separate values file that you keep out of git. Use mode 600 and keep it with the engineer who runs helm. Any identity provider that oauthenticator supports works the same way, so the design does not depend on GitHub in particular.
 
-Profiles are the second part. A profile is a spawn option the user sees. The three profiles give a CPU notebook, a one-GPU notebook and a MIG slice notebook. The chart documents that GPU access goes through `kubespawner_override` with `extra_resource_limits`. Note the snake case. The z2jh docs warn that keys inside `kubespawner_override` follow KubeSpawner naming, not the camelCase used elsewhere in the chart. A MIG slice name such as `nvidia.com/mig-1g.10gb` depends on the MIG strategy in 19.8. Not verified on a live cluster.
+Profiles are the second part. A profile is a spawn option the user sees when they click start, so it is the menu of hardware a researcher can order. The three profiles give a CPU notebook, a one-GPU notebook and a MIG slice notebook. The chart documents that GPU access goes through `kubespawner_override` with `extra_resource_limits`. Note the snake case. The z2jh docs warn that keys inside `kubespawner_override` follow KubeSpawner naming, not the camelCase used elsewhere in the chart, so a copy-paste from another example can fail quietly. A MIG slice name such as `nvidia.com/mig-1g.10gb` depends on the MIG strategy in 19.8. Not verified on a live cluster.
 
-Culling is the third part, and it has two layers. The hub culler stops a server after `cull.timeout` seconds without activity. The chart default is 3600 and I set 1800. It checks every `cull.every` seconds. The z2jh docs say the culler also looks at kernel activity. A kernel left connected can make a server look busy. So the values mount a kernel manager config that culls idle kernels after 1200 seconds. The docs show the same file and the same four settings, with `cull_busy` false so that a running cell is never killed.
+Culling is the third part, and it has two layers. The hub culler stops a server after `cull.timeout` seconds without activity. The chart default is 3600 and this chapter sets 1800, so a server idle past that timeout is stopped. The culler checks every `cull.every` seconds. The z2jh docs say the culler also looks at kernel activity. A kernel left connected can make a server look busy even when nothing is running. So the values mount a kernel manager config that culls idle kernels after 1200 seconds. The docs show the same file and the same four settings, with `cull_busy` false so that a running cell is never killed. The two layers work together. One stops idle kernels, and the other stops idle servers.
 
-The fourth part is capacity. The user scheduler and `userPlaceholder.replicas` keep two spare slots warm. Placeholder pods use a low priority. When a real user arrives, the scheduler evicts a placeholder and the user starts at once, while the autoscaler adds a node for the placeholder behind them. The z2jh optimisation guide describes this mechanism. It needs pod priority enabled, which the values do. Two limits matter in an interview. The hub is a single pod, and the chart comment says JupyterHub is not designed to run in parallel. The hub keeps its state in a PVC by default, so the hub is a single point of failure that a restart cures. And all user pods live in one namespace, so a per-team quota has to be a limit on that namespace as a whole.
+The fourth part is capacity. The user scheduler and `userPlaceholder.replicas` keep two spare slots warm. Placeholder pods use a low priority, so they are the first thing to give way. When a real user arrives, the scheduler evicts a placeholder and the user starts at once, while the autoscaler adds a node for the placeholder behind them. The z2jh optimisation guide describes this mechanism. It needs pod priority enabled, which the values do. Two limits matter in an interview. The hub is a single pod, and the chart comment says JupyterHub is not designed to run in parallel. The hub keeps its state in a PVC by default, so the hub is a single point of failure that a restart cures. And all user pods live in one namespace, so a per-team quota has to be a limit on that namespace as a whole.
 
-The namespace limit is a ResourceQuota. For extended resources such as GPUs, Kubernetes accepts only the `requests.` form in a quota. The file below caps notebooks at 8 GPUs, which is the notebook pool of the simulated cluster.
+The namespace limit is a ResourceQuota. For extended resources such as GPUs, Kubernetes accepts only the `requests.` form in a quota. The file below caps notebooks at 8 GPUs, which is the notebook pool of the simulated cluster. Read the comments first, because they explain why the quota sits on the namespace and not on each user.
 
 ```yaml
 # The notebook namespace is shared by every researcher, so one ResourceQuota caps total notebook GPUs.
@@ -267,7 +268,7 @@ spec:
     persistentvolumeclaims: "150"
 ```
 
-Culling by activity has a blind spot. A notebook can be busy in the culler's sense and still use no GPU, for example a kernel waiting on an open widget. The hub culler cannot see GPU use. The rule file below watches the GPU itself. It uses the dcgm-exporter metric `DCGM_FI_DEV_GPU_UTIL_RATIO`, a default counter in dcgm-exporter 4.9.0, fetched 2026-11-11. The name is not confirmed on older releases. Check `/metrics` on the version you run. The rule also assumes that pod mapping adds `namespace` and `pod` labels. That is not verified on a live cluster.
+Culling by activity has a blind spot. A notebook can be busy in the culler's sense and still use no GPU, for example a kernel waiting on an open widget. The hub culler cannot see GPU use, because it watches the server and not the hardware. The rule file below watches the GPU itself. It uses the dcgm-exporter metric `DCGM_FI_DEV_GPU_UTIL_RATIO`, a default counter in dcgm-exporter 4.9.0, fetched 2026-11-11. The name is not confirmed on older releases. Check `/metrics` on the version you run. The rule also assumes that pod mapping adds `namespace` and `pod` labels. That is not verified on a live cluster.
 
 ```yaml
 # Prometheus rules: find GPUs that are allocated to a pod but doing nothing.
@@ -289,7 +290,7 @@ groups:
           description: "Notebook culling tracks kernel activity, not GPU use. Ask the owner or reclaim the pod."
 ```
 
-Running `promtool check rules` on the file accepts the syntax. It says nothing about whether the metric exists on your cluster.
+Running `promtool check rules` on the file accepts the syntax. It says nothing about whether the metric exists on your cluster. A passing syntax check is a good sign for the file and a poor sign for the metric, so keep the two results apart when you describe the test.
 
 **Decision rule:** Cull on activity at the hub, watch GPU use separately, and cap notebook GPUs with one namespace quota.
 
@@ -299,17 +300,19 @@ Running `promtool check rules` on the file accepts the syntax. It says nothing a
 
 ## 4. Environments and reproducibility
 
-A researcher reruns a script from March. It imports a library whose behaviour changed in April. The loss curve looks different, nothing in the code diff explains it, and two days vanish. This is the most common way research silently stops being reproducible.
+A researcher reruns a script from March. It imports a library whose behaviour changed in April. The loss curve looks different, nothing in the code diff explains it, and two days vanish while the researcher hunts for the cause. This is the most common way research silently stops being reproducible. Nobody changed the model. The environment changed underneath it.
 
-Designing Machine Learning Systems tells a similar story. A bug appeared only on some runs, and the cause was a package version that differed between two machines. Its advice is to standardise the development environment and describe it in a recipe such as a Dockerfile. It also warns that notebooks keep state, so cells run out of order make a notebook hard to reproduce.
+Picture what this looks like on a Tuesday. A researcher runs the notebook in the morning and the batch job at night, and the two produce slightly different numbers. The lock file answers the question immediately, because both environments were built from the same list of packages. The digest answers the next question, because the image that ran at night is the exact image that the notebook used. Without those two records, the researcher spends the day comparing package lists by hand.
 
-The design answer is one lock file and one image. A project keeps `pyproject.toml` and `uv.lock`. The image installs exactly the lock file, so a notebook and a batch job get identical packages. I built and ran this on a laptop. The lock resolved 45 packages with uv 0.13.7, and the image imported numpy 2.5.4 and mlflow 3.18.0. The files live in `code/part19/c13_env/`.
+Designing Machine Learning Systems tells a similar story. A bug appeared only on some runs, and the cause was a package version that differed between two machines. Its advice is to standardise the development environment and describe it in a recipe such as a Dockerfile. It also warns that notebooks keep state, so cells run out of order make a notebook hard to reproduce. Both warnings point to the same fix: write the environment down so a machine can build it, and never trust a memory of it.
 
-A conda environment file works the same way. I chose uv because it produces one lock file that is easy to hash. That is my preference, not a rule.
+The design answer is one lock file and one image. A project keeps `pyproject.toml` and `uv.lock`. The lock file lists every package at an exact version, and the image installs exactly that list. So a notebook and a batch job get identical packages. The chapter's authoring session built and ran this on a laptop. The lock resolved 45 packages with uv 0.13.7, and the image imported numpy 2.5.4 and mlflow 3.18.0. The files live in `code/part19/c13_env/`.
 
-Pin images by digest, not by tag. A tag such as `2026.11.0` can be moved. A digest cannot. A run record that holds `image@sha256:...` names exactly what ran.
+A conda environment file works the same way, and a team that already uses conda can keep it. The chapter chose uv because it produces one lock file that is easy to hash, and a hash is what the reproducibility checklist below needs. That choice is a preference, not a rule.
 
-The next piece is a checklist that a program runs. A reproducibility manifest is a JSON file written when a run starts. The runner checks nine required rules and three warnings.
+Pin images by digest, not by tag. A tag such as `2026.11.0` can be moved to point at a different image by whoever owns the registry. A digest is a fingerprint of the image contents, and it cannot be moved. A run record that holds `image@sha256:...` names exactly what ran, even if someone later rebuilds the tag.
+
+The next piece is a checklist that a program runs. A reproducibility manifest is a JSON file written when a run starts. It records the commit, the image, the lock file, the datasets, the seed, the command, the tracking run and the hardware. The runner checks nine required rules and three warnings. A missing required rule fails the run, and a warning tells the researcher what to improve.
 
 | Required rule | Why it matters |
 |---|---|
@@ -321,7 +324,7 @@ The next piece is a checklist that a program runs. A reproducibility manifest is
 | Command, tracking run id | The run can be found and repeated |
 | GPU model and driver | Hardware differences are visible |
 
-The runner does not promise bit-identical results. GPU kernels can be nondeterministic. The LLM Engineer's Handbook says to set well-known seeds to get as deterministic as possible, and it lists code, data and hyperparameter versions as the things to track. The checker proves only that the inputs needed to try again were saved. It also maps the commit to MLflow's own tag key, `mlflow.source.git.commit`, which I confirmed in `mlflow/utils/mlflow_tags.py` at tag v3.18.0.
+The runner does not promise bit-identical results. GPU kernels can be nondeterministic, so two runs with the same inputs can still differ in the last digits. The LLM Engineer's Handbook says to set well-known seeds to get as deterministic as possible, and it lists code, data and hyperparameter versions as the things to track. The checker proves only that the inputs needed to try again were saved. It also maps the commit to MLflow's own tag key, `mlflow.source.git.commit`, which the chapter confirmed in `mlflow/utils/mlflow_tags.py` at tag v3.18.0. That mapping lets the checklist and the tracking server agree on which commit a run used.
 
 Output on the two sample manifests, run on the laptop:
 
@@ -334,7 +337,7 @@ bad manifest:   FAIL working tree clean
                 WARN image is not tagged latest      -> NOT reproducible (exit 1)
 ```
 
-Gate the result in the pipeline. A promotion step that refuses a run with a FAIL line gives researchers a reason to record inputs.
+Read the output from the top. The good manifest passes every rule, so the run can be repeated in principle. The bad manifest fails four rules and warns once, which is a list of concrete fixes for the researcher. Gate the result in the pipeline. A promotion step that refuses a run with a FAIL line gives researchers a reason to record inputs, which is far easier than asking them to remember to do it.
 
 **Decision rule:** Build every environment from a lock file into an image pinned by digest, and fail any run whose manifest misses a required field.
 
@@ -344,13 +347,15 @@ Gate the result in the pipeline. A promotion step that refuses a run with a FAIL
 
 ## 5. Experiments, artifacts and datasets
 
-A model beats the baseline by two points. A reviewer asks which dataset version trained it. The researcher opens three tabs, finds two candidate files and cannot say which one it was. Tracking and data versioning exist to make that question take thirty seconds.
+A model beats the baseline by two points. A reviewer asks which dataset version trained it. The researcher opens three tabs, finds two candidate files and cannot say which one it was. Tracking and data versioning exist to make that question take thirty seconds instead of an afternoon.
 
-Machine Learning Platform Engineering explains why a tracking server beats committing parameters to git. It keeps parameters, metrics, data references and artifacts for every run in one place. Chapter 16.2 teaches MLflow and DVC and 16.6 covers registries, so this section covers only infrastructure decisions.
+Think about what a researcher does with a tracking server in a normal week. They compare last Tuesday's run with today's, they open the metrics of a colleague's run to see whether a change helped, and they look up which dataset fed a model that is now in staging. Each of those jobs needs the same record in the same place. Without one, every question becomes a search through chat logs and old folders.
 
-MLflow needs two stores. The backend store holds run metadata and should be PostgreSQL for a shared team. The artifact store holds files and should be object storage. The recommended shape is the tracking server as a proxy: with `--serve-artifacts` the server forwards uploads to the bucket named by `--artifacts-destination`. Researchers then need no bucket credentials. I read the `mlflow server` options in `mlflow/cli/__init__.py` at v3.18.0. The environment variable names are `MLFLOW_BACKEND_STORE_URI` and `MLFLOW_DEFAULT_ARTIFACT_ROOT`, not `BACKEND_STORE_URI` and `DEFAULT_ARTIFACT_ROOT`.
+Machine Learning Platform Engineering explains why a tracking server beats committing parameters to git. A git commit can hold a config file, but it cannot hold the metrics of a run, the artifacts a run produced, or the link from a model to the data it saw. A tracking server keeps parameters, metrics, data references and artifacts for every run in one place. Chapter 16.2 teaches MLflow and DVC and 16.6 covers registries, so this section covers only the infrastructure decisions behind them.
 
-The upstream image at that version runs only `pip install mlflow==$VERSION`. It has no PostgreSQL driver and no S3 client. So the platform builds a thin image of its own.
+MLflow needs two stores. The backend store holds run metadata and should be PostgreSQL for a shared team, because many people write to it at once. The artifact store holds files such as model weights and plots, and it should be object storage. The recommended shape is the tracking server as a proxy: with `--serve-artifacts` the server forwards uploads to the bucket named by `--artifacts-destination`. Researchers then need no bucket credentials, and the bucket keys stay with the server. The reason this matters is that a credential given to a researcher can be copied, pasted into a notebook and committed to a repository by accident. A key that never leaves the server cannot leak that way. The proxy costs some network traffic through the server, which is the trade-off to name if an interviewer asks. The `mlflow server` options were read from `mlflow/cli/__init__.py` at v3.18.0. The environment variable names are `MLFLOW_BACKEND_STORE_URI` and `MLFLOW_DEFAULT_ARTIFACT_ROOT`, not `BACKEND_STORE_URI` and `DEFAULT_ARTIFACT_ROOT`. A wrong name in a manifest fails quietly, so check the spelling against the source.
+
+The upstream image at that version runs only `pip install mlflow==$VERSION`. It has no PostgreSQL driver and no S3 client. So the platform builds a thin image of its own, adding the two drivers on top of the upstream one.
 
 ```dockerfile
 # MLflow tracking server image for the research platform.
@@ -361,7 +366,7 @@ FROM ghcr.io/mlflow/mlflow:v3.18.0
 RUN pip install --no-cache-dir psycopg2-binary==2.9.13 boto3==1.44.0
 ```
 
-The Kubernetes manifest, `c13_mlflow.yaml`, has six objects: a Namespace, a ServiceAccount, a Deployment with two replicas, a Service, a PodDisruptionBudget and a NetworkPolicy. The table lists the settings that matter and where each comes from.
+The Kubernetes manifest, `c13_mlflow.yaml`, has six objects: a Namespace, a ServiceAccount, a Deployment with two replicas, a Service, a PodDisruptionBudget and a NetworkPolicy. A PodDisruptionBudget tells Kubernetes how many replicas it may take down during a drain, and a NetworkPolicy says who may talk to the server. The table lists the settings that matter and where each comes from, so you can trace every value back to a source when an interviewer asks.
 
 | Setting | Value | Source |
 |---|---|---|
@@ -373,11 +378,11 @@ The Kubernetes manifest, `c13_mlflow.yaml`, has six objects: a Namespace, a Serv
 | S3 endpoint | `MLFLOW_S3_ENDPOINT_URL` | `environment_variables.py` |
 | Probes | `GET /health` | `mlflow/server/__init__.py` |
 
-Run on a laptop with SQLite instead of PostgreSQL and a local artifact path, the image behaves as follows. The probe `/health` answered 200. A request to the search API with a wrong Host header answered 403, and with the allowed host it answered 200. The image imported psycopg2 2.9.13, boto3 1.44.0 and mlflow 3.18.0. Note that `/health` answered 200 even for a wrong host, so a probe never tests the host check. It was not run against PostgreSQL, S3 or Kubernetes. kubeconform accepts all six objects.
+Run on a laptop with SQLite instead of PostgreSQL and a local artifact path, the image behaves as follows. The probe `/health` answered 200. A request to the search API with a wrong Host header answered 403, and with the allowed host it answered 200. The image imported psycopg2 2.9.13, boto3 1.44.0 and mlflow 3.18.0. Note that `/health` answered 200 even for a wrong host, so a probe never tests the host check. That is a useful trap to mention in an interview, because a probe that passes for the wrong reason gives false comfort. The image was not run against PostgreSQL, S3 or Kubernetes. kubeconform accepts all six objects.
 
-Two replicas are safe because the server is stateless. State lives in PostgreSQL and the bucket, so back those up. The server has an optional `--app-name basic-auth` mode. I left it off and assumed authentication at the ingress, which is my design choice.
+Two replicas are safe because the server is stateless. It holds no run data of its own, so either replica can answer any request. State lives in PostgreSQL and the bucket, so back those up. The server has an optional `--app-name basic-auth` mode. The chapter left it off and assumed authentication at the ingress, which is a design choice you should be ready to defend.
 
-DVC covers datasets. Git holds a small pointer file with a content hash. The bytes live in a remote. The script `c13_dvc_demo.sh` ran on the laptop with DVC 3.67.1 and a directory as the remote. It tracks a file, pushes it, changes it, pushes version two, then deletes the local copy and cache, checks out the version one tag and pulls. The result was the original three lines, and the pointer file carried the md5 hash `611479d5...`. That is the reproduction path: git tag plus remote bytes.
+DVC covers datasets. Git holds a small pointer file with a content hash. The bytes live in a remote. The script `c13_dvc_demo.sh` ran on the laptop with DVC 3.67.1 and a directory as the remote. It tracks a file, pushes it, changes it, pushes version two, then deletes the local copy and cache, checks out the version one tag and pulls. The result was the original three lines, and the pointer file carried the md5 hash `611479d5...`. That is the reproduction path: a git tag plus the remote bytes it points at.
 
 ```text
 v1 rows: 3
@@ -392,13 +397,13 @@ v1 md5 in git: - md5: 611479d52709200acd2623a31c0463d2
 
 ## 6. Fair sharing, quotas, preemption and idle reclamation
 
-A team owns a quarter of the cluster and is not using it this week. Another team runs a hundred-run sweep on the idle quarter. On Wednesday the owners return with a 12-GPU training job and find every GPU taken. This is the central trade-off. Idle capacity is waste, and lending it makes owners wait.
+A team owns a quarter of the cluster and is not using it this week. Another team runs a hundred-run sweep on the idle quarter. On Wednesday the owners return with a 12-GPU training job and find every GPU taken. This is the central trade-off of shared hardware. Idle capacity is waste, and lending it makes owners wait. Your design has to say which of those two costs it accepts, and why.
 
-Scalable Kubernetes Infrastructure for AI Platforms lists what a training queue system must do. It must create queues, assign quotas to groups, let groups share quotas when others are idle, manage priorities with preemption, and report by model, job and team. It names Kueue and Volcano as the two open source choices. I use Kueue, the same version as chapter 19.2, v0.20.5.
+Scalable Kubernetes Infrastructure for AI Platforms lists what a training queue system must do. It must create queues, assign quotas to groups, let groups share quotas when others are idle, manage priorities with preemption, and report by model, job and team. It names Kueue and Volcano as the two open source choices. This chapter uses Kueue, the same version as chapter 19.2, v0.20.5.
 
-Kueue has a small set of ideas. A ClusterQueue owns a nominal quota of a resource. Queues in the same cohort may borrow each other's idle quota. When an owner needs its quota back, `reclaimWithinCohort` decides whether it may preempt borrowers. `withinClusterQueue` decides whether a higher priority job may preempt a lower one inside one team. I read the v1beta2 CRD at tag v0.20.5. The allowed values for `reclaimWithinCohort` are Never, LowerPriority and Any. For `withinClusterQueue` they are Never, LowerPriority and LowerOrNewerEqualPriority. The `fairSharing` block takes a `weight`, which gives a queue an advantage when competing for unused resources. `c13_research_queues.yaml` defines one ResourceFlavor, four ClusterQueues of 14 GPUs in the cohort `research`, and a LocalQueue named `batch` in each team namespace. I validated it against the CRDs with `tools/check_crd_yaml.py`. It found no problems.
+Kueue has a small set of ideas, and each one answers one of the questions above. A ClusterQueue owns a nominal quota of a resource, which is the share the team is promised. Queues in the same cohort may borrow each other's idle quota, which is how waste disappears. When an owner needs its quota back, `reclaimWithinCohort` decides whether it may preempt borrowers, meaning stop their jobs to take the capacity back. `withinClusterQueue` decides whether a higher priority job may preempt a lower one inside one team. The v1beta2 CRD was read at tag v0.20.5. The allowed values for `reclaimWithinCohort` are Never, LowerPriority and Any. For `withinClusterQueue` they are Never, LowerPriority and LowerOrNewerEqualPriority. The `fairSharing` block takes a `weight`, which gives a queue an advantage when competing for unused resources. `c13_research_queues.yaml` defines one ResourceFlavor, four ClusterQueues of 14 GPUs in the cohort `research`, and a LocalQueue named `batch` in each team namespace. It was validated against the CRDs with `tools/check_crd_yaml.py`, which found no problems.
 
-A policy is easier to judge on a trace than in a paragraph. The simulator `c13_fairshare_sim.py` plays 48 hours on the stage 2 pool. The trace is made up and generated from a seed. It has 700 one-GPU sweep trials, mostly from team a, 150 short evaluations, 11 gang training jobs of 8 or 12 GPUs, and 68 notebook sessions. Team d is quiet and then needs 12 GPUs mid-afternoon of day one. The batch policies are these.
+A policy is easier to judge on a trace than in a paragraph. The simulator `c13_fairshare_sim.py` plays 48 hours on the stage 2 pool. The trace is made up and generated from a seed, so anyone who reruns it gets the same jobs. It has 700 one-GPU sweep trials, mostly from team a, 150 short evaluations, 11 gang training jobs of 8 or 12 GPUs, and 68 notebook sessions. A gang job is one that needs all its GPUs before it can start. Team d is quiet and then needs 12 GPUs mid-afternoon of day one. The batch policies are these.
 
 | Policy | Rule |
 |---|---|
@@ -417,11 +422,11 @@ reclaim      0.77         0         0      176       43.2          0
 
 Read it in order. Static is safe and wasteful. Utilisation is 0.49 and 378 sweep trials never finish in two days, while other teams' quota sits idle. Borrow fixes the waste, with utilisation at 0.76, but owners pay. The wait is measured only for train and eval jobs that fit inside their team's quota. The worst such wait under borrow is 448 minutes. Team d's first training job waits 7.5 hours behind borrowed sweep trials. Reclaim keeps the utilisation, 0.77, and brings the owner wait to zero. The price is 176 preemptions and 43.2 GPU-hours of lost work.
 
-Look at who pays that price. All 176 victims are sweep trials, which have no checkpoint and restart from zero. No training job is preempted. Training jobs here have priority and a 30-minute checkpoint interval, so one preemption would cost at most 30 minutes of work. Sweep trials are cheap to restart, so they are the right borrowers. This is a design rule worth saying aloud: the work that borrows idle capacity must be work that tolerates being killed.
+Look at who pays that price. All 176 victims are sweep trials, which have no checkpoint and restart from zero. No training job is preempted. Training jobs here have priority and a 30-minute checkpoint interval, so one preemption would cost at most 30 minutes of work. Sweep trials are cheap to restart, so they are the right borrowers. This is a design rule worth saying aloud: the work that borrows idle capacity must be work that tolerates being killed. If you remember one line from this section, remember that one.
 
-I simplified three things and you should say so. Victims are the lowest priority and newest jobs. A borrower loses only the part above its nominal quota. A plan runs only if it frees the whole gang. These are my modelling choices, not verified against Kueue's internals. The simulator also ignores topology, which chapter 19.2 covers.
+Three things in the simulator are simplified, and you should say so out loud. Victims are the lowest priority and newest jobs. A borrower loses only the part above its nominal quota. A plan runs only if it frees the whole gang. These are modelling choices of this chapter, not verified against Kueue's internals. The simulator also ignores topology, which chapter 19.2 covers. An interviewer who knows Kueue well will ask about these gaps, and a candidate who names them first earns trust.
 
-Notebooks sit outside the batch policies because they are interactive and should not be killed. The same trace gives 34 notebook sessions a day for eight GPUs. Each holds a GPU for two to eight hours and uses it for 20 to 60 percent of that time. The second table compares no culling with culling after 30 idle minutes.
+Notebooks sit outside the batch policies because they are interactive and should not be killed in the middle of a thought. The same trace gives 34 notebook sessions a day for eight GPUs. Each holds a GPU for two to eight hours and uses it for 20 to 60 percent of that time. The second table compares no culling with culling after 30 idle minutes.
 
 ```text
 notebooks  sessions  culled   held h   idle h  wait p50  wait p95  queued
@@ -429,9 +434,9 @@ no_cull          68       0      344      200       321       634       0
 cull_30          68      68      177       34        17       102       0
 ```
 
-Without culling, 200 of 344 held GPU-hours are idle and half the sessions wait over five hours. With culling at 30 minutes, idle hours fall to 34 and the median wait is 17 minutes. Every session in this trace goes idle, so the culled count equals the session count. Real behaviour is less tidy. The simulator never cuts active minutes, and a test checks that. The z2jh docs say open notebooks are saved regularly into `.ipynb_checkpoints`, so work is not usually lost.
+Without culling, 200 of 344 held GPU-hours are idle and half the sessions wait over five hours. With culling at 30 minutes, idle hours fall to 34 and the median wait is 17 minutes. Every session in this trace goes idle, so the culled count equals the session count. Reading the table is a good drill for an interview. Start with the held hours, then the idle hours, and only then the waits, because the waits are what researchers feel but the idle hours are what the budget feels. Real behaviour is less tidy. The simulator never cuts active minutes, and a test checks that. The z2jh docs say open notebooks are saved regularly into `.ipynb_checkpoints`, so work is not usually lost.
 
-Two further levers exist. A fair sharing weight gives one team a bigger claim on unused capacity. MIG slices, chapter 19.8, stop small experiments wasting a whole card.
+Two further levers exist. A fair sharing weight gives one team a bigger claim on unused capacity, which is useful when one team's jobs matter more for a deadline. MIG slices, chapter 19.8, stop small experiments wasting a whole card, because one card can be split into several isolated pieces.
 
 **Decision rule:** Lend idle quota only to work that tolerates preemption, give owners reclaim rights, and cull idle notebooks on a short timer.
 
@@ -441,22 +446,22 @@ Two further levers exist. A fair sharing weight gives one team a bigger claim on
 
 ## 7. Data access, security and governance
 
-A new hire joins on Friday and by Monday can read every team's raw data, including customer text. Nobody granted that on purpose. It came from a shared bucket and a shared namespace.
+A new hire joins on Friday and by Monday can read every team's raw data, including customer text. Nobody granted that on purpose. It came from a shared bucket and a shared namespace, and nobody checked what the defaults allowed. This is the kind of gap an interviewer wants you to find in your own design before they point it out.
 
-Production Kubernetes describes isolation at three planes. The workload plane is the nodes, the control plane is the API server and its policy, and platform services are logging, monitoring and DNS. Namespaces are the base boundary, and RBAC, ResourceQuota and NetworkPolicy hang off them. The book warns that a namespace is only a logical boundary in the control plane. By default pods from different namespaces can share a node and talk to each other. It also notes that tenants can usually list all namespaces and that RBAC alone cannot hide them.
+Production Kubernetes describes isolation at three planes. The workload plane is the nodes, the control plane is the API server and its policy, and platform services are logging, monitoring and DNS. Namespaces are the base boundary, and RBAC, ResourceQuota and NetworkPolicy hang off them. The book warns that a namespace is only a logical boundary in the control plane. By default pods from different namespaces can share a node and talk to each other. It also notes that tenants can usually list all namespaces and that RBAC alone cannot hide them. In plain words, a namespace is a label on a box, not a wall around it.
 
-For a soft-multitenant research team, I would apply six controls.
+For a soft-multitenant research team, apply six controls. Each one closes a gap that a namespace alone leaves open.
 
-1. Identity comes from one SSO. Team membership is a group in that identity provider. The hub allows only one organisation, as in the values file.
-2. Each team has a namespace for batch work, a ClusterQueue, and a role limited to that namespace. Notebook users live in the shared notebook namespace.
-3. A default-deny NetworkPolicy sits in each tenant namespace. The MLflow policy in this chapter allows ingress only from namespaces labelled as tenants. Production Kubernetes explains the default-deny approach. The z2jh chart also ships its own network policies. The chart blocks the cloud metadata address from user pods by default through an init container that uses iptables, which I confirmed in its values.
-4. Data access follows teams. Raw datasets live under per-team prefixes. The pod gets credentials through its service account. Researchers never hold long-lived bucket keys. The MLflow server holds the bucket credentials and proxies uploads, so artifacts cannot be written outside the tracking path.
+1. Identity comes from one SSO. Team membership is a group in that identity provider. The hub allows only one organisation, as in the values file. When someone leaves the team, removing them from the group removes their access everywhere at once.
+2. Each team has a namespace for batch work, a ClusterQueue, and a role limited to that namespace. Notebook users live in the shared notebook namespace. The role means a researcher can see their own team's jobs and nothing else.
+3. A default-deny NetworkPolicy sits in each tenant namespace. The MLflow policy in this chapter allows ingress only from namespaces labelled as tenants. Production Kubernetes explains the default-deny approach, which blocks all traffic unless a policy allows it. The z2jh chart also ships its own network policies. The chart blocks the cloud metadata address from user pods by default through an init container that uses iptables, which the chapter confirmed in its values.
+4. Data access follows teams. Raw datasets live under per-team prefixes, which are the folder-like paths inside a bucket. The pod gets credentials through its service account. Researchers never hold long-lived bucket keys. The MLflow server holds the bucket credentials and proxies uploads, so artifacts cannot be written outside the tracking path.
 5. Every dataset has an owner, a licence field and a retention rule. This is the useful core of FAIR data: findable by name and version, accessible through one protocol, reusable because the licence and provenance are written down. Chapter 16.13 covers governance and 18.x covers supply chain and secrets.
-6. Admission control and image rules stop untrusted images. Production Kubernetes covers admission control, and Part 18 covers signing.
+6. Admission control and image rules stop untrusted images. Admission control is the gate the API server runs before it accepts an object, so it can refuse an image that is not signed or not from an approved registry. Production Kubernetes covers admission control, and Part 18 covers signing.
 
-The values file and manifests contain no passwords. The database URI, OAuth client secret and bucket keys are Secrets created out of band, in files of mode 600 owned by the engineer who applies them, and never committed.
+The values file and manifests contain no passwords. The database URI, OAuth client secret and bucket keys are Secrets created out of band, in files of mode 600 owned by the engineer who applies them, and never committed. The point is that the design files can be read by everyone who reviews the design, while the secrets stay with the people who need them.
 
-Hard multi-tenancy is a different problem. Outside companies running untrusted code would need separate clusters or strong sandboxing. Say that, then explain why one company's teams do not.
+Hard multi-tenancy is a different problem. Outside companies running untrusted code would need separate clusters or strong sandboxing, because a bug in one tenant's container could reach another tenant's data. Say that, then explain why one company's teams do not need that cost. The people in a single company are known, their code is reviewed, and their mistakes are accidents rather than attacks. That is the reason soft tenancy is the right choice here.
 
 **Decision rule:** Bind identity to teams once, enforce it at namespace, network and bucket prefix, and keep every secret out of files that go to git.
 
@@ -466,16 +471,16 @@ Hard multi-tenancy is a different problem. Outside companies running untrusted c
 
 ## 8. Cost attribution
 
-Finance sends the monthly GPU invoice and asks which team spent it. The platform team has a pool-wide total and nothing else. The argument that follows costs more than the usage report would have.
+Finance sends the monthly GPU invoice and asks which team spent it. The platform team has a pool-wide total and nothing else. The argument that follows costs more than the usage report would have. This section explains how to turn one total into a bill that every team accepts.
 
-Cost attribution has three jobs. Showback tells each team what it used. Chargeback bills teams. Both need usage records with a team label. Chapter 16.14 and its query `chargeback_query.sql` cover the pattern, and 19.8 prices MIG slices. This section adds the pool-level rules that fit research use.
+Cost attribution has three jobs. Showback tells each team what it used. Chargeback bills teams. Both need usage records with a team label. Chapter 16.14 and its query `chargeback_query.sql` cover the pattern, and 19.8 prices MIG slices. This section adds the pool-level rules that fit research use, where many teams share one pool and idle time is the biggest cost.
 
-The calculator, `c13_cost_attribution.py`, applies four rules. I chose them. They are not a standard.
+The calculator, `c13_cost_attribution.py`, applies four rules. They are choices made for this design, and they are not a standard. Each rule is simple enough to explain in one breath, which is what you want in a meeting about money.
 
 1. Direct GPU cost is allocated GPU-hours times price. Allocated, not busy. A held GPU costs the same as a used one, which is what discourages idle holding.
 2. Idle capacity is capacity minus allocated hours. Nobody asked for it, so it must be spread somehow.
 3. Storage goes to the team that owns the data. Platform fixed cost follows each team's share of direct GPU cost.
-4. Money uses Decimal, and cents are split so that bills add up exactly to the pool cost.
+4. Money uses Decimal, and cents are split so that bills add up exactly to the pool cost. Floating-point rounding can leave a cent missing or extra, and an invoice that does not sum is the fastest way to lose a team's trust.
 
 Rule 2 is the interesting one. The calculator offers two choices. Pro rata spreads idle cost by direct cost. Heavy users pay most of the idle share, which tells them that their bursts need capacity that sits empty between peaks. The quota rule spreads it by quota share. Every owner pays for the capacity it reserved, whether or not it used it. This is the output on a made-up month, with a placeholder price of 2.50.
 
@@ -494,11 +499,13 @@ team-c       5720     4490   14300.00   12312.50    384.00   1300.99   28297.49
 team-d       2430     1900    6075.00   12312.50    136.00    552.69   19076.19
 ```
 
-Team d shows the policy effect. Its total is 11,300 under pro rata and 19,076 under the quota rule. A small team that rarely uses its quota prefers pro rata. A platform lead who wants quotas to mean something prefers the quota rule, because a team that sits on unused quota then feels the cost. Say which you would choose and why. I would start with pro rata and move to the quota rule once teams trust the numbers.
+Team d shows the policy effect. Its total is 11,300 under pro rata and 19,076 under the quota rule. A small team that rarely uses its quota prefers pro rata. A platform lead who wants quotas to mean something prefers the quota rule, because a team that sits on unused quota then feels the cost. Say which you would choose and why. This chapter would start with pro rata and move to the quota rule once teams trust the numbers, because a new rule that doubles one team's bill starts an argument nobody wins.
 
 The column of held-but-idle hours is reported, not re-priced. Team a held 10,410 GPU-hours and used 8,340. That gap is the target for the idle alert in section 3.
 
-Tests cover the failure cases: over-capacity allocation, unknown teams, busy hours above allocated hours and negative values all raise errors.
+The difference between showback and chargeback is worth stating in the interview. Showback is a report that tells a team what it used, and nobody pays from their own budget yet. Chargeback moves real money between budgets. Most platforms start with showback, because a team needs a few months of numbers it trusts before it accepts a bill. Chargeback without trust produces arguments about the calculator, and the arguments hide the real question of whether the GPUs were used well. Showing the gap to the team is what changes behaviour, because a team can see its own held hours and release them.
+
+Tests cover the failure cases: over-capacity allocation, unknown teams, busy hours above allocated hours and negative values all raise errors. A calculator that silently accepts a negative number can produce a bill that looks plausible and is wrong, so the tests exist to make those cases loud.
 
 **Decision rule:** Charge allocated hours, report idle-held hours separately, and choose one written rule for who pays for empty capacity.
 
@@ -508,7 +515,7 @@ Tests cover the failure cases: over-capacity allocation, unknown teams, busy hou
 
 ## 9. Growing from 5 to 100 researchers
 
-At five researchers the booking spreadsheet works. At twenty-five it causes arguments. At a hundred, someone must own the platform, or every researcher becomes a part-time platform engineer. The design should change in steps and not in one rewrite.
+At five researchers the booking spreadsheet works. At twenty-five it causes arguments, because two people believe they booked the same slot. At a hundred, someone must own the platform, or every researcher becomes a part-time platform engineer. The design should change in steps and not in one rewrite, because a rewrite for a hundred people is expensive and most of its parts are not needed yet.
 
 | Stage | Add | Keep simple | First thing that breaks |
 |---|---|---|---|
@@ -516,13 +523,15 @@ At five researchers the booking spreadsheet works. At twenty-five it causes argu
 | 2: 25 people, 64 GPUs | Kubernetes, JupyterHub, PostgreSQL MLflow, Kueue quotas, culling, showback | Four teams, one cluster | One team monopolises borrowed capacity. Fix with reclaim and checkpoints |
 | 3: 100 people, 256 GPUs | Team-level chargeback, MIG for small work, topology-aware gang scheduling, a second pool or region, a data catalog | Same tools, more queues | Queue admin load and storage throughput. Fix with self-service queue templates and tiered storage |
 
-These stages are my reasoning, not a measured history. Add environments and tracking first, because they cannot be added retroactively to old results. Add quotas when two teams compete and cost reports when someone asks for a budget. Do not build stage 3 for stage 1.
+These stages are the chapter's own reasoning, not a measured history of any real team. Add environments and tracking first, because they cannot be added retroactively to old results. A result trained last year without a manifest stays unreproducible forever, no matter what you install today. Add quotas when two teams compete and cost reports when someone asks for a budget. Do not build stage 3 for stage 1, because a platform team that builds for a hundred people on day one spends its time maintaining things nobody uses.
 
-Storage needs three tiers. Notebook homes need small durable volumes. Datasets need throughput, and chapters 13.2, 13.4 and 13.5 cover staging, Lustre and object stores. Checkpoints need burst writes, chapter 13.7. Do not put all three on one volume.
+Stage 2 gets the detailed treatment in this chapter for a simple reason. It is the stage where sharing starts to hurt, and that is where the trade-offs live. Stage 1 has too few people for the rules to matter. Stage 3 mostly repeats stage 2 with more queues and more people, so the lessons carry over once stage 2 is understood. When you describe growth in an interview, say which stage you are designing for now, and why the next one is a later problem.
 
-Name three runbooks in the interview. A hung hub is cured by a restart and users lose only unsaved state. A dead tracking database is restored from backup. A failed queue controller stops new admission without killing running work.
+Storage needs three tiers, because the three kinds of data behave differently. Notebook homes need small durable volumes that survive a restart. Datasets need throughput, so many GPUs can read them at once. Checkpoints need burst writes, a short flood of data every few minutes. Chapters 13.2, 13.4 and 13.5 cover staging, Lustre and object stores, and chapter 13.7 covers checkpoints. Do not put all three on one volume, because the burst of a checkpoint will slow every notebook that shares it.
 
-Capacity planning for the next stage is chapter 19.9. The idle-held hours from section 8 are its best input, because they show whether you need more GPUs or better use of the ones you own.
+Name three runbooks in the interview. A runbook is a written procedure for a known failure, so the on-call engineer does not have to invent a fix at night. A hung hub is cured by a restart and users lose only unsaved state. A dead tracking database is restored from backup. A failed queue controller stops new admission without killing running work, which is the outcome you want from a control-plane failure.
+
+Capacity planning for the next stage is chapter 19.9. The idle-held hours from section 8 are its best input, because they show whether you need more GPUs or better use of the ones you own. Buying hardware before you have measured idle time is the most expensive way to solve a sharing problem.
 
 **Decision rule:** Build in the order environments, tracking, quotas, cost, and add each only when its pain is visible.
 
@@ -532,7 +541,7 @@ Capacity planning for the next stage is chapter 19.9. The idle-held hours from s
 
 ## 10. Hands-on lab
 
-This capstone lab runs on a laptop with Docker and no GPU. Steps 1 to 6 were run in this authoring session on macOS arm64, and the results below are real. Nothing here touched a Kubernetes cluster or a GPU.
+Picture a laptop with Docker, a terminal and no GPU. This lab walks through the design's code on that laptop, one step at a time. Steps 1 to 6 were run in this authoring session on macOS arm64, and the results below are real. Nothing here touched a Kubernetes cluster or a GPU, so the cluster steps are described but not run.
 
 ### Step 1: run the tests
 
@@ -540,7 +549,7 @@ This capstone lab runs on a laptop with Docker and no GPU. Steps 1 to 6 were run
 python3 -m pytest code/part19/test_c13_*.py -q
 ```
 
-Expected: all tests pass. Run here: 50 passed for the chapter 13 files, and the full part19 suite gave 627 passed and 4 skipped. What to record: the pass count and any skip. A skip means `kubeconform` or `promtool` is missing.
+Expected: all tests pass. Run here: 50 passed for the chapter 13 files. The full part19 suite gave 627 passed. It also gave 4 skipped. What to record: the pass count and any skip. A skip means `kubeconform` or `promtool` is missing.
 
 ### Step 2: validate the Helm values
 
@@ -548,7 +557,7 @@ Expected: all tests pass. Run here: 50 passed for the chapter 13 files, and the 
 bash code/part19/c13_validate.sh
 ```
 
-Expected: the rendered chart has 34 resources, all valid, then 8 valid core objects, then `checked 9 resources, 0 problems` for the Kueue objects. Run here: yes, with Helm v4.2.3, kubeconform and the Kueue v0.20.5 CRDs. What to record: the three summary lines. The pytest schema test is the offline version, using a saved copy of the chart's `values.schema.json` and defaults.
+Expected: the rendered chart has 34 resources, all valid. Then there are 8 valid core objects. Then the Kueue objects show `checked 9 resources, 0 problems`. Run here: yes, with Helm v4.2.3, kubeconform and the Kueue v0.20.5 CRDs. What to record: the three summary lines. The pytest schema test is the offline version, using a saved copy of the chart's `values.schema.json` and defaults.
 
 ### Step 3: run the simulators
 
@@ -557,7 +566,7 @@ python3 code/part19/c13_fairshare_sim.py
 python3 code/part19/c13_cost_attribution.py
 ```
 
-Expected: the two tables in sections 6 and 8. Run here: yes, output matches. What to record: utilisation and owner wait for each policy. Change `NOMINAL` or the trace seed and predict the change before you rerun.
+Expected: the two tables in sections 6 and 8. Run here: yes, output matches. What to record: utilisation and owner wait for each policy. Change `NOMINAL` or the trace seed and predict the change before you rerun. A prediction you can check is the fastest way to learn what the model is doing.
 
 ### Step 4: check a manifest
 
@@ -567,6 +576,8 @@ python3 code/part19/c13_repro_checklist.py code/part19/c13_run_manifest_bad.json
 ```
 
 Expected: exit code 0 for the first and 1 for the second. Run here: yes. What to record: which rules fail and what you would change in the job to fix each.
+
+The bad manifest is the more useful file to study. A good manifest only shows that the checklist can pass, while the bad one shows how each missing record looks to the runner. Read each FAIL line and ask what a researcher would have to do to make it pass. Most of the answers are one command long, which is the point. A reproducibility rule that costs ten minutes per run gets followed, and one that costs a day gets skipped.
 
 ### Step 5: build the images and prove the MLflow server
 
@@ -588,13 +599,15 @@ Expected: the final lines show three rows for version one and its md5. Run here:
 
 ### Step 7: on a real cluster
 
-Install the chart with the values file and a separate secrets file, create the namespaces and queues, then submit a borrowing sweep from team a and a training job from team d. Expected shape: team d's job preempts sweep pods and starts within a minute or two. Not run: needs a cluster, GPUs and a DNS name for OAuth. Untested here, so treat timings as unknown.
+Install the chart with the values file and a separate secrets file, create the namespaces and queues, then submit a borrowing sweep from team a and a training job from team d. Expected shape: team d's job preempts sweep pods and starts within a minute or two. Not run: needs a cluster, GPUs and a DNS name for OAuth. Untested here, so treat timings as unknown. Until someone runs this step on real hardware, the preemption timing is a prediction and should be described that way.
 
 ---
 
 ## How to answer out loud
 
-Say the assumptions first: "I will assume 25 researchers, 4 teams and 64 GPUs, and tell you where the answer changes." Then keep to this order.
+The interviewer has just asked you to design the platform, and the whiteboard is still blank. Your first sentence sets the tone for everything after it. Say the assumptions first, so the interviewer can correct them before you build on them.
+
+"I will assume 25 researchers, 4 teams and 64 GPUs, and tell you where the answer changes." Then keep to this order.
 
 1. Requirements and numbers, five minutes: users, work types, the four requirements, 46,080 GPU-hours a month.
 2. Shape, five minutes: notebooks, queue, tracking, data, one identity.
@@ -603,9 +616,9 @@ Say the assumptions first: "I will assume 25 researchers, 4 teams and 64 GPUs, a
 5. Security and cost, seven minutes: namespace plus RBAC plus network policy plus data prefixes, allocated-hours billing.
 6. Growth and failure, the rest: the 5, 25 and 100 steps and the first thing that breaks at each.
 
-Numbers to state: 46,080 GPU-hours a month, the 8 and 56 split, and the static versus borrow utilisation gap. Say that trace results are made up.
+Numbers to state: 46,080 GPU-hours a month, the 8 and 56 split, and the static versus borrow utilisation gap. Say that trace results are made up. An interviewer trusts a number more when you say where it came from and what would change it.
 
-The trade-offs to name are borrowing against owner wait, preemption against lost work, culling against surprise for the user, and strong isolation against cost. Say which side you pick and what would change your mind.
+The trade-offs to name are borrowing against owner wait, preemption against lost work, culling against surprise for the user, and strong isolation against cost. Say which side you pick and what would change your mind. A good answer does not pretend the trade-off is free, and it does not hide behind "it depends" either. It names the choice and the condition under which the choice flips.
 
 Likely follow-ups and short answers:
 
@@ -617,6 +630,8 @@ Likely follow-ups and short answers:
 ---
 
 ## Exercises
+
+Each exercise below starts from a request you might get on the job. Imagine a colleague stops by your desk with each one, and you have an afternoon to answer it with code and a short note. Work through them in order, because later ones reuse the simulator and the manifest from earlier ones. If an exercise feels stuck, rerun the simulator with the default seed first, so that your numbers can be compared with the tables in this chapter.
 
 1. **Change the lending rule.** Add a lending cap so that a team can lend at most half its quota. *Solution sketch:* each resource entry in a ClusterQueue has a `lendingLimit` field next to `borrowingLimit` in the CRD. In the simulator, subtract a lending cap from what other teams may borrow, then check that utilisation falls and owner wait stays at zero.
 2. **Protect training from preemption.** Show that lowering the sweep priority below evaluation changes who is preempted. *Solution sketch:* change `PRIO` in `c13_fairshare_sim.py`, rerun, and count preemptions by kind with the job list. Evaluate whether eval jobs now lose work.

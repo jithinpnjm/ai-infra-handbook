@@ -24,13 +24,13 @@ lab_venue: "On-prem"
 
 ## Why this matters for AI infrastructure
 
-A candidate has read forty chapters and still freezes when an interviewer asks why a training pod ignores a shutdown signal. The knowledge is there, but it was never practised out loud. Reading a chapter and answering a question are different skills, and only the second one is tested in a loop.
+A candidate has read forty chapters and still freezes when an interviewer asks why a training pod ignores a shutdown signal. You can picture the moment. The candidate knows the material, has the words somewhere in memory, and still says nothing for five seconds. The knowledge is there, but it was never practised out loud. Reading a chapter and answering a question are different skills, and only the second one is tested in a loop.
 
-This chapter turns the handbook into a practice bank. It holds 176 questions across sixteen topics and three levels. Every question points to the chapter that teaches the answer, so a missed question sends you to a known page and not to a search engine.
+This chapter turns the handbook into a practice bank. It holds 176 questions across sixteen topics and three levels. Every question points to the chapter that teaches the answer, so a missed question sends you to a known page and not to a search engine. That link matters more than it looks. A search engine gives you ten pages of opinions, while a linked chapter gives you one page that someone checked against a source.
 
 The bank is a capstone for the whole handbook. It is also honest about its limits. A question of this kind may be asked in an interview, but no entry claims that any company asks it. The answers are outlines in plain speech, taken from what each chapter sources. They are meant to be rephrased in your own words, with your own numbers from your own work.
 
-The full bank lives in `code/part19/c14_question_bank.json` and has tested tools around it. This chapter teaches how to use the bank, how to shape an answer, and shows 40 complete questions as a sample. Nebius-specific drill questions are not repeated here, because Volume 20 already holds them.
+The full bank lives in `code/part19/c14_question_bank.json` and has tested tools around it. This chapter teaches how to use the bank, how to shape an answer, and shows 40 complete questions as a sample. Nebius-specific drill questions are not repeated here, because Volume 20 already holds them. Treat the sample as a set of examples to copy the shape from, not as the material you memorise.
 
 ## Prerequisites and outcomes
 
@@ -42,16 +42,13 @@ The full bank lives in `code/part19/c14_question_bank.json` and has tested tools
 
 ### Outcomes
 
-- Draw a mixed practice set by topic and level, and grade yourself honestly.
-- Turn a topic into an answer with a clear opening, a mechanism, a number and a trade-off.
-- Find the chapter behind any question you miss, and schedule it for review.
-- Validate the bank when you add your own questions.
+Picture the night before a mock loop. You have a stack of notes, an hour, and no idea which topic will come first. This chapter gives you a way to spend that hour well. It shows how to draw a mixed practice set by topic and level and grade yourself honestly. It explains how to turn a topic into an answer with a clear opening, a mechanism, a number and a trade-off. It then shows how to find the chapter behind any question you miss and schedule it for review, and how to validate the bank when you add your own questions.
 
 ## 1. How the bank is built
 
-You open a mock interview and the first question is on Kubernetes. The second is on storage. The third is a behavioural prompt. Real loops jump between topics, so the bank is organised to let you practise that jump.
+You open a mock interview and the first question is on Kubernetes. The second is on storage. The third is a behavioural prompt. Real loops jump between topics without warning, so the bank is organised to let you practise that jump.
 
-Each entry has the same fields, so nothing is left to memory. The question, the level, the topic and the teaching chapter come first. Then a model answer outline, what a strong answer contains, a common weak answer, and a follow-up the interviewer might ask next. The weak answer matters most. Many failed answers are not wrong, they are shallow.
+Each entry has the same fields, so nothing is left to memory. The question, the level, the topic and the teaching chapter come first. Then a model answer outline, what a strong answer contains, a common weak answer, and a follow-up the interviewer might ask next. The weak answer matters most. Many failed answers are not wrong, they are shallow. A shallow answer names the right component and stops there, and the interviewer hears a recital. Reading the weak answer next to the model answer shows you the exact place where a recital turns into reasoning.
 
 ```mermaid
 flowchart LR
@@ -64,7 +61,7 @@ flowchart LR
     F --> H["Question returns in 2 to 16 days"]
 ```
 
-The diagram shows one cycle. The steps are in the table below.
+The diagram shows one cycle. The steps are in the table below. Each cycle asks you to do the uncomfortable part first, which is to answer before you read. Reading first feels like progress, but it turns the drill into recognition, and recognition does not hold up under pressure.
 
 | Step | What you do | Tool |
 |---|---|---|
@@ -75,7 +72,7 @@ The diagram shows one cycle. The steps are in the table below.
 | Review | Missed questions return the next day | `c14_score.py` state file |
 | Repair | Read the linked chapter and redo the question | Handbook |
 
-The levels have a plain meaning. Core questions test definitions and the first thing you would check. Senior questions test mechanism and trade-off. Stretch questions test arithmetic, rare failures or design under constraints. A candidate for a platform role should be comfortable with core and most of senior.
+The levels have a plain meaning. Core questions test definitions and the first thing you would check. Senior questions test mechanism and trade-off. Stretch questions test arithmetic, rare failures or design under constraints. A candidate for a platform role should be comfortable with core and most of senior. Stretch questions are worth attempting, but a miss there is not a reason to panic, because few interviews go that deep on every topic.
 
 **Decision rule:** Practise in short mixed sets of ten, and send every grade of 0 or 1 back to its chapter the same day.
 
@@ -83,15 +80,15 @@ The levels have a plain meaning. Core questions test definitions and the first t
 
 ## 2. How to answer
 
-The interviewer asks why a node is slow, and the candidate starts listing tools. After a minute the interviewer still does not know what the candidate thinks. A list of tools is not an answer.
+The interviewer asks why a node is slow, and the candidate starts listing tools. After a minute the interviewer still does not know what the candidate thinks. A list of tools is not an answer. It is a set of parts with no story about how they fit together, and the interviewer has to do the reasoning for you.
 
-A good answer has a shape. Say what you think the problem is in one sentence. Give the mechanism in plain words. Name the first measurement you would take, and say what result would change your mind. Close with the trade-off or the fix. The entries in the bank follow this shape, so reading ten of them teaches it.
+A good answer has a shape. Say what you think the problem is in one sentence. Give the mechanism in plain words. Name the first measurement you would take, and say what result would change your mind. Close with the trade-off or the fix. The entries in the bank follow this shape, so reading ten of them teaches it without a lecture. Once the shape is in your head, you can use it on questions the bank never mentions.
 
-Three habits separate strong answers from weak ones. First, separate what you know from what you assume. A sentence such as "I would check this first, because it is cheap" is better than a confident guess. Second, keep numbers few and sourced. If you quote a default, say where it comes from, or say you would check your version. Third, answer the question that was asked, then offer the deeper layer only if invited. The follow-up field in each entry shows where interviewers usually go next.
+Three habits separate strong answers from weak ones. First, separate what you know from what you assume. A sentence such as "I would check this first, because it is cheap" is better than a confident guess, because it tells the interviewer how you reason when you are not sure. Second, keep numbers few and sourced. If you quote a default, say where it comes from, or say you would check your version. Third, answer the question that was asked, then offer the deeper layer only if invited. The follow-up field in each entry shows where interviewers usually go next, so you can prepare one sentence for it.
 
-Weak answers in the bank fall into a few patterns. Some name a fix without a cause. Some blame the biggest component, such as the network or the scheduler. Some quote a peak figure as if it were an operating figure. Some restart things before reading evidence. When you grade yourself, check whether your answer matches one of these patterns.
+Weak answers in the bank fall into a few patterns. Some name a fix without a cause. Some blame the biggest component, such as the network or the scheduler, because it is the most familiar one. Some quote a peak figure as if it were an operating figure, which is the easiest way to sound confident and wrong at the same time. Some restart things before reading evidence. When you grade yourself, check whether your answer matches one of these patterns, because the pattern tells you what to fix next.
 
-For design and behavioural questions, spoken order matters more. Section 5 gives a speaking order. For incident stories, give the role, the impact, the mitigation and what changed afterwards, and never invent numbers.
+For design and behavioural questions, spoken order matters more. Section 5 gives a speaking order. For incident stories, give the role, the impact, the mitigation and what changed afterwards, and never invent numbers. An invented number is easy to catch in a follow-up, and once it is caught, the rest of the story loses credit too.
 
 **Decision rule:** Open with your best one-sentence diagnosis, then the mechanism, then the first measurement, then the trade-off.
 
@@ -99,7 +96,7 @@ For design and behavioural questions, spoken order matters more. Section 5 gives
 
 ## 3. The bank at a glance
 
-You have two weeks before a loop and a job description that mentions Slurm, Kubernetes and inference. You need to know where the questions are and how many of each there are. The table lists them, with the home chapters.
+You have two weeks before a loop and a job description that mentions Slurm, Kubernetes and inference. You need to know where the questions are and how many of each there are. The table lists them, with the home chapters. Use it to plan your two weeks, because the topics with the most questions are not always the ones the job description asks for.
 
 | Topic | Questions | Core / senior / stretch | Teaching chapters |
 |---|---|---|---|
@@ -120,11 +117,11 @@ You have two weeks before a loop and a job description that mentions Slurm, Kube
 | Behavioural | 8 | 3 / 5 / 0 | 5.25, 9.13, 11.26, 17.11, 17.13, 20.28 |
 | Slurm, HPC and hardware | 10 | 3 / 5 / 2 | 6.9, 6.10, 6.14, 6.15, 8.5, 9.6 |
 
-Topic weights should follow the job description. `planning/JD_MAPPING.md` states that GPU-cloud roles treat Slurm, InfiniBand and NCCL as hard requirements, and that Kubernetes and inference roles lean on GPU Operator, DCGM, vLLM, Triton and KServe. So a candidate for the first family should draw more from slurm_hpc_hardware, ai_networking and gpu_cuda, and a candidate for the second family should draw more from gpu_on_kubernetes, inference and mlops. The walkthrough runner accepts repeated `--topic` filters for this.
+Topic weights should follow the job description. `planning/JD_MAPPING.md` states that GPU-cloud roles treat Slurm, InfiniBand and NCCL as hard requirements, and that Kubernetes and inference roles lean on GPU Operator, DCGM, vLLM, Triton and KServe. So a candidate for the first family should draw more from slurm_hpc_hardware, ai_networking and gpu_cuda, and a candidate for the second family should draw more from gpu_on_kubernetes, inference and mlops. The walkthrough runner accepts repeated `--topic` filters for this. A simple rule is to spend most of your drill time on the topics the posting names by name, and a smaller share on the rest.
 
 Some topics point outward. Linux triage, network debugging, estimation, serving failure, SLO design, autoscaling, request routing, Terraform and incident drills already exist as company-specific questions. Do those drills there. This bank links to them and does not copy them: chapters 20.3 to 20.28.
 
-Some topic chapters have not yet been through the same source check as the other parts. Parts 16, 17 and 18 and some chapters of Part 19 are in that group. Entries linked to them carry a note in the `basis` field, and their thresholds should be read as chapter examples.
+Some topic chapters have not yet been through the same source check as the other parts. Parts 16, 17 and 18 and some chapters of Part 19 are in that group. Entries linked to them carry a note in the `basis` field, and their thresholds should be read as chapter examples. When you see such a note, treat the number as a practice value and check it against the chapter before you repeat it in a real loop.
 
 **Decision rule:** Weight your practice by the job description, and do company-specific drills.
 
@@ -132,17 +129,21 @@ Some topic chapters have not yet been through the same source check as the other
 
 ## 4. Sample questions with answers
 
-It is the night before a mock interview and you want to see what a full entry looks like in each topic. The 40 entries below are a sample. The other questions are in the JSON file, with the same fields.
+It is the night before a mock interview and you want to see what a full entry looks like in each topic. The 40 entries below are a sample. The other questions are in the JSON file, with the same fields. Each sample has a short note before the answer about what the question is testing, and a short note after the model answer about what makes it hold. Those notes are guides for reading. They are not part of the answer you give.
 
-The sample leaves out the strong-points list to save space, but the JSON has it. Read the question, answer aloud, then read the entry. Do not read the model answer as a script. It is an outline in plain speech, and the point is to hit the same ideas in your own words.
+The sample leaves out the strong-points list to save space, but the JSON has it. Read the question, answer aloud, then read the entry. Do not read the model answer as a script. It is an outline in plain speech, and the point is to hit the same ideas in your own words. Saying an answer in your own words is also the best test that you understood it.
 
 ### Linux
 
 **Why must memlock and nofile limits be raised on a GPU compute node, and why does editing limits.conf not fix a systemd service?**
 
+This question checks whether you know that a login shell and a system service read their limits from different places. A candidate who has only ever typed ulimit will get the reason wrong.
+
 Level core. Teaching chapter: [1.8](../part-01-linux/08-processes-signals-and-job-control.md).
 
 Model answer. RDMA and CUDA pinned host memory lock large buffers in RAM, so the node needs memlock unlimited. Distributed training opens many sockets and shard files, so it needs a high nofile value. PAM applies /etc/security/limits.conf only to login sessions. A systemd service ignores that file, so the unit file needs LimitMEMLOCK=infinity and LimitNOFILE.
+
+The strongest part of this answer is that it names both files, the one that is read and the one that is ignored. That contrast is what the interviewer is listening for.
 
 A common weak answer: Says to run ulimit -n in the shell before starting the service and does not know why it fails under systemd.
 
@@ -150,9 +151,13 @@ Follow-up: How do you check the limits a running process really has?
 
 **How do you stop a runaway GPU job from taking sshd and kubelet down with it, and why must MemoryMax never be set on system.slice?**
 
+The interviewer is checking whether you protect the node before you protect the job. The slip to avoid is trying to be safe by setting one large limit on the wrong place.
+
 Level senior. Teaching chapter: [1.15](../part-01-linux/15-systemd-units-targets-timers-journald.md).
 
 Model answer. system.slice holds sshd, kubelet, containerd, slurmd and journald. A MemoryMax there makes the kernel throttle or kill the very daemons you need to recover the node. Protect them with a CPU weight and a memory low setting on system.slice and a strongly negative OOMScoreAdjust on sshd and kubelet. Enforce hard memory limits on the job slices, not on the system slice.
+
+The answer works because it keeps the recovery tools alive first. Once you see that the daemons you need to fix a node live in one slice, the rest of the answer follows.
 
 A common weak answer: Sets a large MemoryMax on system.slice to be safe.
 
@@ -160,9 +165,13 @@ Follow-up: How would you confirm after the change that the OOM killer picks the 
 
 **Is there a container object in the Linux kernel? What actually makes a container?**
 
+This is a trick question for people who picture containers as small virtual machines. The interviewer wants to hear that a container is an ordinary process with limits attached.
+
 Level core. Teaching chapter: [1.19](../part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md).
 
 Model answer. No, there is no container object. A container is an ordinary process tree. Namespaces limit what it can see. Cgroups limit what it can use. A root filesystem gives it its own view of the file tree, and capabilities, seccomp and security modules limit what it can do. All of it runs on the one host kernel.
+
+The phrase "on the one host kernel" is the part that separates a good answer from a memorised one. It is also the bridge to the security follow-up, so say it clearly.
 
 A common weak answer: Describes a container as a lightweight virtual machine.
 
@@ -173,9 +182,13 @@ Follow-up: What does that shared kernel mean for security between tenants?
 
 **What are the two queues behind listen(), and how do you tell which one is overflowing?**
 
+The question asks for two things, the queues and a way to see which one is full. Answer both, because a candidate who names only the queues has not shown how to debug them.
+
 Level core. Teaching chapter: [2.6](../part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md).
 
 Model answer. The SYN queue holds half-open connections that wait for the final ACK. The accept queue holds finished connections that wait for the application to call accept. Its size is the smaller of the backlog argument and net.core.somaxconn. When the accept queue is full the kernel drops or refuses new connections, and the listen-overflow counters rise. Check ss on the listening socket and the TCP extended counters from nstat.
+
+The key idea is that the accept queue fills when the application is slow to accept, not when the network is slow. Keep that link in mind, because it is the answer to the common weak response below.
 
 A common weak answer: Says to raise somaxconn without checking why the application is slow to accept.
 
@@ -183,9 +196,13 @@ Follow-up: What does tcp_syncookies change about the SYN queue?
 
 **Why must NAT never sit inside an InfiniBand or RoCE v2 training fabric?**
 
+This question checks whether you know why a training fabric is kept simple. A candidate who says "NAT is just address translation" has missed the reason the fabric cannot tolerate it.
+
 Level core. Teaching chapter: [2.9](../part-02-networking/09-dhcp-nat-and-pat.md).
 
 Model answer. During queue-pair setup the ranks exchange addresses and queue-pair numbers and program them into the network card. A middlebox that rewrites addresses or ports in flight makes that state wrong. It also breaks hardware offload and adds a stateful bottleneck. The back-end fabric should be routed, not translated.
+
+The teaching point is that the addresses are not just data, they are programmed into hardware. A rewritten address is a wrong address, even when the packet arrives.
 
 A common weak answer: Says NAT is fine if the table is large.
 
@@ -193,9 +210,13 @@ Follow-up: Where does NAT belong in an AI cluster instead?
 
 **A stall lasts exactly 5 seconds, or exactly 60. What do you suspect first?**
 
+This is a pattern question, and the clue is the length of the pause. The skill being tested is matching a round number to the timer that produces it.
+
 Level stretch. Teaching chapter: [2.30](../part-02-networking/30-network-troubleshooting-method-and-case-studies.md).
 
 Model answer. Hardware faults do not keep to round durations. A round time is a software or protocol timer. About 40 ms suggests delayed ACK with Nagle. 200 ms matches the minimum retransmission timeout. One, three or seven seconds match SYN retransmission backoff, which hints at a full accept queue or a drop. Five seconds fits the DNS retry. Match the number to the timer.
+
+Notice that the answer starts from the claim that hardware does not produce round numbers. That single sentence rules out the most expensive first move, which is replacing cables.
 
 A common weak answer: Starts replacing cables.
 
@@ -206,9 +227,13 @@ Follow-up: Which timer fits a stall of about one minute?
 
 **Why pass subprocess.run an argument list instead of shell=True, and what do check, timeout and stdin do?**
 
+The question checks safety and waiting, two things a script must never get wrong. Expect a follow-up on any one of the three options, so know what each one does.
+
 Level core. Teaching chapter: [3.5](../part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md).
 
 Model answer. A list calls the program directly with no shell, so a hostname containing a semicolon or a command substitution stays a plain string. check=True raises an error on a non-zero exit. timeout stops a hung child from blocking the script. Closing stdin stops a child from waiting on a prompt that no one can answer.
+
+Explain the shell risk in one sentence, then move to the three options. The interviewer hears that you understand the danger before you list the defaults.
 
 A common weak answer: Uses shell=True for convenience and quotes the input by hand.
 
@@ -216,9 +241,13 @@ Follow-up: What goes wrong with a pipe deadlock on Popen?
 
 **What makes an Ansible task idempotent, and what breaks it?**
 
+A common slip is to treat idempotent as "runs without errors". The answer is about the second run, which should change nothing. Keep that picture in your head while you answer.
+
 Level core. Teaching chapter: [4.6](../part-04-automation/06-ansible-playbooks-tasks-modules-idempotency-and-check-mode.md).
 
 Model answer. A task is idempotent when a second run on a host already in the right state changes nothing and reports ok. A template that embeds a timestamp or random value renders a different file every run, so the task always reports changed and restarts services. Use modules with state, and use creates, changed_when and checks for commands.
+
+The example of a timestamp is a good one to remember, because it is the usual cause in real playbooks. A template that changes every run turns a quiet check into a restart every time.
 
 A common weak answer: Says idempotent means the playbook can be run twice without errors.
 
@@ -226,9 +255,13 @@ Follow-up: How does check mode help prove idempotency?
 
 **You need a quick kubectl hotfix but GitOps self-heal is on. What happens and what is the right procedure?**
 
+This question tests calm procedure under pressure. The right answer is a sequence, and the interviewer listens for the order more than the tool names.
+
 Level senior. Teaching chapter: [4.26](../part-04-automation/26-gitops-with-argo-cd-and-flux.md).
 
 Model answer. Self-heal overwrites a manual edit within seconds. In an emergency you first pause automatic sync for that application, then apply the hotfix and verify it. Afterward you put the same change into Git and resume sync. Record the break-glass action so the audit trail is complete.
+
+The order is pause, fix, record, resume. Say it as four verbs and you have the procedure. The step that candidates forget is putting the change back into Git, which is why the answer names it.
 
 A common weak answer: Disables the GitOps controller for the whole cluster and forgets to turn it back on.
 
@@ -239,9 +272,13 @@ Follow-up: How do you handle an HPA that makes Argo show out of sync?
 
 **Trace the timeline when a worker node stops heartbeating.**
 
+The question asks for a timeline, so think in order of events and name the controller that acts at each step. A list of components without the order will not satisfy the interviewer.
+
 Level senior. Teaching chapter: [5.3](../part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md).
 
 Model answer. The kubelet renews a lease about every ten seconds. After the node-monitor grace period, which defaults to forty seconds, the node lifecycle controller marks the node unknown and adds taints. Pods then become eligible for eviction after their toleration time. Only then are replacements scheduled. A stateful or gang job may need extra steps, so recovery is slower than people expect.
+
+The mistake to avoid is the one in the weak answer. Pods do not move the moment a node dies, because the system waits on purpose so that a short network blip does not cause a stampede of restarts.
 
 A common weak answer: Says pods move at once when a node dies.
 
@@ -249,9 +286,13 @@ Follow-up: How would you make GPU job recovery faster and still safe?
 
 **Two 4-pod training jobs are submitted to a cluster with 6 free nodes. What deadlock can occur and how do you avoid it?**
 
+Here the interviewer is looking for the words hold and wait. The scenario is small enough to draw on paper, so draw it while you talk.
+
 Level senior. Teaching chapter: [5.18](../part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md).
 
 Model answer. The default scheduler places pods one at a time. Three pods of each job may land on the six nodes. Each job waits for its fourth rank and holds its nodes, so neither can start. This is hold and wait. A queueing layer or gang scheduler admits a job only when all its pods can be placed.
+
+A good way to say it: each job holds part of what it needs and waits for the rest, and neither will release. The fix is to refuse partial admission, which is what gang scheduling does.
 
 A common weak answer: Says the cluster simply needs more nodes.
 
@@ -259,9 +300,13 @@ Follow-up: How does Kueue prevent this without replacing the scheduler?
 
 **Pod A cannot reach Service B. Describe a bisection.**
 
+Bisection means splitting the path in half at each test, so each test removes half of the suspects. Say the hops in order, and say what each hop tells you.
+
 Level senior. Teaching chapter: [5.25](../part-05-kubernetes/25-troubleshooting-kubernetes-from-the-node-crictl-nsenter-tcpdump-and-ip.md).
 
 Model answer. Test in hops from the client pod. First a backend pod on the same node by pod IP. Then a backend on another node by pod IP. Then the Service by cluster IP. Then the Service by DNS name. The first hop that fails tells you the layer: application, pod network, service rules or DNS. Capture in the right network namespace to confirm.
+
+Each hop answers one question, and the first failure names the layer. That is the habit to show: you do not guess, you walk the path.
 
 A common weak answer: Restarts kube-proxy first.
 
@@ -272,9 +317,13 @@ Follow-up: How do you check conntrack exhaustion on the node?
 
 **A 13B model in FP16 sits on an 80 GB H100. What is the lower bound on decode latency per token at batch one?**
 
+The question tests whether you pick the right limit. Many candidates reach for the compute rate first, and that is the wrong limit for a single request.
+
 Level core. Teaching chapter: [10.3](../part-10-gpu-cuda/03-the-gpu-memory-hierarchy.md).
 
 Model answer. The weights take 13 billion times two bytes, which is 26 GB. At batch one every token reads all the weights once. With 3,350 GB per second of memory bandwidth the floor is about 7.76 ms per token. The free memory does not lower this floor. Only more bandwidth, smaller weights or larger batches do.
+
+Walk the arithmetic out loud, because the interviewer wants the units next to each figure. Then state the reason the floor is set by bandwidth, not by the compute rate.
 
 A common weak answer: Quotes the compute rate in FLOPS as the limit.
 
@@ -282,9 +331,13 @@ Follow-up: How does batching change the picture?
 
 **What does persistence mode do, and what happens without it?**
 
+This is a small setting with a large effect. The answer names the stall it removes, so start there and name the setting second.
+
 Level core. Teaching chapter: [10.8](../part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md).
 
 Model answer. With no process holding the device open the driver can tear down its state. The next job waits for device initialisation, and power or clock settings reset. Persistence mode, normally via the persistence daemon, keeps the state loaded and removes that start-up stall.
+
+The interviewer is listening for the stall, not the power saving. A candidate who knows only the power story has missed the reason the setting exists.
 
 A common weak answer: Says it is only a power saving feature.
 
@@ -292,9 +345,13 @@ Follow-up: Where would you enable it in a node bring-up playbook?
 
 **After an Xid 79 you want to recover the GPU without rebooting the host. What are the steps and the gate?**
 
+The question is about order of operations and a safety gate. The gate is the diagnostic that decides whether the node goes back into service, and a candidate who lists steps without a gate has missed the point.
+
 Level senior. Teaching chapter: [10.21](../part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md).
 
 Model answer. Cordon and drain the node first. Remove the PCIe device and rescan the bus through sysfs. Confirm the GPU comes back at full link width and speed. Reload the driver if needed. Only a passing level-three diagnostic from DCGM lets you uncordon. If it fails, the node goes to hardware repair.
+
+Notice the phrase "only a passing diagnostic lets you uncordon". That line is the safety gate, and it is the part most worth saying out loud.
 
 A common weak answer: Resets the GPU under a running job.
 
@@ -305,9 +362,13 @@ Follow-up: Why check link width after recovery?
 
 **Why does adding a RuntimeClass not make a GPU workload schedulable?**
 
+A common confusion is to think a runtime class is a resource. The question asks you to separate the runtime from the inventory, and the answer does exactly that.
+
 Level core. Teaching chapter: [11.2](../part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md).
 
 Model answer. A RuntimeClass only tells the kubelet which runtime handler to use for the pod sandbox. It knows nothing about GPU inventory. A GPU becomes schedulable only after the device plugin advertises it as an extended resource on the node and the pod requests it.
+
+Two different systems answer two different questions. One picks the runtime, and the other says how many GPUs exist. Say both questions before you answer.
 
 A common weak answer: Says the runtime class gives the pod a GPU.
 
@@ -315,9 +376,13 @@ Follow-up: What do the toolkit and the plugin each do at pod start?
 
 **Why does a plain ResourceQuota waste GPUs, and how do Kueue cohorts help?**
 
+The interviewer is checking whether you see the waste in a hard ceiling. A quota that protects one team can leave GPUs idle that another team could use.
+
 Level senior. Teaching chapter: [11.8](../part-11-gpu-kubernetes/08-kueue-volcano-and-scheduler-plugins.md).
 
 Model answer. A ResourceQuota is a hard static ceiling per namespace. A team at its cap cannot use GPUs that other teams leave idle. Kueue cohorts let queues borrow unused quota from each other and reclaim it when the owner needs it back, so the cluster stays busy and each team keeps its guaranteed share.
+
+Two words carry the answer, borrow and reclaim. Name both, and the interviewer hears the whole mechanism.
 
 A common weak answer: Raises the quota for everyone.
 
@@ -328,9 +393,13 @@ Follow-up: What does preemption do when a lender wants capacity back?
 
 **Why does one dropped packet hurt a 400 Gbps RoCEv2 link so much?**
 
+The question is about one packet and a large cost. The reason is the recovery method, not the size of the loss, so name the method.
+
 Level senior. Teaching chapter: [12.3](../part-12-ai-networking/03-rocev2-transport-and-congestion-management.md).
 
 Model answer. At that speed and a round trip of about twenty microseconds, roughly 250 packets are in flight. With go-back-n recovery the receiver discards every packet after the lost one and the sender repeats them all. Selective repeat would resend only the lost packet. That is why RoCE fabrics aim to be lossless and why loss shows up as a large throughput drop.
+
+The reason it is so costly is that many packets are in flight at once, and the recovery method resends all of them. The phrase "resend everything after the loss" is the sentence the interviewer is waiting for.
 
 A common weak answer: Says a single drop costs one packet.
 
@@ -338,9 +407,13 @@ Follow-up: What does PFC do to keep the fabric lossless, and what can go wrong?
 
 **A 400 Gbps port reports link up, yet the host sees about 16 GB per second. Why?**
 
+The clue is in the host-side number, which points to a slot and not to the switch. Learn to read the speed of the link against the speed of the host, because the mismatch is the diagnosis.
+
 Level senior. Teaching chapter: [12.12](../part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md).
 
 Model answer. The PCIe link may have trained down, for example to a narrower width, because of riser wiring or bifurcation. The slot then caps DMA throughput regardless of the network speed. lspci shows the link capability next to the link status. Reseat or fix the slot and retrain.
+
+A link that reports up is not the same as a link that runs at full speed. Check the width on the host before you blame the switch.
 
 A common weak answer: Blames the switch.
 
@@ -348,9 +421,13 @@ Follow-up: How does this show up in an nccl-tests result?
 
 **NCCL fails with a system error about no space in /dev/shm in a container. Why, and how do you size it?**
 
+The failure reads like a disk problem, but the volume is memory. The answer names the volume type that fixes it, which is the detail the interviewer wants.
+
 Level senior. Teaching chapter: [12.18](../part-12-ai-networking/18-nccl-debugging-hangs-timeouts-and-errors.md).
 
 Model answer. The default shared-memory size of 64 MiB is too small for an 8-GPU node, because NCCL places buffers there. The chapter's worked example needs over a gigabyte. Set a larger shared memory size for the pod, using a memory-backed volume, and check the NCCL buffer settings.
+
+The phrase "memory-backed volume" is the fix. Candidates who answer "increase the host disk" have read the error message and missed what kind of space it refers to.
 
 A common weak answer: Increases the host disk.
 
@@ -361,9 +438,13 @@ Follow-up: Which memlock failure looks similar at start-up?
 
 **State Young's and Daly's formulas for checkpoint interval and say what the variables mean.**
 
+This is a formula question, so the interviewer wants the variables named with their meaning and their units. A formula without names is only half an answer.
+
 Level stretch. Teaching chapter: [13.7](../part-13-ai-storage/07-checkpoint-architecture-and-recovery.md).
 
 Model answer. Young's interval is the square root of two times the write time times the cluster mean time between failures. Daly's adjusted version subtracts the write time from that. The cluster MTBF is the node MTBF divided by the number of nodes. Longer write time or lower MTBF changes the interval, so shortening the write pays twice.
+
+Name each variable as you write it, then say the last sentence. Shortening the write helps in two places, which is why it is such a strong lever.
 
 A common weak answer: Picks a round interval such as every hour.
 
@@ -371,9 +452,13 @@ Follow-up: What is the interval for 8 hours MTBF and 180 seconds write?
 
 **Estimate read bandwidth for 200 MB per second per GPU on 8 GPUs, 64 GPUs and a 72-GPU rack.**
 
+This is a sizing question where the trap is quoting the vendor peak. Multiply demand by the number of GPUs, and state the assumption you multiplied from.
+
 Level core. Teaching chapter: [13.8](../part-13-ai-storage/08-capacity-performance-and-cost-planning.md).
 
 Model answer. Multiply per-GPU demand by the GPU count. Eight GPUs need 1.6 GB per second, 64 need 12.8 GB per second, and 72 need 14.4 GB per second. State the per-GPU assumption and add headroom for bursts and for several jobs starting together.
+
+Say the per-GPU assumption before any multiplication, because the interviewer can then change it. The headroom sentence shows that you have thought about bursts, which a plain multiplication hides.
 
 A common weak answer: Quotes the storage vendor peak figure.
 
@@ -384,9 +469,13 @@ Follow-up: Why is text pre-tokenised pretraining not read-bound?
 
 **DDP hangs when a conditional branch leaves a parameter unused. Why and what are the options?**
 
+A hang is often one rank waiting for a parameter that never fires. The question asks for the cause and the options, so give both in that order.
+
 Level senior. Teaching chapter: [14.4](../part-14-training-finetuning/04-data-parallelism-and-ddp.md).
 
 Model answer. An unused parameter never fires its gradient hook, so its bucket never becomes ready and the all-reduce never starts on some ranks. Setting find unused parameters makes DDP scan the graph every step, which costs time. If the graph is fixed, static graph is cheaper. The best fix is to make every parameter participate.
+
+The best fix is the one that changes the model, not the settings. Say that clearly, because it shows you know the flags are a workaround.
 
 A common weak answer: Increases the timeout.
 
@@ -394,9 +483,13 @@ Follow-up: How do you set collective timeouts in current PyTorch?
 
 **Compute the Young-Daly checkpoint interval for 8 hours MTBF and a 180-second write.**
 
+This is a calculation question with the steps shown in the answer. Write each step with its unit, and round only at the end.
+
 Level senior. Teaching chapter: [14.11](../part-14-training-finetuning/11-checkpointing-fault-tolerance-and-elastic-training.md).
 
 Model answer. Take the square root of two times 28,800 seconds times 180 seconds, which is about 3,220 seconds. Subtract the write time of 180 seconds. The result is about 3,040 seconds, or roughly 51 minutes. The value is an estimate, so round it and review it when the failure rate changes.
+
+Show the arithmetic in order, because a wrong final number is easy to forgive when the steps are clear. The last sentence about reviewing the value is the part that shows judgement.
 
 A common weak answer: Checkpoints every 5 minutes to be safe.
 
@@ -407,9 +500,13 @@ Follow-up: How does async checkpointing change the optimum?
 
 **Why does LLM inference need a KV cache and training does not?**
 
+The question contrasts training and generation. The answer is about what the model already knows at each step, and it is a good question to practise saying slowly.
+
 Level core. Teaching chapter: [15.2](../part-15-inference/02-batching-the-kv-cache-and-quantization-fundamentals.md).
 
 Model answer. In training the whole target sequence is known, so attention over all tokens runs in one parallel pass. In generation the tokens come one at a time. Without a cache, every new token would recompute keys and values for all earlier tokens. The cache stores them, so each step computes only the new token. The cost is memory that grows with context length and batch size.
+
+The cache is a memory trade. It saves repeated arithmetic and pays for it in memory that grows with the conversation. Name the cost along with the saving.
 
 A common weak answer: Says the cache stores the model outputs for repeat questions.
 
@@ -417,9 +514,13 @@ Follow-up: How do you compute the cache size per token?
 
 **Define goodput. Why did the colocated GPU in the DistServe example reach 3 RPS on TTFT yet only 1.6 RPS goodput?**
 
+This is a definition question with a worked example. Define the term first, then apply it to the example in the answer.
+
 Level senior. Teaching chapter: [15.8](../part-15-inference/08-nvidia-dynamo-llm-d-and-disaggregated-serving.md).
 
 Model answer. Goodput counts only requests that meet both the time-to-first-token and time-per-output-token targets. When prefill and decode share a GPU, long prompts delay running decodes, so the per-token target is missed even when first-token latency is fine. Counting only requests that meet both targets gives 1.6.
+
+Count only the requests that meet both targets, and the gap between the two rates becomes clear. A raw throughput number hides that gap, which is why the question exists.
 
 A common weak answer: Quotes raw throughput as the headline number.
 
@@ -427,9 +528,13 @@ Follow-up: How does separating prefill and decode change goodput?
 
 **How do you stop 503 errors when a model pod is terminated or reloaded?**
 
+The interviewer is checking the rollout order. The order to remember is readiness first, then drain, then a long grace period.
+
 Level senior. Teaching chapter: [15.16](../part-15-inference/16-production-serving-stack-and-reliability.md).
 
 Model answer. First fail the readiness check so the pod is removed from endpoints. Then wait in a pre-stop hook long enough for the proxies to notice, and give the engine a long grace period to finish streams. Use a disruption budget for planned changes. Test it with a streaming load while rolling the deployment.
+
+Each step removes one reason for a request to land on a dying pod. Explain what each step prevents, and the answer sounds like an engineer who has watched the failure happen.
 
 A common weak answer: Raises the replica count only.
 
@@ -440,9 +545,13 @@ Follow-up: What about requests that stream for five minutes?
 
 **Why stage the previous model for rollback in advance?**
 
+The question is about what you do before the bad day. A rollback that needs a rebuild on the bad day is a rollback that will be slow.
+
 Level senior. Teaching chapter: [16.6](../part-16-mlops-llmops/06-model-registry-ci-cd-and-gitops-for-models.md).
 
 Model answer. Rollback happens under time pressure, so you want a tag change, not a model download or rebuild. Keep the previous version warm in the registry, in object storage and in the cluster's image cache. The cost is one extra artefact. Test the rollback path regularly.
+
+The lesson is that a rollback you have never tested is a hope, not a plan. The last sentence of the answer is the part that turns the idea into practice.
 
 A common weak answer: Plans to retrain if the new model fails.
 
@@ -450,9 +559,13 @@ Follow-up: What is the difference between a model rollback and a cluster rollbac
 
 **Why is the regression set more important than the golden set?**
 
+Two sets sound alike, so the question tests the difference between them. Name what each one catches, and the answer follows.
+
 Level senior. Teaching chapter: [16.9](../part-16-mlops-llmops/09-llm-evaluation-and-guardrails.md).
 
 Model answer. The golden set measures overall quality on a sample. The regression set holds known failure cases, so a change that breaks one of them is caught even if the average looks fine. Its value depends on coverage, so add every production failure to it.
+
+The regression set grows from failures you have already seen. That is why the habit of adding each production failure to it is worth stating.
 
 A common weak answer: Says the golden set is enough.
 
@@ -463,9 +576,13 @@ Follow-up: How often should the eval set be refreshed?
 
 **What causes a Prometheus cardinality explosion and how do you stop it quickly?**
 
+The question asks for the cause and a fast stop. Find the label first, then decide whether to drop it or fix the source.
+
 Level senior. Teaching chapter: [5.24](../part-05-kubernetes/24-observability-for-kubernetes.md).
 
 Model answer. Series count is the product of the distinct values of all labels. One unbounded label, like a user id or a raw URL path, multiplies it. Find the culprit with the top-series queries on the server, then drop or relabel the label at scrape time, or normalise the path. Fix the source in code afterwards.
+
+The multiplication is the key idea. One label with many values multiplies every other label, which is why a single careless label can crash a server.
 
 A common weak answer: Restarts Prometheus to free memory.
 
@@ -473,9 +590,13 @@ Follow-up: How would you budget cardinality in advance?
 
 **Define RTO and RPO and say why they must be agreed with the business.**
 
+Two acronyms and one business question. Spell out both terms at first use, then say who sets the values.
+
 Level core. Teaching chapter: [17.14](../part-17-operations/14-disaster-recovery-and-data-resilience.md).
 
 Model answer. The recovery time objective is how long a service may be down after a disaster. The recovery point objective is how much data you may lose. They set cost, because shorter targets need replication and standby capacity. The chapter gives example tiers, but the real values come from the business and must be tested.
+
+The business sets these targets, not the platform team. That is the sentence that shows you know who decides, and it is the reason the answer names cost.
 
 A common weak answer: Says RPO is how fast you recover.
 
@@ -486,9 +607,13 @@ Follow-up: What does a restore drill measure?
 
 **What do the three Pod Security Standards profiles allow, and how is Pod Security Admission turned on for a namespace?**
 
+The question asks where the setting lives. The answer is a namespace label, not a line in the pod spec, and that is the detail to get right.
+
 Level core. Teaching chapter: [5.21](../part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md).
 
 Model answer. Privileged is unrestricted and is for trusted system components. Baseline blocks known host escapes such as host networking, privileged containers and host paths. Restricted adds hardening such as non-root users and dropped capabilities. You apply them with labels on the namespace that set enforce, audit and warn modes. Start with audit and warn, then enforce.
+
+Name the three profiles from least strict to most strict, then the label. The advice to start with audit and warn shows you know how to roll this out without breaking running workloads.
 
 A common weak answer: Says it is a per-pod setting inside the pod spec only.
 
@@ -496,9 +621,13 @@ Follow-up: Which namespaces would need privileged?
 
 **Why is loading a PyTorch checkpoint with the default loader risky, and what are safer options?**
 
+The question is about trust in a file. A model file is code as well as data, and the answer depends on that fact.
+
 Level senior. Teaching chapter: [5.27](../part-05-kubernetes/27-software-supply-chain-security.md).
 
 Model answer. Those files are Python pickle streams. A pickle can name any callable to run on load, so loading an untrusted file can execute code. Safer options are weight-only loading modes, tensor formats that carry no code such as safetensors, and verifying signatures or hashes of model files. Treat third-party weights as untrusted input.
+
+A file can run code when it loads, and that is the sentence to say first. Once the interviewer hears it, the safer formats make obvious sense.
 
 A common weak answer: Says weights are just data.
 
@@ -509,9 +638,13 @@ Follow-up: What does trust_remote_code do in model loading?
 
 **A researcher says their job is stuck in PENDING. How do you read the reason?**
 
+This is a reading question, one reason code at a time. Match the reason, then name the action the reason calls for.
+
 Level core. Teaching chapter: [6.9](../part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md).
 
 Model answer. Show the reason with squeue for that job, then match it. Priority means higher-priority jobs are ahead, so look at the priority factors and fairshare. Resources means it is at the top and waiting for nodes. A limit reason such as an association group limit means a quota is hit. A node-not-available reason points to a reservation or a drained node. A time-limit reason means the request exceeds the partition limit.
+
+Read the reason as a clue about where the job is waiting, not as a complaint. Each reason points to a different owner, and the answer shows you can route it.
 
 A common weak answer: Tells the user to resubmit.
 
@@ -519,9 +652,13 @@ Follow-up: How do you check fairshare for the account?
 
 **After a reboot a node is drained with gres/gpu count too low. What happened and how do you fix it?**
 
+The question is an ordering question about the boot sequence. The fix is an order of services and a health check, and the answer names both.
+
 Level senior. Teaching chapter: [6.10](../part-06-hpc-slurm/10-slurm-gpu-scheduling-gres-nvml-autodetect-mig-and-device-constraints.md).
 
 Model answer. slurmd may have started before the driver, the NVML library or the MIG layout was ready, or a GPU may have dropped off the bus, which shows as an Xid in the kernel log. Check that all GPUs appear in nvidia-smi, fix the cause, and order the services so slurmd starts after the GPU stack. Resume the node only after a health check passes.
+
+The reboot is a clue that the start order is wrong. Name the order, then the health check that gates the return to service.
 
 A common weak answer: Resumes the node straight away.
 
@@ -532,9 +669,13 @@ Follow-up: How does a health-check program help?
 
 **Five jobs ask for 8, 4, 4, 8 and 4 GPUs on 8-GPU nodes. How many nodes with and without bin-packing?**
 
+A small arithmetic question with a packing choice. Count the GPUs both ways, and show the utilisation for each.
+
 Level core. Teaching chapter: [9.13](../part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md).
 
 Model answer. Without packing, one job per node needs five nodes and uses 28 of 40 GPUs, which is 70 percent. With packing, the two 4-GPU jobs share a node, and the third 4-GPU job takes its own, so four nodes are enough with 28 of 32 GPUs, which is 87.5 percent. Packing improves utilisation, but it needs isolation between jobs on one node.
+
+The answer is a good example of a trade-off with a price. Packing saves nodes and asks for isolation in return. Say both halves.
 
 A common weak answer: Gives one node per job without checking packing.
 
@@ -542,9 +683,13 @@ Follow-up: How does GPU fragmentation arise in the default scheduler?
 
 **Design GPU queueing for three teams with guaranteed shares and borrowing.**
 
+This is a design question with three teams. Name the pieces in order, from the hardware tiers up to the fairness policy.
+
 Level senior. Teaching chapter: [5.18](../part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md).
 
 Model answer. Define resource flavours for hardware tiers, a namespaced local queue per team, and a cluster queue per team with a nominal quota. Put the queues in a cohort so unused quota can be borrowed, with limits for borrowing and lending. Add priorities and preemption rules, gang admission for multi-node jobs and a clear policy for fairness. Monitor wait time per queue.
+
+Speak the pieces in the order of the answer. A design that you can narrate from the bottom up is easier to defend when the interviewer asks about one piece.
 
 A common weak answer: Uses a namespace quota per team.
 
@@ -555,9 +700,13 @@ Follow-up: What happens when a lender needs its quota back?
 
 **Tell me about an incident you led. How do you structure your answer?**
 
+The interviewer wants a structure more than a story. Use the order in the answer, and be honest about what went badly, because the honesty is part of the credit.
+
 Level senior. Teaching chapter: [17.11](../part-17-operations/11-incident-response-and-game-days.md).
 
 Model answer. Use situation, impact, detection, actions and result. Name your role, whether commander or responder, and what you decided. Give the timeline and the mitigation before the root cause. Say what you changed afterward and what the follow-up items were. Do not invent numbers, and be honest about what went badly.
+
+The mitigation comes before the root cause because customers feel the mitigation first. Saying that in the answer tells the interviewer you know the priorities of an incident.
 
 A common weak answer: Tells a story where nothing went wrong.
 
@@ -565,9 +714,13 @@ Follow-up: What would you do differently?
 
 **A customer asks for a cluster design, but their requirements are vague. What do you do first?**
 
+The question tests your first move. Ask before you propose, because a design built on a guess will be rebuilt later.
+
 Level senior. Teaching chapter: [9.13](../part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md).
 
 Model answer. Ask questions to find the workload, scale, deadlines, data size, security and budget. Write down what you learn as requirements and what you assume as assumptions. Offer two or three options with trade-offs, and propose a small test. Do not promise numbers you cannot support. Leave an action list at the end of the meeting.
+
+Keep requirements and assumptions in separate columns. That habit is what lets the customer see which parts are fixed and which parts you are guessing.
 
 A common weak answer: Presents a favourite architecture at once.
 
@@ -575,9 +728,13 @@ Follow-up: How do you handle a requirement that cannot be met?
 
 **Describe the stages of your architecture method when a customer asks for a design.**
 
+The question tests whether you have a method at all. Name the stages in order, and the interviewer will hear a process rather than a habit.
+
 Level core. Teaching chapter: [9.13](../part-09-nvidia-systems/13-sizing-and-capacity-planning-exercises.md).
 
 Model answer. Discover the requirements and constraints. Model the data and request path, control, trust, state, failure domains and observability. Compare options with their trade-offs. Recommend one and say why. Validate with a falsifiable test. Adopt with a plan for operation. Keep requirements, assumptions, constraints and trade-offs separate in the write-up.
+
+The phrase "a falsifiable test" is the one to practise. It means a test that could prove your design wrong, and saying it signals that you expect to be checked.
 
 A common weak answer: Jumps to a product list.
 
@@ -590,7 +747,7 @@ Follow-up: Which stage do people most often skip?
 
 ## 5. Hands-on lab
 
-This lab runs entirely on your laptop. Nothing needs a GPU, a cluster or a network. The commands were run here on a macOS arm64 laptop while writing this chapter, and the outputs below are from that run.
+Picture a laptop on a train, with no network and no cluster in reach. That is the setting this lab was built for. Everything here runs on a laptop with Python and pytest, and the outputs below come from a real run on that kind of machine. The commands were run here on a macOS arm64 laptop while writing this chapter, and the outputs below are from that run.
 
 The lab script is `code/part19/c14_lab.sh`. It validates the bank, draws a mixed set, runs a short scripted quiz, prints the report and runs the tests. Run it from the repository root.
 
@@ -609,31 +766,31 @@ python3 -m pytest test_c14_bank.py test_c14_score.py test_c14_walkthrough.py -q
 
 ### Step 1. Validate the bank
 
-`c14_bank.py` checks that every entry has a topic, a level, a chapter link that resolves to a file, a model answer and a follow-up. It also checks that ids are unique, that the count is between 150 and 200, and that no entry claims a company asks the question.
+`c14_bank.py` checks that every entry has a topic, a level, a chapter link that resolves to a file, a model answer and a follow-up. It also checks that ids are unique, that the count is between 150 and 200, and that no entry claims a company asks the question. A validator like this is what keeps a bank honest as it grows, because a broken link is caught before you rely on it.
 
 Expected result: the summary lines and the word VALID, with exit code 0. What to record: the count per topic. A topic with fewer than eight questions is one to add to. What was run here: yes. The output ended with `176 questions, 90 chapters linked` at the top and `VALID` at the bottom.
 
 ### Step 2. Draw a mixed set
 
-`c14_walkthrough.py --n 6 --seed 14` prints six questions, spread over six different topics, each with its chapter path. The same seed gives the same set, so you can repeat a drill. Without `--answers` the model answers stay hidden.
+`c14_walkthrough.py --n 6 --seed 14` prints six questions, spread over six different topics, each with its chapter path. The same seed gives the same set, so you can repeat a drill. Without `--answers` the model answers stay hidden, which is the mode to use when you practise for real.
 
 Expected result: six numbered questions, no answers. What to record: which topics you could not start. Run here: yes. The set began with a storage question about the 1.2 million image benchmark and a GPU sharing question about time-slicing.
 
 ### Step 3. Run a scored quiz
 
-The script feeds the quiz runner a scripted session: Enter to reveal, an empty line that is rejected, a grade of 3, a second question, a grade of 1, then q. The runner re-asks on bad input, which the log shows as "Please enter 0, 1, 2, 3 or q."
+The script feeds the quiz runner a scripted session: Enter to reveal, an empty line that is rejected, a grade of 3, a second question, a grade of 1, then q. The runner re-asks on bad input, which the log shows as "Please enter 0, 1, 2, 3 or q." The scripted input is there so the quiz can run without a person at the keyboard, and the same runner works for a real session.
 
 Expected result: two graded questions and a state file. What to record: the grade and the follow-up you could not answer. Run here: yes.
 
 ### Step 4. Read the report
 
-The report rolls the latest grades up by topic and level, as a percent of the maximum grade of 3. In the run here, one linux core question graded 3 and one linux stretch question graded 1 gave 66.7 percent for linux, 100.0 for core and 33.3 for stretch.
+The report rolls the latest grades up by topic and level, as a percent of the maximum grade of 3. In the run here, one linux core question graded 3 and one linux stretch question graded 1. Those two grades produce three percentages. The linux topic came out at 66.7 percent. The core level came out at 100.0 percent, and the stretch level at 33.3 percent.
 
-Expected result: a JSON report and a line naming the weakest topics. What to record: the weakest topic and the chapter you will reread. Run here: yes.
+Expected result: a JSON report and a line naming the weakest topics. What to record: the weakest topic and the chapter you will reread. Run here: yes. A low stretch score on one question is a small sample, so read the report as a pointer to reread, not as a verdict on the topic.
 
 ### Step 5. Run the tests
 
-Pytest runs 36 tests for the three tools. They include failure cases: a missing follow-up, a broken link, a duplicate id, an unknown topic, a company-claim phrase, a bad grade, and a request for more questions than exist. The tests also recompute the arithmetic quoted in the bank, such as the bandwidth-delay product of 87.5 MB and the Young-Daly interval of 3,040 seconds.
+Pytest runs 36 tests for the three tools. They include failure cases: a missing follow-up, a broken link, a duplicate id, an unknown topic, a company-claim phrase, a bad grade, and a request for more questions than exist. The tests also recompute the arithmetic quoted in the bank, such as the bandwidth-delay product of 87.5 MB and the Young-Daly interval of 3,040 seconds. Tests like these are what stop a wrong number from quietly surviving an edit.
 
 Expected result: `36 passed`. What to record: nothing, unless a test fails, in which case record which. Run here: yes. All 36 passed.
 
@@ -647,7 +804,7 @@ Nothing in this lab needs hardware, so nothing was skipped for that reason. What
 
 ## How to answer out loud
 
-When the question is open, such as a design prompt or a behavioural story, the speaking order is what the interviewer remembers. Practise this order and time it at two minutes.
+The interviewer has just asked an open question, such as a design prompt or a behavioural story, and you have a few seconds before you must speak. The speaking order is what the interviewer remembers, more than any single fact. Practise this order and time it at two minutes.
 
 1. Restate the question and the constraint in one sentence, so the interviewer can correct you early.
 2. Give the diagnosis or the design choice in one sentence.
@@ -656,24 +813,24 @@ When the question is open, such as a design prompt or a behavioural story, the s
 5. State the trade-off and one alternative you rejected.
 6. Stop, and invite the follow-up.
 
-Numbers to state are the ones you can source. Say "about 87 MB" for a bandwidth-delay product you computed, and "I would check the default on our version" for a default you did not verify. If you are asked for a figure you do not know, say how you would find it. Never invent a flag, a metric name or a default.
+Numbers to state are the ones you can source. Say "about 87 MB" for a bandwidth-delay product you computed, and "I would check the default on our version" for a default you did not verify. If you are asked for a figure you do not know, say how you would find it. Never invent a flag, a metric name or a default. A confident wrong flag costs far more than an honest pause.
 
 Trade-offs worth naming come up again and again in the bank. Isolation against utilisation, as in MIG against time-slicing. Throughput against latency, as in batching. Cost against availability, as in N+1 against 2N. Speed of recovery against blast radius, as in automated remediation with a cap. Pick the one that fits the question and say what you give up.
 
-Follow-ups usually go one level deeper, or ask what you would do if the first fix failed. The follow-up field in each entry is a good guess. Prepare one sentence for it.
+Follow-ups usually go one level deeper, or ask what you would do if the first fix failed. The follow-up field in each entry is a good guess. Prepare one sentence for it, and practise saying it before the interview, so it does not come out of you as a surprise.
 
 ## Exercises
 
 1. **Add a question and validate it.** Write one new core question for the topic with the fewest entries, with all fields, and run `c14_bank.py`. Then delete the follow-up and run it again. *Solution sketch:* append an object to the questions list with a unique id such as `STO-10`, a real chapter path that is also in the chapters registry, and the required fields. The first run prints VALID. After the follow-up is removed, the validator prints `STO-10: missing or empty follow_up` and exits 1.
-2. **Compute a review schedule.** You grade one question 3, 3, 1, 2 on days 0, 2, 6 and 7. Give the box and the due date after each grade. *Solution sketch:* the boxes are 2, 3, 1, 2. Gaps after each grade are 2, 4, 1 and 2 days, so the due dates are day 2, day 6, day 7 and day 9. A grade of 2 or 3 moves up a box, and a grade of 0 or 1 returns to box 1.
+2. **Compute a review schedule.** You grade one question on four days. Give the box and the due date after each grade. *Solution sketch:* the grades come in this order: 3, 3, 1 and 2. They are given on days 0, 2, 6 and 7. The boxes are 2, 3, 1, 2. Gaps after each grade are 2, 4, 1 and 2 days. So the due dates are day 2, day 6, day 7 and day 9. A grade of 2 or 3 moves up a box. A grade of 0 or 1 returns to box 1.
 3. **Find your weakest topic.** Grade 20 questions from a mixed set and run the report. Name the weakest topic and the chapters to reread. *Solution sketch:* use `--n 20 --seed 1`, grade honestly, then run `--report`. The line "Weakest topics" gives up to three names. Open the chapters linked from your grade-0 and grade-1 entries.
 4. **Weight a set for a job description.** A posting asks for Slurm, InfiniBand, NCCL and Linux. Draw 12 questions with the right filters and explain the choice. *Solution sketch:* run `c14_walkthrough.py --n 12 --topic slurm_hpc_hardware --topic ai_networking --topic linux --topic gpu_cuda`. These match the hard requirements in `planning/JD_MAPPING.md` for GPU-cloud roles.
 5. **Turn a weak answer into a strong one.** Take the entry about the 40 ms RPC delay. Write your own two-minute answer with the speaking order from this chapter. *Solution sketch:* open with Nagle and delayed ACK as the diagnosis, explain that the second write waits for the ACK of the first, name a packet capture as the first check, give TCP_NODELAY or one write as the fix, and mention that round numbers point to timers.
-6. **Recompute three numbers.** Recompute the bandwidth-delay product for 10 Gb per second at 70 ms, the break-even utilisation for a $12.40 per hour replica at 2,100 tokens per second against a $4 per million tokens API, and the Young-Daly interval for 8 hours MTBF and 180 seconds write. *Solution sketch:* 1,250 MB per second times 0.070 s is 87.5 MB. The replica makes 7.56 million tokens an hour, so full-use cost is about $1.64 per million tokens and break-even is about 41 percent. The interval is the square root of 2 times 28,800 times 180, minus 180, which is about 3,040 seconds.
+6. **Recompute three numbers.** Recompute the bandwidth-delay product for 10 Gb per second at 70 ms. Then recompute the break-even utilisation for a $12.40 per hour replica. That replica makes 2,100 tokens per second, and the API costs $4 per million tokens. Finally recompute the Young-Daly interval for 8 hours MTBF and 180 seconds write. *Solution sketch:* the link carries 1,250 MB per second. Times 0.070 s, that gives 87.5 MB. The replica makes 7.56 million tokens an hour. So full-use cost is about $1.64 per million tokens. Break-even is about 41 percent. The interval is the square root of 2 times 28,800 times 180. Subtract 180 from that, and the result is about 3,040 seconds.
 
 ## Checkpoint questions (20)
 
-These 20 questions are the most representative of the bank. They span every major topic.
+These 20 questions are the most representative of the bank. They span every major topic. Read each one aloud, answer it in your own words, and then open the linked chapter to check your answer against the source.
 
 <details><summary>1. A training pod ignores SIGTERM for 30 seconds and then dies with exit code 137. Why, and what is the fix?</summary>
 Kubernetes sends SIGTERM only to the process with PID 1 in the container. When the entrypoint is a shell script, the shell is PID 1 and it does not pass the signal on to python. See chapter [1.8](../part-01-linux/08-processes-signals-and-job-control.md).
