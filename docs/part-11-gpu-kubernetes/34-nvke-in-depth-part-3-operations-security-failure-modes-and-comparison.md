@@ -21,13 +21,13 @@ lab_venue: "Local controller metrics and promtool, no GPU"
 | Sources used | NVKE repository at commit 487f511 (docs, controller docs, agent security notes, chart files, ROADMAP), NVIDIA blog of 2026-11-10, partner statements as quoted by that blog, Nebius notes from chapter 20.36. Fetched 2026-11-11. |
 | Series | Part 3 of 3. Part 1 is [11.32](32-nvke-nvidia-kubernetes-engine-in-depth.md). Part 2 is [11.33](33-nvke-in-depth-part-2-installation-nvkr-and-cluster-lifecycle.md). |
 
-Tags: **[official]**, **[source-code]**, **[ran]**, **[vendor]**, **[third-party]**, **[inference]**. Recommendations marked **[author's recommendation]** are mine and were not tested against a real site.
+Tags: **[official]**, **[source-code]**, **[ran]**, **[vendor]**, **[third-party]**, **[inference]**. Recommendations marked **[author's recommendation]** are mine and were not tested against a real site. Keep that difference in mind when you read a recommendation. It is advice from experience, not a procedure that someone has already run.
 
 ## Why this matters for AI infrastructure
 
-At 02:10 a pager says the NVKE API returns 503 on `/readyz`. Forty tenant clusters keep running, because their control planes live on their own machines. But nobody can create a cluster, replace a node or renew a certificate until the management plane is back. On the same night a security reviewer asks who can delete a customer's cluster, and the true answer is anyone who can reach port 30080.
+At 02:10 a pager says the NVKE API returns 503 on `/readyz`. A 503 means the service is up but cannot do its job. Forty tenant clusters keep running, because their control planes live on their own machines. But nobody can create a cluster, replace a node or renew a certificate until the management plane is back. On the same night a security reviewer asks who can delete a customer's cluster, and the true answer is anyone who can reach port 30080.
 
-This chapter is for the person who carries the pager and answers the reviewer. It explains the operations you can rely on, the gaps the preview documents plainly, and the habits that make up for them. It ends with a comparison with other ways to run Kubernetes and a model answer to the question "what is NVKE and how would you operate it".
+This chapter is for the person who carries the pager and answers the reviewer. It explains the operations you can rely on, the gaps the preview documents plainly, and the habits that make up for them. It ends with a comparison with other ways to run Kubernetes and a model answer to the question "what is NVKE and how would you operate it". Read the first half as an operator, and the second half as the person who has to defend the decision out loud.
 
 ## Prerequisites and outcomes
 
@@ -37,18 +37,11 @@ This chapter is for the person who carries the pager and answers the reviewer. I
 
 ### Outcomes
 
-After this chapter you can:
-
-1. Run the certificate, key and credential procedures NVKE documents, and say who owns each.
-2. State what is and is not supported for backup, restore and management plane upgrades.
-3. List the preview's security gaps, each with a source and a mitigation.
-4. Monitor a management plane with real metric names and know what each failure mode looks like.
-5. Compare NVKE with six alternatives using only claims you can source, and decide whether to use it today.
-6. Give a two-minute spoken answer.
+This chapter starts with the split between the management plane and the tenant clusters, because every later duty depends on it. It then covers certificates, keys and credentials, and what the preview does and does not support for backup and upgrades. Next come the security gaps with their mitigations, then the failure modes and the metrics that reveal them. The last sections compare NVKE with other options, say when to use it today, and give you a two-minute spoken answer to practise. Each step rests on the one before it, so read in order.
 
 ## 1. Two planes, two sets of duties
 
-A common mistake is to treat the management cluster and a tenant cluster the same. The credential documentation separates them as T1 and T2 **[source-code]**. **T1** is the site-management cluster that hosts the NVKE controller, Temporal and PostgreSQL. **T2** is a controller-managed tenant cluster. Sharing the kubeadm layout does not make maintenance interchangeable, because restarting T1 can interrupt the services that orchestrate T2 maintenance.
+A common mistake is to treat the management cluster and a tenant cluster the same. Both are Kubernetes clusters built with kubeadm, so they look alike on a screen. The credential documentation separates them as T1 and T2 **[source-code]**. **T1** is the site-management cluster that hosts the NVKE controller, Temporal and PostgreSQL. **T2** is a controller-managed tenant cluster. Sharing the kubeadm layout does not make maintenance interchangeable, because restarting T1 can interrupt the services that orchestrate T2 maintenance. Think of T1 as the air traffic control tower and T2 as the planes. You can service a plane while the tower keeps working, but you should never take the tower offline to service a plane.
 
 | Duty | T1, the management cluster | T2, a tenant cluster |
 |---|---|---|
@@ -58,19 +51,21 @@ A common mistake is to treat the management cluster and a tenant cluster the sam
 | etcd encryption key | You keep the key file. No rotation workflow. | Operator-started rotation workflow |
 | Certificate authorities | Not rotated | Not rotated |
 
+The table is the first thing to hand to a new on-call engineer. Every row where the answer is "you" is work that will land on your desk, with no automation to catch it.
+
 **Decision rule:** Write two runbook folders, one per plane, and never apply a T2 procedure to T1 without reading the T1 version.
 
 **In one minute:** NVKE automates the tenant plane. The management plane is yours, and the preview offers few tools for it.
 
 ## 2. Certificates, keys and credentials
 
-An alert says a kubelet certificate expires in six days. You need to know who renews it, and whether to act. The credential inventory answers this **[official]**.
+An alert says a kubelet certificate expires in six days. You need to know who renews it, and whether to act. A kubelet is the agent on each node that runs its pods, and its certificate is how it proves its identity to the API server. The credential inventory answers this **[official]**. Run down the inventory before you touch anything, because a renewal that runs twice can cause its own outage.
 
 ### 2.1 What NVKE renews on tenant clusters
 
-The controller renews kubeadm leaf certificates on provisioned clusters. It does not rotate certificate authorities. The renewal controller runs by default, evaluates each cluster at its `nextCertRenewalDue` time and renews when certificates are within a threshold. The documented defaults are a 12-hour interval and a 30-day threshold, and the controller refuses to start if the settings contradict credential monitoring, whose warning window defaults to 45 days **[source-code]**. On my local controller a new cluster received `nextCertRenewalDue` exactly 12 hours after creation, because the first check only sets the date **[ran]**.
+The controller renews kubeadm leaf certificates on provisioned clusters. A leaf certificate is an end-entity certificate, the kind that identifies one service, as opposed to the certificate authority that signs it. The controller does not rotate certificate authorities. The renewal controller runs by default, evaluates each cluster at its `nextCertRenewalDue` time and renews when certificates are within a threshold. The documented defaults are a 12-hour interval and a 30-day threshold. The controller refuses to start if the settings contradict credential monitoring, whose warning window defaults to 45 days **[source-code]**. Read the two numbers together. The renewal runs often enough to notice trouble, and the warning window gives you time to act before a renewal is needed. On my local controller a new cluster received `nextCertRenewalDue` exactly 12 hours after creation, because the first check only sets the date **[ran]**.
 
-A renewal cycle takes the cluster's update lock, then runs a health gate before and after each node. The gate requires stable membership, ready nodes, reachable agents, enough etcd voters and healthy static pods. A failed cycle can keep the lock, and then upgrades and node changes return 409 until you follow the ownership-checked recovery procedure. Exactly two control plane nodes are excluded from automatic renewal **[source-code]**.
+A renewal cycle takes the cluster's update lock, then runs a health gate before and after each node. A lock stops two operations from changing the same cluster at once, and a health gate is a check that must pass before the next step runs. The gate requires stable membership, ready nodes, reachable agents, enough etcd voters and healthy static pods. Stable membership means the set of nodes is not changing. Static pods are the control plane components the kubelet starts from files on disk. A failed cycle can keep the lock, and then upgrades and node changes return 409 until you follow the ownership-checked recovery procedure. A 409 is the HTTP code for a conflict with something already running. Exactly two control plane nodes are excluded from automatic renewal **[source-code]**.
 
 | Credential | Who renews | Notes |
 |---|---|---|
@@ -81,11 +76,13 @@ A renewal cycle takes the cluster's update lock, then runs a health gate before 
 | SPIFFE SVIDs and SPIRE CA | Your SPIRE deployment | Not renewed by kubeadm maintenance |
 | Cluster CAs, service account keys, OIDC issuer keys | Nobody at preview | Rotation is outside the alpha procedures |
 
-The roadmap lists issuing cluster certificates from your own PKI as in progress, and encrypting secrets with your own KMS keys as being explored **[official]**.
+Read the "who renews" column as a list of owners. A credential with no owner is the one that expires on a Friday night. The kubelet serving row has three stages, so a failure can hide at any of them. The etcd key row is a five-step procedure, and each step has its place in the order, so keep the sequence. The last row says nobody renews the cluster CAs, so plan for that rotation yourself, even though the preview gives you no procedure.
+
+The roadmap lists issuing cluster certificates from your own PKI as in progress, and encrypting secrets with your own KMS keys as being explored **[official]**. A PKI is the public key infrastructure your company already runs, and KMS is a key management service that stores encryption keys for you.
 
 ### 2.2 Credential monitoring and alerts
 
-NVKE observes actual certificate expiry dates independently of renewal, through the node agent, and exports them as metrics. The controller chart ships a Prometheus rule file with alerts such as `NVKECertificateExpiring`, `NVKECertificateRenewalFailed`, `NVKECertificateRenewalStuck`, `NVKEKubeletServingCSRFailed` and `NVKEEtcdKeyRotationStuck` **[source-code]**. Install them. They are the earliest warning that a tenant's cluster will stop working in a month.
+NVKE observes actual certificate expiry dates independently of renewal, through the node agent, and exports them as metrics. The difference matters. Renewal is what the controller tries to do. Monitoring is the independent check that tells you whether it worked. The controller chart ships a Prometheus rule file with alerts such as `NVKECertificateExpiring`, `NVKECertificateRenewalFailed`, `NVKECertificateRenewalStuck`, `NVKEKubeletServingCSRFailed` and `NVKEEtcdKeyRotationStuck` **[source-code]**. A CSR is a certificate signing request, the form a kubelet sends to ask for its certificate. Install these alerts. They are the earliest warning that a tenant's cluster will stop working in a month.
 
 **Decision rule:** Treat the chart's credential alerts as mandatory, and write down the T1 renewal runbook before the first T1 certificate gets within 60 days of expiry.
 
@@ -93,9 +90,11 @@ NVKE observes actual certificate expiry dates independently of renewal, through 
 
 ## 3. Backup, restore and upgrade of the management plane
 
-Someone asks the question every operations review asks. What is the recovery plan if the management cluster's disks are lost? The answer is short and unpleasant. NVKE provides no procedure to back up or restore the management cluster or its state, and no procedure to move the management plane to a later NVKE release **[official]**. The management cluster does not manage itself. The roadmap lists backup and restore of workload clusters and the management plane, and a supported management plane upgrade path, as items being explored, with management cluster self-management as coming soon **[official, roadmap]**.
+Someone asks the question every operations review asks. What is the recovery plan if the management cluster's disks are lost? The answer is short and unpleasant. NVKE provides no procedure to back up or restore the management cluster or its state, and no procedure to move the management plane to a later NVKE release **[official]**. The management cluster does not manage itself. The roadmap lists backup and restore of workload clusters and the management plane, and a supported management plane upgrade path, as items being explored, with management cluster self-management as coming soon **[official, roadmap]**. Explored means someone is looking at it. It does not mean a date or a commitment.
 
 ### 3.1 What is supported and what is not
+
+Read this table as a yes-or-no list for the review. Each row names one operation and whether the preview supports it.
 
 | Item | Status at preview | Tag |
 |---|---|---|
@@ -108,16 +107,18 @@ Someone asks the question every operations review asks. What is the recovery pla
 | Back up a tenant cluster | Not supported. On the roadmap as exploring. | official |
 | Delete and recreate a tenant cluster | Supported. Deletion releases machines to NICo. | official |
 
+The two supported rows are the good news. You can re-run the install to change a setting, and you can delete and recreate a tenant. The rest are gaps, and the gaps are the reason the next section exists.
+
 ### 3.2 What to do anyway
 
-These steps are my recommendations for a pilot and none of them is an NVKE procedure. I did not test a restore **[author's recommendation]**.
+Picture the morning after the disks are lost. The tenants are still running, but nothing in NVKE tells you how to rebuild the control plane that manages them. The steps below are what I would prepare before that morning comes. None of them is an NVKE procedure. I did not test a restore **[author's recommendation]**.
 
 1. Store the etcd encryption key file, the management kubeconfig, the SPIRE CA key and the install inputs, including the stack config and every values file, in your secret manager. Rebuilding without them is not realistic.
-2. Take regular logical dumps of the PostgreSQL databases. They hold the API's records and Temporal history, so a dump covers cluster, pool and node records. Store them encrypted off the cluster.
+2. Take regular logical dumps of the PostgreSQL databases. A logical dump is a file that holds the data as SQL statements, so it can be restored into a fresh server. They hold the API's records and Temporal history, so a dump covers cluster, pool and node records. Store them encrypted off the cluster.
 3. Export the Cluster API objects and the release objects from `nvke-system` with `kubectl get -o yaml`. Treat the output as secret, because the namespace also holds each cluster's admin kubeconfig.
 4. Keep the node images and boot files in a store you back up.
 5. Rehearse in a throwaway environment. A restore you have never run is a hope. Record how long a rebuild from the bootstrap takes, because that is your real recovery time.
-6. Accept the blast radius. Tenant clusters keep running without the management plane. What you lose is the ability to create, change and replace until you recover **[inference, from the architecture in 11.32]**.
+6. Accept the blast radius. Blast radius is the set of things a failure can reach. Tenant clusters keep running without the management plane. What you lose is the ability to create, change and replace until you recover **[inference, from the architecture in 11.32]**.
 
 **Decision rule:** Do not put tenants you cannot afford to lose on NVKE until you have rehearsed a rebuild from a clean bootstrap and know the time it takes.
 
@@ -125,9 +126,11 @@ These steps are my recommendations for a pilot and none of them is an NVKE proce
 
 ## 4. Security posture of the preview
 
-The security review asks five yes or no questions and the honest answers are mostly no. The preview status page lists the gaps, and I confirmed the first ones in code and on a running controller **[official, ran]**.
+The security review asks five yes or no questions, and the honest answers are mostly no. A review like this is not an attack. It is a checklist of what could go wrong if someone hostile, or simply careless, reached the system. The preview status page lists the gaps, and I confirmed the first ones in code and on a running controller **[official, ran]**.
 
 ### 4.1 The gaps, with sources
+
+Each row below is a gap, the evidence for it, and where that evidence came from. Read the evidence column before you repeat the claim in a meeting, because it tells you how strong the claim is.
 
 | Gap | Evidence | Tag |
 |---|---|---|
@@ -143,29 +146,29 @@ The security review asks five yes or no questions and the honest answers are mos
 | The default telemetry backend keeps data in memory and gives anonymous users Grafana admin | Observe documentation | official |
 | The management cluster needs your own SPIRE CA, or nodes cannot attest | Preview status page | official |
 
-The roadmap lists per-customer authorization of API calls as coming soon, and a proposal issue titled "How do you want to authenticate and authorize calls to NVKE?" is open in the repository **[official, third-party from `gh issue list`]**.
+The roadmap lists per-customer authorization of API calls as coming soon, and a proposal issue titled "How do you want to authenticate and authorize calls to NVKE?" is open in the repository **[official, third-party from `gh issue list`]**. Authentication answers who you are. Authorization answers what you may do. The table's second and third rows are the key pair. NVKE does the first poorly at preview and does the second not at all.
 
 ### 4.2 The three authentication modes
 
-The authentication modes are off, permissive and enforcing **[official]**. Off serves everything. Permissive checks and counts each request, then serves it anyway. Enforcing returns 401 for a missing or invalid token and 403 when the token's subject matches no admission rule. Tokens must be signed with an asymmetric algorithm by a configured issuer, carry `exp` and `sub`, and match a configured audience. Admission is by group claim or by custom claim.
+The authentication modes are off, permissive and enforcing **[official]**. Off serves everything. Permissive checks and counts each request, then serves it anyway. That is useful as a dress rehearsal, because you see who would have been refused. Enforcing returns 401 for a missing or invalid token and 403 when the token's subject matches no admission rule. The subject is the identity the token names. Tokens must be signed with an asymmetric algorithm by a configured issuer, carry `exp` and `sub`, and match a configured audience. The exp field is the expiry time, and sub names the subject. Admission is by group claim or by custom claim, which means the token must carry a group or attribute that you configured as allowed.
 
-The values file in 11.33 turns on permissive mode. The sequence I recommend is the documented one **[official]**. Turn it on in permissive mode, watch `nvke_auth_requests_total{outcome="would_reject"}`, then enforce. In enforcing mode the controller does not start if it cannot fetch an issuer's signing keys, while in permissive mode it starts and counts those tokens as `jwks_stale`. I rendered the chart with those values and did not run enforcing mode, which needs an HTTPS identity provider **[ran]**.
+The values file in 11.33 turns on permissive mode. The sequence I recommend is the documented one **[official]**. Turn it on in permissive mode, watch `nvke_auth_requests_total{outcome="would_reject"}`, then enforce. Watching the would-reject count tells you which callers will break before anything is actually refused. In enforcing mode the controller does not start if it cannot fetch an issuer's signing keys, while in permissive mode it starts and counts those tokens as `jwks_stale`. A JWKS is the published set of public keys that an issuer uses to sign tokens, and stale means the copy NVKE holds is out of date. I rendered the chart with those values and did not run enforcing mode, which needs an HTTPS identity provider **[ran]**.
 
-A second trap. The deploy install turns authentication off in its own values, so you must pass `--values-for controller=auth-values.yaml` on every later install. If you forget, authentication silently goes off **[official]**.
+A second trap. The deploy install turns authentication off in its own values, so you must pass `--values-for controller=auth-values.yaml` on every later install. If you forget, authentication silently goes off **[official]**. Put the flag in a script, so a tired operator running the command at night does not have to remember it.
 
 ### 4.3 Mitigations
 
-These are my recommendations. They reduce risk and do not remove the gaps **[author's recommendation]**.
+These are my recommendations. They reduce risk and do not remove the gaps **[author's recommendation]**. A mitigation is a control you add around a gap that you cannot fix in the product. Read the list as a set of layers. Each layer catches what the one before it lets through.
 
 1. **Network.** Apply the NetworkPolicy from 11.33 with only operator and management networks, and filter port 30080 at the edge as well. The docs themselves warn that the policy alone may not tell callers apart.
-2. **TLS.** Put a reverse proxy that terminates TLS in front of port 30080, as the documentation suggests, and never send a token to the plain port from outside a trusted network.
+2. **TLS.** Put a reverse proxy that terminates TLS in front of port 30080, as the documentation suggests, and never send a token to the plain port from outside a trusted network. TLS is the encryption that stops a token from being read on the wire.
 3. **Authentication.** Enable enforcing mode with a short-lived token and a narrow admitted group.
 4. **Authorization.** Do not give customers API access. Build your own service in front of NVKE that checks the tenant and calls NVKE with a service identity. That service is where per-tenant authorization must live today.
 5. **Kubeconfig.** Treat the admin kubeconfig as break-glass. Deliver it through a channel you trust for passwords, give it to the customer's administrators only, and have them create narrower credentials inside the cluster. Record every hand-over.
 6. **Images.** Do not use FDE images for confidentiality. Verify NVKR releases under your policy before use.
 7. **Telemetry.** Replace the bundled backend before anyone outside your team can reach Grafana.
-8. **Agent.** `nvke-agent` is a privileged root-level service that runs kubeadm, handles encryption keys and executes scripts **[source-code, agent security notes]**. Keep port 15005 reachable only from the management cluster.
-9. **Audit.** Enable credential audit evidence as described in the NVKE docs, and keep API access logs at the proxy.
+8. **Agent.** `nvke-agent` is a privileged root-level service that runs kubeadm, handles encryption keys and executes scripts **[source-code, agent security notes]**. Privileged and root-level means it can do almost anything on the node, so a compromise of the agent is a compromise of the node. Keep port 15005 reachable only from the management cluster.
+9. **Audit.** Enable credential audit evidence as described in the NVKE docs, and keep API access logs at the proxy. An audit trail is what lets you answer "who did this" after the fact.
 
 **Decision rule:** Until per-customer authorization exists, expose NVKE only to your own platform service, and let that service be the single caller.
 
@@ -173,7 +176,7 @@ These are my recommendations. They reduce risk and do not remove the gaps **[aut
 
 ## 5. Failure modes and how to see them
 
-Think about the ways a management plane fails, and what each looks like on a dashboard.
+Think about the ways a management plane fails, and what each failure looks like on a dashboard. The useful question is never "is it broken" but "where is it stuck". The diagram gives you the first fork in the road, and the table gives you the detail for each branch.
 
 ```mermaid
 flowchart TD
@@ -195,6 +198,8 @@ flowchart TD
   cond --> lock --> runbook
 ```
 
+Start at the top of the diagram. If the readiness check fails, the trouble is in the management plane itself, and nothing else matters until the database and the workflow engine are healthy. If readiness passes, the trouble is in one cluster, and you read its conditions to find which branch you are on.
+
 | Failure | What you see | First action | Tag |
 |---|---|---|---|
 | PostgreSQL or Temporal down | `/readyz` returns 503 with `"status":"unavailable"` and the failing check. `/healthz` stays ok because it checks only the process. | Restore the dependency. Do not restart the controller blindly. | official |
@@ -211,11 +216,13 @@ flowchart TD
 | Pool version above the control plane | API accepts it. Kubelet skew is outside upstream policy. | Use the upgrade planner | ran, inference |
 | A reboot happens that the controller did not request | Open feature request in the repository | Watch node conditions | third-party |
 
-The open issues in the repository confirm that observability is still being built. Issues ask for node reboot counting, agent-unready timers, condition reasons and a metric for control plane nodes that have no node pool **[third-party, from `gh issue list` on 2026-11-11]**. Expect gaps in the dashboards.
+Two rows deserve a second look. The worker row is the one that surprises people. NVKE deletes a worker that takes too long, so a slow machine can disappear on its own. Setting provisioningMonitorDisabled keeps it alive for diagnosis, at the cost of a stuck node that stays in your pool. The drain row says NVKE retries with no time limit. A drain that is blocked by a PodDisruptionBudget will wait for ever unless someone removes the cause, so it needs a human.
+
+The open issues in the repository confirm that observability is still being built. Issues ask for node reboot counting, agent-unready timers, condition reasons and a metric for control plane nodes that have no node pool **[third-party, from `gh issue list` on 2026-11-11]**. Expect gaps in the dashboards, and plan to fill them with your own alerts.
 
 ### 5.1 Metrics and alerts
 
-The controller serves Prometheus metrics on port 9090 of its pod. The series that answer the common questions are in the table. I saw all of them except the give-up counter, which appears only after an event, in a real controller **[ran]**.
+The controller serves Prometheus metrics on port 9090 of its pod. Prometheus is the metrics system most clusters use, and a metric is a named number that it scrapes on a schedule. The series that answer the common questions are in the table. I saw all of them except the give-up counter, which appears only after an event, in a real controller **[ran]**.
 
 | Metric | Use |
 |---|---|
@@ -226,7 +233,9 @@ The controller serves Prometheus metrics on port 9090 of its pod. The series tha
 | `nvke_controller_node_provisioning_giveups_total` | Nodes NVKE gave up on |
 | `nvke_auth_enabled`, `nvke_auth_requests_total` | Authentication mode and decisions |
 
-Here is a small rule file of my own that uses those names. It checks with `promtool` **[ran]**. The thresholds are examples, and I did not tune them on a real fleet **[author's recommendation]**.
+A metric that is never queried is a metric that does not help you. The table tells you which question each one answers. The lifecycle timer is the most useful for stuck nodes, because it keeps growing until something changes.
+
+Here is a small rule file of my own that uses those names. It checks with `promtool` **[ran]**. Promtool is the Prometheus command that checks an alert file for syntax. The thresholds are examples, and I did not tune them on a real fleet **[author's recommendation]**.
 
 ```yaml
 groups:
@@ -274,7 +283,7 @@ Checking c32_nvke_alerts.yaml
   SUCCESS: 5 rules found
 ```
 
-Also probe `/readyz` from outside, for example with a blackbox exporter, because it is the only check that tests PostgreSQL and Temporal together. Install the chart's credential alerts too. Watch the management plane's own pods in the `nvke-controller`, `postgres`, `temporal`, `spire-server`, `spire-system` and `capnico-system` namespaces.
+Promtool confirms the file is well formed. It does not confirm that the metric names exist, and that is a gap you should close on purpose. Also probe `/readyz` from outside, for example with a blackbox exporter, because it is the only check that tests PostgreSQL and Temporal together. A blackbox exporter is a Prometheus component that probes an address from the outside, the way a user would. Install the chart's credential alerts too. Watch the management plane's own pods in the `nvke-controller`, `postgres`, `temporal`, `spire-server`, `spire-system` and `capnico-system` namespaces. A namespace is a folder for Kubernetes objects, and each one here holds part of the management plane.
 
 **Decision rule:** Page on `/readyz` failing, on any authentication mode of off, and on any node that sits in a lifecycle state for more than twice the normal provisioning time.
 
@@ -282,7 +291,7 @@ Also probe `/readyz` from outside, for example with a blackbox exporter, because
 
 ## 6. Comparison with other ways to run Kubernetes
 
-A director asks why not just use Cluster API, or Rancher, or what the hyperscalers do. The honest comparison has few sourced cells. For the NVKE column every cell comes from the sources above. For other products I give a one-line description of the category and mark it as not re-sourced for this chapter. Verify before you quote it **[inference]**.
+A director asks why not just use Cluster API, or Rancher, or what the hyperscalers do. The question is fair, and the honest answer has few cells you can source. For the NVKE column every cell comes from the sources above. For other products I give a one-line description of the category and mark it as not re-sourced for this chapter. Verify before you quote it **[inference]**. A comparison you cannot back up is worse than no comparison in a budget meeting.
 
 | Option | What it is | How it differs from NVKE | Sourcing |
 |---|---|---|---|
@@ -295,13 +304,15 @@ A director asks why not just use Cluster API, or Rancher, or what the hyperscale
 | Nebius managed Kubernetes | A managed control plane with node groups, deployment strategy, auto repair and managed Cilium and CoreDNS | You consume it as a service. You do not operate the control plane. See 20.36. | official, via the notes behind 20.36 |
 | Hyperscaler managed Kubernetes | EKS, GKE and similar services | A service you rent, and not a system you install on your own hardware | inference, not re-sourced |
 
+Read the last column before you read anything else. The rows with "official" tell you the claim came from a source you can cite. The rows with "inference" tell you the claim is a category description that I did not check, so verify it before it goes on a slide.
+
 ### 6.1 What NVKE is actually unique at
 
-Three differences are real and sourced. NVKE is built for an operator who is the provider, so it manages tenant clusters on hardware the operator owns **[official]**. It ties cluster lifecycle to NICo's bare-metal lifecycle and to TPM-based node identity **[official]**. And it is the Kubernetes layer of DSX OS, with AICR, NVCRE and NVSentinel designed to sit on top **[official]**. See 11.31 for those.
+Three differences are real and sourced. NVKE is built for an operator who is the provider, so it manages tenant clusters on hardware the operator owns **[official]**. In other words, the customer rents the service from you, and you own the metal. It ties cluster lifecycle to NICo's bare-metal lifecycle and to TPM-based node identity **[official]**. And it is the Kubernetes layer of DSX OS, with AICR, NVCRE and NVSentinel designed to sit on top **[official]**. See 11.31 for those.
 
 ### 6.2 What partners say they will do
 
-The blog names partners and their plans. These are statements of intent, not shipped products **[vendor]**.
+The blog names partners and their plans. These are statements of intent, not shipped products **[vendor]**. A statement of intent tells you what a company says it plans to build. It tells you nothing about what works today.
 
 | Partner | What the blog says | Tag |
 |---|---|---|
@@ -309,7 +320,7 @@ The blog names partners and their plans. These are statements of intent, not shi
 | Mirantis, Rafay, Spectro Cloud, OpenNebula Systems, vCluster | Incorporating components of NVKE and NVKR into their managed Kubernetes offerings | vendor |
 | Netris | Enabling NVKE within its network automation solution | vendor |
 
-A search on 2026-11-11 found nothing from OpenNebula, Spectro Cloud, Firmus or SK Telecom that ties them to NVKE beyond the blog, and I found no heise or Cloud Native Now piece. Mirantis and Netris have public announcements about their own partnership that do not mention NVKE in the search results **[third-party]**.
+A search on 2026-11-11 found nothing from OpenNebula, Spectro Cloud, Firmus or SK Telecom that ties them to NVKE beyond the blog, and I found no heise or Cloud Native Now piece. Mirantis and Netris have public announcements about their own partnership that do not mention NVKE in the search results **[third-party]**. If a partner's sales deck says "certified NVKE", ask for the public release that backs it.
 
 **Decision rule:** Compare on who operates the control plane, whose hardware it is and whether you need a tenant-facing API, and drop any cell you cannot source before you present the table.
 
@@ -317,13 +328,13 @@ A search on 2026-11-11 found nothing from OpenNebula, Spectro Cloud, Firmus or S
 
 ## 7. When to use NVKE today, and when to wait
 
-A budget meeting needs a yes, a no or a "not yet". Use these criteria.
+A budget meeting needs a yes, a no or a "not yet". Use these criteria. The point of the criteria is to turn a mood into a decision you can defend. Each one is a question you can answer with a fact.
 
 **Use it now for a pilot when** you are an operator with NICo-managed GPU hardware, you can accept preview status, you have a platform team that can read Go and Temporal logs, and you will put your own service in front of the API.
 
 **Wait when** you need production support, a backup and restore story, per-customer authorization, customer-held kubeconfigs that can be revoked, or Kubernetes versions other than 1.36.3. Also wait if you cannot use NICo, since the other providers are not supported beyond LaunchLayer after enablement **[official]**.
 
-**Watch the roadmap** for per-customer authorization, management cluster self-management, Kubernetes 1.37 support and your own PKI. Items in the exploring stage include backup and restore, management plane upgrades and updating labels and taints on existing pools **[official]**.
+**Watch the roadmap** for per-customer authorization, management cluster self-management, Kubernetes 1.37 support and your own PKI. Items in the exploring stage include backup and restore, management plane upgrades and updating labels and taints on existing pools **[official]**. Watching is a reasonable job for one person on the team. It means checking the roadmap at a fixed interval, not waiting for a surprise.
 
 | Criterion | Ready today? |
 |---|---|
@@ -336,13 +347,15 @@ A budget meeting needs a yes, a no or a "not yet". Use these criteria.
 | HA management cluster | Yes, three nodes, but it cannot replace its own nodes |
 | GPU stack | Outside NVKE. Use AICR and the GPU Operator (11.31, 11.4). |
 
+The table answers the budget question in one glance. Two rows are yes, and the rest are no. That is the honest shape of a preview, and it is the reason the decision rule below says pilot, not production.
+
 **Decision rule:** Start a bounded pilot with a hard exit date, a rebuild rehearsal and your own front-end service, and revisit when authorization and backup arrive.
 
 **In one minute:** NVKE is ready to evaluate and not ready to host customers you cannot lose.
 
 ## 8. How to answer out loud: what is NVKE and how would you operate it
 
-An interviewer says: "NVIDIA released NVKE last week. What is it, and how would you operate it?" Aim for two minutes. Speak in this order.
+An interviewer says: "NVIDIA released NVKE last week. What is it, and how would you operate it?" Aim for two minutes. Speak in this order, because the order gives the listener a map before the detail. Practise it aloud until the sentences come without notes.
 
 1. **One sentence of definition.** "NVKE is NVIDIA's open-source management system that lets an AI factory run managed Kubernetes for its customers on its own GPU servers. It is in public preview."
 2. **The shape.** "A three-node management cluster runs a REST API, PostgreSQL, Temporal workflows and Cluster API with a NICo provider. Each tenant cluster gets its own control plane machines from NICo."
@@ -351,13 +364,15 @@ An interviewer says: "NVIDIA released NVKE last week. What is it, and how would 
 5. **How I would operate it.** Three points. Monitor `/readyz` and the lifecycle timers. Plan upgrades in two stages, control plane first, then each pool, with skew rules. Treat T1 and T2 as separate runbooks.
 6. **The honest caveats.** "Preview. The API is plain HTTP with authentication off, no authorization, no backup or management upgrade procedure, and the admin kubeconfig cannot be revoked. I would front it with my own service and rehearse a rebuild."
 
+Notice the last step. A strong answer ends on what you would not trust yet. Interviewers remember the candidate who knew the limits.
+
 ### Numbers to state
 
 Kubernetes 1.36.3 pinned. Cluster API v1.13.6. Port 30080 for the API and 15005 for the node agent. Three management nodes. One minor version per control plane upgrade and a three-minor worker skew limit. Auto mode off until `recycleBudget` is above zero.
 
 ### Trade-offs to name
 
-Building on NVKE saves the cluster management system but ties you to NICo and a preview API. Building on Cluster API alone gives flexibility and costs engineering years. A managed service on Nebius or a hyperscaler removes the operations but also the hardware ownership.
+Building on NVKE saves the cluster management system but ties you to NICo and a preview API. Building on Cluster API alone gives flexibility and costs engineering years. A managed service on Nebius or a hyperscaler removes the operations but also the hardware ownership. Name the trade in one sentence each. Interviewers often listen for whether you understand what you give up, more than for which option you pick.
 
 ### Follow-up questions to expect
 
@@ -373,7 +388,7 @@ Building on NVKE saves the cluster management system but ties you to NICo and a 
 
 ## 9. Hands-on lab: operate what you can without hardware
 
-You can run a real controller and check monitoring pieces on a laptop. **What ran here:** the local controller from 11.32 with its metrics, `promtool check rules` on the alert file, `pytest` for the linter, validator and planner, and a Helm render with authentication values. **What did not run:** enforcing authentication, certificate renewal, key rotation, backup and restore, NICo, a real failure injection and any GPU.
+You can run a real controller and check monitoring pieces on a laptop. Monitoring names are the part of the lab you can test without a site, so this is where you build confidence in the alerts. **What ran here:** the local controller from 11.32 with its metrics, `promtool check rules` on the alert file, `pytest` for the linter, validator and planner, and a Helm render with authentication values. **What did not run:** enforcing authentication, certificate renewal, key rotation, backup and restore, NICo, a real failure injection and any GPU.
 
 1. Start the controller as in 11.32 and fetch `/metrics` on port 9090. Expected: more than 200 `nvke_` series and `nvke_auth_enabled{mode="off"} 1`.
 2. Create two clusters. Expected: `nvke_controller_cluster_info` has one series per cluster with `status="provisioning"`.
