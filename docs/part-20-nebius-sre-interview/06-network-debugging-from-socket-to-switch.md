@@ -14,37 +14,43 @@ lab_venue: "Linux VM"
 
 ## What the interviewer is testing
 
-This chapter serves the Linux console round, and it also feeds the 30-minute production-incident round. Nebius states that technical interviews include "practical tasks in the Linux console", "coding, troubleshooting, debugging" and knowledge of "service management, Linux/Unix, networks". The job posting asks for debugging "from kernel to application layer". One candidate reported a Linux server troubleshooting round of one hour on the command line. Nebius has not published which network faults it uses, so this chapter teaches the method and the common faults.
+Picture the console round. The interviewer shares a terminal with you, a client somewhere is reporting an error, and the interviewer wants to watch how you go from that error to a fault. This chapter serves the Linux console round, and it also feeds the 30-minute production-incident round. Nebius states that technical interviews include "practical tasks in the Linux console", "coding, troubleshooting, debugging" and knowledge of "service management, Linux/Unix, networks". The job posting asks for debugging "from kernel to application layer". One candidate reported a Linux server troubleshooting round of one hour on the command line. Nebius has not published which network faults it uses, so this chapter teaches the method and the common faults.
 
-The interviewer is checking three things. Can you name what an error message really means? Can you pick the next command by reasoning, not by habit? Can you say what you would change, and what you would not touch on a live system?
+The interviewer is checking three things. Can you name what an error message really means? Can you pick the next command by reasoning, not by habit? Can you say what you would change, and what you would not touch on a live system? A candidate who answers all three well can handle a fault they have never seen before, because the method carries over.
 
 A realistic question, in the interviewer's voice: "A client calls our streaming endpoint and the response stops after about a minute, mid-answer, with no error in our logs. You have a shell on the gateway node. Walk me through it."
 
-The answer needs a mechanism, not a guess. By the end of this chapter you can give that answer, and five more like it, with real commands.
+The answer needs a mechanism, not a guess. The rest of this chapter builds that answer step by step, with real commands, and then gives you five more answers in the same style.
 
 ## The core ideas
 
 ### 1. Refused, timed out, reset: three different stories
 
-An engineer says "the network is down". The first useful thing you can do is ask which error the client saw. Each one points to a different place.
+An engineer says "the network is down", and the room goes quiet. The first useful thing you can do is ask which error the client saw. Each error points to a different place, so the words are evidence. The question costs nothing, and it narrows the search before you type a single command.
 
-**Connection refused** means a host answered the first packet and said no. The kernel at the other end sent a reset because nothing listens on that port. So the path works, the host is up, and the service is not there. A closed local port shows it. In the lab for this chapter, a Python connect to port 1 on 127.0.0.1 gave `ConnectionRefusedError: [Errno 61] Connection refused`, and the OpenSSL client printed `connect:errno=61`. In an Ubuntu 24.04 container on Linux the same OpenSSL client printed `connect:errno=111`. The error number differs between operating systems, so read the name, not the number.
+From the client's side the three errors look very different, even though each one ends the call. A refusal returns at once, so the caller sees the failure in milliseconds. A timeout keeps the caller waiting, and the wait itself is the clue, because it matches a retry schedule. A reset often arrives in the middle of a conversation, after some data has already flowed. Asking the client how long it waited, and whether any bytes came back first, often tells you which of the three you are dealing with before you have logged into anything.
 
-**Connection timed out** means nobody answered. A packet was dropped on the way, or a firewall silently discards it, or the host is gone, or its queue is full. The client keeps retrying the SYN until it gives up. The Linux man page for tcp says the default for the syn retries setting is 6, which is about 127 seconds of trying. A hung connect that ends after two minutes is this case.
+Connection refused means a host answered the first packet and said no. The kernel at the other end sent a reset because nothing listens on that port. So the path works, the host is up, and the service is not there. A closed local port shows it. In the lab for this chapter, a Python connect to port 1 on 127.0.0.1 gave `ConnectionRefusedError: [Errno 61] Connection refused`, and the OpenSSL client printed `connect:errno=61`. In an Ubuntu 24.04 container on Linux the same OpenSSL client printed `connect:errno=111`. The error number differs between operating systems, so read the name, not the number.
 
-**Connection reset** during an established session means the other side, or something in the middle, destroyed the connection state and answered your next packet with a reset. The classic cause is a device that forgot the connection, such as a balancer that closed an idle flow.
+Connection timed out means nobody answered. A packet was dropped on the way, or a firewall silently discards it, or the host is gone, or its queue is full. The client keeps retrying the SYN until it gives up. A SYN is the first packet of the TCP handshake, the one that asks to open a connection. The Linux man page for tcp says the default for the syn retries setting is 6, which is about 127 seconds of trying. A hung connect that ends after two minutes is this case, and the client's long wait is the retry schedule, not a slow server.
 
-The listen man page adds a twist that matters for scenario 1. When the queue of pending connections is full, "the client may receive an error with an indication of ECONNREFUSED". Or the request "may be ignored so that a later reattempt at connection succeeds". So a full queue can look like either a refusal or a timeout, depending on the kernel and its settings.
+Connection reset during an established session means the other side, or something in the middle, destroyed the connection state and answered your next packet with a reset. The classic cause is a device that forgot the connection, such as a balancer that closed an idle flow. The session looked fine until the moment someone wrote to it.
 
-When someone reports an error, ask for the exact words. Refused points to the service, timeout points to the path or the queue, reset points to state in a middlebox.
+The listen man page adds a twist that matters for scenario 1. When the queue of pending connections is full, "the client may receive an error with an indication of ECONNREFUSED". Or the request "may be ignored so that a later reattempt at connection succeeds". So a full queue can look like either a refusal or a timeout, depending on the kernel and its settings. That is why the exact words matter, and why you should check the queue before you conclude that the service is missing.
+
+When someone reports an error, ask for the exact words. Refused points to the service, timeout points to the path or the queue, reset points to state in a middlebox. A middlebox is any device between the two ends that keeps its own table of connections, such as a load balancer, a NAT gateway or a firewall.
 
 ### 2. The method: split the path in half
 
-Under stress it is tempting to run twenty commands. Computer Networking Problems and Solutions, in its Troubleshooting chapter, describes a better habit called half split. Map the path of the signal. Split it roughly in half. Test the signal at the middle. If it is wrong there, move toward the source. If it is right, move toward the destination.
+Picture a pager going off at night. The first instinct is to run twenty commands at once and hope one of them explains the fault. Under stress that feels productive, and it usually wastes the most time. Computer Networking Problems and Solutions, in its Troubleshooting chapter, describes a better habit called half split. Map the path of the signal. Split it roughly in half. Test the signal at the middle. If it is wrong there, move toward the source. If it is right, move toward the destination.
 
-For a request from a pod to a database, the path has these hops: the application, the resolver, the pod network, the node, the fabric, the remote node and the remote service. A good first test is in the middle. Can the node reach the destination IP at all? You then learn which half to search.
+Take the pod-to-database path as a worked example. A reader on the team says the database is "unreachable" from one pod. Your first test is from the node the pod runs on, toward the database address. If that works, the fault is between the pod and the node, which points you at the pod network, its resolver or its policy. If it fails, the fault is further along, in the fabric or on the database side, and your next test moves toward the database. Each answer removes a large part of the path, and you never needed to inspect every hop to get there.
 
-The same book stresses that the purpose is what the system must do, not what one number says. A link can show zero errors while the user's stream still dies. So you test the thing the user cares about, which is a long-lived streaming call that stays up.
+Half split works because each test eliminates about half of the remaining places the fault can hide. A few well-chosen tests find the fault faster than many scattered ones, and each result tells you which half to search next. It is the same idea as a binary search in a sorted list, applied to a network path.
+
+For a request from a pod to a database, the path has these hops: the application, the resolver, the pod network, the node, the fabric, the remote node and the remote service. A good first test is in the middle. Can the node reach the destination IP at all? You then learn which half to search. If the node reaches the IP, the fault is probably above the network layer, in names, ports or the application. If it does not, the fault is in the fabric or in the remote node.
+
+The same book stresses that the purpose is what the system must do, not what one number says. A link can show zero errors while the user's stream still dies. So you test the thing the user cares about, which is a long-lived streaming call that stays up. A clean counter is not the same as a working service.
 
 The mermaid diagram shows the order we use in this chapter. Say it aloud in the interview, then walk down it.
 
@@ -59,13 +65,15 @@ flowchart TD
   E --> H["Middlebox state, keepalive, PMTU"]
 ```
 
-Before you type, say which half of the path you are testing and what result you expect.
+Before you type, say which half of the path you are testing and what result you expect. Saying the expectation out loud is what turns a command into a test. If the result matches, you have learned something. If it does not, you have found the place to look.
 
 ### 3. Reading ss: states and the two numbers
 
-Suppose you land on a gateway node with an alert about connect failures. The fastest honest picture of the host's TCP world is `ss`. Systems Performance, in the Network chapter, introduces it as the socket statistics tool from the iproute2 package, which is maintained by the kernel network engineers. Its default output has columns for state, Recv-Q, Send-Q, local address and peer address.
+Suppose you land on a gateway node with an alert about connect failures. The fastest honest picture of the host's TCP world is `ss`. Systems Performance, in the Network chapter, introduces it as the socket statistics tool from the iproute2 package, which is maintained by the kernel network engineers. Its default output has columns for state, Recv-Q, Send-Q, local address and peer address. Each row is one socket, which is one end of one connection, or one listener waiting for connections.
 
-The book lists the TCP states: LISTEN, SYN-SENT, SYN-RECEIVED, ESTABLISHED, FIN-WAIT-1, FIN-WAIT-2, CLOSE-WAIT, CLOSING, LAST-ACK, TIME-WAIT and CLOSED. The ss manual page uses the spellings syn-recv and listening in its filters. The table below is the lookup you need.
+The book lists the TCP states: LISTEN, SYN-SENT, SYN-RECEIVED, ESTABLISHED, FIN-WAIT-1, FIN-WAIT-2, CLOSE-WAIT, CLOSING, LAST-ACK, TIME-WAIT and CLOSED. The ss manual page uses the spellings syn-recv and listening in its filters. The table below is the lookup you need, and it is worth reading each row as a question about what the state means for your service.
+
+In practice you rarely read the whole list. You run one command, count the states, and look for the one that is out of place. A healthy gateway has a steady mix of ESTABLISHED and a few LISTEN rows. A gateway with a growing pile of CLOSE-WAIT rows is leaking connections, and a gateway with a pile of SYN-RECV rows is either under a flood or waiting on clients that never finish. The count is the first clue, and the queue numbers on the listener are the second.
 
 | State | What it tells you | What to suspect when there are many |
 |---|---|---|
@@ -77,11 +85,11 @@ The book lists the TCP states: LISTEN, SYN-SENT, SYN-RECEIVED, ESTABLISHED, FIN-
 | FIN-WAIT-2 | We closed, the peer has not yet | A slow or stuck peer |
 | TIME-WAIT | A closed session is kept briefly | Many short connections, see section 5 |
 
-CLOSE-WAIT deserves emphasis because interviewers like it. The kernel has done its part. The remote side sent its close, and the kernel is waiting for your program to call close. A pile of CLOSE-WAIT sockets is nearly always a leak in the application, such as a forgotten response body.
+CLOSE-WAIT deserves emphasis because interviewers like it. The kernel has done its part. The remote side sent its close, and the kernel is waiting for your program to call close. A pile of CLOSE-WAIT sockets is nearly always a leak in the application, such as a forgotten response body. The fault sits with your code, and the kernel is simply holding the socket open for the program that has forgotten it.
 
 For a LISTEN socket the two queue columns change meaning. On Linux, Recv-Q is the number of connections waiting to be accepted and Send-Q is the limit. The ss manual page does not define these columns, but the kernel source does. The kernel file `net/ipv4/tcp_diag.c`, which answers ss, fills the two numbers for a listening socket from `sk_ack_backlog`, the current queue length, and `sk_max_ack_backlog`, the limit. A live run confirms it: a listener created with backlog 5 and never accepted showed `LISTEN 6 5` once it was full. The queue holds one more than the limit, so a full listener reads Recv-Q one above Send-Q. The parser in code/part20 flags a listener whose Recv-Q has reached its Send-Q, which catches both the at-limit and the over-limit row.
 
-For one connection, `ss -tiepm` gives a deep view. A typical output shows the process and file descriptor, the retransmission timeout, the round-trip time, the maximum segment size, the congestion window, and flags such as `app_limited`, `rwnd_limited` and `sndbuf_limited`. You use those flags to learn which side is the bottleneck, and you will use them again in chapter 20.18 when streaming slows.
+For one connection, `ss -tiepm` gives a deep view. A typical output shows the process and file descriptor, the retransmission timeout, the round-trip time, the maximum segment size, the congestion window, and flags such as `app_limited`, `rwnd_limited` and `sndbuf_limited`. You use those flags to learn which side is the bottleneck. `app_limited` means the application is not handing data over fast enough, `rwnd_limited` means the receiver's window is the limit, and `sndbuf_limited` means the sender's buffer is full. You will use them again in chapter 20.18 when streaming slows.
 
 Here is the parser from the code folder. It turns `ss -tan` text into counts and finds a full accept queue.
 
@@ -126,31 +134,39 @@ if __name__ == "__main__":
     print(summarize(parse(sys.stdin.read())))
 ```
 
-Start every network incident with ss, then say which states dominate and what that means.
+Start every network incident with ss, then say which states dominate and what that means. A large count of one state is the clue, and the table above tells you which story that state supports.
 
 ### 4. SYN backlog and accept queue
 
-Picture a busy gateway that gets a burst of new connections during a deploy. The application is slow to call accept because its threads are busy. What happens to new clients?
+Picture a busy gateway that gets a burst of new connections during a deploy. The application is slow to call accept because its threads are busy. What happens to new clients? The answer depends on the two queues that Linux keeps for every listening socket, and that is the mechanism this section explains.
 
-Systems Performance explains that Linux keeps two queues. The first holds connections that are still completing the handshake, called the SYN backlog. The second holds established sessions waiting for the program to accept them, called the listen backlog. The earlier design used a single queue and was weak against SYN floods, so the split lets the first queue be long and cheap.
+Systems Performance explains that Linux keeps two queues. The first holds connections that are still completing the handshake, called the SYN backlog. The second holds established sessions waiting for the program to accept them, called the listen backlog. The earlier design used a single queue and was weak against SYN floods, so the split lets the first queue be long and cheap. A SYN flood is an attack that sends SYNs without ever finishing the handshake, so the server's queue fills with half-open connections.
+
+Think of the two queues as a reception desk and a waiting room. The reception desk takes each new arrival and records their request, which costs little. The waiting room holds people whose paperwork is complete and who are waiting to be called in. If the doctor is slow, the waiting room fills, and new arrivals can no longer be seated. That is when the gateway starts to turn clients away.
 
 Both lengths can be tuned. The accept queue is limited by the backlog argument to listen, and the kernel caps it at net.core.somaxconn. The listen man page says that since Linux 5.4 the default of that cap is 4096, and in earlier kernels it was 128. The SYN queue is limited by net.ipv4.tcp_max_syn_backlog. The tcp man page gives its default as 256, raised to 1024 on systems with at least 128 MB of memory. Systems Performance shows one production tuning with 1024 for somaxconn and 8192 for tcp_max_syn_backlog, and calls it a point-in-time example, not a recipe.
 
-When the accept queue is full, SYN packets are dropped and later retransmitted by the client. The client sees this as slow connects, with a gap of seconds, then success or a timeout. Backlog drops and SYN retransmits are signs of host overload. The kernel counter documentation says that when the accept queue has no room the kernel drops the SYN and adds one to TcpExtListenOverflows. TcpExtListenDrops counts any packet the kernel drops on a listening socket.
+When the accept queue is full, SYN packets are dropped and later retransmitted by the client. The client sees this as slow connects, with a gap of seconds, then success or a timeout. Backlog drops and SYN retransmits are signs of host overload. The kernel counter documentation says that when the accept queue has no room the kernel drops the SYN and adds one to TcpExtListenOverflows. TcpExtListenDrops counts any packet the kernel drops on a listening socket. Both counters are cumulative, so you read them twice and compare the difference.
 
-There is a switch that changes the client's view. The tcp man page describes tcp_abort_on_overflow, disabled by default, as enabling reset of connections when the service is too slow. A well-known Netflix tuning example sets it to 1. With it on, clients get a fast refusal instead of a silent retry. That is a policy choice. Fast failure is good when a load balancer can retry elsewhere, and bad for a client with no other option.
+There is a switch that changes the client's view. The tcp man page describes tcp_abort_on_overflow, disabled by default, as enabling reset of connections when the service is too slow. A well-known Netflix tuning example sets it to 1. With it on, clients get a fast refusal instead of a silent retry. That is a policy choice. Fast failure is good when a load balancer can retry elsewhere, and bad for a client with no other option. A fast refusal tells the client to try somewhere else, and a silent drop makes the client wait and wonder.
 
-The cure is rarely a bigger queue alone. A longer queue hides a slow application and adds waiting time. You find out why accept is slow, for example a single-threaded accept loop or a saturated CPU, and you raise the queue only to absorb short bursts.
+Walk the deploy scenario from the start. A new version rolls out, and every instance restarts at about the same time. Each restarted process is slow for a while as its caches warm up, so the accept loop falls behind. Clients that arrive during that gap fill the waiting room. From outside you see slow connects that clear up on their own after a minute. That shape, a spike that heals by itself, is the signature of a backlog that absorbed a burst, and it is different from a permanent overload that keeps climbing.
+
+The cure is rarely a bigger queue alone. A longer queue hides a slow application and adds waiting time, because each extra connection in the queue waits longer before anyone serves it. You find out why accept is slow, for example a single-threaded accept loop or a saturated CPU, and you raise the queue only to absorb short bursts.
 
 When connects are slow, read the listener queue, then the overflow counters, then the application.
 
 ### 5. TIME_WAIT and ephemeral ports
 
-A different story. A service makes thousands of short calls per second to one downstream API, and after a while its calls fail with errors about addresses in use or time out on connect. The cause is port exhaustion.
+A different story. A service makes thousands of short calls per second to one downstream API, and after a while its calls fail with errors about addresses in use or time out on connect. The cause is port exhaustion, and the first reaction, to suspect the downstream API, is usually wrong.
 
-Systems Performance explains the mechanism. A fully closed session enters TIME_WAIT so late packets are not mixed with a new session on the same ports. The state is typically held for about two minutes, though the same book later describes it as possibly 60 seconds, and the Linux fin timeout default in the tcp man page is 60 seconds. Which value applies depends on the kernel, so state your assumption aloud.
+Systems Performance explains the mechanism. A fully closed session enters TIME_WAIT so late packets are not mixed with a new session on the same ports. The state is typically held for about two minutes, though the same book later describes it as possibly 60 seconds, and the Linux fin timeout default in the tcp man page is 60 seconds. Which value applies depends on the kernel, so state your assumption aloud. The point of the state is safety. A late packet from an old session could otherwise be taken as part of a new one that happens to reuse the same ports.
 
-A connection is identified by source address, source port, destination address and destination port. When a client talks to one server address and one port, only the source port can vary. That port comes from the ephemeral range. With 65,536 ports and a 60-second TIME_WAIT, a rate above 65,536 connections in 60 seconds can clash.
+A connection is identified by source address, source port, destination address and destination port. When a client talks to one server address and one port, only the source port can vary. That port comes from the ephemeral range, which is the pool of temporary port numbers the kernel hands out to outgoing connections. With 65,536 ports and a 60-second TIME_WAIT, a rate above 65,536 connections in 60 seconds can clash.
+
+Think of it as a parking lot with a fixed number of spaces, where each departing car must keep its space reserved for a minute before anyone else can use it. Cars arriving faster than the lot can turn over will find it full, even though the road outside is clear. The lot is the port range, the reserved minute is TIME_WAIT, and the cars are connections.
+
+Where do those bursts of short calls come from? Usually from a loop in the client that opens a new connection for every request, instead of reusing one. Each loop iteration leaves a TIME_WAIT behind, and the rate of iterations sets the rate at which the port budget drains. The sudden failure after a few minutes is what a steady drain looks like once the budget runs out. The fix is in that loop, and the server beside it is innocent.
 
 The arithmetic is short. The code folder has it as a function.
 
@@ -163,17 +179,21 @@ The arithmetic is short. The code folder has it as a function.
 
 The real range on your host is smaller than 65,536 unless it was widened, and the default is set by net.ipv4.ip_local_port_range. We did not fetch the default value, so read it with sysctl on the machine.
 
-The usual fixes are reuse and recycle behavior in the kernel, more server IP addresses, or a low SO_LINGER time. The tcp man page describes tcp_tw_reuse as allowing reuse of TIME_WAIT sockets "when it is safe from protocol viewpoint" and tells you not to change it without expert knowledge. The best fix is usually in the client. Use connection pooling and keep-alive so you do not open a fresh connection per request.
+The usual fixes are reuse and recycle behavior in the kernel, more server IP addresses, or a low SO_LINGER time. SO_LINGER controls what happens to a socket when it closes, and a low value can cut the wait short but risks losing data that is still in transit. The tcp man page describes tcp_tw_reuse as allowing reuse of TIME_WAIT sockets "when it is safe from protocol viewpoint" and tells you not to change it without expert knowledge. The best fix is usually in the client. Use connection pooling and keep-alive so you do not open a fresh connection per request. A pool that keeps connections open turns thousands of closes into a handful, and the parking lot stops filling.
+
+A useful check before any tuning is to count the TIME_WAIT rows per destination. If they all point at one address and port, the budget argument applies. If they are spread across many destinations, the budget is fine and the problem is somewhere else, such as a client that closes connections too early. The count separates the two cases in one command.
 
 Do not say "TIME_WAIT is a bug". It is a safety feature, and the answer is to open fewer connections.
 
 ### 6. Conntrack: the table that fills quietly
 
-Another story. Pods on one node begin to lose new connections at random, while existing connections are fine. CPU is low and every service is healthy. Suspect the connection tracking table.
+Another story. Pods on one node begin to lose new connections at random, while existing connections are fine. CPU is low and every service is healthy. Suspect the connection tracking table, because a full table fails quietly and leaves every existing flow untouched.
 
-The Networking and Kubernetes book explains it in the Linux Networking chapter. Conntrack is part of Netfilter. It tracks flows by a tuple of source address, source port, destination address, destination port and protocol, and it stores them in a hash table. NAT depends on it. The book connects this to Kubernetes directly. Kube-proxy builds Service load balancing with iptables, and without connection tracking every packet would need to be mapped to the same backend, which cannot be done when the backend list changes.
+The Networking and Kubernetes book explains it in the Linux Networking chapter. Conntrack is part of Netfilter, the kernel's packet filtering framework. It tracks flows by a tuple of source address, source port, destination address, destination port and protocol, and it stores them in a hash table. A hash table is a lookup structure that finds an entry by computing a key, so each packet can be matched quickly. NAT depends on it, because the kernel has to remember which original address each reply belongs to. The book connects this to Kubernetes directly. Kube-proxy builds Service load balancing with iptables, and without connection tracking every packet would need to be mapped to the same backend, which cannot be done when the backend list changes.
 
 The danger is that conntrack runs out of space for connection tracking, and new connections cannot be made. The maximum is read from /proc/sys/net/nf_conntrack_max and the hash table size from /sys/module/nf_conntrack/parameters/hashsize. The kernel documentation says nf_conntrack_count is the current number of allocated entries, and that the bucket count defaults to total memory divided by 16384, with a floor of 1024 and a ceiling of 262144. The same page lists the default established-state timeout as 432000 seconds, which is five days. So an idle but tracked flow can occupy a slot for a very long time unless something shortens it.
+
+Picture a guest list with a hard cap. People already inside can keep talking and leave when they like, but the door stays shut for newcomers once the cap is reached. Nobody is hurt, the party looks fine, and yet every new guest is turned away. That is the failure a full conntrack table produces, and it is why the symptom is "new fail, old work".
 
 You check it with two numbers and one division. The code below turns sysctl text into a percentage and a verdict.
 
@@ -224,15 +244,17 @@ net.netfilter.nf_conntrack_tcp_timeout_established = 432000
 
 The last number is 432,000 seconds, which is the five days the kernel documentation gives for the established timeout. The table could not be filled in the test container, which may not write that sysctl, and Docker refused to set it at start. So the full-table message in scenario 3 is the checker run on real values at 0.0 percent, and the full case stays a test with sample input.
 
-The fix has layers. Raise the maximum if memory allows. Reduce the number of short-lived flows through connection reuse. Look for a client that opens connections in a loop. And in Kubernetes, remember that every pod-to-Service flow passes through here on the node.
+Before you change anything, watch the count move. Take a reading, wait a little, and take another. If the count climbs toward the maximum and stays there, flows are arriving faster than they leave, and the table will fill. If the count rises and then falls back, the table is handling a burst, and the fix may be to wait for the burst to pass. The trend tells you which of the two problems you have, and it costs nothing to collect.
+
+The fix has layers. Raise the maximum if memory allows. Reduce the number of short-lived flows through connection reuse. Look for a client that opens connections in a loop. And in Kubernetes, remember that every pod-to-Service flow passes through here on the node, so a busy node pays for every Service call its pods make.
 
 For any "new connections fail, old ones work" symptom, compare conntrack count to max before you touch anything else.
 
 ### 7. DNS failures and ndots in Kubernetes
 
-An engineer reports that a pod's calls to an external API are slow, and sometimes fail, but pinging the IP is fast. That points to name resolution. The fix often hides in one line of a file.
+An engineer reports that a pod's calls to an external API are slow, and sometimes fail, but pinging the IP is fast. That points to name resolution. The fix often hides in one line of a file, and the file is the one the pod reads before it asks anyone for an address.
 
-How Linux Works describes the resolver. The C library follows rules in nsswitch.conf, often checks the hosts file first, then asks the name server found in resolv.conf. The search line defines rules for incomplete names. A name server cache such as systemd-resolved may sit in front.
+How Linux Works describes the resolver. The C library follows rules in nsswitch.conf, often checks the hosts file first, then asks the name server found in resolv.conf. The search line defines rules for incomplete names. A name server cache such as systemd-resolved may sit in front. Each step is a place where time can go, and the slow step may not be the one you expect.
 
 Kubernetes sets the pod's resolv.conf for you. The Kubernetes documentation on DNS for Services and Pods shows an example with the nameserver as the cluster DNS Service, a search line with the pod's namespace domain, the svc domain and the cluster domain, and `options ndots:5`. The docs note that a query for just a short name may be expanded using those search domains.
 
@@ -291,19 +313,23 @@ For api.example.com from the namespace ml, the script prints three suffixed name
 
 The Networking and Kubernetes book adds that CoreDNS has an Autopath feature that does the search work on the server side, at the cost of more CoreDNS memory. It also lists the limits: at most three name server addresses and at most six search domains in a pod.
 
+The trailing dot works because it tells the resolver the name is already complete. A name that ends in a dot is absolute, so the search list is skipped and only one query is sent per record type. That is why the fix in the scenario is a one-character change in the configuration rather than a new component. The cost is that the name must be written with the dot, so a config that is shared with other tools needs a check.
+
+A quick way to see the search cost without writing code is to time two lookups from the pod. Look up the short name, then the same name with a trailing dot. If the second is much faster, the search list is doing the work. The difference is the cost you are paying on every call, and it adds up across a busy service.
+
 Debug in this order. First read resolv.conf inside the pod. Then look up a name with the short and the full form. Then check whether CoreDNS pods are running and whether queries are slow or failing. The Kubernetes debug guide itself uses this ladder: `nslookup hostnames`, then `nslookup hostnames.default`, then the full `hostnames.default.svc.cluster.local`, and the first one that fails shows where to look.
 
-When names are slow, count the lookups a single call causes before you blame CoreDNS capacity.
+When names are slow, count the lookups a single call causes before you blame CoreDNS capacity. Often the server is fine, and the client is asking eight questions where one would do.
 
 ### 8. MTU and path MTU black holes
 
-The oddest bug in this list: small requests work, large responses hang. A health check passes. A long answer stalls forever. This is the signature of a path MTU black hole.
+The oddest bug in this list: small requests work, large responses hang. A health check passes. A long answer stalls forever. This is the signature of a path MTU black hole, and it is confusing because every simple test looks green. The handshake and the health check are small, so they pass, and the first big packet is the only one that disappears.
 
-Systems Performance describes the cause. Packet size is limited by the interface MTU, usually 1,500 bytes on Ethernet. Devices that cannot carry a larger packet either fragment it or send an ICMP can't-fragment message. The book says that some firewalls were configured to block all ICMP after ping-of-death attacks, which "prevents the helpful can't fragment messages from reaching the sender and causes network packets to be silently dropped once their packet size increases beyond 1,500."
+Systems Performance describes the cause. Packet size is limited by the interface MTU, usually 1,500 bytes on Ethernet. MTU stands for maximum transmission unit, the largest packet a link will carry. Devices that cannot carry a larger packet either fragment it or send an ICMP can't-fragment message. The book says that some firewalls were configured to block all ICMP after ping-of-death attacks, which "prevents the helpful can't fragment messages from reaching the sender and causes network packets to be silently dropped once their packet size increases beyond 1,500."
 
 The networking book, in the chapter on higher layer transports, explains Path MTU Discovery. The sender learns the smallest MTU on the path, and the learning relies on the ICMP packet-too-big reply. The book calls the assumption that this works on large public networks "a fairly bad assumption". So the handshake, with tiny packets, succeeds. The first full-size data packet vanishes. Nothing tells the sender why.
 
-Tunnels cause this inside your own platform. The handbook's overlay chapter, 2.17, says VXLAN adds 50 bytes, so a 1,500-byte underlay leaves 1,450 for the pod. If the pod's MTU is still 1,500, full-size packets exceed the tunnel.
+Tunnels cause this inside your own platform. A tunnel wraps one packet inside another, and the wrapper takes up room. The handbook's overlay chapter, 2.17, says VXLAN adds 50 bytes, so a 1,500-byte underlay leaves 1,450 for the pod. If the pod's MTU is still 1,500, full-size packets exceed the tunnel. The sender thinks the path can carry them, the tunnel cannot, and the packet is dropped.
 
 The script below does the arithmetic. Headers are 20 bytes for IPv4, 20 for TCP and 8 for ICMP, so the largest TCP payload at MTU 1,500 is 1,460, and the largest ping payload is 1,472.
 
@@ -337,7 +363,7 @@ if __name__ == "__main__":
         print(mtu, "mss", tcp_mss(mtu), "ping -s", ping_payload_for(mtu))
 ```
 
-To test a path, send pings of a chosen size with the do-not-fragment flag set. At MTU 1,500 you would try `ping -M do -s 1472 host` and, if it fails, step down. The ping command line is the Linux iputils form. It was run in the test container against a dummy interface set to MTU 1,450, which needs `--cap-add NET_ADMIN`. The oversize probe failed at once on the sender with the message below, and the probe sized for 1,450 was sent.
+To test a path, send pings of a chosen size with the do-not-fragment flag set. At MTU 1,500 you would try `ping -M do -s 1472 host` and, if it fails, step down. The do-not-fragment flag tells every router on the path to drop the packet rather than split it, so the answer tells you exactly what fits. The ping command line is the Linux iputils form. It was run in the test container against a dummy interface set to MTU 1,450, which needs `--cap-add NET_ADMIN`. The oversize probe failed at once on the sender with the message below, and the probe sized for 1,450 was sent.
 
 ```text
 $ ping -c1 -W1 -M do -s 1472 10.9.0.2
@@ -349,17 +375,19 @@ PING 10.9.0.2 (10.9.0.2) 1422(1450) bytes of data.
 
 The second probe got no reply only because the dummy interface has no peer. The point is where the error comes from. This one is local. On a real overlay the same step shows up as a missing reply or an ICMP packet-too-big message from a router on the path. The book says a default ping sends 56 bytes of payload, which is 84 bytes with headers, and that matches the numbers above.
 
-The fixes are to repair ICMP filtering, to set the right MTU on the tunnel interface, or to clamp the TCP maximum segment size so endpoints never send more than fits. Say which you prefer and why. Fixing ICMP is cleanest. Clamping is a practical bandage when you do not own the whole path.
+Here is the sequence the sender goes through, in plain steps. It sends a full-size packet with the do-not-fragment bit set. A router whose link is too small drops that packet and returns an ICMP message that says the packet was too big and names the largest size it can carry. The sender reads that message, lowers its size, and tries again. If the ICMP message is filtered somewhere, the sender never hears it. It keeps sending full-size packets that vanish, and the connection looks frozen. Small packets never trigger the problem, which is why the handshake and the health check both pass.
 
-When small works and large hangs, test packet size before you test anything exotic.
+The fixes are to repair ICMP filtering, to set the right MTU on the tunnel interface, or to clamp the TCP maximum segment size so endpoints never send more than fits. Say which you prefer and why. Fixing ICMP is cleanest, because it lets every path learn its own limit. Clamping is a practical bandage when you do not own the whole path, because it works even when the ICMP messages never arrive.
+
+When small works and large hangs, test packet size before you test anything exotic. Write down the largest size that passes and the smallest that fails, because that pair is the evidence you will hand to the network team, and it tells them exactly where to look.
 
 ### 9. Retransmits and reading tcpdump
 
-At some point the interviewer says "show me on the wire". You need to read a capture, not just run one.
+At some point the interviewer says "show me on the wire". You need to read a capture, not just run one. A capture is a record of each packet that crossed an interface, and reading it is where the story of a fault becomes visible. The counters tell you that something went wrong, and the capture tells you what happened, packet by packet.
 
-Systems Performance shows both the capture and the read. You write packets to a file with `tcpdump -i eth4 -w /tmp/out.tcpdump`, then read them with `tcpdump -nr /tmp/out.tcpdump`. The `-n` flag skips name lookups. The book warns that capture is expensive in CPU and storage, that the kernel may drop packets when the rate is high, and that you should use it for short periods. Filters run in the kernel using BPF, so a tight filter lowers the cost.
+Systems Performance shows both the capture and the read. You write packets to a file with `tcpdump -i eth4 -w /tmp/out.tcpdump`, then read them with `tcpdump -nr /tmp/out.tcpdump`. The `-n` flag skips name lookups. The book warns that capture is expensive in CPU and storage, that the kernel may drop packets when the rate is high, and that you should use it for short periods. Filters run in the kernel using BPF, so a tight filter lowers the cost, because the kernel discards the packets you do not need before they reach tcpdump. A safe capture starts with a host and port filter, runs for a short and fixed time, and writes to a file on a disk with room. Stopping the capture as soon as you have the failing exchange is part of the discipline, because a long capture on a busy host can hurt the very service you are trying to help.
 
-A line has a time, source and destination with ports, flags, sequence range, acknowledgement, window and length. The flags you meet most: S is a SYN, S. is a SYN-ACK, P. is a push with data and an ack, a single dot is a pure ack, F is a FIN and R is a reset.
+A line has a time, source and destination with ports, flags, sequence range, acknowledgement, window and length. The flags you meet most: S is a SYN, S. is a SYN-ACK, P. is a push with data and an ack, a single dot is a pure ack, F is a FIN and R is a reset. Read the flags first, because they tell you the stage of the conversation at a glance.
 
 The signals to look for:
 - A SYN repeated several times with no SYN-ACK. The packet or its answer is dropped, or the queue is full.
@@ -367,9 +395,9 @@ The signals to look for:
 - An R flag arriving. Someone destroyed the connection.
 - Data packets of full size sent but never acked, while small ones pass. That points to MTU.
 
-The book describes two ways TCP retransmits. A timer-based retransmit waits for the retransmit timeout, which on Linux is at least 200 ms for the first retransmit and doubles on later ones. A fast retransmit starts after duplicate acknowledgements and does not wait for the timer. Tail loss probe sends an extra packet to catch loss of the last segment. Many timer retransmits mean packets are vanishing without any later traffic to trigger the faster path.
+The book describes two ways TCP retransmits. A timer-based retransmit waits for the retransmit timeout, which on Linux is at least 200 ms for the first retransmit and doubles on later ones. A fast retransmit starts after duplicate acknowledgements and does not wait for the timer. Tail loss probe sends an extra packet to catch loss of the last segment. Many timer retransmits mean packets are vanishing without any later traffic to trigger the faster path. The gap between two copies of the same segment tells you which mechanism ran.
 
-Counters give you the same story without a capture. The nstat and netstat -s output contains lines such as segments retransmitted, and TCPSynRetrans, which can be caused by the remote endpoint dropping SYNs from a full listen backlog. For per-event tracing, tcpretrans helps. A high rate in the ESTABLISHED state can point to an external network problem, while a high rate in SYN_SENT can point to an overloaded server application.
+Counters give you the same story without a capture. The nstat and netstat -s output contains lines such as segments retransmitted, and TCPSynRetrans, which can be caused by the remote endpoint dropping SYNs from a full listen backlog. For per-event tracing, tcpretrans helps. A high rate in the ESTABLISHED state can point to an external network problem, while a high rate in SYN_SENT can point to an overloaded server application. The counter tells you where to look, and the capture tells you why.
 
 The parser below reads tcpdump text and finds repeated segments and unanswered SYNs. Its fixture combines lines that follow the standard output format with synthetic lines.
 
@@ -416,11 +444,11 @@ if __name__ == "__main__":
     print("unanswered SYN:", unanswered_syns(pk))
 ```
 
-Name the signal before you name the fault. "I see the same sequence range twice, so this is a retransmit, and the gap is 300 ms, so it was timer driven."
+Name the signal before you name the fault. "I see the same sequence range twice, so this is a retransmit, and the gap is 300 ms, so it was timer driven." That sentence does three things in order. It names what was seen, it names what that means, and it says what evidence supports the claim.
 
 ### 10. TLS handshake failures
 
-A new client cannot connect to the endpoint over HTTPS, but a plain TCP connect works. The TCP handshake is fine, so the fault is in the layer above it.
+A new client cannot connect to the endpoint over HTTPS, but a plain TCP connect works. The TCP handshake is fine, so the fault is in the layer above it. TLS is the encryption layer that runs on top of TCP, and it has its own handshake, certificates and names. A fault can sit there while the socket looks perfectly healthy.
 
 The handbook's chapter 2.10 covers TLS and certificates, so here we only sort the failures by what you see. The command for a quick view is `openssl s_client -connect host:443 -servername host`. The servername flag sets SNI, the name the client asks for, which matters when one address serves many names. The test used a local server started with `openssl s_server` and a self-signed certificate. Four results are worth knowing by sight.
 
@@ -435,13 +463,17 @@ A client that speaks plain HTTP to the TLS port got no answer at all. `curl -sS 
 
 Ask where the failure occurs. If it occurs at connect, it is not TLS at all. If the server sends an alert straight after the hello, suspect a protocol or cipher mismatch, or a wrong SNI. If the handshake completes but the client rejects the certificate, suspect expiry, an incomplete chain, a name that does not match, or a client clock that is wrong. If the failure appears only after hours, suspect a rotated certificate that a long-lived process never reloaded. This last one matters for a platform with long-lived gateway pods. These are general TLS causes, and the exact messages differ per client library, so read the message and do not guess.
 
+A small example shows the split. Suppose the TCP connect succeeds, and the TLS handshake then fails with a hostname mismatch. You now know that the path, the port and the listener are fine. The fault is the name the client asks for, or the certificate the server presents for that name. The next command checks the certificate's names against the name you typed, and the search has narrowed to one object.
+
 Separate the TCP result from the TLS result first, and then name the failing step.
 
 ### 11. Idle timeouts and keepalive, the streaming problem
 
-Now the question from the start of the chapter. A token streaming response stops after about a minute. The client sees the connection end mid-answer. The model server logs show nothing wrong. This is the most important section for an inference platform.
+Now the question from the start of the chapter. A token stream starts well, runs for about a minute, and then stops in the middle of an answer. The client sees the connection end. The model server logs show nothing wrong, and the GPUs are busy with other requests. This is the most important section for an inference platform, because streaming is one of the main ways chat answers reach a user, and a stream that dies at a fixed moment is a classic symptom.
 
-An LLM response may produce no bytes for a long time, for example while a long prompt is being processed before the first token. Between tokens the gap can also be long under load. A load balancer, a NAT gateway or a firewall in the path keeps a table of flows. If a flow sends nothing for longer than that device's idle timeout, the device forgets it. The next packet then meets either a reset or silence, and the stream breaks.
+Think of a streaming connection as a radio channel that a network device watches on a timer. If nobody speaks on it for a while, the device closes the channel to free the frequency for other callers. Nobody on either end was told. The next time someone presses the button, the channel is simply gone. Heartbeats are the regular short messages that keep the channel marked as in use.
+
+An LLM response may produce no bytes for a long time, for example while a long prompt is being processed before the first token. Between tokens the gap can also be long under load. A load balancer, a NAT gateway or a firewall in the path keeps a table of flows. If a flow sends nothing for longer than that device's idle timeout, the device forgets it. The next packet then meets either a reset or silence, and the stream breaks. The server never sent an error, because from its side the connection was healthy.
 
 The tcp man page gives the Linux defaults for TCP keepalive. The time before probes begin is 7200 seconds. The interval is 75 seconds and the probe count is 9. Probes are sent only when the SO_KEEPALIVE socket option is on. So with defaults, a connection would be silent for two hours before a probe, which is far too late for a device with a short idle timeout. Systems Performance mentions the same long keepalive timer on ESTABLISHED. The conntrack idle timeout for established flows is 432000 seconds on Linux by default, so the shorter limit is normally set by a cloud or hardware device, not by Linux conntrack.
 
@@ -498,13 +530,13 @@ if __name__ == "__main__":
     print("heartbeat:", client(heartbeat=True, quiet_for=IDLE * 2))
 ```
 
-There is a second stream killer: timeouts that are not idle timeouts. A proxy may have a maximum total request duration, or a read timeout that counts the gap before the first byte. Those need different settings. A heartbeat does not extend a hard total-duration limit.
+There is a second stream killer: timeouts that are not idle timeouts. A proxy may have a maximum total request duration, or a read timeout that counts the gap before the first byte. Those need different settings. A heartbeat does not extend a hard total-duration limit, because the limit counts the whole request no matter how many bytes move. A stream can be healthy every second and still be cut at a fixed total time.
 
 For a streaming symptom that fails at a constant time, find which timer in the path has that value.
 
 ### 12. The Kubernetes Service path
 
-Last story. A pod cannot reach a Service by name, or it can but the calls go nowhere. In Kubernetes there are more hops, so the half-split matters more.
+Last story. A pod cannot reach a Service by name, or it can but the calls go nowhere. In Kubernetes there are more hops than on a plain host, so the half-split matters more. Each hop is a place where the request can be sent to the wrong address, dropped or rejected, and the error message seldom says which hop failed.
 
 The Kubernetes debug guide gives an order that you can recite. First confirm that the pods themselves work, by calling a pod IP and the pod port directly from another pod. Then check that the Service exists, because without it the lookup fails with `Name or service not known`. Then check DNS with the short, namespaced and full names. Then check that the Service has endpoints. The guide's command is `kubectl get endpointslices -l kubernetes.io/service-name=hostnames`, and it says that if the ENDPOINTS column is `<none>` you should check that the Service's selector matches the pods' labels. Then check the ports. The guide asks whether the Service port is listed, whether the targetPort is correct for the pods, whether a numeric or a string value was meant, and whether a named port has a match.
 
@@ -512,11 +544,15 @@ Then you look at kube-proxy. In iptables mode, each Service port should have one
 
 The script `net06_k8s_service_path.sh` runs the read-only part of this ladder with kubectl. It does not change anything. It was syntax checked but not run, because there is no cluster here.
 
-A hint about how this meets conntrack. The Networking and Kubernetes book states that the Service load balancing by iptables depends on connection tracking. So an exhausted table shows up as Service flakiness even though the rules are right.
+A hint about how this meets conntrack. The Networking and Kubernetes book states that the Service load balancing by iptables depends on connection tracking. So an exhausted table shows up as Service flakiness even though the rules are right. A pod that works for some calls and fails for others may be a conntrack problem wearing a Service disguise. Also check whether the failing calls share a source node. Pods on one node share that node's table, so a pattern tied to a node points at the table rather than the Service.
+
+The endpoint step is the one that surprises people most. A Service can exist, resolve and show a correct port, and still have zero endpoints, because its selector labels do not match the pods. The listing shows `<none>` in the ENDPOINTS column, and the fix is a label change, not a network change. Reading that column first saves a long detour through the rules.
 
 When a Service fails, confirm in order: pod, Service, DNS, endpoints, ports, kube-proxy rules, and then conntrack.
 
 ## How to answer out loud
+
+The five answers below are the ones to rehearse. Each one follows the same shape. You name the signal, you state the mechanism in a sentence, you give the test, and you name the trade-off. Practise them until the order feels natural, because the interviewer will judge your reasoning as much as the facts.
 
 **Question 1: "A connect fails. Walk me through it."** Speak in this order. Ask for the exact error: refused, timeout or reset. Say what each means in one sentence. Pick the half-split test: from a host on the same network, can I connect to the port? Then run `ss -ltn` on the target to see whether anything listens and on which address. Name two follow-ups: a listener bound to 127.0.0.1 only, and a full accept queue. Expect to be asked how a full queue differs from a closed port. The answer is that a full queue can cause timeouts with SYN retransmits, while a closed port gives an immediate refusal.
 
@@ -530,13 +566,13 @@ When a Service fails, confirm in order: pod, Service, DNS, endpoints, ports, kub
 
 ## Worked scenarios
 
-Every scenario below is a short broken system with its script in code/part20. The scripts are safe: localhost only and read-only. The demos need no root. Every scenario ran in an Ubuntu 24.04 container on Linux kernel 6.18.37, and the outputs below are from there.
+Every scenario below is a short broken system with its script in code/part20. The scripts are safe: localhost only and read-only. The demos need no root. Every scenario ran in an Ubuntu 24.04 container on Linux kernel 6.18.37, and the outputs below are from there. Each one follows the same path: a problem, the reasoning that points at a cause, the commands that test it, and the answer.
 
 ### Scenario 1: the full accept queue
 
 **Problem.** A gateway listens on port 8000. During bursts some clients wait seconds to connect and a few time out. CPU is low.
 
-**Reasoning.** Slow connects with gaps of seconds suggest SYN retransmits. Retransmits suggest the listener's queue is full, because SYNs are dropped when the backlog is full. So look at the queue, not the network.
+**Reasoning.** Slow connects with gaps of seconds suggest SYN retransmits. Retransmits suggest the listener's queue is full, because SYNs are dropped when the backlog is full. So look at the queue, not the network. The low CPU is a hint too. A server that is not busy but is not accepting has a slow accept loop, not a slow processor.
 
 **Commands.** On a Linux host you run `ss -ltn` and read the listener row. A row like `LISTEN 129 128 0.0.0.0:8000` means the queue is over its limit of 128. Then `nstat -az TcpExtListenOverflows TcpExtListenDrops` shows whether the kernel counted drops. The snapshot script `net06_linux_net_snapshot.sh` collects these. Here is the real result of the demo below with backlog 5 and ten clients, sampled while the server held the queue full.
 
@@ -620,7 +656,7 @@ if __name__ == "__main__":
 
 **Problem.** A service calls one API at a high rate. After a few minutes calls fail. `ss -tan` shows tens of thousands of TIME-WAIT rows to one address and port.
 
-**Reasoning.** All those rows share a destination, so only the source port varies. The budget is the range size divided by the hold time.
+**Reasoning.** All those rows share a destination, so only the source port varies. The budget is the range size divided by the hold time. If the call rate is above that budget, the ports run out no matter how fast the server is, and the fix lives in the client.
 
 **Commands.** `ss -tan | awk 'NR>1 {c[$1]++} END {for (s in c) print s, c[s]}'` gives counts by state. Then `sysctl net.ipv4.ip_local_port_range` reads the range. The parser in section 3 gives counts, and its port budget function gives the rate: 55,296 ports over 60 seconds is about 922 connects per second for the Netflix range. Both the counting and the budget function were tested with pytest, and the parser was run on real `ss -tan` output in the container, where it counted the states and named the full listener. The default range on this kernel, read with `sysctl`, is 32768 to 60999. That is 28,232 ports, so about 470 connects per second over 60 seconds. The Netflix range gives the larger 922. Read the range on your own host before you quote a number.
 
@@ -630,7 +666,7 @@ if __name__ == "__main__":
 
 **Problem.** On one node, new connections to Services fail while established ones work. Pods are healthy.
 
-**Reasoning.** New flows need a table slot, and old flows already have theirs. That pattern matches a full table.
+**Reasoning.** New flows need a table slot, and old flows already have theirs. That pattern matches a full table. The healthy pods rule out the application, and the working old flows rule out the network path, so the table is the remaining suspect.
 
 **Commands.** On the node, read the two sysctl values and pipe them to the checker.
 
@@ -646,7 +682,7 @@ The full case prints a line such as `100.0% FULL: no space left, new connections
 
 **Problem.** A pod in namespace ml calls api.example.com. Calls are slow, and CoreDNS shows a high query rate.
 
-**Reasoning.** The name has two dots and ndots is 5. So the resolver tries three suffixed names first.
+**Reasoning.** The name has two dots and ndots is 5. So the resolver tries three suffixed names first. Each of those misses costs a query, and the real name comes last. The slowness is in the lookups, not in the API.
 
 **Commands.** Inside the pod, `cat /etc/resolv.conf` shows the search list and ndots. Then pipe a copy to the script:
 
@@ -662,7 +698,7 @@ Run in the Linux container, it printed the three suffixed names and then `api.ex
 
 **Problem.** Pod to pod requests under a kilobyte work. A response of a few hundred kilobytes stalls. A capture on the sender shows full-size data packets repeated with growing gaps.
 
-**Reasoning.** Handshakes use small packets, so they pass. Full packets of 1,500 bytes exceed a VXLAN tunnel path whose pod MTU should be 1,450.
+**Reasoning.** Handshakes use small packets, so they pass. Full packets of 1,500 bytes exceed a VXLAN tunnel path whose pod MTU should be 1,450. The growing gaps say the sender is retrying, and the retries are not getting through, so the failure is the size, not the rate.
 
 **Commands.** `ip link show` on the pod interface shows its mtu. Then the capture reader finds repeats:
 
@@ -678,7 +714,7 @@ The reader was run on a real `tcpdump -nn` capture taken on loopback during the 
 
 **Problem.** Streaming completions stop after roughly the same time for some clients. Server logs show no error.
 
-**Reasoning.** A constant time implies a timer. A silent stage, such as waiting for the first token, can exceed a middlebox's idle timeout.
+**Reasoning.** A constant time implies a timer. A silent stage, such as waiting for the first token, can exceed a middlebox's idle timeout. The server logs are clean because the server never saw anything wrong. The middlebox forgot the flow, and only the next write revealed it.
 
 **Commands.** Run the demo.
 
@@ -701,7 +737,9 @@ A real middlebox that silently drops its state sends nothing at the idle moment 
 
 ## Hands-on lab
 
-The lab needs a Linux VM or a container with iproute2, and a second shell. It ran in a disposable container: image `ubuntu:24.04`, Ubuntu 24.04.5 LTS, kernel `6.18.37-0-virt` aarch64 from the Rancher Desktop VM, started with `docker run --rm --cap-add NET_ADMIN`, with `code/part20` mounted read-only. `NET_ADMIN` was added for the dummy interface, the iptables rule and `conntrack`. Nothing else was privileged. Packages came from apt: iproute2, tcpdump, conntrack, iputils-ping, procps, dnsutils, openssl, netcat-openbsd.
+The lab needs a Linux VM or a container with iproute2, and a second shell. You are reproducing each failure on a machine you control, so you can see the same signal the interviewer would expect you to find. It ran in a disposable container: image `ubuntu:24.04`, Ubuntu 24.04.5, kernel `6.18.37-0-virt` aarch64 from the Rancher Desktop VM, started with `docker run --rm --cap-add NET_ADMIN`, with `code/part20` mounted read-only. `NET_ADMIN` was added for the dummy interface, the iptables rule and `conntrack`. Nothing else was privileged. Packages came from apt: iproute2, tcpdump, conntrack, iputils-ping, procps, dnsutils, openssl, netcat-openbsd.
+
+The steps below were run in that container and on a Mac, and they are not run on a live cluster. Treat each result as what this environment printed.
 
 1. Run the tests. In the repository root, run `python3 -m pytest -q code/part20/test_net06_*.py`. Expected: 19 passed. Ran: yes, on the Mac and in the Linux container.
 2. Run the code checker with `python3 tools/check_code_files.py code/part20`. Expected: no problems for the files of this chapter. Ran: yes.
@@ -713,6 +751,8 @@ The lab needs a Linux VM or a container with iproute2, and a second shell. It ra
 8. If you have a cluster, run `bash code/part20/net06_k8s_service_path.sh NAMESPACE SERVICE`. Expected: the ladder of outputs. Ran: syntax check only.
 
 ## Drill questions
+
+Answer these without notes, then open the answers. Say each answer aloud first, as you would in the room, and only then check it.
 
 <details><summary>1. What does connection refused mean, and what does it not mean?</summary>
 
@@ -776,7 +816,7 @@ Pods work when called by pod IP and port. Service exists. DNS resolves the short
 
 ## Common mistakes and weak answers
 
-- Saying "the network is down" without asking which error occurred. Say what refused, timeout and reset each mean, then pick a test.
+- Saying "the network is down" without asking which error occurred. Say what refused, timeout and reset each mean, then pick a test. The error text is free evidence, and skipping it wastes the first minute.
 - Running tcpdump on a busy host without a filter. Say that capture costs CPU and storage and can drop packets, so you filter in the kernel and capture briefly.
 - Raising somaxconn as the only fix for slow connects. Say you would find why accept is slow, since a deeper queue only hides it.
 - Calling TIME_WAIT a fault. Say it is a safety state and show the port arithmetic.
