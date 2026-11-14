@@ -90,3 +90,6 @@ Chapters 11.1-11.30 rewritten in the warm voice (+37% words, guard 0 hard, chain
 
 ## Part 12 status (2026-11-14)
 Chapters 12.1-12.24 rewritten and committed (6 commits, +28-34% words, guard 0 hard, chain <=0.1, spans 0 lost, Mermaid 776 ok, build ok). Open: the guard flagged one bare "100" lost in 12.12 exercise titles (unidentified); "(untested here)"/"(tested here)" spans kept in locked headings and code comments (span check wins); 21.x "the book" attributions now name the gem book, owner to confirm; 12.22 checkpoint answers contain `$...$` with stray backticks (locked tail). Part 13 (9 chapters) next.
+
+## Parts 13 and 14 status (2026-11-14)
+Part 13 (9 ch) and Part 14 (16 ch) rewritten and committed (+28-31% words, guard 0 hard, chain <=0.2, spans 0 lost, Mermaid 776 ok, build ok). Open items are in ledgers voice_rewrite_part13_*.md and part14_*.md: 13.5 interview "3 hours" vs "180 minutes" vs 45.3 min cold wait (owner to reconcile); 13.2 "tenfold gap" is 2.33x; 14.2 HBM fragmentation 20-30% vs 20.4-38.2%; 14.7 "four ways" vs three listed; 14.11 elastic agent walkthrough needs torchrun-doc check. Part 15 (18 ch) in progress.

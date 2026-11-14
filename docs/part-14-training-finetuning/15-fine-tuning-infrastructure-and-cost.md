@@ -23,17 +23,18 @@ lab_venue: "Nebius GPU"
 | Coverage file | `planning/coverage/chapters/14-15.md` |
 | Claim & number ledger | `planning/ledgers/14-15.md` |
 
+
 ## Why this matters for AI infrastructure
 
-An application team asks to customize a seventy-billion-parameter open-weight language model for their domain. One engineer proposes buying twenty dual-socket servers filled with eighty PCIe H100 GPUs, which looks like a thirty percent saving on hardware. Another wants full-weight fine-tuning on every weekly dataset update, plus a separate merged checkpoint for each of their one hundred enterprise customers. Either plan could drain the platform budget before the first user query is served.
+Picture an application team that wants a seventy-billion-parameter open-weight model to answer questions about its own domain. One engineer proposes buying twenty dual-socket servers filled with eighty PCIe H100 GPUs, which looks like a thirty percent saving on hardware. Another wants full-weight fine-tuning on every weekly dataset update, plus a separate merged checkpoint for each of their one hundred enterprise customers. Either plan could drain the platform budget before the first user query is served. The question for the platform team is which of these plans the workload actually needs.
 
-Fine-tuning sits where GPU memory, interconnect topology, and cloud unit economics meet. Small design choices move the hardware need from one midrange PCIe card to a multi-node InfiniBand cluster. Three cliffs show up on every customization project.
+Fine-tuning sits where GPU memory, interconnect topology, and cloud unit economics meet. Each of those three areas has its own cliff, and a project can fall off any one of them. The good news is that each cliff has a clear test you can run before you buy anything. A small design choice can move the hardware need from one midrange PCIe card to a multi-node InfiniBand cluster. Three cliffs show up on every customization project, and each one is easy to miss on a spreadsheet.
 
-The first is the memory cliff. Full supervised fine-tuning in mixed precision uses sixteen bytes of static state per parameter before a single activation is allocated. Freezing the base model with Low-Rank Adaptation or four-bit Quantized Low-Rank Adaptation shrinks the trainable state by roughly ninety-eight to ninety-nine percent. A sixty-five-billion-parameter model then fits on one forty-eight-gigabyte PCIe GPU and does not need a multi-node HGX fabric.
+The first is the memory cliff. Full supervised fine-tuning in mixed precision uses sixteen bytes of static state per parameter before a single activation is allocated. Static state is the memory that the weights, gradients, and optimizer buffers occupy for the whole run. Freezing the base model with Low-Rank Adaptation or four-bit Quantized Low-Rank Adaptation shrinks the trainable state by roughly ninety-eight to ninety-nine percent. A sixty-five-billion-parameter model then fits on one forty-eight-gigabyte PCIe GPU and does not need a multi-node HGX fabric. HGX is NVIDIA's baseboard design that joins eight GPUs with NVSwitch chips.
 
-The second is the PCIe versus NVLink SXM trap. A single-GPU adapter job does no inter-GPU communication and runs cheaply on PCIe cards such as the L4 or L40S. Once a seventy-billion-parameter job shards state across GPUs with FSDP or Tensor Parallelism, PCIe Gen5 is a fourteen-fold bottleneck compared with SXM NVSwitch. The thirty percent saved on servers leaves the GPUs stalled ninety percent of the time and stretches the run fivefold.
+The second is the PCIe versus NVLink SXM trap. A single-GPU adapter job does no inter-GPU communication and runs cheaply on PCIe cards such as the L4 or L40S. Once a seventy-billion-parameter job shards state across GPUs with FSDP or Tensor Parallelism, PCIe Gen5 is a fourteen-fold bottleneck compared with SXM NVSwitch. Picture the GPUs waiting on a slow bridge between them. The thirty percent saved on servers leaves the GPUs stalled ninety percent of the time and stretches the run fivefold.
 
-The third is the gap between capital and operating cost. Teams fixate on the one-time cost of a fine-tuning run, but round-the-clock inference is the recurring cost that dominates. Full fine-tuning where adapters would do forces the serving tier to host one multi-gigabyte replica per tenant, when it could hot-swap megabyte-sized adapters over one shared base model.
+The third is the gap between capital and operating cost. Teams fixate on the one-time cost of a fine-tuning run, but round-the-clock inference is the recurring cost that dominates. Full fine-tuning where adapters would do forces the serving tier to host one multi-gigabyte replica per tenant, when it could hot-swap megabyte-sized adapters over one shared base model. A hot swap means loading a different adapter into memory for the next request without restarting the server.
 
 ```text
 Fine-Tuning Infrastructure Reference Anchor Numbers:
@@ -51,38 +52,37 @@ Fine-Tuning Infrastructure Reference Anchor Numbers:
   8x H100 SXM5 node BOM = $285,000 ($35,625/GPU, 10.2 kW, 900 GB/s NVSwitch) vs 8x H100 PCIe node BOM = $215,000 ($26,875/GPU, 4.5 kW, 64 GB/s PCIe Gen5)
   Buying 80x H100 PCIe across 20 2U servers saves ~30% CapEx vs $3M SXM budget, but 64 GB/s PCIe vs 900 GB/s NVLink (14.06x gap) stalls GPUs 90% of the time -> 5x longer run
 ```
+Read the block as a set of anchors rather than as a table of trivia. Each line ties a number to the source that reported it, so you can tell which figures are benchmarks, which are worked examples, and which are price points that change over time. Use the block to check your own estimates before you trust them, and note which line each estimate came from. Keep the source notes next to the numbers when you copy any of them into a planning document, so a later reader can tell a benchmark from an estimate. A short label such as benchmark, worked example, or price point is enough, and it saves the next reader from guessing which numbers are firm.
 
-Before you provision any GPU for customization, show that prompt engineering and retrieval cannot fix the failure. Then size the job for the lightest adaptation method that meets your accuracy target.
+
+
+Before you provision any GPU for customization, show that prompt engineering and retrieval cannot fix the failure. Then size the job for the lightest adaptation method that meets your accuracy target. That order saves money on every project, because the cheapest method that works is usually the one that needs the fewest GPUs.
 
 ## Prerequisites and outcomes
-
 ### Prerequisites
-- GPU memory and compute fundamentals from earlier in this part. Review FSDP and DeepSpeed ZeRO sharding mechanics before sizing multi-node runs.
-- Data center GPU architecture, Tensor Core precision formats, and PCIe versus SXM form factors.
-- Kubernetes batch scheduling, `JobSet`, `PyTorchJob`, and multi-tenant GPU FinOps.
+
+- Can you explain how GPU memory and compute fit together? GPU memory and compute fundamentals come from earlier in this part. Review FSDP and DeepSpeed ZeRO sharding mechanics before sizing multi-node runs.
+- Do you know the form factors of data center GPUs? Data center GPU architecture, Tensor Core precision formats, and PCIe versus SXM form factors come first, because they decide what a node can do.
+- Can you schedule batch work on Kubernetes? Kubernetes batch scheduling, `JobSet`, `PyTorchJob`, and multi-tenant GPU FinOps are the pieces that run the jobs and track their cost.
 
 ### Outcomes
-After completing this chapter, you will be able to do four things.
-- Choose between prompt engineering, Retrieval-Augmented Generation, Parameter-Efficient Fine-Tuning, and full supervised fine-tuning, and compute the query volume at which fine-tuning repays its compute cost by shrinking prompts.
-- Calculate the static and peak GPU memory of full SFT, LoRA, QLoRA, DPO, GRPO, and four-model PPO pipelines.
-- Pick an accelerator from the data center lineup by price per TFLOP and memory bandwidth, and find the model size at which PCIe fails and NVLink SXM becomes necessary.
-- Build fine-tuning pipelines with TRL, Unsloth, Axolotl, Torchtune, LLaMA-Factory, and DeepSpeed, and run them on Kubernetes with Kubeflow Trainer, KubeRay, Spot checkpointing, and Kubecost with DCGM telemetry.
+
+By the end of the chapter's path, you can answer a set of practical questions. Should this problem be solved with prompts, retrieval, or training? How much memory does each method need? Which accelerator fits the job, and at what model size does PCIe stop being enough? How do you run the pipeline on Kubernetes with checkpoints and cost controls? The chapter walks through those questions in that order, so each section builds on the last.
 
 ---
 
 ## 1. The Customization Decision Hierarchy and Economics
-
 ### 1.1 Form versus Facts: Prompting, RAG, and Post-Training
 
-When a foundation model produces poor answers on an enterprise task, teams often jump straight to fine-tuning. That reflex wastes engineering weeks and thousands of dollars in GPU compute when the failure is actually caused by missing context. In the LLM lifecycle, pre-training consumes thousands of GPUs for weeks to build a base text predictor. Alignment then teaches safety boundaries and instruction following. Model customization, also called post-training, adapts an already aligned model to domain tasks.
+Picture a team that gets poor answers from a foundation model on an enterprise task and immediately starts a fine-tuning job. That reflex wastes engineering weeks and thousands of dollars in GPU compute when the failure is actually caused by missing context. In the LLM lifecycle, pre-training consumes thousands of GPUs for weeks to build a base text predictor. Alignment then teaches safety boundaries and instruction following. Model customization, also called post-training, adapts an already aligned model to domain tasks.
 
-To choose the right customization tier, first decide whether the failure is about information or about behavior.
+To choose the right customization tier, first decide whether the failure is about information or about behavior. The two failure types point to different tools, and mixing them up is the most common expensive mistake.
 
-Information failures call for RAG. Suppose the model hallucinates because it lacks private corporate documents, or events after its training cutoff. Fine-tuning is the wrong tool. Ovadia et al. found that RAG beats fine-tuning on current-events question answering, and on almost all MMLU categories, for seven-billion-parameter models. Updating a vector database takes minutes, while re-running fine-tuning for every document update is slow and risks catastrophic forgetting.
+Information failures call for RAG, which stands for Retrieval-Augmented Generation. A quick test is to ask whether a human expert could answer the question if they had the right document open. If yes, the fix is retrieval. If the expert would answer in a different style, the fix is behavior. Suppose the model hallucinates because it lacks private corporate documents, or events after its training cutoff. Fine-tuning is the wrong tool in that case, because the facts are the problem and not the style. Ovadia et al. found that RAG beats fine-tuning on current-events question answering, and on almost all MMLU categories, for seven-billion-parameter models. MMLU is a broad multiple-choice benchmark across many subjects. Updating a vector database takes minutes, while re-running fine-tuning for every document update is slow and risks catastrophic forgetting.
 
 Behavior and format failures call for fine-tuning. Suppose the facts are in the prompt but the model fails to produce a proprietary SQL dialect, a strict JSON schema, or a brand tone. Fine-tuning changes the weights to enforce that behavior. Put briefly, fine-tuning is for form and RAG is for facts. When a task needs both domain knowledge and strict formatting, RAG on top of a fine-tuned model improved MMLU accuracy 43 percent of the time.
 
-Long prompts call for distillation. Embedding slow-changing domain rules into a Small Language Model of eight to sixteen billion parameters removes bulky few-shot examples from every prompt. Distilling a frontier teacher into a smaller student also cuts inference memory and time per output token.
+Long prompts call for distillation. Think of distillation as copying the teacher's habits into a smaller notebook. Embedding slow-changing domain rules into a Small Language Model of eight to sixteen billion parameters removes bulky few-shot examples from every prompt. A Small Language Model is a compact model that is cheap to serve. Distilling a frontier teacher into a smaller student also cuts inference memory and time per output token.
 
 ```mermaid
 flowchart TD
@@ -102,14 +102,17 @@ flowchart TD
     Scale -->|No| Done3["Serve Multi-LoRA<br/>or Merged SLM"]
     Scale -->|Yes| FullSFT["4. Multi-GPU Full SFT +<br/>DPO / GRPO Alignment"]
 ```
+Read the flowchart from the top. Each box asks a question about the model's behavior, and each answer sends you to the cheapest step that could fix it. The order is deliberate. Prompt engineering comes first because it costs nothing to try, and full supervised fine-tuning comes last because it needs the most data and the most GPUs. Most teams never reach the bottom box, and that is the outcome the chart is designed to produce. Keep a copy of the chart in the design review, and mark the step where your project currently sits. The mark makes the next decision obvious. Review the chart again after each milestone, because the right next step changes once the first results are in. Write the date of each review next to the chart, so the team can see how the plan changed as the evidence came in. When a later review reverses an earlier call, the dated chart shows the reason, and the reason is usually more useful than the decision itself. Write the reason in one sentence and keep it with the chart, so the next reviewer starts from the same facts you did.
+
+
 
 ### 1.2 The Inference Context-Tax Crossover and Multi-LoRA Serving Math
 
-Even when a long system prompt or RAG pipeline achieves acceptable accuracy, stuffing thousands of recurring instruction tokens into every request carries a hidden operational tax. Large context windows expand the Key-Value cache in GPU HBM and increase prefill latency on every user call. Fine-tuning converts those recurring prompt tokens into learned model weights through a one-time training investment.
+Picture a support assistant whose system prompt has grown to a page of rules, examples, and warnings. The answers are fine, but every single request pays for that page again. Even when a long system prompt or RAG pipeline achieves acceptable accuracy, stuffing thousands of recurring instruction tokens into every request carries a hidden operational tax. Large context windows expand the Key-Value cache in GPU HBM and increase prefill latency on every user call. The Key-Value cache is the memory that holds the attention state for the tokens already in the prompt. Fine-tuning converts those recurring prompt tokens into learned model weights through a one-time training investment.
 
-Consider a production service where fine-tuning costs five hundred dollars and removes two thousand recurring instruction tokens from every request. At a cloud input price of two dollars per million tokens, each query saves four-tenths of a cent. Dividing the five-hundred-dollar training run by that per-query saving reveals a break-even threshold of 125,000 queries. Any workload serving more than that request volume repays its fine-tuning compute bill and lowers inference latency permanently.
+Consider a production service where fine-tuning costs five hundred dollars and removes two thousand recurring instruction tokens from every request. At a cloud input price of two dollars per million tokens, each query saves four-tenths of a cent. Dividing the five-hundred-dollar training run by that per-query saving reveals a break-even threshold of 125,000 queries. Any workload serving more than that request volume repays its fine-tuning compute bill and lowers inference latency permanently. A workload that serves fewer requests may never pay back the run, so the traffic forecast matters as much as the price.
 
-The fine-tuning method also decides your serving footprint when you support many tenants or tasks. A merged deployment adds zero inference latency, because the adapter is folded into the base weights, and it suits a single fine-tuned model. But if you customize a model for one hundred enterprise customers and store one hundred full-rank matrices, parameter storage grows a hundredfold. Dynamic multi-LoRA serving avoids that. Inference engines such as vLLM, SGLang, Hugging Face TGI, LoRAX, and NVIDIA NIM keep one frozen base model in GPU HBM and load lightweight LoRA adapters per request.
+The fine-tuning method also decides your serving footprint when you support many tenants or tasks. A merged deployment adds zero inference latency, because the adapter is folded into the base weights, and it suits a single fine-tuned model. But if you customize a model for one hundred enterprise customers and store one hundred full-rank matrices, parameter storage grows a hundredfold. Dynamic multi-LoRA serving avoids that. Inference engines such as vLLM, SGLang, Hugging Face TGI, LoRAX, and NVIDIA NIM keep one frozen base model in GPU HBM and load lightweight LoRA adapters per request. Think of the base model as a shared printing press and the adapters as small plates that change the picture for each customer.
 
 ```text
 Multi-LoRA Serving vs Merged Storage Proof (AIE Ch. 7, single 4096 x 4096 weight matrix across 100 customers):
@@ -132,19 +135,22 @@ Training CapEx vs Inference OpEx Scaling (V22 Ch. 3):
     Delivered cost: $0.00000174/token ($1.74 per 1M tokens vs $2.00 cloud = 1.15x cheaper / ~13% savings at 63B tok/yr)
 ```
 
+Read the multi-LoRA proof slowly. Start with the single matrix, then add the customers one at a time, and watch how the shared base stays fixed while the adapter count grows. The base matrix is shared, and each customer adds only a small pair of matrices. The storage saving comes from that sharing, not from any trick in the arithmetic. The same logic explains the context-tax break-even, because the training run is paid once while the prompt tokens are paid on every query.
+
 **Always calculate the inference break-even query volume and multi-adapter serving density before choosing between prompt engineering, LoRA, and full fine-tuning.**
+
+Before you pick a path, run the two calculations above. The break-even query volume and the multi-adapter serving density decide between prompt engineering, LoRA, and full fine-tuning more reliably than any general rule.
 
 ---
 
 ## 2. VRAM Sizing Across Full SFT, LoRA, QLoRA, DPO, GRPO, and PPO
-
 ### 2.1 Full Supervised Fine-Tuning vs LoRA Low-Rank Decomposition
 
-Why does full supervised fine-tuning require a multi-GPU node for an eight-billion-parameter model while LoRA fits on a single midrange card? During backpropagation, every trainable parameter requires memory not just for its weight, but also for its gradient and its optimizer historical states.
+Picture a team that wants to fine-tune an eight-billion-parameter model and gets an out-of-memory error on a midrange card, even though LoRA runs fine on the same card. Why does full supervised fine-tuning require a multi-GPU node for an eight-billion-parameter model while LoRA fits on a single midrange card? During backpropagation, every trainable parameter requires memory not just for its weight, but also for its gradient and its optimizer states. The gradient is the direction and size of the change the weight should make, and the optimizer states are the running numbers the optimizer keeps for each weight.
 
-In production mixed-precision AdamW, the forward and backward passes run in sixteen-bit BF16. That takes two bytes per parameter for weights and two bytes per parameter for gradients. To prevent small parameter updates from rounding to zero, AdamW maintains a thirty-two-bit FP32 master copy of the weights plus FP32 first and second moment buffers. Those three FP32 buffers consume twelve bytes per parameter, bringing static model memory to **16 bytes per parameter**. A seven-billion-parameter model therefore demands 112 GB of static HBM before activations. A seventy-billion-parameter model demands 1,120 GB. Even if you drop FP32 master weights and run pure BF16 Adam, static state still requires eight bytes per parameter, or 56 GB for a seven-billion-parameter model.
+In production mixed-precision AdamW, the forward and backward passes run in sixteen-bit BF16. That takes two bytes per parameter for weights and two bytes per parameter for gradients. To prevent small parameter updates from rounding to zero, AdamW maintains a thirty-two-bit FP32 master copy of the weights plus FP32 first and second moment buffers. The first and second moments are the running averages of the gradients and of their squares. Those three FP32 buffers consume twelve bytes per parameter, bringing static model memory to **16 bytes per parameter**. A seven-billion-parameter model therefore demands 112 GB of static HBM before activations. A seventy-billion-parameter model demands 1,120 GB. Even if you drop FP32 master weights and run pure BF16 Adam, static state still requires eight bytes per parameter, or 56 GB for a seven-billion-parameter model.
 
-Low-Rank Adaptation eliminates optimizer and gradient memory on the base model by freezing the pre-trained weight matrix completely. Instead of updating a full weight matrix directly, LoRA injects two small low-rank matrices with inner rank `r`. Because the base weights have `requires_grad=False`, PyTorch allocates zero base gradients and zero base Adam states.
+Low-Rank Adaptation eliminates optimizer and gradient memory on the base model by freezing the pre-trained weight matrix completely. Instead of updating a full weight matrix directly, LoRA injects two small low-rank matrices with inner rank `r`. The rank is the width of the narrow middle layer between the two matrices, so a small rank means a small set of trainable numbers. Because the base weights have `requires_grad=False`, PyTorch allocates zero base gradients and zero base Adam states. The memory that used to hold the base gradients and Adam states is simply never allocated. That is why the same card can hold a LoRA job that a full fine-tune could never touch. The adapter adds only a thin layer of trainable state on top of a base that is read-only. Read-only weights need no gradient buffer, so the saving comes from what the framework never creates.
 
 ```text
 Full SFT vs LoRA Mathematical Memory Model:
@@ -169,20 +175,24 @@ Full SFT vs LoRA Mathematical Memory Model:
   4. Llama-3 8B QLoRA (K8GS Ch. 4, r = 32, lora_alpha = 64, lora_dropout = 0.05 across q, k, v, o, gate, up, down, lm_head):
      All model tensor elements: 4,628,721,664 | Trainable LoRA parameters: 88,121,344 (1.90% / ~2%, ~98% reduction)
 ```
+Notice how the worked examples are built. Each one starts from the layer count and the width, applies the rank, and multiplies out the matrices. You can check any of them by hand with a calculator, which is the fastest way to build trust in the memory model before you trust a cluster quote. Write the results down with their units, because a memory figure in gigabytes and a bandwidth figure in gigabytes per second are easy to mix up in a rushed meeting. Put the unit in the column header of any table you share, so the reader never has to guess which quantity a number measures.
 
-Applying LoRA to all linear layers, including the feed-forward `gate_proj`, `up_proj`, and `down_proj` matrices, consistently delivers higher quality than adapting only the attention projections. With a reasonable low rank, a seven-billion-parameter model fine-tunes inside 14 to 18 GB of VRAM on a single GPU.
+
+
+Applying LoRA to all linear layers, including the feed-forward `gate_proj`, `up_proj`, and `down_proj` matrices, consistently delivers higher quality than adapting only the attention projections. With a reasonable low rank, a seven-billion-parameter model fine-tunes inside 14 to 18 GB of VRAM on a single GPU. VRAM is the memory on the GPU card itself, and it is the number that decides which card you can rent.
 
 ### 2.2 QLoRA Mechanics: 4-Bit NF4, Double Quantization, and Paged Optimizers
 
-What if you need to fine-tune a thirty-three-billion or sixty-five-billion-parameter model on a single PCIe GPU? What if you need to fit an eight-billion-parameter job onto an inexpensive cloud instance? Even with LoRA, holding frozen sixteen-bit base weights requires two bytes per parameter. That equals 14 GB for a seven-billion-parameter model and 130 GB for a sixty-five-billion-parameter model.
 
-QLoRA, introduced by Dettmers et al., attacks that base-weight footprint with three techniques from `bitsandbytes`.
+Picture a team with a thirty-three-billion-parameter model and only a single PCIe GPU in the budget. What if you need to fine-tune a thirty-three-billion or sixty-five-billion-parameter model on a single PCIe GPU? What if you need to fit an eight-billion-parameter job onto an inexpensive cloud instance? Even with LoRA, holding frozen sixteen-bit base weights requires two bytes per parameter. That equals 14 GB for a seven-billion-parameter model and 130 GB for a sixty-five-billion-parameter model. The base weights are the largest item left, so they are the next target.
 
-NormalFloat-4 storage comes first. Pre-trained weights follow a zero-centered normal distribution. NormalFloat-4 is a four-bit data type that gives each quantile of the standard normal distribution the same number of values. Base weights sit in HBM at half a byte per parameter, set by `bnb_4bit_quant_type="nf4"`, and are dequantized on the fly to BF16 tiles in GPU registers during forward and backward matrix multiplications.
+QLoRA, introduced by Dettmers et al., attacks that base-weight footprint with three techniques from `bitsandbytes`. The three techniques stack. Each one removes a different slice of the memory, so the savings add up. The library handles the low-level quantized arithmetic on the GPU.
 
-Double Quantization comes second. Blockwise four-bit quantization needs a thirty-two-bit scaling constant for every block of sixty-four weights, which adds half a bit per parameter. Setting `bnb_4bit_use_double_quant=True` quantizes those constants to eight-bit floats in blocks of 256. The overhead falls to roughly a tenth of a bit per parameter.
+NormalFloat-4 storage comes first. Pre-trained weights follow a zero-centered normal distribution. NormalFloat-4 is a four-bit data type that gives each quantile of the standard normal distribution the same number of values. A quantile is the cut point that splits a distribution into equal-probability slices. Base weights sit in HBM at half a byte per parameter, set by `bnb_4bit_quant_type="nf4"`, and are dequantized on the fly to BF16 tiles in GPU registers during forward and backward matrix multiplications. Registers are the fastest storage inside the GPU, so the expansion happens right where the math runs.
 
-Paged 8-bit optimizers come third. Long sequences can still cause short activation spikes during `loss.backward()`. Setting `optim="paged_adamw_8bit"` puts optimizer states in CUDA Unified Memory. The driver pages optimizer buffers out to host RAM during a spike and back to HBM during `optimizer.step()`.
+Double Quantization comes second. Blockwise four-bit quantization needs a thirty-two-bit scaling constant for every block of sixty-four weights, which adds half a bit per parameter. Think of the scaling constant as the ruler that stretches each block back to its true size. Setting `bnb_4bit_use_double_quant=True` quantizes those constants to eight-bit floats in blocks of 256. The overhead falls to roughly a tenth of a bit per parameter.
+
+Paged 8-bit optimizers come third. Long sequences can still cause short activation spikes during `loss.backward()`, which is the step that computes the gradients. Setting `optim="paged_adamw_8bit"` puts optimizer states in CUDA Unified Memory. The driver pages optimizer buffers out to host RAM during a spike and back to HBM during `optimizer.step()`. A spike is a short surge in memory use, and paging lets the run survive it instead of crashing.
 
 ```text
 LoRA vs QLoRA Measured 7B Benchmark & Double Quantization Math (LEH Ch. 5 & AIE Ch. 7):
@@ -191,27 +201,34 @@ LoRA vs QLoRA Measured 7B Benchmark & Double Quantization Math (LEH Ch. 5 & AIE 
   Fine-Tuning Peak VRAM: 15.6 GB (16-bit LoRA) ->  9.3 GB (4-bit QLoRA) = 40.4% (~40%) reduction (up to 75% vs unoptimized baseline)
   Training Wall-Clock:   QLoRA is ~30% slower than 16-bit LoRA due to NF4 -> BF16 dequantization compute overhead
 ```
+A practical habit comes out of this block. Before you rent a larger GPU, compute the static state, the activation budget, and the optimizer buffers on paper. If the sum fits on the card you already have, the larger GPU is a cost with no benefit. Put the arithmetic in a shared notebook so that the next person can change one input and see the effect on the total at once. A shared sheet also keeps the assumptions visible, so a reviewer can argue with an input instead of arguing with a final number. Keep the sheet under version control as well, so the last change to any assumption is easy to find. A short note beside each assumption should say who set it and when, so a stale number is visible at a glance.
+
+
+
+Read the benchmark block as three numbers that tell one story. The base model shrinks, the peak shrinks, and the step gets slower. QLoRA trades speed for memory, so it is the right choice only when the memory is the thing that blocks you. Write the three numbers on a whiteboard during the design review, because they are the fastest way to explain the trade to someone who was not in the room for the experiments.
 
 ### 2.3 Preference Alignment and RLHF Topologies: DPO vs GRPO vs PPO
 
-Once supervised fine-tuning teaches a model domain formatting, teams often run a second post-training stage to align outputs with human preferences or reasoning rewards. Choosing between Proximal Policy Optimization, Direct Preference Optimization, and Group Relative Policy Optimization changes your cluster memory requirement by up to fourfold.
 
-Online PPO keeps four models in memory at once. The trainable Actor policy and the trainable Critic value network each need full training state. The frozen Reference policy and the frozen Reward model need only inference weights. In full mixed precision, PPO uses **36 bytes per parameter** of static state, before rollout KV caches and activations. That is 252 GB for a seven-billion-parameter model and 2,520 GB for a seventy-billion-parameter model.
+Picture a team that finished supervised fine-tuning and still sees answers that drift from what its reviewers prefer. Once supervised fine-tuning teaches a model domain formatting, teams often run a second post-training stage to align outputs with human preferences or reasoning rewards. Choosing between Proximal Policy Optimization, Direct Preference Optimization, and Group Relative Policy Optimization changes your cluster memory requirement by up to fourfold. The choice is mostly about how many models must sit in memory at the same time.
 
-DPO turns reward maximization under a KL-divergence constraint into a direct binary cross-entropy loss over prompt, chosen, and rejected triples. Full-weight DPO drops the Critic and the Reward model and keeps only the trainable policy and the frozen reference, for **18 bytes per parameter**. With LoRA or QLoRA and `ref_model=None` in `DPOTrainer`, the framework disables the adapter during the reference forward pass. The frozen base weights then serve as the reference, with **zero extra weight memory**.
+Online PPO keeps four models in memory at once. The trainable Actor policy and the trainable Critic value network each need full training state. The frozen Reference policy and the frozen Reward model need only inference weights. In full mixed precision, PPO uses **36 bytes per parameter** of static state, before rollout KV caches and activations. That is 252 GB for a seven-billion-parameter model and 2,520 GB for a seventy-billion-parameter model. The rollout KV caches are the attention memory used while the model generates its sample answers.
 
-GRPO, from the DeepSeek team and supported by `GRPOTrainer`, keeps online reinforcement learning without PPO's expensive Critic. For each prompt, it samples a group of completions from the current policy and scores them with a reward function or verifier. It then normalizes the rewards across the group to get the advantage. Dropping the Critic saves sixteen bytes per parameter of static state compared with PPO.
+DPO turns reward maximization under a KL-divergence constraint into a direct binary cross-entropy loss over prompt, chosen, and rejected triples. KL divergence measures how far the trained model has moved from the reference. Full-weight DPO drops the Critic and the Reward model and keeps only the trainable policy and the frozen reference, for **18 bytes per parameter**. With LoRA or QLoRA and `ref_model=None` in `DPOTrainer`, the framework disables the adapter during the reference forward pass. The frozen base weights then serve as the reference, with **zero extra weight memory**.
+
+GRPO, from the DeepSeek team and supported by `GRPOTrainer`, keeps online reinforcement learning without PPO's expensive Critic. For each prompt, it samples a group of completions from the current policy and scores them with a reward function or verifier. A verifier is a program that checks an answer, such as a unit test or a math checker. It then normalizes the rewards across the group to get the advantage. Dropping the Critic saves sixteen bytes per parameter of static state compared with PPO. The saving is easy to miss on a diagram, because the Critic looks like a small box beside the Actor. In memory it is a full trainable copy with its own gradients and optimizer states, so it costs as much as the policy it is judging.
 
 
-For DPO and GRPO on moderate datasets, use QLoRA or LoRA with `ref_model=None`. Keep multi-node full-weight training for large continual pre-training or frontier alignment runs.
+
+
+Picture the decision as a question of how many models you need in memory. Keep the list short. For DPO and GRPO on moderate datasets, use QLoRA or LoRA with `ref_model=None`. Keep multi-node full-weight training for large continual pre-training or frontier alignment runs.
 
 ---
 
 ## 3. GPU Hardware Selection and the PCIe vs NVLink SXM Crossover
-
 ### 3.1 Accelerator Comparison Matrix: T4, L4, L40S, A100, H100, H200, and B200
 
-Buying H100 SXM nodes for every fine-tuning ticket wastes capital, and buying PCIe inference cards for multi-node sharded training stalls the cluster. To match hardware to the workload, compare the NVIDIA data center GPUs on three things: HBM or GDDR6 capacity, memory bandwidth, and inter-GPU interconnect bandwidth.
+Picture a procurement meeting where someone wants H100 SXM nodes for every fine-tuning ticket. Buying H100 SXM nodes for every fine-tuning ticket wastes capital, and buying PCIe inference cards for multi-node sharded training stalls the cluster. To match hardware to the workload, compare the NVIDIA data center GPUs on three things: HBM or GDDR6 capacity, memory bandwidth, and inter-GPU interconnect bandwidth. HBM is the high-bandwidth memory on data center GPUs, and GDDR6 is the memory on the cheaper cards. The table lists each accelerator on those points, plus its price and its sweet spot.
 
 | Accelerator | Memory & Type | Memory Bandwidth | Dense BF16 / FP8 TFLOPS | Interconnect (GPU-to-GPU) | Max TDP | Illustrative Price | Price / BF16 TFLOP (3-Yr Amortized) | Primary Fine-Tuning & Serving Sweet Spot |
 |---|---|---|---|---|---|---|---|---|
@@ -225,20 +242,29 @@ Buying H100 SXM nodes for every fine-tuning ticket wastes capital, and buying PC
 | **H100 80GB SXM5** | 80 GB HBM3 | 3.35 TB/s | 989 / 1,979 | **NVLink 4 via NVSwitch (900 GB/s all-to-all)** | 700 W | $30,000 | **$30 ($10/yr)** | **Multi-GPU training standard:** 8B–70B+ full SFT, FSDP, DPO, GRPO, PPO |
 | **H200 141GB SXM** | 141 GB HBM3e | 4.8 TB/s | 989 / 1,979 | NVLink 4 via NVSwitch (900 GB/s all-to-all) | 700 W | $40,000 | $40 ($13.33/yr) | Long-context (32K–128K) SFT/GRPO (+76% VRAM, +43% BW vs H100) & 70B serving |
 | **B200 (Blackwell SXM)** | 180–192 GB HBM3e | 8.0 TB/s | ~2,250 / ~4,500 (NVFP4 9,000) | **NVLink 5 (1,800 GB/s per GPU; 10 TB/s NV-HBI)** | 1,000 W | Quote (~$50K) | ~$22 | Frontier 70B–405B+ post-training, FP8/NVFP4 RLHF, and GB200 NVL72 pods |
+Read the columns in order. Memory tells you whether the model fits. Bandwidth tells you how fast the card feeds its math units. Interconnect tells you how well several cards cooperate. Price per BF16 TFLOP turns the purchase price into a unit you can compare across cards. A card with a low price per TFLOP is not always the right card, because a job that needs eight GPUs to talk quickly will care more about the interconnect column than the price column.
 
-Look at the price-per-TFLOP column in the table above. At eight thousand dollars for 362 dense BF16 TFLOPS, the **L40S delivers 22 dollars per BF16 TFLOP**. That figure beats every other GPU for workloads that fit inside a single forty-eight-gigabyte card. For multi-GPU training, the **H100 SXM5 delivers 30 dollars per BF16 TFLOP**, or ten dollars per TFLOP per year amortized over three years. That provides 1.6 times more compute per dollar than the A100 SXM4 at forty-eight dollars per TFLOP, before even counting the Hopper FP8 Transformer Engine.
+
+
+Look at the price-per-TFLOP column in the table above. At eight thousand dollars for 362 dense BF16 TFLOPS, the **L40S delivers 22 dollars per BF16 TFLOP**. That figure beats every other GPU for workloads that fit inside a single forty-eight-gigabyte card. For multi-GPU training, the H100 SXM5 delivers 30 dollars per BF16 TFLOP, or ten dollars per TFLOP per year amortized over three years. That provides 1.6 times more compute per dollar than the A100 SXM4 at forty-eight dollars per TFLOP, before even counting the Hopper FP8 Transformer Engine. The Transformer Engine is the Hopper feature that switches parts of the math to FP8 when it is safe. When you compare cards, keep the precision in mind. A price per BF16 TFLOP is a fair comparison only when both cards run the same BF16 math.
 
 ### 3.2 The PCIe vs NVLink SXM Crossover Point
 
-Why does the L40S or H100 PCIe succeed on single-card LoRA jobs yet fail catastrophically on multi-GPU seventy-billion-parameter fine-tuning? The answer lies in the physical board architecture and collective communication math.
 
-Why does the L40S or H100 PCIe do well on single-card LoRA jobs and fail on multi-GPU seventy-billion-parameter fine-tuning? The answer is the board design and the collective communication math.
+Think of a single-card job as a solo musician and a seventy-billion-parameter job as an orchestra. A solo musician never waits for anyone, while an orchestra depends on every section hearing every other section. Why does the L40S or H100 PCIe succeed on single-card LoRA jobs yet fail catastrophically on multi-GPU seventy-billion-parameter fine-tuning? The answer lies in the physical board architecture and collective communication math. Collective communication is the set of GPU-to-GPU exchanges that every step needs.
+
 
 In the single-GPU case there is no collective traffic. Suppose you fine-tune an eight-billion-parameter model with LoRA at 18 GB peak, or a sixty-five-billion-parameter model with four-bit QLoRA at 41 GB peak. The whole model and its activations sit in one GPU's memory, and inter-GPU bandwidth goes unused. An L40S PCIe card or a single H100 PCIe card runs at full compute speed in an ordinary air-cooled server.
 
-The multi-GPU case is different. Take full SFT on a fourteen-billion or seventy-billion-parameter model, or multi-GPU LoRA on a seventy-billion-parameter model. The job must shard parameters across the eight GPUs of a node with FSDP or DeepSpeed ZeRO-3. Each step runs an AllGather before the forward pass, a second AllGather before the backward pass, and a ReduceScatter on the gradients. On an HGX H100 SXM5 baseboard, four NVSwitch chips join all eight GPUs in a non-blocking 900 GB/s all-to-all mesh, which hides those collectives behind Tensor Core math.
+
+The multi-GPU case is different. Take full SFT on a fourteen-billion or seventy-billion-parameter model, or multi-GPU LoRA on a seventy-billion-parameter model. The job must shard parameters across the eight GPUs of a node with FSDP or DeepSpeed ZeRO-3. Each step runs an AllGather before the forward pass, a second AllGather before the backward pass, and a ReduceScatter on the gradients. An AllGather collects the shards from every GPU so each one has the full tensor it needs, and a ReduceScatter sums the gradients and hands each GPU its own slice. On an HGX H100 SXM5 baseboard, four NVSwitch chips join all eight GPUs in a non-blocking 900 GB/s all-to-all mesh, which hides those collectives behind Tensor Core math.
 
 Standard 2U PCIe servers have no NVSwitch baseboard. Optional two-way NVLink bridges give H100 PCIe cards 600 GB/s, but only in isolated pairs and not across all eight GPUs, and L40S cards have no NVLink at all. Collective traffic across eight GPUs must cross the host PCIe Gen5 x16 root complex at 64 GB/s per direction. That is a **14.06x bandwidth drop** from 900 GB/s SXM NVSwitch.
+The practical lesson is that a slow link makes many GPUs act like a few. Adding cards does not add throughput once every step waits on the same bridge. That is why this chapter asks you to size the interconnect before you size the number of GPUs. Measure the interconnect with a simple all-reduce test before you commit to a cluster design. A measured number beats a datasheet number when the decision is expensive. Run the test on the same node shape you plan to buy, because a result from a different chassis can mislead the purchase. Record the chassis model, the driver version, and the interconnect generation next to the result, so the comparison stays honest when the hardware changes.
+
+
+
+Think about what the slow path means for the step time. Every layer waits for its collective before the math can continue. With a fast mesh, the wait is hidden under the matrix work. With a slow bridge, the GPUs sit idle while the data crawls past. The practical test is simple. Measure the step time on one node, then on two, and watch whether the second node makes the step faster or slower. A flat or slower result is the clearest sign that the link is the limit.
 
 ```text
 8-GPU Node Bill of Materials & 70B PCIe vs SXM Crossover (V04 Ch. 4 & V21 Ch. 2):
@@ -256,15 +282,15 @@ Standard 2U PCIe servers have no NVSwitch baseboard. Optional two-way NVLink bri
     Result: Training takes 5.0x longer, burning more developer time and electricity than the 30% hardware discount saved.
 ```
 
-Use PCIe GPUs such as the L4 and L40S for single-GPU LoRA and QLoRA jobs. Require NVSwitch-backed SXM nodes as soon as a job shards layers or gradients across four or more GPUs.
+
+Use PCIe GPUs such as the L4 and L40S for single-GPU LoRA and QLoRA jobs. Require NVSwitch-backed SXM nodes as soon as a job shards layers or gradients across four or more GPUs. The rule is simple to state and easy to forget in a procurement meeting. Write it into the design review, so the next purchase order is checked against the workload before anyone signs it.
 
 ---
 
 ## 4. Token Throughput, Batch Sizing, and Cost-per-Run Modeling
-
 ### 4.1 Effective Batch Size, Gradient Accumulation, and Sequence Packing
 
-To predict how long a fine-tuning job will run and what it will cost, you must translate dataset rows into total processed tokens and optimizer steps. Because fine-tuning runs on memory-constrained GPUs, you rarely fit the entire global batch into HBM at once. Instead, you set a small per-device micro-batch size of one to eight samples. You then accumulate gradients across multiple micro-steps before calling `optimizer.step()`.
+Picture a finance lead who asks how long the next fine-tune will take and what it will cost. The honest answer starts with tokens and steps. To predict how long a fine-tuning job will run and what it will cost, you must translate dataset rows into total processed tokens and optimizer steps. Because fine-tuning runs on memory-constrained GPUs, you rarely fit the entire global batch into HBM at once. Instead, you set a small per-device micro-batch size of one to eight samples. You then accumulate gradients across multiple micro-steps before calling `optimizer.step()`. Accumulation adds up the gradients from several small batches so that one optimizer update behaves as if the big batch had fit in memory. Pick the micro-batch size first, because it is the number that the memory limit fixes. The accumulation steps then fill in the rest of the target batch size, and the product of the three numbers gives the effective batch.
 
 ```text
 Effective Batch Size, Token Volume, and Run Cost Formulas (LEH Ch. 5 & V22 Ch. 3):
@@ -288,11 +314,16 @@ Worked Examples from Corpus:
      Throughput & Cost: 450-500 tokens/sec sustained -> 2.5 to 3 days wall-clock -> ~$5,000 amortized hardware + $100 power = $5,100 total
 ```
 
+Read the worked examples as a set of checks you can reproduce. Each example is short enough to redo on a notebook in a few minutes, and that is the point. A cost estimate that you cannot rebuild by hand is a guess that happens to have decimal places. Each one takes a configuration, multiplies the terms, and arrives at a token count, a time, or a dollar figure. If your own numbers disagree with the example, look first at the batch size and the sequence length. Those two settings move the token count more than any other setting in the run, so a small slip in either one changes the whole estimate.
+
 Notice the impact of sequence packing via `packing=True` in the second example above. Suppose your dataset uses a maximum sequence length of 1,024 tokens, but average instructions are only two hundred to three hundred tokens long. Naive padding wastes seventy percent of every Tensor Core matrix multiplication on pad tokens. Packing concatenates three to four short examples into a single sequence separated by EOS tokens and block-diagonal attention masks. That simple change triples effective token throughput and cuts cloud GPU rental cost by two-thirds.
+The packing example shows why the arithmetic matters. Padding does not just waste memory. It spends the same matrix multiplications on tokens that carry no information, so the bill grows while the learning stays flat.
+
+
 
 ### 4.2 End-to-End Fine-Tuning Cost Comparison Table
 
-The table below compares real-world token volumes, GPU hours, and cloud rental costs across typical post-training jobs verified by `code/part14/finetuning_infra_cost.py`.
+Picture a spreadsheet that puts a token count, a GPU type, and a price side by side for each job. The table below compares real-world token volumes, GPU hours, and cloud rental costs across typical post-training jobs verified by `code/part14/finetuning_infra_cost.py`. Each row has a different hardware choice, and the spot and on-demand prices show how much the purchase model matters.
 
 | Workload & Method | Dataset Size & Epochs (Total Tokens) | Target Hardware & Peak VRAM | Sustained Throughput (tok/s/GPU) | Wall-Clock Time (GPU-Hours) | Cloud Cost (Spot vs On-Demand) |
 |---|---|---|---|---|---|
@@ -302,16 +333,19 @@ The table below compares real-world token volumes, GPU hours, and cloud rental c
 | **Llama-2-7B Customer Chat LoRA (V22 Ch. 3)** | 50,000 convos (500M tok/ep x 3 = 1.5B tok) | 1x H100 80GB (14.0 GB INT8-LoRA footprint) | 450–500 tok/s (unpacked baseline) | 2.5–3 days (~833–926 GPU-hrs or 8x parallel) | $5,100 ($5K CapEx + $100 power) |
 | **Llama-3.1-70B QLoRA Domain SFT** | 25,000 packed samples x 3 epochs (~150M tok) | 1x L40S 48GB (41–44 GB) or 2x H100 80GB | ~350 tok/s (L40S) / ~900 tok/s (H100) | ~23 hrs (2x H100 = 46 GPU-hrs) | **$69 Spot** ($184 On-Demand) |
 | **Llama-3.1-70B Full SFT (FSDP2 + BF16)** | 100,000 packed samples x 2 epochs (~800M tok) | 32x H100 SXM5 (4 nodes, 1,120 GB sharded) | ~940 tok/s/GPU (30,080 tok/s cluster) | ~7.4 hrs (236.5 GPU-hrs) | **$355 Spot** ($946 On-Demand) |
+Read each row from left to right. The first two columns tell you how much data the job sees. The next two tell you what hardware it runs on and how fast it moves. The last two turn speed into hours and dollars. Compare rows that share a model size, because the spot and on-demand prices show the cost of waiting for capacity against the cost of interruption. When two rows look almost the same, look at the interconnect and the memory columns first. Those two columns usually explain why one job runs and the other stalls. If both rows match on those columns, the difference is usually in the software stack, and the next check is the container version.
 
-Turn on sequence packing and FlashAttention for every fine-tuning job before you add GPUs. Removing padding tokens cuts wall-clock time and cloud spend in proportion.
+
+
+
+Turn on sequence packing and FlashAttention for every fine-tuning job before you add GPUs. Removing padding tokens cuts wall-clock time and cloud spend in proportion. Adding GPUs to a padded job only pays for more padding.
 
 ---
 
 ## 5. Fine-Tuning Framework Ecosystem and Kubernetes Orchestration
-
 ### 5.1 Comparing TRL, Unsloth, Axolotl, Torchtune, LLaMA-Factory, and DeepSpeed
 
-Once you size your memory footprint and pick the right GPU, you must select a software framework to execute the training loop. Writing raw PyTorch loops by hand is error-prone when combining four-bit NF4 quantization, FlashAttention, sequence packing, and distributed sharding. Six open-source stacks dominate production post-training.
+Picture an engineer who has the memory math and the GPU choice done, and who now has to pick the software stack. Once you size your memory footprint and pick the right GPU, you must select a software framework to execute the training loop. Writing raw PyTorch loops by hand is error-prone when combining four-bit NF4 quantization, FlashAttention, sequence packing, and distributed sharding. Six open-source stacks dominate production post-training. Each one makes a different trade between control and convenience. Some hide the training loop behind a single command, and others expose every line of it. Pick the stack by asking who will maintain the job after the first run, not by which logo looks best on the slide.
 
 | Framework | Core Architecture & Differentiator | Supported Methods | Distributed Scale | Primary Infrastructure Use Case |
 |---|---|---|---|---|
@@ -321,13 +355,16 @@ Once you size your memory footprint and pick the right GPU, you must select a so
 | **Torchtune** | PyTorch-native library with clean recipes and zero heavy abstraction layers; native FSDP2 (`fully_shard`) | Full SFT, LoRA, QLoRA, DoRA, DPO, QAT | Single-GPU to Multi-Node (FSDP2) | Kubeflow Trainer v2 BuiltinTrainer default engine and PyTorch-native engineering teams |
 | **LLaMA-Factory** | Zero-code Gradio WebUI (LlamaBoard) + CLI supporting 100+ models, multimodal VLMs, and integrated evaluation | Full SFT, Freeze-tuning, LoRA, QLoRA, GaLore, DoRA, PPO, DPO, ORPO | Single-GPU to Multi-Node (Accelerate, FSDP, DeepSpeed) | Self-service platform portals where teams launch jobs via CLI or browser UI |
 | **DeepSpeed** | Distributed engine wrapping PyTorch with ZeRO-1/2/3, ZeRO-Offload (CPU RAM), and ZeRO-Infinity (NVMe) | Full SFT, LoRA, RLHF (DeepSpeed-Chat) | Multi-GPU and Multi-Node (`nccl`) | Sharding 70B+ full SFT or offloading optimizer states to host DDR5 RAM when HBM is tight |
+A simple rule helps when the table feels crowded. Pick the framework whose abstraction matches your team's habits. A team that wants a notebook-style workflow on one GPU will be happy with Unsloth. A platform team that needs YAML-driven pipelines for many projects will lean toward Axolotl or the Kubeflow path. The math in each run is the same, so the choice is mostly about how your team reads and reviews the code. Try a small job in two frameworks before you commit, and compare how easy it is to read the output, rerun the job, and explain a failure to a colleague.
 
-Teams also use model merging to combine several task-specific models or adapters without a GPU. Task arithmetic averages weights or adds task vectors, which are the fine-tuned weights minus the base weights. SLERP interpolates two models along the shortest arc on a hypersphere with a factor between 0 and 1, and a factor of 0.5 is the exact midpoint. TIES and DARE prune deltas, and Yadav et al. showed that keeping only the top 20 percent of task-vector parameters preserves full accuracy while removing interference between merged tasks. Layer stacking combines layers from different checkpoints. Goliath-120B stacked 72 of 80 layers from two fine-tuned Llama-2-70B models, and SOLAR-10.7B duplicated a 32-layer 7B model and summed 16 middle layers to leave 48 layers before continued training.
+
+
+Teams also use model merging to combine several task-specific models or adapters without a GPU. Task arithmetic averages weights or adds task vectors, which are the fine-tuned weights minus the base weights. SLERP interpolates two models along the shortest arc on a hypersphere with a factor between 0 and 1, and a factor of 0.5 is the exact midpoint. TIES and DARE prune deltas, and Yadav et al. showed that keeping only the top 20 percent of task-vector parameters preserves full accuracy while removing interference between merged tasks. Layer stacking combines layers from different checkpoints. Goliath-120B stacked 72 of 80 layers from two fine-tuned Llama-2-70B models, and SOLAR-10.7B duplicated a 32-layer 7B model and summed 16 middle layers to leave 48 layers before continued training. Merging is cheap because it runs on a CPU, and it produces one model that serves every skill it inherited. The trade-off is that a merged model is harder to inspect, because its behavior comes from several sources at once. Keep the original adapters, so you can rebuild the merge if one skill regresses.
 
 ### 5.2 Commands and Configurations That Matter
-
 #### 1. Unsloth + TRL SFT and DPO Pipeline
-The script below runs high-speed LoRA supervised fine-tuning with sequence packing and eight-bit AdamW. It then runs memory-free reference DPO via `ref_model=None` and exports a merged sixteen-bit checkpoint.
+
+The script below runs high-speed LoRA supervised fine-tuning with sequence packing and eight-bit AdamW. It then runs memory-free reference DPO via `ref_model=None` and exports a merged sixteen-bit checkpoint. Read the two stages in order, because the second stage reuses the model that the first stage trained. Before you run the second stage, confirm that the first stage saved its merged checkpoint, because the alignment step starts from that file.
 
 ```python
 # Step 1: Supervised Fine-Tuning (SFT) with Unsloth + TRL SFTTrainer
@@ -412,9 +449,16 @@ dpo_trainer = DPOTrainer(
 dpo_trainer.train()
 model.save_pretrained_merged("model-merged", tokenizer, save_method="merged_16bit")
 ```
+When you adapt this script to your own data, change the dataset lines first and leave the training settings alone until the first run finishes. A data mistake is the most common reason that a healthy-looking run produces a model that rambles or ignores its instructions.
+
+
+Notice where the reference settings sit. The LoRA rank, the batch size, and the learning rate are written next to the lines that use them, so a reviewer can check the pair together. The DPO section reads the same way, and its beta comment explains why the value is higher than the default.
+
+
 
 #### 2. 4-Bit NF4 QLoRA with BitsAndBytes, Paged AdamW, and Adapter Merging
-When running standard Hugging Face Transformers and PEFT on a 24 GB L4 GPU, configure four-bit NormalFloat with double quantization and paged eight-bit AdamW.
+
+When running standard Hugging Face Transformers and PEFT on a 24 GB L4 GPU, configure four-bit NormalFloat with double quantization and paged eight-bit AdamW. The script below makes each of those three choices explicit, so a reviewer can see the memory plan in the code instead of finding it in library defaults.
 
 ```python
 import torch
@@ -463,9 +507,13 @@ training_args = TrainingArguments(
 # merged_model = peft_model.merge_and_unload()
 # merged_model.save_pretrained("/mnt/models/merged-llama-8b")
 ```
+The three numbered choices in the block map to three memory decisions. Four-bit weights shrink the base, double quantization shrinks the scaling constants, and the paged optimizer absorbs activation spikes. If a run still fails, change one of these choices at a time, so you can see which one fixed the problem.
+
+
 
 #### 3. Kubernetes Native Orchestration with Kubeflow Trainer v2
-On Kubernetes, Kubeflow Trainer separates platform administration from data science submission. Platform administrators install the controller and define a cluster-wide `ClusterTrainingRuntime`. Data scientists then submit Python training functions or notebook configs via `TrainerClient()`. That call serializes the Python function directly into a `TrainJob` custom resource and compiles it into a `JobSet` without requiring a Docker image rebuild.
+
+Picture a data scientist who wants to launch an eight-node LoRA job without writing YAML or building an image. On Kubernetes, Kubeflow Trainer separates platform administration from data science submission. Platform administrators install the controller and define a cluster-wide `ClusterTrainingRuntime`. Data scientists then submit Python training functions or notebook configs via `TrainerClient()`. That call serializes the Python function directly into a `TrainJob` custom resource and compiles it into a `JobSet` without requiring a Docker image rebuild. A custom resource is an extension object that the cluster understands once its definition is installed.
 
 ```bash
 # Install Kubeflow Trainer v2.1.0 controller and default runtimes (untested on live hardware)
@@ -474,6 +522,9 @@ export URL="https://github.com/kubeflow/trainer.git/manifests/overlays"
 kubectl apply --server-side -k "${URL}/manager?ref=${VERSION}"
 kubectl apply --server-side -k "${URL}/runtimes?ref=${VERSION}"
 ```
+The install step runs once per cluster. Platform administrators own it, and data scientists never need to run it themselves. Keeping that boundary clear is what lets the platform team upgrade the controller without touching anyone's training code. A clean split also limits the blast radius of an upgrade, because a broken controller affects the platform team's tests before it affects a data scientist's job.
+
+
 
 ```yaml
 # Platform Administrator: ClusterTrainingRuntime template (GAK Ch. 6 Example 6-4)
@@ -522,26 +573,30 @@ job_name = client.train(
 client.wait_for_job_status(name=job_name, status={"Running"})
 _ = client.get_job_logs(job_name, follow=True)
 ```
+After submission, the job is a normal Kubernetes object. You can watch its status, read its logs, and delete it like any other workload. The platform team sees the same runtime for every job, which makes quotas and audits simpler to run.
+
+
 
 ---
-
 ## 6. Cloud Capacity Procurement, FinOps Governance, and Failure Modes
-
 ### 6.1 Cloud Capacity Tiers, Spot Checkpointing, and GPU Sharing
 
-Compute is the dominant line item in AI infrastructure. Cloud instances are billed in one-second increments after a 60-second minimum. Combining the right cloud capacity tier with Kubernetes storage, networking, and GPU partitioning cuts fine-tuning and evaluation spend by 50 to 90 percent.
+Picture a monthly cloud invoice that doubled after the team started fine-tuning. Compute is the dominant line item in AI infrastructure. Cloud instances are billed in one-second increments after a 60-second minimum. Combining the right cloud capacity tier with Kubernetes storage, networking, and GPU partitioning cuts fine-tuning and evaluation spend by 50 to 90 percent. Read that billing rule before you start a short test job, because a job that finishes early still pays for the minimum period.
 
-Four levers cut the bill.
+Four levers cut the bill, and they work on different parts of the invoice. Think of them as four separate doors. Capacity tiers change the price of each hour. Storage and network controls change the cost of moving bytes. Evaluation sharing changes how much of each GPU gets used. Idle cleanup changes how many hours are paid for and never worked. Each door has a different owner, so write down who checks each one. A control with no owner tends to drift back to the old behavior within a quarter. Review the owners at the start of each planning cycle, and replace anyone who has moved on, so the controls keep running after the people who set them have changed teams.
 
-Capacity tiers matter first. EC2 Spot Instances give up to a 90 percent discount, with 70 percent typical. They suit interruptible fine-tuning jobs on L4 or H100 nodes when paired with automated checkpointing. AWS gives a **2-minute interruption warning** before it reclaims a Spot node. Configure the trainer to write asynchronous checkpoints to Amazon S3 every 15 minutes, and run the AWS Node Termination Handler so that the 2-minute notice triggers an immediate synchronous checkpoint. Reserved Instances and Savings Plans give up to a 72 percent discount for one-year or three-year commitments, and Standard or Convertible RIs suit baseline round-the-clock multi-LoRA serving and continuous training queues. EC2 Capacity Blocks for ML reserve guaranteed GPU or Trainium capacity for 1 to 14 days, extendable up to 6 months and bookable 8 weeks ahead. They co-locate instances inside low-latency EC2 UltraClusters for scheduled multi-node full fine-tuning bursts. AWS Graviton ARM instances give up to 40 percent better price-performance for CPU-heavy tokenization and preprocessing. For training, Trainium Trn1 instances offer up to 50 percent lower cost, and Trn2 instances give 4 times the performance of Trn1 and 30 to 40 percent better price-performance than P5e instances through the AWS Neuron SDK.
+Capacity tiers matter first. EC2 Spot Instances give up to a 90 percent discount, with 70 percent typical. They suit interruptible fine-tuning jobs on L4 or H100 nodes when paired with automated checkpointing. AWS gives a **2-minute interruption warning** before it reclaims a Spot node. Configure the trainer to write asynchronous checkpoints to Amazon S3 every 15 minutes, and run the AWS Node Termination Handler so that the 2-minute notice triggers an immediate synchronous checkpoint. A checkpoint here is a saved copy of the weights and optimizer state, so the job can restart from it. Reserved Instances and Savings Plans give up to a 72 percent discount for one-year or three-year commitments, and Standard or Convertible RIs suit baseline round-the-clock multi-LoRA serving and continuous training queues. EC2 Capacity Blocks for ML reserve guaranteed GPU or Trainium capacity for 1 to 14 days, extendable up to 6 months and bookable 8 weeks ahead. They co-locate instances inside low-latency EC2 UltraClusters for scheduled multi-node full fine-tuning bursts. AWS Graviton ARM instances give up to 40 percent better price-performance for CPU-heavy tokenization and preprocessing. For training, Trainium Trn1 instances offer up to 50 percent lower cost, and Trn2 instances give 4 times the performance of Trn1 and 30 to 40 percent better price-performance than P5e instances through the AWS Neuron SDK.
 
-Storage and network controls come second. The Mountpoint for Amazon S3 CSI Driver mounts S3 Standard or single-AZ S3 Express One Zone buckets straight into training Pods, with no idle block storage. For node-attached checkpoints and JupyterHub PVCs, gp3 EBS volumes are 20 percent cheaper than gp2 with independent IOPS scaling, and io2 Block Express volumes scale up to 256,000 IOPS. Restrict multi-node node pools to a single Availability Zone in Karpenter with Topology Aware Routing, to remove cross-AZ transfer fees and latency. Route Amazon S3 and ECR pulls through private VPC Endpoints to avoid NAT Gateway charges, and use Bottlerocket AMIs to cut node startup from 90 seconds to 20.
+Storage and network controls come second. The Mountpoint for Amazon S3 CSI Driver mounts S3 Standard or single-AZ S3 Express One Zone buckets straight into training Pods, with no idle block storage. A CSI driver is the plug-in that lets Kubernetes mount an outside storage system as a volume. For node-attached checkpoints and JupyterHub PVCs, gp3 EBS volumes are 20 percent cheaper than gp2 with independent IOPS scaling, and io2 Block Express volumes scale up to 256,000 IOPS. Restrict multi-node node pools to a single Availability Zone in Karpenter with Topology Aware Routing, to remove cross-AZ transfer fees and latency. Route Amazon S3 and ECR pulls through private VPC Endpoints to avoid NAT Gateway charges, and use Bottlerocket AMIs to cut node startup from 90 seconds to 20.
 
-Evaluation GPU waste comes third. Loading Llama-3.2-1B at 1.8 GB onto a dedicated 24 GB L4 GPU leaves **92.5% of the GPU memory unused**. Ten time-sliced replicas in `time-slicing-config` let 5 concurrent evaluation or serving pods, using 9.0 GB in total, share one physical L4. Partitioning 141 GB H200 GPUs or eight-GPU H100 nodes into hardware-isolated MIG slices keeps concurrent LoRA experiments from crashing each other.
+Evaluation GPU waste comes third. Loading Llama-3.2-1B at 1.8 GB onto a dedicated 24 GB L4 GPU leaves **92.5% of the GPU memory unused**. Ten time-sliced replicas in `time-slicing-config` let 5 concurrent evaluation or serving pods, using 9.0 GB in total, share one physical L4. Partitioning 141 GB H200 GPUs or eight-GPU H100 nodes into hardware-isolated MIG slices keeps concurrent LoRA experiments from crashing each other. Time-slicing lets several pods take turns on one GPU, while MIG cuts the GPU into fixed slices with their own memory.
 
-Idle notebooks come last. Deploy Kubecost and the Goldilocks VPA Recommender to right-size Pod requests, and scrape `dcgm-exporter` on port 9400. In production clusters, 98 percent Kubernetes GPU allocation often hides 12 to 40 percent real compute utilization, because developers leave interactive notebooks open over the weekend. An automated **DCGM FinOps Reaper** can terminate interactive Pods whose `DCGM_FI_PROF_SM_ACTIVE` stays below 5 percent for 4 consecutive hours.
+Idle notebooks come last. They are the quietest waste, because nothing fails and nobody gets paged. Deploy Kubecost and the Goldilocks VPA Recommender to right-size Pod requests, and scrape `dcgm-exporter` on port 9400. In production clusters, 98 percent Kubernetes GPU allocation often hides 12 to 40 percent real compute utilization, because developers leave interactive notebooks open over the weekend. Allocation counts a reservation, while utilization counts the work a GPU actually does. An automated **DCGM FinOps Reaper** can terminate interactive Pods whose `DCGM_FI_PROF_SM_ACTIVE` stays below 5 percent for 4 consecutive hours.
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
+Keep this note with any dashboard you build. A query written for the 4.8.x names returns nothing on a 4.9.0 exporter, and an empty panel can look like an idle GPU. Check the exporter version before you trust a quiet chart.
+
+
 
 ```text
 3-Year Capacity, H200 MIG, & 1,000-GPU Cluster Reference (K8GS Ch. 10, V23 Ch. 9 & Ch. 10):
@@ -565,9 +620,11 @@ Idle notebooks come last. Deploy Kubecost and the Goldilocks VPA Recommender to 
      Network AllReduce check: 100 Gbps node link / 8 GPUs = 12.5 Gbps (12,500 Mbps) per GPU
      1 GB gradient = 8 Gb = 8,000 Mb -> 8,000 Mb / 12,500 Mbps = 0.64 s = 640 ms (6-64% overhead on 1-10s step; 10:1 oversubscription -> 6.4s = 64-640% stall)
 ```
+Read the capacity block as a sequence of questions. How many GPUs does the business need in each year? What does that cost in hardware and in staff time? What share of the hours does the cluster actually work? The last question matters most, because a cheap GPU that sits idle is the most expensive option. The network line at the end shows that even a generous budget can be eaten by a slow fabric. Repeat the calculation with a lower utilization number and a higher one, so the team sees how sensitive the cost is to the share of hours that the cluster is actually busy. The result often shows that the utilization assumption matters more than the hardware price, which is the lesson the planning meeting most needs to hear.
+
+
 
 ### 6.2 How Fine-Tuning Infrastructure Fails
-
 | Failure Mode | What Breaks & Symptom | Root Cause Diagnosis | Production Remediation |
 |---|---|---|---|
 | **1. Reference-Model OOM in DPO / PPO Alignment** | CUDA out of memory during step 1 of `DPOTrainer` or `PPOTrainer` on a single 24 GB or 48 GB GPU even though SFT succeeded on the exact same model. | Passing a separate reference model instance loads a second full 16-bit copy of the base weights (+14 GB for 7B, +140 GB for 70B), or PPO loads all 4 models (36*Psi bytes). | Use LoRA/QLoRA and set `ref_model=None` in `DPOTrainer` so TRL reuses the frozen base weights by toggling the adapter off (0 GB extra weight RAM), or switch PPO to GRPO (`GRPOTrainer`) to drop the 16*Psi Critic network. |
@@ -575,18 +632,19 @@ Idle notebooks come last. Deploy Kubecost and the Goldilocks VPA Recommender to 
 | **3. Chat Template Whitespace Corruption & Missing EOS Token** | Training loss drops smoothly below 0.5, but during inference the fine-tuned model rambles endlessly without stopping or ignores user instructions. | 1) Omitting `tokenizer.eos_token` at the end of formatted response strings prevents the model from learning when to emit the stop token. <br/> 2) Mismatched chat templates (ChatML vs Llama 3) or stray newlines corrupt token IDs. | Always apply the model's native Jinja `tokenizer.apply_chat_template()`, explicitly append `tokenizer.eos_token` to every training target, and set `tokenizer.pad_token = tokenizer.eos_token`. |
 | **4. Unpadded / Unpacked Sequence Padding Waste & Activation Spikes** | GPU utilization fluctuates between 50% and 80% for 5 minutes and then collapses while cloud bills triple; occasional OOMs strike on long outlier sequences. | Short 250-token examples padded to `max_seq_length=2048` waste >85% of compute on pad tokens, while a single un-checkpointed 8192-token batch spikes attention activations quadratically. | Enable sequence packing (`packing=True`) with FlashAttention, enable `gradient_checkpointing=True`, and use `optim="paged_adamw_8bit"` so activation spikes page optimizer states to CPU RAM instead of crashing. |
 | **5. Spot Instance Preemption Wiping Multi-Hour Progress** | A Kubernetes Job or `TrainJob` running on EKS `g6.2xlarge` or `p5` Spot nodes is evicted after 3 hours, losing all trained steps (0 checkpoints in S3). | Container wrote checkpoints only to ephemeral pod storage and lacked a `SIGTERM` handler for the 120-second AWS Spot eviction notice. | Mount S3 via `mountpoint-s3-csi-driver` or sync `save_steps=25` / every 15 minutes to S3 via IRSA (`llama-fine-tuning-sa`), and trap the 2-minute Spot termination signal to flush a final checkpoint and auto-resume. |
+Read the table as a lookup for a bad night. Find the symptom in the second column, check the diagnosis in the third, and then apply the remediation in the last column. Changing the remediation before you read the diagnosis is the most common way to lose an afternoon. Keep a copy of the table next to the on-call notes, so the first responder does not have to search for it at two in the morning. Add a line at the top of the table that says which dashboard to open first, so the responder starts in the right place.
+
+
 
 ---
-
 ## 7. Hands-On Verification Lab
-
 ### Lab Venue and Execution Scope
-This deterministic verification lab runs locally in Python (`python3 code/part14/finetuning_infra_cost_lab.py`) with zero external dependencies. It can also be paired with a live Nebius GPU or Kubernetes cluster for full container execution. All 25 self-checks validate the exact VRAM formulas, LoRA and QLoRA parameter reductions, alignment memory multipliers, GPU price-per-TFLOP tables, PCIe-vs-SXM crossover ratios, multi-LoRA serving savings, and FinOps capacity models covered in this chapter.
+
+This deterministic verification lab runs locally in Python (`python3 code/part14/finetuning_infra_cost_lab.py`) with zero external dependencies. Run it first, because it checks the formulas without needing a GPU or a cloud account. It can also be paired with a live Nebius GPU or Kubernetes cluster for full container execution. All 25 self-checks validate the exact VRAM formulas, LoRA and QLoRA parameter reductions, alignment memory multipliers, GPU price-per-TFLOP tables, PCIe-vs-SXM crossover ratios, multi-LoRA serving savings, and FinOps capacity models covered in this chapter. The live GPU and cluster runs were not executed on live hardware, so treat them as reference steps until they are run.
 
 ```bash
 python3 code/part14/finetuning_infra_cost_lab.py
 ```
-
 ```text
 === Chapter 14.15 Lab: Fine-Tuning Infrastructure and Cost Verification ===
   [PASS] 1. GPT-3 175B (96 layers, d=12288, r=2 across 4 attention matrices) yields 196,608 params/layer and 18,874,368 total trainable params (18.87M, ~0.01%)
@@ -617,39 +675,42 @@ python3 code/part14/finetuning_infra_cost_lab.py
 
 Summary: 25 passed, 0 failed
 ```
+A passing run gives you confidence in the formulas, not in the cluster. Treat the live GPU checks as a separate project with their own sign-off. Keep the saved output next to the run record, so a later change can be compared line by line. Keep the list of the 25 checks in the lab notes, so a later change can be tested against the same expectations. Keep a copy of the script that produced the output, so a reviewer can rerun the same check against a new commit.
+
+
 
 ---
-
 ## Key takeaways
 
-RAG is for facts, and fine-tuning is for form and context compression. Start with systematic prompt engineering and retrieval for missing or changing facts. Fine-tune when you need strict output schemas or a domain tone, or want to embed slow-changing context into an 8B to 16B Small Language Model so that recurring prompt costs fall.
+Picture a review meeting where someone asks whether the team should buy GPUs or fix its prompts. The short answer comes from the lessons below, each of which answers a question the team will face.
 
-LoRA and QLoRA break the 16-byte-per-parameter memory wall. Full mixed-precision AdamW needs 16 bytes per parameter of static state, which is 112 GB for 7B and 1,120 GB for 70B. LoRA freezes the base weights, trains 1 to 2 percent of the parameters, and fits a 7B job in 14 to 18 GB. QLoRA adds four-bit NF4, double quantization, and `paged_adamw_8bit`. It cuts 7B peak memory by 40 percent to 9.3 GB and fits a 65B model in 41 GB on one 48 GB GPU, at roughly 30 percent slower steps.
+RAG is for facts, and fine-tuning is for form and context compression. Start with systematic prompt engineering and retrieval for missing or changing facts. A reviewer who asks for a fine-tune should first see the prompt and retrieval results that failed. Fine-tune when you need strict output schemas or a domain tone, or want to embed slow-changing context into an 8B to 16B Small Language Model so that recurring prompt costs fall. Ask the information-or-behavior question before anyone talks about GPUs.
 
-Alignment memory depends on the reference and critic design. Four-model PPO needs 36 bytes per parameter of static memory, which is 252 GB for 7B and 2,520 GB for 70B. GRPO removes the 16-byte Critic. DPO with LoRA or QLoRA and `ref_model=None` reuses the frozen base weights as the reference policy, with no extra weight memory.
+LoRA and QLoRA break the 16-byte-per-parameter memory wall. They do it by freezing most of the model, which means the savings depend on how much you are willing to leave untouched. Full mixed-precision AdamW needs 16 bytes per parameter of static state, which is 112 GB for 7B and 1,120 GB for 70B. LoRA freezes the base weights, trains 1 to 2 percent of the parameters, and fits a 7B job in 14 to 18 GB. QLoRA adds four-bit NF4, double quantization, and `paged_adamw_8bit`. It cuts 7B peak memory by 40 percent to 9.3 GB and fits a 65B model in 41 GB on one 48 GB GPU, at roughly 30 percent slower steps.
 
-Match PCIe or SXM hardware to where the collective traffic goes. The 48 GB L40S at 22 dollars per BF16 TFLOP and the 24 GB L4 at 72 watts are hard to beat when a LoRA or QLoRA job fits on one card. When a 70B job shards parameters across eight or more GPUs, 64 GB/s PCIe Gen5 is 14.06 times slower than 900 GB/s SXM NVSwitch. A 30 percent hardware discount then becomes a 90 percent communication stall and a fivefold slower run.
+Alignment memory depends on the reference and critic design. Count the models before you count the GPUs, because each extra model adds its own static state. Four-model PPO needs 36 bytes per parameter of static memory, which is 252 GB for 7B and 2,520 GB for 70B. GRPO removes the 16-byte Critic. DPO with LoRA or QLoRA and `ref_model=None` reuses the frozen base weights as the reference policy, with no extra weight memory. The more models sit in memory at once, the more the cluster costs, so choose the smallest set that does the job.
 
-Optimize the whole lifecycle. Serving 100 customer LoRA adapters over one shared base matrix cuts parameter storage by 72 times. On Kubernetes, run interruptible fine-tuning on Spot GPUs at 70 to 90 percent off, with 15-minute async S3 checkpoints and 2-minute eviction handlers. Partition evaluation GPUs with H200 MIG or L4 time-slicing, and stop idle notebooks whose `DCGM_FI_PROF_SM_ACTIVE` stays below 5 percent for 4 hours.
+Match PCIe or SXM hardware to where the collective traffic goes. Ask first whether the job ever leaves one card, and let that answer decide the rest of the purchase. The 48 GB L40S at 22 dollars per BF16 TFLOP and the 24 GB L4 at 72 watts are hard to beat when a LoRA or QLoRA job fits on one card. When a 70B job shards parameters across eight or more GPUs, 64 GB/s PCIe Gen5 is 14.06 times slower than 900 GB/s SXM NVSwitch. A 30 percent hardware discount then becomes a 90 percent communication stall and a fivefold slower run.
+
+Optimize the whole lifecycle. Serving 100 customer LoRA adapters over one shared base matrix cuts parameter storage by 72 times. On Kubernetes, run interruptible fine-tuning on Spot GPUs at 70 to 90 percent off, with 15-minute async S3 checkpoints and 2-minute eviction handlers. Partition evaluation GPUs with H200 MIG or L4 time-slicing, and stop idle notebooks whose `DCGM_FI_PROF_SM_ACTIVE` stays below 5 percent for 4 hours. Each control in that list pays off only when someone checks it on a schedule.
 
 ---
-
 ## Exercises
 
-1. For GPT-3 175B and Llama-2 13B, use `calculate_lora_adapter_footprint()` with the parameters in the reference block below. What are the trainable parameters per layer and in total, their percentage of all parameters, and the 16-bit adapter size in MB? How does each adapter compare with its 16-bit base weights?
+1. Use `calculate_lora_adapter_footprint()` with the parameters in the reference block below. Run it for GPT-3 175B. Then run it for Llama-2 13B. What are the trainable parameters per layer and in total? What is their percentage of all parameters? What is the 16-bit adapter size in MB? How does each adapter compare with its 16-bit base weights?
 2. Use `evaluate_k8gs_llama3_8b_qlora_params()` on the Llama-3 8B QLoRA setup. What are the trainable percentage and the parameter reduction?
 3. Use `compare_customization_vram_profiles()` for a 7B model. Compare initialization and peak VRAM for full SFT, pure BF16 Adam, 16-bit LoRA, and 4-bit QLoRA.
 4. For a 7B and a 70B model, what is the static memory in GB under full-weight PPO, DPO, and GRPO? How many gigabytes of static HBM does GRPO save over PPO by dropping the Critic?
 5. Why does `ref_model=None` in `DPOTrainer` with LoRA or QLoRA need no extra reference weights? How does changing `beta` from 0.1 to 0.5 change model style during DPO training?
-6. Use `evaluate_gpu_landscape_and_crossover()` to find the price per dense BF16 TFLOP for the L40S, H100 PCIe, H100 SXM5, A100 40GB PCIe, H200 SXM, A100 40GB SXM4, and A100 80GB SXM4.
-7. Compare the eight-GPU node bill of materials for H100 SXM5 and H100 PCIe. Why does buying 80 H100 PCIe GPUs for 70B FSDP fine-tuning give a fivefold slowdown despite a 30 percent hardware discount?
-8. Use `calculate_finetuning_batch_and_run_cost()` on the two batch configurations in the parameter block below. What are the effective batch size and tokens per optimizer step? Confirm the 50-minute runtime of the TwinLlama-3.1-8B Unsloth job on one A100.
-9. Use `evaluate_v22_llama2_7b_lora_case_study()` to confirm the 14.0 GB memory breakdown and the H100 headroom. What are the total tokens over 50,000 conversations and 3 epochs, and the total run cost?
-10. Use `evaluate_multilora_serving_and_rag_crossover()` to compare the parameter count of 100 separate merged matrices with one shared base matrix plus 100 rank-8 adapters. What is the reduction ratio?
-11. A 500-dollar fine-tuning run removes 2,000 recurring prompt tokens per request, and input tokens cost 2 dollars per million. What is the break-even query count?
-12. Compare the on-prem eight-GPU A100 vLLM serving cost with cloud token prices at 10,000 active users and at 10,000,000 active users.
-13. Use `evaluate_cloud_capacity_and_finops()` to explain why a single Llama-3.2-1B pod on a 24 GB L4 leaves 92.5 percent of VRAM unused. What is the memory footprint when 5 replicas run across 10 time-sliced virtual GPUs? List the 7 H200 MIG profiles.
-14. Check the 3-year 40 percent YoY capacity plan and the 15-million-dollar 1,000-GPU cluster design, including the AllReduce time for a 1 GB gradient at 12.5 Gbps per GPU.
+6. Use `evaluate_gpu_landscape_and_crossover()` to find the price per dense BF16 TFLOP for each accelerator in the list. Include the L40S, H100 PCIe, H100 SXM5, and H200 SXM. Include the A100 40GB PCIe and A100 40GB SXM4. Include the A100 80GB SXM4 as well.
+7. Compare the eight-GPU node bill of materials for H100 SXM5 and H100 PCIe. Why does buying 80 H100 PCIe GPUs for 70B FSDP fine-tuning give a fivefold slowdown? Why does the 30 percent hardware discount not pay for it?
+8. Use `calculate_finetuning_batch_and_run_cost()` on the two batch configurations in the parameter block below. What are the effective batch size and tokens per optimizer step? Confirm the 50-minute runtime on one A100. The job trains TwinLlama-3.1-8B with Unsloth.
+9. Use `evaluate_v22_llama2_7b_lora_case_study()` to confirm the 14.0 GB memory breakdown and the H100 headroom. What are the total tokens over 50,000 conversations and 3 epochs? What is the total run cost?
+10. Use `evaluate_multilora_serving_and_rag_crossover()` to compare two storage plans. Compare 100 separate merged matrices with one shared base matrix. Add 100 rank-8 adapters to the shared base. What is the reduction ratio?
+11. A 500-dollar fine-tuning run is the starting point. It removes 2,000 recurring prompt tokens per request. Input tokens cost 2 dollars per million. What is the break-even query count?
+12. Compare the on-prem eight-GPU A100 vLLM serving cost with cloud token prices at 10,000 active users. Repeat the comparison at 10,000,000 active users.
+13. Use `evaluate_cloud_capacity_and_finops()` to explain one idle GPU case. Explain why a single pod leaves 92.5 percent of VRAM unused. The pod runs Llama-3.2-1B. It sits on a 24 GB L4. What is the memory footprint when 5 replicas run across 10 time-sliced virtual GPUs? List the 7 H200 MIG profiles.
+14. Check the 3-year 40 percent YoY capacity plan. Then check the 15-million-dollar 1,000-GPU cluster design. Include the AllReduce time for a 1 GB gradient. Use 12.5 Gbps per GPU for the link speed.
 
 ```text
 Exercise Input Parameters Reference:
@@ -667,16 +728,15 @@ Exercise Input Parameters Reference:
 ```
 
 ---
-
 ## Interview angles
 
-1. **"Our application team wants to fine-tune Llama-3-70B on our internal Confluence wiki so employees can ask about company policies. Should we approve the GPU budget?"**
+1. Picture the question "Our application team wants to fine-tune Llama-3-70B on our internal Confluence wiki so employees can ask about company policies. Should we approve the GPU budget?"
    - *Strong answer:* Not as a first step. Wiki pages are changing facts, not an output-format behavior, so this is an information failure. Ovadia et al. showed that RAG beats fine-tuning on factual and current-events tasks, and it avoids catastrophic forgetting and lets you update documents by the minute in a vector database such as Qdrant. Start with prompt engineering and RAG. Bring in fine-tuning, or distill into an 8B to 16B Small Language Model with LoRA or QLoRA, only if the model fails to follow a strict output schema, needs a specialized tone, or sees enough traffic that a shorter prompt repays the training run.
-2. **"Walk me through the GPU memory math for fine-tuning a 7B and a 70B model with full SFT, LoRA, QLoRA, DPO, GRPO, and PPO."**
+2. Picture the question "Walk me through the GPU memory math for fine-tuning a 7B and a 70B model with full SFT, LoRA, QLoRA, DPO, GRPO, and PPO."
    - *Strong answer:* Start from the 16-byte-per-parameter rule for mixed-precision AdamW. Each parameter holds 2 bytes of BF16 weight, 2 of BF16 gradient, 4 of FP32 master weight, 4 of FP32 momentum, and 4 of FP32 variance. Checkpoints on disk hold 14 bytes per parameter. Full SFT therefore needs 112 GB of static state for 7B and 1,120 GB for 70B, which means multi-GPU FSDP. LoRA freezes the base and trains 0.5 to 2 percent of the parameters, so 7B peaks at 15.6 GB. QLoRA stores the base in four-bit NormalFloat, quantizes the scaling constants again, and pages optimizer states to CPU RAM during spikes. That cuts 7B initialization to 9.1 GB and peak to 9.3 GB, and a 65B model needs 41 GB on a 48 GB L40S, at roughly 30 percent slower steps. For alignment, PPO holds four models at 36 bytes per parameter, which is 252 GB for 7B and 2,520 GB for 70B. GRPO drops the 16-byte Critic by using group-normalized rollouts. DPO with LoRA or QLoRA and `ref_model=None` uses the frozen base as its reference, with no extra weight memory.
-3. **"Procurement wants 80 H100 PCIe cards in standard 2U servers instead of 10 eight-GPU HGX H100 SXM5 nodes for our 70B fine-tuning cluster, to save 30 percent. What is your answer?"**
+3. Picture the question "Procurement wants 80 H100 PCIe cards in standard 2U servers instead of 10 eight-GPU HGX H100 SXM5 nodes for our 70B fine-tuning cluster, to save 30 percent. What is your answer?"
    - *Strong answer:* Explain the PCIe versus NVLink SXM crossover. A single-GPU 8B LoRA job or a single-GPU 65B QLoRA job has no inter-GPU collective traffic, so PCIe cards such as the L40S at 22 dollars per BF16 TFLOP or the H100 PCIe at 26 dollars are ideal. Distributed 70B FSDP or Tensor Parallel fine-tuning, though, synchronizes parameters and gradients across all eight GPUs on every layer. A 2U PCIe server has no NVSwitch baseboard and is limited by the 64 GB/s PCIe Gen5 root complex, which is 14.06 times slower than the 900 GB/s NVSwitch mesh of an HGX H100 SXM5 node. The GPUs would stall for 90 percent of each step, training would take 5 times longer, and the 30 percent saving would be gone.
-4. **"How would you build a multi-tenant fine-tuning and serving platform on Kubernetes that keeps cloud spend low without losing jobs to Spot preemptions?"**
+4. Picture the question "How would you build a multi-tenant fine-tuning and serving platform on Kubernetes that keeps cloud spend low without losing jobs to Spot preemptions?"
    - *Strong answer:* Use four layers. First, Kubeflow Trainer v2 lets platform admins govern base images and quotas through `ClusterTrainingRuntime`, while data scientists submit serialized Python functions that compile into a `JobSet` with no Docker rebuild. Second, run interruptible fine-tuning on EC2 Spot GPU node groups at 70 to 90 percent off On-Demand, with `mountpoint-s3-csi-driver`, 15-minute async S3 checkpoints through IRSA, and a 2-minute Spot termination handler that flushes a synchronous checkpoint before eviction. Third, serve every customer customization as a dynamic multi-LoRA adapter on vLLM or NVIDIA NIM, which cuts parameter storage 72 times across 100 adapters. Fourth, remove idle GPU waste with H200 MIG, 10-replica time-slicing of small evaluation models on L4, Kubecost with Goldilocks right-sizing, and a DCGM FinOps Reaper that kills interactive pods whose `DCGM_FI_PROF_SM_ACTIVE` stays below 5 percent for 4 hours.
 
 ---

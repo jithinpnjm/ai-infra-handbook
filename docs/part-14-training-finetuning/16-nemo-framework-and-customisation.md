@@ -23,11 +23,12 @@ lab_venue: "Nebius GPU"
 | Coverage file | `planning/coverage/chapters/14-16.md` |
 | Claim & number ledger | `planning/ledgers/14-16.md` |
 
+
 ## Why this matters for AI infrastructure
 
-A foundation model downloaded from Hugging Face or NGC knows general language, but it does not know your bank's policies, your clinical workflows, or your internal codebase. Dropping it into an inference container does not make it a domain specialist. To teach it proprietary reasoning or strict institutional behavior, you must change its weights through post-training customization.
+Picture a team that downloads a foundation model from Hugging Face on Monday and puts it behind an API by Friday. The model answers general questions well, but it does not know the bank's policies, the clinical workflow, or the internal codebase. A foundation model downloaded from Hugging Face or NGC knows general language, but it does not know your bank's policies, your clinical workflows, or your internal codebase. Dropping it into an inference container does not make it a domain specialist. To teach it proprietary reasoning or strict institutional behavior, you must change its weights through post-training customization. NGC is NVIDIA's catalog of containers and models.
 
-The NVIDIA software stack splits this work between two engines. NVIDIA NeMo Framework is the factory for training and customization. It is the distributed stack in which foundation models are curated, pre-trained, fine-tuned, aligned, and evaluated across multi-GPU and multi-node clusters. NVIDIA NIM is the production inference microservice. When NeMo has trained and validated the customized weights, they are exported and mounted into a NIM container, which serves them with TensorRT-LLM or vLLM behind Triton Inference Server.
+The NVIDIA software stack splits this work between two engines. NVIDIA NeMo Framework is the factory for training and customization. It is the distributed stack in which foundation models are curated, pre-trained, fine-tuned, aligned, and evaluated across multi-GPU and multi-node clusters. NVIDIA NIM is the production inference microservice. When NeMo has trained and validated the customized weights, they are exported and mounted into a NIM container, which serves them with TensorRT-LLM or vLLM behind Triton Inference Server. Think of NeMo as the workshop where the part is made and NIM as the storefront where customers receive it.
 
 ```text
 Domain Fine-Tuning Infrastructure Reality (Volume 14, Chapter 5 & Lab 03):
@@ -45,46 +46,41 @@ Domain Fine-Tuning Infrastructure Reality (Volume 14, Chapter 5 & Lab 03):
   Training logs and metadata = 5 GB; minimum persistent storage required = 100 GB
 ```
 
-Treating customization as a casual single-GPU script fails in production in three ways.
+Treating customization as a casual single-GPU script fails in production in three ways. Each failure looks small at first, and each one grows with the cluster.
 
-Runs become unreproducible. If a fine-tuning run does not pin the base model commit hash, the dataset SHA-256 digest, and the `nvcr.io/nvidia/nemo:24.07` container digest, you cannot audit or roll back a misbehaving model.
+Runs become unreproducible. Picture an audit that asks which model answered a question last March. If a fine-tuning run does not pin the base model commit hash, the dataset SHA-256 digest, and the `nvcr.io/nvidia/nemo:24.07` container digest, you cannot audit or roll back a misbehaving model. A digest is a fingerprint of a file or image, so the same bytes always produce the same digest.
 
-The data pipeline starves the GPUs. Feeding raw JSONL over network-attached NFS makes CPUs parse text on the fly. That bottleneck holds Megatron-LM and NeMo runs at 18 percent MFU, and GPU utilization swings between 95 percent and 8 percent.
+The data pipeline starves the GPUs. Feeding raw JSONL over network-attached NFS makes CPUs parse text on the fly. That bottleneck holds Megatron-LM and NeMo runs at 18 percent MFU, and GPU utilization swings between 95 percent and 8 percent. MFU, or model FLOPs utilization, is the share of the GPU's math capacity that the training actually uses.
 
-Checkpoints stall the cluster. Writing one monolithic checkpoint from a thousand GPUs locks the parallel filesystem metadata server. A 450-millisecond training iteration then turns into a 45-minute stall every thousand steps.
+Checkpoints stall the cluster. Writing one monolithic checkpoint from a thousand GPUs locks the parallel filesystem metadata server. A 450-millisecond training iteration then turns into a 45-minute stall every thousand steps. The metadata server keeps track of files and directories, so when every rank asks it for work at once, everything queues behind it.
 
-Before you start a customization run, pin every input by digest, put the data behind an offline pipeline, and write sharded checkpoints.
+Before you start a customization run, pin every input by digest, put the data behind an offline pipeline, and write sharded checkpoints. Each of the three rules answers one of the three failures above.
 
 ## Prerequisites and outcomes
-
 ### Prerequisites
-- Transformer architecture and training memory anatomy from earlier chapters in this part.
-- Data, sharded, and multi-dimensional model parallelism fundamentals.
-- Fine-tuning algorithms and dataset engineering fundamentals.
+
+- Can you follow how a transformer uses memory during training? Transformer architecture and training memory anatomy come from earlier chapters in this part.
+- Can you tell data, sharded, and multi-dimensional parallelism apart? Data, sharded, and multi-dimensional model parallelism fundamentals come first, because the rest of the chapter combines them.
+- Do you know the basics of fine-tuning and dataset preparation? Fine-tuning algorithms and dataset engineering fundamentals come from the earlier chapters on those topics.
 
 ### Outcomes
-After completing this chapter, you will be able to do five things.
-1. Lay out a NeMo-to-NIM customization pipeline whose base models, datasets, containers, checkpoints, and evaluation gates are all traceable by digest.
-2. Set up the NeMo 2.0 stack on multi-node Slurm and Kubernetes clusters. It combines PyTorch Lightning, Megatron-Core parallelism, Transformer Engine FP8, and NeMo Run.
-3. Build offline GPU data pipelines with NeMo Curator that compile raw JSONL or Parquet corpora into memory-mappable `.bin` and `.idx` datasets.
-4. Choose and size full SFT, PEFT LoRA or DoRA, and NeMo Aligner DPO or GRPO recipes, and manage sharded `.distcp` checkpoints without filesystem stalls.
-5. Gate model promotion with NeMo Evaluator, enforce runtime safety policies with NeMo Guardrails across five Colang rail stages, and find low-utilization bottlenecks with `dcgmi`, DataLoader benchmarks, and `nccl-tests`.
+
+This chapter follows one customization project from the first pinned input to the final gate before serving. It covers the NeMo 2.0 lifecycle, the Megatron-Core parallelism math, offline data curation with NeMo Curator, the choice of recipe for full SFT, LoRA, and alignment, sharded checkpoints, and the evaluation and guardrail steps that come before and after deployment. Each part hands its output to the next one, so the order of the sections is also the order of the work. Offline curation turns raw corpora into `.bin` and `.idx` datasets, and the final check uses `dcgmi` for GPU telemetry, DataLoader benchmarks, and `nccl-tests` for network health.
 
 ---
 
 ## 1. The Enterprise Customization Lifecycle: NeMo vs NIM
-
 ### 1.1 Separation of Concerns Across Training and Serving
 
-In a production AI factory, training workloads and inference services have opposite operational profiles. Training and customization are throughput-oriented batch jobs. They allocate gang-scheduled GPU clusters for hours or weeks, stream terabytes of training tokens, synchronize gradients over NVLink and InfiniBand, and write multi-gigabyte checkpoints to parallel storage. Inference serving is a latency-bound, long-running microservice. It must satisfy strict Time To First Token and Time Per Output Token objectives while scaling elastically with user traffic.
+In a production AI factory, training workloads and inference services have opposite operational profiles. Picture the training cluster as a batch kitchen that runs for days, and the serving tier as a counter that must answer every order in seconds. Training and customization are throughput-oriented batch jobs. They allocate gang-scheduled GPU clusters for hours or weeks, stream terabytes of training tokens, synchronize gradients over NVLink and InfiniBand, and write multi-gigabyte checkpoints to parallel storage. Gang-scheduled means the job gets all of its GPUs at once or none of them. Inference serving is a latency-bound, long-running microservice. It must satisfy strict Time To First Token and Time Per Output Token objectives while scaling elastically with user traffic.
 
-NVIDIA divides the work among three components.
+NVIDIA divides the work among three components. Keeping the roles separate makes it clear who owns which failure.
 
-NeMo Framework owns model creation and customization. Its parts are NeMo Curator for datasets, Megatron-Core and NeMo Customizer for distributed pre-training and fine-tuning, NeMo Aligner for preference alignment, and NeMo Evaluator for benchmark checks.
+NeMo Framework owns model creation and customization. Its parts are NeMo Curator for datasets, Megatron-Core and NeMo Customizer for distributed pre-training and fine-tuning, NeMo Aligner for preference alignment, and NeMo Evaluator for benchmark checks. When a training job is slow or its data is wrong, this is the side of the line you investigate first.
 
-NVIDIA NIM owns production serving. At container startup it inspects the GPU architecture, such as Hopper H100 or Blackwell B200, and selects a matching TensorRT-LLM or vLLM profile. It sets up paged KV cache allocation and exposes an OpenAI-compatible REST and gRPC API over Triton Inference Server.
+NVIDIA NIM owns production serving. At container startup it inspects the GPU architecture, such as Hopper H100 or Blackwell B200, and selects a matching TensorRT-LLM or vLLM profile. It sets up paged KV cache allocation and exposes an OpenAI-compatible REST and gRPC API over Triton Inference Server. A paged KV cache stores the attention state in small blocks, so memory is handed out as requests need it.
 
-NeMo Guardrails guards policy and safety at runtime. It sits in front of the deployed NIM as a programmable Colang gateway, and it filters user inputs, dialog state, RAG retrievals, tool calls, and generated outputs with no model retraining.
+NeMo Guardrails guards policy and safety at runtime. It sits in front of the deployed NIM as a programmable Colang gateway, and it filters user inputs, dialog state, RAG retrievals, tool calls, and generated outputs with no model retraining. Colang is the modeling language that describes those conversational rules.
 
 ```mermaid
 flowchart LR
@@ -107,9 +103,11 @@ flowchart LR
     Pack --> Serve
 ```
 
+Read the flowchart as a loop, not a line. The evaluation gate sends a failed checkpoint back to the training step, and only an approved model moves on to packaging. That loop is what makes the lineage useful, because each pass leaves a record of what was tried. Keep a short log of each loop, with the metric that failed the gate and the change that followed. That log is the best evidence of why the final recipe looks the way it does. A short log is also the cheapest way to brief a new team member, because it shows the failures that the recipe was built to avoid.
+
 ### 1.2 Infrastructure Sizing and Immutable Lineage Governance
 
-Fine-tuning is smaller than pre-training only in relative terms. Adapting a seven-billion-parameter model to an enterprise domain on half a million examples still requires a dedicated multi-GPU server, high-speed NVLink or InfiniBand fabric, and disciplined storage capacity planning.
+Fine-tuning is smaller than pre-training only in relative terms. Adapting a seven-billion-parameter model to an enterprise domain on half a million examples still requires a dedicated multi-GPU server, high-speed NVLink or InfiniBand fabric, and disciplined storage capacity planning. The table below lays out the same project for two environments, production and the four-GPU lab, and it names the requirement each row must meet.
 
 | Lifecycle Dimension | Production 8-GPU Domain Fine-Tune (`V14` Ch. 5) | Lab 03 4-GPU Kubernetes Verification (`V14` Lab 03) | Operational Requirement |
 |---|---|---|---|
@@ -121,7 +119,10 @@ Fine-tuning is smaller than pre-training only in relative terms. Adapting a seve
 | **Storage & checkpoints** | `14 GB` weights, `~40 GB` activations/GPU, `50 GB` ckpts (`15 GB` each, `~5 min` load), `100 GB` min | `save_total_limit=3` (`checkpoint-1000..5000`), checksummed and synced to S3 | Retain last 3 checkpoints on fast PVC/NVMe and archive final approved bundle to immutable S3. |
 | **Evaluation & promotion** | Train loss `2.1`, val loss `2.15`; accuracy `92% -> 94.5%` (`+2.5` percentage points) | Loss `2.15 -> 1.87` (`12.8%` gain); PPL `18.7 -> 15.2`; ROUGE-1 `0.31 -> 0.35`; BLEU `0.24 -> 0.28` | Require automated metric improvement plus explicit `ml-ops-team` sign-off before NIM packaging. |
 
-In regulated industries, a deployed model must carry an auditable chain of custody. Every NeMo training job should emit an immutable `training_metadata.yaml` manifest alongside its checkpoints.
+Read the production and lab columns side by side. The lab keeps the same pinning rules and uses fewer GPUs, so a bug found in the lab is the same bug that would appear on the larger cluster. The operational requirement column is the part that does not change between the two. Use the lab column as a rehearsal. Anything that works on four GPUs with the same pins is a good candidate for the production run, and anything that fails in the lab should be fixed before the larger job is booked.
+
+
+In regulated industries, a deployed model must carry an auditable chain of custody. Every NeMo training job should emit an immutable `training_metadata.yaml` manifest alongside its checkpoints. The manifest is short enough to read in a review, and it answers the questions an auditor asks first: which base model, which data, which container, and who approved the result.
 
 ```yaml
 # training_metadata.yaml — immutable lineage artifact saved with checkpoint
@@ -175,21 +176,22 @@ training_run:
   checkpoint_recovery_time: "~5 minutes to load and resume"
 ```
 
+Read the manifest from the top down. A short manifest also makes the handover easy. The next team can read it in a few minutes and know which container to pull, which dataset to fetch, and which person signed off on the result. The base model and dataset blocks tie the run to fixed inputs, the container block fixes the software, and the training results block records what changed. The approval block is the human decision, and the checkpoint block says where the artifact lives. A reviewer who finds a gap in any block can reject the model without rerunning the job.
+
 ---
 
 ## 2. NeMo 2.0 Architecture: Megatron-Core, Transformer Engine, and NeMo Run
-
 ### 2.1 Inside the NeMo 2.0 Software Stack
 
-Early releases of NeMo relied on deeply nested Hydra YAML files that were hard to type-check or combine across multi-stage pipelines. **NeMo 2.0** replaces that sprawl with a modular, Pythonic design in four layers.
+Early releases of NeMo relied on deeply nested Hydra YAML files that were hard to type-check or combine across multi-stage pipelines. Picture a config file with forty layers of overrides that nobody can read back. **NeMo 2.0** replaces that sprawl with a modular, Pythonic design in four layers. The layers stack like floors in a building, and each one hands a clean interface to the floor above it.
 
-At the top, NeMo Run and the `nemo.collections.llm` recipes define training, fine-tuning, and evaluation as type-safe Python objects, using `nemo_run.Config` and `nemo_run.Partial`. A pre-validated recipe such as `llm.llama3_8b.pretrain_recipe()` bundles architecture, optimizer, precision, and parallelism settings into an inspectable dataclass. The same recipe launches on local GPUs, on Slurm with Pyxis and Enroot, or on Kubernetes.
+At the top, NeMo Run and the `nemo.collections.llm` recipes define training, fine-tuning, and evaluation as type-safe Python objects, using `nemo_run.Config` and `nemo_run.Partial`. A pre-validated recipe such as `llm.llama3_8b.pretrain_recipe()` bundles architecture, optimizer, precision, and parallelism settings into an inspectable dataclass. The same recipe launches on local GPUs, on Slurm with Pyxis and Enroot, or on Kubernetes. A recipe is a function that returns the full training setup, so you can print it before you spend any GPU hours.
 
-Below it, PyTorch Lightning supplies the trainer lifecycle for callbacks, logging, and checkpoint hooks. It hands process-group creation, step scheduling, and sharded state management to `nl.MegatronStrategy`.
+Below it, PyTorch Lightning supplies the trainer lifecycle for callbacks, logging, and checkpoint hooks. It hands process-group creation, step scheduling, and sharded state management to `nl.MegatronStrategy`. A process group is the set of GPU workers that take part in one collective operation.
 
-Beneath Lightning sits **Megatron-Core**, NVIDIA's library of composable model-parallel Transformer building blocks. It coordinates up to five orthogonal parallelism dimensions. They are Tensor Parallelism, Sequence Parallelism, Pipeline Parallelism with interleaved virtual stages, Context Parallelism, Expert Parallelism, and Data Parallelism with the Distributed Optimizer.
+Beneath Lightning sits **Megatron-Core**, NVIDIA's library of composable model-parallel Transformer building blocks. It coordinates up to five orthogonal parallelism dimensions. They are Tensor Parallelism, Sequence Parallelism, Pipeline Parallelism with interleaved virtual stages, Context Parallelism, Expert Parallelism, and Data Parallelism with the Distributed Optimizer. Orthogonal here means each dimension can be set without changing the others, so you can mix them to fit the hardware.
 
-At the bottom, NVIDIA Transformer Engine runs fused attention kernels and FP8 matrix multiplications for the Megatron-Core layers. It uses E4M3 in the forward pass for precision and E5M2 in the backward pass for dynamic range, with delayed per-tensor scaling on Hopper and Blackwell Tensor Cores.
+At the bottom, NVIDIA Transformer Engine runs fused attention kernels and FP8 matrix multiplications for the Megatron-Core layers. It uses E4M3 in the forward pass for precision and E5M2 in the backward pass for dynamic range, with delayed per-tensor scaling on Hopper and Blackwell Tensor Cores. Delayed scaling means the scale for each tensor is chosen from the values seen in earlier steps, which keeps the cast cheap.
 
 ```mermaid
 flowchart TB
@@ -223,17 +225,22 @@ flowchart TB
     Recipes --> Lightning --> MCore --> HW
 ```
 
+Read the diagram from the top. Each subgraph is one layer of the stack, and the arrows show the order in which a single training step moves through them. The bottom subgraph is the hardware, and the double arrow at the end shows the two fabrics that the parallelism plan must respect. The arrows in the middle of the diagram carry most of the design decisions, so check them first when you review a new cluster plan. Ask the reviewer to explain each arrow in their own words, because a team that can explain the arrows usually understands the plan.
+
 ### 2.2 Megatron-Core 3D/5D Parallelism Math and Pipeline Bubble Sizing
 
-When a customer scales past a single eight-GPU server to train or customize a frontier model like Llama-3-70B or GPT-3, standard PyTorch DDP and pure ZeRO-3 hit hard physical walls. Under mixed-precision Adam, each parameter requires four bytes for FP32 master weights, four bytes for FP32 gradients, and eight bytes for FP32 momentum and variance. That adds up to sixteen bytes of state per parameter. For a 175B model across 96 Transformer layers on 1,024 H100 GPUs, the total model and optimizer state is 2,800 GB. Sharding that state across 1,024 GPUs via ZeRO-3 leaves only 2.73 GB per GPU. However, gathering full layer weights across 128 nodes on every forward and backward pass saturates inter-node InfiniBand links.
+Picture the first attempt to train a 175B model on a standard setup. Each GPU runs out of memory long before the model is trained. When a customer scales past a single eight-GPU server to train or customize a frontier model like Llama-3-70B or GPT-3, standard PyTorch DDP and pure ZeRO-3 hit hard physical walls. DDP stands for Distributed Data Parallel, which copies the full model onto every GPU. ZeRO-3 is the sharding mode that splits the model state across GPUs. Under mixed-precision Adam, each parameter requires four bytes for FP32 master weights, four bytes for FP32 gradients, and eight bytes for FP32 momentum and variance. That adds up to sixteen bytes of state per parameter. For a 175B model across 96 Transformer layers on 1,024 H100 GPUs, the total model and optimizer state is 2,800 GB. Sharding that state across 1,024 GPUs via ZeRO-3 leaves only 2.73 GB per GPU. However, gathering full layer weights across 128 nodes on every forward and backward pass saturates inter-node InfiniBand links.
 
-Megatron-Core solves this by splitting the computation and the weight matrices across the hardware hierarchy.
+Megatron-Core solves this by splitting the computation and the weight matrices across the hardware hierarchy. Each kind of split matches one level of the hardware, and the next paragraphs take them in turn.
 
-Tensor Parallelism splits each linear pair by columns, then by rows. In every attention and MLP block, the first linear projection is split column-wise (`ColumnParallelLinear`). Each GPU computes its own slice of the activation and applies the GeLU or SwiGLU nonlinearity locally, with no communication. The second projection is split row-wise (`RowParallelLinear`), so the sliced activations multiply directly and the block needs only one AllReduce at the end. TP runs two synchronous AllReduce collectives per Transformer layer, so it must stay inside a single node's NVLink domain.
 
-Sequence Parallelism and selective activation recomputation save activation memory. Standard TP leaves LayerNorm and Dropout replicated across the TP group. Setting `sequence_parallel=True` splits those activations along the sequence dimension at no extra communication cost. Selective recomputation then recomputes only the memory-heavy, compute-cheap attention softmax and dropout intermediates and keeps the expensive GEMM outputs. That recovers 70 to 80 percent of the memory savings of full activation checkpointing and avoids most of its 30 to 50 percent backward-pass slowdown.
+Tensor Parallelism splits each linear pair by columns, then by rows. In every attention and MLP block, the first linear projection is split column-wise (`ColumnParallelLinear`). Each GPU computes its own slice of the activation and applies the GeLU or SwiGLU nonlinearity locally, with no communication. The second projection is split row-wise (`RowParallelLinear`), so the sliced activations multiply directly and the block needs only one AllReduce at the end. TP runs two synchronous AllReduce collectives per Transformer layer, so it must stay inside a single node's NVLink domain. Think of the column split as cutting a long table into side-by-side strips, and the row split as stacking the strips back into one answer.
 
-Pipeline Parallelism splits the Transformer layers across stages. The One-Forward-One-Backward (1F1B) schedule bounds the activation memory in flight.
+
+Sequence Parallelism and selective activation recomputation save activation memory. Standard TP leaves LayerNorm and Dropout replicated across the TP group. Setting `sequence_parallel=True` splits those activations along the sequence dimension at no extra communication cost. Selective recomputation then recomputes only the memory-heavy, compute-cheap attention softmax and dropout intermediates and keeps the expensive GEMM outputs. That recovers 70 to 80 percent of the memory savings of full activation checkpointing and avoids most of its 30 to 50 percent backward-pass slowdown. Activation checkpointing trades memory for time, because it throws away activations and recomputes them later.
+
+
+Pipeline Parallelism splits the Transformer layers across stages. The One-Forward-One-Backward (1F1B) schedule bounds the activation memory in flight. Think of a pipeline as an assembly line where each station handles a different set of layers. The schedule decides when each station works on which micro-batch, so that no station holds too many half-finished items at once.
 
 ```text
 Worked Megatron-Core 175B Sizing on 1,024 H100 GPUs (Volume 13, Chapter 7):
@@ -259,21 +266,22 @@ Worked Megatron-Core 175B Sizing on 1,024 H100 GPUs (Volume 13, Chapter 7):
   or enable interleaved virtual pipeline stages (--num-layers-per-virtual-pipeline-stage / virtual_pipeline_model_parallel_size)
 ```
 
+Work through the sizing block in order. The cluster and the layer count set the stage, the 3D grid multiplies out to the GPU total, and the per-GPU footprint shows that the state fits. The bubble calculation then shows what the pipeline costs when the batch is small. The endpoint note at the end is a reminder that the first and last stages carry extra work even when the layer count looks even.
+
 ---
 
 ## 3. Data Curation and Ingestion with NeMo Curator
-
 ### 3.1 Why Offline GPU Data Curation Is Mandatory at Scale
 
-A fast GPU cluster is only as fast as its data pipeline. Training on raw, unindexed JSONL files on a shared NFS server makes host CPUs open millions of small files, parse JSON, and tokenize on every iteration. That antipattern can waste up to **50 percent of total GPU time** waiting for input. It also holds Megatron-LM and NeMo runs at **18 percent MFU**, even when the InfiniBand network passes every `nccl-tests` benchmark.
+A fast GPU cluster is only as fast as its data pipeline. Picture a training job whose GPU graphs look fine on paper, yet the step time keeps creeping up. Training on raw, unindexed JSONL files on a shared NFS server makes host CPUs open millions of small files, parse JSON, and tokenize on every iteration. That antipattern can waste up to 50 percent of total GPU time waiting for input. It also holds Megatron-LM and NeMo runs at 18 percent MFU, even when the InfiniBand network passes every `nccl-tests` benchmark. The network is healthy, and the GPUs are still waiting, which is why this problem is easy to miss.
 
-**NVIDIA NeMo Curator** removes the runtime parsing by moving dataset preparation into an offline, multi-node GPU pipeline built on RAPIDS `cuDF` and Dask. It works in five steps.
+**NVIDIA NeMo Curator** removes the runtime parsing by moving dataset preparation into an offline, multi-node GPU pipeline built on RAPIDS `cuDF` and Dask. Offline here means the work runs before training, on its own schedule, and the training job reads only finished files. It works in five steps.
 
-1. It reads and writes multi-terabyte corpora as sharded JSONL or Parquet files through `DocumentDataset`, across distributed CPU and GPU workers.
-2. It normalizes Unicode, strips HTML and Markdown boilerplate, and applies heuristic and classifier-based quality filters. It also runs GPU-accelerated exact MD5 or SHA-256 deduplication, fuzzy MinHash Locality-Sensitive Hashing deduplication, and test-set decontamination.
+1. It reads and writes multi-terabyte corpora as sharded JSONL or Parquet files through `DocumentDataset`, across distributed CPU and GPU workers. Sharded means the corpus is split into many files, so each worker can read a different piece.
+2. It normalizes Unicode, strips HTML and Markdown boilerplate, and applies heuristic and classifier-based quality filters. It also runs GPU-accelerated exact MD5 or SHA-256 deduplication, fuzzy MinHash Locality-Sensitive Hashing deduplication, and test-set decontamination. Normalizing Unicode makes the same character come out as the same bytes, so the duplicate checks work.
 3. When human domain data is scarce, it runs synthetic instruction and preference generation pipelines to widen domain coverage.
-4. For NeMo and Megatron-Core training, downstream preprocessing compiles tokenized documents into two flat files. The `.bin` file is a contiguous binary token array, and the `.idx` file is a byte-offset index. Each rank memory-maps them from Lustre, BeeGFS, WEKA, or local NVMe, with constant-time sequence lookup and no JSON parsing.
-5. To avoid shuffling at run time across several epochs, teams can write pre-shuffled `.bin` and `.idx` copies to disk. That trades cheap storage for deterministic, stall-free streaming.
+4. For NeMo and Megatron-Core training, downstream preprocessing compiles tokenized documents into two flat files. The `.bin` file is a contiguous binary token array, and the `.idx` file is a byte-offset index. Each rank memory-maps them from Lustre, BeeGFS, WEKA, or local NVMe, with constant-time sequence lookup and no JSON parsing. Memory-mapping lets the operating system page in only the parts that a rank reads.
+5. To avoid shuffling at run time across several epochs, teams can write pre-shuffled `.bin` and `.idx` copies to disk. That trades cheap storage for deterministic, stall-free streaming. Storage is cheap compared with idle GPUs, which is the trade that makes this step worth it. Plan for the extra disk space before you start, because the pre-shuffled copies multiply the storage needed for each epoch you plan to run.
 
 ```mermaid
 flowchart LR
@@ -286,9 +294,11 @@ flowchart LR
     Raw --> Cur --> Mmap --> Loader --> Train
 ```
 
+Read the diagram as a pipeline with one clear job per box. The raw corpus is messy, the curator cleans and deduplicates it, the compiled files are fast to read, and the loader keeps the GPUs fed. The last box carries the numbers that the team tracks, the I/O wait and the MFU before and after the change.
+
 ### 3.2 DataLoader Tuning, DALI, and I/O Wait Math
 
-Even with `.bin` and `.idx` files, the host-to-device staging path must be tuned so GPU compute streams never block on `next(data_iterator)`.
+Even with `.bin` and `.idx` files, the host-to-device staging path must be tuned so GPU compute streams never block on `next(data_iterator)`. The iterator is the handle that hands the next batch to the training loop, so a slow iterator stalls every step. The compiled `.bin` and `.idx` files from the previous section are what make that handoff fast, because the iterator reads offsets instead of parsing text. The table lists the tuning options, the behavior before and after, and the measured effect.
 
 | Data Pipeline Optimization | Baseline / Bottleneck Behavior | Tuned NeMo / DALI / DataLoader Behavior | Quantitative Impact & Provenance |
 |---|---|---|---|
@@ -297,13 +307,14 @@ Even with `.bin` and `.idx` files, the host-to-device staging path must be tuned
 | **Multimodal GPU decoding (`NVIDIA DALI`)** | CPU-only JPEG/video decode and augmentation consumes **`800%` CPU (`8` cores)** and stalls GPUs | Declarative `nvidia.dali.pipeline.Pipeline` fused on GPU hardware decoders | Drops CPU utilization **`4x` from `800%` (`8` cores) to `200%` (`2` cores)** (*AI Systems Performance Engineering*, Ch. 5). |
 | **Pinned-memory async prefetching** | Pageable host memory forces synchronous staging copies and epoch worker restarts | `batch_size=32`, `num_workers=8`, `pin_memory=True`, `persistent_workers=True`, `prefetch_factor=4` + `copy_stream` | Queues `8 * 4 = 32` batches in locked RAM (`ulimit -l`) for overlap via `non_blocking=True` DMA (*AI Systems Performance Engineering*, Ch. 5). |
 
+Read the rows as a checklist of what to tune first. Offline compilation is the largest win, and the pinned-memory prefetch is the cheapest one to add. The DALI row only matters when your data includes images or video, so skip it for pure text work. Tune one row at a time and measure the step rate after each change. Changing several rows together makes it impossible to tell which change helped. Write the before and after numbers in the run notes, so the team can keep the changes that helped and undo the ones that did not.
+
 ---
 
 ## 4. Model Customization Recipes, Checkpointing, and Launchers
-
 ### 4.1 Choosing the Right Customization Recipe: Full SFT vs PEFT LoRA vs Alignment
 
-Model customization, also called **post-training**, starts from an already pre-trained and aligned base model and adapts it to a specific enterprise domain or behavioral policy. Before launching a GPU cluster, platform architects must match the customization technique to the dataset size, latency budget, and serving topology.
+Picture a team with a clear domain goal and a pile of options. Model customization, also called **post-training**, starts from an already pre-trained and aligned base model and adapts it to a specific enterprise domain or behavioral policy. Before launching a GPU cluster, platform architects must match the customization technique to the dataset size, latency budget, and serving topology. The table compares the four main choices on the points that drive cost.
 
 | Customization Method | Typical Dataset Scale | Parameters Modified | Training & Serving Infrastructure Impact | NeMo Ecosystem Component |
 |---|---|---|---|---|
@@ -312,25 +323,32 @@ Model customization, also called **post-training**, starts from an already pre-t
 | **Full Supervised Fine-Tuning (SFT)** | `100,000+` (`500K` in `V14` Ch. 5) labeled examples | **`100%`** of model weights updated | Takes days to weeks (`168` hours / `640` GPU-hours on `8x A100 80GB`); produces a standalone model requiring dedicated NIM GPUs and risks catastrophic forgetting. | NeMo Framework (`llm.finetune`) / NeMo Customizer |
 | **Preference Alignment (DPO / PPO / GRPO / SteerLM)** | `100` to `100,000+` preference triples `(prompt, chosen, rejected)` or reward prompts | `100%` (or PEFT adapters) across policy, reference, and reward models | Multi-model distributed topologies (`Actor` + `Reference` + `Critic`/`Reward` or group rollouts in `GRPO`) requiring gang-scheduled multi-node RDMA fabrics. | NeMo Aligner / NeMo Customizer |
 
-For Parameter-Efficient Fine-Tuning via Low-Rank Adaptation, the original weight matrix remains frozen while two low-rank matrices learn the update scaled by alpha over rank. Consider an 8.03B-parameter Llama-style model with 32 layers and a hidden dimension of 4,096. Adapting four linear projections per block with rank 16 and alpha 32 trains only 16,777,216 parameters. That is **0.2089 percent** of the base model and produces a **33.55 MB** BF16 adapter file that mounts directly into a shared base NIM container.
+For Parameter-Efficient Fine-Tuning via Low-Rank Adaptation, the original weight matrix remains frozen while two low-rank matrices learn the update scaled by alpha over rank. Consider an 8.03B-parameter Llama-style model with 32 layers and a hidden dimension of 4,096. Adapting four linear projections per block with rank 16 and alpha 32 trains only 16,777,216 parameters. That is **0.2089 percent** of the base model and produces a **33.55 MB** BF16 adapter file that mounts directly into a shared base NIM container. The point of the example is that a small adapter gives a customer their own behavior without a second copy of the base model.
 
 ### 4.2 Distributed Checkpointing: `.nemo` Archives vs `.distcp` Shards
 
-As models and clusters grow, checkpointing turns from a convenience into the main availability bottleneck. NeMo has two formats, and the difference is large.
 
-The legacy `.nemo` file is a single tarball. In NeMo 1.x and small single-node jobs, a checkpoint was packaged as one `.nemo` tarball holding `model_config.yaml`, tokenizer artifacts, and consolidated weights. On a 1,024-GPU cluster, if all ranks funnel state into one file or one unstriped directory, they saturate the filesystem metadata server. A **450-millisecond training iteration becomes a 45-minute stall** every thousand steps.
+As models and clusters grow, checkpointing turns from a convenience into the main availability bottleneck. Think of a checkpoint as a save point in a game. It is only useful if it is quick to write and quick to load. NeMo has two formats, and the difference is large.
+
+The legacy `.nemo` file is a single tarball. In NeMo 1.x and small single-node jobs, a checkpoint was packaged as one `.nemo` tarball holding `model_config.yaml`, tokenizer artifacts, and consolidated weights. On a 1,024-GPU cluster, if all ranks funnel state into one file or one unstriped directory, they saturate the filesystem metadata server. A **450-millisecond training iteration becomes a 45-minute stall** every thousand steps. Striped means the file is spread over several storage targets, so the write uses many paths at once.
 
 NeMo 2.0 writes sharded `.distcp` checkpoints with Megatron-Core and PyTorch Distributed Checkpoint. Each rank writes its own shard at the same time, and Lustre striping (`lfs setstripe -c -1`) spreads the I/O across all Object Storage Targets. Asynchronous background threads hide write latency behind the next forward pass.
+Each `.distcp` file holds one rank's share of the state, so the writes happen in parallel and no single file becomes the bottleneck. The shards also let you read only the part you need when you inspect a checkpoint.
 
-The footprint is easy to work out. For an 8.03B GPT or Llama model, the theoretical state is 16.06 GB of BF16 weights plus 64.24 GB of FP32 Adam states, a total of **80.30 GB**. On disk, alignment padding and sharding metadata make **108.0 GB** across **four 27.0 GB `.distcp` shard files**, plus `common.pt` and `metadata.json`.
 
-Because `.distcp` records tensor topology in `metadata.json`, a job saved at one parallelism setting can resume on a different cluster geometry. You can also strip its 64.24 GB optimizer state with `convert_to_nim.py` or Megatron-Bridge, which exports a clean 16.06 GB `model.safetensors` package for NVIDIA NIM.
+
+The footprint is easy to work out. For an 8.03B GPT or Llama model, the theoretical state is 16.06 GB of BF16 weights plus 64.24 GB of FP32 Adam states, a total of **80.30 GB**. On disk, alignment padding and sharding metadata make **108.0 GB** across **four 27.0 GB `.distcp` shard files**, plus `common.pt` and `metadata.json`. The gap between the theory and the disk is the cost of the layout, and it is small compared with a stalled cluster.
+
+
+Because `.distcp` records tensor topology in `metadata.json`, a job saved at one parallelism setting can resume on a different cluster geometry. You can also strip its 64.24 GB optimizer state with `convert_to_nim.py` or Megatron-Bridge, which exports a clean 16.06 GB `model.safetensors` package for NVIDIA NIM. The export keeps the weights and drops the optimizer state, because serving needs only the weights.
 
 ### 4.3 NeMo Evaluator and NeMo Guardrails across the 5 Colang Rail Stages
 
-Before a customized checkpoint is promoted to production NIM serving, **NeMo Evaluator** runs automated academic and domain test suites. It measures perplexity, ROUGE-1, BLEU, MMLU, GSM8K, and asynchronous LLM-as-a-Judge rubrics. In production, teams sample 1 to 10 percent of live traffic asynchronously so judge models do not block user responses.
 
-Once deployed in NIM, **NeMo Guardrails** enforces deterministic corporate and security policies around the statistical model using **Colang**, a domain-specific modeling language for conversational flows. NeMo Guardrails intercepts traffic across **five distinct rail stages** and introduces an explicit latency trade-off that architects must budget against their Service-Level Objectives.
+Before a customized checkpoint is promoted to production NIM serving, **NeMo Evaluator** runs automated academic and domain test suites. It measures perplexity, ROUGE-1, BLEU, MMLU, GSM8K, and asynchronous LLM-as-a-Judge rubrics. In production, teams sample 1 to 10 percent of live traffic asynchronously so judge models do not block user responses. Perplexity is a score for how surprised the model is by the test text, so lower is better.
+
+
+Once deployed in NIM, **NeMo Guardrails** enforces deterministic corporate and security policies around the statistical model using Colang, a domain-specific modeling language for conversational flows. NeMo Guardrails intercepts traffic across five distinct rail stages and introduces an explicit latency trade-off that architects must budget against their Service-Level Objectives. A rail is one checkpoint that a request or response must pass through. Each rail is a place where a policy can stop traffic, and each one costs a few milliseconds.
 
 ```text
 NeMo Guardrails 5-Stage Architecture & Illustrative Latency Budget (Volume 14, Chapter 6 & GAK Chapter 5):
@@ -354,11 +372,14 @@ NeMo Guardrails 5-Stage Architecture & Illustrative Latency Budget (Volume 14, C
   Canary deployment: Roll out new guardrail_policy.yaml to 10% of traffic; alert and roll back if rejection rate spikes > 5%
 ```
 
+Read the five rail stages in the order a request meets them. The input rail is the first gate, the output rail is the last, and the latency budget shows that every gate adds time. The cumulative budget is the number to put in front of the product team, because it turns a vague safety promise into a measurable cost. Test each rail with one request that should pass and one that should be blocked. A rail that blocks nothing is as useless as one that blocks everything.
+
 ---
 
 ## 5. Commands and Configurations That Matter
-
 ### 5.1 NeMo 2.0 Pythonic Fine-Tuning Recipe with `nemo_run` and Slurm / Pyxis
+
+Picture a data scientist who wants a LoRA fine-tune to run on Slurm without touching the cluster's launch scripts. The recipe below shows the whole pattern in one file. It builds the recipe, changes the parallelism, adds the adapter, and then describes the executor. The final call is a dry run, so you can read the generated script before you use any GPU hours.
 
 ```python
 # nemo2_llama3_lora_recipe.py — NeMo 2.0 + NeMo Run LoRA / SFT recipe on Slurm
@@ -421,6 +442,8 @@ if __name__ == "__main__":
     # Dry-run inspects generated sbatch + Pyxis script; remove dryrun=True on cluster
     run.run(finetune_task, executor=executor, name="llama3_8b_domain_lora", dryrun=True)
 ```
+
+Read the file in four parts. If the recipe needs a different GPU count, change the two arguments at the top of the file and rerun the dry run to see the new script before any job is submitted. The recipe comes first, then the parallelism settings, then the LoRA block, and last the Slurm executor. Each part is a plain Python object, so a reviewer can change one part without rewriting the others.
 
 ### 5.2 Complete Reproducible Kubernetes Customization & NIM Packaging Workflow (`V14` Lab 03)
 
@@ -488,11 +511,12 @@ python convert_to_nim.py --checkpoint "$CHECKPOINT_PATH" --output_format "NIM-op
 aws s3 cp model.safetensors s3://our-bucket/models/fine-tune-llama2-domain/model-20260807.safetensors
 ```
 
----
+After the commands finish, you have three artifacts to keep. The pinned commit and the dataset checksum prove what went into the run, the evaluation output proves what came out, and the packaged file is what NIM will load. Store all three together, because a later audit needs them as one set. Store the three artifacts under one run identifier, so the lineage record, the evaluation report, and the packaged weights can be found together later.
 
+---
 ## 6. How It Fails: Production NeMo and Customization Troubleshooting
 
-When a NeMo training or customization pipeline stalls, runs at low MFU, or rejects valid traffic in production, follow a strict fastest-to-slowest diagnostic order. Check `dcgmi dmon` first, then run an isolated DataLoader benchmark, then run `nccl-tests`, and finally capture a profiler trace.
+When a NeMo training or customization pipeline stalls, runs at low MFU, or rejects valid traffic in production, follow a strict fastest-to-slowest diagnostic order. Check `dcgmi dmon` first, then run an isolated DataLoader benchmark, then run `nccl-tests`, and finally capture a profiler trace. The fast checks rule out the common causes in seconds, so the slow tools are used only when the cheap ones come back clean.
 
 | Failure Mode | Symptom | Root Cause & Diagnosis | Remediation |
 |---|---|---|---|
@@ -502,6 +526,8 @@ When a NeMo training or customization pipeline stalls, runs at low MFU, or rejec
 | **4. Monotonic Last-Stage Activation OOM (`V13` Ch. 7)** | Job trains cleanly for a few hundred steps, then HBM usage climbs monotonically on the last pipeline stage until `CUDA out of memory` crashes the run. | In `1F1B` scheduling, a Python logging hook, metric callback, or validation list holds a reference to output logits across steps, preventing in-flight micro-batch activations from being freed. | Monitor per-rank memory with `nvidia-smi` and `torch.cuda.memory_summary()`, detach/`.item()` logged scalars immediately, and enable selective activation recomputation (`70–80%` activation memory savings). |
 | **5. Corrupted Checkpoint Resume & Lineage Drift (`V14` Lab 03 Step 8)** | Job preempted at `checkpoint-3000` either silently restarts from step `0` (re-processing `300K` samples) or crashes loading a truncated `pytorch_model.bin` / `.distcp` shard. | Unpinned `resume_from_checkpoint` path or partial write during ungraceful kill (`kubectl delete job` without `SIGUSR1`/`SIGTERM` trap). | Verify `sha256sum` integrity of checkpoint shards before resume, fail fast with `"Checkpoint corrupted or incompatible"` on hash mismatch, and roll back to the previous verified checkpoint (`save_total_limit=3`). |
 | **6. Guardrails False-Positive Rejection or Latency Breach (`V14` Ch. 6)** | Legitimate user query `"What is in table users?"` is blocked, or end-to-end latency jumps `5.5x` from `45 ms` to `250 ms`. | Execution rail `guardrail_policy.yaml` restricts `metrics_query` to `allowed_databases: ["prod_metrics"]`, or synchronous RAG/fact-check rails exceed the latency SLO. | Inspect `kubectl logs guardrail-controller`, verify deployed ConfigMap `policy_version: "1.2.3"`, test policy changes with `pytest` + `10%` canary rollout (`< 5%` rejection spike), and move heavy judge checks to `1%–10%` async sampling. |
+
+Read the table by symptom. Find the row that matches what the dashboard shows, then check the diagnosis column before you change any setting. The remediation column is the fix that the team tested, so it is the place to start, not the place to finish. Write the symptom you saw in the incident ticket before you open the table. The ticket wording usually matches the symptom column more closely than the root cause column. Once the symptom is matched, move to the diagnosis column and confirm it with a measurement before you apply any fix. A measurement confirms the cause, and a confirmed cause keeps the fix small and reversible. A reversible fix is easier to approve, because the team can roll it back in minutes if the next run disagrees. Keep the rollback steps in the run notes as well, so anyone on the team can execute them without a second opinion.
 
 ```bash
 # Diagnostic Sequence for Low GPU Utilization in NeMo (Volume 14, Chapter 5 & ASP Chapter 5):
@@ -528,22 +554,23 @@ torchrun --nproc_per_node=8 -m nccl_tests.all_reduce --bw
 # - If NIC drops from 60 GB/s to 40 GB/s -> GPU SMs / compute-bound
 ```
 
+Read the diagnostic script as a short story. The GPU trace shows the starvation, the DataLoader test points at the input path, and the bus bandwidth test rules the network in or out. The batch-size test separates a network limit from a compute limit, so each step narrows the search. Record the result of each step as it runs, so the next engineer can see which checks were already ruled out.
+
 ---
 
 ## 7. Hands-On Lab: End-to-End NeMo Customization, Sizing, and Governance Verifier
-
 ### Lab Venue and Objectives
 
-This lab runs locally in Python via `code/part14/nemo_framework_customisation.py` and `code/part14/nemo_framework_customisation_lab.py` with zero external dependencies. It pairs with the Nebius GPU and Kubernetes workflow in Section 5, which is untested on live multi-node GPU hardware in this local build environment.
+These steps check the formulas and the configuration from this chapter. The lab runs locally in Python through `code/part14/nemo_framework_customisation.py` and `code/part14/nemo_framework_customisation_lab.py`, with zero external dependencies. It pairs with the Nebius GPU and Kubernetes workflow in Section 5, and that workflow is untested on live multi-node GPU hardware in this local build environment.
 
-Run the model and the self-verification suite below.
+Run the model and the self-verification suite below. Run the model first, then the verifier, so you can see the numbers before the checks judge them.
 
 ```bash
 python3 code/part14/nemo_framework_customisation.py
 python3 code/part14/nemo_framework_customisation_lab.py
 ```
 
-The expected output is shown below.
+The expected output is shown below. A failing check points to a formula or a setting that changed, so read the failing line before you change anything else.
 
 ```text
 === Chapter 14.16 Lab: NeMo Framework and Model Customisation Verification ===
@@ -577,31 +604,34 @@ Summary: 25 passed, 0 failed
 ```
 
 ---
-
 ## Key takeaways
 
-NeMo trains the model and NIM serves it. NeMo Framework handles data curation, distributed Megatron-Core training, SFT, LoRA, or DPO customization, and evaluation. It then exports verified `model.safetensors` weights to NVIDIA NIM for production TensorRT-LLM or vLLM inference.
+Picture the handover meeting where a team lead asks what the chapter has really taught. The answer comes down to a few lessons, each of which answers one of the questions a team will face.
 
-Lineage is not optional. Every customization run must record the base model commit hash or SHA-256 digest, the dataset `sha256sum`, the `nvcr.io/nvidia/nemo:24.07` image digest, the checkpoint hashes, and the evaluation metrics, in `training_metadata.yaml` and `model_card.md`.
+NeMo trains the model and NIM serves it. NeMo Framework handles data curation, distributed Megatron-Core training, SFT, LoRA, or DPO customization, and evaluation. It then exports verified `model.safetensors` weights to NVIDIA NIM for production TensorRT-LLM or vLLM inference. Keep the two roles separate, and each team can fail or succeed on its own terms.
 
-Megatron-Core fits 3D and 5D parallelism to the cluster hardware. For a 175B model on 1,024 H100 GPUs, 8-way TP, 16-way PP, and 8-way DP keep TP inside the NVLink domain. Per-GPU state falls to 21.875 GB, and the 1F1B pipeline bubble is 5.54 percent at 256 micro-batches.
+Lineage is not optional. Every customization run must record the base model commit hash or SHA-256 digest, the dataset `sha256sum`, the `nvcr.io/nvidia/nemo:24.07` image digest, the checkpoint hashes, and the evaluation metrics, in `training_metadata.yaml` and `model_card.md`. Without that record, a rollback is guesswork.
 
-NeMo Curator removes the raw-JSONL MFU trap. Offline GPU deduplication, filtering, and compilation into memory-mappable `.bin` and `.idx` files cut I/O wait from 30 percent to 5 percent. Adding NVIDIA DALI cuts multimodal CPU use from eight cores to two.
+Megatron-Core fits 3D and 5D parallelism to the cluster hardware. For a 175B model on 1,024 H100 GPUs, 8-way TP, 16-way PP, and 8-way DP keep TP inside the NVLink domain. Per-GPU state falls to 21.875 GB, and the 1F1B pipeline bubble is 5.54 percent at 256 micro-batches. The grid is only as good as its fit to the hardware, so check the NVLink domain first.
 
-Write sharded `.distcp` checkpoints, and budget for Guardrails latency. For an 8.03B model, a `.distcp` checkpoint writes 108.0 GB across four shards and avoids the 45-minute single-file stall on 1,024 GPUs. NeMo Guardrails adds programmable Colang safety across five rail stages, and each stage adds latency.
+NeMo Curator removes the raw-JSONL MFU trap. Offline GPU deduplication, filtering, and compilation into memory-mappable `.bin` and `.idx` files cut I/O wait from 30 percent to 5 percent. Adding NVIDIA DALI cuts multimodal CPU use from eight cores to two. The pipeline moves work out of the training loop, and the training loop gets its time back.
+
+Write sharded `.distcp` checkpoints, and budget for Guardrails latency. For an 8.03B model, a `.distcp` checkpoint writes 108.0 GB across four shards and avoids the 45-minute single-file stall on 1,024 GPUs. NeMo Guardrails adds programmable Colang safety across five rail stages, and each stage adds latency. Plan the latency budget with the same care as the memory budget.
 
 ---
 
 ## Exercises
 
-1. Use `plan_nemo_domain_finetune()` for `llama2-7b-hf` on eight A100 GPUs with batch size 8 per GPU and 4 gradient accumulation steps. What are the BF16 weight footprint, the active HBM per GPU, the global batch in sequences, and the tokens per step? How does that compare with the four-GPU Kubernetes Job in Lab 03?
+Picture a reviewer who wants to check your numbers before the meeting. Each exercise below asks for one calculation or one comparison from the chapter, and each one points to the block that holds the answer. Work the first exercise on paper before you open the function, because the hand calculation is what teaches you where each number comes from. Keep the answers in a separate file, so you can compare them with the function output without looking at the solution first. Mark each answer with the line of the chapter that supports it, so a reviewer can check the reasoning as well as the number. The line references also make the exercises easier to grade in a study group, because each answer points back to the sentence that supports it.
+
+1. Use `plan_nemo_domain_finetune()` for `llama2-7b-hf` on eight A100 GPUs. Assume batch size 8 per GPU and 4 gradient accumulation steps. What are the BF16 weight footprint, the active HBM per GPU, the global batch in sequences, and the tokens per step? How does that compare with the four-GPU Kubernetes Job in Lab 03?
 2. Retain three checkpoints and check the storage against the checkpoint budget and the persistent storage floor. What is the healthy `nccl-tests` per-GPU bus bandwidth range on an eight-GPU DGX A100?
-3. A 175B-parameter model runs on 1,024 H100 GPUs across 128 nodes. What are the total mixed-precision Adam state and the per-GPU state under the 3D grid in Section 2.2? What is the 1F1B pipeline bubble at 256 micro-batches and at 40?
-4. How large is a BF16 embedding table with a 50,000-token vocabulary and a hidden size of 12,288? Why do the first and last pipeline stages run slower than the middle ones, and what are two Megatron-Core fixes?
-5. In a `dcgmi dmon -c 10` trace, GPU utilization swings between 95 percent and 8 percent, and an isolated DataLoader runs at 0.35 batches per second. What does that tell you? How much faster is the step rate when I/O wait drops from 30 percent to 5 percent, and how many CPU cores does NVIDIA DALI save?
+3. A 175B-parameter model runs on 1,024 H100 GPUs. It spans 128 nodes. What are the total mixed-precision Adam state and the per-GPU state under the 3D grid in Section 2.2? What is the 1F1B pipeline bubble at 256 micro-batches? What is it at 40?
+4. How large is a BF16 embedding table with a 50,000-token vocabulary and a hidden size of 12,288? Why do the first and last pipeline stages run slower than the middle ones? What are two Megatron-Core fixes?
+5. Suppose a `dcgmi dmon -c 10` trace shows GPU utilization swinging. The swings run between 95 percent and 8 percent. What does that tell you about the data path? An isolated DataLoader runs at 0.35 batches per second. How much faster is the step rate when I/O wait drops from 30 percent to 5 percent? How many CPU cores does NVIDIA DALI save?
 6. During backward AllReduce, a 100 GB/s NIC reaches 60 GB/s. How does halving the batch size show whether the job is network-bound or compute-bound?
-7. An 8.03B model has 32 layers and hidden size 4,096. A rank-16, alpha-32 LoRA adapter covers four linear projections per layer. What are the trainable parameter count, the percentage of the base model, the scaling factor, and the BF16 adapter size in MB?
-8. Compare the theoretical and the actual checkpoint size of the 8.03B model across four `.distcp` shards. By what factor does a monolithic 45-minute checkpoint on 1,024 GPUs exceed a 450-millisecond step?
+7. An 8.03B model has 32 layers. Its hidden size is 4,096. A rank-16, alpha-32 LoRA adapter covers four linear projections per layer. What are the trainable parameter count, the percentage of the base model, the scaling factor, and the BF16 adapter size in MB?
+8. Compare the theoretical and the actual checkpoint size of the 8.03B model across four `.distcp` shards. By what factor does a monolithic 45-minute checkpoint exceed a step? Assume 1,024 GPUs and a 450-millisecond step.
 9. Compare the baseline and fine-tuned metrics from Lab 03. What are the improvements in accuracy, training loss, perplexity, ROUGE-1, and BLEU?
 10. Add up the cumulative latency of the NeMo Guardrails pipeline, starting from 45 milliseconds of base inference. How would you keep production latency within your Service-Level Objective?
 
