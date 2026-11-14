@@ -743,8 +743,8 @@ Position bias makes the judge prefer the first answer. Randomise the order and a
 A jailbreak is in the prompt, so the check scores the prompt before the LLM sees it and looks for override attempts. Toxic output and leaked PII exist only in the model's response, so those filters must run after generation. The factuality filter also runs after generation, with the retrieval context.
 </details>
 
-<details><summary>11. Why does the chapter recommend a dead man's switch for monitoring?</summary>
-If the monitoring itself fails, no alerts arrive and everything looks calm. A dead man's switch is an alert that fires on a schedule during normal operation. When those alerts stop arriving, a critical alert tells on-call that the monitoring has failed. Set it up before the first production run.
+<details><summary>11. After a deploy, the guardrail monitor stops sending alerts, and the on-call sees no alerts at all and assumes the night was quiet. Why does the chapter recommend a dead man's switch for monitoring, and when should you set it up?</summary>
+A monitor that fails silently looks exactly like a quiet night, so an empty alert feed proves nothing. A dead man's switch is an alert that fires on a schedule during normal operation. When those alerts stop arriving, a critical alert tells on-call that the monitoring has failed. Set it up before the first production run.
 </details>
 
 <details><summary>12. Choose between an automated metric, LLM-as-judge, and human evaluation for a nightly job that scores every answer. What do you give up?</summary>

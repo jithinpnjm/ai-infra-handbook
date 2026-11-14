@@ -648,8 +648,8 @@ Federated learning fits mobile devices. It keeps data on the device, but it cost
 It fits highly sensitive financial data where the server must never see plaintext. The table gives a 10 to 100 times compute overhead. The chapter notes that this figure has no source in the chapter, so treat it as a rough estimate until it is checked.
 </details>
 
-<details><summary>15. Why would you publish the differential privacy budget on the model card, and which numbers make it up?</summary>
-The budget records the trade-off between accuracy and privacy, and a regulator will ask about it. It is the pair epsilon and delta. The library computes them from the noise settings, the batch size and the number of training steps.
+<details><summary>15. A team trains a model on medical data with differential privacy, and the model card needs a privacy section. The run has noise settings, a batch size and a fixed number of training steps, but nobody has worked out the budget. Which numbers make up the budget, and why does it belong on the card?</summary>
+The budget is the pair epsilon and delta. The training library computes them from the noise settings, the batch size and the number of training steps, so you do not calculate them by hand. You publish them on the model card because they record the trade-off between accuracy and privacy, and a regulator will ask about it. A smaller budget means stronger privacy and usually lower accuracy, so the card should show which side of that trade you chose.
 </details>
 
 <details><summary>16. Retraining takes 12 hours and deployment takes 2 hours. Thirty erasure requests arrive in one day. Compare GPU time if you handle each request alone with doing one daily batch.</summary>

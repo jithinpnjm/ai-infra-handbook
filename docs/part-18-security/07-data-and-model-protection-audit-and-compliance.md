@@ -263,8 +263,8 @@ Each question below starts from a job, a file or an audit request that you might
 The default restricts unpickling to safe types, but the PyTorch documentation still says never to load data from an untrusted source. Prefer safetensors, and verify the source with a signature.
 </details>
 
-<details><summary>2. What does safetensors remove, and what does it leave open?</summary>
-It removes code execution on load, because the format is a JSON header plus raw tensor bytes. It leaves provenance open and does not check tensor values, so NaN or infinity can appear.
+<details><summary>2. A team converts a pickle checkpoint to safetensors so the production node can load it without a sandbox. Which risks remain after the conversion?</summary>
+Safetensors removes code execution on load, because the file is a JSON header plus raw tensor bytes and the loader runs nothing from it. It does not check tensor values, so NaN or infinity can still appear, and it says nothing about who produced the file. Keep a signature check in the deployment path, since a safe format removes the code-execution risk and not the provenance risk.
 </details>
 
 <details><summary>3. A signature on a model verifies. A colleague says the model is therefore safe. What do you answer?</summary>
@@ -283,44 +283,44 @@ Once a tampered file is loaded, the damage may already be done. Verifying in the
 Check the encryption configuration. If the first provider is identity, there is no encryption at rest even if the flag is set. Secrets written before encryption was enabled stay plain text until rewritten.
 </details>
 
-<details><summary>7. Why prefer KMS v2 over v1 for Kubernetes envelope encryption?</summary>
-KMS v1 has been deprecated since Kubernetes 1.28 and disabled by default since 1.29, while KMS v2 has been stable since 1.29 and derives a new data key per encryption.
+<details><summary>7. Your team still runs KMS v1 for envelope encryption of Secrets. What does the documentation say about the two versions, and what does v2 change in key handling?</summary>
+KMS v1 has been deprecated since Kubernetes 1.28 and disabled by default since 1.29, while KMS v2 has been stable since 1.29. In KMS v2 a data key is derived for each encryption, and the seed rotates when the key encryption key rotates. Plan the move to v2 now, because v1 is already deprecated.
 </details>
 
-<details><summary>8. What is envelope encryption, in one sentence?</summary>
-A data key encrypts the content and a key encryption key held in a key manager encrypts the data key.
+<details><summary>8. An auditor asks how a stored Secret stays protected in a cluster that uses an external key manager. Trace the data key and the key encryption key.</summary>
+Envelope encryption uses a data key to encrypt the content, and a key encryption key wraps that data key, so the data key can only be opened with the outer key. Section 3.2 describes KMS v2 deriving a data key for each encryption, which is the same chain applied to Secrets. Hand the auditor the chain in order: the content, the data key, then the key encryption key held in the key manager.
 </details>
 
-<details><summary>9. Why is a key stored next to the encrypted data a problem?</summary>
-Anyone who can read the data can read the key. A key management service keeps them apart, controls who may use the key, and records each use.
+<details><summary>9. A backup job copies the encryption key into the same bucket as the encrypted weights. What is the exposure, and what is the fix?</summary>
+Anyone who can read the bucket can read the key and decrypt the weights, so the encryption adds almost nothing. A key management service keeps keys apart from the data, controls who may use them, and records each use. Set a rotation schedule on the key as well, so that a leaked key stops being useful after a while.
 </details>
 
-<details><summary>10. Why can a NetworkPolicy not give you TLS 1.3?</summary>
-It works at the IP and port layer. It can limit traffic to a port such as 8443 but cannot see or require a TLS version, which belongs to the ingress or service mesh.
+<details><summary>10. A team asks a NetworkPolicy to enforce TLS 1.3 on the model API. Which layer can enforce it, and why can the policy not do it?</summary>
+A NetworkPolicy works at the IP and port layer, so it can limit traffic to a port such as 8443 but cannot see or require a TLS version. Set the minimum TLS version at the ingress, which is the entry point that routes outside requests into the cluster, or at the service mesh, which is the layer of proxies that handles traffic between services.
 </details>
 
 <details><summary>11. An incident review needs the list of principals that read a weights object last week. What must have been true?</summary>
 Data Access audit logs were enabled for the bucket before the reads. Without them Cloud Audit Logs does not record who read data.
 </details>
 
-<details><summary>12. Why is locking a retention policy a decision to make carefully?</summary>
-The documentation says locking is irreversible. The policy cannot be removed and the period cannot be shortened, though it can be lengthened.
+<details><summary>12. A team wants to lock the retention policy on its audit bucket this week, using the 90 day example period. Why should they decide with care?</summary>
+Locking is irreversible. The policy cannot be removed and the period cannot be shortened, though it can be lengthened. Confirm the period with your compliance team before you lock, and use the period your policy and regulator require, since 90 days is only a starting value.
 </details>
 
 <details><summary>13. Each audit entry stores a hash of its event. What attack does that not stop?</summary>
 An attacker who edits the event and rewrites its hash. The retention lock provides the real protection.
 </details>
 
-<details><summary>14. Why is O_EXCL used when writing each audit entry file?</summary>
-A second write to the same name fails instead of overwriting, which models an object that can be added but never replaced.
+<details><summary>14. An audit writer tries to write an entry under a file name that already exists. What does the O_EXCL option do, and what should the writer do next?</summary>
+With O_EXCL the write fails when the file already exists, so the entry cannot be replaced. This models an object-lock bucket, where an entry can be added but never overwritten. The writer should not force the write, and the failed attempt is a signal to investigate why an entry with that name already exists.
 </details>
 
-<details><summary>15. A regulator asks which data trained the model that decided on a customer. What do you need ready?</summary>
-A lineage graph linking data, model and customer, with each edge recorded in the audit log, and a query you have already tested.
+<details><summary>15. A regulator names one customer's decision and asks which data trained the model behind it. What must you have ready before the visit?</summary>
+A lineage graph that links the data, the model and the customer, with each edge carrying a timestamp, a version and a hash, and an audit log that shows the record was not changed. Test one customer end to end before the audit, because a query that has never been run can fail during the visit. Record edges at training time rather than after the fact, so the graph is not stale.
 </details>
 
-<details><summary>16. A retention period of 90 days is set on an entry written on 1 November. When can it first be deleted?</summary>
-On 30 January, because 90 days after 1 November lands there.
+<details><summary>16. A 90 day retention period is set on an entry written on 1 November. Which date is the earliest deletion day, and what should you check?</summary>
+Ninety days after 1 November is 30 January, so that is the date to plan around. The chapter's rule is that an object can be deleted once its age exceeds the retention period, so check the boundary day in a test before you automate deletion. Keep 90 days as a starting value and use the period your policy and regulator require.
 </details>
 
 <details><summary>17. You check 40 buckets and 38 have the required default key. What is the rate and what next?</summary>
@@ -331,12 +331,12 @@ On 30 January, because 90 days after 1 November lands there.
 Convert it in a sandbox with no credentials and no network, then verify and sign the converted file. Do not load the original on a production node.
 </details>
 
-<details><summary>19. Signing events appear in a transparency log. Who notices an unexpected one?</summary>
-Only someone who monitors the log. The project says the log makes events discoverable, and signers must watch for events they did not make.
+<details><summary>19. A transparency-log event shows a signing identity your team did not use. Who notices it, and what does the log give you by itself?</summary>
+The transparency log is a public, append-only record of signing events that anyone can check. It makes signing events visible, but unexpected events are caught only if someone watches it. Set up that watch for your own signing identities, so an unexpected event gets a response on the day it appears.
 </details>
 
-<details><summary>20. Audit logs show a read of the weights by an unknown principal. What do you do, in order?</summary>
-Preserve the logs, identify the principal and the source address, revoke the credential, check what else it read, and review the bucket permissions.
+<details><summary>20. The audit logs show a read of the weights by a principal you do not recognise. What do you do, and in what order?</summary>
+Preserve the logs first, then identify the principal and the credential it used. Revoke that credential, check what else it read, and review the bucket permissions. Data Access logs are the records of object reads, so keep them intact while you investigate.
 </details>
 
 ---

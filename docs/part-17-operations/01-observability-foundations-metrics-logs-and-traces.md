@@ -694,8 +694,8 @@ Ask how many values the label could take as the system grows. The table marks `g
 Use the Pushgateway, which accepts metrics a job pushes before it exits. By default Prometheus pulls from each endpoint on a schedule, so the application never has to push data anywhere. That pull model is simple, but a job shorter than the scrape interval can vanish unseen.
 </details>
 
-<details><summary>14. Should you rely on a service mesh to give you complete traces?</summary>
-No. The chapter says a service mesh does not remove the instrumentation work, because the request headers must still pass from one service to the next. Your application has to inject and read the `traceparent` header. Without that, traces break at the first hop that drops it.
+<details><summary>14. A team adds a service mesh, and the trace still breaks at the first hop between the HTTP handler and the inference service. Can the team stop adding instrumentation to the application now, and what must each hop pass along?</summary>
+No. The chapter says a service mesh does not remove the instrumentation work, because the request headers must still pass from one service to the next. The application has to inject and read the `traceparent` header on every hop. Without that header, the trace breaks at the first hop that drops it.
 </details>
 
 <details><summary>15. `http_requests_total` has three labels: `method` with 10 values, `status` with 10 values and `path` with 100 values. How many series can it produce?</summary>

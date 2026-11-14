@@ -695,8 +695,8 @@ The promotion gate only moves it to Staging, after checking that four tags exist
 The dataset ID and the seed flow into the stages as parameters so the run is traceable. Without them, you cannot say which data or which seed produced a model. The MLflow run record should carry the data hash, the commit hash, the seed and the metrics.
 </details>
 
-<details><summary>9. Why does `dvc add` plus a Git commit make the dataset part of your code history?</summary>
-DVC adds a small pointer file to Git and pushes the data itself to a GCS bucket. The commit holds the pointer, which contains the content hash. The hash then travels with the code, and the pipeline records it with every run.
+<details><summary>9. A teammate runs `dvc add` on the churn dataset and commits the pointer file. Later the bucket object shows a different hash from the one in the pointer. What does the mismatch tell you, and why does the dataset become part of your code history?</summary>
+DVC adds a small pointer file to Git and pushes the data itself to a GCS bucket, so the commit holds the content hash and the hash travels with the code. A mismatch between the pointer file, the commit and the bucket object means the push and the commit are out of step. Check that all three show the same hash, and record that hash with every run.
 </details>
 
 <details><summary>10. Why does the chapter say a namespace is not a wall between teams on the worker nodes?</summary>

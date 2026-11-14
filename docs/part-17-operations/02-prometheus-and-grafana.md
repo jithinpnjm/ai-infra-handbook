@@ -953,12 +953,12 @@ Check the remote write endpoint, because it may be unhealthy. Then check the cre
 The alert threshold is set too high to catch a slow creep. Lower the threshold, add an alert on the cardinality growth rate, and review the budget every quarter.
 </details>
 
-<details><summary>7. Why do applications never need to know anything about the metrics system behind Prometheus?</summary>
-Prometheus is pull-based, and the arrows point one way. Applications only expose a `/metrics` endpoint in the exposition format, and the server scrapes it. Each application needs to know the format and nothing more.
+<details><summary>7. A team ships a new inference service and wants it on the Grafana dashboards. Does the team need to change anything in Prometheus itself, and what must the service expose?</summary>
+Not for the metrics path. Prometheus is pull-based, so the arrows point one way, and the service only has to expose a `/metrics` endpoint in the Prometheus exposition format. The server scrapes that endpoint every N seconds. Once the service exposes metrics, add it to the scrape configuration, usually with a ServiceMonitor resource, and the Operator updates the scrape configuration of the matching Prometheus server.
 </details>
 
-<details><summary>8. Why does a dead man's switch alert exist, and how does it work?</summary>
-You cannot get an alert from a system that is itself down. The switch is an alert that fires on a regular schedule under normal operation. If it stops arriving, a critical alert reaches the on-call and says the metrics or alerting system is down.
+<details><summary>8. The Prometheus server dies overnight, the dashboard stops updating, and no alert fires. Why can an ordinary alert not report this, and how does a dead man's switch report it?</summary>
+You cannot get an alert from a system that is itself down. A dead man's switch is an alert that fires on a regular schedule under normal operation. If that alert stops arriving, a critical alert reaches on-call and tells them the metrics or alerting system is down. The switch works because silence becomes the signal.
 </details>
 
 <details><summary>9. Why do recording rules make an incident dashboard faster?</summary>

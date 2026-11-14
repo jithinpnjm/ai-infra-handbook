@@ -647,8 +647,8 @@ The list runs from the smallest change to the largest. Draining a node moves eve
 It fails when a runbook has not changed within the threshold, such as 90 days. A stale runbook is then caught during a normal change instead of in the middle of an incident. The check turns the review rule into an automatic test.
 </details>
 
-<details><summary>11. Why does the chapter recommend a dead man's switch alert?</summary>
-It is an alert that fires on a schedule. When it stops firing, the on-call hears that metrics or alerting have failed. Without it, a broken alerting system looks the same as a quiet, healthy one.
+<details><summary>11. A week goes by with no pages at all, and the on-call assumes the platform is healthy. Is that silence good news, and what alert would tell you whether the alerting path still works?</summary>
+Not necessarily, because a broken alerting system looks the same as a quiet, healthy one. A dead man's switch is an alert that fires on a schedule, and when it stops firing, the on-call hears that metrics or alerting have failed. PagerDuty offers an integration for this, called Dead Man's Snitch.
 </details>
 
 <details><summary>12. Would you keep a weekly rotation or choose another length, and what do you give up?</summary>

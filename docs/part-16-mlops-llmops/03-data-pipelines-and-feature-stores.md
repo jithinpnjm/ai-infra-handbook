@@ -1000,8 +1000,8 @@ A static knowledge base fits a scheduled rebuild with a target of 1 day to 1 wee
 All four follow the same contract. Feast is open source, runs on GKE and has low operating cost. Tecton is managed, with an SLA and time travel, but it is not open source. Vertex AI Feature Store suits teams already on GCP, and Databricks Feature Store suits teams already on Databricks. Choose by your cloud and operations budget, then apply the same parity test to whichever you pick.
 </details>
 
-<details><summary>16. A CSV file with 17,654 rows and 10 columns takes 14 MB, and the same data as Parquet takes 6 MB. How much smaller is Parquet, and what is the downside?</summary>
-14 divided by 6 is about 2.3 times smaller. The saving is 8 MB, which is about 57 percent of the CSV size. The downside is that point writes get slower, because each new row rewrites a column file. Note that the chapter's table says roughly 6 times less storage, which this example does not show.
+<details><summary>16. A training input is a 14 MB CSV file, and the same data as Parquet is 6 MB. A colleague plans storage on the claim that Parquet is always 6 times smaller. How much smaller is it in this example, and what does Parquet cost you?</summary>
+The example file is about 2.3 times smaller, so the colleague should not plan on 6 times. The 6 times figure is AWS's claim that Parquet can be up to 6 times smaller in Amazon S3 than text formats, and the chapter says to treat it as a best case, not a typical result. The saving depends on the data, which is why the table says Parquet is often much smaller. The cost is that point writes are slower, because each new row rewrites a column file.
 </details>
 
 <details><summary>17. You keep a reservoir of k = 100 items from a stream. After n = 10,000 items have passed, what is the chance that any one item is in the sample?</summary>

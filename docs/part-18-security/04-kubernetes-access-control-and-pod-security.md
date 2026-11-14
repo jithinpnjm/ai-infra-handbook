@@ -462,24 +462,24 @@ External Secrets Operator syncs on its refresh interval, one hour in the example
 Move it to Workload Identity, remove the token mount and rotate the token. It then gets short-lived credentials.
 </details>
 
-<details><summary>7. A user is allowed to create pods but not to read secrets. Why is that not enough?</summary>
-Creating pods implicitly grants access to Secrets, ConfigMaps and PersistentVolumes that can be mounted, and to the API access of any ServiceAccount in the namespace.
+<details><summary>7. A developer has permission to create pods in a tenant namespace but not to read Secrets. Why is that not enough to keep the Secrets safe?</summary>
+Permission to create pods lets a pod mount the Secrets, ConfigMaps and PersistentVolumes in that namespace, and it gives the API rights of every ServiceAccount there. So the missing read verb on Secrets does not close that path. Keep model credentials in a ServiceAccount that only the team's pods use, and write a Role that lists only the verbs and resources the job needs.
 </details>
 
 <details><summary>8. Why is creating PersistentVolumes a risky permission on a GPU node?</summary>
 A PersistentVolume can be a hostPath volume, which gives a pod the node's file system. A container with that access can read other containers' data and abuse the credentials of system services such as the kubelet.
 </details>
 
-<details><summary>9. Why does a namespace alone not isolate a tenant's network traffic?</summary>
-A namespace has no effect on the workload plane until you add policy. With no NetworkPolicy all traffic is allowed.
+<details><summary>9. Pods in two tenant namespaces can still reach each other after you created the namespaces. Why does a namespace alone not stop that, and what do you check first?</summary>
+A namespace does not block traffic by itself, because the cluster network is open by default and a namespace has no effect on the workload plane until you add policy. Check first that your network plugin enforces NetworkPolicy, since a policy the plugin ignores looks correct in `kubectl get` and protects nothing. Then add a default-deny policy in each namespace and open one explicit path at a time.
 </details>
 
-<details><summary>10. Why does a ValidatingAdmissionPolicy do nothing on its own?</summary>
-It takes effect only when a binding selects where it applies. It also does not replace the Pod Security labels.
+<details><summary>10. You applied a ValidatingAdmissionPolicy that blocks containers which allow privilege escalation, but a pod with that setting is still created in the mlops namespace. What is missing?</summary>
+The policy takes effect only after a ValidatingAdmissionPolicyBinding selects where it applies, so the policy alone does nothing. Add a binding with validationActions set to Deny and a namespaceSelector that matches the mlops namespace. The namespace Pod Security labels are a separate check, so you need both if you want both.
 </details>
 
-<details><summary>11. Why must a device plugin run privileged?</summary>
-The Kubernetes documentation says the directory it uses on the host requires privileged access, so the plugin must run in a privileged security context and mount that directory.
+<details><summary>11. A device plugin is refused in a namespace labelled Restricted. Why does it need privileged access, and what label change fixes it?</summary>
+A device plugin must touch the host, because the device plugin directory under /var/lib/kubelet requires privileged access. The NVIDIA GPU Operator documentation says to label the operator's namespace with enforce set to privileged when Pod Security Admission is in use. That label lets a pod there reach the host, so only the platform team should be able to create workloads in that namespace.
 </details>
 
 <details><summary>12. A team asks for the Baseline level instead of Restricted for its namespace. How do you decide?</summary>
@@ -490,12 +490,12 @@ Move down only when the workload truly needs it. Baseline still prevents known e
 Use it when secrets live in an enterprise manager. The cost is lag: a change in the manager reaches the cluster only after the next sync.
 </details>
 
-<details><summary>14. Why is a ClusterRoleBinding for namespace users a problem?</summary>
-It gives the rights in every namespace. A RoleBinding per namespace keeps the grant inside the boundary.
+<details><summary>14. After a binding change, users from one team can read resources in another team's namespace. Which binding type is the likely cause, and what is the fix?</summary>
+A ClusterRoleBinding gives its rights in every namespace, so a binding made for namespace users reaches every namespace. Use a RoleBinding in each namespace instead, which keeps the grant where you put it. You can still reuse one ClusterRole for the shared rules and bind it with a RoleBinding per namespace.
 </details>
 
-<details><summary>15. Why is Workload Identity safer than a copied key?</summary>
-The credential is short-lived, rotates automatically, comes from the metadata server and leaves an audit trail.
+<details><summary>15. A copied password for a training job's bucket is found inside a pod spec. Why is Workload Identity safer, and what do you check after you link the ServiceAccount?</summary>
+A copied password stays valid until someone changes it, and anyone who can read the pod can read it. Workload Identity links the ServiceAccount to a cloud IAM role, so the job gets short-lived credentials instead. Confirm the mapping from inside the pod with `kubectl exec` and `gcloud auth print-access-token` before a real job depends on it.
 </details>
 
 <details><summary>16. Three Pod Security modes each need a mode label and a version label. How many labels per namespace, and for 200 namespaces?</summary>
@@ -506,12 +506,12 @@ Six per namespace and 1,200 for 200 namespaces. Automate the labels and check th
 Only traffic from that namespace to those two ports. Everything else is denied.
 </details>
 
-<details><summary>18. A tenant role includes list on secrets. What does that expose?</summary>
-List and watch access effectively let a user read the content of every Secret in scope, not just names.
+<details><summary>18. A tenant role in a shared namespace includes list on Secrets. What can a stolen token read, and what should the role contain instead?</summary>
+The permissions table says list and watch also reveal the content of every Secret in scope, so a token with that verb can read every Secret in the namespace. Remove the verb, and write a Role that lists only the verbs and resources the job needs. Move shared credentials out of tenant namespaces as well, because a tenant who can reach them can read them.
 </details>
 
-<details><summary>19. A training pod cannot reach its bucket. What do you check?</summary>
-Whether a token is issued from inside the pod, whether the pod uses its own ServiceAccount with the annotation, and whether the IAM role covers the bucket.
+<details><summary>19. A training pod cannot reach its bucket after a ServiceAccount change. What do you check, and in what order?</summary>
+First check that the ServiceAccount annotation names the right cloud service account, since Workload Identity maps through that annotation. Then check the automountServiceAccountToken setting on the Pod and the ServiceAccount, because the Pod setting wins when both are present. Run `gcloud auth print-access-token` from inside the pod, and confirm that the single IAM role the workload needs is granted.
 </details>
 
 <details><summary>20. A new pod is refused in a Restricted namespace. What do you check?</summary>

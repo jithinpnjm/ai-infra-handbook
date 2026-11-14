@@ -232,12 +232,12 @@ Picture a shared queue of small tickets, each one about a single node.
 Keep it out of the GPU pool until the check passes. Turn Secure Boot on, verify with mokutil --sb-state, and read the PCRs. Alert on any node that boots with it off.
 </details>
 
-<details><summary>2. Secure Boot blocks unsigned code. Why do you also want measured boot?</summary>
-Secure Boot decides what may run but leaves no record. Measured boot extends a hash of each stage into TPM registers, so a verifier can later see what actually booted.
+<details><summary>2. A node booted with Secure Boot on this morning, and an auditor now asks which bootloader ran on it last Tuesday. Why does Secure Boot alone not answer that, and what does measured boot add?</summary>
+Secure Boot checks each stage's signature and blocks code that fails, but it keeps no record of what ran. Measured boot hashes each stage and extends the hash into a TPM register, which cannot be set directly, so the final value depends on the whole sequence. A verifier that compares that value with its approved values can see what really booted.
 </details>
 
-<details><summary>3. Why does a remote verifier send a nonce when it asks for a quote?</summary>
-The nonce is included in the signed statement. It stops an attacker from replaying an old quote taken when the node was healthy.
+<details><summary>3. An attacker replays a quote that a healthy node produced last week. Why does the nonce stop the replay, and what must the verifier also check?</summary>
+The verifier picks a random nonce that only it knows in advance, and the TPM signs that nonce into the quote. A replayed quote carries the nonce from the earlier request, so it does not match the fresh one the verifier sent. The verifier must also compare the PCR values with its approved values, because a valid signature does not say whether the measurements are good.
 </details>
 
 <details><summary>4. A quote verifies against the TPM's key but the node runs a vulnerable bootloader. What went wrong?</summary>
@@ -248,8 +248,8 @@ The quote proves the measurements are genuine, not that they are acceptable. The
 No. The TPM covers the host's boot. The GPU needs its own evidence, such as signed measurements checked against reference values, as NVIDIA's documentation describes.
 </details>
 
-<details><summary>6. What does SPDM let one component do to another?</summary>
-It lets a requester authenticate a device, obtain signed measurements of its firmware and set up a secure session. Redfish exposes the result for each component in a ComponentIntegrity resource.
+<details><summary>6. A GPU attestation fails on one node, and you need the evidence for that one device, not for the host. What does SPDM let a requester do, and where does Redfish report the result?</summary>
+SPDM lets a requester authenticate a device, obtain its signed firmware measurements and set up a secure session. Redfish reports the result for each component in a ComponentIntegrity resource, which holds the SPDM version negotiated and the signed measurements. A good host boot says nothing about the GPU on its PCIe bus, so read that component's own entry.
 </details>
 
 <details><summary>7. A GPU attestation returns a valid signature on an old firmware version. Do you accept it?</summary>
@@ -292,8 +292,8 @@ It says management interfaces, including the BMC, must not have access to worklo
 No. It is 25.5 hours old. The 24-hour limit is an example, so set your own.
 </details>
 
-<details><summary>17. A fleet has 300 nodes and a 10 percent canary. How many are left for the full rollout?</summary>
-The canary is 30 nodes, so 270 remain.
+<details><summary>17. Your team plans a firmware update across a fleet of 300 nodes, and the policy starts with a 10 percent canary that must pass before anything else. How many nodes does the full rollout cover after the canary passes?</summary>
+The canary is 10 percent of 300, which is 30 nodes. The full rollout then covers the other 270 nodes, because the canary has already received the update. If the canary percentage changes, recalculate both counts from the same fleet size, since the canary size is a policy choice.
 </details>
 
 <details><summary>18. A CVE feed alert reaches you 80 minutes after publication and your target is 60. How late is it?</summary>
@@ -304,8 +304,8 @@ The canary is 30 nodes, so 270 remain.
 Secure Boot first, then the TPM and PCRs, then GPU evidence. This follows the stack from the boot chain up to the GPU.
 </details>
 
-<details><summary>20. After a clean firmware install, latency rises. What do you do, in order?</summary>
-Roll the canary back, check whether staging was skipped, find the cause, and update again only after the vendor fixes the regression.
+<details><summary>20. After a clean firmware install, job latency rises on the canary group. What do you do, and in what order?</summary>
+Roll the canary group back first, because a quick rollback is cheap only if you tested it earlier. Check whether the update went through staging, since some firmware problems only show up under real load and the canary is the cheapest place to find them. Find the cause, and update again only after the vendor ships a fix.
 </details>
 
 ---

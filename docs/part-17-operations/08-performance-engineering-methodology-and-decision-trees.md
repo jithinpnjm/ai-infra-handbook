@@ -686,8 +686,8 @@ The gap is 989 minus 600, which is 389 TFLOPS, about 39 percent. The roofline de
 It may be a mix of resources, such as CPU and GPU together. It may sit below the alert threshold, as a CPU at 70 percent can hide an inefficient kernel. Or the limit may be the code itself, such as slow Python. Add a check for combinations, lower thresholds for suspects, and profile the kernel and the Python code.
 </details>
 
-<details><summary>7. Why does the ridge point decide whether a kernel is memory-bound or compute-bound?</summary>
-The ridge point is the compute peak divided by the memory bandwidth, measured in FLOP per byte. A kernel with lower arithmetic intensity is left of it and waits on memory. A kernel with higher intensity is right of it and waits on arithmetic. The fix differs on each side, so compute the intensity first.
+<details><summary>7. An attention kernel on an H100 works out to 2048 FLOP per byte, and the ridge point is about 295 FLOP per byte. Why does the ridge decide the fix, and which side is the kernel on?</summary>
+The ridge is the compute peak divided by the memory bandwidth, so a kernel left of it waits on memory and a kernel right of it waits on arithmetic. At 2048 FLOP per byte, the attention kernel is far right of 295, so it is compute-bound, and the chapter suggests lower precision or fuller use of Tensor Cores. A memory-bound kernel needs better access patterns instead, so a wrong guess sends the team to the wrong part of the code.
 </details>
 
 <details><summary>8. Why should you not trust the PyTorch profiler's FLOP counts for a roofline?</summary>

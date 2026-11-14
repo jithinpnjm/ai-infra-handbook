@@ -255,24 +255,24 @@ Add firmware version checks to the policy and reject disallowed versions. NVIDIA
 At data movement across PCIe. CPU encryption limits CPU-GPU bandwidth, and encrypted bounce buffers add latency. Compute and memory bandwidth on the card are on par with normal mode.
 </details>
 
-<details><summary>6. A team uses MIG instances for confidential tenants. What is wrong?</summary>
-NVIDIA's CVM threat model assumes a whole GPU per VM and lists MIG, MPS and GPUDirect RDMA as unsupported in those configurations.
+<details><summary>6. A team wants to run confidential tenants on MIG instances carved from one shared GPU to save money. What is wrong with that plan, and what replaces it?</summary>
+NVIDIA's confidential VM threat model assumes a whole GPU for each VM, and it lists MIG, MPS and GPUDirect RDMA as unsupported in those configurations. Give each confidential tenant a whole GPU, assigned to one confidential VM, instead of a MIG slice. The sharing row of the table in section 4 of this chapter states the same limit.
 </details>
 
-<details><summary>7. Why is a baseline network card outside the trusted boundary even when it supports attestation?</summary>
-NVIDIA says a NIC does not become trusted merely because it supports attestation. Unless a deployment explicitly places it in the trusted base, the workload software must encrypt sensitive RDMA payloads and restrict the memory the NIC can reach.
+<details><summary>7. A tenant's RDMA traffic runs through a network card that supports attestation. Does the workload still have to protect its payloads, and why?</summary>
+Yes. NVIDIA says a network card does not become trusted just because it supports attestation, so a baseline NIC stays outside the trusted boundary unless a deployment explicitly places it inside. The workload software must therefore encrypt sensitive RDMA payloads and restrict the memory the NIC can see.
 </details>
 
 <details><summary>8. A company wants to hide user data from the model owner too. Does confidential bare metal do that?</summary>
 No. NVIDIA says it trusts the model owner's privileged software and does not isolate end-user data from the model owner. An additional CVM can place the approved workload inside a CPU-protected environment so host administrators are outside the boundary.
 </details>
 
-<details><summary>9. What does zero-trust mode on a BlueField DPU restrict, and what does it not do?</summary>
-It prevents the host administrator from accessing BlueField from the host, with options to restrict port ownership, counters, the tracer, RShim and firmware flashing. It does not encrypt the host's memory.
+<details><summary>9. An admin needs to reach a BlueField from the host during an incident. Does zero-trust mode allow that, and what does it leave unprotected?</summary>
+Zero-trust mode stops the host administrator from accessing BlueField from the host, so control moves to the Arm cores or the management controller. Each lever, such as port ownership, counters, the tracer, RShim and firmware flashing, can be restricted on its own. Zero-trust mode does not encrypt the host's memory, and it does not replace a confidential VM.
 </details>
 
-<details><summary>10. How do you check that a BlueField's secure boot is anchored?</summary>
-From the host, run flint and look for life cycle GA SECURED. From the Arm console, run mlxbf-bootctl and look at the lifecycle line. The ROM verifies the key against a hash in eFuses.
+<details><summary>10. A reimaged BlueField has to show that its secure boot is anchored before it joins the pool. Which two checks do you run, and what do they tell you?</summary>
+From the host, run `flint` and look for the life cycle GA SECURED. From the Arm console, run `mlxbf-bootctl` and read the lifecycle line. The ROM verifies the off-chip public key against a hash stored in eFuses, and each stage verifies the next, so both checks reflect a chain that starts in unmodifiable ROM.
 </details>
 
 <details><summary>11. You must set CC mode on a host that boots with Secure Boot. What happens?</summary>
@@ -291,8 +291,8 @@ No. NVIDIA says attestation does not establish that approved code is free of vul
 The infrastructure owner can stop the VM, interrupt networking, detach devices or remove power. Confidential computing does not guarantee availability against that operator.
 </details>
 
-<details><summary>15. Which GPUs and CPUs does NVIDIA support for confidential VMs?</summary>
-Hopper and Blackwell GPUs, with Intel TDX CPUs such as Emerald Rapids and Granite Rapids, or AMD SEV-SNP CPUs such as Milan, Genoa and Turin. Only the listed combinations are supported.
+<details><summary>15. A customer proposes a confidential VM on a CPU that is not on NVIDIA's list, paired with a Hopper GPU. Is that pairing supported?</summary>
+Only the listed combinations are supported. The listed platforms are Hopper and Blackwell GPUs with Intel TDX on Emerald Rapids or Granite Rapids, or AMD SEV-SNP on Milan, Genoa or Turin. A matching GPU and CPU on paper is not enough, so check NVIDIA's compatibility matrix before you buy.
 </details>
 
 <details><summary>16. A job moves 24 GB across PCIe per step at 4 GB per second. How long, and what does it suggest?</summary>

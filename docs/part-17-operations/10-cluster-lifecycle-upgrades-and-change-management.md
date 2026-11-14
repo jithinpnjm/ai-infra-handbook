@@ -573,8 +573,8 @@ It takes nodes one at a time, with drain, upgrade and uncordon for each. While o
 Blue, the old version, keeps running while green takes traffic, so you shift back at the load balancer. It needs a second set of GPUs, which is too expensive for a whole fleet, so it is kept for critical or stateful services.
 </details>
 
-<details><summary>9. Which pass conditions must a canary meet before the next stage?</summary>
-`dcgmi diag -r 3` passes, nccl-tests bus bandwidth is within 5 percent of the baseline, there is no tier 3 Xid, failed row remap, GPU count mismatch or missing exporter, there is no fast SLO burn, and no node is in the `upgrade-failed` state. The soak time must also pass.
+<details><summary>9. A canary's nccl-tests bus bandwidth falls below the pre-upgrade baseline by more than the allowed margin, but the hardware diagnostic passed. Does the canary clear the gate for the next stage, and which other conditions must hold?</summary>
+No, the bus bandwidth must be within 5 percent of the pre-upgrade baseline, so a larger shortfall fails the gate even when the hardware check passes. The hardware check is `dcgmi diag -r 3`, and the others are no tier 3 Xid, no failed row remap, no GPU count mismatch, no missing exporter, no fast SLO burn, and no node in the `upgrade-failed` state. The soak time must also pass before the next stage.
 </details>
 
 <details><summary>10. Why does the pipeline include a separate rollback-test stage?</summary>
@@ -593,8 +593,8 @@ Use in-place for dev environments and non-critical workloads where a short outag
 Use `waitForCompletion` to let it finish, which costs time and can stall the window. Checkpoint and release the job before the window, which costs a restart. Evicting it loses all work since the last checkpoint, so the checkpoint interval is the cost. The skip label leaves the node on the old driver for now.
 </details>
 
-<details><summary>14. How do you pause the driver upgrade, and what happens to nodes already done?</summary>
-Set `autoUpgrade` to false in the ClusterPolicy. The Operator removes the upgrade-state labels from the driver nodes and stops moving more nodes. Nodes already upgraded stay on the new driver.
+<details><summary>14. The driver upgrade is partway through the fleet and the canary has started to fail, so the team must stop the controller before more nodes move. What do you change, and what happens to nodes that are already done?</summary>
+Set `autoUpgrade` to false in the ClusterPolicy. The Operator then removes the upgrade-state labels and stops moving more nodes, and nodes already upgraded stay on the new driver. A pause does not undo the finished work, so it is not a rollback, and a rollback needs its own change to the driver version.
 </details>
 
 <details><summary>15. How do you decide between rolling back and fixing forward late in an upgrade, and what do you prepare in advance?</summary>
@@ -617,8 +617,8 @@ The failure rate is 5 divided by 40, which is 12.5 percent, above the 10 percent
 That is outside the 5 percent pass condition, so do not move to the next stage. Roll the canary back, then compare driver, firmware and fabric settings between the canary and the baseline before you try again. Keep the nccl-tests output as evidence.
 </details>
 
-<details><summary>20. Why can a peer review not be replaced by automated tests, and in what order does a change move?</summary>
-A human reviewer catches gaps tests cannot see, such as a rollback plan that says too little. The order is change request, peer review, automated tests including the rollback test, staging, canary, early stage, wide stage, then verification.
+<details><summary>20. A change has a rollback step that says only one line, and the author says the automated tests are green. Why can a peer review not be replaced by those tests, and where does the reviewer read the change in the order?</summary>
+A peer reads the change before anything runs, because the author is the person least likely to notice what is missing. A human reviewer catches gaps tests cannot see, such as a rollback plan that says too little. The order is change request, peer review, automated tests including the rollback test, staging, canary, early stage, wide stage, then verification, so the review comes before any test runs.
 </details>
 
 ## Sources and review notes

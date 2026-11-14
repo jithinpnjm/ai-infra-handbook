@@ -314,8 +314,8 @@ No. It says that attack did not work on them. Earlier academic work cited by Tra
 NVIDIA's confidential VM threat model assigns each GPU whole to one confidential VM and lists MIG, MPS and GPUDirect RDMA as unsupported in those configurations. Use a whole GPU in confidential computing mode.
 </details>
 
-<details><summary>11. Why do ordinary vGPU profiles not give the same isolation as MIG-backed vGPU?</summary>
-Non-MIG vGPU shares the GPU by time-slicing schedulers: best effort, equal share or fixed share. MIG-backed vGPU gives each VM a MIG instance with dedicated memory and compute.
+<details><summary>11. A tenant on a shared vGPU host is slowed down by a neighbour's training run. Why do ordinary vGPU profiles not give the same isolation as MIG-backed vGPU, and which one do you pick for a tenant who must not be slowed?</summary>
+Non-MIG vGPU is time-sliced, so the best effort, equal share or fixed share scheduler divides the GPU's processing cycles among the running vGPUs. MIG-backed vGPU gives each VM a MIG instance with dedicated memory and compute, as the sharing table in section 4 lists for MIG. For a tenant who must not be slowed or crashed by another tenant, choose MIG-backed vGPU, because a time-sliced profile still shares the cycles.
 </details>
 
 <details><summary>12. When would you accept time-slicing for a team, and what do you give up?</summary>

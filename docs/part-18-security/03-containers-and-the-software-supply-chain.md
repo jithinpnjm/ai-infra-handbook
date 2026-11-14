@@ -663,8 +663,8 @@ A tag can be overwritten after your review and the cluster would never notice. A
 New CVEs are published every week, so an image that was clean when built can become vulnerable without any change. Scan the stored SBOM on a schedule, not only once. The SBOM lets the same inventory be checked again against new vulnerability data.
 </details>
 
-<details><summary>9. Why does keyless signing remove the key file problem, and what do you check before you depend on it?</summary>
-A key file must be stored, rotated, and protected. Keyless signing ties the signature to the builder's OIDC identity and issues a short-lived certificate from Fulcio. The signature is recorded in the Rekor transparency log. Check that your CI runners can reach the signing service before you depend on it.
+<details><summary>9. Your CI runners sit behind a network rule that blocks the signing service, and a release is due today. Why does keyless signing fail here even though it removes the key file, and what do you check first?</summary>
+Keyless signing removes the key file by tying the signature to the builder's OIDC identity and issuing a short-lived certificate from Fulcio, and the signature is recorded in the Rekor transparency log. A runner that cannot reach the signing service cannot sign, so the pipeline stops every release. Check that your CI runners can reach the signing service before you depend on keyless signing.
 </details>
 
 <details><summary>10. Why does `pip install --require-hashes -r requirements.txt` stop a swapped package?</summary>
