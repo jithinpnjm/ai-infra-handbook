@@ -23,11 +23,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Suppose you are asked to approve the storage budget for a new GPU cluster. The usual habit is to ask how many terabytes or petabytes you need, and to treat storage as a cost center to keep as small as possible. In an AI factory that habit points the wrong way. A GPU that sits idle while it waits for dataset reads, epoch-start metadata lookups, or synchronous checkpoint writes costs the same electricity and lease money as a GPU running at full speed.
+Suppose you are asked to approve the storage budget for a new GPU cluster. The habit most people reach for is to ask how many terabytes or petabytes the team needs, and then to buy as little as possible, because storage looks like a cost center. In an AI factory that habit points the wrong way. A GPU that sits idle while it waits for dataset reads, epoch-start metadata lookups or synchronous checkpoint writes costs the same electricity and lease money as a GPU running at full speed. The invoice never shows the idle time, so the waste hides in plain sight.
 
-Consider a 128-GPU A100 training cluster. Between electricity and capital lease amortization, the cluster burns four hundred and thirty-five dollars every hour. Now suppose storage stalls leave those GPUs idle for just ten percent of the day. The cluster then wastes over a thousand dollars per day. Over a year, that adds up to roughly three hundred and eighty thousand dollars in lost compute.
+Consider a 128-GPU A100 training cluster. Between electricity and capital lease amortization, the cluster burns four hundred and thirty-five dollars every hour. Most of that is the lease, which you pay whether the GPUs are busy or not. Now suppose storage stalls leave those GPUs idle for just ten percent of the day. The cluster then wastes over a thousand dollars per day. Over a year, that adds up to roughly three hundred and eighty thousand dollars in lost compute.
 
 Spending a hundred thousand dollars on parallel storage to remove that stall pays for itself in roughly ninety-six days. When you evaluate the same trade across concurrent GPU streams, the picture gets larger. Cutting storage stall time from five percent down to one percent, by pairing a one-petabyte Lustre tier with local NVMe caching, saves nearly nineteen million dollars per year.
+
+Payback is the simplest way to compare a storage purchase with idle time. You divide the price of the upgrade by the money the cluster wastes each day, and the result is the number of days until the upgrade has paid for itself. The calculation does not need a storage vendor's opinion, only the burn rate and the stall fraction.
+
+The stall fraction is the input that people guess at most often, and it is the one that matters most. A guess of ten percent and a guess of five percent produce very different budgets. The honest way to get the number is to measure it. Pull the GPU utilization for each job from your monitoring system, and then look for the stretches where utilization drops while the data loader is still busy. Those stretches are the stall. Add them up over a week and divide by the total time, and you have a number you can defend in a budget meeting.
 
 ```text
 Idle-GPU Opportunity Cost vs Storage Investment (V15 Ch. 10):
@@ -47,39 +51,45 @@ Idle-GPU Opportunity Cost vs Storage Investment (V15 Ch. 10):
         + $80K Lustre (+$10K/yr) + $500K NVMe (+$5K/yr) = $595K Year-1 storage = $5.5M/year total -> saves $18.9M/year
 ```
 
+Notice that the block calculates two different things. The first is the price of one day of stall. The second is the price of a storage upgrade, measured in days of stall. Putting them side by side lets you compare both on one scale, which is the comparison a finance team actually needs.
+
+It helps to say the logic in plain words before you trust the arithmetic. The cluster earns its value when GPUs compute. Every hour a GPU spends waiting is an hour of paid capacity that produced nothing. A storage upgrade is worth buying when the value of the hours it gives back is larger than its price over the period you care about. The payback line is just that statement written as a division.
+
+**Stage checkpoints to local NVMe first, publish them atomically, and prune on a schedule, so the filesystem sees steady background writes instead of eight-minute stalls.**
+
 Storage sizing has to satisfy six linked dimensions at the same time. Each one can fail on its own, and a cluster that is fine on capacity can still starve its GPUs on bandwidth. The six dimensions are listed here, and the rest of the chapter works through each one.
 
-- **Usable and raw capacity:** Size the pool for raw datasets, preprocessed shards, rolling and archive checkpoints, scratch space, and user home directories. Add thirty percent capacity headroom so you stay below the ninety percent fragmentation cliff. Then apply the usable-to-raw multiplier of replication or erasure coding.
-- **Sustained read bandwidth:** Size it from two sources. The first is the continuous ingestion demand of each GPU. The second is the load budget for concurrent job startups.
-- **Checkpoint write bandwidth:** Divide the checkpoint payload by your target time budget. Then separate synchronous network writes from asynchronous local NVMe staging.
-- **Metadata operations per second:** Size for the peak epoch-start file-open storm, plus forty percent metadata headroom. Shard packaging can cut metadata operations by three orders of magnitude.
-- **Burst headroom and SuperPOD Scalable Unit tiers:** Apply a fifty percent bandwidth headroom rule. Then match the NVIDIA DGX SuperPOD High-Performance Storage Standard and Enhanced tier specifications.
-- **Multi-tier FinOps and three-year TCO:** Balance Hot NVMe, Warm parallel filesystems, Cold object storage, and Archive storage inside the overall three-year AI factory budget.
+- Usable and raw capacity: Size the pool for raw datasets, preprocessed shards, rolling and archive checkpoints, scratch space, and user home directories. Add thirty percent capacity headroom so you stay below the ninety percent fragmentation cliff. Then apply the usable-to-raw multiplier of replication or erasure coding.
+- Sustained read bandwidth: Size it from two sources. The first is the continuous ingestion demand of each GPU. The second is the load budget for concurrent job startups.
+- Checkpoint write bandwidth: Divide the checkpoint payload by your target time budget. Then separate synchronous network writes from asynchronous local NVMe staging.
+- Metadata operations per second: Size for the peak epoch-start file-open storm, plus forty percent metadata headroom. Shard packaging can cut metadata operations by three orders of magnitude.
+- Burst headroom and SuperPOD Scalable Unit tiers: Apply a fifty percent bandwidth headroom rule. Then match the NVIDIA DGX SuperPOD High-Performance Storage Standard and Enhanced tier specifications.
+- Multi-tier FinOps and three-year TCO: Balance Hot NVMe, Warm parallel filesystems, Cold object storage, and Archive storage inside the overall three-year AI factory budget.
 
 Before you approve a storage budget, work out what your GPUs cost while they wait for data. That number is usually larger than the price of the storage itself.
 
+Do this before the purchase, not after the first slow month. Once the cluster is running, the stall is hidden inside job times, and nobody attributes it to storage. Writing the number down in advance is how you keep the decision honest.
+
 ## Prerequisites and outcomes
 
-You should be comfortable with a few ideas from earlier in Part 13 before you start. Those are the seven-layer AI storage data path, local NVMe staging, and the parallel and object filesystems. You should also know how small files create metadata bottlenecks and why sharded distributed checkpointing helps.
+You should be comfortable with a few ideas from earlier in Part 13 before you start. Those are the seven-layer AI storage data path, local NVMe staging, and the parallel and object filesystems. You should also know how small files create metadata bottlenecks and why sharded distributed checkpointing helps. If any of those are fuzzy, the earlier chapters fill the gaps, and this chapter will read more easily afterward.
 
 **Prerequisites:**
 - Understanding of the seven-layer AI storage data path and local NVMe staging from earlier chapters in Part 13.
 - Familiarity with Lustre, BeeGFS, WekaFS, VAST Data, and object storage manifests from Part 13.
 - Working knowledge of small-file metadata bottlenecks and sharded distributed checkpointing from the preceding two chapters.
 
-**Outcomes:** By the end of this chapter, you will be able to:
-1. Run a six-dimension AI storage sizing calculation that covers usable capacity, read bandwidth, write bandwidth, metadata rate, burst headroom, and cost per GPU-hour.
-2. Size storage networks and parallel filesystems for NVIDIA DGX SuperPOD Scalable Units across DGX GB300 NVL72 and DGX B200 architectures.
-3. Convert usable capacity into raw physical flash capacity across replication and erasure coding schemes, while meeting a twenty-four-hour rebuild SLA.
-4. Build a four-tier storage placement and three-year TCO model. The model shows when to invest in NVMe caching, parallel filesystems, and spot-instance checkpoint resilience.
+The chapter follows the order you would use on a real project. It starts with the six sizing dimensions and the capacity math, then moves to read, write, metadata and burst bandwidth. Next it covers the NVIDIA DGX SuperPOD tiers, the conversion from usable to raw flash, and the four-tier placement model. It finishes with the three-year cost model, a production checklist and a worked cluster sizing.
 
 ---
 
 ## 1. The Six-Dimension AI Storage Sizing Framework
 
-Picture a storage plan built by adding up the terabytes in your dataset. It looks tidy on paper, and it is one of the most expensive mistakes in AI infrastructure engineering. A five-terabyte vision dataset easily fits on a single consumer hard drive. But 256 GPUs training across a hundred concurrent jobs on that dataset need gigabytes per second of sustained read and write bandwidth. They also generate tens of thousands of metadata operations per second at every epoch boundary.
+Picture a storage plan built by adding up the terabytes in your dataset. It looks tidy on paper, and it is one of the most expensive mistakes in AI infrastructure engineering. A five-terabyte vision dataset easily fits on a single consumer hard drive. But 256 GPUs training across a hundred concurrent jobs on that dataset need gigabytes per second of sustained read and write bandwidth. They also generate tens of thousands of metadata operations per second at every epoch boundary. The disk is never the whole story.
 
-Capacity is only the first of six things you have to size. The diagram below shows how the six dimensions depend on one another. Capacity feeds the metadata rate, read and write traffic feed the burst rule, and metadata and burst together feed the cost.
+Capacity is only the first of six things you have to size. The diagram below shows how the six dimensions depend on one another. Capacity feeds the metadata rate, read and write traffic feed the burst rule, and metadata and burst together feed the cost. Read it as a chain of cause and effect, not as six separate checks.
+
+A simple way to use the diagram is to start at the top box and follow each arrow in turn. Each box is a question you must answer before the next one makes sense. If you skip a box, the later numbers may look fine while resting on a wrong input.
 
 ```mermaid
 flowchart TD
@@ -99,7 +109,7 @@ flowchart TD
     D5 --> D6
 ```
 
-The table is the reference you will come back to. Each row gives one dimension, the equation behind it, the headroom rule, the symptom that tells you it is undersized, and the lever that fixes it.
+The table is the reference you will come back to. Each row gives one dimension, the equation behind it, the headroom rule, the symptom that tells you it is undersized, and the lever that fixes it. Keep it open while you work through the sections that follow, because every section below expands one row.
 
 | Sizing Dimension | Governing Equation | Mandatory Headroom / Constraint | Typical Bottleneck Symptom | Primary Architectural Lever |
 |---|---|---|---|---|
@@ -110,17 +120,25 @@ The table is the reference you will come back to. Each row gives one dimension, 
 | **5. Burst & Rebuild** | `B_peak = B_sustained_read + B_ckpt_burst <= B_fabric` | **+50% bandwidth headroom** (**2.0x sustained overbuild**); **24-hour** drive or node rebuild SLA | Training throughput drops `30–50%` whenever a neighboring job writes a checkpoint or rebuild runs | Overbuild fabric `2.0x` sustained (`3 GB/s -> 6 GB/s`, `10 GB/s -> 20 GB/s`); QoS throttling |
 | **6. Cost per GPU-Hour** | `Total Annual Cost = Storage Amort + Storage OpEx + (N_GPU * f_stall * C_GPU-hr * 8760)` | Keep storage-induced GPU stall fraction `f_stall < 1%` | Saving `$80K` on storage causes `$18.9M/year` in idle GPU waste (`5%` vs `1%` stall on `128` GPUs) | Invest in parallel FS + local NVMe staging whenever payback period is `< 6–12` months |
 
-Use the symptom column to find the row you need. Each symptom points you to one lever in the last column.
+Use the symptom column to find the row you need. Each symptom points you to one lever in the last column. Notice that the symptoms are the things a user sees, such as a GPU that drops to zero or a save that fails with a full-disk error. You will often find the problem by starting from the symptom and walking back to the dimension that caused it.
+
+The order matters. A symptom is a clue, and a good engineer collects the evidence in the order listed before deciding what to change. That discipline is what separates a fix that holds from one that moves the problem somewhere else.
 
 ### 1.1 Dimension 1: Usable Capacity and the 30 Percent Headroom Rule
 
-Start with what has to live on the pool. A production AI storage pool holds five distinct kinds of data, and it also needs a mandatory free-space buffer. The first kind is raw source datasets, such as JSONL text, Parquet tables, JPEGs, or video files. The second is preprocessed and tokenized shards, like WebDataset `.tar` archives or memory-mapped token arrays. These shards often double the dataset footprint during curation.
+Start with what has to live on the pool. A production AI storage pool holds five distinct kinds of data, and it also needs a mandatory free-space buffer. The first kind is raw source datasets, such as JSONL text, Parquet tables, JPEGs, or video files. The second is preprocessed and tokenized shards, like WebDataset `.tar` archives or memory-mapped token arrays. These shards often double the dataset footprint during curation, because the raw files and the packed copies both have to exist for a while.
 
-The third kind is rolling active checkpoints. They sit on fast warm or hot storage for immediate crash recovery. The fourth is archive milestone checkpoints, kept across epochs for evaluation and compliance. The fifth is scratch space. That covers exported inference weights, compilation caches, user home directories, and training logs.
+The third kind is rolling active checkpoints. They sit on fast warm or hot storage for immediate crash recovery. The fourth is archive milestone checkpoints, kept across epochs for evaluation and compliance. The fifth is scratch space. That covers exported inference weights, compilation caches, user home directories, and training logs. Each kind grows at its own rate, which is why a plan that counts only the dataset tends to run out of room.
 
-The sixth item is the thirty percent capacity headroom buffer. Parallel and local filesystems need contiguous free space to write in large striped blocks. As occupancy nears ninety percent, that free space breaks into small pieces, metadata lock contention rises, and write throughput falls off a cliff. So you always add thirty percent on top of the active usable subtotal, which keeps steady-state fill below seventy-seven percent.
+A useful habit is to write down the growth rate for each kind next to its size. Raw datasets often grow in bursts when a new source arrives. Rolling checkpoints grow in a steady rhythm set by the save interval. Scratch space grows with the number of users, and it is the kind that teams forget to clean up. A plan that lists the kinds and their rates is much harder to surprise.
+
+The sixth item is the thirty percent capacity headroom buffer. Parallel and local filesystems need contiguous free space to write in large striped blocks. As occupancy nears ninety percent, that free space breaks into small pieces, metadata lock contention rises, and write throughput falls off a cliff. So you always add thirty percent on top of the active usable subtotal, which keeps steady-state fill below seventy-seven percent. The buffer is not wasted space. It is what keeps the filesystem fast when it is busy.
+
+Think of the thirty percent as a parking lot that is never full. A parking lot at ninety percent occupancy forces every car to circle and wait, while a lot with room to spare lets each car park and leave. The filesystem behaves the same way. Free space is what lets the allocator place each large write in one clean block, so the headroom is part of the performance, not a luxury you can drop.
 
 The worked examples below show the arithmetic for two cluster sizes. Read them line by line, because each line feeds the next.
+
+The first example is a small research model on eight nodes. The second is a shared cluster that serves many teams. Comparing the two shows how the same six-step method scales from a single project to a shared platform.
 
 ```text
 Worked Usable Capacity Calculations (V15 Ch. 10):
@@ -143,7 +161,7 @@ Worked Usable Capacity Calculations (V15 Ch. 10):
      - Unpruned multi-job explosion warning:      100 jobs x 20 rolling x 0.5 TB = 1,000 TB unless tiered to S3
 ```
 
-Example B shows why pruning matters. A hundred jobs that each keep twenty rolling checkpoints would need 1,000 TB, so the older copies have to move to S3 or be pruned. Before you sign off on a capacity number, add the thirty percent buffer and check the total against your usable subtotal.
+Example B shows why pruning matters. A hundred jobs that each keep twenty rolling checkpoints would need 1,000 TB, so the older copies have to move to S3 or be pruned. Before you sign off on a capacity number, add the thirty percent buffer and check the total against your usable subtotal. The two examples differ in scale, but they follow the same three steps. Add up the parts, add the buffer, and compare the result with what you can buy.
 
 ---
 
@@ -155,7 +173,9 @@ Picture a GPU utilization graph that looks like a saw blade. The GPUs run hard f
 
 For pre-tokenized text LLM pretraining, steady-state read bandwidth is tiny. A 70B Llama-3 model running at forty percent MFU, the share of peak math throughput the training actually uses, on sixty-four H100 GPUs processes roughly sixty thousand tokens per second across the entire cluster. That works out to under a quarter of a megabyte per second of token IDs. For text LLMs, checkpoint writes and startup weight loads dominate the storage design.
 
-For vision, audio, video, and multimodal training, continuous ingestion dominates. A standard engineering baseline is two hundred megabytes per second per GPU. For an eight-GPU node, that comes to 1.6 GB/s. For a 72-GPU Grace Blackwell NVL72 rack, it comes to 14.4 GB/s.
+For vision, audio, video, and multimodal training, continuous ingestion dominates. A standard engineering baseline is two hundred megabytes per second per GPU. For an eight-GPU node, that comes to 1.6 GB/s. For a 72-GPU Grace Blackwell NVL72 rack, it comes to 14.4 GB/s. The reason the image and video cases look so different from text is simple. Each training sample is much larger, so the same number of samples per second moves far more bytes.
+
+When you measure a real job, start with the data loader. Count the bytes it reads per second while the GPUs are busy, and compare that with the 200 MB/s per GPU baseline. If your measured rate is far above the baseline, the job is bandwidth-bound and the storage design needs to grow. If it is far below, the storage is probably not the limit, and the bottleneck is somewhere else in the pipeline.
 
 Startup reads can be just as heavy when several jobs begin together. Take three jobs that each load a hundred-gigabyte model within thirty seconds. Each job needs about 3.33 GB/s, and the three together need 10.0 GB/s of aggregate read throughput. The arithmetic below checks three filesystems against that number.
 
@@ -175,15 +195,17 @@ Sustained Read Bandwidth & Concurrent Startup Math (AISPE Ch. 5, V15 Ch. 10, V21
       Single-server NFS         = 2.0 GB/s  (FAILS, 5.0x too slow -> 150-second load stall)
 ```
 
-The Lustre and BeeGFS lines pass the 10.0 GB/s demand. A single NFS server fails it by a factor of five, which turns a load into a 150-second stall. Before you pick a filesystem, add up the startup load and not just the steady training read rate.
+The Lustre and BeeGFS lines pass the 10.0 GB/s demand. A single NFS server fails it by a factor of five, which turns a load into a 150-second stall. Before you pick a filesystem, add up the startup load and not just the steady training read rate. A filesystem that looks fine during training can still make every job wait at the door when a new batch starts.
 
 ### 2.2 Dimension 3: Checkpoint Write Bandwidth and Two-Tier Async Staging
 
 Every checkpoint is a pause for the whole cluster unless you plan for it. While the write runs, every GPU waits, so the write speed sets how long the pause lasts. During distributed training with mixed-precision AdamW, every parameter needs fourteen bytes of persistent checkpoint state. Active GPU training memory needs sixteen bytes per parameter. For a 70B model, each checkpoint writes 980 GB, or roughly one terabyte.
 
-When the model is sharded with ZeRO-3 or PyTorch FSDP across sixty-four GPUs on eight nodes, each GPU writes a 15.3125 GB shard. Each node writes 122.5 GB. Now picture that write going over a slow network path. A five-hundred-gigabyte checkpoint takes five hundred seconds, and all GPUs stall for that whole time.
+When the model is sharded with ZeRO-3 or PyTorch FSDP across sixty-four GPUs on eight nodes, each GPU writes a 15.3125 GB shard. Each node writes 122.5 GB. Now picture that write going over a slow network path. A five-hundred-gigabyte checkpoint takes five hundred seconds, and all GPUs stall for that whole time. The fix is not to write faster over the network. The fix is to take the GPUs out of the write path altogether.
 
-The fix is two-tier staging. Each node first copies its shard to local NVMe at 20 GB/s. That drops the synchronous pause twentyfold, to twenty-five seconds for that dump. For a 122.5 GB node shard, the pause is only 6.125 seconds. Background threads then drain the staged files to the warm parallel filesystem and the cold S3 archive while training continues.
+The fix is two-tier staging. Each node first copies its shard to local NVMe at 20 GB/s. That drops the synchronous pause twentyfold, to twenty-five seconds for that dump. For a 122.5 GB node shard, the pause is only 6.125 seconds. Background threads then drain the staged files to the warm parallel filesystem and the cold S3 archive while training continues. The GPUs are back at work long before the slow copy finishes.
+
+The two-tier design is easier to picture as a cashier with a fast till and a slow back office. The customer is served at the till and leaves quickly. The paperwork then moves to the back office, where it can take as long as it needs without holding up the line. The local NVMe is the till, and the shared filesystem is the back office. The GPUs only wait at the till.
 
 ```text
 Checkpoint Write Bandwidth & Two-Tier Staging Math (V15 Ch. 10 & 12, V21 Ch. 04):
@@ -200,15 +222,15 @@ Checkpoint Write Bandwidth & Two-Tier Staging Math (V15 Ch. 10 & 12, V21 Ch. 04)
       122.5 GB node shard at 20 GB/s = 6.125 seconds (or 12.25 seconds at 10 GB/s, ~10 seconds)
 ```
 
-The math shows that a 100 GB checkpoint with a 300-second budget is easy for either parallel filesystem. The staging math is what matters for the big checkpoints. Before you choose the checkpoint tier, divide the payload by your time budget and check whether local NVMe can absorb the burst.
+The math shows that a 100 GB checkpoint with a 300-second budget is easy for either parallel filesystem. The staging math is what matters for the big checkpoints. Before you choose the checkpoint tier, divide the payload by your time budget and check whether local NVMe can absorb the burst. The weekly volume line in the block is a reminder that the save interval controls the total bytes as much as the size of each save.
 
 ### 2.3 Dimensions 4 and 5: Metadata Rate and Burst Overbuild
 
-Think of the metadata server as a front desk. You can have a fast warehouse behind it, but if the desk is overloaded, nobody gets their files. High sequential bandwidth does not help when the Metadata Server is saturated.
+Think of the metadata server as a front desk. You can have a fast warehouse behind it, but if the desk is overloaded, nobody gets their files. High sequential bandwidth does not help when the Metadata Server is saturated. Every open, close and stat call has to pass through that desk first, even when the file itself is small.
 
-Consider training on 1.2 million small images. Each epoch generates 4.8 million metadata operations, covering opens, closes, and stat calls. At 256 files per batch and 100 batches per second, the raw open rate is 25,600 opens per second. Add the forty percent metadata headroom, and you need 35,840 operations per second.
+Consider training on 1.2 million small images. Each epoch generates 4.8 million metadata operations, covering opens, closes, and stat calls. At 256 files per batch and 100 batches per second, the raw open rate is 25,600 opens per second. Add the forty percent metadata headroom, and you need 35,840 operations per second. The number of files is what drives the load, not the number of bytes, which is why a dataset of tiny files can crush a server that handles large files easily.
 
-That rate crushes a single NFS server. It causes a forty-seven-minute stall at the start of every epoch. Repackaging is the fix. Pack a thousand small images into each sequential WebDataset `.tar` or TFRecord shard, and you cut metadata operations by three orders of magnitude. The open rate then drops to 25.6 opens per second.
+That rate crushes a single NFS server. It causes a forty-seven-minute stall at the start of every epoch. Repackaging is the fix. Pack a thousand small images into each sequential WebDataset `.tar` or TFRecord shard, and you cut metadata operations by three orders of magnitude. The open rate then drops to 25.6 opens per second. The GPUs read one large file in a sequence, and the metadata desk has almost nothing to do.
 
 Checkpoint bursts overlap with ongoing dataset reads, so you cannot size for one in isolation. Apply the 2.0x burst overbuild rule, which adds fifty percent headroom on peak traffic. The arithmetic below shows the metadata and burst numbers side by side.
 
@@ -229,15 +251,23 @@ Metadata IOPS & Burst Overbuild Math (V15 Ch. 10 & Ch. 12):
 
 Before you approve a metadata design, count the files per batch and per epoch. Then decide whether the dataset should be repackaged into shards before you buy more metadata capacity.
 
+A useful check is to compare the cost of the two fixes. Adding metadata servers costs hardware and time to set up. Repackaging costs one pass over the dataset and a small change to the data loader. The cheaper fix is often the one that changes the access pattern rather than the capacity. Repackaging is usually the cheaper fix, because it changes the access pattern rather than the hardware.
+
+When you repackage, keep one rule in mind. Each shard should hold many samples in a fixed order, so the reader can stream through it. Random access into a pile of tiny files is what made the metadata desk overloaded in the first place. A sequential read of a large shard asks the desk for one open and then lets the data flow.
+
 ---
 
 ## 3. NVIDIA DGX SuperPOD High-Performance Storage Architecture
 
-Suppose your AI factory grows from a few dozen GPUs to several thousand. At that size, you cannot design every rack by hand. The NVIDIA DGX SuperPOD Reference Architecture answers this with a repeatable building block. It standardizes compute, network fabrics, and High-Performance Storage into modular Scalable Units.
+Suppose your AI factory grows from a few dozen GPUs to several thousand. At that size, you cannot design every rack by hand. The NVIDIA DGX SuperPOD Reference Architecture answers this with a repeatable building block. It standardizes compute, network fabrics, and High-Performance Storage into modular Scalable Units. A Scalable Unit, or SU, is the chunk you copy when the cluster grows.
+
+The reason a reference architecture helps is that it turns a hard design question into a repeatable one. You do not have to invent the storage network each time you add capacity. You add another unit, check that its numbers match the table, and move on. The tables in this section are the numbers that unit is expected to deliver.
 
 ### 3.1 DGX GB300 NVL72 vs DGX B200 SuperPOD Scalable Units
 
-The first table compares the two compute building blocks side by side, including the storage NIC and fabric that each one uses. Read the scale rows to see how many GPUs one Scalable Unit holds.
+The first table compares the two compute building blocks side by side, including the storage NIC and fabric that each one uses. Read the scale rows to see how many GPUs one Scalable Unit holds. A quick way to read the table is to find the row about the Scalable Unit size first, and then check the storage NIC row, because the storage design depends on it.
+
+Think of the two columns as two different kinds of cluster. The GB300 column describes a rack-scale design where the compute and the storage network are built into the same units. The B200 column describes a server-scale design, where the storage fabric is a separate build. Knowing which kind you are buying tells you which row matters most for your storage plan.
 
 | Architectural Attribute | DGX GB300 NVL72 SuperPOD (`superpod-gb300-ra`) | DGX B200 SuperPOD (`superpod-b200-dc`) |
 |---|---|---|
@@ -249,7 +279,9 @@ The first table compares the two compute building blocks side by side, including
 
 If you read one row closely, make it the storage NIC row. In the GB300 design, each BlueField-3 DPU gives one 400 Gbps RoCEv2 port to storage alone. That keeps bursty checkpoint writes and GPUDirect Storage DMA streams from competing with cluster control traffic. Kubernetes, Slurm, container image pulls, and NFS home-directory traffic stay on the In-Band management port. As the cluster grows from two Scalable Units to sixteen, the SN5600D Spectrum-4 Ethernet storage fabric scales its non-blocking 400GbE storage links linearly.
 
-The second table shows how the fabric grows as you add Scalable Units. Each step adds Scalable Units, and the storage leaf count grows more slowly than the compute leaf count.
+The second table shows how the fabric grows as you add Scalable Units. Each step adds Scalable Units, and the storage leaf count grows more slowly than the compute leaf count. That is the part of the design that keeps storage cost from growing as fast as the GPU count.
+
+When you compare the rows, look at the ratio between the GPU count and the storage leaves. The ratio falls as the cluster grows, which is the sign of a design that scales without the storage budget scaling in step.
 
 | SuperPOD Scale (`GB300`) | GPUs | SUs | Compute Leaf Switches (`SN5600D`) | Storage Leaf Switches (`SN5600D`) | Spine Switches (`SN5600D`) | Max Supported Storage Fabric Links |
 |---|---|---|---|---|---|---|
@@ -260,7 +292,9 @@ The second table shows how the fabric grows as you add Scalable Units. Each step
 
 ### 3.2 SuperPOD Standard Tier vs Enhanced Tier
 
-Not every team needs the same storage speed. NVIDIA certifies partner parallel filesystems, such as DDN EXAScaler, WEKA, VAST Data, IBM Storage Scale, NetApp, and Dell, against two High-Performance Storage tiers. Each tier is defined per Scalable Unit and matched to a type of workload.
+Not every team needs the same storage speed. NVIDIA certifies partner parallel filesystems, such as DDN EXAScaler, WEKA, VAST Data, IBM Storage Scale, NetApp, and Dell, against two High-Performance Storage tiers. Each tier is defined per Scalable Unit and matched to a type of workload. Think of the tiers as two sizes of the same engine, chosen by how hard your jobs pull on the storage.
+
+Start with the question each tier answers. The Standard tier asks whether your compute is the limit and your storage is only a helper. The Enhanced tier asks whether your storage is the limit, because your jobs read and write so much that the helper has become the bottleneck. Answering that question honestly is what keeps the budget right.
 
 | SuperPOD HPS Tier | Workload & Dataset Characterization | `1 SU` Read (`GB/s`) | `1 SU` Write (`GB/s`) | `4 SU` Read (`GB/s`) | `4 SU` Write (`GB/s`) | `16 SU` Read (`GB/s`) | `16 SU` Write (`GB/s`) |
 |---|---|---|---|---|---|---|---|
@@ -270,11 +304,13 @@ Not every team needs the same storage speed. NVIDIA certifies partner parallel f
 The two tiers serve different kinds of work. The Standard tier suits pretraining and inference where compute, not I/O, sets the pace, and the datasets fit in local memory and NVMe cache. The Enhanced tier suits multimodal training, where the datasets outgrow the cache and the checkpoints are large and frequent.
 
 Three engineering ratios stand out in the SuperPOD storage specification:
-- **Two-to-one read-to-write asymmetry:** Both tiers specify a 2.0x read-to-write bandwidth ratio. That matches the higher sequential read throughput of NVMe flash and erasure-coded filesystems.
-- **Enhanced-to-Standard step-up:** Moving from the Standard tier to the Enhanced tier multiplies the required per-SU storage bandwidth by roughly 3.11x.
-- **Local NVMe staging buffer:** Each DGX GB300 Scalable Unit carries 2,211.84 TB of aggregate local RAID 0 NVMe scratch across its compute trays. That local flash absorbs rank-local checkpoint shards at multi-terabyte-per-second PCIe speeds. The shared RoCEv2 parallel filesystem then drains them asynchronously.
+- Two-to-one read-to-write asymmetry: Both tiers specify a 2.0x read-to-write bandwidth ratio. That matches the higher sequential read throughput of NVMe flash and erasure-coded filesystems.
+- Enhanced-to-Standard step-up: Moving from the Standard tier to the Enhanced tier multiplies the required per-SU storage bandwidth by roughly 3.11x.
+- Local NVMe staging buffer: Each DGX GB300 Scalable Unit carries 2,211.84 TB of aggregate local RAID 0 NVMe scratch across its compute trays. That local flash absorbs rank-local checkpoint shards at multi-terabyte-per-second PCIe speeds. The shared RoCEv2 parallel filesystem then drains them asynchronously.
 
-When you pick a tier, start from the workload. If your datasets outgrow the local cache, size against the Enhanced tier.
+When you pick a tier, start from the workload. If your datasets outgrow the local cache, size against the Enhanced tier. If they fit, the Standard tier is usually enough, and the difference in cost is real.
+
+Teams often ask whether they can start on the Standard tier and move up later. That is possible, but the move is not free. Moving a live pool means re-sizing the fabric and migrating data, and the cluster may stall during the move. It is cheaper to decide early, using the cache-fit question, than to find out in the middle of a training campaign.
 
 ---
 
@@ -293,7 +329,9 @@ Usable-to-Raw Efficiency & 24-Hour Rebuild SLA Math (V15 Ch. 10 & ADC Ch. 9):
   - Failed 61.44 TB QLC sled:    61.44 TB / 86,400 s = 711.11 MB/s minimum sustained rebuild rate
 ```
 
-Read the formulas as a pair. The first gives the efficiency of the scheme, and the second turns that efficiency into the raw flash you have to buy. The rebuild lines turn the 24-hour SLA into a minimum rate for each failed unit.
+Read the formulas as a pair. The first gives the efficiency of the scheme, and the second turns that efficiency into the raw flash you have to buy. The rebuild lines turn the 24-hour SLA into a minimum rate for each failed unit. The SLA is the service-level target, the time you promise to finish a rebuild.
+
+Put simply, the rebuild rate is the speed that the storage cluster must sustain in the background while it also serves training traffic. If that speed is too low, the rebuild drags on, and the cluster stays exposed to a second failure for longer. The formula gives the least speed that still meets the promise.
 
 The table applies those multipliers to 1,000 TB of usable capacity, so you can compare the schemes side by side.
 
@@ -306,15 +344,19 @@ The table applies those multipliers to 1,000 TB of usable capacity, so you can c
 | **16 + 2 Erasure Coding** | WekaFS (`18+`-node production cluster) | `16 + 2` | **88.89%** | `1.1250x` | **1,125.00 TB** (`1.125 PB`) | `125.00 TB` |
 | **146 + 4 Wide Stripe** | VAST Data DASE (QLC + SCM buffer) | `146 + 4` | **97.33%** | `1.0274x` | **1,027.40 TB** (`1.027 PB`) | **27.40 TB** (`2.67%`) |
 
-The spread is wide. For example, 1 PB of usable space on 3x replication needs 3,000 TB of raw flash. The 146 + 4 wide stripe needs only 1.0274x. The protection scheme is therefore a budget decision as well as a reliability one.
+The spread is wide. For example, 1 PB of usable space on 3x replication needs 3,000 TB of raw flash. The 146 + 4 wide stripe needs only 1.0274x. The protection scheme is therefore a budget decision as well as a reliability one. A wider stripe is cheaper per usable byte, but it also spreads each file across more pieces, so the rebuild and the failure domain both change.
+
+Think of the stripe width as how many pieces a file is cut into. More pieces mean less overhead, because each piece carries a smaller share of the parity, but they also mean more machines are involved in every read and every rebuild. The trade-off is simple to state and easy to underestimate.
 
 Consider what happens when an NVMe drive fails in an erasure-coded pool. The storage cluster rebuilds the lost data strips from the surviving nodes. The rebuild has to finish before further failures exceed the parity count. Rebuilding a 15.36 TB drive within twenty-four hours requires 177.78 MB/s of background throughput. A 61.44 TB sled requires 711.11 MB/s.
 
-Both rebuild streams must fit inside your fifty percent bandwidth headroom. That keeps active GPU training jobs from stalling during a drive replacement. Before you buy raw flash, multiply your usable target by the multiplier for your scheme, then check the rebuild rate against your headroom.
+Both rebuild streams must fit inside your fifty percent bandwidth headroom. That keeps active GPU training jobs from stalling during a drive replacement. Before you buy raw flash, multiply your usable target by the multiplier for your scheme, then check the rebuild rate against your headroom. If the rebuild rate does not fit, the scheme is too thin for the workload, even if the price looks right.
+
+Keep the rebuild rate in mind as a separate check from the price. A scheme can look cheap on the raw-flash table and still fail the 24-hour target because the rebuild cannot keep up with the drive size. When that happens, the choice is either a wider reserve of spare capacity or a scheme with more parity. Both cost money, so the rebuild check belongs in the first sizing pass, not after the purchase.
 
 ### 4.2 Four-Tier Storage Architecture and 3-Year TCO Economics
 
-Storage costs vary enormously by tier. Unit costs span five thousandfold, from local NVMe flash down to deep archive tape. Putting every dataset and historical checkpoint on one tier therefore wastes budget. Production AI factories map each stage of the data lifecycle to one of four tiers instead.
+Storage costs vary enormously by tier. Unit costs span five thousandfold, from local NVMe flash down to deep archive tape. Putting every dataset and historical checkpoint on one tier therefore wastes budget. Production AI factories map each stage of the data lifecycle to one of four tiers instead. A dataset that is read every hour belongs near the GPUs. A compliance copy that is read once a year belongs far away, where it is cheap to keep.
 
 ```mermaid
 flowchart LR
@@ -332,6 +374,8 @@ flowchart LR
 
 The table gives each tier's latency, throughput, job role, and cost. It then works a 1.3B model through the tiers, so you can see what each allocation costs.
 
+Each row of the table answers the same four questions. How fast does the tier answer? How much can it deliver? Which part of the workload does it serve? What does it cost per gigabyte per year? Reading across a row answers all four at once, and reading down a column compares the tiers on one property.
+
 | Storage Tier | Media & Representative Systems | Access Latency | Typical Throughput | Primary AI Workload Role | Annual Unit Cost (`$/GB-year`) | Worked `1.3B` Model Allocation & Cost |
 |---|---|---|---|---|---|---|
 | **Tier 1: Hot** | Local PCIe Gen4/Gen5 NVMe (RAID 0 / Lustre LNet / Weka cache) | **< 1 ms** | **3–7 GB/s per drive** (`15–50+ GB/s`/node) | Current epoch working-set cache and synchronous or async local checkpoint staging | **$5.00 / GB-yr** | `100 GB x $5.00` = **$500 / yr** |
@@ -340,11 +384,17 @@ The table gives each tier's latency, throughput, job role, and cost. It then wor
 | **Tier 4: Archive** | Deep Object Archive / Tape (S3 Glacier Deep Archive, LTO) | **Hours** | Batch restore only | Long-term regulatory audit trails and historical release checkpoints | **$0.001 / GB-yr** (`5,000x` cheaper than Hot NVMe) | `10.0 TB` (`10,000 GB`) `x $0.001` = **$10 / yr** |
 | **Blended Total** | **4-Tier Lifecycle Pipeline** | **Sub-ms on hot path** | **Matches GPU ingest & ckpt burst** | **Full `17.6 TB` lifecycle footprint** | **$8.81 / TB-month blended** | **`17.6 TB` total = $1,860 / year** |
 
-The cost column drops by a factor of 5,000 from the hot tier to the archive tier. Yet only the hot tier connects to the GPUs directly, as the diagram shows. That is why you keep the hot tier small and push cold data down the ladder.
+The cost column drops by a factor of 5,000 from the hot tier to the archive tier.
 
-Storage looks small next to the whole factory. Take a 1,200-GPU H100 factory, with a three-year Total Cost of Ownership of 70.2 million dollars. The two million dollars spent on NVMe, NAS, and SAN storage hardware is less than five percent of hardware CapEx. It is under three percent of total TCO.
+A helpful way to picture the ladder is a library. The reading room near the desk holds the books people use every day, and the storage room in the basement holds the books read once a year. You would never store the daily books in the basement, and you would never fill the reading room with archive boxes. The four tiers apply the same logic to bytes. Yet only the hot tier connects to the GPUs directly, as the diagram shows. That is why you keep the hot tier small and push cold data down the ladder. The worked allocation shows the effect. Most of the bytes sit on the cheap tiers, and the expensive tier holds only the small working set.
 
-The same logic applies to cloud Spot instances. An 8xH100 Spot instance can save sixty-five percent compared with on-demand pricing. The catch is that the cloud provider gives only a two-minute warning before it preempts the instance. To keep that discount, your storage pipeline must flush an emergency checkpoint in under two minutes.
+Storage looks small next to the whole factory. Take a 1,200-GPU H100 factory, with a three-year Total Cost of Ownership of 70.2 million dollars. The two million dollars spent on NVMe, NAS, and SAN storage hardware is less than five percent of hardware CapEx. It is under three percent of total TCO. That comparison is useful in a budget meeting, because it shows where storage sits in the whole picture.
+
+The point is not that storage is unimportant. The point is that the scale of the hardware budget is set by GPUs, networks and power. Storage is a supporting part, and the right way to spend on it is to protect the GPU investment, not to shave the storage line on its own.
+
+The same logic applies to cloud Spot instances. An 8xH100 Spot instance can save sixty-five percent compared with on-demand pricing. The catch is that the cloud provider gives only a two-minute warning before it preempts the instance. To keep that discount, your storage pipeline must flush an emergency checkpoint in under two minutes. A discount you cannot protect is not a discount at all.
+
+Picture the spot instance as a seat on a bus that may leave early. The cheap fare is only worth it if you can get off with your bags in the two minutes the driver gives you. Your checkpoint pipeline is the bags. If the flush takes longer than the warning, the discount is paid back as lost compute, and the savings disappear.
 
 The breakdown below shows where the TCO numbers come from. It has three parts: fleet refresh, the 1,200-GPU factory, and Spot resilience.
 
@@ -373,17 +423,25 @@ The breakdown below shows where the TCO numbers come from. It has three parts: f
 
 The Spot line is the one to remember. The two-minute warning is the deadline for your checkpoint flush. Before you move a dataset down a tier, check how often your jobs read it and how fast they need it back.
 
+For a spot-based training plan, the same check applies to the checkpoint tier. If the checkpoint must come back within a short window after an eviction, the tier that holds it must be fast enough to both accept the write and serve the restore. A dataset that is read every hour cannot sit on a tier that takes hours to restore.
+
+When you move data down the tiers, write down the expected read frequency and the acceptable wait for each dataset. Hot data needs a tier that answers in milliseconds, while archive data can wait for a batch restore. Matching those two numbers is what keeps the cost low without slowing the people who need the data.
+
 ---
 
 ## 5. Production Readiness Checklist and End-to-End Cluster Sizing Walkthrough
 
-Before you call an AI storage design ready for production, check two things. The first is the sizing worksheet, with its numbers. The second is an operational checklist that covers all seven layers of the data path. Platform teams need both before the first real job runs.
+Before you call an AI storage design ready for production, check two things. The first is the sizing worksheet, with its numbers. The second is an operational checklist that covers all seven layers of the data path. Platform teams need both before the first real job runs. A design can look right on paper and still fail on the first busy night, which is why the checklist exists.
+
+The checklist is most useful when a team runs it together. The storage engineer owns the capacity and fabric gates, the platform engineer owns the striping and checkpoint gates, and the training team owns the telemetry gate. Walking through the six gates in one room catches the gaps that each group would miss on its own.
+
+A short review meeting works well for this. Each owner reads the gates they are responsible for, shows the tool output, and names the number that gives them confidence. Gaps tend to appear in the handoff between owners, and a shared table makes those handoffs visible before the first job runs.
 
 ### 5.1 Worked Sizing Walkthrough: 256-GPU Distributed Training Cluster
 
 Suppose you are asked to architect the storage layer for a 256-GPU distributed training cluster. The cluster has shared training datasets, model checkpoints, and up to a hundred concurrent training jobs planned across research teams. The walkthrough below works through it in three steps.
 
-The first step is capacity. The active working set is five terabytes of datasets plus one terabyte of active checkpoint buffers. Adding thirty percent headroom gives a 7.8 TB minimum usable baseline. Enforce an automated lifecycle policy that keeps two rolling checkpoints per active job on warm flash, and tiers older checkpoints to cold S3 object storage.
+The first step is capacity. The active working set is five terabytes of datasets plus one terabyte of active checkpoint buffers. Adding thirty percent headroom gives a 7.8 TB minimum usable baseline. Enforce an automated lifecycle policy that keeps two rolling checkpoints per active job on warm flash, and tiers older checkpoints to cold S3 object storage. The policy is what stops the capacity number from growing with time.
 
 For the hardware, provision a twelve-node Lustre cluster. It has eight OST storage nodes, two MDS metadata nodes, one backup MDS, and one MGS management node. Using twelve-terabyte enterprise NVMe SSDs per OST provides 96 TB raw and 80 TB usable capacity.
 
@@ -391,11 +449,15 @@ The second step is bandwidth. Loading the dataset across concurrent job shards w
 
 The third step covers metadata and payback. Packaging the dataset into a thousand WebDataset `.tar` shards caps epoch-start file opens at a hundred thousand across all jobs. That stays well inside the ceiling of two Lustre MDTs. At roughly a hundred thousand dollars CapEx plus ten thousand dollars per year maintenance, the storage tier costs less than three percent of the annual compute wasted if an undersized NAS stalls the cluster.
 
-Run the same three checks, capacity, bandwidth, and metadata, against your own cluster before you commit to a layout.
+Run the same three checks, capacity, bandwidth, and metadata, against your own cluster before you commit to a layout. The numbers in this walkthrough are a worked example, so swap in your own datasets, job counts and drive sizes before you trust them.
+
+Read the walkthrough as a template. It shows the order of the arithmetic, from capacity to bandwidth to metadata, and each step feeds the next. When you change one input, such as the job count, trace the change through all three steps, because a larger job count can push the metadata and the bandwidth limits at the same time.
 
 ### 5.2 Production AI Storage Deployment Checklist
 
-The checklist turns the sizing work into six gates. Each gate names the requirement and the tool that proves it. Read the table as a sign-off list, not as a reference you skim.
+The checklist turns the sizing work into six gates. Each gate names the requirement and the tool that proves it. Read the table as a sign-off list, not as a reference you skim. A gate you cannot verify with the listed tool is not passed, even if the design looks correct.
+
+Use the verification column as the definition of done. If the team cannot run the named tool on the production system, the gate is still open. That rule feels strict, but it stops a design from passing on the strength of a diagram alone.
 
 | Verification Domain | Production Gate / Requirement | Verification Tool / Metric |
 |---|---|---|
@@ -408,13 +470,21 @@ The checklist turns the sizing work into six gates. Each gate names the requirem
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](../part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-Gate 6 is the one that ties everything together. It lets you put a price on idle GPU hours and trace them back to the storage numbers you sized.
+Gate 6 is the one that ties everything together. It lets you put a price on idle GPU hours and trace them back to the storage numbers you sized. If the other five gates pass and gate 6 fails, the design is sound on paper but nobody can prove what the stall costs.
+
+Gate 6 also gives you the feedback loop for the rest of the platform. Once the stall cost is measured, each later change to the storage design can be judged by the number it moves. Without that gate, every debate about storage ends in opinion.
 
 ---
 
 ## Commands and configurations that matter
 
 The commands below were not run on live hardware. Check each one against your own cluster and storage layout before you rely on its output.
+
+Run the commands in order from the top of each group. The first commands read state without changing it. The stripe command is the only one that changes a directory, and it affects only files written after it runs. Keep that difference in mind before you run anything on a shared path. The comments in each block mark the purpose of the command, so you can pick the one that matches the question in front of you.
+
+Before you run any benchmark on a production pool, check with the owners of that pool. A large sequential read or a write burst can slow other users, and a checkpoint benchmark writes real bytes that someone must later clean up. Start on a scratch directory, and keep the test small until you know what it does to the system.
+
+A small test also gives you a baseline. Once you know the number a quiet system produces, you can tell later whether a slowdown came from the pool or from a change you made.
 
 ### 1. Auditing Usable Capacity, Inode Headroom, and Target Skew
 
@@ -431,6 +501,8 @@ beegfs-ctl --serverstats --nodetype=meta --names
 lfs setstripe -S 4M -c 16 /mnt/lustre/checkpoints
 beegfs-ctl --setpattern --chunksize=2M --numtargets=12 /mnt/beegfs/checkpoints
 ```
+
+These checks answer one question each. The capacity command shows how full the pool is. The inode command shows whether you are running out of file slots, which can fail a save even when bytes remain. The target commands show whether one target is carrying more than its share. The stripe commands set the layout for the directories you are about to fill.
 
 ### 2. Measuring Sustained Read/Write Bandwidth and Metadata IOPS with `fio` and `gdsio`
 
@@ -457,6 +529,10 @@ fio --name=ckpt_write_burst \
 strace -f -c -e trace=openat,stat,newfstatat -p $(pgrep -n -f train.py)
 ```
 
+Run the benchmarks on a quiet system if you can. A busy filesystem gives you a number that reflects the neighbors, not the pool. The `gdsio` pair is the most revealing, because the only difference between the two lines is the path the data takes. If the CPU bounce path is close to the direct path, check whether GPUDirect Storage is really in use.
+
+A common surprise is that the direct path and the bounce path look similar, and the reason is a configuration problem, not a hardware limit. The GPUDirect Storage driver may not be loaded, or the filesystem may not support the direct path. Confirm the setup first, and then trust the comparison.
+
 ### 3. Executing the Deterministic Capacity, SuperPOD, and TCO Calculator
 
 The last command runs the chapter's pure-stdlib verification lab, which needs no packages beyond Python itself.
@@ -470,7 +546,7 @@ python3 -B code/part13/storage_capacity_cost_planning_lab.py
 
 ## How it fails
 
-The table lists six failure modes that show up in AI storage. You can use it as a troubleshooting map when a job slows down. For each one it gives the symptom you see, the root cause, the command that confirms it, and the architectural fix.
+A job slows down, and the dashboard shows nothing obvious. The table lists six failure modes that show up in AI storage. You can use it as a troubleshooting map when a job slows down. For each one it gives the symptom you see, the root cause, the command that confirms it, and the architectural fix.
 
 | Failure Mode | Observable Symptom | Root Cause | Diagnosis Command | Architectural Fix |
 |---|---|---|---|---|
@@ -481,7 +557,13 @@ The table lists six failure modes that show up in AI storage. You can use it as 
 | **5. Local NVMe Cache Eviction Thrashing** | Training runs fast in Epoch 2 (`2.1 min` wait, `98.2%` hit rate) but slows down in Epoch 3+ (`3.5+ min` wait) with heavy S3 or NAS re-downloads | Local NVMe cache occupancy crosses **85% fill** (`88%+`), causing LRU eviction of early-epoch shards before the next epoch reads them | Monitor local `/nvme/cache` capacity (`df -h /nvme`) and per-epoch cache hit counters | Partition dataset shards deterministically per rank (`my_files = all_files[rank::world_size]`) so each node's slice fits within `< 80%` of its local NVMe (`15.36 TB` on GB300) |
 | **6. Degraded Erasure Rebuild Starving GPUs** | A single failed `15.36 TB` or `61.44 TB` NVMe drive causes a `25%` drop in training throughput for `24–48 hours` | Storage cluster prioritizes parity reconstruction (`177.78–711.11 MB/s` per failed unit) without reserved rebuild bandwidth headroom | Check storage array rebuild progress and client read latency (`gdsio` / `ioping`) during degraded mode | Reserve **50% bandwidth headroom** and spare capacity so `24`-hour rebuilds (`177.78 MB/s` per `15.36 TB`) run inside the headroom envelope without throttling GPU reads |
 
-Notice how often the headroom rules appear in the fix column. Each one traces back to a dimension you sized earlier in this chapter. Start with the symptom you see, find the row, and work from its diagnosis command.
+Notice how often the headroom rules appear in the fix column. Each one traces back to a dimension you sized earlier in this chapter.
+
+That link is the main lesson of the table. A storage problem rarely appears as a storage graph. It appears as a GPU that waits, a job that runs late or a save that never finishes, and the headroom rule is the thing that tells you where to look first. Keep that link in mind when a dashboard looks calm but a job still runs slowly. That habit saves time on every incident. Start with the symptom you see, find the row, and work from its diagnosis command.
+
+Many incidents have more than one cause. A save can be slow because of a nearly full target and also because a rank is a straggler. When two rows match, collect the evidence for both, fix the one with the larger effect first, and then check the other. A fix that is not tied to a sized dimension is usually a guess, and a guess can cost more than the problem.
+
+When you read the table, ask two questions for each row. Does the symptom match what you see on the dashboard? Does the diagnosis command confirm the cause? Only when both answers are yes should you act on the fix in the last column. Acting on a fix before confirming the cause is how a storage incident becomes a longer incident.
 
 ---
 
@@ -491,11 +573,15 @@ Notice how often the headroom rules appear in the fix column. Each one traces ba
 
 You will run this lab in a local Python 3 environment. It uses no external packages, so any machine with Python 3 can run it. The lab runs `code/part13/storage_capacity_cost_planning.py` and `code/part13/storage_capacity_cost_planning_lab.py`.
 
-The goal is to verify all twenty-six quantitative models in this chapter. The checks cover six-dimension capacity, bandwidth, metadata, and burst sizing. They also cover NVIDIA DGX SuperPOD GB300 and B200 Standard versus Enhanced HPS sizing. The rest of the checks cover replication versus erasure coding raw flash and rebuild math, four-tier storage placement, and three-year TCO with idle-GPU stall ROI.
+The lab checks the quantitative models in this chapter. The checks cover six-dimension capacity, bandwidth, metadata, and burst sizing. They also cover NVIDIA DGX SuperPOD GB300 and B200 Standard versus Enhanced HPS sizing. The rest of the checks cover replication versus erasure coding raw flash and rebuild math, four-tier storage placement, and three-year TCO with idle-GPU stall ROI. Each check is a number you can recompute by hand, which is the point of the exercise.
+
+If you can reproduce a check on paper, you understand the model behind it. If you cannot, the code is doing something you have not yet learned, and that gap is worth closing before you trust the lab for a purchase decision.
 
 ### Step 1: Run the Verification Lab
 
 Run the lab with the command below. Its output tells you whether the chapter's numbers reproduce on your machine.
+
+If the output matches the expected block, you have confirmed that the chapter's arithmetic is internally consistent. That does not prove the hardware will behave the same way, so treat the lab as a check on the math and the benchmarks as the check on the hardware.
 
 ```bash
 python3 -B code/part13/storage_capacity_cost_planning_lab.py
@@ -537,32 +623,48 @@ If the lab works, the output looks like the block below. You should see one PASS
 Summary: 26 passed, 0 failed
 ```
 
-A FAIL line means one of the chapter's models does not reproduce on your machine. Find that check and recheck its inputs before you move on to the exercises.
+A FAIL line means one of the chapter's models does not reproduce on your machine. Find that check and recheck its inputs before you move on to the exercises. Most failures come from a changed input or a units slip, not from the model itself.
+
+Units are the most common trap. Megabytes and gigabytes, bits and bytes, per second and per hour all look similar on a page. When a check fails, write down the units of every input before you change anything else.
 
 ---
 
 ## Common first mistakes
 
-1. **Sizing storage for average bandwidth instead of the worst sixty seconds of every epoch:** It is tempting to divide the dataset size by the epoch duration and buy a slow NAS. The trouble comes at epoch startup or during a synchronous checkpoint burst. At those moments the NAS saturates and leaves millions of dollars of GPUs sitting idle.
-2. **Confusing raw flash capacity with usable capacity under the ninety percent fill limit:** Suppose you order one petabyte of raw flash under two-way replication. You get half a petabyte of formatted space. Subtract the mandatory thirty percent free-space headroom, which keeps fill away from the ninety percent limit, and the safe usable capacity is only about 385 TB.
-3. **Treating local NVMe RAID 0 scratch as durable storage:** Think of local NVMe drives as ephemeral hot caches. They hold active epoch shards and asynchronous checkpoint staging. If a compute tray or power shelf fails before the background daemon flushes the checkpoint to shared storage, that unflushed state is lost. Always keep at least the last two verified checkpoints on durable shared storage before you delete local copies.
-4. **Confusing active training memory with persistent checkpoint size:** The two numbers look alike, but they are not the same. Mixed-precision AdamW holds sixteen bytes per parameter in GPU HBM during backprop, because two-byte BF16 gradients are present. A checkpoint omits those gradients, so it stores fourteen bytes per parameter.
-5. **Evaluating storage CapEx in isolation from idle-GPU opportunity cost:** Rejecting an eighty to hundred thousand dollar parallel filesystem upgrade can look like saving money. But if you allow a five to ten percent data stall on a 128-GPU cluster, you waste hundreds of thousands to millions of dollars per year in idle GPU compute.
+1. Sizing storage for average bandwidth instead of the worst sixty seconds of every epoch: It is tempting to divide the dataset size by the epoch duration and buy a slow NAS. The trouble comes at epoch startup or during a synchronous checkpoint burst. At those moments the NAS saturates and leaves millions of dollars of GPUs sitting idle. Average numbers hide the peaks that actually stall the cluster.
+
+This is the same lesson as the epoch-start storm. A chart of the average shows a calm storage system, while the stall happens in a short window that the average smooths away. Look at the worst minute, not the mean, when you test a design.
+2. Confusing raw flash capacity with usable capacity under the ninety percent fill limit: Suppose you order one petabyte of raw flash under two-way replication. You get half a petabyte of formatted space. Subtract the mandatory thirty percent free-space headroom, which keeps fill away from the ninety percent limit, and the safe usable capacity is only about 385 TB.
+3. Treating local NVMe RAID 0 scratch as durable storage: Think of local NVMe drives as ephemeral hot caches. They hold active epoch shards and asynchronous checkpoint staging. If a compute tray or power shelf fails before the background daemon flushes the checkpoint to shared storage, that unflushed state is lost. Always keep at least the last two verified checkpoints on durable shared storage before you delete local copies.
+4. Confusing active training memory with persistent checkpoint size: The two numbers look alike, but they are not the same. Mixed-precision AdamW holds sixteen bytes per parameter in GPU HBM during backprop, because two-byte BF16 gradients are present. A checkpoint omits those gradients, so it stores fourteen bytes per parameter. Quoting the wrong one makes either the memory plan or the storage plan wrong.
+5. Evaluating storage CapEx in isolation from idle-GPU opportunity cost: Rejecting an eighty to hundred thousand dollar parallel filesystem upgrade can look like saving money. But if you allow a five to ten percent data stall on a 128-GPU cluster, you waste hundreds of thousands to millions of dollars per year in idle GPU compute.
 
 Before you approve a storage purchase, check the cost of idle GPUs next to the price of the hardware.
+
+A short habit helps here. Before the purchase meeting, write the idle-GPU cost on the same slide as the hardware price. When both numbers sit side by side, the decision usually becomes clear within a few minutes, and the team stops arguing about the price of disks alone.
+
+The same slide is useful after the purchase too. When the stall figure drops, the team can see the return on the money in the same units they used to justify it.
 
 ---
 
 ## Exercises
 
-Work through these six exercises with the lab script open. Each one names a function or model that already exists in the chapter's code, so you can check your hand arithmetic against the lab output.
+Work through these six exercises with the lab script open. Each one names a function or model that already exists in the chapter's code, so you can check your hand arithmetic against the lab output. Do the arithmetic on paper first, then compare.
 
-1. Start with the 1.3B-parameter run. Call `calculate_usable_capacity_plan()` to get the subtotal, the thirty percent headroom, and the total usable capacity. Then call `evaluate_four_tier_storage_budget()` for the annual cost and the blended monthly rate across the four tiers, along with the monthly cost of S3 Standard.
-2. Work out the sustained read bandwidth at 200 MB/s per GPU for an eight-GPU node, a 64-GPU cluster, and a 72-GPU NVL72 rack. Then test three concurrent jobs that each load 100 GB in thirty seconds against Lustre, BeeGFS, and NFS. Finally, calculate the per-epoch metadata operations, the peak opens per second, the MDS capacity you need with forty percent headroom, and the sharded rate after WebDataset packaging.
-3. Take a 70B model across sixty-four GPUs on eight nodes. Calculate the total checkpoint size, the training memory, the per-GPU shard, and the per-node shard. Then compare a synchronous network write with local NVMe staging, work out the node staging time, and apply the burst overbuild rule.
-4. Use `size_superpod_storage_by_su()` to find the racks, GPUs, compute trays, local RAID 0 NVMe scratch, TDP, storage fabric links, and Standard versus Enhanced bandwidth for DGX GB300 NVL72. Then work out the systems, GPUs, and power for one and four Scalable Units on DGX B200, and account for the UFM appliance that displaces one server.
-5. Use `calculate_raw_from_usable_capacity()` to find the efficiency, the raw multiplier, the required raw flash, and the parity or mirror overhead for one petabyte of usable capacity. Do this for each replication and erasure coding scheme in the table. Then calculate the minimum sustained rebuild bandwidth needed to reconstruct a failed drive or storage sled within twenty-four hours.
-6. For the 128-GPU A100 cluster, calculate the hourly burn rate, the ten percent stall waste, the upgrade payback period, and the annual savings of Option A versus Option B. Then compute the per-GPU-year cost, the storage share of CapEx and TCO, the three-year TCO of parallel storage, the fleet refresh amortization, and the Spot instance percentage savings.
+Writing each step on paper also helps you notice when an input looks wrong, such as a capacity that is smaller than the dataset it has to hold.
+
+1. Start with the 1.3B-parameter run. Call `calculate_usable_capacity_plan()` and note the subtotal. Next, note the thirty percent headroom. Then note the total usable capacity.
+   Call `evaluate_four_tier_storage_budget()` next. What is the annual cost? What is the blended monthly rate across the four tiers? Finally, find the monthly cost of S3 Standard.
+2. Your cluster has to read data fast enough to keep every GPU busy. Start with 200 MB/s per GPU. Work out the sustained read bandwidth for an eight-GPU node. Do the same for a 64-GPU cluster. Then do the same for a 72-GPU NVL72 rack.
+   Next, test three concurrent jobs. Each job loads 100 GB in thirty seconds. Check whether Lustre, BeeGFS, and NFS can carry that load. Then calculate the per-epoch metadata operations. Find the peak opens per second. Calculate the MDS capacity you need with forty percent headroom. Finally, calculate the sharded rate after WebDataset packaging.
+3. A 70B model trains across sixty-four GPUs on eight nodes. Calculate the total checkpoint size. Next, calculate the training memory. Then find the per-GPU shard. Find the per-node shard too.
+   Now compare a synchronous network write with local NVMe staging. Work out the node staging time. Finally, apply the burst overbuild rule.
+4. Call `size_superpod_storage_by_su()` for a DGX GB300 NVL72 build. Read off the racks and the GPUs. Then read off the compute trays. Next, find the local RAID 0 NVMe scratch, the TDP, and the storage fabric links. Last, compare the Standard and Enhanced bandwidth.
+   Switch to DGX B200 next. Work out the systems, GPUs, and power for one Scalable Unit. Then do the same for four Scalable Units. Finally, account for the UFM appliance, which displaces one server.
+5. Your team needs one petabyte of usable capacity. Call `calculate_raw_from_usable_capacity()` for that target. Read off the efficiency and the raw multiplier. Then read off the required raw flash and the parity or mirror overhead.
+   Repeat this for each replication and erasure coding scheme in the table. A drive or sled has failed, and you must rebuild it within twenty-four hours. Calculate the minimum sustained rebuild bandwidth you need.
+6. Your budget owner asks what a 128-GPU A100 cluster costs. Start with the hourly burn rate. Next, calculate the ten percent stall waste. Then work out the upgrade payback period.
+   Compare Option A with Option B. Find the annual savings. Then compute the per-GPU-year cost. Next, find the storage share of CapEx and of TCO. Calculate the three-year TCO of parallel storage. Work out the fleet refresh amortization. Finally, find the Spot instance percentage savings.
 
 ```text
 Exercise Input Parameters & Expected Verification Targets (code/part13/storage_capacity_cost_planning_lab.py):
@@ -582,7 +684,9 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/storage_c
                            1,200-GPU factory ($70.2M TCO) = $19.5K/GPU-yr, $2.0M storage = 4.55% CapEx / 2.85% TCO; 1 PB 3-yr TCO = $2,770,294.40 ($76.95/TB-mo); 1,612 GPU-yr refresh ($28.8M) = $17,866.00/GPU-yr; Spot $21 vs $60 = 65.0% savings.
 ```
 
-Compare each result with the matching line in the block. If a number differs, recheck your inputs before you trust the result.
+Compare each result with the matching line in the block. If a number differs, recheck your inputs before you trust the result. Start with the exercises that touch only one model, because they are the fastest way to check your units.
+
+If an answer is off by a large factor, check the units before you check the logic. A result that is a thousand times too big or too small is almost always a conversion between megabytes and gigabytes or between seconds and hours.
 
 ---
 
@@ -599,8 +703,6 @@ Compare each result with the matching line in the block. If a number differs, re
 
 4. **"How does erasure coding change your raw flash purchase for a 1 PB usable AI cluster compared to replication, and what operational risk does it introduce?"**
    With three-way or two-way replication, one petabyte of usable capacity needs three petabytes or two petabytes of raw flash. Modern parallel filesystems use distributed erasure coding instead, such as WekaFS 6+2 or 16+2, Lustre ZFS 8+2, or VAST DASE 146+4. Those schemes bring the required raw flash down to between 1,333.33 TB and 1,027.40 TB. The operational trade-off is degraded-mode parity reconstruction. You must reserve spare capacity and fifty percent network bandwidth headroom, so drive rebuilds finish within twenty-four hours without starving active GPU training jobs.
-
----
 
 ## Checkpoint questions (20)
 

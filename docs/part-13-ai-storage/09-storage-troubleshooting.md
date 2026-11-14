@@ -23,13 +23,17 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-If you have ever watched a training run slow from 2 hours to 8 hours, you know how expensive guessing can be. Every minute spent poking at the storage array burns accelerator time. A GPU that sits idle while it waits on a stalled file lookup costs the same hourly rate as one running at full speed. The trouble is that a production AI storage path crosses eight distinct hardware and software layers. Those layers run from GPU memory and PCIe interconnects down through host CPU queues, local NVMe drives, client filesystems, network switches, metadata servers, and storage targets.
+Picture a training run that used to finish in 2 hours and now takes 8 hours. Nothing in the job looks different on paper, and the team starts guessing. You may know this feeling already. Every minute spent poking at the storage array burns accelerator time, because GPUs are billed by the hour whether they are working or waiting. A GPU that sits idle while it waits on a stalled file lookup costs the same hourly rate as one running at full speed.
 
-Without an ordered diagnostic sequence, teams misdiagnose storage incidents and fix the wrong layer. Some teams scale out storage bandwidth when the real culprit is a small-file metadata storm that wastes 47 minutes of every training epoch. Others tune PyTorch worker counts while a tiny network ring buffer silently drops hundreds of packets under multi-job congestion. Still others assume GPUDirect Storage is bypassing the host CPU, when an alignment mismatch has forced the driver back into slow host memory copies.
+The trouble is that a production AI storage path is long. It crosses eight distinct hardware and software layers. Each layer is one stage of the trip that a byte of training data takes. Those layers run from GPU memory and PCIe (Peripheral Component Interconnect Express, the wiring between the CPU, the GPU, and other cards) down through host CPU queues, local NVMe drives (solid-state drives that sit inside the server, on the fast NVMe interface), client filesystems, network switches, metadata servers, and storage targets.
 
-Teams also make the opposite mistake, and blame storage when the array is completely healthy. Suppose an eight-GPU job scales poorly because collective communication runs over PCIe instead of NVLink. Storage tuning will not save a single millisecond in that case. You need a fast, falsifiable test that separates GPU compute limits, network collective bottlenecks, and true storage starvation before you change any cluster configuration.
+Think about what happens without an ordered sequence. Each engineer picks the layer they know best, and each one fixes a real problem that is not the cause. Teams misdiagnose storage incidents this way and end up fixing the wrong layer. Some teams scale out storage bandwidth when the real culprit is a small-file metadata storm. That storm can waste 47 minutes of every training epoch, and adding bandwidth does nothing for it. Others tune PyTorch worker counts while a tiny network ring buffer silently drops hundreds of packets under multi-job congestion. A ring buffer is the queue where the network card holds incoming packets before the operating system reads them, so a small one overflows under load. Still others assume GPUDirect Storage is bypassing the host CPU. An alignment mismatch can force the driver back into slow host memory copies, and nobody sees an error.
 
-This final chapter of Part 13 turns the entire AI storage stack into an operational runbook. You will learn to capture a five-minute golden baseline before incidents happen. Then you will walk an eight-layer decision tree from the GPU backward to the storage media. You will also run batch-size scaling experiments to separate network communication from compute, audit GPUDirect Storage for silent fallbacks, and resolve six major production storage failures.
+Teams also make the opposite mistake. They blame storage when the array is completely healthy. Suppose an eight-GPU job scales poorly because the GPUs talk to each other, through a collective communication step, over PCIe instead of NVLink. NVLink is NVIDIA's faster link between GPUs inside one server. In that case, storage tuning will not save a single millisecond. What you need is a fast test that can prove you wrong. The test should separate GPU compute limits, network collective bottlenecks (slowdowns in the group exchanges between GPUs, such as gradient averaging), and true storage starvation. Run it before you change any cluster configuration.
+
+Both mistakes come from the same place. Each one picks a favorite suspect before the evidence arrives. A falsifiable test keeps the favorite out of the discussion until the numbers can speak.
+
+This is the last chapter of Part 13, and it turns the whole AI storage stack into a runbook you can follow during an incident. The chapter starts before any incident, with a five-minute golden baseline (a snapshot of a healthy node that you can compare against later). From there it walks an eight-layer decision tree, moving from the GPU backward to the storage media. It then shows how batch-size scaling experiments separate network communication from compute, how to audit GPUDirect Storage for silent fallbacks, and how to resolve six major production storage failures.
 
 ```text
 Incident Triage Reference Metrics:
@@ -44,15 +48,9 @@ Incident Triage Reference Metrics:
 
 ## Prerequisites and outcomes
 
-Before you start, you should be comfortable with three earlier topics. The first is the seven-stage AI storage data path, local NVMe staging, and Linux block queue tuning from Chapters 13.1 and 13.2. The second is GPUDirect Storage itself, including `cuFile`, `nvidia-fs.ko`, `/proc/driver/nvidia-fs/stats`, direct I/O alignment rules, and `gdsio` from Chapter 13.3. The third is familiarity with Lustre, BeeGFS, WekaFS, VAST Data, DeepSeek 3FS, WebDataset repackaging, and asynchronous checkpoint recovery from Chapters 13.4 through 13.8.
+Before you start, it helps to know three earlier topics, because each one feeds the tools used here. The first is the seven-stage AI storage data path, the local NVMe staging step (copying data onto a drive inside the server), and Linux block queue tuning. Those come from Chapters 13.1 and 13.2. The second is GPUDirect Storage itself. That covers `cuFile`, `nvidia-fs.ko`, `/proc/driver/nvidia-fs/stats`, direct I/O alignment rules (the rules for where data must start and how big each read must be, so the device can use direct I/O), and `gdsio`, all from Chapter 13.3. The third is a working familiarity with Lustre, BeeGFS, WekaFS, VAST Data, DeepSeek 3FS, WebDataset repackaging, and asynchronous checkpoint recovery, which come from Chapters 13.4 through 13.8. Each one is a short reminder of a tool that comes back later in the chapter.
 
-When you finish this chapter, you will be able to do five things:
-
-1. Walk the eight-layer storage decision tree from GPU utilization and queue depth down to host CPU, metadata, network, targets, local NVMe, and PCIe topology.
-2. Run the batch-size scaling experiment to separate communication from compute bottlenecks, and correlate Nsight Systems, Nsight Compute, PyTorch Profiler, and Holistic Trace Analysis timelines.
-3. Capture a reproducible five-minute golden baseline across network links, PCIe affinity, local NVMe drives, and shared parallel filesystems across four standard AI workload profiles.
-4. Audit GPUDirect Storage in production to catch silent POSIX compatibility fallbacks, and apply the 20 percent throughput uplift rule before deploying direct DMA.
-5. Diagnose and fix six major production storage failures: ring-buffer drops, small-file metadata storms, checkpoint stalls, Lustre target skew, local NVMe faults, and NFS mount errors.
+This chapter follows the order you would use during an incident. It starts with the eight-layer storage decision tree, which runs from GPU utilization and queue depth down to host CPU, metadata, network, targets, local NVMe, and PCIe topology. Next comes the batch-size scaling experiment, which separates communication from compute bottlenecks. Its results are read alongside Nsight Systems, Nsight Compute, PyTorch Profiler, and Holistic Trace Analysis timelines. After that, the chapter captures a reproducible five-minute golden baseline across network links, PCIe affinity, local NVMe drives, and shared parallel filesystems, covering four standard AI workload profiles. Then it audits GPUDirect Storage for silent POSIX compatibility fallbacks (POSIX is the standard file API that ordinary Linux programs use), and it applies the 20 percent throughput uplift rule before deploying direct DMA (direct memory access, where the device copies data without the CPU doing the copying). Last, it diagnoses and fixes six major production storage failures: ring-buffer drops, small-file metadata storms, checkpoint stalls, Lustre target skew, local NVMe faults, and NFS mount errors.
 
 ---
 
@@ -60,13 +58,15 @@ When you finish this chapter, you will be able to do five things:
 
 ## 1. The Eight-Layer AI Storage Troubleshooting Decision Tree
 
-When a training job stalls or loses more than half of its throughput, your first instinct may point at the storage array. Resist it. The cardinal rule of production troubleshooting is simple: never start at the storage array. Start at the GPU, and walk backward toward the storage media one falsifiable signal at a time.
+Picture a training job that stalls in the middle of the night, or loses more than half of its throughput. Your first instinct may point at the storage array, since it is the component most people blame first. Resist it. The cardinal rule of production troubleshooting is simple: never start at the storage array. Start at the GPU instead, and walk backward toward the storage media, one falsifiable signal at a time. A falsifiable signal is a measurement that can prove your guess wrong. If a measurement cannot prove you wrong, it is not much help.
 
-Suppose the GPU is already 94 percent busy in a matrix kernel. If you guess that Lustre is slow anyway, you lose hours of incident response time. Adding more DataLoader workers while a top-of-rack switch drops packets only makes the congestion worse. Checking eight ordered gates, from the accelerator down to the PCIe root complex, lets you rule out whole subsystems in minutes.
+Suppose the GPU is already 94 percent busy in a matrix kernel (the small program the GPU runs for matrix math). The GPU is clearly not waiting on storage. If you guess that Lustre is slow anyway, you can lose hours of incident response time. Adding more DataLoader workers (the processes that prepare batches for training) while a top-of-rack switch drops packets only makes the congestion worse. Checking eight ordered gates, from the accelerator down to the PCIe root complex, lets you rule out whole subsystems in minutes. Each gate answers one yes-or-no question, so you never have to guess which subsystem is responsible.
 
 ### 1.1 The End-to-End Decision Tree
 
-Read the diagram from the top. Each question either points you at a likely cause or sends you on to the next gate.
+Read the diagram from the top, the way you would read a checklist. Each question either points you at a likely cause or sends you on to the next gate. The labels inside the boxes name the command to run, so you can work through the diagram at the terminal while you read it.
+
+The tree has eight layers because each one is a place where production incidents have hidden before. A shorter tree would be quicker to read, but it would send you to the wrong place more often.
 
 ```mermaid
 flowchart TD
@@ -100,7 +100,7 @@ flowchart TD
     Q6 -->|"No (healthy)"| PCIe
 ```
 
-The table turns each gate into a lookup. It shows what to ask, what to run, what healthy looks like, what a fault looks like, and what to do about it.
+The table turns each gate into a lookup you can scan under pressure. The first column names the layer, and the second asks the diagnostic question. Then come the command to run, the healthy baseline, the fault signature, and the immediate fix. Read one row at a time, and compare what you measured with the healthy column before you decide anything.
 
 | Layer | Diagnostic Question | Primary Telemetry Command | Healthy Baseline | Fault Signature | Immediate Remediation |
 |---|---|---|---|---|---|
@@ -113,11 +113,15 @@ The table turns each gate into a lookup. It shows what to ask, what to run, what
 | **7. Local NVMe Cache (Scratch)** | Is the node-local NVMe cache evicting hot shards, thermal throttling, or failing? | `df -h /local-nvme`, `iostat -xz 1`, `nvme smart-log /dev/nvme0n1`, `smartctl -a` | Fill `< 85%`; temp `< 70 C`; `0` media errors; `3.5 GB/s` sequential read | Fill `>= 85%` (`88%` LRU thrashing); temp `>= 80 C` (`0.65 GB/s`); RAID 0 member failed | Expand scratch capacity, clean stale checkpoints, improve chassis airflow, or rebuild failed RAID 0 member and re-stage. |
 | **8. PCIe / NUMA / GDS Path** | Is traffic crossing inter-socket links (`SYS`/`NODE`) or silently bypassing GDS? | `nvidia-smi topo -m`, `/proc/driver/nvidia-fs/stats`, `numactl --hardware` | `PIX`/`PXB` affinity; `nvidia-fs` `Ops Read` climbing; loader pinned to GPU NUMA node | `SYS` cross-socket hop; `nvidia-fs` counters flat (`0` delta); CPU bounce active | Bind process with `numactl -N <node> -m <node>`, fix `4 KiB`/`8 KiB` alignment, and verify `/etc/cufile.json`. |
 
-Notice that the first gate alone decides whether the next hour goes to the GPU or to storage.
+Notice that the first gate alone decides where the next hour of work goes, either to the GPU or to storage. That is why it comes first.
+
+Keep the diagram open beside the table during your first few incidents. The diagram tells you where to go next. The table tells you which command to type and what the answer should look like. Experienced engineers often stop looking at the diagram after a while, because the order becomes second nature. The table stays useful longer, since it holds exact thresholds that memory tends to blur.
 
 ### 1.2 Why Layer Order Matters: Avoiding False Positives
 
-Consider an engineer who skips the first two gates and runs `python -m cProfile -s cumtime train.py` straight away. The profile looks damning at first glance. It shows more than a hundred thousand calls to image open and augmentation functions, which take nearly a minute of cumulative CPU time.
+Consider an engineer who skips the first two gates and runs `python -m cProfile -s cumtime train.py` straight away. cProfile is Python's built-in profiler, and it records how much time each function takes. The profile looks damning at first glance. It shows more than a hundred thousand calls to image open and augmentation functions, which take nearly a minute of cumulative CPU time. Cumulative time means the total spent in a function, including the functions it calls. It is easy to read that number as proof that the CPU is the bottleneck.
+
+Notice that the profile was accurate. Every number in it was correct. The mistake was in the question the engineer asked of it. The engineer asked where the time went, when the useful question was why the GPU was waiting.
 
 ```text
    ncalls  tottime  cumtime  filename:lineno(function)
@@ -126,31 +130,39 @@ Consider an engineer who skips the first two gates and runs `python -m cProfile 
    Total cumulative decode + augment time: 45.2 s + 12.1 s = 57.3 s (~57 s across 120,000 calls, or 0.48 ms/image)
 ```
 
-That engineer could spend two days rewriting the augmentation pipeline in C++ or NVIDIA DALI, and the effort would produce zero improvement in job runtime. The early gates disprove the CPU theory immediately. Gate 1, checked with `nvidia-smi dmon`, shows GPU SM utilization at 15 percent instead of its healthy 92 percent baseline. Gate 2, checked with `prefetch_queue.qsize()`, shows the host prefetch queue completely empty 80 percent of the time.
+That engineer could spend two days rewriting the augmentation pipeline in C++ or NVIDIA DALI (a GPU-accelerated data loading library), and the effort would produce zero improvement in job runtime. The early gates disprove the CPU theory in minutes. Gate 1 is checked with `nvidia-smi dmon`, which samples the GPU's activity counters. It shows GPU SM utilization at 15 percent. SM stands for streaming multiprocessor, the unit inside the GPU that runs the work. The healthy baseline is 92 percent. Gate 2 is checked with `prefetch_queue.qsize()`. That call reports how many ready batches are waiting in the host prefetch queue. The queue is completely empty 80 percent of the time.
 
-Think about what that pattern means. If CPU decoding were the real limit after fast storage reads, raw file buffers would pile up in worker queues, waiting for CPU threads. Instead, worker threads sit in uninterruptible kernel sleep, waiting for network and filesystem calls to return before `Image.open` can even run. Run the early gates before you touch code that sits near the end of the pipeline.
+Think about what that pattern means. If CPU decoding were the real limit after fast storage reads, raw file buffers would pile up in the worker queues, waiting for a free CPU thread. The queue would be full, not empty. Instead, the worker threads sit in uninterruptible kernel sleep. That is a state where a thread waits inside the kernel and cannot be woken by a signal. Here the threads wait for network and filesystem calls to return before `Image.open` can even run. The pattern points at the storage path, not at the decoder. Run the early gates before you touch code that sits near the end of the pipeline.
+
+The early gates also save time in a quieter way. A profile can be correct and still point at the wrong layer. Checking the GPU and the queue first keeps the profile in its proper place, as one clue among several.
+
+Wrong fixes also leave scars. A rewritten augmentation pipeline has to be tested, reviewed, and maintained, and then it gets rolled back once the real fix lands. The team loses both the time and the trust of the people who waited for the result. Early gates protect the code as well as the calendar.
 
 ---
 
 ## 2. Separating Compute, Collective Communication, and Storage I/O Bottlenecks
 
-Before you dig into filesystem counters, prove that the slowdown is not caused by GPU compute kernels or by multi-GPU collective communication. Consider a data-parallel job that scales from 1 GPU to 8 GPUs. Ideal linear scaling delivers 8x throughput. If 8 GPUs deliver only 5x, the job reaches 62.5 percent scaling efficiency. The remaining 37.5 percent of cluster capacity is lost to synchronization, network collectives, or I/O stalls.
+Before you dig into filesystem counters, prove that the slowdown is not caused by GPU compute kernels or by multi-GPU collective communication. A kernel is the small program a GPU runs for one operation. Consider a data-parallel job, one that copies the model onto every GPU and gives each copy a different slice of the data. It scales from 1 GPU to 8 GPUs. Ideal linear scaling delivers 8x throughput, which means eight times the work in the same time. If 8 GPUs deliver only 5x, the job reaches 62.5 percent scaling efficiency. Scaling efficiency is the speedup you got divided by the speedup you hoped for. The remaining 37.5 percent of cluster capacity is lost to synchronization, network collectives, or I/O stalls.
+
+A useful way to hold this in your head is to ask who is idle. When the GPUs are idle, the wait is in the input or the network. When the GPUs are busy and the network is idle, the wait is in the compute.
 
 ### 2.1 The Batch-Size Halving and Doubling Diagnostic
 
-During the backward pass, NCCL runs an AllReduce collective to average gradients across all ranks. Suppose you watch the network interface and see gradient AllReduce sustaining 60 GB/s on a 100 GB/s NIC. You need to know whether the fabric is congested and capping throughput at 60 GB/s. The other possibility is that the GPUs compute backward passes too slowly to feed the NIC any faster.
+During the backward pass, NCCL (NVIDIA's library for collective communication between GPUs) runs an AllReduce collective to average gradients across all ranks. A rank is one process, usually one GPU. Suppose you watch the network interface card (NIC, the network adapter in the server) and see gradient AllReduce sustaining 60 GB/s on a 100 GB/s NIC. You need to know whether the fabric is congested and capping throughput at 60 GB/s. The other possibility is that the GPUs compute backward passes too slowly to feed the NIC any faster. Both explanations produce the same number on the dashboard, so the number alone cannot settle the question.
 
-You can separate the two without touching a single switch. The trick rests on an invariant of data-parallel training. The byte volume of a gradient AllReduce depends strictly on the number of model parameters, not on the micro-batch size. The formula below shows it.
+You can separate the two without touching a single switch. The trick rests on an invariant, which is a fact that does not change when you change the batch size. For data-parallel training, the byte volume of a gradient AllReduce depends only on the number of model parameters. The micro-batch size, which is the number of examples each GPU processes per step, does not enter the formula. The formula below shows it.
 
 ```text
 Bytes_AllReduce = 2 x ((N - 1) / N) x |Theta| x sizeof(grad)    (strictly independent of micro-batch size B)
 ```
 
-That invariant gives you a clean experiment. Hold the model constant and halve or double the micro-batch size. Each change alters the GPU compute work per step, while the network bytes per step stay fixed. If halving the batch size leaves NIC throughput pinned at 60 GB/s, the fabric is the ceiling. Even when the GPUs finish backward compute twice as fast, the network cannot push more than 60 GB/s, so the job is communication-bound.
+That invariant gives you a clean experiment. Hold the model constant and halve or double the micro-batch size. Each change alters the GPU compute work per step. The network bytes per step stay fixed, though. Think of it as a truck that carries the same load no matter how fast the factory runs. If halving the batch size leaves NIC throughput pinned at 60 GB/s, the fabric is the ceiling. Even when the GPUs finish backward compute twice as fast, the network cannot push more than 60 GB/s, so the job is communication-bound.
 
-If halving the batch size drops NIC throughput from 60 GB/s to 40 GB/s, the network had plenty of headroom, and the job is compute-bound. Doubling the batch size confirms the diagnosis from the other direction. Compute work doubles while AllReduce bytes stay constant, so the share of step time spent in AllReduce shrinks from 50 percent to 33.33 percent.
+This is a good example of a controlled experiment. Only one thing moves at a time, and the number you care about is the one you watch.
 
-The flowchart traces both branches of the experiment.
+If halving the batch size drops NIC throughput from 60 GB/s to 40 GB/s, the network had plenty of headroom. The GPUs were the slow part, so the job is compute-bound. Doubling the batch size confirms the diagnosis from the other direction. Compute work doubles while AllReduce bytes stay constant. That means the share of step time spent in AllReduce shrinks from 50 percent to 33.33 percent, because the same communication now sits behind more compute.
+
+The flowchart below traces both branches of the experiment. Read the top box first, then follow the branch that matches what your monitoring shows.
 
 ```mermaid
 flowchart LR
@@ -168,7 +180,7 @@ flowchart LR
     Double -->|"Comm % drops (50% -> 33.3%)"| Comp
 ```
 
-The table lists what each run should look like under each regime.
+The table below lists what each run should look like under each regime. Use it as a lookup after you run the experiment. Each column is one kind of limit, and each row is one experiment.
 
 | Diagnostic Experiment | Communication-Bound Signature (Network / NCCL Limiter) | Compute-Bound Signature (GPU SM Limiter) | Storage / Data-Loading Bound Signature (I/O Limiter) |
 |---|---|---|---|
@@ -177,11 +189,13 @@ The table lists what each run should look like under each regime.
 | **Double batch size (`2.0x` batch size)** | NIC throughput stays at `60 GB/s` | Relative share of step time in AllReduce shrinks (`50.0% -> 33.33%`, `50 ms / 150 ms`) | Sequential read bytes per batch double; `iostat` `rMB/s` or OST bandwidth saturates |
 | **Topology-aware NCCL + overlap fix** | Moving AllReduce from PCIe to NVLink plus stream overlap raises SM busy `60% -> 90%` and cuts step time `100 ms -> 70 ms` (`-30%`) | Use FP8 or BF16 Tensor Cores, kernel fusion (`torch.compile`), or CUTLASS | Repackage small files (WebDataset), enable GDS, stage to local NVMe, or widen OST striping |
 
-Let the NIC number decide whether you chase the network or the GPUs.
+Let the NIC number decide where you spend your next hour. If it does not move when the batch size changes, the network is the limit. If it falls, the GPUs are the limit.
+
+Read the three columns of the table as three suspects. The communication column says the network is holding the job back. The compute column says the GPUs are the limit. The storage column says the input pipeline starves the GPUs before any compute starts. Only one column should match your measurements. If two columns seem to match, collect one more measurement before you change anything, such as the batch-size test at a third setting.
 
 ### 2.2 Multi-Level Profiling Stack
 
-Once the decision tree and the batch-size test show which regime dominates, pick the profiler that watches that exact layer. A kernel-level profiler only produces noise when the process is asleep on disk I/O. The table lists each tool with the question it answers.
+Once the decision tree and the batch-size test show which regime dominates, pick the profiler that watches that exact layer. A kernel-level profiler only produces noise when the process is asleep on disk I/O, because there is no GPU kernel to look at while the process waits. A profiler is a tool that records where time goes. The table below lists each tool with the question it answers, so you can match the question to the tool.
 
 | Tool | Scope | Key Command / API | What It Proves During Storage & Pipeline Triage |
 |---|---|---|---|
@@ -192,17 +206,23 @@ Once the decision tree and the batch-size test show which regime dominates, pick
 | **Linux `perf`** | Host CPU hardware PMU counters & off-CPU sleep | `perf record -g python train.py && perf report` and `perf sched` | Detects `__memcpy_avx2` (`> 20%` proves CPU bounce buffer and inactive GDS), Python GIL contention, image decode hotspots, and off-CPU `D`-state I/O sleep. |
 | **Linux Block & Process I/O (`iostat`, `iotop`, `pidstat`)** | Block device queues, latencies, and per-PID I/O | `iostat -xz 1`, `iotop -b -n 5`, `pidstat -d 1`, `nvme-cli` | Measures local NVMe `%util`, `r_await`/`w_await` (`ms`), `aqu-sz` queue depth, `rMB/s`, `wMB/s`, and isolates noisy-neighbor processes saturating disks. |
 
-Choose the tool that matches the layer the batch-size test pointed at, and leave the others for later.
+Choose the tool that matches the layer the batch-size test pointed at. Leave the others for later, because a second profiler run on the wrong layer only adds data you do not need.
+
+If you are unsure which tool fits, go back to the batch-size result. The result tells you which layer to look at, and the layer tells you the tool.
+
+A useful habit is to write the question on a sticky note before you open the profiler. For example, the question might be whether the GPU waits on the disk or on the network. Then the profiler has one job, and you can stop once it answers that question.
+
+Profilers also work well as a pair. A system-wide timeline shows when the GPU went quiet, while a single-kernel counter shows why one kernel was slow. Use the timeline first to find the quiet window. Then zoom in with the counter tool that matches the layer you suspect. Opening the kernel view first often shows a healthy kernel, because the kernel was never the problem.
 
 ---
 
 ## 3. Evidence Gathering: The 5-Minute Golden Baseline
 
-A slow storage path is hard to diagnose during an outage if you never measured a healthy one. Think of the golden baseline as a photograph of the node on a good day. Before you launch production workloads, capture a reproducible five-minute baseline and save it as `healthy.txt`. It covers five domains: network and PCIe topology, filesystem mounts and target health, raw network versus storage bandwidth, local NVMe versus shared storage workload profiles, and host memory state.
+A slow storage path is hard to diagnose during an outage if you never measured a healthy one. Picture a stranger who has never seen your node. Without a baseline, they cannot tell whether a number is high or low. Think of the golden baseline as a photograph of the node on a good day. Before you launch production workloads, capture a reproducible five-minute baseline and save it as `healthy.txt`. Reproducible means you can run the same script again later and compare the results line by line. The baseline covers five domains: network and PCIe topology, filesystem mounts and target health, raw network versus storage bandwidth, local NVMe versus shared storage workload profiles, and host memory state.
 
 ### 3.1 Layer-by-Layer Latency and Bandwidth Reference
 
-When your application reads a file, the request travels a long road. It starts at the remote storage media, crosses the network fabric, passes through the client kernel filesystem and host DRAM, and finally crosses PCIe or NVLink-C2C into GPU HBM. If you know the normal latency and throughput at each stage, a broken hop stands out right away.
+When your application reads a file, the request travels a long road. Picture a parcel that moves through several depots before it reaches your door. It starts at the remote storage media, which is the drive or flash array that holds the bytes. It crosses the network fabric, the network of cables and switches between servers. Then it passes through the client kernel filesystem and host DRAM, the system memory of the server. Finally, it crosses PCIe or NVLink-C2C into GPU HBM, the high-bandwidth memory on the GPU. Latency is how long one request takes, and throughput is how much data moves per second. If you know the normal latency and throughput at each stage, a broken hop stands out right away.
 
 ```mermaid
 flowchart LR
@@ -220,7 +240,9 @@ flowchart LR
     PCIe -->|"PCIe DMA: 1-10 us"| GPU
 ```
 
-Use the table as a reference when a stage looks wrong. Each red-flag cell names the threshold that should trigger action.
+Use the table as a reference when one stage looks wrong. Each red-flag cell names the threshold that should trigger action, so you do not have to argue with yourself about whether a number is bad. Compare the measured value against the cell, and act only when the cell's condition is true.
+
+Storage is only one of the stages in that table, and the others are easy to forget when the storage path looks suspicious. Read the whole row before you blame the array.
 
 | Storage Path Stage | Baseline Latency Envelope | Healthy Single-Node Throughput / Capacity | Primary Baseline Command | Red-Flag Threshold Requiring Action |
 |---|---|---|---|---|
@@ -233,9 +255,11 @@ Use the table as a reference when a stage looks wrong. Each red-flag cell names 
 
 ### 3.2 Benchmarking Local NVMe vs Shared Storage Across Four AI Workload Profiles
 
-One `dd` run cannot certify an AI storage path, because training and inference generate very different I/O patterns. Model loading reads large sequential blocks once at startup. Batch streaming runs concurrent medium-sized reads. Random access hits large blocks across shards. Checkpointing sends a burst of heavy sequential writes from all ranks at once.
+One `dd` run cannot certify an AI storage path, because training and inference generate very different I/O patterns. dd is a simple copy tool that measures one stream. AI jobs rarely look like one stream. Model loading reads large sequential blocks once at startup. Batch streaming runs concurrent medium-sized reads, as many workers ask for their next batch at the same time. Random access hits large blocks across shards, which happens with scattered weight or KV-cache reads. Checkpointing sends a burst of heavy sequential writes from all ranks at once, so every GPU process pushes its state to disk together.
 
-When you baseline a cluster, run `fio` with `--ioengine=libaio --direct=1` alongside a metadata test loop, on both local NVMe and shared storage. Comparing the two tiers side by side answers the question you care about most. Should you stream directly from the parallel filesystem, or stage datasets and checkpoints onto local NVMe?
+When you baseline a cluster, run `fio` with `--ioengine=libaio --direct=1` alongside a metadata test loop. Run it on both local NVMe and shared storage. fio is the standard benchmark tool for disk and filesystem I/O. The direct=1 setting bypasses the page cache, so the numbers reflect the device and not the server's free memory. Comparing the two tiers side by side answers the question you care about most. Should you stream directly from the parallel filesystem, or stage datasets and checkpoints onto local NVMe? The answer decides where your data lives during training.
+
+Run the test while nothing else is busy if you can. A noisy node gives noisy numbers, and noisy numbers look like a bad drive.
 
 | AI Workload Profile | I/O Access Pattern | Total Test Size | Block Size (`bs`) | Concurrency (`numjobs` / `iodepth`) | Typical Local NVMe Baseline | Typical Shared Parallel FS Baseline | Operational Decision Rule |
 |---|---|---|---|---|---|---|---|
@@ -245,17 +269,23 @@ When you baseline a cluster, run `fio` with `--ioengine=libaio --direct=1` along
 | **4. Checkpoint Burst Write** | Synchronized sequential write (`rw=write`) | `500 MB` per rank (`500 GB` cluster-wide) | `4 MB` (`bs=4M`) | `1` per rank (`8` ranks per node, `iodepth=16`) | **`2.1 GB/s`** per drive (`10+ GB/s` RAID 0) | `1.0-6.4 GB/s` (depends on `stripe_count = 16`) | A `500 GB` sync write at `1.0 GB/s` stalls GPUs for `500 s`; staging to `10x` faster NVMe (`10 GB/s -> 50 s`) saves `9/10` (`90% = 450 s`) of stall time. |
 | **5. Metadata Storm (Small Files)** | `create` + `stat` + `open` + `close` on `10,000-1,000,000` files | `100 KB` per file | `4 KB` metadata inode | `16` metadata workers | `50,000+` local XFS ops/sec | **`1,000-5,000` ops/sec** per client (`< 50,000` per MDS ceiling) | If metadata rate is `< 10,000` ops/sec or dataset has `1,000,000` files, repackage into `1,000-10,000` `.tar` shards (`100x-1,000x` open reduction). |
 
-Read each row as a decision, and let the last column tell you whether to stage, cache, or repackage. Take the checkpoint burst row as an example. A 500 GB synchronous write at 1.0 GB/s keeps the GPUs waiting for 500 seconds. Staged to NVMe at 10 GB/s, the same write takes 50 seconds, so the stall shrinks to a tenth of its length.
+Read each row as a decision, and let the last column tell you whether to stage, cache, or repackage. Take the checkpoint burst row as an example. Picture a training job that pauses to save its state. A 500 GB synchronous write at 1.0 GB/s keeps the GPUs waiting for 500 seconds. Synchronous means the GPUs stop until the write finishes. Staged to NVMe at 10 GB/s, the same write takes 50 seconds, so the stall shrinks to a tenth of its length. Staging means writing to fast local drives first, then copying to shared storage in the background.
+
+Not every row describes a bad system. Some rows describe a good system that is about to be overloaded. A model load at full speed is fine until a second job starts loading from the same drive. When you read a row, ask whether the healthy number can survive the load you plan to add. That question is what the baseline is really for.
 
 ---
 
 ## 4. Deep-Dive Walkthrough of a Real Production Incident
 
-The decision tree and the baseline prove their worth under pressure. So let us walk through a real multi-symptom incident on a Lustre-backed GPU cluster. A distributed training job that normally finishes in 2.0 hours suddenly stretches to 8.0 hours. That 4.0x slowdown burns four times the GPU budget.
+The decision tree and the baseline prove their worth under pressure. So let us walk through a real multi-symptom incident on a Lustre-backed GPU cluster. A distributed training job that normally finishes in 2.0 hours suddenly stretches to 8.0 hours. That 4.0x slowdown burns four times the GPU budget. If the cluster bills by the GPU-hour, the same job costs four times as much, and the team waits four times as long for results.
+
+The incident below is useful precisely because it has three symptoms at once. Real outages rarely announce one cause. They show several symptoms, and the tree helps you keep them in order.
 
 ### 4.1 Incident Alert and Step 1: Comparing Current State Against the Baseline
 
-Imagine you are the on-call engineer. Instead of guessing at Lustre or PyTorch flags, you run `./capture_baseline.sh > current.txt` on a training node. That command was not run on live hardware. Then you compare the output with `healthy.txt` using `diff`. The comparison shows three anomalies at once: one on the GPU, one on the Lustre object targets, and one on the network interface.
+Imagine you are the on-call engineer, and the alert has just fired. Instead of guessing at Lustre or PyTorch flags, you run `./capture_baseline.sh > current.txt` on a training node. The script writes the same sections as the healthy file, so the two files line up. Then you compare the output with `healthy.txt` using `diff`. The comparison shows three anomalies at once. One is on the GPU, one is on the Lustre object targets, and one is on the network interface. Each one sits on a different layer, and the order of the tree tells you which one to read first.
+
+Notice what the diff gives you. It does not say what is wrong. It says what changed. That difference is the whole reason to keep a healthy file in the first place.
 
 ```text
 < GPU0    dmon -s puctem shows: sm=92%, mem=40%
@@ -268,23 +298,31 @@ Imagine you are the on-call engineer. Instead of guessing at Lustre or PyTorch f
 > ethtool -S eth0: rx_errors=1240, rx_dropped=856       <- Signal 3: Network packet drops!
 ```
 
-A junior engineer who sees `OST 5-7 at 98% full` may start migrating terabytes of files right away. That migration takes hours and adds heavy background I/O to a cluster that is already struggling. A senior engineer follows the eight-layer tree in order, so the true pacing bottleneck gets fixed first.
+A junior engineer who sees `OST 5-7 at 98% full` may start migrating terabytes of files right away. The instinct is understandable, since a full target looks like the obvious fault. That migration takes hours and adds heavy background I/O to a cluster that is already struggling. A senior engineer follows the eight-layer tree in order instead, so the true pacing bottleneck gets fixed first. The full target still needs attention, but it can wait for a maintenance window.
 
 ### 4.2 Steps 2 and 3: Queue Depth and Ruling Out the CPU Decoder
 
-Gate 1 shows GPU SM utilization has collapsed from 92 percent to 15 percent, well below the 70 percent threshold. That drop tells you the job is I/O-bound. Gate 2 checks `prefetch_queue.qsize()` inside the training loop. The queue is empty 80 percent of the time, and batch wait exceeds 500 ms.
+Gate 1 shows GPU SM utilization has collapsed from 92 percent to 15 percent, well below the 70 percent threshold. That drop tells you the job is I/O-bound, meaning it waits on input data. Gate 2 checks `prefetch_queue.qsize()` inside the training loop. Think of the queue as a shelf of ready batches. The shelf is empty 80 percent of the time, and batch wait exceeds 500 ms. In other words, the GPU reaches for the next batch and finds nothing there.
 
-At Gate 3, you profile the job with `python -m cProfile -s cumtime train.py`, which was not run on live hardware. It shows 120,000 calls to `Image.open` taking 45.2 seconds. It also shows `augmentation.apply` taking 12.1 seconds, which totals 57.3 seconds of CPU work.
+Each number in this gate is a small fact. Together they form a pattern, and the pattern is what you act on.
 
-That 57.3 seconds of CPU work is real. It still cannot explain why the prefetch queue sits empty 80 percent of the time. The raw file bytes are stalling in the storage network before they ever reach `Image.open`.
+At Gate 3, you profile the job with `python -m cProfile -s cumtime train.py`. The profile is the same kind you saw in the earlier section, and it shows 120,000 calls to `Image.open` taking 45.2 seconds. It also shows `augmentation.apply` taking 12.1 seconds. Added together, that totals 57.3 seconds of CPU work. A CPU-heavy number like that is easy to misread, which is why the gates come first.
+
+That 57.3 seconds of CPU work is real. It still cannot explain why the prefetch queue sits empty 80 percent of the time. If the CPU were the limit, the queue would be full. The raw file bytes are stalling in the storage network before they ever reach `Image.open`, so the decoder never gets a chance to be slow. Ruling the CPU out early spared the team the work of rewriting the decoder.
+
+The lesson here is about order more than arithmetic. The same 57.3 seconds would look like the answer if you had read it first. After the queue data, it becomes a red herring. Keep the sequence fixed, and let each gate narrow the field before the next one spends your time.
 
 ### 4.3 Steps 4, 5, and 6: Metadata Latency, Ring Buffers, and Switch Oversubscription
 
-At Gate 4, the engineer checks Lustre client metadata counters over a 60-second window during epoch startup. The counters record 950,000 file opens in one minute. That works out to 15,833.33 opens per second. A Lustre MDS handles 50,000 opens per second safely, so 15.8K opens per second should run at a healthy 2.0 ms latency. Instead, average `open` latency has spiked to 45.0 ms.
+At Gate 4, the engineer checks Lustre client metadata counters over a 60-second window during epoch startup. An epoch is one full pass over the dataset. The metadata server (MDS, the server that handles file names, permissions, and open requests) sits behind those counters. The counters record 950,000 file opens in one minute. That works out to 15,833.33 opens per second. A Lustre MDS handles 50,000 opens per second safely, so 15.8K opens per second should run at a healthy 2.0 ms latency. Instead, average `open` latency has spiked to 45.0 ms, which is far above the normal figure.
 
-Gate 5 explains why a lightly loaded MDS takes 45.0 ms to answer. Watching `ethtool -S eth0` over 10 seconds reveals 1,240 receive errors and 856 dropped packets. The RX ring buffer holds only 256 entries. Every dropped metadata RPC triggers a network retransmission timeout, which stretches a 2.0 ms lookup into a 45.0 ms stall.
+Notice how the numbers build on each other. The open rate, the latency, and the packet drops describe one chain. Read them in the order the packet travels, and the story becomes easy to follow.
 
-Raising the NIC ring buffers to 4096 with `ethtool -G eth0 rx 4096 tx 4096` cuts local drops below 5 per second. However, 300 network retransmits per second remain. The scheduler explains why. Five concurrent 128-GPU training jobs, 640 GPUs in total, hammer an oversubscribed storage switch fabric at the same time. Capping heavy I/O jobs from five down to three clears the congestion and restores 2.0 ms metadata latency and 88 percent GPU utilization. The team can rebalance the 98 percent full OSTs later, during a maintenance window.
+Gate 5 explains why a lightly loaded MDS takes 45.0 ms to answer. The MDS is not the problem here, since it is not busy. Watching `ethtool -S eth0` over 10 seconds reveals 1,240 receive errors and 856 dropped packets. Those counters come from the network card on the storage path. The RX ring buffer, which is the card's receive queue, holds only 256 entries. Every dropped metadata RPC (a remote procedure call, the message that asks the server for a file lookup) triggers a network retransmission timeout. That timeout stretches a 2.0 ms lookup into a 45.0 ms stall.
+
+Raising the NIC ring buffers to 4096 with `ethtool -G eth0 rx 4096 tx 4096` cuts local drops below 5 per second. That fix is local, so it only stops drops on this node. However, 300 network retransmits per second remain. The cause sits outside the node. Oversubscribed means the switch uplinks carry more traffic than they can handle. Five concurrent 128-GPU training jobs, 640 GPUs in total, push an oversubscribed storage switch fabric at the same time. Capping heavy I/O jobs from five down to three clears the congestion and restores 2.0 ms metadata latency and 88 percent GPU utilization. The team can rebalance the 98 percent full OSTs later, during a maintenance window, because that work adds I/O of its own.
+
+The fix came in two parts, and the order mattered. The first part was local to one node and was cheap to undo. The second part reduced load on the whole fabric. That kind of change is harder to undo, because other jobs now depend on the new schedule.
 
 Here is the whole progression with its arithmetic.
 
@@ -297,19 +335,25 @@ Incident Triage Progression & Numbers:
   5. Final restored state:         0 retransmits/sec, 2.0 ms open latency, 88% GPU SM utilization, 2.0-hour runtime restored
 ```
 
-Each line answers one gate, so the block doubles as an incident log. Fix the network path and the job mix first, and schedule the target rebalance for later.
+Each line answers one gate, so the block doubles as an incident log you can paste into a ticket. Fix the network path and the job mix first. Schedule the target rebalance for later, once the job pressure is gone.
+
+A good incident log also records what you did not change. If you left the stripe count alone, write that down, so the next engineer does not repeat the experiment.
 
 ---
 
 ## 5. Validating GPUDirect Storage and Catching Silent Fallbacks
 
-Suppose a team installs the `nvidia-fs` package, sets an environment variable, and assumes reads now stream straight into GPU HBM. Training keeps running, so you may never notice. Meanwhile, `cuFile` has quietly fallen back to POSIX compatibility mode. Every byte travels through the Linux page cache and the host CPU bounce buffers instead. Operators call this pattern Placebo GDS, and it is a recurring anti-pattern in GPU clusters.
+Suppose a team installs the `nvidia-fs` package, sets an environment variable, and assumes reads now stream straight into GPU HBM. nvidia-fs is the kernel driver that lets the storage path talk to the GPU directly. Training keeps running, so you may never notice. Meanwhile, `cuFile`, the NVIDIA API that GPUDirect Storage uses, has quietly fallen back to POSIX compatibility mode. Here POSIX means the ordinary Linux file path. Every byte travels through the Linux page cache and the host CPU bounce buffers instead, so the CPU copies the data twice. Operators call this pattern Placebo GDS, and it is a recurring anti-pattern in GPU clusters. An anti-pattern is a habit that looks like progress and quietly costs you.
 
-The default configuration makes it easy to miss. `/etc/cufile.json` ships with `allow_compat_mode: true`, so a broken prerequisite causes a silent fallback instead of a loud crash. The job runs on. Host CPU use climbs above 85 percent inside `__memcpy_avx2`, and PCIe bandwidth is wasted copying every batch twice.
+The default configuration makes it easy to miss. `/etc/cufile.json` ships with `allow_compat_mode: true`. That setting lets a broken prerequisite cause a silent fallback instead of a loud crash. A loud crash would stop the job and tell you why, while a silent fallback lets it limp along. The job runs on. Host CPU use climbs above 85 percent inside `__memcpy_avx2`, which is the CPU routine that copies memory. PCIe bandwidth, the lane capacity between the CPU and the GPU, is wasted copying every batch twice.
+
+Checking the config file is a good first step, but it is not proof. A config file records intent. The counters and the CPU profile record what the job actually did, and only those count as proof.
 
 ### 5.1 The Six Non-Negotiable GDS Prerequisites and Verification Signals
 
-GPUDirect Storage skips the host CPU bounce buffer only when all six requirements hold at the same time. If even one requirement fails, `cuFile` quietly routes reads through host DRAM. The table lists each requirement, the command that verifies it, and the failure that causes the fallback.
+GPUDirect Storage skips the host CPU bounce buffer only when all six requirements hold at the same time. A bounce buffer is a staging area in host memory where data pauses on its way to the GPU. If even one requirement fails, `cuFile` quietly routes reads through host DRAM. Think of six locks on one door. A single locked lock means you must take the long way round. The table lists each requirement, the command that verifies it, and the failure that causes the fallback.
+
+The six rows fall into three groups. The first two rows concern the host and the GPU driver. The middle two rows concern the hardware wiring and the filesystem. The last two rows concern how the application asks for data. A failure in an early group often hides failures in later ones, so start with the group closest to the hardware.
 
 | Requirement # | Layer | Technical Requirement | Verification Command | What Causes Silent Fallback to CPU Bounce |
 |---|---|---|---|---|
@@ -320,17 +364,25 @@ GPUDirect Storage skips the host CPU bounce buffer only when all six requirement
 | **5. Buffer & Offset Alignment** | I/O Geometry | File offset, GPU buffer address, and transfer size aligned to `4 KiB` (`4,096 B`) for NVMe/NVMe-oF or `8 KiB` (`8,192 B`) for Lustre, with request size `>= 1 MiB` (`1,048,576 B`) | Inspect `cuFileRead` / `kvikio.CuFile` arguments and `nsys --trace=gds` | Reading unaligned byte ranges, such as a `4,096 B` offset on Lustre requiring `8,192 B`, or tiny `< 1 MiB` chunks. |
 | **6. Application API & Proof** | Runtime | Uses `cuFile` (`kvikio.CuFile`, DALI, NIXL GDS plugin) rather than Python `open`/`read`, and proves activity via counters | `perf record -g` (`0%` `__memcpy_avx2`) + rising `Ops Read` in `/proc/driver/nvidia-fs/stats` | Using standard `open(path, "rb")` or `torch.load()` without `kvikio` or `cuFile` integration. |
 
-Work down the table in order, and fix the first row that fails.
+Work down the table in order, and fix the first row that fails. Fixing a lower row first is wasted effort, because a later row may depend on it. If row 1 fails, the driver is missing, so the rest of the checks mean little.
+
+Think of the table as a ladder with rungs. Each rung depends on the rung below it. A broken rung means the climb above it proves nothing.
+
+A simple habit helps here. Before you change a row, write its current value next to the healthy value in the table, so the next person sees the gap.
 
 ### 5.2 Benchmarking CPU Bounce vs Direct GDS and the 20 Percent Rule
 
-Before you roll out GPUDirect Storage across a fleet, benchmark two things: the Python application path and the raw hardware ceiling. When you need the hardware ceiling, use `/usr/local/cuda/gds/tools/gdsio`. On the traditional Python path, reading a 100 MiB file with `open` and copying it into GPU memory averages 0.251 seconds across five trials. That works out to about 398 MB/s. Replacing `open` with RAPIDS `kvikio.CuFile` streams the file straight into GPU memory, with no host staging copy.
+Before you roll out GPUDirect Storage across a fleet, benchmark two things: the Python application path and the raw hardware ceiling. The ceiling is the best speed the hardware can reach with no application code in the way. When you need the hardware ceiling, use `/usr/local/cuda/gds/tools/gdsio`. On the traditional Python path, reading a 100 MiB file with `open` and copying it into GPU memory averages 0.251 seconds across five trials. MiB means mebibytes, and 100 MiB is roughly the size of a short video clip. That works out to about 398 MB/s. Replacing `open` with RAPIDS `kvikio.CuFile` streams the file straight into GPU memory, with no host staging copy. RAPIDS is NVIDIA's family of GPU data science libraries, and kvikio is its file I/O package.
 
-At the hardware level, `gdsio` compares two paths. Flag `-x 2` selects the CPU bounce path, and flag `-x 0` selects direct DMA. In a four-worker read test on a 10 GiB file, switching from `-x 2` to `-x 0` raises throughput and cuts latency by 20 percent. In the same test, host CPU load drops from 85 percent to 25 percent.
+At the hardware level, `gdsio` compares two paths. Flag `-x 2` selects the CPU bounce path, and flag `-x 0` selects direct DMA, where the data goes straight from the storage path into GPU memory. Flags are the switches you pass on the command line. In a four-worker read test on a 10 GiB file, switching from `-x 2` to `-x 0` raises throughput and cuts latency by 20 percent. A worker here is one parallel reader. In the same test, host CPU load drops from 85 percent to 25 percent. That CPU saving matters, because the freed cores can serve other work such as data preparation.
 
-Use the 20 percent rule to decide whether GDS is worth deploying for a given workload. Deploy GDS in production if it improves throughput by at least 20 percent, or if it frees CPU cores that batch streaming is starved for. If the gain is under 20 percent, skip GDS and fix the real bottleneck first, such as small-file metadata overhead or narrow Lustre striping.
+If you only remember one thing from this comparison, remember the CPU column. A fast path that still burns the host CPU leaves less room for everything else the node must do.
 
-The arithmetic behind the rule is in the block below.
+Use the 20 percent rule to decide whether GDS is worth deploying for a given workload. Here is how to read it. Deploy GDS in production if it improves throughput by at least 20 percent. Deploy it also if it frees CPU cores that batch streaming is starved for, because the CPU is then the real limit. If the gain is under 20 percent, skip GDS and fix the real bottleneck first. The usual suspects are small-file metadata overhead and narrow Lustre striping, which means the file is spread over too few storage targets.
+
+The arithmetic behind the rule is in the block below. Read the three parts in order, starting with the Python trials, then the gdsio runs, then the batch example.
+
+Before you trust the block, check the units. The Python trials are reported in MiB/s, and the gdsio runs are reported in GB/s, so the two sets of numbers are not on the same scale until you convert them. A mix-up of that kind is a common reason a benchmark seems to contradict itself.
 
 ```text
 GDS Benchmark Reference & Decision Math:
@@ -345,17 +397,21 @@ GDS Benchmark Reference & Decision Math:
      1,000 batches/sec x 1 MB/batch = 1,000 MB/s (1.0 GB/s) continuous transfer offloaded from host CPU
 ```
 
-Both the 20 percent throughput gain and the 20 percent latency cut come from the same two runs. Deploy GDS only when the benchmark clears that bar, or when it frees the CPU cores you need.
+Both the 20 percent throughput gain and the 20 percent latency cut come from the same two runs. That matters, because one test gives you both answers. Deploy GDS only when the benchmark clears that bar, or when it frees the CPU cores you need.
+
+Keep the benchmark numbers in the same file as the decision, so the next review can see why GDS was or was not deployed.
 
 ---
 
 ## 6. Commands and Configurations That Matter
 
-When an alert pages you at 2 a.m., you should not have to recall twenty different CLI flags from memory. The scripts and command blocks below group each check by the storage layer it instruments. The bare-metal cluster commands below were not run on live hardware.
+When an alert pages you at 2 a.m., you should not have to recall twenty different command-line flags from memory. Write them down once, group them by layer, and keep them where you can find them. The scripts and command blocks below do exactly that. Each check sits under the storage layer it instruments, so you can jump straight to the block that matches the gate you are on.
 
 ### 6.1 The 5-Minute Node and Storage Baseline Capture Script
 
-Run this script on a GPU node before training starts. It builds the `healthy.txt` reference file. When a slowdown alert fires, run it again to capture `current.txt`, then compare the two files with `diff`.
+Run this script on a GPU node before training starts. It builds the `healthy.txt` reference file, which is your photograph of the good day. When a slowdown alert fires, run it again to capture `current.txt`. Then compare the two files with `diff`, and read the lines that changed. Those lines are your first suspects.
+
+Keep the output file with the node's name and date in it. The script already builds that name for you, so the next engineer can find the matching baseline without asking you.
 
 ```bash
 #!/bin/bash
@@ -401,7 +457,9 @@ cat /proc/meminfo | grep -E "Cached|Buffers|MemAvailable|MemFree" >> "$OUTPUT_FI
 
 ### 6.2 Structured Benchmark, Profiling, and Remediation Commands
 
-Once the baseline points at a suspect layer, run the benchmark or profiler for that layer. Always pass `iflag=direct` to `dd` and `--direct=1` to `fio`. Without those flags, the Linux page cache can fake a fast disk read out of host DRAM.
+Once the baseline points at a suspect layer, run the benchmark or profiler for that layer. Always pass `iflag=direct` to `dd` and `--direct=1` to `fio`. Without those flags, the Linux page cache can fake a fast disk read out of host DRAM. The page cache is the memory area where Linux keeps recently read file data. A second run of the same file then reads from memory and looks impossibly fast. Those flags force the read to go to the device, so the number you see is the real one.
+
+The profiler commands also come with overhead. A profiler slows the job while it records, so run it for a short window, then compare its timing with a normal run.
 
 ```bash
 # (untested here) 1. Compare throughput with and without NUMA affinity binding
@@ -435,13 +493,19 @@ mount -t nfs -o rw,hard,rsize=1048576,wsize=1048576,noatime,async,actimeo=60,loo
     nfs-server:/export/datasets /mnt/datasets
 ```
 
-Each block is grouped by purpose, so copy only the block for the layer you are testing.
+Each block is grouped by purpose, so copy only the block for the layer you are testing. Running all five blocks at once mixes their results, and you will not know which one changed the number.
+
+Read each block from the top, and stop as soon as one result names the layer. Most of the blocks are safe to run on a healthy node. The remediation lines are different, because they change settings, so run them only after the counters have named the layer.
+
+When a block prints more than you need, filter the output down to the lines that match the counter you are checking. The blocks above already do most of that filtering for you.
 
 ---
 
 ## 7. How It Fails: Six Production Storage Failure Modes
 
-Most production storage outages in AI clusters fall into one of six repeatable patterns. When your job misbehaves, match what you see to one of these patterns. The table gives you the counter that proves the root cause and the command that fixes it.
+Most production storage outages in AI clusters fall into one of six repeatable patterns. When your job misbehaves, match what you see to one of these patterns. The same symptom, such as a slow epoch, can come from more than one pattern. The table gives you the counter that proves the root cause and the command that fixes it. Use the counter as the proof, and do not apply the fix until the counter agrees.
+
+Each row also names a fix, but the fix is the last step, not the first. Read the counter, confirm it matches the row, and only then change the setting. A correct fix applied to the wrong row can still make the next incident harder to read.
 
 | # | Failure Mode | Observable Symptom | Root-Cause Diagnosis (Commands & Counters) | Deterministic Fix |
 |---|---|---|---|---|
@@ -452,19 +516,21 @@ Most production storage outages in AI clusters fall into one of six repeatable p
 | **5** | **Local NVMe Thermal Throttling (`>= 80 C`), SMART Wear, or RAID 0 Failure** | Single node becomes a straggler (`500 MB/s` vs `3.5 GB/s` peers), or job crashes with `Input/output error` on `/local-nvme` scratch. | `iostat -xz 1` shows `100%` `%util` with `r_await > 25 ms` on one NVMe device; `smartctl -a /dev/nvme1n1` shows `Temperature = 82 C` (`>= 70 C` warn, `>= 80 C` critical throttle to `0.65 GB/s`), `Percentage Used >= 95%`, or `Media Errors > 0` breaking an `mdadm` RAID 0 stripe. | Replace worn or faulted NVMe SSD, fix server fan and heatsink airflow to keep composite temperature `< 70 C`, enforce `< 85%` local cache fill watermark, and treat RAID 0 local NVMe strictly as ephemeral cache. |
 | **6** | **NFS `Stale file handle` (`ESTALE`) & `soft`-Mount Silent Corruption** | Workers crash with `OSError: [Errno 116] Stale file handle` during dataset reads, or `torch.save()` produces truncated or corrupted `.pt` checkpoints during network blips. | Dataset curation scripts deleted and recreated a directory on the NFS server while compute nodes held cached dentries (`ESTALE`, `errno 116`); or `/etc/fstab` used `soft,timeo=...`, causing `write()` syscalls to return `EIO` on transient timeouts instead of retrying. | Remount with `hard,rsize=1048576,wsize=1048576,noatime,actimeo=60,lookupcache=pos` (never `soft` for read-write checkpoints), use atomic rename or immutable versioned directories (`dataset-v2/`) to avoid `ESTALE`, and move clusters `> 8` nodes off single-server NFS. |
 
-Find the row whose symptom matches what you see, then confirm the counter before you apply the fix.
+Find the row whose symptom matches what you see. Then confirm the counter before you apply the fix. A matching symptom alone is not proof, because several rows share symptoms such as slow epochs.
 
 ---
 
 ## 8. Hands-On Lab: End-to-End Storage Incident and Bottleneck Triage
 
-You can run this lab on GCP / GKE or on any Linux workstation. It uses only the `python3` standard library, and it needs neither a GPU nor root access.
+You can run this lab on GCP / GKE or on any Linux workstation. GCP is Google Cloud Platform, and GKE is Google Kubernetes Engine. It uses only the `python3` standard library, the set of modules that ships with Python, and it needs neither a GPU nor root access. These steps were not run on a live cluster.
 
-The companion verification suite in `code/part13/storage_troubleshooting.py` and `code/part13/storage_troubleshooting_lab.py` turns each diagnostic rule into runnable Python. It tests the eight-layer decision tree, the 2-hour to 8-hour incident triage, the batch-size scaling experiment, and the GPUDirect Storage compatibility auditor. It also checks checkpoint staging math, WebDataset repackaging, local NVMe SMART triage, and NFS mount auditing. The suite runs 28 deterministic checks in all.
+The companion verification suite in `code/part13/storage_troubleshooting.py` and `code/part13/storage_troubleshooting_lab.py` turns each diagnostic rule into runnable Python. Think of it as the chapter's rules written as code, so a rule the chapter states can be checked by running it. It tests the eight-layer decision tree, the 2-hour to 8-hour incident triage, the batch-size scaling experiment, and the GPUDirect Storage compatibility auditor. An auditor here is a function that reads the configuration and reports risks. It also checks checkpoint staging math, WebDataset repackaging, local NVMe SMART triage, and NFS mount auditing. SMART (self-monitoring, analysis, and reporting technology) is the health report built into most drives. The suite runs 28 deterministic checks in all, which means the same input always gives the same result.
+
+Read the suite as a set of worked examples. Each check names a scenario, runs the rule, and reports PASS or FAIL. You can read a check the same way you read a lab step, one input and one answer at a time.
 
 ### Run the Verification Lab
 
-Run the suite with the command below.
+Run the suite with the command below. Start from the root of the repository, so the relative paths resolve. The command includes a flag that stops Python from writing cache files next to the code.
 
 ```bash
 python3 -B code/part13/storage_troubleshooting_lab.py
@@ -472,7 +538,9 @@ python3 -B code/part13/storage_troubleshooting_lab.py
 
 ### Expected Output (Verified Locally)
 
-Every line should read PASS. The last line should report 28 passed and 0 failed.
+Every line should read PASS. The last line should report 28 passed and 0 failed. Those counts mean the code and the chapter text agree on every number.
+
+The lab proves that the rules in the chapter agree with each other. It does not prove that your cluster behaves the same way. Treat a passing run as a check on the reasoning, and treat your own measurements as the check on the hardware.
 
 ```text
 === Chapter 13.9: Storage Troubleshooting Verification Lab ===
@@ -509,29 +577,35 @@ Every line should read PASS. The last line should report 28 passed and 0 failed.
 Summary: 28 passed, 0 failed
 ```
 
-If a line reads FAIL, compare its numbers with the section text before you change anything.
+If a line reads FAIL, compare its numbers with the section text before you change anything. A FAIL usually means one input changed, so find that input first. Do not edit the expected numbers just to make the line pass.
 
 ---
 
 ## Common first mistakes
 
-1. Starting at the storage array instead of the GPU. Check the GPU and the prefetch queue first. If GPU SM utilization is 70 percent or higher, the job is compute-bound or collective-bound, not storage-bound. If GPU utilization is below 30 percent while `prefetch_queue.qsize()` stays full, look at CPU preprocessing or host-to-GPU copies instead of the parallel filesystem.
-2. Changing three knobs at once without measuring against a baseline. Raising `num_workers`, changing the Lustre stripe count with `lfs setstripe -c 16`, and tuning NIC ring buffers with `ethtool -G eth0 rx 4096` all at the same time hides which change fixed the problem. Follow a strict single-variable loop. Capture a baseline, form one hypothesis, change one parameter, and measure again.
-3. Assuming GPUDirect Storage is active without checking kernel counters and CPU profiles. Because `/etc/cufile.json` defaults to `allow_compat_mode: true`, an alignment mismatch, a small read size, or an unsupported PCIe bridge can route I/O through host DRAM via `__memcpy_avx2` with no error. Confirm that the `/proc/driver/nvidia-fs/stats` counters climb during reads.
-4. Benchmarking storage with cached `dd` instead of direct I/O. Running `dd if=/lustre/test.file of=/dev/null` without `iflag=direct` measures page-cache speed on any file smaller than free host RAM. Pass `iflag=direct` to `dd` or `--direct=1` to `fio`, so you measure real network and disk throughput.
-5. Using a wide stripe count for small dataset files, or a single stripe for huge checkpoints. Striping a 100 KB file across 32 Lustre OSTs requires 32 object RPCs and lock operations per file, so a tiny read turns into a metadata and lock storm. Keep `stripe_count` between 1 and 4 for small files, and use 16 or more only for multi-gigabyte shards and checkpoints.
+1. Starting at the storage array instead of the GPU. The storage array is the easiest place to look, so newcomers go there first. Check the GPU and the prefetch queue first. If GPU SM utilization is 70 percent or higher, the job is compute-bound or collective-bound, not storage-bound. If GPU utilization is below 30 percent while `prefetch_queue.qsize()` stays full, look at CPU preprocessing or host-to-GPU copies instead of the parallel filesystem.
+2. Changing three knobs at once without measuring against a baseline. Raising `num_workers`, changing the Lustre stripe count with `lfs setstripe -c 16`, and tuning NIC ring buffers with `ethtool -G eth0 rx 4096` all at the same time hides which change fixed the problem. If the job speeds up, you still do not know why. Follow a strict single-variable loop. Capture a baseline, form one hypothesis, change one parameter, and measure again. Repeat that loop until the numbers stop moving.
+3. Assuming GPUDirect Storage is active without checking kernel counters and CPU profiles. A config file can say one thing while the runtime does another. Because `/etc/cufile.json` defaults to `allow_compat_mode: true`, an alignment mismatch, a small read size, or an unsupported PCIe bridge can route I/O through host DRAM via `__memcpy_avx2` with no error. Confirm that the `/proc/driver/nvidia-fs/stats` counters climb during reads. A config file only shows intent, and the counters show what really happened.
+4. Benchmarking storage with cached `dd` instead of direct I/O. This is a common trap, because the first number looks great. Running `dd if=/lustre/test.file of=/dev/null` without `iflag=direct` measures page-cache speed on any file smaller than free host RAM. Pass `iflag=direct` to `dd` or `--direct=1` to `fio`, so you measure real network and disk throughput.
+5. Using a wide stripe count for small dataset files, or a single stripe for huge checkpoints. Striping spreads one file across several storage targets, and the stripe count says how many. Striping a 100 KB file across 32 Lustre OSTs requires 32 object RPCs and lock operations per file, so a tiny read turns into a metadata and lock storm. Keep `stripe_count` between 1 and 4 for small files, and use 16 or more only for multi-gigabyte shards and checkpoints.
 
-Treat each fix as an experiment, and hold the rest of the cluster still while you run it.
+Treat each fix as an experiment, and hold the rest of the cluster still while you run it. A fix you cannot explain is a fix you cannot trust, so write down the one change and the number it moved.
+
+Most of these mistakes share one root cause. The engineer wanted to act quickly, and the numbers were not in front of them yet. Slow down for the few minutes it takes to capture the baseline. That short pause usually saves far more time than it costs.
+
+If you find yourself changing two things in one afternoon, stop and write down which change you think matters most. Then undo everything else before you measure again.
 
 ---
 
 ## Exercises
 
-Work these through on paper before you check any answer. Every input you need is in the block that goes with each part.
+Work these through on paper before you check any answer. Every input you need is in the block that goes with each exercise. Write each step down, so you can see where a number came from.
 
 1. **Work an eight-layer incident.**
-   - **(a)** Use the incident metrics in the block below to calculate the job slowdown factor, the total CPU decode plus augmentation time, and the exact `open` rate per second. Then explain why neither CPU decode nor MDS capacity is the primary root cause.
-   - **(b)** Use the network and concurrency metrics below to calculate the active GPU count before and after you reduce job concurrency. State the resulting retransmit rate, `open` latency, and GPU SM utilization.
+
+   Your on-call shift starts with a slowdown report. Use the incident metrics in the block below to calculate the job slowdown factor. Next, calculate the total CPU decode plus augmentation time. Then calculate the exact `open` rate per second. Last, explain why neither CPU decode nor MDS capacity is the primary root cause.
+
+   Now look at the network and concurrency metrics. Use them to calculate the active GPU count before you reduce job concurrency. Then calculate the active GPU count after you reduce it. State the resulting retransmit rate. State the `open` latency. Last, state the GPU SM utilization.
 
 ```text
 Exercise 1 Input Data:
@@ -543,8 +617,10 @@ Exercise 1 Input Data:
 ```
 
 2. **Tell a communication-bound job from a compute-bound one.**
-   - **(a)** Use the AllReduce baseline below to explain mathematically why changing the micro-batch size does not change the gradient AllReduce payload bytes.
-   - **(b)** Use the halving and doubling measurements below to calculate Run B's new AllReduce share of total iteration time at double the batch size. Then classify Run A and Run B as communication-bound or compute-bound.
+
+   Your team sees a 60 GB/s AllReduce on a 100 GB/s NIC and wants to know why. Use the AllReduce baseline below to explain, with the formula, why changing the micro-batch size does not change the gradient AllReduce payload bytes.
+
+   Next, use the halving and doubling measurements below. Calculate Run B's new AllReduce share of total iteration time at double the batch size. Then classify Run A as communication-bound or compute-bound. Last, classify Run B the same way.
 
 ```text
 Exercise 2 Input Data:
@@ -554,8 +630,10 @@ Exercise 2 Input Data:
 ```
 
 3. **Audit a GPUDirect Storage fallback and run the gdsio math.**
-   - **(a)** Use the Lab 03 and `gdsio` benchmark numbers below to calculate the mean elapsed time and average throughput for the Python trials. Next, compute the `gdsio` percentage throughput uplift and latency reduction, and state whether GDS meets the deployment threshold.
-   - **(b)** A developer runs `kvikio.CuFile` on Lustre with the geometry shown below and sees zero change in `/proc/driver/nvidia-fs/stats`. Identify the two geometry violations that cause the silent fallback to POSIX compatibility mode.
+
+   Start with the Lab 03 and `gdsio` benchmark numbers below. Calculate the mean elapsed time for the Python trials. Then calculate their average throughput. Next, compute the `gdsio` percentage throughput uplift. Compute the latency reduction too. Last, state whether GDS meets the deployment threshold.
+
+   A developer runs `kvikio.CuFile` on Lustre with the geometry shown below. The developer sees zero change in `/proc/driver/nvidia-fs/stats`. Identify the first geometry violation that causes the silent fallback to POSIX compatibility mode. Then identify the second one.
 
 ```text
 Exercise 3 Input Data:
@@ -565,8 +643,10 @@ Exercise 3 Input Data:
 ```
 
 4. **Compare local NVMe with shared storage, then size a checkpoint stall.**
-   - **(a)** Use the Lab 02 numbers below to compute the NVMe-to-shared speedup ratio, and state whether it exceeds the local caching threshold.
-   - **(b)** Use the checkpoint staging numbers below to calculate the new critical-path stall duration, the exact seconds saved per checkpoint, and the fraction of stall time eliminated.
+
+   Use the Lab 02 numbers below to compute the NVMe-to-shared speedup ratio. Then state whether that ratio exceeds the local caching threshold.
+
+   Next, use the checkpoint staging numbers below. Calculate the new critical-path stall duration, which is the time the GPUs must wait. Then calculate the exact seconds saved per checkpoint. Last, find the fraction of stall time eliminated.
 
 ```text
 Exercise 4 Input Data:
@@ -575,8 +655,10 @@ Exercise 4 Input Data:
 ```
 
 5. **Measure what repackaging saves.**
-   - **(a)** Use the Lab 04 dataset metrics below to compute the file-open reduction factor and the percentage reduction in average batch wait time after repackaging.
-   - **(b)** Use the production dataset metrics below to calculate the open-call reduction factor and the remaining metadata stall time, in minutes, after repackaging into WebDataset shards.
+
+   Use the Lab 04 dataset metrics below. Compute the file-open reduction factor. Then compute the percentage reduction in average batch wait time after repackaging.
+
+   Next, use the production dataset metrics below. Calculate the open-call reduction factor. Then calculate the remaining metadata stall time, in minutes, after repackaging into WebDataset shards.
 
 ```text
 Exercise 5 Input Data:
@@ -585,8 +667,10 @@ Exercise 5 Input Data:
 ```
 
 6. **Triage three NVMe drives and audit an NFS mount.**
-   - **(a)** Classify each of the three local NVMe scratch drives below against the thermal and endurance wear thresholds.
-   - **(b)** Audit an NFS client mounted with `-o rw,soft,rsize=32768,wsize=32768` across the cluster described below, where workers fail with `ESTALE`. List all five operational risks, and write the corrected production `mount` option string.
+
+   Start with the three local NVMe scratch drives below. Classify each one against the thermal and endurance wear thresholds.
+
+   Next, audit an NFS client mounted with `-o rw,soft,rsize=32768,wsize=32768`. The cluster is described below, and its workers fail with `ESTALE`. List all five operational risks in that mount. Then write the corrected production `mount` option string.
 
 ```text
 Exercise 6 Input Data:
@@ -597,22 +681,24 @@ Exercise 6 Input Data:
   Part (b) NFS cluster: 32 GPU nodes | Workers fail with errno 116 (ESTALE)
 ```
 
-Check your answers against the section text, not against memory.
+Check your answers against the section text, not against memory. If an answer differs, reread the section that owns the number.
 
 ---
 
 ## Interview angles
 
-Each question asks for a sequence of checks, not a single fact. The strong answers below show the order to reason in.
+Each question asks for a sequence of checks, not a single fact. The strong answers below show the order to reason in. Read them as a sequence, not as a script to memorize.
+
+In an interview, say the order out loud. Interviewers usually care more about how you reason under pressure than about whether you remember one flag.
 
 1. **"Your training job suddenly slows from 2 hours to 8 hours. You have 5 minutes on the node to isolate the root cause. What exact sequence of checks do you run?"**
-   - *Strong answer:* Walk the eight-layer tree from the GPU backward, so you never guess. First, run `nvidia-smi dmon -s puctem` and confirm GPU SM utilization sits at 15 percent, well below the 70 percent I/O gate. Second, check `prefetch_queue.qsize()`. It is empty 80 percent of the time, which shows batches stall before they reach the CPU image decoder. Third, check the Lustre metadata counters and `ethtool -S eth0`. A modest 15.8K opens per second now takes 45 ms, because a 256-entry RX ring buffer and five 128-GPU jobs are dropping packets. Raising the ring buffer to 4096 with `ethtool -G eth0 rx 4096 tx 4096`, and capping concurrency at three jobs, restores 88 percent GPU utilization.
+   - *Strong answer:* Walk the eight-layer tree from the GPU backward, so you never guess. Start with the GPU, because its utilization tells you whether storage is even the suspect. First, run `nvidia-smi dmon -s puctem` and confirm GPU SM utilization sits at 15 percent, well below the 70 percent I/O gate. Second, check `prefetch_queue.qsize()`. It is empty 80 percent of the time, which shows batches stall before they reach the CPU image decoder. Third, check the Lustre metadata counters and `ethtool -S eth0`. A modest 15.8K opens per second now takes 45 ms, because a 256-entry RX ring buffer and five 128-GPU jobs are dropping packets. Raising the ring buffer to 4096 with `ethtool -G eth0 rx 4096 tx 4096`, and capping concurrency at three jobs, restores 88 percent GPU utilization.
 2. **"During distributed training, your 100 GB/s NIC shows 60 GB/s during backward-pass AllReduce. How do you prove whether you are network-bound or compute-bound without changing hardware?"**
-   - *Strong answer:* Gradient AllReduce byte volume depends strictly on the model parameter count, and it does not depend on micro-batch size. So run the batch-size halving and doubling test. When you halve the batch size, backward compute finishes twice as fast, while AllReduce bytes stay constant. If NIC throughput stays pinned at 60 GB/s, the fabric caps the transfer rate, and the job is communication-bound. If NIC throughput drops to 40 GB/s, and doubling the batch size shrinks the AllReduce share from 50 percent to 33.3 percent, the job is compute-bound.
+   - *Strong answer:* Gradient AllReduce byte volume depends strictly on the model parameter count, and it does not depend on micro-batch size. So run the batch-size halving and doubling test. Say the reasoning out loud, since the reasoning is the answer. When you halve the batch size, backward compute finishes twice as fast, while AllReduce bytes stay constant. If NIC throughput stays pinned at 60 GB/s, the fabric caps the transfer rate, and the job is communication-bound. If NIC throughput drops to 40 GB/s, and doubling the batch size shrinks the AllReduce share from 50 percent to 33.3 percent, the job is compute-bound.
 3. **"Training throughput dropped 40 percent after a dataset update, or metadata latency jumped from 2 ms to 45 ms. How do you isolate why?"**
-   - *Strong answer:* First confirm that GPU utilization is low, or oscillating below 70 percent. Next, measure the file-open rate on the process with `strace -c -e openat`, and on the client with `lctl get_param llite.*.stats | grep open` or `beegfs-ctl --serverstats --nodetype=meta`. If the open rate stayed flat around 15K/sec while latency jumped to 45 ms, check the MDS CPU threads with `top -H`, or check network drops with `ethtool -S`. If the open rate spiked past 50K to 100K ops/sec, the dataset update introduced millions of small files. Repackage those files into WebDataset `.tar` or `.bin`/`.idx` shards to cut file opens by 100x to 1,000x.
+   - *Strong answer:* First confirm that GPU utilization is low, or oscillating below 70 percent. Start by asking whether the GPU is actually waiting, since a slow dataset is only one possible cause. Next, measure the file-open rate on the process with `strace -c -e openat`, and on the client with `lctl get_param llite.*.stats | grep open` or `beegfs-ctl --serverstats --nodetype=meta`. If the open rate stayed flat around 15K/sec while latency jumped to 45 ms, check the MDS CPU threads with `top -H`, or check network drops with `ethtool -S`. If the open rate spiked past 50K to 100K ops/sec, the dataset update introduced millions of small files. Repackage those files into WebDataset `.tar` or `.bin`/`.idx` shards to cut file opens by 100x to 1,000x. Measure before you migrate anything, because a migration is slow and can make the incident worse.
 4. **"How do you prove GPUDirect Storage is actually working in production rather than silently falling back to CPU bounce buffers?"**
-   - *Strong answer:* Never trust configuration files alone, because `/etc/cufile.json` enables `allow_compat_mode: true` by default. Verify four runtime signals during the read workload. Check that `nvidia-smi topo -m` shows `PIX` or `PXB` affinity between the GPU and the storage NIC or NVMe. Run `gdscheck.py -p` to confirm driver support for 470+. Confirm that the read counters in `/proc/driver/nvidia-fs/stats` climb during training. Finally, `perf record -g` should show 0 percent `__memcpy_avx2` instead of a 20 percent spike.
+   - *Strong answer:* Never trust configuration files alone, because `/etc/cufile.json` enables `allow_compat_mode: true` by default. A config file tells you what was requested, and only runtime evidence tells you what happened. Verify four runtime signals during the read workload. Check that `nvidia-smi topo -m` shows `PIX` or `PXB` affinity between the GPU and the storage NIC or NVMe. Run `gdscheck.py -p` to confirm driver support for 470+. Confirm that the read counters in `/proc/driver/nvidia-fs/stats` climb during training. Finally, `perf record -g` should show 0 percent `__memcpy_avx2` instead of a 20 percent spike.
 
 ---
 

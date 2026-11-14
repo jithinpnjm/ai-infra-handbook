@@ -23,9 +23,11 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-The training team has done everything right. Their job saves a checkpoint every thirty minutes, and it resumes cleanly after a crash. Then the storage graphs show the problem: every save takes eight minutes, the GPUs idle for all of it, and the filesystem is at 90 percent full after three weeks. The checkpoint logic is correct. The storage path under it is not.
+Picture a training team that has done everything right. Their job saves a checkpoint every thirty minutes, and it resumes cleanly after a crash. Then the storage graphs show the problem. Every save takes eight minutes, the GPUs sit idle for all of it, and the filesystem is 90 percent full after three weeks. The checkpoint logic is correct. The storage path under it is not.
 
-This chapter is the storage side of checkpointing. Chapter 14.11 owns the training side: what a checkpoint must contain, how often to save, failure detection and elastic restart. Read it for the five components, the sharded-versus-gathered argument and the Young-Daly interval. Chapter 19.4 combines both halves in a capstone. Here we answer questions that the storage engineer owns.
+A checkpoint is a snapshot of a training job's state, written to disk so the job can pick up where it stopped. You can think of it as a save file for a very large program. The training engineer asks what belongs in that file and how often to write it. The storage engineer asks a different question. What does each save cost the cluster, and what does it leave behind on the filesystem? This chapter answers the second question.
+
+This chapter is the storage side of checkpointing. Chapter 14.11 owns the training side: what a checkpoint must contain, how often to save, failure detection and elastic restart. Read it for the five components, the sharded-versus-gathered argument and the Young-Daly interval. Chapter 19.4 combines both halves in a capstone. Here we answer the questions that the storage engineer owns.
 
 - How many bytes does a checkpoint add to the filesystem, and how fast must it absorb them?
 - Where should the bytes land first so the GPUs are released quickly?
@@ -33,7 +35,7 @@ This chapter is the storage side of checkpointing. Chapter 14.11 owns the traini
 - How long does a restore take, and what do you keep or delete?
 - When is a transparent, driver-level snapshot better than a framework checkpoint?
 
-Two failure stories frame the chapter. In the first, a synchronous write over a congested shared filesystem stalls the cluster for eight minutes per save. Across a thousand saves that is over 133 hours of idle GPUs. In the second, a month of 100 GB checkpoints every half hour fills 144 TB, and a worker killed in the middle of `torch.save` leaves a truncated file that no one notices until the restore.
+Two failure stories frame the chapter, and you will meet both again later. In the first, a synchronous write over a congested shared filesystem stalls the cluster for eight minutes per save. Across a thousand saves that is over 133 hours of idle GPUs. The second story starts quietly. A month of 100 GB checkpoints every half hour fills 144 TB, and a worker killed in the middle of `torch.save` leaves a truncated file that no one notices until the restore. The stall shows up on a dashboard within minutes. The truncated file can sit unnoticed for weeks, which makes it the more dangerous of the two.
 
 ```text
 Storage-side checkpoint economics:
@@ -45,24 +47,27 @@ Storage-side checkpoint economics:
                       1,000 saves of 500 GB = 500 TB
 ```
 
+Read the numbers in that block as a chain. The save is slow because the write is slow, and the write is slow because it goes to one congested target in one synchronous step. The unpruned capacity lines are a separate problem, and they grow on their own schedule whether the saves are fast or slow.
+
 **Stage checkpoints to local NVMe first, publish them atomically, and prune on a schedule, so the filesystem sees steady background writes instead of eight-minute stalls.**
+
+Every section that follows takes one of those three habits and explains how to build it.
 
 ## Prerequisites and outcomes
 
-You should know local NVMe staging (chapter 13.2), GPUDirect Storage (13.3), Lustre (13.4) and the other parallel filesystems (13.5). From Part 14 you should have read chapter 14.11, or at least know what a sharded save is.
+You should know local NVMe staging (chapter 13.2), GPUDirect Storage (13.3), Lustre (13.4) and the other parallel filesystems (13.5). From Part 14 you should have read chapter 14.11, or at least know what a sharded save is. If those ideas are new, skim the earlier chapters first, because this one builds on them without repeating them.
 
-After this chapter you can do the following.
-1. Size the bytes a checkpoint adds and the write bandwidth needed to absorb it.
-2. Break a slow save into serialization, barrier, write and publication, and find the phase that costs time.
-3. Design a staged write path from GPU to local NVMe to shared storage, with a host-memory guard.
-4. Publish checkpoints atomically with checksums, restore them in parallel and retain them by policy.
-5. Decide when `cuda-checkpoint` with CRIU is a better tool than a framework checkpoint.
+The chapter moves in the order a save actually happens. It starts with the bytes a checkpoint adds and how fast the filesystem must absorb them. Next it breaks one slow save into its phases and shows how to find the phase that costs time. It then lays out a staged write path from the GPU to local NVMe to shared storage, with a guard against host memory overflow. After that comes atomic publication with checksums, parallel restores and a retention policy. It ends with the cases where a transparent snapshot with `cuda-checkpoint` and CRIU is the better tool than a framework checkpoint.
 
 ---
 
 ## 1. How many bytes a checkpoint adds
 
+A capacity request lands on a Monday. The training team wants a shared filesystem large enough for a 70B model, and they ask how much space one save takes. The honest answer starts with a list of what goes into the file, because the size of a checkpoint is the sum of its parts.
+
 The planning figure is 14 bytes per parameter: BF16 weights, FP32 master weights and the two FP32 Adam moments. Gradients are not saved, and chapter 14.11 explains why. Some frameworks keep only the FP32 master weights and moments, which is 12 bytes per parameter, so check what your job actually writes.
+
+It helps to know why the numbers are what they are. BF16 stores each value in half the space of an FP32 value, which is why the weights are the cheapest part of the file. The optimizer state is the expensive part, because Adam keeps two FP32 moments for every parameter. Those moments are what make the file big, and they are also what the framework needs to resume without a jolt in the loss curve.
 
 | Model | Checkpoint at 14 bytes per parameter | Training world size | Shard per GPU |
 |---|---|---|---|
@@ -71,13 +76,15 @@ The planning figure is 14 bytes per parameter: BF16 weights, FP32 master weights
 | 175B | 2,450 GB | 128 GPUs | 19.14 GB |
 | 400B | 5,600 GB | 2,048 GPUs | 2.73 GB |
 
-Divide a row's total by its GPU count to see what each rank writes. Now multiply by how often you save. A 980 GB checkpoint every 40 minutes is 36 saves a day, or about 35 TB a day before pruning. The retention policy in section 5 decides how much of that survives.
+Divide a row's total by its GPU count to see what each rank writes. The shard column tells you the write size that every rank will try to push at the same moment. The total column tells you what the filesystem has to hold.
+
+Now multiply by how often you save. A 980 GB checkpoint every 40 minutes is 36 saves a day, or about 35 TB a day before pruning. The daily total looks alarming, but it is only the input to the storage plan. The retention policy in section 5 decides how much of that survives, and the bandwidth rules in section 4 decide how fast the bytes must move.
 
 ---
 
 ## 2. Where the time goes in one save
 
-A checkpoint has four phases, and each can stall the cluster. The diagram shows the loop.
+A training run that used to save in a few seconds now takes minutes, and the GPU dashboard shows utilization falling to zero for the whole stretch. The question is where the time goes. A checkpoint has four phases, and each one can stall the cluster. The diagram shows the loop.
 
 ```mermaid
 flowchart TD
@@ -91,7 +98,7 @@ flowchart TD
     Loop --> Trig --> Ser --> Bar --> Write --> Pub --> Loop
 ```
 
-The table compares a healthy save with a degraded one from a field trace. Use it as a checklist when saves suddenly get slower.
+The loop has one feature that matters for storage. Training waits at the barrier, then waits at the write, and then waits again until publication finishes. A slow phase does not just slow the save. It holds every other GPU in place while it runs.
 
 | Phase | What happens | Healthy | Degraded trace | Usual cause |
 |---|---|---|---|---|
@@ -100,13 +107,17 @@ The table compares a healthy save with a degraded one from a field trace. Use it
 | Storage write | Persist the shard bytes | 1.4 to 5 s staged or on a fast filesystem | 450.2 s at 18.33 MB/s | Synchronous write to one congested target |
 | Publication | Mark the checkpoint complete | Under 0.5 s | A torn file after a crash | Overwriting in place with no temporary directory |
 
+Use the table as a checklist when saves suddenly get slower. Start with the phase whose degraded number is largest, and then check the usual cause in the last column. The table is a lookup, so you can come back to it while you work through an incident.
+
 The idle pause is the sum of the first three rows. In the degraded trace the write dominates, but the 28.3 seconds at the barrier is its own problem. One slow rank holds every other GPU. Before the barrier, gather each rank's average step time with `dist.all_gather` and flag any rank more than 15 percent slower than the fastest. Then check the NUMA binding with `numactl`, throttling with `nvidia-smi -q -d PERFORMANCE`, and NVLink against PCIe fallback with `nvidia-smi topo -m`.
+
+A useful habit is to read the barrier number before you touch the storage. If the barrier is slow, a faster filesystem will not help, because the GPUs are waiting for a neighbor, not for the disk.
 
 ---
 
 ## 3. The staged write path
 
-How do you cut the blocking pause from minutes to seconds? Split the save. The snapshot stays on the critical path, because the weights must not change while they are copied. The durable write moves off it.
+How do you cut the blocking pause from minutes to seconds? Split the save. The snapshot stays on the critical path, because the weights must not change while they are copied. The durable write moves off it. Think of it as a relay race. The first runner must take the baton directly from the GPU, so that runner stands still while the handoff happens. The later runners can carry the baton at their own pace, because the training loop has already moved on.
 
 ```mermaid
 flowchart LR
@@ -131,9 +142,13 @@ The table shows each stage for a node that holds 70 GB of checkpoint shards. The
 
 Only the snapshot always blocks training. The shared filesystem then sees a steady background drain from each node, not a burst from every rank at once. Chapter 13.2 covers how to build the local NVMe array.
 
+The table also explains the protection each stage buys. The snapshot guards against a process crash while the node stays up. The local staging guards against a process restart or an out-of-memory kill on the same node. Only the drain to shared storage survives the loss of the whole node. If you need the checkpoint to survive a dead node, the drain must finish, and that is why its rate matters even though no GPU waits for it.
+
 ### 3.1 The host memory guard
 
-The snapshot lands in pinned host memory. If a second save starts before the first flush ends, two snapshots are staged at once. On a node with 512 GB of RAM and 180 GB used by workers and loaders, one 70 GB snapshot brings use to 250 GB. Five overlapping snapshots bring it to 530 GB and the out-of-memory killer fires.
+An out-of-memory kill arrives right after a save starts, and no code changed in between. The usual suspect is the staging path. The snapshot lands in pinned host memory. If a second save starts before the first flush ends, two snapshots are staged at once. On a node with 512 GB of RAM and 180 GB used by workers and loaders, one 70 GB snapshot brings use to 250 GB. Five overlapping snapshots bring it to 530 GB and the out-of-memory killer fires.
+
+Pinned memory is memory that the operating system is not allowed to move or page out. That is what makes the copy from the GPU fast, and it is also why the guard matters. The system cannot push pinned pages to swap to make room, so the limit is simply RAM.
 
 Three rules prevent it. Allow one snapshot in flight and wait on the previous flush before starting the next. Allocate a reusable pinned buffer pool at job start. Delete the local staging file as soon as the shared copy is verified. Pinned memory cannot be swapped, so extra swap does not help. Chapter 14.11 explains this from the training side.
 
@@ -141,7 +156,9 @@ Three rules prevent it. Allow one snapshot in flight and wait on the previous fl
 
 ## 4. Sizing the storage for checkpoint bandwidth
 
-A shared filesystem has to absorb the background drains and still serve restores. Start from two numbers: the bytes per save and the time you allow each drain to take. If every node drains a 70 GB payload in 60 seconds, each node needs about 1.2 GB/s, and a 128-node cluster needs about 150 GB/s of aggregate write for that window. Drains that are spread across nodes need less. Drains that start together need more.
+A storage team asks a simple question. How fast must the shared filesystem write for a 128-node cluster? The answer depends on the bytes and the window. A shared filesystem has to absorb the background drains and still serve restores. Start from two numbers: the bytes per save and the time you allow each drain to take. If every node drains a 70 GB payload in 60 seconds, each node needs about 1.2 GB/s, and a 128-node cluster needs about 150 GB/s of aggregate write for that window. Drains that are spread across nodes need less. Drains that start together need more.
+
+That last point is the one teams forget. The per-node rate is modest, but the aggregate is set by when the drains happen. If every node starts its drain at the same moment, the filesystem sees the full burst at once. If the drains are offset, each one reaches the filesystem at a gentler pace.
 
 For NVIDIA DGX SuperPOD with DGX GB300, the reference architecture sets two high-performance storage tiers. Standard suits single-modality training whose working set fits in local cache. Enhanced suits large multimodal or trillion-parameter models that save often.
 
@@ -150,48 +167,56 @@ For NVIDIA DGX SuperPOD with DGX GB300, the reference architecture sets two high
 | One scalable unit | 90 GB/s | 45 GB/s | 280 GB/s | 140 GB/s |
 | Four scalable units | 360 GB/s | 180 GB/s | 1,120 GB/s | 560 GB/s |
 
+Read the table by picking the row that matches your scale and then the tier that matches your workload. The Enhanced tier is the larger one, so it costs more. Choose it only when your saves are large and frequent enough to need the extra bandwidth.
+
 On top of the storage fabric, NVIDIA Mission Control provides an autonomous recovery engine with in-memory checkpointing. It restarts processes from memory or staged snapshots and moves work to healthy nodes. Pick the tier by how often you save and how large the saves are, and see chapter 13.5 for how the filesystems differ.
 
 ---
 
 ## 5. Striping, atomic publication and retention
 
+A new run starts, and its first save takes much longer than the earlier runs did. Nothing in the code changed, only the directory is new. That is often a striping problem, and it is the first place to look.
+
 ### 5.1 Stripe the checkpoint directory
 
-On Lustre, a file written with the default stripe lives on one object storage target. A large checkpoint then runs at the speed of one target. Set the stripe on the checkpoint directory before the first save, so new files spread across all targets.
+On Lustre, a file written with the default stripe lives on one object storage target. A large checkpoint then runs at the speed of one target. Set the stripe on the checkpoint directory before the first save, so new files spread across all targets. Think of a stripe as dealing a deck of cards across several hands. One hand alone takes a long time to receive the whole deck. Several hands working together finish sooner.
 
 ```bash
 # All targets, 16 MiB stripe size, for the checkpoint directory
 lfs setstripe -c -1 -S 16M /shared-storage/checkpoints/
 ```
 
-Chapter 13.4 explains the stripe count and size trade-off for small and large files.
+Chapter 13.4 explains the stripe count and size trade-off for small and large files. The command sets every target as the stripe count and a large stripe size, which suits a checkpoint because each file is big. A stripe set on the directory applies to new files only, so it has to be in place before the first save.
 
 ### 5.2 Publish atomically
 
-A crash in the middle of a write must never leave a directory that looks like a good checkpoint. Use three steps.
+A node loses power in the middle of a save. The next morning the restore job finds a folder with the right name and the wrong contents. The fix is to make sure a half-written folder never gets the final name. A crash in the middle of a write must never leave a directory that looks like a good checkpoint. Use three steps.
 
-1. Every rank writes into a temporary directory such as `/shared-storage/.ckpt-step-1000.tmp/`, calls `fsync`, and waits at a barrier.
-2. Rank 0 writes a manifest with the SHA-256 checksum of every shard, the step, the world size, the list of saved keys and a completed flag, then calls `fsync` on it.
-3. Rank 0 renames the temporary directory to its final name with one atomic `os.replace`.
+1. Every rank writes into a temporary directory such as `/shared-storage/.ckpt-step-1000.tmp/`, calls `fsync`, and waits at a barrier. The `fsync` call asks the operating system to flush the bytes to the device, so a power cut after this point cannot lose them.
+2. Rank 0 writes a manifest with the SHA-256 checksum of every shard, the step, the world size, the list of saved keys and a completed flag, then calls `fsync` on it. The manifest is the table of contents that proves the checkpoint is whole.
+3. Rank 0 renames the temporary directory to its final name with one atomic `os.replace`. A rename within one filesystem either happens completely or not at all, so readers see either no checkpoint or a finished one.
 
-Recovery automation reads only directories without the temporary suffix, and it verifies the manifest before use. A truncated or partial shard then fails the checksum, and the job falls back to the previous checkpoint.
+Recovery automation reads only directories without the temporary suffix, and it verifies the manifest before use. A truncated or partial shard then fails the checksum, and the job falls back to the previous checkpoint. The design means that a crash costs you one save, never the whole history.
 
 ### 5.3 Retention
 
-Without cleanup, a thousand saves of 500 GB fill half a petabyte. A hook after each validated commit should keep a rolling window of the last five checkpoints for crash recovery, plus a milestone every hundred steps or epochs for evaluation. Delete everything else. For a 980 GB checkpoint, five kept saves occupy about 4.9 TB, plus the milestones.
+A storage alarm goes off on a Friday. The shared filesystem is nearly full, and nobody remembers deleting anything because nothing was ever deleted. Without cleanup, a thousand saves of 500 GB fill half a petabyte. A hook after each validated commit should keep a rolling window of the last five checkpoints for crash recovery, plus a milestone every hundred steps or epochs for evaluation. Delete everything else. For a 980 GB checkpoint, five kept saves occupy about 4.9 TB, plus the milestones.
+
+Retention is a policy, and the policy has to run on its own. A person who must remember to clean up will eventually forget. Put the rule in the commit hook, so each new validated checkpoint triggers the cleanup of the old ones.
 
 ---
 
 ## 6. The restore path
 
-A restore reads the checkpoint back, and storage determines how long that takes. Suppose you read a 500 GB checkpoint from one unstriped target at 2 GB/s. The read alone takes 250 seconds. Striped across eight targets at 2 GB/s each, with GPUDirect Storage where it is supported, the aggregate is 16 GB/s and the read takes 31.25 seconds.
+A job crashes at two in the morning and restarts with its checkpoint still on disk. The restore has to read the file back before any GPU can do useful work. Storage determines how long that takes. Suppose you read a 500 GB checkpoint from one unstriped target at 2 GB/s. The read alone takes 250 seconds. Striped across eight targets at 2 GB/s each, with GPUDirect Storage where it is supported, the aggregate is 16 GB/s and the read takes 31.25 seconds.
 
 ```text
 Recovery time objective for a 500 GB checkpoint:
   One target, 2 GB/s:      read 250.0 s + deserialize 10 s + distribute 5 s = 265 s (4.4 min)
   Eight targets, 16 GB/s:  read  31.25 s + 10 s + 5 s                        =  46.25 s
 ```
+
+The recovery time is the read plus the work after it. The read is the part that striping changes, so it is the part to measure. Deserialization and distribution stay about the same either way.
 
 When the job restarts on a different number of GPUs, each new rank reads a different set of byte ranges, which overlap several old shards. Chapter 14.11 explains the API. For storage, the effect is that reads are no longer one file per rank, so a wide stripe and a filesystem that handles many concurrent readers matter more. The example below shows the pattern for 19,200 parameters going from 64 to 48 ranks.
 
@@ -202,11 +227,13 @@ When the job restarts on a different number of GPUs, each new rank reads a diffe
   In all, 96 slice reads and every element is read exactly once
 ```
 
+Read the example as a map. Each new rank asks for a slice of the old shards, and the slices can cross the boundaries of the old files. The check at the end matters as much as the reads. Every element must be read exactly once, or the restored model is silently wrong.
+
 ---
 
 ## 7. Transparent snapshots with cuda-checkpoint and CRIU
 
-A framework checkpoint needs the training script to cooperate at a step boundary. A scheduler that must preempt a job, move it to another node or snapshot it cannot wait for that, and should not need code changes. For that case NVIDIA provides the `cuda-checkpoint` utility and Driver API calls, used together with CRIU, which snapshots and restores a Linux process.
+A scheduler needs to move a running job to another node because a host is about to be drained for maintenance. The training code was never written to pause on request. A framework checkpoint needs the training script to cooperate at a step boundary. A scheduler that must preempt a job, move it to another node or snapshot it cannot wait for that, and should not need code changes. For that case NVIDIA provides the `cuda-checkpoint` utility and Driver API calls, used together with CRIU, which snapshots and restores a Linux process.
 
 ```mermaid
 flowchart LR
@@ -221,12 +248,16 @@ flowchart LR
     Lock2 -->|"4. cuCheckpointProcessUnlock"| Run
 ```
 
+The diagram reads as a loop with four steps. The process is first locked so that no new CUDA calls start. The GPU state is then copied to host memory and the GPU is released. CRIU dumps the process, and on restore the same steps run in reverse, with the GPU reacquired and the memory mapped back.
+
 | Driver call | Transition | What the driver does | Constraint |
 |---|---|---|---|
 | `cuCheckpointProcessLock` | RUNNING to LOCKED | Blocks new CUDA calls and drains outstanding kernels and streams | The wait depends on how much work is in flight |
 | `cuCheckpointProcessCheckpoint` | LOCKED to CHECKPOINTED | Copies GPU memory into host memory and releases the GPU so CRIU can dump the process | Does not use GPUDirect Storage; time is active GPU memory divided by host link speed |
 | `cuCheckpointProcessRestore` | CHECKPOINTED to LOCKED | Reacquires GPUs of the same architecture and maps memory back to its original addresses | Needs the same GPU architecture; persistence mode or `cuInit` |
 | `cuCheckpointProcessUnlock` | LOCKED to RUNNING | Lets threads and kernels run again | Complements, but does not replace, framework checkpoints |
+
+The table is the reference for each driver call. Pay close attention to the constraint column, because it tells you what can go wrong. The lock call waits for work that is already in flight, so a busy job takes longer to lock. The restore call needs the same GPU architecture, so the target node must match the source.
 
 With 64 GB of active GPU memory and a 50 GB/s host link, the copy takes 1.28 seconds. Then CRIU writes the process image to storage. Use framework checkpoints for durable, elastic saves that survive world-size changes. Use this path for fast preemption and live migration of a running job.
 
@@ -305,6 +336,8 @@ def save_staged(model, optimizer, scheduler, loader, epoch, step):
 
 The function reads in the order of the chapter: wait for the previous flush, capture state, barrier, local write, then a background drain that ends in the rename. The rename is the step that makes the checkpoint visible.
 
+Read the function from top to bottom and notice where each safety rule lives. The wait on the previous flush is the memory guard from section 3.1. The barrier keeps every rank on the same step. The rename at the end is the atomic publish step.
+
 ### 2. Storage commands
 
 ```bash
@@ -322,11 +355,13 @@ df -h /shared-storage; df -i /shared-storage
 sha256sum /shared-storage/ckpt-step-1000/rank_00000.pt
 ```
 
-Read the metadata first because it tells you what a checkpoint holds. Set the stripe before the first save, not after.
+Read the metadata first because it tells you what a checkpoint holds. Set the stripe before the first save, not after. Check free space and inodes before you blame the filesystem, because a full inode table can fail a save even when `df -h` shows room. Verify one shard against the manifest when a restore complains, so you know whether the bytes or the logic is at fault.
 
 ---
 
 ## How it fails
+
+A resume fails, a save slows down, or a restore takes too long. The table below maps each symptom to the evidence to collect, the likely cause and the fix. Use it as a first-response guide, not as a checklist to run in order.
 
 | Symptom | Evidence to collect | Cause | Fix |
 |---|---|---|---|
@@ -336,13 +371,15 @@ Read the metadata first because it tells you what a checkpoint holds. Set the st
 | Restore is slow | Read rate per client, stripe count of the files | Checkpoint written with the default stripe | Set the stripe on the directory and rewrite, restore in parallel |
 | A checkpoint loads but is wrong | Manifest keys against the expected list | A script saved only some state, or a shard was corrupted | Reject any checkpoint whose manifest lacks a required key or fails a checksum |
 
-If a save crashes or a resume goes wrong, find the row that matches the symptom and collect the evidence before changing anything. Most fixes come down to two habits: write to a staging directory first, and verify before you publish.
+If a save crashes or a resume goes wrong, find the row that matches the symptom and collect the evidence before changing anything. Most fixes come down to two habits: write to a staging directory first, and verify before you publish. Collecting evidence first keeps you from fixing the wrong layer, because the same symptom can come from the storage path or from the training code.
 
 ---
 
 ## Hands-on lab
 
 You can run this lab without GPUs. It checks the arithmetic and state machines in this chapter. The driver script is `code/part13/checkpoint_architecture_lab.py`, and it imports `code/part13/checkpoint_architecture.py`. The Young-Daly interval, the gather-versus-sharded comparison and the training-side checks live in chapter 14.11's lab.
+
+The lab has one command. It runs the driver, which prints one PASS line for each check and a final summary.
 
 ```bash
 python3 -B code/part13/checkpoint_architecture_lab.py
@@ -373,35 +410,35 @@ Expected output.
 Summary: 18 passed, 0 failed
 ```
 
-If any line prints a failure, the arithmetic or the state machine has drifted from the chapter.
+If any line prints a failure, the arithmetic or the state machine has drifted from the chapter. Start with the failing line, find its section in this chapter, and check the inputs before you change any code.
 
 ---
 
 ## Exercises
 
-1. Size the checkpoints for storage. A 70B model on 128 GPUs and a 400B model on 2,048 GPUs both save 14 bytes per parameter. Calculate the total size and the shard per GPU for each. Then calculate how much a 40-minute save interval adds in one day for the 70B model.
-2. Diagnose a slow save. A trace shows 3.1 s serialization, 28.3 s at the barrier and 450.2 s of writing 8.25 GB per rank. Compute the per-rank write rate in MB per second, name the two largest costs, and say what you would check for each.
-3. Work out the staged write. For a node with 70 GB of shards, calculate the time of the snapshot at 50 GB/s, the local write at 20 GB/s and the shared drain at 2 GB/s. Say which stage blocks the GPUs.
-4. Check the host memory. A node has 512 GB of RAM with 180 GB in use. Calculate memory use with one 70 GB snapshot in flight and with five. Name the rule that prevents the second case.
-5. Compare restores. Calculate the read time and total recovery time of a 500 GB checkpoint from one target at 2 GB/s and from eight targets at 2 GB/s each, adding 15 seconds for deserialization and distribution.
-6. Choose a tool. A scheduler must preempt a running job and move it to another node, with no change to the training code. Say whether you would use a framework checkpoint or `cuda-checkpoint` with CRIU, and give the suspend time for 64 GB of active GPU memory at 50 GB/s.
+1. Size the checkpoints for storage. A 70B model runs on 128 GPUs. A 400B model runs on 2,048 GPUs. Both save 14 bytes per parameter. What is the total checkpoint size for each model? What shard does each GPU write? For the 70B model, how much does a 40-minute save interval add in one day?
+2. Diagnose a slow save. A trace shows 3.1 s of serialization and 28.3 s at the barrier. The same trace shows 450.2 s of writing 8.25 GB per rank. What is the per-rank write rate in MB per second? Which two costs are the largest? For each of those two, what would you check first?
+3. Work out the staged write. A node holds 70 GB of shards. How long does the snapshot take at 50 GB/s? How long does the local write take at 20 GB/s? How long does the shared drain take at 2 GB/s? Which stage blocks the GPUs?
+4. Check the host memory. A node has 512 GB of RAM, and 180 GB is in use. What is the memory use with one 70 GB snapshot in flight? What is it with five snapshots in flight? Which rule prevents the second case?
+5. Compare restores. A 500 GB checkpoint is read from one target at 2 GB/s. What is the read time? What is the total recovery time if you add 15 seconds for deserialization and distribution? What changes when the same checkpoint is read from eight targets at 2 GB/s each?
+6. Choose a tool. A scheduler must preempt a running job and move it to another node. The training code cannot change. Would you use a framework checkpoint or `cuda-checkpoint` with CRIU? What is the suspend time for 64 GB of active GPU memory at 50 GB/s?
 
 Expected values from the lab: item 1, 980 GB and 7.66 GB per GPU for the 70B model, 5,600 GB and 2.73 GB for the 400B model. Item 2, 18.33 MB/s. Item 3, 1.4 s, 3.5 s and 35 s. Item 4, 250 GB and 530 GB. Item 5, 265 s and 46.25 s. Item 6, `cuda-checkpoint`, 1.28 s.
+
+Work through the items in order, and compare each answer with the expected value before moving on. If your answer differs, recheck the input you used first, because most mismatches come from a unit slip.
 
 ---
 
 ## Interview angles
 
 1. **"A job writes a 500 GB checkpoint each hour and blocks for 8 minutes per save, across 1,000 planned saves. What does it cost and how do you fix it?"**
-   A thousand saves at 8 minutes is 8,000 minutes, or 133 hours of idle cluster. Instrument the phases: serialization, barrier, write and publication. Then stage through pinned memory and local NVMe in under five seconds, drain to shared storage in the background, and publish with an atomic manifest. The stall falls about 96 times, to 1.39 hours.
+   Think about the cost first, and then the fix. A thousand saves at 8 minutes is 8,000 minutes, or 133 hours of idle cluster. Instrument the phases: serialization, barrier, write and publication, so you know which one costs the time. Then stage through pinned memory and local NVMe in under five seconds, drain to shared storage in the background, and publish with an atomic manifest. The stall falls about 96 times, to 1.39 hours.
 2. **"How do you make sure a half-written checkpoint can never be restored?"**
    Write every shard into a temporary directory, `fsync`, record a SHA-256 checksum for each shard in a manifest with a completed flag, and publish by one atomic rename. Restore only from published directories whose manifest verifies, and keep the last five so there is always a fallback.
 3. **"Why does asynchronous checkpointing add a failure that synchronous saves do not have?"**
-   The staged copy lives in pinned host memory while the flush runs. If saves overlap, the copies plus the loader workers exceed RAM and the out-of-memory killer fires. Allow one save in flight, wait on the previous flush and reuse a fixed buffer pool.
+   The staged copy lives in pinned host memory while the flush runs. If saves overlap, the copies plus the loader workers exceed RAM and the out-of-memory killer fires. Allow one save in flight, wait on the previous flush and reuse a fixed buffer pool. The failure is new because the synchronous path never held a second copy in RAM while training continued.
 4. **"When would you use cuda-checkpoint instead of a framework checkpoint?"**
    Use a framework checkpoint for durable saves that survive a change of world size. Use `cuda-checkpoint` with CRIU when the scheduler needs to preempt or move a running job without changing the training code, on GPUs of the same architecture.
-
----
 
 ## Checkpoint questions (20)
 
