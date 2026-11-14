@@ -23,9 +23,9 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An infrastructure engineer often receives a request to train a large language model on a single GPU node. Five minutes after the job starts, the training script crashes with an out-of-memory error. Model parameter counts have grown exponentially over the last five years. Single-GPU high-bandwidth memory and compute throughput have grown only linearly. **Distributed training exists because modern models exceed both the memory capacity and the compute throughput of any single accelerator.**
+An infrastructure engineer often receives a request to train a large language model on a single GPU node. Five minutes after the job starts, the training script crashes with an out-of-memory error. The engineer checks the model size, and the number looks small enough. The surprise comes from what the number leaves out. Model parameter counts have grown exponentially over the last five years, while single-GPU high-bandwidth memory and compute throughput have grown only linearly. **Distributed training exists because modern models exceed both the memory capacity and the compute throughput of any single accelerator.**
 
-Even storing the raw weights of a frontier model overwhelms a single GPU before a single token of data enters the network. Training adds gradients, optimizer states, forward activations, and workspace buffers on top of those weights. Compute hits an equally hard physical wall during training. A single pass of a 175B parameter model takes well over an hour on one A100 GPU.
+Even storing the raw weights of a frontier model overwhelms a single GPU before a single token of data enters the network. Training then adds gradients, optimizer states, forward activations, and workspace buffers on top of those weights. Compute hits an equally hard physical wall during training. A single pass of a 175B parameter model takes well over an hour on one A100 GPU. The block below puts the walls side by side, so you can see which one you hit first for a given model.
 
 ```text
 Memory and Compute Physical Walls:
@@ -50,41 +50,41 @@ Memory and Compute Physical Walls:
     7B model on 1 trillion tokens:             ~2 weeks on 8x A100 (80 GB) GPUs
 ```
 
-Sizing a cluster or diagnosing a memory crash requires accounting for every byte and every floating-point operation across the training step. You must track four quantitative subsystems across every job:
+Sizing a cluster or diagnosing a memory crash requires accounting for every byte and every floating-point operation in the training step. Four quantitative subsystems matter on every job, and each one can become the bottleneck on its own:
+1. Static model state requires 16 bytes per parameter under mixed-precision AdamW. By contrast, on-disk checkpoints omit gradients and store 14 bytes per parameter. The static number decides whether the job starts at all.
+2. Dynamic transformer activations grow with sequence length and micro-batch size. They cause peak memory pressure during the backward pass, when activations and gradients coexist in memory.
+3. Gradient accumulation and CUDA caching allocator tuning via `PYTORCH_ALLOC_CONF` control dynamic memory peaks and prevent block fragmentation during long runs. They decide whether a job that survives its first hundred steps also survives its ten-thousandth.
+4. Compute efficiency depends on separating Model FLOPs Utilization from Hardware FLOPs Utilization. It also requires overlapping collective communication with backward computation, so that the GPUs are not waiting on the network.
 
 1. Static model state requires 16 bytes per parameter under mixed-precision AdamW. By contrast, on-disk checkpoints omit gradients and store 14 bytes per parameter.
 2. Dynamic transformer activations grow with sequence length and micro-batch size. They cause peak memory pressure during the backward pass when activations and gradients coexist.
 3. Gradient accumulation and CUDA caching allocator tuning via `PYTORCH_ALLOC_CONF` control dynamic memory peaks and prevent block fragmentation during long runs.
 4. Compute efficiency depends on separating Model FLOPs Utilization from Hardware FLOPs Utilization. It also requires overlapping collective communication with backward computation.
 
-Before you provision a multi-node cluster, calculate both the static parameter state and the dynamic activation footprint for a single training step.
+Before you provision a multi-node cluster, calculate both the static parameter state and the dynamic activation footprint for a single training step. Static state tells you whether the model fits at all. Activations tell you how much room is left for the batch you actually want to run.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Familiarity with neural network forward and backward propagation, matrix multiplications, and transformer self-attention from earlier chapters in Part 14.
-- Understanding of GPU HBM capacity, Tensor Core number formats, and NVLink, PCIe, InfiniBand, and RoCEv2 topologies from earlier parts.
-- Basic familiarity with `nvidia-smi` and PyTorch tensors.
+- Neural network forward and backward propagation, matrix multiplications, and transformer self-attention from earlier chapters in Part 14 come first.
+- GPU HBM capacity, Tensor Core number formats, and NVLink, PCIe, InfiniBand, and RoCEv2 topologies from earlier parts matter here too.
+- The `nvidia-smi` tool and basic PyTorch tensors are the last prerequisites, and you will meet both in the commands section.
 
 ### Outcomes
-After completing this chapter, you will be able to:
-1. Calculate the static and dynamic GPU memory footprint of any dense or Mixture-of-Experts transformer across FP32, mixed-precision, and pure BF16 setups.
-2. Predict which phase of the training loop will trigger an out-of-memory crash first. You will also select the right fix from mixed precision, FlashAttention, activation checkpointing, gradient accumulation, `PYTORCH_ALLOC_CONF`, or FSDP.
-3. Compute per-step FLOPs, Model FLOPs Utilization, and Hardware FLOPs Utilization from observed throughput. You will also decompose iteration time across compute and NCCL collectives.
-4. Choose between single-GPU optimization, DDP, FSDP, Tensor Parallelism, Pipeline Parallelism, and Expert Parallelism using quantitative memory and bandwidth thresholds.
+Suppose a training run has crashed on step one, and you need to decide what to change first. This chapter walks through the answer in order. It starts with the five GPU memory consumers and the precision formats that set their sizes. It then follows one training step through time, so you can see where the memory peak sits. Next it covers gradient accumulation, the CUDA caching allocator tuned through `PYTORCH_ALLOC_CONF`, and the compute math behind Model FLOPs Utilization. The last part is the choice between single-GPU tuning and the distributed parallelism strategies, with the thresholds that decide each one.
 
 ---
 
 ## 1. The Five GPU Memory Consumers and Precision Formats
 
-When a training script crashes with a CUDA out-of-memory error, engineers often blame the model weights alone. In reality, five distinct consumers compete for GPU HBM during every training iteration. If you only budget for the parameter file size on disk, your job will crash before completing its first step.
+When a training script crashes with a CUDA out-of-memory error, engineers often blame the model weights alone. That instinct is understandable, because the weights are the one number everyone can see on disk. In reality, five distinct consumers compete for GPU HBM during every training iteration. If you only budget for the parameter file size on disk, the job will crash before it completes its first step.
 
-The five consumers divide into static model state, dynamic intermediate tensors, and runtime scratchpads:
-1. Model weights hold the learnable parameters of the neural network.
-2. Gradients store the partial derivatives of the loss with respect to every learnable parameter. They match the shape of the trainable weights.
+The five consumers fall into three groups: static model state, dynamic intermediate tensors, and runtime scratchpads. Each consumer is listed below with its role, so you can match a crash message to the group that caused it.
+1. Model weights hold the learnable parameters of the neural network. They are the largest fixed block, and they stay resident for the whole job.
+2. Gradients store the partial derivatives of the loss with respect to every learnable parameter. They match the shape of the trainable weights, so they are about as large as the weights themselves.
 3. Optimizer states maintain per-parameter history buffers across steps. Examples include momentum, variance, and master weights in Adam and AdamW.
-4. Forward activations hold intermediate layer outputs computed during the forward pass. They must remain in memory until the backward pass consumes them.
-5. Workspace and temporary buffers include cuBLAS and cuDNN scratchpads, NCCL communication buckets, and free blocks held inside the PyTorch CUDA caching allocator.
+4. Forward activations hold intermediate layer outputs computed during the forward pass. They must remain in memory until the backward pass consumes them, which is why they grow with the batch.
+5. Workspace and temporary buffers include cuBLAS and cuDNN scratchpads, NCCL communication buckets, and free blocks held inside the PyTorch CUDA caching allocator. They are small individually, but they add up at the worst possible moment.
 
 ```text
 Typical Workspace and Operational Overhead on an 80 GB GPU:
@@ -94,9 +94,11 @@ Typical Workspace and Operational Overhead on an 80 GB GPU:
   Total GPU workspace & allocator overhead:     5-15 GB
 ```
 
+Read the overhead block as a reservation list. Before any of your tensors land, the CUDA runtime, the collective library and the host operating system have already claimed part of the card or the memory beside it. The ranges are wide because they depend on the driver version, the number of GPUs per process and the size of the NCCL buckets. The practical habit is to subtract the upper end of this block from the physical capacity before you do any other arithmetic.
+
 ### 1.1 Numerical Precision Formats
 
-Storing every tensor in 32-bit floating point wastes half of your HBM capacity and leaves modern Tensor Cores underutilized. Choosing the wrong 16-bit format, however, can cause small gradients to underflow to zero and stall model convergence. Understanding the bit layout of each numerical format tells you why modern training pipelines standardize on BF16 and FP8.
+Storing every tensor in 32-bit floating point wastes half of your HBM capacity and leaves modern Tensor Cores underutilized. Choosing the wrong 16-bit format can cause small gradients to underflow to zero and stall model convergence. Picture a gradient of a tiny size that rounds to zero in one format and survives in another. Understanding the bit layout of each numerical format tells you why modern training pipelines standardize on BF16 and FP8. The bit layout has three parts, a sign bit, an exponent that sets the range, and a mantissa that sets the precision.
 
 | Format | Bytes / Value | Bit Layout (`Sign / Exp / Mantissa`) | Dynamic Range & Numeric Behavior | Primary Infrastructure Usage |
 |---|---|---|---|---|
@@ -110,11 +112,13 @@ Storing every tensor in 32-bit floating point wastes half of your HBM capacity a
 | **INT8** | `1.0` | `8`-bit integer (`[-128, 127]`) | Fixed-point; requires per-channel or per-token scale factors | Quantized inference (`SmoothQuant`, `W8A8`) and 8-bit optimizer states (`bitsandbytes`) |
 | **INT4 / NVFP4** | `0.5` (`~0.5`) | `4`-bit integer or `E2M1` + `16`-value block scale | Extreme compression; NVFP4 adds microscaling on Blackwell | QLoRA NF4 and INT4 frozen base weights (`3.5 GB` for `7B`); Blackwell NVFP4 inference |
 
-Why do infrastructure teams prefer BF16 over FP16 for large language model training? FP16 allocates only five exponent bits. Small gradient updates therefore frequently underflow to zero unless you wrap the backward pass in `torch.amp.GradScaler`. BF16 keeps all eight exponent bits of FP32. It trades three bits of mantissa precision for drop-in numerical stability without dynamic loss scaling.
+Read the format table by its usage column, because that column answers the practical question. Which format do the weights live in, which one carries the gradients, and which one holds the optimizer math? The mixed-precision recipe answers all three at once. Forward and backward run in BF16, the master copy and the moments stay in FP32, and the FP8 rows appear only where the hardware supports them. Lower-precision rows such as INT8 and INT4 are mostly for inference and for memory-tight fine-tuning, not for the full pretraining step.
+
+Why do infrastructure teams prefer BF16 over FP16 for large language model training? FP16 allocates only five exponent bits, so its range is narrow. Small gradient updates therefore frequently underflow to zero unless you wrap the backward pass in `torch.amp.GradScaler`, which scales the loss up before the backward pass and back down afterward. BF16 keeps all eight exponent bits of FP32. It trades three bits of mantissa precision for drop-in numerical stability without dynamic loss scaling. The range matters more than the extra precision for most gradient work, which is why BF16 became the default.
 
 ### 1.2 Optimizer State Math
 
-Many engineers are surprised when the optimizer consumes three times as much memory as the model weights and gradients combined. This memory bloat happens because adaptive optimizers track per-parameter historical statistics across every step. Comparing the update rule for Stochastic Gradient Descent against Adam and AdamW reveals where those extra gigabytes go.
+Many engineers are surprised when the optimizer consumes more memory than the model weights and gradients combined. Picture a training job that fits on paper, then runs out of memory the moment the first optimizer step allocates its buffers. This memory bloat happens because adaptive optimizers track per-parameter historical statistics across every step. Comparing the update rule for Stochastic Gradient Descent against Adam and AdamW reveals where those extra gigabytes go.
 
 ```text
 SGD update rule (eta is scalar learning rate):
@@ -128,9 +132,9 @@ Adam / AdamW update rule (beta_1 = 0.9, beta_2 = 0.999, eta, epsilon, lambda are
   w_{t+1} = w_t - eta * ( m_hat_t / (sqrt(v_hat_t) + epsilon) + lambda * w_t )
 ```
 
-In plain SGD, the learning rate is a single scalar that adds zero per-parameter memory. Once the gradient is computed, SGD updates the weight tensor in place without storing historical buffers.
+In plain SGD, the learning rate is a single scalar that adds zero per-parameter memory. Once the gradient is computed, SGD updates the weight tensor in place without storing historical buffers. The optimizer is essentially stateless, and that is why it is the cheapest choice in memory, even though it converges more slowly on Transformers.
 
-In Adam and AdamW, the optimizer must persist two full-sized state tensors across every step. The first moment tracks the exponential moving average of the gradients, and the second moment tracks the exponential moving average of the squared gradients. Together, these two buffers equal twice the parameter count in optimizer state alone.
+In Adam and AdamW, the optimizer must persist two full-sized state tensors across every step. The first moment tracks the exponential moving average of the gradients, which is a smoothed running direction. The second moment tracks the exponential moving average of the squared gradients, which is a smoothed running size. Together, these two buffers equal twice the parameter count in optimizer state alone. Each buffer is the same shape as the weights, so the memory cost follows the model size directly.
 
 | Optimizer | Stored Per-Parameter Tensors | State Multiplier (Tensors / Param) | FP32 State Bytes / Param | Mixed-Precision Static Total (`Weights + Grads + Opt`) |
 |---|---|---|---|---|
@@ -143,9 +147,11 @@ In Adam and AdamW, the optimizer must persist two full-sized state tensors acros
 | **AMSGrad** | `m_{t-1}` (`1x`) + `v_{t-1}` (`1x`) + historical max `v_max` (`1x`) | `3x` | `12 B` (`+4 B` FP32 master = `16 B`) | `20 B` |
 | **Shampoo** | Left and right preconditioner matrices per layer | `> 2x` (varies) | `> 8 B` | `> 16 B` |
 
+Read the optimizer table by its multiplier column. The multiplier says how many full-sized state tensors each optimizer keeps, and the bytes column turns that into memory. Plain SGD keeps none, so its static total is the smallest. Momentum keeps one tensor, and Adam family keeps two, which is why the last column jumps from 12 bytes to 16 bytes in mixed precision. Adafactor is the exception that saves memory by storing row and column statistics instead of full tensors.
+
 ### 1.3 The 16-Byte Static Memory Rule vs Checkpoint and Pure-BF16 Baselines
 
-When teams estimate memory for a model with Psi parameters, three different accounting conventions appear across textbooks, papers, and production runbooks. Mixing up these conventions leads to severe cluster under-provisioning. You must distinguish production mixed-precision AdamW, pure FP32 Adam, and the pure BF16 teaching baseline.
+When teams estimate memory for a model with Psi parameters, three different accounting conventions appear across textbooks, papers and production runbooks. Psi is the parameter count. The three conventions give different totals for the same model, and mixing them up leads to severe cluster under-provisioning. The block below lays out each convention line by line. Read it once, and then keep the production convention in mind for the rest of the chapter. You must distinguish production mixed-precision AdamW, pure FP32 Adam, and the pure BF16 teaching baseline.
 
 ```text
 Convention 1 — Production Mixed-Precision AdamW (BF16 forward/backward + FP32 master weights & states):
@@ -173,9 +179,11 @@ Convention 3 — Pure BF16 Adam Teaching Baseline (no FP32 master weights, m_t a
   Total In-Memory Static State:    8 * Psi bytes  (56 GB fixed for 7B; + 8-16 GB act = 64-72 GB peak)
 ```
 
-Notice a critical architectural insight in the breakdown above. **Both pure FP32 Adam and production mixed-precision AdamW consume 16 bytes per parameter of static state.** Mixed precision saves two bytes per parameter on the weights and two bytes per parameter on the gradients. That four-byte saving equals the four-byte FP32 master weight copy required to prevent small AdamW updates from rounding to zero when added to BF16 weights.
+The three conventions differ in one place, and that place decides the answer. Convention 1 keeps a 16-bit copy of the weights for compute and an FP32 copy for the optimizer, so it pays for both. Convention 2 uses FP32 everywhere, so the weights are already at full precision and no master copy is needed. Convention 3 is a teaching baseline that keeps everything in BF16, which is smaller but can lose small updates. When a runbook quotes a number, check which convention it used before you compare it with your own plan.
 
-The true memory win of Automatic Mixed Precision is that forward and backward activations are cut in half while Tensor Core throughput doubles.
+Notice a critical architectural insight in the breakdown above. **Both pure FP32 Adam and production mixed-precision AdamW consume 16 bytes per parameter of static state.** Mixed precision saves two bytes per parameter on the weights and two bytes per parameter on the gradients. That four-byte saving equals the four-byte FP32 master weight copy required to prevent small AdamW updates from rounding to zero when added to BF16 weights. Mixed precision therefore does not shrink the static state. It moves bytes from the weights and gradients into the master copy, and it makes the arithmetic faster.
+
+The true memory win of Automatic Mixed Precision is in the activations. Forward and backward activations are cut in half, because they are stored in BF16 rather than FP32, while Tensor Core throughput doubles. Since activations grow with the batch and the sequence length, that halving is what lets a larger micro-batch fit on the same card.
 
 | Model Size (`Psi`) | FP32 Weights (`4Psi`) | BF16 Weights (`2Psi`) | Pure BF16 Adam + Act (*Distributed AI Systems* Baseline) | Mixed-Precision AdamW Static (`16Psi`) | Mixed-Precision AdamW Checkpoint (`14Psi`) | BF16 Inference (`Weights + KV Cache`) |
 |---|---|---|---|---|---|---|
@@ -185,21 +193,23 @@ The true memory win of Automatic Mixed Precision is that forward and backward ac
 | **`70B`** | `280 GB` | `140 GB` | `~600–700 GB` | `1,120 GB` (`~1.12 TB`; `> 1.2 TB` w/ act) | `980 GB` (`~1.0 TB`) | `140–180 GB` (`20–40 GB` KV cache at `b=32, s=2048`) |
 | **`175B` (`GPT-3`)** | `700 GB` (`8.75x` `80 GB`) | `350 GB` | `~1.5–1.8 TB` | `2,800 GB` (`2.8 TB`) | `2,450 GB` (`2.45 TB`) | `350–450 GB` |
 
+Read the model-size table row by row, and watch what happens to the static column as the model grows. The static mixed-precision column grows at 16 bytes per parameter, so the 70B row is ten times the 7B row. The checkpoint column grows at 14 bytes per parameter, which is why a checkpoint looks smaller than the training state. The inference column adds the KV cache, which is the only part that depends on the batch and the context. The last row is the reason distributed training exists at all.
+
 :::info Operational Safety Margin
 Never size GPU count by dividing static model bytes by physical HBM capacity alone. PyTorch contexts, NCCL buckets, and allocator splits require a 10% to 20% minimum safety margin, and 20% to 30% is safer in production. As shown in the table above, a 13B BF16 setup with a 72 GB base footprint reaches 85 GB once an 18% buffer is added.
 :::
 
-When you size a training cluster, always start with the mixed-precision AdamW static budget. Then add a generous safety margin for runtime buffers.
+When you size a training cluster, always start with the mixed-precision AdamW static budget. Then add a generous safety margin for runtime buffers. Walk the table row for your model size, check which column matches your precision plan, and only then look at activations. A row that looks comfortable on paper can still fail once the buffers are counted.
 
 ---
 
 ## 2. Dynamic Memory Anatomy: Activations, FlashAttention, and the Step Timeline
 
-A model whose static weights and optimizer states fit inside GPU memory can still crash when you increase the batch size or sequence length. Static model state depends only on the parameter count. **Dynamic activation memory is independent of parameter count at a single layer and scales with micro-batch size, sequence length, hidden dimension, and layer count.**
+A model whose static weights and optimizer states fit inside GPU memory can still crash when you increase the batch size or the sequence length. Static model state depends only on the parameter count. **Dynamic activation memory is independent of parameter count at a single layer and scales with micro-batch size, sequence length, hidden dimension, and layer count.** That is why two jobs with the same model can behave very differently when one of them doubles its context window.
 
 ### 2.1 Why Backpropagation Requires Stored Forward Activations
 
-Why can the GPU not discard intermediate layer outputs as soon as the forward pass moves to the next layer? During the backward pass, the chain rule requires those exact forward-pass tensors to compute weight gradients. Without them, autograd cannot calculate how much each weight contributed to the loss.
+Why can the GPU not discard intermediate layer outputs as soon as the forward pass moves to the next layer? During the backward pass, the chain rule requires those exact forward-pass tensors to compute weight gradients. Without them, autograd cannot calculate how much each weight contributed to the loss. The forward values are the evidence that the backward pass needs, so they must be kept until the backward pass has used them.
 
 ```text
 Two-layer forward pass:
@@ -213,10 +223,10 @@ Chain-rule backward gradients:
                = (dL / dy_hat) * W_2^T * sigma'(z) * x^T
 ```
 
-To compute the gradient for the second layer during `loss.backward()`, autograd must read the activation output computed during the forward pass. To compute the gradient for the first layer, autograd needs the layer input and the derivative of the activation function. Whether PyTorch saves the post-activation output or the pre-activation input depends on the mathematical form of that derivative:
+To compute the gradient for the second layer during `loss.backward()`, autograd must read the activation output computed during the forward pass. To compute the gradient for the first layer, autograd needs the layer input and the derivative of the activation function. Whether PyTorch saves the post-activation output or the pre-activation input depends on the mathematical form of that derivative. The question to ask for each activation is simple. Can its derivative be written from its output alone, or does it need the input?
 
-- Sigmoid, Tanh, and Softplus have derivatives that can be written purely in terms of the post-activation output. PyTorch therefore stores only the output tensor and discards the pre-activation input.
-- ReLU, Leaky ReLU, ELU, GELU, Swish, SiLU, Mish, and gated linear units have derivatives that explicitly require the pre-activation input. Modern large language models using SwiGLU or GELU must retain these pre-activation tensors across all transformer blocks during the forward pass.
+- Which activations can drop their input? Sigmoid, Tanh, and Softplus have derivatives that can be written purely in terms of the post-activation output, so PyTorch stores only the output tensor and discards the pre-activation input.
+- Which activations must keep their input? ReLU, Leaky ReLU, ELU, GELU, Swish, SiLU, Mish, and gated linear units have derivatives that explicitly require the pre-activation input. Modern large language models using SwiGLU or GELU must therefore retain these pre-activation tensors across all transformer blocks during the forward pass.
 
 ```text
 Activation Derivative Storage Rules:
@@ -227,9 +237,9 @@ Activation Derivative Storage Rules:
 
 ### 2.2 Exact Transformer Activation Memory Formula
 
-When training a transformer at long context lengths, standard self-attention causes activation memory to explode quadratically with sequence length. We can predict this byte cost using the Megatron-LM derivation by Korthikanti et al. for an L-layer transformer trained in mixed precision.
+When training a transformer at long context lengths, standard self-attention causes activation memory to explode quadratically with sequence length. The growth is not visible at short prompts, which is why it surprises teams that tested on short data. We can predict this byte cost using the Megatron-LM derivation by Korthikanti et al. for an L-layer transformer trained in mixed precision. The derivation splits the per-layer storage into two parts, and the next lines show each part.
 
-Each transformer layer stores two categories of intermediate activations during the forward pass:
+Each transformer layer stores two categories of intermediate activations during the forward pass. Keep both in mind, because the first grows with the sequence length and the second grows with its square.
 1. Non-attention linear, LayerNorm, MLP, and residual activations consume `34 * s * b * h` bytes per layer.
 2. Materialized attention score matrices, softmax outputs, and dropout masks consume `5 * a * b * s^2` bytes per layer.
 
@@ -255,16 +265,18 @@ Transformer Activation Memory Breakdown (BF16/FP16, 2 bytes/element):
     A_total (Full Checkpt)   = L * (2 * s * b * h) + 34 * s * b * h   bytes
 ```
 
-Evaluating these equations on a 7B parameter transformer shows how fast activation memory grows. Our verification module `code/part14/training_memory_compute.py` tests both a short-context and a long-context operating point.
+Evaluating these equations on a 7B parameter transformer shows how fast activation memory grows. Read the table below as two operating points. The short-context row is a typical training batch, and the long-context row trades batch size for sequence length. Our verification module `code/part14/training_memory_compute.py` tests both a short-context and a long-context operating point, so you can rerun either row yourself.
 
 | Configuration (`7B`, `L=32, h=4096, a=32`) | Non-Attention (`34sbh` / layer) | Attention Matrix (`5abs^2` / layer) | Standard Total (`L` layers) | With FlashAttention / SDPA | With Full Activation Checkpointing |
 |---|---|---|---|---|---|
 | **Short context (`b = 4, s = 2048`)** | `1,140,850,688 B` (`1.141 GB`/layer) | `2,684,354,560 B` (`2.684 GB`/layer) | **`122.4066 GB`** (`3.825 GB`/layer) | **`36.5072 GB`** (**`70.18%` savings**) | **`3.2883 GB`** (**`97.31%` savings**) |
 | **Long context (`b = 2, s = 8192`)** | `2,281,701,376 B` (`2.282 GB`/layer) | `21,474,836,480 B` (`21.475 GB`/layer) | **`760.2092 GB`** (`23.757 GB`/layer) | **`73.0144 GB`** (**`90.40%` savings**) | **`6.5767 GB`** (**`99.13%` savings**) |
 
-Look closely at the long-context row in the table above. Because the materialized attention matrix scales with sequence length squared, attention scores alone reach 687.1948 GB across all layers. Using `torch.nn.functional.scaled_dot_product_attention` dispatches to FlashAttention. That kernel fuses the attention math inside on-chip SRAM tiles without writing the attention matrix to HBM. FlashAttention slashes activation memory by more than 70% at short context and over 90% at long context while accelerating wall-clock speed.
+Read the two rows as two different risks. The short-context row is dominated by the linear terms, so FlashAttention removes most of the attention matrix and the checkpointing column shows the floor. The long-context row is dominated by the quadratic term, so the standard total is far larger than the linear part alone. Notice that the FlashAttention column stays close to the linear term in both rows. That is the reason the kernel matters most when the context grows.
 
-Combining FlashAttention with full activation checkpointing via `torch.utils.checkpoint` saves only the layer-boundary input tensor per block plus one active layer for recomputation. That combination drops total activation memory to 3.2883 GB at short context in exchange for one extra forward pass of compute.
+Look closely at the long-context row in the table above. Because the materialized attention matrix scales with sequence length squared, attention scores alone reach 687.1948 GB across all layers. Halving the batch does not save you here, because the sequence length grew by a factor of four while the batch only halved. Using `torch.nn.functional.scaled_dot_product_attention` dispatches to FlashAttention. That kernel fuses the attention math inside on-chip SRAM tiles without writing the attention matrix to HBM. FlashAttention slashes activation memory by more than 70% at short context and over 90% at long context while accelerating wall-clock speed.
+
+Combining FlashAttention with full activation checkpointing via `torch.utils.checkpoint` saves only the layer-boundary input tensor per block, plus one active layer for recomputation. Think of it as keeping the doorways of a building and rebuilding one room at a time when it is needed. That combination drops total activation memory to 3.2883 GB at short context, in exchange for one extra forward pass of compute.
 
 ```text
 Full Activation Checkpointing Math on 7B (L=32, b=4, s=2048, h=4096):
@@ -274,9 +286,11 @@ Full Activation Checkpointing Math on 7B (L=32, b=4, s=2048, h=4096):
   Backward compute overhead:                 ~30-33% (up to 30-50% slower backward pass)
 ```
 
+Read the checkpointing math as a trade. The layer-boundary tensors are the cheap part, and they are kept for all 32 layers. The expensive part is the single active layer that is rebuilt during the backward pass. The total is the sum of the two, and the savings percentage compares it with the standard total. The overhead line is the price. The backward pass does extra work to rebuild the layer, which is why checkpointing is a last resort for memory rather than a default setting.
+
 ### 2.3 The Training Step Memory Timeline and High-Water Mark
 
-Knowing the total size of weights, activations, and gradients is not enough to predict when a job will crash. Memory usage rises and falls across the five phases of a training step, and a crash happens the instant the transient high-water mark crosses physical HBM capacity. Tracing the step lifecycle shows why most out-of-memory errors strike during `loss.backward()` or on the very first call to `optimizer.step()`.
+Knowing the total size of weights, activations and gradients is not enough to predict when a job will crash. Memory usage rises and falls across the phases of a training step, and a crash happens the instant the transient high-water mark crosses physical HBM capacity. The high-water mark is the highest point the memory curve reaches during the step. Tracing the step lifecycle shows why most out-of-memory errors strike during `loss.backward()` or on the very first call to `optimizer.step()`. The code and the diagram below show the five lines that make up one step.
 
 ```python
 for x_batch, y_batch in dataloader:
@@ -286,6 +300,8 @@ for x_batch, y_batch in dataloader:
     loss.backward()                        # 4. Backward pass: PEAK MEMORY (activations + gradients coexist)
     optimizer.step()                       # 5. Optimizer step: activations freed; update weights & m_t, v_t
 ```
+
+Read the loop as a timeline of allocations. Line 1 frees the gradients, and `set_to_none=True` drops the tensors rather than filling them with zeros, which saves a write. Line 2 allocates the activations as the forward pass runs. Line 3 is small, because the loss is a scalar. Line 4 is the peak, because the gradients appear while the activations still exist. Line 5 frees the activations and updates the weights and moments. The loop looks simple, but almost every memory question about a training job is a question about what is alive between lines 2 and 5.
 
 ```mermaid
 flowchart LR
@@ -299,9 +315,11 @@ flowchart LR
     end
 ```
 
-During the forward pass, each layer writes its activations to HBM so the backward pass can use them later. When `loss.backward()` begins, autograd walks backward from the final layer to the first layer. It allocates gradient tensors while earlier layers still hold their forward activations in memory. **Peak GPU memory occurs during the backward pass because stored forward activations and newly computed gradients coexist in HBM.**
+The diagram shows the same four phases as the code, drawn as a cycle that starts again at every iteration. Each arrow is a point where memory can change. The first two arrows add memory, the third arrow adds the gradients at the peak, and the last arrow gives back the activations. A crash message tells you which arrow you were on, and that is the fastest way to choose a fix.
 
-As each layer finishes its backward computation, PyTorch frees its saved forward activations. By the time `optimizer.step()` executes in steady state, the forward activations are gone. The only exception is Step 1 of training, when PyTorch lazily allocates the Adam momentum and variance buffers inside the first `optimizer.step()` call.
+During the forward pass, each layer writes its activations to HBM so the backward pass can use them later. When `loss.backward()` begins, autograd walks backward from the final layer to the first layer. It allocates gradient tensors while earlier layers still hold their forward activations in memory. **Peak GPU memory occurs during the backward pass because stored forward activations and newly computed gradients coexist in HBM.** The peak is set by the moment when the two are both at their largest, which is near the start of the backward walk.
+
+As each layer finishes its backward computation, PyTorch frees its saved forward activations. By the time `optimizer.step()` executes in steady state, the forward activations are gone. The only exception is Step 1 of training, when PyTorch lazily allocates the Adam momentum and variance buffers inside the first `optimizer.step()` call. That first call is therefore a second peak, and it is the one that catches teams who only tested the steady state.
 
 ```text
 Timeline 1 — Steady-State Pure BF16 Adam on 7B Model (DAI Ch. 1 Fig 1.4, after Step 1 warmup):
@@ -319,7 +337,9 @@ Timeline 2 — Cold-Start / Unsharded FP32 vs AMP on 7B Model (V13 Ch. 2, b=4, s
   Measured AMP benchmark gain:      VRAM drops from 78.5 GB to 48.2 GB; speed rises from 1,000 to 1,280 tokens/sec (+28.0%)
 ```
 
-Always enable BF16 mixed precision and FlashAttention before tuning any other memory knob. They cut activation memory while making every step faster.
+Read the timelines as the same job seen at four moments. The steady-state timeline shows that the activations are the only part of the budget that changes within a step. The cold-start timeline shows the first optimizer step, where the Adam buffers are allocated for the first time and the total jumps. The AMP line shows how much of the earlier peak disappears once the tensors are stored in 16-bit formats. The numbers are the ones the chapter's lab reproduces, so you can trace each one back to the formula.
+
+Always enable BF16 mixed precision and FlashAttention before tuning any other memory knob. They cut activation memory while making every step faster, so they are the cheapest wins on the list. Only after they are on should you reach for checkpointing, accumulation or sharding, because each of those costs compute or communication in return for memory.
 
 ---
 
@@ -327,9 +347,9 @@ Always enable BF16 mixed precision and FlashAttention before tuning any other me
 
 ### 3.1 Gradient Accumulation and PyTorch Caching Allocator Tuning
 
-Even with FlashAttention enabled, your desired training batch size may still overflow GPU memory during the backward pass. Shrinking the global batch size to fit in memory changes optimization dynamics and hurts model convergence. **Gradient accumulation decouples physical GPU memory from the algorithmic batch size by splitting each step into smaller sequential micro-batches.**
+Even with FlashAttention enabled, your desired training batch size may still overflow GPU memory during the backward pass. The obvious fix is to shrink the global batch until it fits. That fix changes the optimization dynamics and often hurts model convergence. **Gradient accumulation decouples physical GPU memory from the algorithmic batch size by splitting each step into smaller sequential micro-batches.**
 
-Instead of updating weights after every micro-batch, the training loop runs K forward and backward micro-steps and accumulates the gradients in place. Only after K micro-steps does the loop call `optimizer.step()` and `optimizer.zero_grad(set_to_none=True)`. Peak activation memory drops by a factor of K while the global token batch size stays unchanged.
+Instead of updating weights after every micro-batch, the training loop runs K forward and backward micro-steps and accumulates the gradients in place. Only after K micro-steps does the loop call `optimizer.step()` and `optimizer.zero_grad(set_to_none=True)`. Peak activation memory drops by a factor of K, while the global token batch size stays unchanged. The trade is time. Each optimizer step now takes K times as many micro-steps, so the job runs more slowly per update even though it fits.
 
 ```text
 Gradient Accumulation Equations (micro-batch b_micro, K = grad_accum_steps, DP_world_size GPUs):
@@ -344,18 +364,22 @@ Worked Example (7B model, s = 4096, DP_world_size = 8, b_micro = 2, K = 8):
   Activation memory reduction (8.0x): 89.1288 GB down to 11.1411 GB per GPU
 ```
 
-Sometimes a training job runs smoothly for dozens of steps and then crashes with an out-of-memory error even though peak active tensors fit well inside HBM. This delayed crash happens when variable sequence lengths or Mixture-of-Experts dynamic token routing splinter the PyTorch CUDA caching allocator. PyTorch avoids slow blocking `cudaMalloc` and `cudaFree` calls by holding a pool of reserved memory via `torch.cuda.memory_reserved()`. Active tensors then draw blocks from that pool via `torch.cuda.memory_allocated()`. When variable-sized tensors are freed and reallocated, large contiguous blocks break into unusable fragments.
+Read the accumulation equations as a budget with three knobs. The micro-batch sets how much memory one forward and backward pass needs. The number of accumulation steps sets how many micro-batches make one optimizer step. The data-parallel world size multiplies the result into the global batch. The worked example keeps the global batch at 128 sequences while the peak activation memory falls by the accumulation factor, so the optimization behaves as it would at the larger batch.
 
-Two production fixes eliminate allocator fragmentation. First, pre-allocate fixed maximum-size buffers for dynamic layers such as Mixture-of-Experts experts. Second, configure `PYTORCH_ALLOC_CONF` to control block splitting and bucket rounding:
+Sometimes a training job runs smoothly for dozens of steps and then crashes with an out-of-memory error, even though the peak active tensors fit well inside HBM. This delayed crash happens when variable sequence lengths or Mixture-of-Experts dynamic token routing splinter the PyTorch CUDA caching allocator. PyTorch avoids slow blocking `cudaMalloc` and `cudaFree` calls by holding a pool of reserved memory, which `torch.cuda.memory_reserved()` reports. Active tensors then draw blocks from that pool, which `torch.cuda.memory_allocated()` reports. When variable-sized tensors are freed and reallocated, large contiguous blocks break into unusable fragments. The pool can look half empty while the allocator still refuses a large request.
+
+Two production fixes reduce allocator fragmentation. The first is to pre-allocate fixed maximum-size buffers for dynamic layers, such as Mixture-of-Experts experts, so their sizes stop changing from step to step. The second is to configure `PYTORCH_ALLOC_CONF` to control block splitting and bucket rounding. The setting below combines three controls, and each one is explained in the bullets after it.
 
 ```bash
 export PYTORCH_ALLOC_CONF=max_split_size_mb:256,roundup_power2_divisions:[256:1,512:2,1024:4,>:8],backend:cudaMallocAsync
 ```
 
+Set this variable before the Python process starts, because the allocator reads it when it initializes. Put it in the launch script or the job template so every rank gets the same value. Check the allocator's statistics after a change, because the right values depend on the size mix of your tensors, and a setting that helps a dense model can hurt a Mixture-of-Experts model.
+
 Each parameter in `PYTORCH_ALLOC_CONF` targets a specific allocator bottleneck:
-- Setting `max_split_size_mb:256` prevents the allocator from splitting large free blocks. This preserves contiguous regions for transformer layers.
-- Setting `roundup_power2_divisions:[256:1,512:2,1024:4,>:8]` rounds allocation requests into fixed power-of-two sub-buckets. Slightly different tensor sizes then reuse the same cached block without external fragmentation.
-- Setting `backend:cudaMallocAsync` switches to the CUDA driver stream-ordered asynchronous allocator. This avoids cross-stream host synchronizations and enables shared pools across CUDA Graphs.
+- What does `max_split_size_mb:256` do? It prevents the allocator from splitting large free blocks, which preserves contiguous regions for transformer layers.
+- What does `roundup_power2_divisions:[256:1,512:2,1024:4,>:8]` do? It rounds allocation requests into fixed power-of-two sub-buckets, so slightly different tensor sizes reuse the same cached block without external fragmentation.
+- What does `backend:cudaMallocAsync` do? It switches to the CUDA driver's stream-ordered asynchronous allocator, which avoids cross-stream host synchronizations and enables shared pools across CUDA Graphs.
 
 ```text
 PYTORCH_ALLOC_CONF Sub-Bucket Rounding Math (PYTORCH_CUDA_ALLOC_CONF in older releases):
@@ -368,11 +392,13 @@ PYTORCH_ALLOC_CONF Sub-Bucket Rounding Math (PYTORCH_CUDA_ALLOC_CONF in older re
     1,100 MB request rounds up to 1,280 MB (180 MB or 14.06% internal padding)
 ```
 
+Read the rounding math as a ladder. Each power-of-two range is split into equal steps, and a request rounds up to the next step. The padding looks wasteful, but it is the price of reusing blocks. A request that is slightly larger than a step pays the most padding in percentage terms, which is why the small examples show the largest padding. The external fragmentation column stays at zero because every block size is one of the buckets, so a freed block always fits the next request of the same bucket.
+
 ### 3.2 Compute Anatomy: Forward vs Backward FLOPs, MFU, and HFU
 
-Monitoring GPU utilization with `nvidia-smi` often misleads infrastructure teams into thinking a slow job is running efficiently. A GPU can report full utilization while spending most of its time stalled on memory-bandwidth-bound element-wise kernels or waiting on network collectives. To measure true hardware efficiency, you must count the useful floating-point operations completed per token and compute Model FLOPs Utilization.
+Monitoring GPU utilization with `nvidia-smi` often misleads infrastructure teams into thinking a slow job is running efficiently. A GPU can report full utilization while it spends most of its time stalled on memory-bandwidth-bound element-wise kernels or waiting on network collectives. To measure true hardware efficiency, count the useful floating-point operations completed per token and compare them with the GPU's peak, which gives Model FLOPs Utilization.
 
-Matrix multiplications dominate dense transformer compute. Multiplying an activation matrix by a weight matrix performs one multiply and one accumulate per parameter per token. Summing across all dense parameters gives two FLOPs per parameter per token in the forward pass. During the backward pass, each linear layer must compute gradients with respect to both the layer inputs and the layer weights, requiring four FLOPs per parameter per token.
+Matrix multiplications dominate dense transformer compute. Multiplying an activation matrix by a weight matrix performs one multiply and one accumulate per parameter per token. Summing across all dense parameters gives two FLOPs per parameter per token in the forward pass. During the backward pass, each linear layer must compute gradients with respect to both the layer inputs and the layer weights, which requires four FLOPs per parameter per token. Add the two passes and you get the familiar six, which is the number the rest of this section uses.
 
 ```text
 Per-Token FLOP Rules for a Dense Transformer (Psi parameters):
@@ -390,7 +416,9 @@ Utilization Definitions (for GPU peak Tensor Core throughput P_peak):
   HFU (%)                      = (8 * Psi * tokens_per_sec_per_gpu) / P_peak * 100% = (4 / 3) * MFU (with full ckpt)
 ```
 
-Model FLOPs Utilization compares only the algorithmic work per token against the GPU peak Tensor Core specification. Hardware FLOPs Utilization includes the extra forward recomputation pass added by full activation checkpointing. Published large-scale training runs typically achieve 35% to 55% MFU.
+Use these rules as a unit conversion. A token costs about six times the parameter count in FLOPs for a standard step, and about eight times with full checkpointing. Multiply by the tokens per second your job achieves, then divide by the peak. The division gives you the utilization, and the same arithmetic runs in reverse when you plan a schedule. The HFU line is one-third higher than the MFU line because the recomputed forward pass is counted as useful hardware work, even though it is not counted as useful model work.
+
+Model FLOPs Utilization compares only the algorithmic work per token against the GPU peak Tensor Core specification. Hardware FLOPs Utilization also counts the extra forward recomputation pass that full activation checkpointing adds. The gap between the two numbers is the price of that memory saving. Published large-scale training runs typically achieve 35% to 55% MFU, so a job far below that range is worth investigating before you accept it.
 
 ```text
 Worked MFU and HFU Benchmarks on NVIDIA H100 SXM (P_peak = 989 TFLOPS BF16, vs 312 TFLOPS on A100):
@@ -412,7 +440,9 @@ Worked MFU and HFU Benchmarks on NVIDIA H100 SXM (P_peak = 989 TFLOPS BF16, vs 3
      Total step wall time:     24.0 ms (100.0%)
 ```
 
-Track MFU rather than raw `nvidia-smi` utilization on every training run. MFU directly measures how fast your cluster converts electricity into trained tokens.
+Read each benchmark in the same order. Start with the per-token work, then convert the observed tokens per second into achieved TFLOPS, and then divide by the peak. The MLPerf breakdown at the end does not compute utilization directly. It shows how a step's wall time splits between compute and the all-reduce, and that split tells you whether a utilization gap comes from the math or from the network.
+
+Track MFU rather than raw `nvidia-smi` utilization on every training run. MFU directly measures how fast your cluster converts electricity into trained tokens, while utilization only tells you that something was busy.
 
 ---
 
@@ -420,7 +450,7 @@ Track MFU rather than raw `nvidia-smi` utilization on every training run. MFU di
 
 ### 4.1 Decision Framework: Training vs Inference vs Serving and When to Distribute
 
-Adding multi-GPU or multi-node distribution introduces network serialization, collective synchronization, and partial-failure blast radius. Before you split a workload across multiple accelerators, distinguish the resource profiles of training, batch inference, and online serving. Each phase stresses a different hardware bottleneck.
+Adding multi-GPU or multi-node distribution introduces network serialization, collective synchronization and a larger blast radius, because one failed node can stop the whole job. Before you split a workload across multiple accelerators, distinguish the resource profiles of training, batch inference and online serving. Each phase stresses a different hardware bottleneck, and the right layout for one phase can be wrong for another.
 
 | Dimension | Training (Learning Phase) | Inference (Prediction / Generation) | Serving (Production System) |
 |---|---|---|---|
@@ -430,7 +460,9 @@ Adding multi-GPU or multi-node distribution introduces network serialization, co
 | **Communication** | Frequent collective sync (`AllReduce`, `AllGather`, `ReduceScatter`) | Minimal (TP `AllReduce` or EP `AlltoAll` if model > 1 GPU) | API-level routing, load balancing, disaggregated KV transfer |
 | **Latency & Metric** | Hours to weeks; measured in **samples/sec or tokens/sec/GPU (MFU)** | Milliseconds to seconds; **tokens/sec** | Milliseconds (TTFT, TPOT); **requests/sec (QPS)** |
 
-Even during inference, extreme context lengths can force multi-GPU sharding. For example, `meta-llama/Llama-4-Scout-17B-16E-Instruct` uses 17B active parameters across 16 experts and supports a massive context window. At full context length, the KV cache alone exceeds a terabyte of memory for a single sequence.
+Read the comparison table along the memory row first, because it sets the order of concerns. Training is the most memory-hungry phase, because it stores static state and activations together. Inference drops the optimizer and most activations, and it adds a cache that grows with the conversation. Serving adds a fleet on top, with pools, queues and routing. Once you know which phase you are sizing, the other rows tell you which bottleneck to watch.
+
+Even during inference, extreme context lengths can force multi-GPU sharding. Take `meta-llama/Llama-4-Scout-17B-16E-Instruct` as an example. It uses 17B active parameters across 16 experts and supports a very large context window. At full context length, the KV cache alone exceeds a terabyte of memory for a single sequence. No single GPU can hold that, so the serving design has to split the cache as well as the weights.
 
 ```text
 Long-Context Inference KV Cache Pressure (DAI Ch. 1):
@@ -438,6 +470,8 @@ Long-Context Inference KV Cache Pressure (DAI Ch. 1):
   Maximum context window: 10 million tokens
   Single-sequence KV cache: > 1 TB of HBM
 ```
+
+This example comes from inference, not training, and it shows that the memory story does not end when training ends. A long context can force a model onto several GPUs even when no gradients are stored at all. The KV cache grows with every token in the window, so the same sharding and cache strategies covered in the Transformer chapter come back in the serving path.
 
 ```mermaid
 flowchart TD
@@ -451,11 +485,14 @@ flowchart TD
     F -->|No| H["Scale Out with Data Parallelism (DDP)<br/>or FSDP Hybrid Sharding"]
 ```
 
+Read the decision flow from the top. The first question is whether the static state fits on one GPU. If it does not, sharding is mandatory, and the diagram lists the options that split the state. If it fits, the second question is whether the activations fit at the batch you want. When they do not, the cheap memory tools come first, because they cost little in speed. Only after the single-GPU question is settled does the diagram ask about training time, and that is when data parallelism enters the picture.
+
 ### 4.2 The Distributed AI Stack, Process Groups, and NCCL Collectives
 
-When a training job scales beyond one GPU, every gradient synchronization call traverses a six-layer hardware and software stack. A misconfiguration at any layer can silently drop throughput by an order of magnitude. Understanding how PyTorch maps logical process groups onto physical network links is essential for cluster debugging.
+When a training job scales beyond one GPU, every gradient synchronization call travels through a six-layer hardware and software stack. A misconfiguration at any layer can silently drop throughput by an order of magnitude. Walk the layers from the top down, because each one hands its work to the next. Understanding how PyTorch maps logical process groups onto physical network links is essential for cluster debugging.
 
-1. The framework layer runs PyTorch `torch.distributed`, DDP, FSDP, Megatron-LM, or DeepSpeed.
+Here are the six layers in order, from the code you write to the wires underneath it.
+1. The framework layer runs PyTorch `torch.distributed`, DDP, FSDP, Megatron-LM, or DeepSpeed. This is where your training loop asks for a collective.
 2. The gradient bucketing layer groups small parameter gradients into contiguous buckets via `bucket_cap_mb`. This allows NCCL to launch fewer large collectives overlapped with backward compute.
 3. The collective operations layer exposes primitives such as AllReduce, AllGather, Broadcast, Reduce, Gather, Scatter, ReduceScatter, and AlltoAll.
 4. The data transfer backend layer dispatches GPU collectives to NCCL, CPU collectives to Gloo, or HPC messaging to MPI and UCX.
@@ -475,6 +512,8 @@ Process Group Rank Variables and Physical Interconnect Specs:
     512-GPU hop count:  512 sequential Ring hops vs 9 Double Binary Tree hops
 ```
 
+Read the rank variables as an address book. The global rank identifies a process across the whole job, the local rank identifies a GPU inside one node, and the world size is the count of processes. The link rates explain the cost. A hop inside a node over NVLink is far faster than a hop over the network, so a collective that crosses nodes many times pays for every crossing. The hop count line at the end is the reason the tree algorithm exists.
+
 Every distributed training paradigm relies on a specific combination of the eight collective primitives in `torch.distributed`:
 
 | Collective | Communication Pattern | Per-Rank Data Volume / Cost | Primary Distributed Training & Inference Use Case |
@@ -488,7 +527,9 @@ Every distributed training paradigm relies on a specific combination of the eigh
 | **ReduceScatter** | `All -> All` (reduces across ranks and scatters `1/N` chunk to each rank) | Each rank sends `WORLD_SIZE * N` and keeps its `N` shard | **FSDP / ZeRO-2/3 gradient reduction + sharding** during the backward pass |
 | **AlltoAll** | `All -> All` (every rank sends a distinct chunk `chunk[i]` to each rank `i`) | `WORLD_SIZE^2 * chunk_size` (requires NCCL GPU backend; unsupported on Gloo) | **Mixture-of-Experts (MoE) Expert Parallelism token routing** and Sequence/Context Parallelism transpositions |
 
-As the amount of computation per step increases, the relative overhead of collective synchronization shrinks. We can see this effect clearly in multi-GPU scaling benchmarks from *Distributed AI Systems*:
+Read the collective table by the question it answers. Broadcast and Scatter move data out from one rank. Reduce and Gather move data in to one rank. AllReduce, AllGather, ReduceScatter and AlltoAll move data between all ranks, and they are where most of the network time goes. The last column ties each primitive to a training technique, so you can see which one your parallelism strategy depends on. When a job is slow in one collective, that column tells you which part of the strategy to look at first.
+
+As the amount of computation per step increases, the relative overhead of collective synchronization shrinks. A step that does more math hides the same synchronization cost better. We can see this effect clearly in multi-GPU scaling benchmarks from *Distributed AI Systems*, which run the same code on more devices and report the speedup each time.
 
 ```text
 Multi-GPU Scaling and Distributed Inference Benchmarks (DAI Ch. 1):
@@ -506,7 +547,11 @@ Multi-GPU Scaling and Distributed Inference Benchmarks (DAI Ch. 1):
     Dynamic round-robin queue splitting:      1.22 s (819.09 req/s, 1.51x speedup)
 ```
 
-Choose the simplest parallelism strategy whose static state and activations fit inside GPU memory. Every additional collective across nodes trades compute efficiency for memory capacity.
+Read the scaling numbers as a lesson in amortization. The light workload gains less from each added GPU, because the fixed cost of the collective is a large share of each step. The heavier workload gains more, because the same collective is spread over more useful compute. The inference rows make a different point. Splitting requests across GPUs helps, but the static split beats the dynamic queue in this measurement, so the simplest split can be the fastest one.
+
+Choose the simplest parallelism strategy whose static state and activations fit inside GPU memory. Every additional collective across nodes trades compute efficiency for memory capacity, so adding parallelism is a cost, not a free upgrade.
+
+Here is a practical order for the choice. Start by asking whether one GPU can hold the static state and a useful micro-batch. If it can, data parallelism only adds throughput, and it is the easiest scaling step to operate. If the static state does not fit, the next step is to shard that state with FSDP, which keeps the programming model close to data parallelism. Tensor Parallelism and Pipeline Parallelism come later, when a single layer or the full stack is too large for the sharded state, and each one adds more communication that must be planned for.
 
 ---
 
@@ -514,7 +559,7 @@ Choose the simplest parallelism strategy whose static state and activations fit 
 
 ### 5.1 Live GPU Memory, Topology, and Collective Bandwidth Diagnostics
 
-When a training run crashes or stalls on a multi-GPU cluster, guessing at configuration flags wastes hours of compute time. Use these diagnostic commands on Nebius GPU nodes or Slurm and Kubernetes training pods. They inspect HBM high-water marks, NVLink versus PCIe topology, and NCCL collective bus bandwidth. These cluster commands are marked `untested` on live hardware in this local build environment.
+When a training run crashes or stalls on a multi-GPU cluster, guessing at configuration flags wastes hours of compute time. Use these diagnostic commands on Nebius GPU nodes or on Slurm and Kubernetes training pods. They inspect HBM high-water marks, NVLink versus PCIe topology, and NCCL collective bus bandwidth. These cluster commands are marked `untested` on live hardware in this local build environment, so treat them as a checklist to run on your own nodes.
 
 ```bash
 # 1. Poll GPU memory used, free, total, and SM utilization every 2 seconds (V13 Ch. 01 & Ch. 02)
@@ -556,9 +601,11 @@ torchrun --nproc_per_node=4 train.py --resume-from ./checkpoints/epoch_3.pt
 nsys profile -t cuda,nvtx,osrt -s cpu -o my_profile_report --force-overwrite true python train.py --config config.yaml
 ```
 
+Read the commands in the order you would use them on a stalled node. Commands 1 and 2 show whether memory is healthy and whether it creeps upward over time. Command 3 checks the interconnect, because a PCIe fallback where you expected NVLink explains many slow jobs. Commands 4 and 5 set the allocator and the NCCL options, and they are the knobs to touch after the diagnosis is clear. Commands 6 through 8 measure the collectives, launch the jobs and profile the overlap. Run the measurements before you change any setting, so you have a baseline to compare against.
+
 ### 5.2 Per-Phase Memory Instrumentation, AMP, FSDP Block Wrapping, and DCP
 
-To pinpoint the exact phase where allocated or reserved VRAM spikes, instrument each stage of the step in Python. The template below enables TF32 matmul precision, BF16 mixed precision, and transformer-block FSDP wrapping with `use_orig_params=True`. It also configures activation checkpointing and PyTorch Distributed Checkpoint.
+To pinpoint the exact phase where allocated or reserved VRAM spikes, instrument each stage of the step in Python. The template below enables TF32 matmul precision, BF16 mixed precision, and transformer-block FSDP wrapping with `use_orig_params=True`. It also configures activation checkpointing and PyTorch Distributed Checkpoint. Run it on a small batch first, and read the per-phase numbers before you scale up.
 
 ```python
 import functools
@@ -618,7 +665,7 @@ def configure_fsdp_with_activation_checkpointing(model: nn.Module) -> FSDP:
     )
 ```
 
-When you profile operator-level memory on an unsharded 7B FP32 step using `torch.profiler.profile`, the profiler summary table identifies which ATen kernels allocate the largest tensors. Similarly, DeepSpeed ZeRO-3 and TorchTitan SimpleFSDP provide declarative settings to shard parameters and overlap prefetching:
+When you profile operator-level memory on an unsharded 7B FP32 step using `torch.profiler.profile`, the profiler summary table identifies which ATen kernels allocate the largest tensors. The top rows tell you where the memory goes, which is often a weight load or a transpose rather than the math you expected. Similarly, DeepSpeed ZeRO-3 and TorchTitan SimpleFSDP provide declarative settings to shard parameters and overlap prefetching, so you can change the sharding without rewriting the loop.
 
 ```text
 PyTorch Profiler Operator Memory Breakdown on Unsharded 7B FP32 Step (V13 Ch. 2):
@@ -642,13 +689,13 @@ TorchTitan SimpleFSDP + DTensor + Selective Checkpointing Gains (AISPE Ch. 13):
   Throughput speedup vs eager FSDP2:   up to 69%
 ```
 
-Always wrap FSDP at transformer-block granularity rather than around the top-level model. Block wrapping ensures that each AllGather materializes only a single layer at a time.
+Always wrap FSDP at transformer-block granularity rather than around the top-level model. Block wrapping ensures that each AllGather materializes only a single layer at a time, so the peak memory stays near one layer's worth of weights instead of the whole model's.
 
 ---
 
 ## 6. How it fails
 
-When a distributed training run crashes with an out-of-memory error, hangs silently, or drops in speed, the phase where the failure happens reveals the root cause. Use the decision tree and symptom table below to isolate the fault quickly.
+When a distributed training run crashes with an out-of-memory error, hangs silently, or drops in speed, the phase where the failure happens reveals the root cause. A crash on the first backward pass points to activations. A hang with no error points to a collective waiting on a rank that never arrived. A slow job with healthy memory points to the network or the data loader. Use the decision tree and symptom table below to isolate the fault quickly.
 
 ```mermaid
 flowchart TD
@@ -670,6 +717,8 @@ flowchart TD
 | **5. Silent NVLink Fallback to PCIe (3x Slowdown)** | Throughput drops from **`950 tokens/sec` to `310 tokens/sec`** after a reboot; `all_reduce_perf` `busbw` drops from **`~800 GB/s` to `90 GB/s`** (`20–90 GB/s`) with `NCCL INFO Using PCIe interface` | `nvidia-fabricmanager` stopped after reboot, BIOS ACS (Access Control Services) is enabled, or `NCCL_P2P_DISABLE=1` forced traffic through PCIe/CPU root complex | Run `nvidia-smi topo -m` (look for `PIX`/`PXB` instead of `NV#`), `systemctl status nvidia-fabricmanager`, and `dmesg -T` for PCIe AER or `Xid 48/63/79` errors | Run `sudo systemctl restart nvidia-fabricmanager`, disable PCIe ACS in BIOS, `unset NCCL_P2P_DISABLE`, and re-verify `busbw` with `all_reduce_perf` |
 | **6. Post-Resume Loss Spike or NCCL Watchdog Hang** | Resumed job from `./checkpoints/epoch_3.pt` exhibits an immediate loss spike or silent divergence; or surviving ranks hang for `30 min` with `NCCL WARN Watchdog caught network down` | Checkpoint saved only `model.state_dict()` (omitting Adam `m_t, v_t`, LR scheduler, or RNG state), or one rank OOM-died / had unused DDP parameters | Diff epoch `4–5` resumed loss against an uninterrupted `5`-epoch control run (Lab 04); check remote `dmesg -T \| grep -i oom` and `NCCL_DEBUG=TRACE` | Always save and load `(model, optimizer, scheduler, rng_state)` behind `dist.barrier()`, and pass `find_unused_parameters=True` (or fix dead branches) in DDP |
 
+Read the table as a decision aid rather than a list to memorize. The symptom column is the thing your monitoring shows first. The root-cause column explains why that symptom happens, and the diagnostic column tells you which command to run to confirm it. Only then should you apply the production fix, because a fix applied to the wrong cause can make the job slower or less stable.
+
 Log both allocated and reserved GPU memory after every phase on Step 1 and Step 2. That log immediately tells an activation spike apart from allocator fragmentation.
 
 ---
@@ -678,9 +727,9 @@ Log both allocated and reserved GPU memory after every phase on Step 1 and Step 
 
 ### Lab Venue and Objectives
 
-This verification lab runs in any local Python 3 environment or on a Nebius GPU workstation using `code/part14/training_memory_compute.py` and `code/part14/training_memory_compute_lab.py`. It requires only the Python standard library and has zero external dependencies. The multi-GPU cluster commands in Section 5.1 are marked `untested` on live hardware.
+Suppose you want to check the memory and compute arithmetic before you trust it in a cluster plan. This verification lab runs in any local Python 3 environment, or on a Nebius GPU workstation, using `code/part14/training_memory_compute.py` and `code/part14/training_memory_compute_lab.py`. It requires only the Python standard library and has zero external dependencies. The multi-GPU cluster commands in Section 5.1 are marked `untested` on live hardware.
 
-The lab deterministically verifies all 26 quantitative models covered in Chapter 14.3. It tests precision byte sizes, optimizer state multipliers, the 16-byte static memory rule, and step memory timelines. It also validates transformer activation formulas, FlashAttention and checkpointing savings, gradient accumulation, `PYTORCH_ALLOC_CONF` rounding, MFU and HFU math, and NCCL collective scaling.
+The lab deterministically verifies all 26 quantitative models covered in Chapter 14.3. It tests precision byte sizes, optimizer state multipliers, the 16-byte static memory rule, and step memory timelines. It also validates transformer activation formulas, FlashAttention and checkpointing savings, gradient accumulation, `PYTORCH_ALLOC_CONF` rounding, MFU and HFU math, and NCCL collective scaling. Because every check is deterministic, two runs on two machines should print the same lines.
 
 ### Step 1: Run the Verification Lab (`tested locally`)
 
@@ -722,37 +771,43 @@ python3 -B code/part14/training_memory_compute_lab.py
 Summary: 26 passed, 0 failed
 ```
 
+Read the expected output as a set of claims you can check. Each PASS line names a number from the chapter, so you can rerun the lab after an edit and see whether a claim still holds. A FAIL line means the prose or the code has drifted, and you should find out which one before the chapter is used in a plan.
+
 ---
 
 ## Common first mistakes
 
-1. **Sizing training VRAM from weight file size instead of full static state plus activations:** Seeing a 14 GB `.safetensors` file for a 7B BF16 model and assuming it fits on a small GPU ignores gradients and optimizer state. In mixed-precision AdamW, those buffers bring static state to 112 GB before activations.
-2. **Expecting Data Parallelism to reduce per-GPU model memory:** DDP replicates the entire static model state on every GPU and only splits the batch. If a model runs out of memory at micro-batch size one with activation checkpointing enabled, adding more GPUs with DDP will still crash. You must shard state using FSDP, Tensor Parallelism, or Pipeline Parallelism.
-3. **Wrapping an entire model in a single top-level FSDP call:** Without a block-level `transformer_auto_wrap_policy`, FSDP forward AllGather materializes all layers simultaneously on every GPU. That mistake adds collective communication overhead with zero peak memory savings.
-4. **Assuming `torch.autocast` converts stored model weights to BF16:** `torch.amp.autocast` only casts eligible forward operations on the fly while leaving FP32 parameters and optimizer states in memory. In addition, calling `time.time()` or `tensor.item()` inside the step loop forces a full CPU-GPU stream synchronization.
-5. **Comparing NCCL `algbw` instead of `busbw` against hardware link specs:** The `algbw` metric divides tensor size by time without the ring multiplier, whereas `busbw` normalizes for hardware link comparison. Meanwhile, `nvidia-smi` reports full utilization whenever at least one streaming multiprocessor is active, even if the GPU is stalled waiting on an NCCL collective.
+1. **Sizing training VRAM from weight file size instead of full static state plus activations:** this is the most common mistake. A 14 GB `.safetensors` file for a 7B BF16 model looks small enough to fit on a modest GPU, but it ignores gradients and optimizer state. In mixed-precision AdamW, those buffers bring the static state to 112 GB before any activations are counted.
+2. **Expecting Data Parallelism to reduce per-GPU model memory:** DDP replicates the entire static model state on every GPU and only splits the batch. If a model runs out of memory at micro-batch size one with activation checkpointing enabled, adding more GPUs with DDP will still crash. You must shard the state with FSDP, Tensor Parallelism, or Pipeline Parallelism.
+3. **Wrapping an entire model in a single top-level FSDP call:** without a block-level `transformer_auto_wrap_policy`, the FSDP forward AllGather materializes all layers at once on every GPU. That adds collective communication overhead with zero peak memory savings.
+4. **Assuming `torch.autocast` converts stored model weights to BF16:** `torch.amp.autocast` casts eligible forward operations on the fly, while FP32 parameters and optimizer states stay in memory. In addition, calling `time.time()` or `tensor.item()` inside the step loop forces a full CPU-GPU stream synchronization.
+5. **Comparing NCCL `algbw` instead of `busbw` against hardware link specs:** the `algbw` metric divides tensor size by time without the ring multiplier, whereas `busbw` normalizes for hardware link comparison. Meanwhile, `nvidia-smi` reports full utilization whenever at least one streaming multiprocessor is active, even if the GPU is stalled waiting on an NCCL collective.
+
+Each of these five mistakes can waste a large share of a cluster run, which is why they are worth checking before a launch. Mistakes 1 and 2 are about sizing, and mistakes 3 and 4 are about wrapping and synchronization. Mistake 5 is about measurement. A job can look healthy in one dashboard and still underperform, so compare the numbers that match the question you are asking.
 
 ---
 
 ## Exercises
 
-1. **Static Training Memory vs Checkpoint Footprint:**
-   - **(a)** Using `calculate_static_training_memory()`, compute the BF16 weights, BF16 gradients, FP32 master weights, and FP32 AdamW moments. Also compute the total static training memory and on-disk checkpoint size under `"mixed_bf16_fp32_adamw"`. Evaluate all four model sizes in the table below.
-   - **(b)** Using `evaluate_dai_7b_memory_timeline()`, compute the forward pass, backward peak, and optimizer step memory usage for the pure-BF16 Adam baseline. State the peak range across the activation budget shown below.
-2. **Transformer Activation Scaling, FlashAttention, and Activation Checkpointing:**
-   - **(a)** Using `calculate_transformer_activation_memory()`, compute the per-layer non-attention bytes, per-layer attention matrix bytes, and standard total activation memory. Then compute the FlashAttention total and full activation checkpointing total for the short-context workload.
-   - **(b)** Repeat the calculation for the long-context workload. Explain why the attention score matrix grows eightfold per layer even though the micro-batch size was cut in half.
-3. **Gradient Accumulation and `PYTORCH_ALLOC_CONF` Sub-Bucket Rounding:**
-   - **(a)** Using `size_gradient_accumulation_and_batch()`, calculate the per-GPU effective batch size, global batch size in samples and tokens, and peak activation memory reduction.
-   - **(b)** Using `simulate_cuda_allocator_rounding()`, compute the bucket boundaries, step size, rounded allocation size, and internal padding for both allocation requests listed below.
-4. **Step Compute FLOPs, GPT-3 Scaling, MFU, and HFU:**
-   - **(a)** Using `evaluate_gpt3_175b_step_scaling()`, calculate the FP32 weight memory, H100 overflow factor, pass FLOPs, single-GPU A100 step duration, and multi-GPU A100 step duration.
-   - **(b)** Using `calculate_training_step_flops_and_mfu()`, compute the forward, backward, model, and hardware GFLOPs per token. Then compute the achieved TFLOPS, MFU, and HFU on H100 for both models in the parameter block below.
-5. **MLPerf Step Breakdown and NCCL Ring vs Tree AllReduce Cost:**
-   - **(a)** Using `evaluate_mlperf_step_timing_breakdown()`, compute the total step time, total compute time, and percentage share of forward, backward, AllReduce, and other overhead.
-   - **(b)** Using `evaluate_ring_allreduce_vs_tree_cost()`, compute the per-GPU data moved and transfer time for the 7B gradient tensor across single-node NVLink and multi-node InfiniBand. Compare the hop count of a Ring versus a Binary Tree at cluster scale.
-6. **End-to-End OOM Triage on 7B Scenarios:**
-   - Using `evaluate_v13_ch02_7b_scenarios()`, compare the FP32 forward memory, FP32 backward memory without checkpointing, FP32 backward memory with checkpointing, FP32 Adam optimizer peak, and AMP total. Include the measured memory and throughput before and after enabling AMP.
+1. Static Training Memory vs Checkpoint Footprint. Using `calculate_static_training_memory()`, what are the BF16 weights, BF16 gradients, FP32 master weights and FP32 AdamW moments? Next, what are the total static training memory and the on-disk checkpoint size under `"mixed_bf16_fp32_adamw"`? Evaluate all four model sizes in the table below.
+   Using `evaluate_dai_7b_memory_timeline()`, what is the forward pass memory for the pure-BF16 Adam baseline? What is the backward peak? What is the optimizer step memory? State the peak range across the activation budget shown below.
+2. Transformer Activation Scaling, FlashAttention, and Activation Checkpointing. Using `calculate_transformer_activation_memory()`, what are the per-layer non-attention bytes? What are the per-layer attention matrix bytes? What is the standard total activation memory for the short-context workload? Then what are the FlashAttention total and the full activation checkpointing total for the same workload?
+   Repeat the calculation for the long-context workload.
+   Why does the attention score matrix grow eightfold per layer even though the micro-batch size was cut in half?
+3. Gradient Accumulation and `PYTORCH_ALLOC_CONF` Sub-Bucket Rounding. Using `size_gradient_accumulation_and_batch()`, what is the per-GPU effective batch size? What is the global batch size in samples? What is the global batch size in tokens? What is the peak activation memory reduction?
+   Using `simulate_cuda_allocator_rounding()`, what are the bucket boundaries and the step size? What is the rounded allocation size for each request listed below? What is the internal padding for each one?
+4. Step Compute FLOPs, GPT-3 Scaling, MFU, and HFU. Using `evaluate_gpt3_175b_step_scaling()`, what are the FP32 weight memory and the H100 overflow factor? What are the pass FLOPs? What is the single-GPU A100 step duration? What is the multi-GPU A100 step duration?
+   Using `calculate_training_step_flops_and_mfu()`, what are the forward, backward, model and hardware GFLOPs per token?
+   What are the achieved TFLOPS, MFU and HFU on H100 for both models in the parameter block below?
+5. MLPerf Step Breakdown and NCCL Ring vs Tree AllReduce Cost. Using `evaluate_mlperf_step_timing_breakdown()`, what are the total step time and the total compute time? What percentage share does each of forward, backward, AllReduce and other overhead take?
+   Using `evaluate_ring_allreduce_vs_tree_cost()`, how much data does each GPU move for the 7B gradient tensor across single-node NVLink? How long does that transfer take?
+   Repeat the transfer check across multi-node InfiniBand.
+   Last, compare the hop count of a Ring with a Binary Tree at cluster scale.
+6. End-to-End OOM Triage on 7B Scenarios. Using `evaluate_v13_ch02_7b_scenarios()`, what is the FP32 forward memory?
+   What is the FP32 backward memory without checkpointing, and what is it with checkpointing?
+   What is the FP32 Adam optimizer peak?
+   What is the AMP total?
+   Finally, what are the measured memory and throughput before and after enabling AMP?
 
 ```text
 Exercise Input Parameters Reference:
@@ -773,13 +828,13 @@ Exercise Input Parameters Reference:
 ## Interview angles
 
 1. **Walk me through why a 70B or 175B model cannot be trained on a single 80 GB H100 GPU, and explain where every byte goes during a mixed-precision AdamW step.**
-   - *Strong answer:* Start with the 16-byte-per-parameter static memory proof. In mixed-precision AdamW, each parameter requires BF16 weights, BF16 gradients, FP32 master weights, FP32 momentum, and FP32 variance. For Llama-3-70B, static state alone is 1,120 GB, which is 14 times larger than an 80 GB H100. For GPT-3 175B, FP32 weights alone are 700 GB and mixed-precision state is 2.8 TB. Even on a 7B model, static state is 112 GB. That footprint overflows an 80 GB GPU at `optimizer.step()` unless you shard optimizer states via ZeRO-1 or FSDP, use 8-bit or pure-BF16 states, or apply LoRA or QLoRA.
+   - *Strong answer:* Start with the 16-byte-per-parameter static memory proof. In mixed-precision AdamW, each parameter requires BF16 weights, BF16 gradients, FP32 master weights, FP32 momentum, and FP32 variance. Add those per-parameter sizes and the total is 16 bytes. For Llama-3-70B, static state alone is 1,120 GB, which is 14 times larger than an 80 GB H100. For GPT-3 175B, FP32 weights alone are 700 GB and mixed-precision state is 2.8 TB. Even on a 7B model, static state is 112 GB. That footprint overflows an 80 GB GPU at `optimizer.step()` unless you shard optimizer states via ZeRO-1 or FSDP, use 8-bit or pure-BF16 states, or apply LoRA or QLoRA. A good answer names the step where the overflow happens, because that step decides the fix.
 2. **Why does peak GPU memory usually occur during `loss.backward()` rather than during the forward pass or `optimizer.step()`, and when does `optimizer.step()` become the failure point instead?**
-   - *Strong answer:* Once AdamW states are initialized after Step 1, they remain in HBM permanently. During the forward pass, the GPU holds weights, optimizer states, and all saved forward activations. During `loss.backward()`, autograd must keep those forward activations in memory while materializing gradients, hitting the step high-water mark. As each layer finishes backprop, its forward activations are freed before `optimizer.step()`. The exception is Step 1, when PyTorch lazily allocates Adam momentum and variance inside the first `optimizer.step()`. An unsharded 7B FP32 job with activation checkpointing can therefore survive forward at 70 GB and backward at 60 to 66 GB only to crash at 112 GB during `optimizer.step()`.
+   - *Strong answer:* Once AdamW states are initialized after Step 1, they remain in HBM permanently. During the forward pass, the GPU holds weights, optimizer states, and all saved forward activations. During `loss.backward()`, autograd must keep those forward activations in memory while materializing gradients, which hits the step high-water mark. As each layer finishes backprop, its forward activations are freed before `optimizer.step()`. The exception is Step 1, when PyTorch lazily allocates Adam momentum and variance inside the first `optimizer.step()`. An unsharded 7B FP32 job with activation checkpointing can therefore survive forward at 70 GB and backward at 60 to 66 GB, only to crash at 112 GB during `optimizer.step()`.
 3. **You want to fit a training job that currently needs 98 GB into an 80 GB H100. Compare Automatic Mixed Precision, FlashAttention, Activation Checkpointing, Gradient Accumulation, and FSDP.**
-   - *Strong answer:* Apply optimizations in order of lowest compute and communication tax first. First, enable BF16 Mixed Precision and FlashAttention. They accelerate training by 28% while cutting memory from 98 GB to 51 GB and eliminating the quadratic attention matrix. Second, use Gradient Accumulation to divide activation memory by K while keeping the global batch size constant. Third, enable Selective or Full Activation Checkpointing. That trades roughly one-third extra backward compute to drop activation memory from 36.51 GB to 3.29 GB. Fourth, use FSDP or ZeRO sharding once the static state itself exceeds HBM.
+   - *Strong answer:* Apply optimizations in order of lowest compute and communication tax first. First, enable BF16 Mixed Precision and FlashAttention. They accelerate training by 28% while cutting memory from 98 GB to 51 GB and eliminating the quadratic attention matrix. Second, use Gradient Accumulation to divide activation memory by K while keeping the global batch size constant. Third, enable Selective or Full Activation Checkpointing. That trades roughly one-third extra backward compute to drop activation memory from 36.51 GB to 3.29 GB. Fourth, use FSDP or ZeRO sharding once the static state itself exceeds HBM. Each later step adds more compute or communication cost, so stop as soon as the job fits.
 4. **What is the difference between MFU and HFU, and why can `nvidia-smi` report 100 percent GPU utilization while MFU is only 18 percent?**
-   - *Strong answer:* MFU compares achieved useful algorithmic work of six FLOPs per parameter per token against the GPU peak Tensor Core spec. HFU includes activation checkpointing recomputation at eight FLOPs per parameter per token, making HFU equal to four-thirds of MFU. The `utilization.gpu` metric in `nvidia-smi` only measures the fraction of time at least one kernel is active on any streaming multiprocessor. If a job runs tiny memory-bound kernels or spins inside an NCCL AllReduce waiting on a congested RoCEv2 link or PCIe fallback, `nvidia-smi` shows 100% while Tensor Cores sit idle at 18% MFU. Diagnose this with `nsys profile` and `ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed`.
+   - *Strong answer:* MFU compares achieved useful algorithmic work of six FLOPs per parameter per token against the GPU peak Tensor Core spec. HFU includes activation checkpointing recomputation at eight FLOPs per parameter per token, making HFU equal to four-thirds of MFU. The `utilization.gpu` metric in `nvidia-smi` only measures the fraction of time at least one kernel is active on any streaming multiprocessor. If a job runs tiny memory-bound kernels or spins inside an NCCL AllReduce waiting on a congested RoCEv2 link or PCIe fallback, `nvidia-smi` shows 100% while Tensor Cores sit idle at 18% MFU. Diagnose this with `nsys profile` and `ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed`. The profiler tells you which kernel is waiting, which the utilization number cannot.
 
 ---
 

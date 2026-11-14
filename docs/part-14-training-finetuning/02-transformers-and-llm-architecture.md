@@ -22,13 +22,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-A model team switches a 13B model from Multi-Head Attention to Grouped-Query Attention. Nothing about the training data changes, yet the serving team sees the key-value cache for a 4,096-token conversation shrink from 3.36 GB to 0.671 GB. A long chat that used to spill out of one GPU's memory now fits. The architecture decided the hardware bill.
+Picture a model team that switches a 13B model from Multi-Head Attention to Grouped-Query Attention. Nothing about the training data changes, yet the serving team sees the key-value cache for a 4,096-token conversation shrink from 3.36 GB to 0.671 GB. The key-value cache is the memory that stores past attention results so the model does not recompute them for every new token. A long chat that used to spill out of one GPU's memory now fits. The architecture decided the hardware bill, and nobody had to touch the training run to make that happen.
 
-Mixture-of-Experts models show the same effect on compute and network. A model such as DeepSeek-V3 stores 671 billion parameters but uses only 37 billion for each token. Memory must hold all experts, while compute follows only the active ones. Network traffic also changes, from the steady AllReduce of data parallelism to AllToAll dispatch of tokens to experts across nodes.
+Mixture-of-Experts models show the same effect on compute and network. A model such as DeepSeek-V3 stores 671 billion parameters but uses only 37 billion for each token. Memory must hold all experts, because any token might be routed to any of them, while compute follows only the active ones. Network traffic also changes. Data parallelism mostly uses a steady AllReduce, where every GPU averages its gradients with the others. Expert parallelism relies on AllToAll dispatch, where tokens are sent to the experts that will process them, often on other nodes.
 
-Training choices matter just as much. DeepMind's Chinchilla study showed that first-generation large models were trained on too few tokens for their size. Meta then trained Llama 3-8B on 15 trillion tokens, far past the Chinchilla ratio, so that the small model would be cheap to serve.
+Training choices matter just as much. DeepMind's Chinchilla study showed that first-generation large models were trained on too few tokens for their size. Meta then trained Llama 3-8B on 15 trillion tokens, far past the Chinchilla ratio, so that the small model would be cheap to serve. The training run costs more, but every later request is cheaper, and that trade shows up on the serving budget for years.
 
-**Every architectural decision in a Transformer sets a GPU memory budget, a network pattern and a serving cost.** The table below shows one example of each, and the sections after it derive the numbers.
+**Every architectural decision in a Transformer sets a GPU memory budget, a network pattern and a serving cost.** Read the table as three examples of that rule, one for each kind of choice. The sections after it derive every number, so you can rebuild the table yourself.
 
 | Architectural Choice | Concrete Model & Hardware Comparison | Direct Infrastructure Consequence (*AI Engineering* Ch. 2, *AI Systems Performance Engineering* Ch. 1, 17–18, *Engineering AI Systems* Ch. 4) |
 |---|---|---|
@@ -36,31 +36,28 @@ Training choices matter just as much. DeepMind's Chinchilla study showed that fi
 | **Dense vs Sparse Mixture-of-Experts (`MoE`)** | **DeepSeek-V3 / R1** (`671B` [`~680B`] total params, **`37B` active/token** across `1` shared + `8` of `256` routed experts = **`18.14x`** compute reduction); **Mixtral `8x7B`** (`46.7B` total = `93.4 GB` `FP16`, **`12.9B` active** across `2` of `8` experts = **`3.62x`** reduction) | `HBM` capacity scales with **total** parameters, per-token `FLOPs` scale with **active** parameters, and fabric traffic shifts from `AllReduce` to `AllToAll` |
 | **Pretraining Economics & Scaling Laws** | **GPT-3 `175B`** (`300B` tokens = `3.14 x 10^23` `FLOPs`): **`~236` ideal days** (`7.8` months) on `256` `H100`s, or **`$4,142,811.43`** at `70%` utilization and `$2/hr/H100`; **GPT-4** (`~$100 million`), **Gemini Ultra** (`~$191 million`), **DeepSeek-V3** (`< $6 million` on `H800`s) | **Chinchilla** (`D ~= 20 * N`, `C ~= 6 * N * D`): `70B` on `1.4 trillion` tokens beats `175B–530B` models on `270B–300B` tokens; **Llama 3-8B** over-trains on `15 trillion` tokens (`1,875` tok/param, **`93.75x`** Chinchilla) for cheap inference |
 
-Before you size a cluster for a foundation model, open its `config.json` and read three values: the attention head ratio, the expert count and the maximum context window.
+Before you size a cluster for a foundation model, open its `config.json` and read three values: the attention head ratio, the expert count and the maximum context window. Those three numbers tell you most of the memory, network and serving story before any benchmark runs.
+
+A practical way to use those three values is to write them in the capacity request, next to the model name. The reviewer then sees the same assumptions you used. If a teammate later swaps in a different checkpoint, the head ratio, the expert count and the context limit will show the change at a glance, and the memory and network estimates can be redone in a few minutes.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Matrix multiplication, activation functions, cross-entropy loss, backpropagation, and mixed-precision formats from Chapter 14.1.
-- GPU Streaming Multiprocessor and Tensor Core memory hierarchy from Parts 9 and 10, plus collective communication primitives from Part 12.
+- Matrix multiplication, activation functions, cross-entropy loss, backpropagation and mixed-precision formats from Chapter 14.1 carry over directly into this chapter.
+- GPU Streaming Multiprocessor and Tensor Core memory hierarchy from Parts 9 and 10 matter here, and so do the collective communication primitives from Part 12.
 
 ### Outcomes
-After completing this chapter, you will be able to:
-1. Contrast foundation models with narrow ML models across vector space dimensionality, training data skew, and total cost of ownership.
-2. Trace a token sequence end-to-end through a modern decoder-only Transformer. You will also contrast encoder-only, decoder-only, encoder-decoder, and linear-time state-space architectures.
-3. Compute exact parameter counts and forward-pass FLOPs for production models. You will also find the crossover sequence length where quadratic attention overtakes linear projections.
-4. Calculate key-value cache memory footprints across MHA, GQA, MQA, and DeepSeek MLA. You will also explain how FlashAttention, FlashMLA, ThunderMLA, and PagedAttention eliminate HBM bottlenecks.
-5. Apply Chinchilla scaling laws, Mixture-of-Experts capacity math, post-training alignment economics, probabilistic sampling, and foundation model customization patterns.
+Suppose a design review asks you to justify a serving architecture on paper. This chapter walks through the pieces you need, in order. It starts with how foundation models differ from narrow models, and with the data and tokens they are built from. It then traces a token through a modern decoder-only Transformer and compares the main architecture families. Next it counts exact parameters and FLOPs, and it computes the KV cache memory for each attention design. The chapter then covers the scaling and alignment economics, and it ends with the customization choices that follow from them.
 
 ---
 
 ## 1. Foundation Models, Data Distributions, and Vector Spaces
 
-Teams that adopt foundation models without understanding their training data distributions and tokenization mechanics get blindsided by production failures. A global customer support service that works fast and cheap in English suddenly costs ten times more in South or Southeast Asian languages. It also runs ten times slower on those same non-English requests. Worse, a general-purpose model deployed on clinical or financial workflows confidently invents facts whenever queries fall outside its web-scraped pretraining distribution.
+Picture a support team that launches a chatbot built on a foundation model. The English tickets look great in the first week. Then the first South or Southeast Asian customers arrive, and their requests cost ten times as much as the English ones. They also run ten times slower. Teams that adopt foundation models without understanding their training data distributions and tokenization mechanics get blindsided this way. A general-purpose model deployed on clinical or financial workflows has a similar weakness. It confidently invents facts whenever a query falls outside the web-scraped pretraining distribution, which is the mix of text it learned from. The sections below show where those costs and failures come from, so you can predict them before launch.
 
 ### 1.1 Foundation Models vs. Narrow Machine Learning Models
 
-Traditional machine learning systems rely on narrow models trained from scratch on task-specific labeled datasets, such as a dedicated fraud detector. By contrast, a foundation model is pre-trained via self-supervision on massive unlabeled datasets spanning text, code, images, audio, and video. Once pre-trained, that single base model can be adapted to dozens of downstream tasks. The term Large Language Model specifically denotes a text-based model. The broader foundation model category encompasses multimodal and domain-specific architectures.
+Consider two projects on the same team. The first builds a fraud detector from a labeled table of past transactions. The second adds a document summarizer. The fraud detector is a narrow model, trained from scratch on one task, and traditional machine learning systems work this way. A foundation model takes a different route. It is pre-trained through self-supervision on massive unlabeled datasets spanning text, code, images, audio, and video, and that single base model can then be adapted to dozens of downstream tasks. The term Large Language Model specifically denotes a text-based model. The broader foundation model category also covers multimodal and domain-specific architectures, so every LLM is a foundation model, but not every foundation model is an LLM.
 
 | Architectural Dimension | Narrow ML Models | Foundation Models (`FMs` / `LLMs`) | Infrastructure Impact |
 |---|---|---|---|
@@ -69,11 +66,13 @@ Traditional machine learning systems rely on narrow models trained from scratch 
 | **Vector Space Dimensionality** | Tens to low hundreds of engineered features | Hidden dimensions `d_model` in the thousands or tens of thousands (`896` in Qwen-0.5B, `4,096` in Llama-7B/8B, `8,192` in Llama-70B, `16,384` in Llama-405B) | Determines tensor-parallel (`TP`) sharding granularity and `KV` cache bytes per token. |
 | **Adaptation & Customization** | Retrain model weights per task | **Zero-shot / few-shot prompting**, **RAG**, **PEFT / LoRA** (`10,000x` fewer trainable params, `3x` less compute), **Distillation**, or full fine-tuning | A single base model weight allocation in `HBM` can serve dozens of tasks via dynamic prompts or lightweight `LoRA` adapters. |
 
+Read the table column by column. The first column names the dimension, the second and third columns contrast the two model families, and the last column says what the difference costs the infrastructure team. The training row explains why a foundation model needs a cluster in the first place, and the parameter row shows why the memory math changes so sharply. The adaptation row is the good news. One base model in GPU memory can serve many tasks through prompts or small adapters, instead of one model per task.
+
 ### 1.2 Web-Scale Training Corpora, Tokenization Skew, and Domain Distributions
 
-A foundation model only knows what is represented in its training corpus, so data curation is the first architectural bottleneck. Most general-purpose LLMs draw heavily from the nonprofit Common Crawl archive and filtered derivatives like Google's C4 and RedPajama-v2. However, web crawls are noisy, increasingly restricted by website terms of service, and heavily skewed toward English. Curating smaller, high-quality domain datasets frequently beats scraping trillions of noisy web pages.
+Ask a simple question first. What did the model read? A foundation model only knows what its training corpus contains, so data curation is the first architectural bottleneck, even though it never appears in an architecture diagram. Most general-purpose LLMs draw heavily from the nonprofit Common Crawl archive and from filtered derivatives such as Google's C4 and RedPajama-v2. The filtering is where the choices hide. A filter that keeps only pages above some quality bar changes what the model learns to write. Web crawls are also noisy, increasingly restricted by website terms of service, and heavily skewed toward English. The practical lesson is that curating smaller, high-quality domain datasets frequently beats scraping trillions of noisy web pages.
 
-That English-heavy data skew creates a severe infrastructure penalty known as the tokenization tax. Tokenizers trained predominantly on English assign single tokens to common English words, yet fragment non-Latin scripts into dozens of byte-level subwords. On the MASSIVE multilingual benchmark, a short sentence that takes 7 tokens in English expands to 32 tokens in Hindi and 72 tokens in Burmese. Decoding time and API price both grow with token count. **A Burmese request therefore takes roughly 10 times longer and costs roughly 10 times more than the same English request.**
+Here is how the skew turns into money. Picture two customers who send the same short sentence, one in English and one in Burmese. Tokenizers trained mostly on English give common English words a single token each. They break non-Latin scripts into many small byte-level pieces. On the MASSIVE multilingual benchmark, a short sentence that takes 7 tokens in English expands to 32 tokens in Hindi and 72 tokens in Burmese. Decoding time and API price both grow with the token count, so the same sentence takes more GPU steps and more money. Engineers call this the tokenization tax. **A Burmese request therefore takes roughly 10 times longer and costs roughly 10 times more than the same English request.** A capacity plan that assumes one token per word will miss this entirely.
 
 | Data & Distribution Dimension | Corpus Scale, Skew & Filtering Mechanics (*AI Engineering* Ch. 2, *Engineering AI Systems* Ch. 4.1) | Benchmark Evidence & Infrastructure Impact |
 |---|---|---|
@@ -83,11 +82,13 @@ That English-heavy data skew creates a severe infrastructure penalty known as th
 | **Multilingual Accuracy & Tokenization Tax (`MASSIVE` & `MMLU`)** | **MMLU** (`14,000` problems / `57` subjects): `GPT-4` scored worst on Telugu, Marathi, Punjabi; `6` Project Euler problems (`Yennie Jun`): `GPT-4` solved English `> 3x` Armenian/Farsi and `0 / 6` in Burmese/Amharic; `NewsGuard` (`April 2023`): `ChatGPT-3.5` refused `6 / 7` English misinformation prompts but complied `7 / 7` in Chinese | On **MASSIVE** (`1 million` short parallel texts across `52` languages), median `GPT-4` token length is **`7` tokens in English**, **`32` in Hindi (`4.57x`)**, and **`72` in Burmese (`10.29x` / `~10x` latency and cost)**—motivating regional FMs (`ChatGLM`, `YAYI`, `Llama-Chinese`, `CroissantLLM`, `PhoGPT`, `Jais`) and larger vocabularies (`Llama 3` `128,256` and `Qwen 2.5` `151,936` vs `Llama 2` `32,000`) |
 | **Domain & Multimodal Benchmarks (`Table 2-3`)** | `CLIP` vs `OpenCLIP` (`ViT-B/32`): `ImageNet` (`63.2%` vs `62.9%`), `ImageNet v2` (`62.6%`), `Birdsnap` (`37.8%` vs `46.0%`), `Country211` (`17.8%` vs `14.8%`), `Oxford 102 Flower` (`66.7%` vs `66.0%`), `GTSRB` (`32.2%` vs `42.0%`), `Stanford Cars` (`59.4%` vs `79.3%`), `UCF101` (`64.5%` vs `63.1%`); `Flamingo` (`1.8B` and `312M` image-text pairs) | Non-web domains require specialized corpora: **DeepMind `AlphaFold`** (`~100,000` known proteins), **NVIDIA `BioNeMo`** (biomolecular drug discovery), and **Google `Med-PaLM 2`** (clinical QA) |
 
+Read the language skew row slowly, because it turns a data fact into a serving fact. A language with a large speaker population can still be a small share of the crawl, and the ratio column makes that gap visible. A model trained on that crawl sees far fewer examples of the under-represented language, so its tokenizer, its accuracy and its cost all reflect the imbalance. Benchmarks in a second language can look much worse than the English numbers, even when the model is nominally the same.
+
 ### 1.3 Tokenization and Vector Spaces
 
-Neural networks cannot multiply raw text strings, so a tokenizer using Byte-Pair Encoding, WordPiece, or SentencePiece first segments text into subword tokens. Each token maps to an integer ID from a fixed vocabulary, and an embedding matrix converts each ID into a continuous vector. Classical static embedding models such as Word2Vec, GloVe, and FastText assign one fixed vector per word so that geometric distances capture meaning.
+A model never sees text the way you do. Think of a neural network as a machine that only does arithmetic on grids of numbers, so text must become numbers before any work can happen. A tokenizer using Byte-Pair Encoding, WordPiece, or SentencePiece first segments text into subword tokens. Each token maps to an integer ID from a fixed vocabulary, and an embedding matrix converts each ID into a continuous vector. Those vectors are the coordinates the rest of the network works with. Classical static embedding models such as Word2Vec, GloVe, and FastText assign one fixed vector per word, so geometric distances can capture meaning. The well-known analogy `king - man + woman` lands near `queen`, which shows how much structure a good embedding space can hold.
 
-However, static embeddings fail whenever a word has multiple meanings. In a static lookup table, the word book—whether a novel, a ledger, or a book of stamps—always receives the same vector. Modern Transformers solve this ambiguity by passing initial token embeddings through stacked self-attention layers. Those layers produce contextualized hidden states that shift dynamically based on surrounding words.
+Static embeddings run into trouble with words that have several meanings. In a static lookup table, the word book always gets the same vector, whether the sentence is about a novel, a ledger or a book of stamps. Modern Transformers solve this ambiguity by passing the initial token embeddings through stacked self-attention layers. Each layer lets a token look at its neighbors and mix in their information. The result is a set of contextualized hidden states that shift with the surrounding words, so book in one sentence and book in another end up at different points in the vector space.
 
 ```text
 Tokenization & Contextual Vector Space Example (Hands-On Ch. 2, EAS Ch. 4.2.1–4.2.2, LLMs in Production Ch. 2):
@@ -103,17 +104,17 @@ Tokenization & Contextual Vector Space Example (Hands-On Ch. 2, EAS Ch. 4.2.1–
        Self-attention dynamically blends context across all sequence positions so "book" and "capital" resolve to distinct vectors.
 ```
 
-Before deploying an LLM for a multilingual or domain-specific workload, measure the tokenizer's fertility—tokens generated per word—on representative production prompts.
+Before you deploy an LLM for a multilingual or domain-specific workload, measure the tokenizer's fertility, which is the number of tokens generated per word, on real production prompts. Use prompts from your own traffic rather than a public benchmark. The fertility number gives you the cost multiplier for each language before the first invoice arrives.
 
 ---
 
 ## 2. Inside the Transformer Architecture: Encoders, Decoders, and Alternative Backbones
 
-Before 2017, sequence tasks like machine translation relied on Recurrent Neural Networks, Long Short-Term Memory networks, and Gated Recurrent Units. Recurrent networks had two problems that hurt on GPUs. They processed tokens one at a time, so the thousands of parallel cores sat idle. They also squeezed a whole input sequence into one fixed-size hidden vector. The 2017 Transformer of Vaswani and colleagues removed recurrence. During training, every token is processed in parallel and can attend directly to any earlier token.
+Picture a machine translation job from the recurrent era. The model reads a sentence one word at a time, and the GPU sits mostly idle while each step waits for the previous one. Before 2017, sequence tasks like machine translation relied on Recurrent Neural Networks, Long Short-Term Memory networks, and Gated Recurrent Units. Recurrent networks had two problems that hurt on GPUs. They processed tokens one at a time, so the thousands of parallel cores sat idle. They also squeezed a whole input sequence into one fixed-size hidden vector. The 2017 Transformer of Vaswani and colleagues removed recurrence. During training, every token is processed in parallel and can attend directly to any earlier token, which keeps the GPU busy.
 
 ### 2.1 Why Transformers Replaced RNNs and Seq2Seq
 
-In a recurrent network, step 200 of a 200-token sentence cannot begin until steps 1 through 199 have finished sequentially. Adding bidirectional passes and dropout gates in LSTMs improved accuracy and halved the required training epochs compared to vanilla RNNs. However, those gates made training 10 to 12 times more compute-expensive than a simple multilayer perceptron. Worse, vanilla sequence-to-sequence models forced the encoder to cram an entire document into one final hidden state vector. That compression was like trying to answer detailed questions about a book using only a one-paragraph summary. Self-attention replaced that bottleneck with direct all-to-all token lookups across the entire context window.
+Here is why the old design was slow. In a recurrent network, step 200 of a 200-token sentence cannot begin until steps 1 through 199 have finished, one after another. The GPU's thousands of cores cannot help with that chain. Adding bidirectional passes and dropout gates in LSTMs improved accuracy and halved the required training epochs compared to vanilla RNNs. Those gates came at a price. They made training 10 to 12 times more compute-expensive than a simple multilayer perceptron. Worse, vanilla sequence-to-sequence models forced the encoder to cram an entire document into one final hidden state vector. That compression was like trying to answer detailed questions about a book using only a one-paragraph summary. Self-attention replaced that bottleneck with direct all-to-all token lookups across the entire context window, so every token can reach every other token in a single step.
 
 ### 2.2 Encoder-Only, Decoder-Only, and Encoder-Decoder Variants
 
@@ -134,13 +135,15 @@ flowchart LR
     end
 ```
 
-Transformers fall into three structural families depending on their attention masks. Encoder-only models like BERT use bidirectional self-attention so every token attends to both left and right context. That bidirectional view makes them ideal for classification and dense RAG embeddings. Decoder-only models like GPT, Llama, Qwen, and DeepSeek apply a causal mask so each token attends only to past positions. Encoder-decoder models like the original 2017 Transformer and T5 pair a bidirectional encoder with a causal cross-attention decoder for sequence-to-sequence translation.
+Look at the three diagrams as three different plumbing diagrams for the same kind of data. The encoder-only path has one job, which is to read the whole input and produce embeddings. Nothing in that path ever generates a token, so it does not need a growing cache. The decoder-only path is the opposite. Each new token enters the model with the past tokens already stored, and the next-token logits come out the other end. That loop is why serving teams care so much about the cache. The encoder-decoder path adds a second input stream. The decoder reads the encoder's output through cross-attention, so you pay for two sets of activations when the source sequence is long.
+
+Pick a Transformer, and the first question is which way it is allowed to look. That choice is the attention mask, and it sorts Transformers into three families. Encoder-only models like BERT use bidirectional self-attention, so every token attends to both left and right context. That view suits classification and dense RAG embeddings, where the whole passage is read at once. Decoder-only models like GPT, Llama, Qwen, and DeepSeek apply a causal mask, so each token attends only to past positions. The model writes left to right, which is why it can generate text. Encoder-decoder models like the original 2017 Transformer and T5 pair a bidirectional encoder with a causal cross-attention decoder, which suits sequence-to-sequence translation. For infrastructure work, the decoder-only family brings the KV cache into play, so most of the serving discussion below focuses on it.
 
 ### 2.3 Anatomy of a Modern Decoder-Only Transformer
 
-Print a modern open-weight LLM in PyTorch and four changes from the 2017 Transformer stand out. The first is Pre-Normalization. Root Mean Square Layer Normalization runs before each attention and MLP sublayer instead of after it, which keeps gradients stable across more than a hundred layers. The second is Rotary Position Embeddings, which rotate the Query and Key vectors by an angle set by the distance between tokens. **RoPE encodes position through rotation math rather than a learned table, so extending context from 4K to 128K adds zero parameters.**
+Open a modern open-weight LLM in PyTorch and you will find four changes from the 2017 design. Each one exists for a reason, and each one shows up somewhere in the cluster bill. The first is Pre-Normalization. Root Mean Square Layer Normalization runs before each attention and MLP sublayer instead of after it. Normalization rescales activations so their size stays predictable, and putting it first keeps gradients stable across more than a hundred layers. The second is Rotary Position Embeddings. They rotate the Query and Key vectors by an angle set by the distance between tokens, so the model knows which tokens are near each other. **RoPE encodes position through rotation math rather than a learned table, so extending context from 4K to 128K adds zero parameters.** The checkpoint stays the same size, although the KV cache still grows with the context you actually use.
 
-The third change is Grouped-Query Attention, where groups of Query heads share one Key head and one Value head, so the KV cache is smaller. The fourth is the feedforward network. A gated three-matrix SwiGLU block takes the place of the classic two-matrix ReLU or GELU block.
+The third change is Grouped-Query Attention. Several Query heads share one Key head and one Value head, so fewer Key and Value vectors must be stored for every token. That makes the KV cache smaller, and the KV cache is often the largest memory consumer during serving. The fourth change is the feedforward network. A gated three-matrix SwiGLU block takes the place of the classic two-matrix ReLU or GELU block. ReLU and GELU are activation functions, the bends that let a network model curves rather than straight lines. The gate in SwiGLU lets the block decide, value by value, how much of the signal to pass on.
 
 ```text
 Qwen2ForCausalLM Module Hierarchy (Qwen/Qwen2.5-0.5B: 494,032,768 params | vocab_size: 151,936 | max_position_embeddings: 32,768)
@@ -164,9 +167,11 @@ Qwen2ForCausalLM Module Hierarchy (Qwen/Qwen2.5-0.5B: 494,032,768 params | vocab
 └── lm_head: Linear(896 -> 151936)
 ```
 
+Read the module tree from the top down. The root holds the token embedding table, a stack of 24 identical decoder layers, a final normalization, and the output head. Inside each layer, the attention block has 14 query heads and 2 key-value heads, which is the Grouped-Query setup in miniature, and the MLP block has the three SwiGLU matrices. When a count or a memory number seems wrong, walk this tree and check which module owns the difference. Most surprises trace back to one projection that is larger or smaller than expected.
+
 ### 2.4 Exact Parameter Counting Across the Llama 2, Llama 3, and Qwen Families
 
-Counting a Transformer's exact parameters from its configuration dimensions is a core infrastructure skill. Every decoder block contains four attention projection matrices, three SwiGLU MLP matrices, and two RMSNorm vectors. Those decoder blocks sit between the input token embedding table and the output language modeling head. When a model switches from Multi-Head Attention to Grouped-Query Attention, the Key and Value projection matrices shrink proportionally. Meanwhile, the three-matrix SwiGLU block accounts for the majority of per-layer weights.
+Suppose a capacity review asks you to confirm a model's weight size from its config file alone. You can do it by counting parameters from the configuration dimensions, and that counting is a core infrastructure skill. Every decoder block contains four attention projection matrices, three SwiGLU MLP matrices, and two RMSNorm vectors. Those blocks sit between the input token embedding table and the output language modeling head. When a model switches from Multi-Head Attention to Grouped-Query Attention, the Key and Value projection matrices shrink in proportion to the number of KV heads. Meanwhile, the three-matrix SwiGLU block accounts for the majority of per-layer weights, so it is the first place to look when a count seems off.
 
 ```text
 Exact Parameter Counting Formulas & Llama 2-7B vs Llama 3-8B Walkthrough (code/part14/transformers_llm_arch.py):
@@ -195,6 +200,8 @@ Exact Parameter Counting Formulas & Llama 2-7B vs Llama 3-8B Walkthrough (code/p
     - Total Parameters:   8,030,261,248 (~8.03B, ~16.06 GB in FP16) — trained on 15T tokens, outperforming Llama 2-70B (2023) on MMLU
 ```
 
+Walk through Walkthrough A the way you would check a real config file. Start with the four attention matrices, because all four are the same size in MHA. Then add the three SwiGLU matrices, which dominate the layer. Add the two norms, multiply the layer total by the number of layers, and add the embedding and head. The result should match the published total to within the rounding of the displayed figure. If it does not, the usual cause is a missing tied embedding flag or a different vocabulary size in the config.
+
 | Model (*AI Engineering* Table 2-4 & `Hands-On Ch. 2`) | Blocks (`L`) | `d_model` | `d_ff` (`SwiGLU`) | Heads (`Q / KV`) | Vocab (`V`) | Context Length | Exact Parameter Count (`FP16` Weight `GB`) |
 |---|---|---|---|---|---|---|---|
 | **Qwen 2.5-0.5B** | `24` | `896` | `4,864` | `14 / 2` (`d_h=64`) | `151,936` | `32K` (`32,768`) | `494,032,768` (`~0.49B` / `~0.99 GB`, tied embed + QKV bias) |
@@ -205,9 +212,11 @@ Exact Parameter Counting Formulas & Llama 2-7B vs Llama 3-8B Walkthrough (code/p
 | **Llama 3-70B** | `80` | `8,192` | `28,672` | `64 / 8` (`GQA-8`) | `128K` (`128,256`) | `128K` (`128,000`) | `70,553,706,496` (`~70.55B` / `~141.11 GB`) |
 | **Llama 3-405B** | `126` | `16,384` | `53,248` | `128 / 8` (`GQA-8`) | `128K` (`128,256`) | `128K` (`128,000`) | `405,853,388,800` (`~405.85B` / `~811.71 GB`) |
 
+Use this table as a lookup for the models you are likely to serve. The columns that matter most for infrastructure are the head ratio, which sets the KV cache size, and the parameter count, which sets the weight memory. Notice that the Llama 3 rows raised the vocabulary and the context length, and the 8B and 70B rows both use grouped KV heads. The embedding tables grew with the vocabulary, while the attention cost per token follows the KV head count. The FP16 weight column is a direct multiplication of parameters by two bytes, so you can check any row yourself.
+
 ### 2.5 Alternative Foundation Model Architectures
 
-While Transformers dominate text and multimodal generation, their quadratic attention cost at million-token sequence lengths has spurred linear-time sequence backbones. Convolutional Neural Networks, Graph Neural Networks, and Variational Autoencoders remain essential for spatial grids, relational graphs, and representation learning. For long sequences, architectures like RWKV and Mamba achieve linear scaling with sequence length. They also maintain a constant-size recurrent state during inference. Hybrid models like Jamba interleave Transformer, Mamba, and Mixture-of-Experts layers to fit a 256K-token context inside one 80 GB GPU.
+Transformers dominate text and multimodal generation today, yet their attention cost grows quadratically with sequence length. That cost shows up clearly at million-token contexts, and it has pushed researchers toward backbones that scale linearly. Convolutional Neural Networks, Graph Neural Networks, and Variational Autoencoders remain essential for spatial grids, relational graphs, and representation learning. For long sequences, architectures like RWKV and Mamba achieve linear scaling with sequence length, and they keep a constant-size recurrent state during inference. Hybrid models like Jamba interleave Transformer, Mamba, and Mixture-of-Experts layers to fit a 256K-token context inside one 80 GB GPU.
 
 | Backbone Family (*Engineering AI Systems* Ch. 4.3, *AI Engineering* Ch. 2, `LLMs in Production Ch. 2`) | Core Mechanism & Evolution | Infrastructure & Scaling Profile |
 |---|---|---|
@@ -217,19 +226,21 @@ While Transformers dominate text and multimodal generation, their quadratic atte
 | **State Space Models (`SSMs` — `Gu et al., 2021a`)** | Evolved from **`S4`** (`Gu et al., 2021b`) and **`H3`** (*Hungry Hungry Hippos*, `Fu et al., 2022` shift/multiplicative recall) to **`Mamba`** (*Selective State Spaces*, `Gu and Dao, 2023`) | **`Mamba-3B`** outperforms same-size Transformers, matches Transformers **`2x` its size**, and scales **linearly `O(N)`** up to **`1 million` tokens** |
 | **`Jamba` Hybrid (`Lieber et al., 2024`)** | Interleaves **Transformer**, **Mamba**, and **MoE** layers (`2` of `16` experts) | **`52B` total parameters (`12B` active = `23.08%`, `4.33x` compute savings)**; supports **`256K`-token context** and fits in a **single `80 GB` GPU** |
 
-When evaluating a new model backbone, check whether its attention or state mechanism scales quadratically or linearly with sequence length.
+Read the backbone table as a set of trade-offs rather than a ranking. Recurrent and state space models trade the parallel training of Transformers for constant-size state at inference time. Hybrid models try to keep the best of both, at the cost of a more complicated serving stack. The infrastructure question stays the same for each row. How does memory and latency grow as the context gets longer, and does the growth fit the workload you plan to run?
+
+When a vendor brings you a new backbone, ask one question first. Does its attention or state mechanism scale quadratically or linearly with sequence length? The answer predicts the memory and latency curve at the context lengths you actually serve, long before you run a benchmark.
 
 ---
 
 ## 3. Attention Variants, KV Cache Memory Math, and FlashAttention Hardware Codesign
 
-When a serving cluster runs out of GPU memory, or misses its Time to First Token target on long documents, self-attention is usually the cause. At short sequence lengths, dense matrix multiplications in the linear projections dominate compute, and the key-value cache is small. As prompts stretch from 4,096 tokens to 128,000 or 250,000 tokens, quadratic attention FLOPs take over the compute budget. Simultaneously, the key-value cache balloons to hundreds of gigabytes per conversation.
+Picture a serving cluster that runs out of GPU memory on a Friday afternoon, just as the long-document customers arrive. The Time to First Token target, which is the wait before the first word appears, slips at the same time. Self-attention is usually the cause. At short sequence lengths, dense matrix multiplications in the linear projections dominate compute, and the key-value cache is small. As prompts stretch from 4,096 tokens to 128,000 or 250,000 tokens, quadratic attention FLOPs take over the compute budget. Simultaneously, the key-value cache balloons to hundreds of gigabytes per conversation.
 
 ### 3.1 Scaled Dot-Product Attention and Quadratic vs. Linear FLOPs
 
-Scaled dot-product attention projects the input tensor into Query, Key, and Value matrices. It then divides the Query-Key dot products by the square root of the head dimension to prevent softmax saturation. Finally, it applies a causal mask and multiplies the probabilities by the Values. From a hardware perspective, a Transformer layer's forward pass combines two distinct scaling regimes. The Q, K, V, O, and SwiGLU matrix projections scale linearly with sequence length and quadratically with hidden dimension. By contrast, the core attention matrix multiplications scale quadratically with sequence length and linearly with hidden dimension.
+Start with what attention does. Scaled dot-product attention projects the input into Query, Key, and Value matrices. A Query asks a question, each Key describes what a token offers, and each Value carries the content. The model compares every Query with every Key through dot products, then divides by the square root of the head dimension to prevent softmax saturation. Softmax turns those scores into weights that add up to one, so the output reads as a weighted mix of Values. A causal mask blocks future positions, and the probabilities then multiply the Values. From a hardware perspective, a Transformer layer's forward pass combines two distinct scaling regimes. The Q, K, V, O, and SwiGLU matrix projections scale linearly with sequence length and quadratically with hidden dimension. By contrast, the core attention matrix multiplications scale quadratically with sequence length and linearly with hidden dimension.
 
-In Llama 2-7B, setting the quadratic attention FLOPs equal to the linear projection FLOPs reveals a crossover at 24,704 tokens. At 4,096 tokens, the quadratic attention core consumes only 14.22 percent of layer FLOPs, whereas at 128,000 tokens it consumes 83.82 percent. Furthermore, chunked prefill splits long prompts into smaller pieces to avoid blocking active decode requests. However, the triangular sum of causal dot products remains identical regardless of chunking. Only latency-aware request reordering across GPUs reduces critical-path prefill work.
+Now the crossover. In Llama 2-7B, setting the quadratic attention FLOPs equal to the linear projection FLOPs reveals a crossover at 24,704 tokens. Below that length, the dense projections are the larger share of the work. At 4,096 tokens, the quadratic attention core consumes only 14.22 percent of layer FLOPs, whereas at 128,000 tokens it consumes 83.82 percent. That is why long-context serving feels different from short chat. Chunked prefill splits long prompts into smaller pieces so they do not block active decode requests. However, the triangular sum of causal dot products remains identical regardless of chunking. Chunking changes when the work runs, not how much of it there is. Only latency-aware request reordering across GPUs reduces critical-path prefill work.
 
 ```text
 1. Scaled Dot-Product Attention & Layer FLOP Regimes (Batch B, Sequence Length s, Hidden Size d_model, Head Dim d_head = 128):
@@ -254,11 +265,13 @@ In Llama 2-7B, setting the quadratic attention FLOPs equal to the linear project
      * Latency-Aware:   Both GPUs get [2K, 2K, 6K] = 22,005,000 ops (10K tok) -> cuts critical-path QK work by 42.10% (~42%)
 ```
 
+Read the block in two halves. The linear projection half grows with the sequence length and with the square of the width, so it is the same kind of work as a large dense layer. The quadratic attention half grows with the square of the sequence length, which is why it stays small at short prompts and takes over at long ones. The crossover figure is the point where the two halves cost the same. Below it, the projections matter more for the budget. Above it, attention dominates, and cutting attention cost, through FlashAttention or better scheduling, pays off the most.
+
 ### 3.2 Prefill vs. Decode and the KV Cache Byte Footprint Formula
 
-Autoregressive serving has two phases that stress different hardware. Prefill processes all prompt tokens in parallel, is limited by compute, and sets Time to First Token. Decode then produces one token at a time, is limited by memory bandwidth, and sets Time Per Output Token. Without caching prior Key and Value tensors, decoding 100 tokens on Qwen 2.5-0.5B takes 9.1205 seconds because the GPU recomputes every past token. Enabling the KV cache cuts that time to 3.1416 seconds for a 2.90x speedup.
+Autoregressive serving has two phases, and they stress different hardware. Think of a restaurant kitchen. Prefill is the prep work, where the whole prompt is read in parallel and the stoves run flat out. It is limited by compute, and it sets Time to First Token. Decode is the line cooking, where one token is produced at a time and each step reads the whole pantry from memory. It is limited by memory bandwidth, and it sets Time Per Output Token. Without caching prior Key and Value tensors, decoding 100 tokens on Qwen 2.5-0.5B takes 9.1205 seconds because the GPU recomputes every past token. Enabling the KV cache cuts that time to 3.1416 seconds for a 2.90x speedup. The cache trades memory for compute, and the rest of this section is about the memory bill.
 
-However, the KV cache itself quickly becomes the largest memory consumer in inference. Every generated token appends one Key vector and one Value vector per KV head across every layer of the model. Moving from Multi-Head Attention to a Grouped-Query, Multi-Query or Latent variant shrinks the KV cache. **For the 13B model in the table below, the cache shrinks by 5x with GQA-8 and by 40x with MQA, so the same GPU can hold many more conversations.**
+The cache has a price, though. The KV cache itself quickly becomes the largest memory consumer in inference. Every token in the conversation appends one Key vector and one Value vector per KV head, and it does so in every layer of the model. The total grows with the sequence length and the batch size, so a busy server with many open conversations feels the pressure first. Moving from Multi-Head Attention to a Grouped-Query, Multi-Query or Latent variant shrinks the cache at the source, because it stores fewer KV heads per token. **For the 13B model in the table below, the cache shrinks by 5x with GQA-8 and by 40x with MQA, so the same GPU can hold many more conversations.**
 
 ```text
 Exact KV Cache Memory Formula:
@@ -282,6 +295,8 @@ flowchart TB
     end
 ```
 
+Think of the four diagrams as four different sizes of the same storage box. Multi-Head Attention keeps a Key and a Value for every head, so the box is full size. Grouped-Query Attention shares each KV head across a group of query heads, so the box shrinks by the group factor. Multi-Query Attention keeps a single KV head for all query heads, which is the smallest version of that idea. MLA takes a different route. It stores one compressed latent vector per token and expands it when needed, so the box holds a compact summary instead of a full set of heads. Every diagram answers the same question for the serving team, which is how many bytes each token adds to the cache.
+
 | Attention / Model Configuration (*AI Systems Performance Engineering* Ch. 17 & 18) | Layers (`L`) | `n_kv_heads` | `d_head` | Precision (`bytes`) | `KV` Bytes / Token | Total `KV` Cache at Context `N` | Reduction vs. `MHA FP16` |
 |---|---|---|---|---|---|---|---|
 | **`13B` Model — Standard `MHA`** | `40` | `40` | `128` | `FP16` (`2 B`) | `819,200 B` (`~0.819 MB`) | **`3.36 GB`** (`3,355,443,200 B` @ `4,096` tok) | `1.0x` (baseline) |
@@ -292,11 +307,13 @@ flowchart TB
 | **`13B` Equivalent — DeepSeek `MLA`** (`d_c=576`) | `40` | Latent `576` | — | `FP16` (`2 B`) | `46,080 B` (`~0.046 MB`) | **`0.189 GB`** (`188,743,680 B` @ `4,096` tok) | **`17.78x`** |
 | **`70B` Model (`32` KV heads) @ `250K` Context** | `80` | `32` | `128` | `FP16` (`2 B`) | `1,310,720 B` (`655,360` floats, `~1.31 MB`) | **`327.68 GB`** (`~328 GB` @ `250,000` tok; `100–150 GB` in `FP8`/selective) | Requires disaggregated `KV` pool |
 
+Read this table from the top row down, and watch the KV Bytes column. The first row is the baseline, a 13B model with one KV head per query head. The FP8 rows halve the bytes per element, so they halve the cache. The GQA rows divide the KV head count by the group factor, so they shrink the cache by the same ratio. MQA keeps only one KV head, which is the largest single cut. The MLA row is different, because it stores a compressed latent instead of heads. The last row shows why the 70B case needs a disaggregated pool. At 250,000 tokens the cache alone is hundreds of gigabytes, far larger than the weights a single GPU can hold alongside it.
+
 ### 3.3 FlashAttention, FlashMLA, ThunderMLA, FlexDecoding, and PagedAttention
 
-Naive attention implementations materialize the entire N-by-N score and softmax probability matrices in off-chip GPU High Bandwidth Memory. That materialization causes massive HBM bandwidth bottlenecks and out-of-memory crashes on long sequences. FlashAttention eliminates that bottleneck by tiling Queries, Keys, and Values inside fast on-chip SRAM and updating softmax online in one pass. That SRAM tiling reduces HBM traffic from quadratic to linear, delivering a 2x to 4x end-to-end speedup. FlashAttention-3 adds warp-specialized producer-consumer pipelines to reach roughly 75 percent of peak FP16 FLOPs.
+Think of attention as a huge scratch table. Naive attention writes the full N-by-N table of scores into High Bandwidth Memory, the large but comparatively slow memory on the GPU card. Every read and write of that table costs bandwidth, and at long sequence lengths the table itself can run the GPU out of memory. FlashAttention removes the table. It tiles Queries, Keys, and Values into blocks that fit in fast on-chip SRAM, the small memory next to the compute units, and it updates the softmax online in one pass. That tiling reduces HBM traffic from quadratic to linear, which delivers a 2x to 4x end-to-end speedup. FlashAttention-3 adds warp-specialized producer-consumer pipelines to reach roughly 75 percent of peak FP16 FLOPs. A warp is a group of threads that moves together, and warp specialization gives some warps the job of loading data while others compute.
 
-On the serving side, contiguous buffers for variable-length KV caches waste memory. The original PagedAttention paper measured that, without paging, only 20.4 to 38.2 percent of KV cache memory held real token states. vLLM's PagedAttention splits the cache into fixed 16-token blocks managed like virtual memory pages, which leaves near-zero waste. *Hands-On LLM Serving and Optimization* reports that vLLM often reaches 10 to 20 times the throughput of the Hugging Face generate call in benchmarks. Modern disaggregated serving stacks go one step further. They run compute-bound prefill on dedicated prefill nodes and stream collated KV cache pages over RDMA to memory-rich decode nodes.
+The serving side has its own waste. Contiguous buffers for variable-length KV caches waste memory, because every conversation reserves room in one block. The original PagedAttention paper measured that, without paging, only 20.4 to 38.2 percent of KV cache memory held real token states. vLLM's PagedAttention splits the cache into fixed 16-token blocks managed like virtual memory pages, which leaves near-zero waste. A conversation grabs blocks as it grows and returns them when it ends. *Hands-On LLM Serving and Optimization* reports that vLLM often reaches 10 to 20 times the throughput of the Hugging Face generate call in benchmarks. Modern disaggregated serving stacks go one step further. They run compute-bound prefill on dedicated prefill nodes and stream collated KV cache pages over RDMA, which is remote direct memory access between machines, to memory-rich decode nodes.
 
 | Kernel or Serving Optimization (*AI Systems Performance Engineering* Ch. 1, 10, 13, 17–18, `Hands-On Ch. 2`) | Hardware & Memory Mechanism | Measured Speedup & Efficiency Numbers |
 |---|---|---|
@@ -306,17 +323,19 @@ On the serving side, contiguous buffers for variable-length KV caches waste memo
 | **vLLM `PagedAttention` & Prefix Caching** | Partitions `KV` cache into fixed **`16`-token blocks**, removing the contiguous-buffer waste (only `20.4%–38.2%` of unpaged KV memory held token states), with content-hashed prefix caching and `NVMe` offload; the `swap_space` CPU-DRAM option was removed in vLLM v0.18.0 | **`10x–20x`** higher throughput than Hugging Face `.generate()` (`100`-token `Qwen 2.5-0.5B` KV cache walkthrough: **`9.1205 s` -> `3.1416 s` = `2.90x` speedup** at `~0.09 s/tok` uncached) |
 | **Disaggregated Prefill-Decode (`Dynamo`, `Splitwise`, `HexGen-2`, `TetriInfer`, `Arrow`, `Mooncake`, `LMCache` over `NIXL`)** | Separates prefill (`4x H100` or `TP_p=2, PP_p=2`) from decode (`4x A100` or `TP_d=1..4, PP_d=1`) and streams `KV` cache over **NVIDIA `NIXL`** (`GPUDirect RDMA` / `NVLink`) | **Splitwise:** **`1.4x`** throughput at **`20%`** lower cost or **`2.35x`** RPS at same cost/power (**`~25%`** hardware savings: `6` GPUs vs `8`); **HexGen-2** (`Llama 2-70B`): up to **`2x`** (`~1.3x` avg) throughput or **`30%`** lower cost; **Arrow:** up to **`5.6x`** serving rate; **`GB200 NVL72`** (`~680B` model): up to **`30x`** inference throughput; **LMCache** collating `470` `16`-tok pages (`7,500` tok) into `>= 128`-tok `RDMA` buffers (`1 GiB` = `1,073,741,824 B` on ports `7300/7400/7500`) cuts transfer **`2.5x` (`20 ms -> 8 ms`)** |
 
-Always verify that FlashAttention and PagedAttention are active in your serving engine before adding more GPUs to handle long-context traffic.
+Read the optimization table by the layer each row attacks. The kernel rows reduce the cost of one attention call. The cache rows reduce how much memory each conversation holds. The serving rows change where prefill and decode run. A good serving plan usually combines one row from each layer, because the layers fix different bottlenecks. Treat the speedup numbers as measurements from specific systems, not as guarantees for your workload.
+
+Before you buy more GPUs for long-context traffic, check that FlashAttention and PagedAttention are actually active in your serving engine. If either one is off, the extra hardware buys less than the spec sheet suggests. Confirm the kernel and cache choices first, then size the cluster.
 
 ---
 
 ## 4. Model Scaling Laws, Dense vs. Mixture-of-Experts, and Alignment
 
-Organizations that scale model parameters without balancing training token volume or inference economics waste millions of dollars in cluster compute. First-generation foundation models scaled parameters aggressively while starving the models of training tokens. That imbalance produced bloated checkpoints that were both under-trained and expensive to serve. Modern frontier engineering replaces brute-force dense scaling with sparse Mixture-of-Experts routing, Chinchilla-informed over-training, and targeted post-training alignment.
+Picture a team that doubled its model size last year and watched its cluster bill climb even faster. Its checkpoints were large and expensive to serve, yet they were under-trained. Organizations that scale model parameters without balancing training token volume or inference economics waste millions of dollars in cluster compute. First-generation foundation models scaled parameters aggressively while starving the models of training tokens. That imbalance produced bloated checkpoints that were both under-trained and expensive to serve. Modern frontier engineering replaces brute-force dense scaling with sparse Mixture-of-Experts routing, Chinchilla-informed over-training, and targeted post-training alignment. The rest of section 4 explains each of those three ideas.
 
 ### 4.1 Dense vs. Sparse Mixture-of-Experts Architectures
 
-In a dense Transformer, every token activates 100 percent of the model's parameters. In a sparse Mixture-of-Experts Transformer, each dense SwiGLU MLP block is replaced by a pool of parallel expert MLPs. A lightweight router then dispatches each token to only the top-k experts. Because only a small fraction of experts run per token, per-token compute FLOPs drop, by 3.6x for Mixtral 8x7B and 18x for DeepSeek-V3, while total capacity scales to hundreds of billions of parameters. **For an MoE cluster, size memory for the total parameters, size compute for the active parameters, and plan the network for AllToAll dispatch.**
+Start with the dense case. In a dense Transformer, every token activates 100 percent of the model's parameters, so the compute for each token is fixed by the model size. In a sparse Mixture-of-Experts Transformer, each dense SwiGLU MLP block is replaced by a pool of parallel expert MLPs. A lightweight router then dispatches each token to only the top-k experts. Think of a hospital where each patient sees only the specialists they need, rather than every doctor on staff. Because only a small fraction of experts run per token, per-token compute FLOPs drop, by 3.6x for Mixtral 8x7B and 18x for DeepSeek-V3, while total capacity scales to hundreds of billions of parameters. **For an MoE cluster, size memory for the total parameters, size compute for the active parameters, and plan the network for AllToAll dispatch.**
 
 ```mermaid
 flowchart LR
@@ -330,6 +349,8 @@ flowchart LR
     E2 --> Sum
 ```
 
+Follow one token through this diagram. It arrives after attention, and the router scores it against every expert. The top-k experts are selected, and only those experts run their MLP. The shared expert always runs, so every token pays for it. The selected expert outputs are weighted and summed with the shared output and the residual. The diagram also shows what the hardware sees. The inactive experts are not computed, but their weights still have to be stored somewhere the GPUs can reach, and the selected experts may live on other nodes. That split between stored weights and computed weights is the whole MoE memory story.
+
 | Model | Architecture Type | Total Parameters (`HBM` Weight Footprint) | Active Parameters / Token (`Compute FLOPs`) | Expert Routing Configuration | Key Infrastructure Trade-Off (*AI Engineering* Ch. 2 & *AI Systems Performance Engineering* Ch. 1) |
 |---|---|---|---|---|---|
 | **Switch Transformer (`2021`)** | Sparse `MoE` | **`1.6 Trillion`** (`1,600B`) | Fraction of total | Top-`1` routing | Reached dense accuracy **`7x` faster** in training wall-clock time. |
@@ -337,11 +358,13 @@ flowchart LR
 | **Jamba (`Lieber et al., 2024`)** | Hybrid `Transformer-Mamba MoE` | **`52 Billion`** | **`12 Billion`** (`23.08%` active; **`4.33x` fewer FLOPs**) | `2` of `16` experts on MoE layers; `256K` context | Fits in a **single `80 GB` GPU** (with quantization + small Mamba state). |
 | **DeepSeek-V3 & DeepSeek-R1** | Fine-Grained + Shared-Expert `MoE` + `MLA` | **`671 Billion` (`~680B`)** | **`37 Billion`** (`5.51%` active; **`18.14x` fewer FLOPs**) | **`1` shared expert + `8` routed out of `256` = `9` active experts/token** | Trained on export-restricted **NVIDIA `H800`** GPUs (`400 GB/s` `NVLink` vs `900 GB/s` on `H100`, `3.35 TB/s` `HBM`) for **`< $6 million`** in compute (`~17%` single-day NVIDIA stock drop) using **`DualPipe`**, **`DeepEP`**, **`EPLB`**, **`DeepGEMM` (`FP8`)**, **`FlashMLA`**, and **`3FS`**. |
 
+Read the MoE table with two columns side by side. The total parameter column is what you pay for in memory, and the active parameter column is what you pay for in compute per token. Mixtral shows the simplest case, where only two of eight experts run. Jamba adds a Mamba state on top of the MoE layers, so its memory and compute stories are both a little different. DeepSeek-V3 is the extreme case, where a large pool of small experts is routed sparsely, and the network fabric becomes as important as the arithmetic. The last column keeps the trade-off in view, because a model that is cheap per token can still be expensive to host.
+
 ### 4.2 The Three Numbers of Scale, Chinchilla Scaling, and Cluster Economics
 
-A foundation model's scale is governed by three coupled numbers: parameter count N, training tokens D, and training compute C in FLOPs. Never confuse plural FLOPs, which measures total floating-point operations, with FLOP/s or FLOPS, which measures operations per second. DeepMind's Chinchilla team trained 400 language models ranging from 70 million to over 16 billion parameters. They proved that compute-optimal pretraining requires roughly 20 training tokens per parameter.
+Scale comes down to three coupled numbers: parameter count N, training tokens D, and training compute C in FLOPs. Keep one distinction straight. FLOPs, without the s at the end, counts total floating-point operations, while FLOP/s or FLOPS measures operations per second. Mixing them up is a quick way to get a cluster estimate badly wrong. DeepMind's Chinchilla team trained 400 language models ranging from 70 million to over 16 billion parameters. They proved that compute-optimal pretraining requires roughly 20 training tokens per parameter.
 
-However, Chinchilla optimizes training compute in isolation and ignores the lifetime cost of inference serving. Suppose a model will serve billions of user queries in production. Spending extra pretraining FLOPs once to over-train a smaller model dramatically lowers the GPU count required for serving. That is why Meta trained Llama 3-8B on 15 trillion tokens, or 93.75 times the Chinchilla ratio.
+Chinchilla optimizes training compute in isolation, and it ignores the lifetime cost of inference serving. That cost can dominate. Suppose a model will serve billions of user queries in production. Every query runs the model, so a smaller model is cheaper to serve on every single request. Spending extra pretraining FLOPs once to over-train a smaller model dramatically lowers the GPU count required for serving. That is why Meta trained Llama 3-8B on 15 trillion tokens, or 93.75 times the Chinchilla ratio.
 
 ```text
 1. Chinchilla Compute-Optimal Scaling Laws (Hoffmann et al., DeepMind 2022, AIE Ch. 2 Table 2-5):
@@ -360,6 +383,8 @@ However, Chinchilla optimizes training compute in isolation and ignores the life
                             Cost = $2 * 256 * 24 * 236 / 0.7 = $4,142,811.43 (> $4 million)
 ```
 
+Read the Chinchilla block as a recipe with three steps. First pick the parameter count N. Then set the token budget D to about twenty times N. Finally multiply the two with the factor of six to get the training compute C. The 3B and 70B examples show the recipe at two scales, and they show that the token budget grows with the model. The inference-aware lines show what happens when a team stops following the recipe on purpose. Those models are trained on far more tokens than the recipe asks for, because the serving cost of a smaller model keeps paying off after training ends.
+
 | Scaling & Rack-Design Dimension | Quantitative Benchmarks & Bottlenecks (*AI Engineering* Ch. 2, *AI Systems Performance Engineering* Ch. 1) | Engineering Implication |
 |---|---|---|
 | **Goodput (`Effective Training-Time Ratio`)** | `8`-GPU node processing `100,000` tokens in `10 s` (`10,000` tok/s) vs `1,500` tok/s/GPU speed-of-light (`12,000` tok/s peak) = **`83.3%` goodput**; cluster achieving `300` of `1,000` samples/s = **`30%` goodput** (`70%–75%` lost to comm stalls, data delays, preemptions) | Optimize end-to-end goodput (`MFU x uptime x checkpoint efficiency`), not isolated kernel peaks |
@@ -367,11 +392,13 @@ However, Chinchilla optimizes training compute in isolation and ignores the life
 | **The `100-Trillion-Parameter` Horizon & Power Limits** | Scaling `3` orders of magnitude (`GPT-1` `117M` [`2018`] `->` `GPT-2` `1.5B` `->` `GPT-3` `175B` [`2020`]) to **`100 trillion` (`100T`) parameters** (human neocortex synapse scale; Dario Amodei `$100B` est.) on **`29 trillion` (`29T`) tokens** requires **`C ~= 6 * 10^14 * 2.9 * 10^13 = 1.74 x 10^28` `FLOPs`** and **`200 TB` `FP16` weight memory** (**`~1,110` `B200` `180 GB` GPUs** across `~125` `8`-GPU nodes or **`~695` `B300` `288 GB` GPUs** across `~86` nodes) | Data center electricity projected to rise from **`1%–2%` to `4%–20%` by `2030`** (`Patel et al., 2024`, capping growth at `< 50x`) |
 | **NVIDIA `GB200 / GB300 NVL72` Rack Architecture** | **`36` Grace `72`-core CPUs + `72` Blackwell GPUs**, **`1.8 TB/s`/GPU `NVLink 5`** (`18 x 100 GB/s`), **`~130 TB/s`** rack bisection, **`1.44 exaFLOPS` `FP4`** (`720 PFLOPS` `FP8`), **`13,824 GB` (`13.5 TB`) `HBM3e`** (`192 GB`/GPU or `288 GB`/GPU on `GB300`), `~30 TB` unified memory, `120–132 kW`/rack | Delivers **`2.6x` higher training** and **`3.4x` higher inference throughput per GPU** over Hopper (`MLPerf v5.0, 2025`) |
 
+Read the goodput row as the difference between a spec sheet and a calendar. The peak rate of a node is the number the vendor quotes, and goodput is what survives stalls, data delays and preemptions. The rack row shows the scale at which those stalls grow, because a bigger rack has more places for a job to wait. When you compare two platforms, compare their goodput under your own traffic pattern, not their peak rates.
+
 ### 4.3 Post-Training Alignment and Probabilistic Sampling
 
-A pretrained model only completes documents, so it may answer a question with more questions. Post-training turns it into an assistant. For InstructGPT, *AI Engineering* reports that pre-training used 98 percent of the compute and post-training used the other 2 percent, split between Supervised Fine-Tuning and Preference Fine-Tuning. Preference Fine-Tuning uses either Reinforcement Learning from Human Feedback with PPO or reward-model-free Direct Preference Optimization to align the assistant.
+Ask a raw pretrained model a plain question, and it may reply with another question, because on the web that line often begins a quiz. A pretrained model only completes documents, so it may answer a question with more questions. Post-training turns it into an assistant. For InstructGPT, *AI Engineering* reports that pre-training used 98 percent of the compute and post-training used the other 2 percent, split between Supervised Fine-Tuning and Preference Fine-Tuning. Supervised Fine-Tuning teaches the model from written examples of good answers. Preference Fine-Tuning uses either Reinforcement Learning from Human Feedback with PPO, a method that updates the model against a reward signal, or reward-model-free Direct Preference Optimization, to align the assistant with what people prefer.
 
-At inference time, the model outputs a vector of raw unnormalized scores called logits over the entire vocabulary. The serving engine converts those logits into the next token via temperature scaling, top-k and top-p filtering, grammar masking, or verifiers. Those sampling choices directly control output determinism, structured JSON or YAML validity, and hallucination rates.
+At inference time, the model does not output a word. It outputs a vector of raw unnormalized scores called logits, one for each token in the vocabulary. The serving engine converts those logits into the next token. It can apply temperature scaling, which sharpens or flattens the distribution, plus top-k and top-p filtering, grammar masking, or verifiers. Those sampling choices directly control output determinism, structured JSON or YAML validity, and hallucination rates. Sampling is a serving-layer setting, so it can change without retraining the model.
 
 ```text
 1. Post-Training Alignment & Bradley-Terry Reward Modeling (AIE Ch. 2):
@@ -402,17 +429,23 @@ At inference time, the model outputs a vector of raw unnormalized scores called 
      * Two hallucination mechanisms: (1) Self-delusion (Ortega et al., 2021) / snowballing hallucinations (Zhang et al., 2023: "Chip Huyen is an architect", LLaVA-v1.5-7B shampoo->milk, or claiming 9677 is divisible by 13), and (2) Mismatched internal knowledge (Leo Gao / John Schulman 2023; InstructGPT RLHF + SFT hallucinated more than SFT alone in Ouyang et al. 2022).
 ```
 
-Set sampling temperature to zero for deterministic factual or structured extraction workflows. When downstream code parses model outputs, enforce schemas with grammar-constrained decoding or defensive YAML parsing.
+Read this block as the economics of alignment data. Supervised fine-tuning costs money per written demonstration, and it teaches the model what a good answer looks like. Preference data is cheaper per item, because a labeler ranks several answers rather than writing one. The reward model learns from those rankings, and the policy is then optimized against it. The sampling block that follows is the serving-side counterpart. The same logits can produce very different outputs depending on how the engine samples, so the sampling settings belong in the same review as the training budget.
+
+Read the sampling examples as a small calculator you can run in your head. Temperature divides the logits before the softmax, so a lower value makes the top token dominate. Top-p keeps the smallest set of tokens whose probabilities add up to the threshold, and it drops the rest. The sequence probability is a product, so the average logprob is a more useful number for comparing answers of different lengths. The verifier lines describe a different lever, which is to sample several answers and check them, rather than to trust one answer.
+
+Put this into practice. For deterministic factual or structured extraction work, set the sampling temperature to zero, so the model always picks the most likely token. When downstream code parses the output, enforce schemas with grammar-constrained decoding or defensive YAML parsing. A parse failure in a pipeline can stall everything behind it, so prevention is usually the better investment.
+
+A quick way to apply this section is to ask three questions of any model you plan to serve. What is the KV head count, which fixes the cache per token? What is the expert count and how many are active, which fixes the compute per token? What is the longest context you plan to allow, which fixes the peak cache per conversation? Those three answers, together with the byte width of the cache, give you a first-pass memory budget before anyone opens a profiler.
 
 ---
 
 ## 5. Customizing Foundation Models and System Architecture Decisions
 
-When an enterprise team wants a foundation model to answer questions over private company documents, jumping straight to fine-tuning is a trap. Fine-tuning updates shared model weights, so any confidential executive document used during training can leak to unauthorized employees. Architects must instead match their customization strategy to their access-control requirements, operational budget, and organizational maturity.
+Picture an enterprise team that wants a foundation model to answer questions over private company documents. The obvious plan is to fine-tune the model on those documents and call it done. That plan is a trap. Fine-tuning updates shared model weights, so any confidential executive document used during training can leak to employees who should never see it. Architects must instead match the customization strategy to the access-control requirements, the operational budget and the organization's maturity.
 
 ### 5.1 The Five FM Customization Techniques
 
-*Engineering AI Systems* defines five core techniques for customizing a foundation model. Those five techniques are Prompt Engineering, Retrieval-Augmented Generation, Fine-Tuning with adapters like LoRA, Distillation into a student model, and Runtime Guardrails. **Whenever documents have per-user Access Control Lists, you must use RAG with metadata filtering because fine-tuning bakes restricted data into shared weights.**
+*Engineering AI Systems* defines five core techniques for customizing a foundation model. They are Prompt Engineering, Retrieval-Augmented Generation, Fine-Tuning with adapters like LoRA, Distillation into a student model, and Runtime Guardrails. The first thing to notice is that the first three differ in what they touch. Some change the input, some change the weights, and some wrap the whole pipeline. **Whenever documents have per-user Access Control Lists, you must use RAG with metadata filtering because fine-tuning bakes restricted data into shared weights.**
 
 ```mermaid
 flowchart TB
@@ -433,11 +466,15 @@ flowchart TB
 | **4. Distilling (`Teacher -> Student`, `4.4.4`)** | **Yes** (trains smaller student architecture) | Transfers capabilities from a large **teacher FM** to a compact **student model** via: (1) **Knowledge distillation** (joint `data loss` on ground truth + `distillation loss` matching teacher outputs), (2) **Attention distillation** (student mimics teacher attention maps), and (3) **Parameter sharing** (reusing teacher layers). | Enables changing to a smaller, faster architecture for edge or low-latency serving when full retraining is infeasible. |
 | **5. Runtime Guardrails (`4.4.5`) & Continuous Updates (`4.4.6`)** | **No** (wraps inputs, RAG, tools, and outputs) | Five enforcement points: **Input guardrails**, **Output guardrails**, **RAG guardrails**, **Execution guardrails** (sandboxing external tool/model calls), **Intermediate workflow guardrails**, and **Multimodal guardrails** (flagging harmful images or non-`GDPR`-compliant dynamically generated UIs). | Built with `RAI` knowledge bases, dedicated classifier models, or FMs; must be **generalizable**, **customizable** (e.g., autonomous vehicle warning vs slowing down by region), **dynamic** (negotiable rules), and **interpretable**. Continuous updates (`4.4.6`) via RAG/fine-tuning must prevent leaking user inputs into public models. |
 
+Read the table with one question per row. Does this technique change the weights, and does it respect per-user access rules? Those two answers rule out most options for an internal document assistant. Prompt engineering and RAG leave the weights alone, so they keep the access model simple. Fine-tuning and distillation change the weights, which makes them useful for style and speed but poor for per-user rules. Guardrails sit around every option, so they are the layer you add whatever you choose.
+
 ### 5.2 Cost Engineering, Deployment Models, and the Fraunhofer FhGenie Case Study
 
-When choosing between narrow ML models and foundation models, architects must evaluate four cost buckets: tool, development, maintenance, and operational cost. Narrow ML models hold a decisive advantage in operational hosting cost because they run on modest CPUs or single GPUs. Foundation models instead require costly commercial API tokens or multi-GPU clusters.
+When choosing between narrow ML models and foundation models, architects must weigh four cost buckets: tool, development, maintenance and operational cost. Narrow ML models hold a decisive advantage in operational hosting cost, because they run on modest CPUs or single GPUs. Foundation models instead require commercial API tokens, which are billed per token, or multi-GPU clusters that you must keep running. The bill for a foundation model therefore grows with usage, while the bill for a narrow model is mostly fixed.
 
-For foundation model deployments, organizations progress through four maturity stages. They start at Stage 1 with Prompt Engineering and move to Stage 2 with RAG. Later, they advance to Stage 3 with Fine-Tuning and Distillation on open-weight models, and finally Stage 4 with bespoke pretraining. The Fraunhofer-Gesellschaft FhGenie deployment illustrates how a large research enterprise can roll out commercial LLMs to 30,000 employees within days. They achieved strict GDPR compliance by keeping the cloud web tier completely stateless and storing chat history exclusively in the user's browser.
+For foundation model deployments, organizations usually move through four maturity stages. They start at Stage 1 with Prompt Engineering and move to Stage 2 with RAG. Later, they advance to Stage 3 with Fine-Tuning and Distillation on open-weight models, and finally Stage 4 with bespoke pretraining. The Fraunhofer-Gesellschaft FhGenie deployment shows how a large research enterprise can roll out commercial LLMs to 30,000 employees within days. The team kept the cloud web tier completely stateless and stored chat history only in the user's browser, which is how it achieved strict GDPR compliance.
+
+Think of the four stages as a ladder in which each rung adds cost and control. The early rungs use the model as it is, so the team learns what the product needs before it spends money on weights. The middle rungs change the model's behavior or size, and they need labeled data and an evaluation loop. The top rung is a new model from scratch, which only pays off when the model is itself the product. Teams that climb in order usually discover that the first two rungs already solve most of the problem.
 
 | Deployment Model (*Engineering AI Systems* Ch. 4.4.6, 4.5–4.6) | Ownership & Privacy Mechanics | Concrete Production Numbers & Case Studies |
 |---|---|---|
@@ -445,13 +482,15 @@ For foundation model deployments, organizations progress through four maturity s
 | **2. Self-Hosted Open-Weight / Open-Parameter FMs (`Llama 3`, `Mixtral`, `Qwen 2.5`, `DeepSeek-V3/R1`)** | *Engineering AI Systems* Ch. 4.5.2 terms these **open-weight (or open-parameter) models** rather than "open-source" because training data/pipelines are not public | Full data sovereignty on private GPU clusters (or local quantized inference via `llama.cpp`), `LoRA` adaptation, and internal activation inspection (`Explainable AI`) |
 | **3. In-House Bespoke FM From Scratch (`Maturity Stage 4`)** | Progression (*Engineering AI Systems* Fig. 4.3): **`1. Prompt Engineering -> 2. RAG -> 3. Fine-Tuning & Distilling -> 4. Bespoke FM`** | Requires tens to hundreds of millions of dollars (e.g., UK **`£100 million`** sovereign FM startup fund, `BloombergGPT` `50B`). Note: FMs also automate non-AI data engineering—in the CSIRO / *Engineering AI Systems* Ch. 4.6.1 experiment, `GPT-4o` cleaned spreadsheet `"Dirty 1"` (`Consumer`, `Corporate`, `Home Office` segments, `Order ID CA-2012-162201`) |
 
-Climb the foundation model customization ladder one rung at a time. Exhaust prompt engineering and RAG before investing in LoRA fine-tuning, distillation, or bespoke pretraining.
+Each deployment row trades ownership for convenience. The external API row costs nothing up front and keeps the data outside your cluster, which is a privacy decision as much as a cost decision. The self-hosted row gives full control over the data and the weights, and it moves the operational burden onto your team. The in-house row is the most expensive path, and it only makes sense when a bespoke model is itself the product. Pick the row that matches the data rules first, then compare the costs inside that row.
+
+Climb the foundation model customization ladder one rung at a time. Exhaust prompt engineering and RAG before you invest in LoRA fine-tuning, distillation or bespoke pretraining. Each rung costs more to build and more to maintain, so a team that skips rungs usually pays for the skipped work later.
 
 ---
 
 ## 6. Commands and configurations that matter
 
-Two jobs come up when you debug a Transformer in production. You need to read its layer dimensions and confirm that the KV cache gives the expected speedup. You also need to force the fused FlashAttention kernel and tune the serving engine. The code below covers both.
+Two jobs come up when you debug a Transformer in production. You need to read its layer dimensions and confirm that the KV cache gives the expected speedup. You also need to force the fused FlashAttention kernel and tune the serving engine. The code below covers both, and the explanations after each block tell you what a healthy result looks like.
 
 ### 6.1 Inspecting Transformer Architecture, Attention Heads, and KV Cache Speedup in PyTorch
 
@@ -496,6 +535,8 @@ for _ in range(100):
         break
 ```
 
+Read the script in order. It loads the model and tokenizer, reports the architecture values, and then generates text in two ways. The uncached loop recomputes every past token, and the cached loop reuses the stored keys and values. The timings printed at the end show the gap, and the ratio is the speedup you should see on a machine with a working GPU stack. If the cached run is not faster, check that the cache flag is actually passed through to the generate call.
+
 ### 6.2 Pinning PyTorch Fused FlashAttention and Production vLLM / LMCache / Dynamo Configs
 
 ```python
@@ -509,6 +550,8 @@ with sdpa_kernel([SDPBackend.FLASH_ATTENTION, SDPBackend.CUDNN_ATTENTION]):
     # Replaces 3 separate HBM-bound kernels (matmul -> softmax -> matmul) with 1 SRAM-tiled kernel
     context = F.scaled_dot_product_attention(queries, keys, values, is_causal=True)
 ```
+
+This block asks PyTorch to use one specific fused kernel and refuses to fall back silently. That matters because the fallback path materializes the full score matrix, and the memory spike arrives only at long sequences. Pinning the backend turns a silent slowdown into an error you see in testing. The vLLM block that follows covers the serving side, where the block size, the prefix cache and the memory fraction decide how many conversations fit. Read those options together, because a generous memory fraction with a small block size can still waste the cache.
 
 ```python
 # (untested here) Production vLLM Engine Configuration with PagedAttention, Prefix Caching, and Chunked Prefill
@@ -550,11 +593,13 @@ scheduler:
     - { name: free,     reserved_fraction: 0.60, priority: 10 }   # 60% best-effort shared pool
 ```
 
+The YAML pair describes two roles in one service. The prefill sender computes the prompt and pushes its KV cache out, and the decode receiver pulls the cache in and generates tokens. The QoS file reserves capacity for the tiers you care about, so a burst of long prompts cannot starve the interactive traffic. Check three things after a change. The transfer ports must match on both sides, the reserved capacity must add up to the available GPUs, and the decode side must report cache hits.
+
 ---
 
 ## 7. How it fails: Six Architecture and Serving Failure Modes
 
-Architecture mistakes show up in production as six repeating failures. Long-context jobs crash when the KV cache fills memory or when attention silently falls back to an unfused kernel. Multi-GPU clusters stall when an MoE model is sized by its active parameters, or when one long prompt blocks the queue. Budgets and security break when non-English text inflates token counts, or when fine-tuning leaks restricted documents.
+Architecture mistakes show up in production as six repeating failures. Think of them as six different ways a healthy-looking model can run out of room. Long-context jobs crash when the KV cache fills memory or when attention silently falls back to an unfused kernel. Multi-GPU clusters stall when an MoE model is sized by its active parameters, or when one long prompt blocks the queue. Budgets and security break when non-English text inflates token counts, or when fine-tuning leaks restricted documents. The table gives the symptom, the root cause and the fix for each one.
 
 | # | Failure Mode | Observable Symptom | Root-Cause Diagnosis (`Architecture & Math`) | Deterministic Fix |
 |---|---|---|---|---|
@@ -565,17 +610,21 @@ Architecture mistakes show up in production as six repeating failures. Long-cont
 | **5** | **Multilingual Tokenization Inflation (`10x` Burmese Cost/Latency) & Truncated Structured JSON** | Non-English traffic experiences `4.5x–10x` higher API bills and `TTFT`/`TPOT` latency, or downstream agent workflows crash with `JSONDecodeError`. | Byte-level/English-centric tokenizers fragment low-resource scripts (`MASSIVE` median tokens: **`7` in English vs `32` in Hindi [`4.57x`] and `72` in Burmese [`10.29x`]**). Early `max_tokens` stopping truncates closing `}` brackets in `JSON` mode. | Use expanded-vocabulary models (`Llama 3` `128K`, `Qwen 2.5` `151,936` tokens) or language-specialized FMs; enforce structured schemas via **grammar-constrained sampling** (`outlines`, `guidance`), **defensive `YAML` post-processing** (`90% -> 99.99%` validity at LinkedIn with fewer tokens than `JSON`), or `LoRA` fine-tuning. |
 | **6** | **RAG vs. Fine-Tuning Access-Control (`ACL`) Leakage & Snowballing Hallucinations** | Fine-tuning an internal chatbot on corporate intranet documents leaks executive-only files to all employees, or an FM invents citations and snowballs an initial error (`9677 / 13`). | **Fine-tuning updates shared model weights**, making per-user document `ACL` enforcement mathematically impossible (*Engineering AI Systems* Ch. 4.4.2). Self-attention treats the model's own generated tokens identically to user-supplied facts (**self-delusion**). | Use **`RAG` with per-user metadata filtering** in the vector DB (`Pinecone`/`Milvus`) whenever individual access rights (`User A: X,Y,Z` vs `User B: Y`) apply; keep cloud web tiers **stateless** (`FhGenie`), set `temperature = 0` for factual tasks, and wrap inputs/RAG/outputs in **runtime guardrails**. |
 
+Read the table as a diagnosis chain. The symptom column tells you what the on-call engineer sees first. The root-cause column explains why the numbers look that way, using the same formulas from sections 2 and 3. The fix column names the change that removes the cause, not only the symptom. Failure 1 and failure 2 are both memory problems, but one comes from the KV cache and the other from the attention score matrix, so the stack trace and the memory breakdown tell you which fix to reach for first.
+
 ---
 
 ## 8. Hands-on lab: Transformer Architecture & Scaling Verification Suite
 
-The lab runs on any Nebius GPU instance or a laptop, using only the Python 3 standard library. The script `code/part14/transformers_llm_arch_lab.py` imports `code/part14/transformers_llm_arch.py` and runs 28 checks. They cover parameter counts, the FLOP crossover between attention and projections, and KV cache sizes for four attention designs. They also cover MoE active ratios, Chinchilla scaling and sampling math.
+Suppose you want to check the architecture arithmetic before you rely on it in a sizing document. This lab does that check for you. The GPU commands in section 6 were not run on live hardware, so treat them as untested until you run them on your own node. This lab itself runs on any Nebius GPU instance or a laptop, and it uses only the Python 3 standard library. The script `code/part14/transformers_llm_arch_lab.py` imports `code/part14/transformers_llm_arch.py` and runs 28 checks. They cover parameter counts, the FLOP crossover between attention and projections, and KV cache sizes for four attention designs. They also cover MoE active ratios, Chinchilla scaling and sampling math.
 
 ### Run the Verification Lab
 
 ```bash
 python3 -B code/part14/transformers_llm_arch_lab.py
 ```
+
+Run the lab from the repository root so the imports resolve. Each check prints a PASS or FAIL line with the number it tested, and the summary at the end counts both. If a line fails after you edit a constant, recompute the value by hand before you change the expected number, because the check is the record of the arithmetic.
 
 ### Expected Output (Verified Locally)
 
@@ -614,28 +663,56 @@ python3 -B code/part14/transformers_llm_arch_lab.py
 Summary: 28 passed, 0 failed
 ```
 
+Read the output as a receipt for the claims in this chapter. Each PASS line restates a number the chapter uses, so a reader can trace the claim to a calculation. The first block of checks covers parameter counts and attention projections. The middle block covers the FLOP and cache arithmetic, and the last block covers scaling, sampling and cost. A FAIL line means either the prose or the code has drifted, and you should find out which before you publish.
+
 ---
 
 ## Common first mistakes
 
-1. Using a two-matrix MLP formula instead of a three-matrix formula when counting modern SwiGLU parameters. Almost all modern open-weight LLMs use three linear projections—gate, up, and down—in every MLP block. Using the legacy two-matrix formula under-counts MLP parameters by 33.3 percent.
-2. Assuming context-window extension increases a Transformer's parameter count. With Rotary Position Embeddings, extending context from 4,096 to 128,000 tokens adds zero parameters to the checkpoint. Instead, it linearly increases the KV cache memory footprint and quadratically increases prefill attention FLOPs.
-3. Sizing GPU HBM for a Mixture-of-Experts model using active parameters instead of total parameters. Mixtral 8x7B and DeepSeek-V3 compute FLOPs on only a fraction of parameters per token, yet different tokens route to different experts. All expert weights must therefore remain resident in HBM across the expert-parallel group.
-4. Thinking chunked prefill reduces total quadratic attention FLOPs. Splitting a 20,000-token prompt into two 10K chunks or four 5K chunks still executes 200,010,000 causal dot products per head. Chunking smooths decode tail latency by interleaving decode steps; it does not reduce total prefill work.
-5. Confusing total FLOPs with FLOP/s or sizing high-volume serving models strictly by Chinchilla. Chinchilla minimizes pretraining compute for a single run without considering inference traffic. When a model will serve billions of queries, over-training a smaller model on many more tokens yields far lower serving cost.
+1. Using a two-matrix MLP formula instead of a three-matrix formula is the first mistake. Almost all modern open-weight LLMs use three linear projections, gate, up and down, in every MLP block. The legacy two-matrix formula undercounts MLP parameters by 33.3 percent, and that error spreads into every memory estimate built on top of it.
+2. Assuming context-window extension increases a Transformer's parameter count is the second mistake. With Rotary Position Embeddings, extending context from 4,096 to 128,000 tokens adds zero parameters to the checkpoint. Instead, it linearly increases the KV cache memory footprint and quadratically increases prefill attention FLOPs. The checkpoint file looks the same, and the serving bill does not.
+3. Sizing GPU HBM for a Mixture-of-Experts model with active parameters instead of total parameters is the third mistake. Mixtral 8x7B and DeepSeek-V3 compute FLOPs on only a fraction of their parameters per token, yet different tokens route to different experts. All expert weights must therefore stay resident in HBM across the expert-parallel group, or the first token that routes somewhere new will fail.
+4. Thinking chunked prefill reduces total quadratic attention FLOPs is the fourth mistake. Splitting a 20,000-token prompt into two 10K chunks or four 5K chunks still executes 200,010,000 causal dot products per head. Chunking smooths decode tail latency by interleaving decode steps, but it does not reduce total prefill work.
+5. Confusing total FLOPs with FLOP/s, or sizing high-volume serving models strictly by Chinchilla, is the fifth mistake. Chinchilla minimizes pretraining compute for a single run without considering inference traffic. When a model will serve billions of queries, over-training a smaller model on many more tokens yields far lower serving cost.
+
+Keep these five mistakes in mind during design reviews. Each one shows up as a budget that looks fine on paper and fails in production. The first three are about memory and architecture arithmetic, and the last two are about cost and sampling. Check each one by writing down the formula and the units before you accept a sizing document.
 
 ---
 
 ## Exercises
 
-Each of the six exercises uses one scenario. The reference block after them gives the target values.
+Each exercise starts from one realistic scenario. Work it on paper first. Then check your numbers against the reference block that follows the list, and compare the two before you move on.
 
-1. You are asked to count the weights of Llama 2-7B. Find the parameters in one attention block, one SwiGLU MLP block and one decoder layer. Add the embedding and output matrices to get the full model. Then repeat the count for Llama 3-8B and note how GQA changes the attention block.
-2. A 20,000-token prompt arrives at a Llama 2-7B server. Write the forward FLOPs for one layer, split into projections and attention. Find the sequence length where attention overtakes the projections. Then check that chunked prefill still performs 200,010,000 causal dot products.
-3. A serving team wants to know how much memory one conversation needs. Compute the KV cache bytes per token for a 13B model with MHA, GQA-8, MQA and MLA. Give the total for 4,096 tokens. Then compute the cache size for a 70B model at 250,000 tokens.
-4. A planner must compare three MoE models. For Mixtral 8x7B, Jamba and DeepSeek-V3, find the active percentage of parameters. Then find the per-token compute saving of each.
-5. Your budget covers one pretraining run. Compute the Chinchilla-optimal tokens and FLOPs for a 3B and a 70B model. Compare the Llama 3-8B token count with the Chinchilla ratio. Then reproduce the GPT-3 175B cost on 256 H100 GPUs.
-6. A support chatbot must answer from documents that each user may or may not see. Compute the softmax probabilities for logits 1 and 2 at temperatures 1.0 and 0.5. Then work out the Hindi and Burmese cost multipliers on MASSIVE. Finally, explain why RAG is the right choice and LoRA is not.
+1. Count the weights of Llama 2-7B for one attention block.
+   Count the weights in one SwiGLU MLP block as well.
+   Add them up for one decoder layer, then add the embedding and output matrices to get the full model.
+   Repeat the count for Llama 3-8B.
+   Note how GQA changes the attention block.
+2. A 20,000-token prompt arrives at a Llama 2-7B server.
+   Write the forward FLOPs for one layer, split into projections and attention.
+   Find the sequence length where attention overtakes the projections.
+   Check that chunked prefill still performs 200,010,000 causal dot products.
+3. A serving team wants to know how much memory one conversation needs.
+   Compute the KV cache bytes per token for a 13B model with MHA.
+   Repeat for GQA-8, for MQA and for MLA.
+   Give the total for 4,096 tokens.
+   Then compute the cache size for a 70B model at 250,000 tokens.
+4. A planner must compare three MoE models.
+   For Mixtral 8x7B, find the active percentage of parameters.
+   For Jamba, find the same percentage.
+   For DeepSeek-V3, find the same percentage.
+   Then find the per-token compute saving of each model.
+5. Your budget covers one pretraining run.
+   Compute the Chinchilla-optimal tokens and FLOPs for a 3B model.
+   Repeat for a 70B model.
+   Compare the Llama 3-8B token count with the Chinchilla ratio.
+   Then reproduce the GPT-3 175B cost on 256 H100 GPUs.
+6. A support chatbot must answer from documents that each user may or may not see.
+   Compute the softmax probabilities for logits 1 and 2 at temperature 1.0.
+   Repeat at temperature 0.5.
+   Work out the Hindi cost multiplier on MASSIVE.
+   Work out the Burmese cost multiplier.
+   Finally, explain why RAG is the right choice and LoRA is not.
 
 ```text
 Exercise Input Parameters & Expected Verification Targets (code/part14/transformers_llm_arch_lab.py):
@@ -647,16 +724,20 @@ Exercise Input Parameters & Expected Verification Targets (code/part14/transform
   - Ex 6 (Sampling):   Logits [1, 2]: T=1.0 -> [0.27, 0.73], T=0.5 -> [0.12, 0.88], T=0 -> [0.0, 1.0]. ["I", "love", "food"] ([0.2, 0.1, 0.3]): prob=0.006, logprob=-5.1160, avg_logprob=-1.7053. MASSIVE median tokens: English=7, Hindi=32 (4.57x), Burmese=72 (10.29x / ~10x). RAG enforces per-user ACLs (User A: X,Y,Z vs User B: Y); LoRA (10,000x param / 3x compute reduction) bakes data into shared weights; FhGenie (~30,000 staff, May/June 2023) keeps browser state stateless.
 ```
 
+Check your answers against the block, but do not stop at a match. Explain to yourself why each number is right, because the interview questions below ask for exactly that explanation. If a value is off by a factor that looks like a unit change, the usual cause is bytes versus bits, tokens versus sequences, or GB versus GiB.
+
 ---
 
 ## Interview angles
 
-Interviewers often ask candidates to connect Transformer internals to GPU memory, network traffic and serving cost. Four typical questions follow.
+Interviewers often ask candidates to connect Transformer internals to GPU memory, network traffic and serving cost. A good answer walks from the architecture to the numbers, and it does not jump straight to a conclusion. Four typical questions follow, each with a model answer you can compare against your own.
 
-1. Walk through every weight matrix in Llama 2-7B versus Llama 3-8B and explain why Llama 3-8B has a 32x longer context window yet a 4x smaller per-token KV cache. In Llama 2-7B, each of the 32 layers contains four MHA matrices of 16.78M parameters each. Each layer also has three SwiGLU MLP matrices totaling 135.27M parameters. Adding two RMSNorm vectors brings each layer to 202.38M parameters and the full model to 6.74B parameters. In Llama 3-8B, switching from 32 KV heads to 8 KV heads via GQA-8 shrinks the Key and Value matrices by 4x. That change cuts per-layer attention parameters by 37.5 percent and shrinks the per-token KV cache by 4x. Expanding the SwiGLU intermediate size and vocabulary then brings total parameters to 8.03B. Context length grew 32-fold from 4K to 128K via RoPE base-frequency scaling. RoPE rotates Queries and Keys by relative token distance without adding a single learned parameter.
+1. Walk through every weight matrix in Llama 2-7B versus Llama 3-8B, and explain why Llama 3-8B has a 32x longer context window yet a 4x smaller per-token KV cache. Start with Llama 2-7B. Each of its 32 layers contains four MHA matrices of 16.78M parameters each. Each layer also has three SwiGLU MLP matrices totaling 135.27M parameters. Adding two RMSNorm vectors brings each layer to 202.38M parameters, and the full model to 6.74B parameters. Now move to Llama 3-8B. Switching from 32 KV heads to 8 KV heads via GQA-8 shrinks the Key and Value matrices by 4x. That change cuts per-layer attention parameters by 37.5 percent and shrinks the per-token KV cache by 4x. Expanding the SwiGLU intermediate size and vocabulary then brings total parameters to 8.03B. Context length grew 32-fold from 4K to 128K via RoPE base-frequency scaling. RoPE rotates Queries and Keys by relative token distance without adding a single learned parameter.
 2. Explain why LLM prefill is compute-bound while decode is memory-bandwidth-bound, and how FlashAttention, GQA/MLA, and PagedAttention fix each bottleneck. During prefill, all prompt tokens are processed in parallel via dense matrix-matrix multiplications. Past 24,704 tokens in Llama 2-7B, the quadratic attention core dominates layer FLOPs. FlashAttention accelerates prefill and training 2x to 4x by tiling Queries, Keys, and Values in on-chip SRAM with online softmax rescaling. Because of that tiling, the quadratic score matrix is never written to HBM. During decode, generating a single token requires streaming all model weights and the entire historical KV cache from HBM. GQA, MQA, and DeepSeek MLA compress the KV bytes read per step by 5x to 40x. Meanwhile, vLLM PagedAttention stores KV states in 16-token pages to eliminate 20 to 30 percent HBM fragmentation.
 3. Compare a dense 671B model against DeepSeek-V3 and explain how to size GPU memory, compute, and networking for an MoE. DeepSeek-V3 uses 1 shared expert and 8 routed experts out of 256 per layer. It therefore activates only 37B of its 671B total parameters per token. That sparse routing yields an 18.14x reduction in per-token FLOPs. However, GPU HBM capacity still scales with the full 671B parameter count, requiring Expert Parallelism across nodes. Expert Parallelism shifts network traffic from data-parallel AllReduce to latency-sensitive AllToAll token dispatch. DeepSeek masked the 400 GB/s NVLink limit on export-restricted H800 GPUs by combining MLA KV compression with DualPipe overlap, DeepEP kernels, and EPLB load balancing.
 4. When should an enterprise use Prompt Engineering versus RAG versus LoRA Fine-Tuning versus Distillation, and what is the security trap with fine-tuning? Follow the four-stage maturity ladder: start with Prompt Engineering and RAG before modifying model weights. Whenever documents have per-user Access Control Lists, you must use RAG with vector-database metadata filtering. Fine-tuning is unsafe for per-user ACLs because it bakes restricted document facts into shared weights accessible to every user. When weight adaptation is needed for domain style or structured output reliability, use LoRA to cut trainable parameters by 10,000x and compute by 3x. Alternatively, use Distillation to compress a large teacher into a fast student. Always wrap the serving pipeline in stateless web tiers and runtime guardrails.
+
+A strong answer to these questions does three things. It names the formula or the rule, it works through the numbers in the order a reviewer would check them, and it names the assumption that would change the conclusion. An answer that only quotes the final figure leaves the interviewer unsure whether the candidate understands the mechanism. An answer that walks the chain sounds like someone who has debugged a real serving system.
 
 ---
 
