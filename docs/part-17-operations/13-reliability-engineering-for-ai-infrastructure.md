@@ -24,15 +24,14 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Suppose a platform team is asked how reliable its AI factory is. The honest answer is often "we hope it stays up." Reliability engineering replaces that hope with measurements, budgets and drills that show the service really does stay up. This chapter explains how to build that discipline on top of the observability work from Part 17.
+Suppose a platform team is asked how reliable its AI factory is. The honest answer is often "we hope it stays up." That answer is not a lie, but it is not a plan either. Reliability engineering replaces the hope with measurements, budgets and drills that show the service really does stay up. This chapter builds that discipline on top of the observability work from Part 17.
+Customers do not care how many GPUs your cluster has or how it is wired. They care whether the service answers when they call it. Picture someone at night sending a prompt from a phone and waiting for a reply that never comes. For that person, the GPU count is invisible, and only the wait and the failure are real. An AI factory without reliability engineering depends on luck when a night like that arrives. An AI factory with it knows its uptime in advance, because the targets are measured, the budget is tracked and the failure drills are run before the bad night happens.
 
-Customers do not care how many GPUs your cluster has or how it is wired. They care whether the service answers when they call it. An AI factory without reliability engineering depends on luck. An AI factory with it knows its uptime, because the targets are measured, the budget is tracked and the failure drills are run.
+A large GPU fleet fails on a schedule you can compute. In 54 days of Llama 3 405B pretraining on up to 16,000 H100 GPUs, Meta recorded 419 unexpected interruptions, about one every three hours. Most were hardware. A team that knows those numbers can size its spare nodes, price its repair time and set a budget it can actually keep. A team that does not know them promises 99.9 percent and finds out in the first month. The numbers matter because they change what a team builds. One interruption does not just stop one GPU. It stops the whole job for every GPU in the run, so the cost of a single failure is measured in lost hours across the fleet. Section 1.4 works through the numbers.
 
-A large GPU fleet fails on a schedule you can compute. In 54 days of Llama 3 405B pretraining on up to 16,000 H100 GPUs, Meta recorded 419 unexpected interruptions, about one every three hours. Most were hardware. A team that knows those numbers can size its spare nodes, price its repair time and set a budget it can actually keep. A team that does not know them promises 99.9 percent and finds out in the first month. Section 1.4 works through the numbers.
+Three realities make this a platform-team concern, not only a data-science concern. Each one changes who has to act, and each one points at a different part of the platform.
 
-Three realities make this a platform-team concern, not only a data-science concern. Each one changes who has to act.
-
-1. The SLOs are the platform team's contract. The team commits to them, the business checks them, and customers feel them. A contract means something only when the team can show it is being kept.
+1. The SLOs are the platform team's contract. The team commits to them, the business checks them, and customers feel them. A contract means something only when the team can show it is being kept, so the team has to keep the receipts.
 2. The error budget keeps that contract honest. It is the amount of unreliability the team is allowed, and the team spends it on change. When the budget runs out, the team stops changing things and works on stability.
 3. Chaos engineering is the drill. A game day tests the SLO, tests the runbook and trains the people who respond to an incident.
 
@@ -40,9 +39,11 @@ Three realities make this a platform-team concern, not only a data-science conce
 
 ## Prerequisites and outcomes
 
-This chapter builds on three earlier chapters. Read them first if their ideas are new to you.
+Picture a reader who skips the SLO chapter and then gets lost at the first error budget table. This chapter builds on three earlier chapters. Read them first if their ideas are new to you, because the words SLO, error budget and post-mortem are used here without a fresh introduction each time.
 
 ### Prerequisites
+
+Each prerequisite covers one piece of the ground this chapter stands on.
 
 - Chapter 17.6 (Alerting and SLOs) for the SLO patterns.
 - Chapter 17.10 (Cluster lifecycle) for the change management.
@@ -50,22 +51,19 @@ This chapter builds on three earlier chapters. Read them first if their ideas ar
 
 ### Outcomes
 
-After completing this chapter you will be able to do the following. Each outcome is something you can check on your own platform.
-
-1. Specify the SLOs for the AI factory: availability, latency, throughput and model quality.
-2. Implement an error budget that shows how much unreliability the team can afford, and track it.
-3. Run chaos engineering game days, from planning through injection and observation to the post-mortem.
-4. Implement the redundancy patterns: N+1 GPU nodes, multi-region failover and active-active inference.
-5. Operate the stack on GKE with measured SLOs, tracked budgets and tested drills.
+Picture the Monday after a bad weekend, when the platform lead is asked whether the AI factory met its promise. This chapter walks through the answer to that question, one layer at a time. It starts with the SLOs that define the promise, moves to the error budget that says how much risk the team may take, and then covers the chaos experiments that test the promise before a real failure does. It shows the redundancy patterns that keep the service up when hardware fails, and it ends with the way these pieces run on GKE, with measured SLOs, tracked budgets and drills that have been run.
 
 ---
 
 ## 1. The reliability model
 
+A new manager asks why the team spends so much time on targets when the service looks fine. This section builds the model that answers that question.
+
 ### 1.1 The reliability triangle
 
-Reliability needs three parts that check one another. One useful picture is a reliability triangle. It joins an SLO (the commitment), an error budget (the allowed unreliability) and chaos engineering (the drill). If one corner is missing, the other two cannot prove much.
+Picture a platform team that wrote a clear promise on a slide, then was asked in a review what happens when a node dies on a Friday evening. The slide had no answer. Reliability needs three parts that check one another, and the reliability triangle is a simple picture of those parts. It joins an SLO (the commitment), an error budget (the allowed unreliability) and chaos engineering (the drill). If one corner is missing, the other two cannot prove much.
 
+Each corner answers a different question. The SLO answers what the team promised. The error budget answers how much the team may miss in the meantime. Chaos engineering answers whether the promise holds when something breaks.
 ```mermaid
 flowchart TB
     SLO[SLO<br/>the commitment]
@@ -78,9 +76,9 @@ flowchart TB
 
 ### 1.2 The reliability metrics
 
-You cannot set a target until you can measure the service. The measurements are the SLIs from Chapter 17.6, and this chapter uses five of them: availability, latency, throughput, error rate and model quality. Each one answers a question a user would ask, such as "Is it up?" or "Is it fast?"
+Start with a user who types a question and waits for the answer. Two feelings decide whether that user is happy. Did the answer come back quickly, and did it come back at all? The measurements that capture those feelings are called service level indicators, or SLIs, and they are the raw material for every SLO. You cannot set a target until you can measure the service, so the measurements come first. The SLIs are described in Chapter 17.6, and this chapter uses five of them: availability, latency, throughput, error rate and model quality. Each one answers a question a user would ask, such as "Is it up?" or "Is it fast?"
 
-The targets in the table below are example values. Your team should choose its own numbers after it measures what users actually see.
+The targets in the table below are example values. Your team should choose its own numbers after it measures what users actually see, because a target set from a guess is only a wish.
 
 | SLI | Target | Measurement |
 |---|---|---|
@@ -90,11 +88,15 @@ The targets in the table below are example values. Your team should choose its o
 | Error rate | < 0.1% | Rate counter / total requests |
 | Model quality | > 0.85 AUC | Live accuracy signal |
 
-Measure these continuously. The measurements feed the SLO dashboard. That dashboard drives the error budget, and the budget decides how fast the team can change the system.
+Read the table as five questions. Availability asks whether the service is up at all. Latency asks how long a request waits, and the p99 entry describes the slowest tail of requests, the ones that most users will rarely see but that the unlucky few always do. Throughput asks how much work the service handles per second. Error rate asks how often a request fails. Model quality asks whether the answers are still good, which matters because a model can stay fast and up while its answers drift.
+
+Measure these continuously. The measurements feed the SLO dashboard. That dashboard drives the error budget, and the budget decides how fast the team can change the system. A measurement taken once a quarter cannot steer anything, so the value of the SLI comes from its steady, always-on stream.
 
 ### 1.3 The reliability tiers
 
-Not every consumer needs the same reliability, and higher reliability costs more to run. Tiers let each consumer pick a level that matches its job. Bronze suits experiments, and platinum suits critical services.
+Consider two requests that land on the same platform on the same day. A data scientist wants a notebook server that is always there for her experiments. Another team wants a fast chatbot for paying customers. Should both get the same promise? Probably not, because a promise costs money to keep, and the customer-facing service needs a stronger one than the experiment does.
+
+Not every consumer needs the same reliability, and higher reliability costs more to run. Tiers let each consumer pick a level that matches its job. Bronze suits experiments, and platinum suits critical services. The tier is a shared language, so a team can say "we need gold" and everyone knows what that means in availability and latency.
 
 | Tier | Availability | Latency | Use case |
 |---|---|---|---|
@@ -104,10 +106,9 @@ Not every consumer needs the same reliability, and higher reliability costs more
 | Platinum | 99.999% monthly | < 100 ms | Critical services |
 
 The numbers in this table are example values, not industry standards. Each consumer picks a tier, the tier sets the SLO, and the tier sets the cost. The platform team can then charge each consumer for the level it chooses.
-
 ### 1.4 What a large GPU fleet really experiences
 
-The best public record of GPU fleet failures is Meta's account of 54 days of Llama 3 405B pretraining. The run used up to 16,000 H100 GPUs, and Meta reported 466 job interruptions, of which 47 were planned and 419 were unexpected. The table lists the unexpected ones by root cause, with each share computed against the 419.
+On a quiet afternoon a GPU fails, the training job stops, and the on-call engineer asks whether this is bad luck or normal life for a large fleet. The honest answer comes from data, and the best public record of GPU fleet failures is Meta's account of 54 days of Llama 3 405B pretraining. The run used up to 16,000 H100 GPUs, and Meta reported 466 job interruptions, of which 47 were planned and 419 were unexpected. The table lists the unexpected ones by root cause, with each share computed against the 419.
 
 | Root cause | Count | Share of 419 |
 |---|---|---|
@@ -124,32 +125,34 @@ The best public record of GPU fleet failures is Meta's account of 54 days of Lla
 | GPU thermal interface and sensor | 6 | 1.4% |
 | Other host parts, dependency and CPU | 16 | 3.8% |
 
-Five numbers come out of the table, and each one feeds a decision.
+Five numbers come out of the table, and each one feeds a decision. Ask each question in turn, and the answer will tell you what to buy, what to repair and what to promise.
 
-- **Time between interruptions.** 54 days is 1,296 hours, and 1,296 divided by 419 is 3.1 hours. A job that spans the whole fleet is interrupted about every three hours.
-- **GPU share.** The six GPU rows add up to 268 of 419, which is 64 percent. Plan spares and repair around GPU and node hardware first.
-- **Per-GPU rate.** The 268 GPU-caused interruptions over at most 16,000 GPUs is about 1.7 percent of GPUs in 54 days, or roughly 11 percent a year. The real GPU count in the snapshot is not stated, so treat this as a lower bound.
-- **Effective training time.** Meta reports that despite the interruptions it kept more than 90 percent effective training time, which depends on fast detection, automatic restart and checkpoints, covered in chapter 14.11.
-- **Scaling to your fleet.** Scale the rate by GPU count. A 1,024-GPU cluster sees about 0.5 interruptions a day, one every two days. That assumes your hardware and software behave like Meta's, so replace the rate with your own after one quarter of data.
+- How often does the job stop? 54 days is 1,296 hours, and 1,296 divided by 419 is 3.1 hours. A job that spans the whole fleet is interrupted about every three hours.
+- Which parts fail most? The six GPU rows add up to 268 of 419, which is 64 percent. Plan spares and repair around GPU and node hardware first.
+- How often does one GPU fail? The 268 GPU-caused interruptions over at most 16,000 GPUs is about 1.7 percent of GPUs in 54 days, or roughly 11 percent a year. The real GPU count in the snapshot is not stated, so treat this as a lower bound.
+- How much training time survives? Meta reports that despite the interruptions it kept more than 90 percent effective training time, which depends on fast detection, automatic restart and checkpoints, covered in chapter 14.11.
+- What does this mean for a smaller fleet? Scale the rate by GPU count. A 1,024-GPU cluster sees about 0.5 interruptions a day, one every two days. That assumes your hardware and software behave like Meta's, so replace the rate with your own after one quarter of data.
 
-**Spare pool sizing.** A failed node is out of service until it is repaired or replaced. If failures arrive at a rate of r per day and repair takes d days, the average number of nodes in repair is r times d. For 1,024 GPUs the rate is 0.5 a day. With a one-day repair, 0.5 nodes are out on average. The spare pool has to cover the bad days, not the average. Treat the arrivals as random, which gives these odds that the spare pool is enough.
+Spare pool sizing comes next. A failed node is out of service until it is repaired or replaced. If failures arrive at a rate of r per day and repair takes d days, the average number of nodes in repair is r times d. For 1,024 GPUs the rate is 0.5 a day. With a one-day repair, 0.5 nodes are out on average. The spare pool has to cover the bad days, not the average. Treat the arrivals as random, which gives these odds that the spare pool is enough.
 
 | Repair time | Mean nodes out | Spares for 98% cover | Spares for 99.5% cover |
 |---|---|---|---|
 | 1 day | 0.5 | 2 | 3 |
 | 2 days | 1.0 | 3 | 4 |
 
-Doubling repair time doubles the average nodes out, and the spare pool grows with it. The cheapest reliability work on a GPU fleet is often a faster repair loop, not more spares: automatic cordon and drain from chapter 17.4, a quick vendor RMA path and a validation run with `dcgmi diag -r 3` before the node returns.
+Doubling repair time doubles the average nodes out, and the spare pool grows with it. Imagine a bank that keeps a few spare tellers for busy hours. If the sick tellers stay sick twice as long, the bank needs more spares, even though the number of illnesses has not changed. The cheapest reliability work on a GPU fleet is often a faster repair loop, not more spares: automatic cordon and drain from chapter 17.4, a quick vendor RMA path and a validation run with `dcgmi diag -r 3` before the node returns.
 
-**Pool availability follows.** A 128-node pool with 0.5 nodes out on average is 99.6 percent available. At a two-day repair time it is 99.2 percent. A 99.5 percent GPU pool SLO therefore holds with a one-day repair and fails with a two-day repair, with no change in hardware quality. Set the SLO from the repair loop you can sustain.
+Pool availability follows from the same numbers. A 128-node pool with 0.5 nodes out on average is 99.6 percent available. At a two-day repair time it is 99.2 percent. A 99.5 percent GPU pool SLO therefore holds with a one-day repair and fails with a two-day repair, with no change in hardware quality. Set the SLO from the repair loop you can sustain, not from the hope you have about the hardware.
 
 ---
 
 ## 2. The error budget
 
+Picture a team that has just shipped a risky change and now has to explain how much room is left. The error budget is the number that answers that question. This section explains how to compute it, how to write its policy and how to show it on a dashboard, because most teams find the budget hardest at first.
+
 ### 2.1 The error budget model
 
-Suppose your team promises 99.9% availability for a month. That promise leaves a small amount of room for failure. The error budget turns the promise into minutes of allowed downtime, and the team can spend those minutes on risky changes.
+Suppose your team promises 99.9% availability for a month. That promise leaves a small amount of room for failure. A team that hears "99.9%" for the first time often pictures a promise that the service never goes down. The promise actually allows a little downtime, and the error budget turns that allowance into minutes. The team can then spend those minutes on risky changes, such as a new model version or a risky network change, and know exactly how much room is left.
 
 ```text
 Error budget at 99.9% monthly availability:
@@ -159,13 +162,13 @@ Error budget at 99.9% monthly availability:
 - Burn rate 10 spends it in 3 days: 14.4 minutes per day
 ```
 
-The arithmetic is simple. A 30-day month has 43,200 minutes, and the 0.1% allowance is 43.2 minutes of that. The burn rate measures how fast you spend that allowance. At a burn rate of 1 you spend it evenly across the month, while a burn rate of 10 spends it ten times faster. Chapter 17.6 turns burn rate into paging rules with two windows.
+The arithmetic is simple. A 30-day month has 43,200 minutes, and the 0.1% allowance is 43.2 minutes of that. The burn rate measures how fast you spend that allowance. At a burn rate of 1 you spend it evenly across the month, while a burn rate of 10 spends it ten times faster. Think of the budget as a fuel tank. A steady drive uses the fuel slowly, while a race uses it up in a few laps. Chapter 17.6 turns burn rate into paging rules with two windows, so that a fast burn wakes someone up and a slow leak waits for the morning.
 
-Before you set an alert, decide how much budget you are willing to lose before someone must act.
+Before you set an alert, decide how much budget you are willing to lose before someone must act. That decision is a team choice, and it should be written down before the first bad week arrives.
 
 ### 2.2 The error budget policy
 
-A budget helps only when the team agrees in advance what happens when it runs low. That agreement is the policy. The steps in the block below are example values. Your team chooses the percentages and the freezes, writes them down and reviews them on a fixed schedule, such as every quarter.
+Picture a Thursday when a release is ready, the budget is nearly gone, and nobody agrees on what happens next. A budget helps only when the team agrees in advance what happens when it runs low. Without that agreement, every low-budget week turns into a debate, and the debate usually goes the way of whoever is most senior in the room. That agreement is the policy. The steps in the block below are example values. Your team chooses the percentages and the freezes, writes them down and reviews them on a fixed schedule, such as every quarter.
 
 ```text
 Error budget policy:
@@ -175,11 +178,13 @@ Error budget policy:
 - Budget at 0% remaining: the team freezes all deployments; the IC convenes a war room
 ```
 
-A GPU fleet adds two budget rules of its own. First, count the repair backlog as budget spend. A pool that is 99.2 percent available against a 99.5 percent target is out of budget even if every service SLO is green, so freeze non-critical changes and draining upgrades, as in chapter 17.10, until spares are back. Second, spend budget on purpose. A planned driver upgrade takes nodes out of service, and the budget should say how many node-hours per month planned work may use, so planned work does not eat the margin that failures need.
+The IC in the last line is the incident commander, the person who runs a response while the rest of the team works the problem. Writing the steps down means the person on call never has to invent the rules while the budget is already gone.
+
+A GPU fleet adds two budget rules of its own. First, count the repair backlog as budget spend. A pool that is 99.2 percent available against a 99.5 percent target is out of budget even if every service SLO is green, so freeze non-critical changes and draining upgrades, as in chapter 17.10, until spares are back. Second, spend budget on purpose. A planned driver upgrade takes nodes out of service, and the budget should say how many node-hours per month planned work may use, so planned work does not eat the margin that failures need. Planned work is a deliberate withdrawal, and an unplanned failure is a surprise charge. Both draw from the same account.
 
 ### 2.3 The error budget dashboard
 
-The dashboard lets the team see the budget before a problem forces the question. Show the remaining budget, the burn rate and the forecast for the end of the month together. The JSON below is a starting point for a Grafana dashboard.
+Picture the Thursday meeting where a product manager asks whether the next release can go out. The dashboard lets the team see the budget before a problem forces the question. If the answer lives in a dashboard that everyone already reads, the meeting takes a minute. Show the remaining budget, the burn rate and the forecast for the end of the month together. The JSON below is a starting point for a Grafana dashboard, which is the open dashboard tool many teams use to draw charts from their metrics.
 
 ```yaml
 # code/part17/error_budget_dashboard.json
@@ -196,15 +201,19 @@ The dashboard lets the team see the budget before a problem forces the question.
 }
 ```
 
+Each panel answers one question. The remaining budget asks how much room is left. The two burn rates ask whether the spending is a spike or a steady drain. The forecast asks where the month will end if nothing changes. Together they tell the team whether to freeze, slow down or keep shipping.
+
 ---
 
 ## 3. Chaos engineering
 
+Picture a team that learns its weakest spot during a real outage, in front of customers and at the worst possible moment. Chaos engineering sounds reckless until you see that alternative. It moves that learning to a calm afternoon, with a plan and a way to stop.
+
 ### 3.1 The chaos engineering principles
 
-Chaos engineering means breaking things on purpose, in a controlled way, to learn whether the system holds. A team that never breaks anything learns its weak spots during a real outage. The principles below keep each experiment safe and useful.
+Consider a new engineer who asks, on her first week, what happens if one pod in the inference service disappears. Nobody in the room is sure. Chaos engineering exists to replace that uncertainty with a test. It means breaking things on purpose, in a controlled way, to learn whether the system holds. The principles below keep each experiment safe and useful.
 
-Every experiment starts by measuring the steady state, which is the normal value of the SLI. You then state a hypothesis that the SLI stays in that state. Next you inject the failure and watch the SLI, keeping the blast radius small enough to reverse quickly.
+Every experiment starts by measuring the steady state, which is the normal value of the SLI. You then state a hypothesis that the SLI stays in that state. Next you inject the failure and watch the SLI, keeping the blast radius small enough to reverse quickly. The blast radius is the set of users and systems that the experiment could touch, and a good experiment keeps that set small.
 
 | Principle | What it means |
 |---|---|
@@ -213,9 +222,11 @@ Every experiment starts by measuring the steady state, which is the normal value
 | Run experiments | The experiment injects a failure, and the team observes the SLI |
 | Minimise blast radius | The experiment is small, reversible and contained |
 
+Notice the order. The team measures first, predicts second and breaks things third. Skipping the first step leaves the team with no baseline, so the result cannot be read. Skipping the last step turns an experiment into an outage.
+
 ### 3.2 The chaos engineering tools
 
-Tools run the experiments so your team does not have to script each failure by hand. Chaos Mesh and LitmusChaos run inside Kubernetes. Gremlin is a managed service. Choose one your team can operate, and check each tool's current documentation before you depend on it.
+Picture a new engineer who must break a pod for the first time and does not know which tool to trust. Tools run the experiments so your team does not have to script each failure by hand. A tool also keeps a record of what was injected and when, which the post-mortem later needs. Chaos Mesh and LitmusChaos run inside Kubernetes. Gremlin is a managed service. Choose one your team can operate, and check each tool's current documentation before you depend on it. The best tool is the one your on-call engineers already know how to stop in a hurry.
 
 | Tool | What it does |
 |---|---|
@@ -223,9 +234,11 @@ Tools run the experiments so your team does not have to script each failure by h
 | LitmusChaos | Inject failures into Kubernetes pods, nodes, networks, cloud APIs |
 | Gremlin | Inject failures into Kubernetes pods, nodes, networks, cloud APIs |
 
+The table is a lookup of what each tool can touch. Chaos Mesh stays close to Kubernetes objects. LitmusChaos and Gremlin also reach cloud APIs, which matters when the failure you want to test lives outside the cluster.
+
 ### 3.3 The chaos engineering experiments
 
-Start with the failures your platform is most likely to meet. Pod failure, node failure, network partition, disk failure and dependency failure are common first choices. The example below runs a pod-failure experiment every hour in the mlops namespace, for five minutes each time.
+Picture a team that wants one drill on the calendar this month and cannot agree on what to break first. A first experiment should be boring to predict and easy to undo. Start with the failures your platform is most likely to meet. Pod failure, node failure, network partition, disk failure and dependency failure are common first choices. The example below runs a pod-failure experiment every hour in the mlops namespace, for five minutes each time. The namespace is the Kubernetes folder where the churn model lives, and the label selector picks out only that model's pods.
 
 ```yaml
 # Chaos Mesh runs a recurring experiment through a Schedule resource
@@ -249,15 +262,19 @@ spec:
         app: churn-model
 ```
 
-The Chaos Mesh version changes what the manifest may contain. The current PodChaos CRD has no scheduler field, which was checked against the CRD in the upstream repository. Recurring runs therefore use the Schedule kind shown here. Pin the version you install and check the manifest against it, because the experiment itself has not been run on a live cluster.
+Walk through the manifest from the top. The schedule field says how often the experiment fires. The podChaos block says what to break, which is one pod at a time, for five minutes, among the pods that match the label. The concurrency setting forbids a second run while the first is still going, so two experiments never stack on each other.
+
+The Chaos Mesh version changes what the manifest may contain. The current PodChaos CRD has no scheduler field, which was checked against the CRD in the upstream repository. Recurring runs therefore use the Schedule kind shown here. Pin the version you install and check the manifest against it before you trust the experiment on a live cluster.
 
 ---
 
 ## 4. Redundancy patterns
 
+Picture a single rack switch that fails on a busy afternoon and takes a whole training job with it. Redundancy means keeping a spare of something important, so that losing one piece does not stop the service. This section covers three levels of spare, from a spare node inside a cluster to a whole second region.
+
 ### 4.1 N+1 GPU nodes
 
-GPU hardware fails, and a spare node is the cheapest way to keep a training run going. The unit of replacement is the node, not the single GPU, because the eight GPUs of a node share one NVLink domain and one host. N+1 redundancy keeps at least one spare node for each group of nodes a workload needs. Section 1.4 shows how to size the pool from the failure rate and the repair time, and the result is usually more than one spare for a large fleet.
+A training run that has been going for a long stretch can lose its progress in a moment if the wrong node fails. A spare node is the cheapest way to keep that from happening. GPU hardware fails, and a spare node is the cheapest way to keep a training run going. The unit of replacement is the node, not the single GPU, because the eight GPUs of a node share one NVLink domain and one host. NVLink is NVIDIA's high-speed link between GPUs inside one server, and a job that spans those GPUs expects them all to be present. N+1 redundancy keeps at least one spare node for each group of nodes a workload needs. Section 1.4 shows how to size the pool from the failure rate and the repair time, and the result is usually more than one spare for a large fleet.
 
 ```text
 Spare nodes for a 128-node pool (1,024 GPUs):
@@ -267,11 +284,13 @@ Spare nodes for a 128-node pool (1,024 GPUs):
 - Cost overhead: 2/128 = 1.6 percent to 3/128 = 2.3 percent extra nodes
 ```
 
-The spare pool is cheap next to the cost of a stalled run, but only if the scheduler can use it. Confirm that a failed node's job restarts on a spare from its last checkpoint, and drill it.
+Read the block as a chain of reasoning. The failure rate and the repair time give the average number of nodes out. The spare count then covers that average with a safety margin for the bad days. The cost line shows what the margin costs as a share of the pool.
+
+The spare pool is cheap next to the cost of a stalled run, but only if the scheduler can use it. A spare that sits in a rack and cannot be reached by the job is only a cost. Confirm that a failed node's job restarts on a spare from its last checkpoint, which is a saved copy of the training state, and drill it. The drill is the only proof that the restart works on a Tuesday morning as well as on paper.
 
 ### 4.2 Multi-region failover
 
-Some failures are bigger than one node. A whole region can go down because of a power, network or provider problem. Multi-region failover keeps a second region ready. The workload runs in the primary region until that region fails, and then it moves to the secondary.
+Picture a regional power problem that takes every node in one region offline at once. Some failures are bigger than one node. A whole region can go down because of a power, network or provider problem, and no number of spare nodes inside that region will help. Multi-region failover keeps a second region ready. The workload runs in the primary region until that region fails, and then it moves to the secondary. The second region sits warm and waiting, so the move does not have to build anything from scratch.
 
 ```text
 Multi-region failover:
@@ -282,11 +301,11 @@ Multi-region failover:
 - Cost overhead: 2x the compute (two regions)
 ```
 
-A second region doubles the compute cost, which is the price of surviving a regional outage. A failover that has never been run is a guess, so treat the first drill as part of the design.
+Think of this as a spare house with the power on. The family lives in the first house. If a storm takes the first house offline, they move to the second, which is already furnished. A second region doubles the compute cost, which is the price of surviving a regional outage. A failover that has never been run is a guess, so treat the first drill as part of the design.
 
 ### 4.3 Active-active inference
 
-Failover takes time, because the secondary region has to start and then take traffic. Active-active avoids that delay by serving inference from two regions at the same time. A load balancer sends each request to the nearest region, and if one region fails, the other already handles the traffic.
+Picture a customer on the far side of the world who waits while a secondary region starts up. Failover takes time, because the secondary region has to start and then take traffic. That customer may give up before the new region is ready. Active-active avoids that delay by serving inference from two regions at the same time. A load balancer sends each request to the nearest region, and if one region fails, the other already handles the traffic. Inference means running a trained model to answer a request, so this pattern keeps the answers coming without a switch.
 
 ```text
 Active-active inference:
@@ -297,17 +316,19 @@ Active-active inference:
 - Cost overhead: 2x the compute (two regions)
 ```
 
-The block shows the cost. Both regions run at once, so compute is doubled. Choose active-active only when even a short outage costs the service too much.
+The block shows the cost. Both regions run at once, so compute is doubled. The trade is clear. Failover is cheaper and slower, while active-active is faster and always busy. Choose active-active only when even a short outage costs the service too much.
 
 ---
 
 ## 5. Operating reliability engineering on GKE
 
+Picture a platform lead who must show on one page which tools run the reliability loop and who may touch each one. Google Kubernetes Engine (GKE) is the managed Kubernetes service in this chapter's lab, and this section shows how the reliability pieces fit together on it.
+
 ### 5.1 The components
 
-Four components make up the stack on GKE. Chaos Mesh runs the experiments. Grafana shows the error budget and the SLO. Alertmanager sends the burn-rate alert to PagerDuty. The table lists where each one runs and what stores its data.
+Imagine a new on-call engineer on her first shift. She opens the dashboard, sees a burn-rate alert and wants to know which system raised it and where its data lives. Four components make up the stack on GKE. Chaos Mesh runs the experiments. Grafana shows the error budget and the SLO. Alertmanager sends the burn-rate alert to PagerDuty, the paging service that calls the person on duty. The table lists where each one runs and what stores its data.
 
-The latency figures in the table are example targets. Set your own after you measure the stack.
+The latency figures in the table are example targets. Set your own after you measure the stack. The point of the table is to show that every component has a home and a store, so nothing is a mystery during an incident.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -318,7 +339,7 @@ The latency figures in the table are example targets. Set your own after you mea
 
 ### 5.2 IAM and the reliability discipline
 
-The reliability stack needs its own access rules. Readers should see the dashboards, the platform team should change targets and policy, and only the platform lead should approve experiments. The table shows one way to split those rights.
+Picture a junior analyst who wants to approve an experiment that would stop a production service. The reliability stack needs its own access rules, because not everyone may change a target or approve a chaos experiment. IAM, which means identity and access management, is the set of rules that decides who may do which action. The rules should say no, and they should say it without anyone needing to remember a policy. Readers should see the dashboards, the platform team should change targets and policy, and only the platform lead should approve experiments. The table shows one way to split those rights.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -326,11 +347,11 @@ The reliability stack needs its own access rules. Readers should see the dashboa
 | `reliability.writer` | The platform team | Update the SLO targets; update the error budget policy |
 | `reliability.admin` | The platform team lead | Approve the chaos engineering experiments; enforce the error budget policy |
 
-The platform team owns this discipline. It works only when the rules are written down, enforced and reviewed on a regular schedule.
+The platform team owns this discipline. It works only when the rules are written down, enforced and reviewed on a regular schedule. A rule that exists only in a wiki page will be bent on the first hard day.
 
 ### 5.3 Observability
 
-A dashboard alone is not enough. You need alerts that fire before the budget is gone, and you need to know when the monitoring itself fails. The table lists the metrics to watch and the thresholds to start with. Treat the thresholds as example values to tune for your service.
+Picture a dashboard that looks healthy for weeks, then fails to load on the night the budget runs out. A dashboard alone is not enough. You need alerts that fire before the budget is gone, and you need to know when the monitoring itself fails. The table lists the metrics to watch and the thresholds to start with. Treat the thresholds as example values to tune for your service.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -342,73 +363,51 @@ A dashboard alone is not enough. You need alerts that fire before the budget is 
 | N+1 spare GPU ratio | Redundancy | < 1 spare GPU |
 | Multi-region failover latency | Redundancy | > 5 minutes |
 
-Add one alert that teams often forget. Set an alert that fires on a regular schedule while everything is healthy. If that alert stops arriving, send a critical notice, because your alerting may be down without anyone knowing.
+Add one alert that teams often forget. Set an alert that fires on a regular schedule while everything is healthy. If that alert stops arriving, send a critical notice, because your alerting may be down without anyone knowing. A silent pager is ambiguous. It might mean all is well, or it might mean the pager is broken, and this heartbeat-style alert is how you tell the two apart.
 
-Of the metrics above, the chaos experiment success rate says the most about whether your drills work. A falling rate means the drills keep failing, and the reliability claims are not yet tested.
+Of the metrics above, the chaos experiment success rate says the most about whether your drills work. A falling rate means the drills keep failing, and the reliability claims are not yet tested. Read it as a signal about the platform, not about the people who run the drills.
 
 ---
 
 ## 6. How it fails
 
-Six failure modes come up again and again. You may recognise one of them from your own team. Each one below starts with a symptom, names the likely cause and gives a fix. Most of them share one root: the practice exists on paper only.
+Picture a Monday review where the budget reads zero, yet the deploy log shows three releases went out on Friday. Six failure modes come up again and again. You may recognise one of them from your own team. Each one below names what you see, what usually sits underneath it and what to do about it. Most of them share one root: the practice exists on paper only.
 
 ### 6.1 "The error budget is exhausted but the team continues to deploy"
 
-**Symptom:** The budget is at 0%, yet deployments keep going out, and the SLO stays breached.
-
-**Diagnosis:** The policy exists on paper, but nobody enforces it. The team may not even know the budget is gone.
-
-**Fix:** Enforce the policy in CI, alert when the budget runs out, and train the team on what the policy requires. Consider which of these you can add this week.
+The budget dashboard reads 0%, yet new deployments keep going out and the SLO stays breached. That is the symptom. The likely cause is that the policy exists on paper, but nobody enforces it. The team may not even know the budget is gone, because the number lives in a tool nobody opens. The fix is to enforce the policy in CI, which is the automated build and release system, to alert when the budget runs out, and to train the team on what the policy requires. Consider which of these you can add this week.
 
 ### 6.2 "The chaos engineering experiment is too aggressive"
 
-**Symptom:** The experiment takes down the cluster, the SLO is breached, and a customer complains.
-
-**Diagnosis:** The blast radius was too large. Nothing contained the experiment, and nothing let the team reverse it quickly.
-
-**Fix:** Shrink the blast radius, add a rollback to every experiment, and rehearse first in staging.
+The experiment takes down the cluster, the SLO is breached, and a customer complains. The likely cause is that the blast radius was too large. Nothing contained the experiment, and nothing let the team reverse it quickly. The fix is to shrink the blast radius, add a rollback to every experiment, and rehearse first in staging, which is a copy of production used for testing.
 
 ### 6.3 "The redundancy pattern is not tested"
 
-**Symptom:** The team has N+1 GPU nodes and a second region, but the failover has never run. When a real failure arrives, the failover fails too.
-
-**Diagnosis:** The redundancy exists only on paper. Nobody has drilled it, and nobody has written down the steps.
-
-**Fix:** Run the failover as a chaos experiment every quarter, document each step, and test in staging first.
+The team has N+1 GPU nodes and a second region, but the failover has never run. When a real failure arrives, the failover fails too, and the team learns that its backup was only a diagram. The likely cause is that the redundancy exists only on paper. Nobody has drilled it, and nobody has written down the steps. The fix is to run the failover as a chaos experiment every quarter, document each step, and test in staging first.
 
 ### 6.4 "The SLO is breached but the team does not know"
 
-**Symptom:** The dashboard shows the breach, but nobody acts on it, and the customer raises the problem first.
+The dashboard shows the breach, but nobody acts on it, and the customer raises the problem first. The likely cause is that the SLO alert is missing, or nobody watches the dashboard. The breach goes undetected, which is the worst way to learn about it. The fix is to add an SLO alert, name an owner for the dashboard, and add breach checks to the on-call routine.
 
-**Diagnosis:** The SLO alert is missing, or nobody watches the dashboard. The breach goes undetected.
-
-**Fix:** Add an SLO alert, name an owner for the dashboard, and add breach checks to the on-call routine.
-
-Hardware signals belong on the same alert list. Treat any uncorrectable ECC memory error as a critical alert, because it corrupts data and requires a reset. Chapter 17.4 holds the rule.
+Hardware signals belong on the same alert list. Treat any uncorrectable ECC memory error as a critical alert, because it corrupts data and requires a reset. ECC is the error-correcting code memory that GPUs use, and an uncorrectable error is one it cannot repair on its own. Chapter 17.4 holds the rule.
 
 ### 6.5 "The reliability metrics are not tracked"
 
-**Symptom:** The team cannot say whether reliability is improving or getting worse, and it cannot name its weakest service.
-
-**Diagnosis:** No reliability dashboard or review exists, so the numbers never get looked at.
-
-**Fix:** Build the reliability dashboard, hold a regular review, and add reliability goals to the team's planning cycle.
+The team cannot say whether reliability is improving or getting worse, and it cannot name its weakest service. Ask a team lead which service breaks most often, and you may get three different answers. The likely cause is that no reliability dashboard or review exists, so the numbers never get looked at. The fix is to build the reliability dashboard, hold a regular review, and add reliability goals to the team's planning cycle.
 
 ### 6.6 "The reliability discipline is not followed"
 
-**Symptom:** The team writes SLOs but does not track them, sets budgets but does not enforce them, and plans drills but never runs them.
-
-**Diagnosis:** The discipline is written down but not enforced, and the team never learned how to use it.
-
-**Fix:** Train the team, enforce the rules in CI, and include the discipline in onboarding for new engineers.
+The team writes SLOs but does not track them, sets budgets but does not enforce them, and plans drills but never runs them. This is the most common failure, and it looks busy from the outside. The likely cause is that the discipline is written down but not enforced, and the team never learned how to use it. The fix is to train the team, enforce the rules in CI, and include the discipline in onboarding for new engineers.
 
 ---
 
 ## 7. Hands-on lab
 
-This lab walks through the SLOs, the error budget, a chaos experiment and a redundancy drill. The commands were not run on hardware for this book, so treat each step as a plan to test.
+On a Monday morning a lab group wants to see the whole reliability loop in one sitting. They define the promise, watch the budget, break one pod on purpose and drain a node to test the failover. This lab walks through the SLOs, the error budget, a chaos experiment and a redundancy drill. The commands were not run on hardware for this book, so treat each step as a plan to test.
 
 ### 7.1 Prerequisites
+
+Picture a lab partner who starts typing commands before the cluster even exists. Check these three things before you start, because each later step leans on them.
 
 - A GKE Autopilot or Standard cluster (1.27+) with at least 4 H100 GPU nodes.
 - Chaos Mesh installed.
@@ -416,7 +415,7 @@ This lab walks through the SLOs, the error budget, a chaos experiment and a redu
 
 ### 7.2 Step 1: define the SLOs
 
-Start by putting the SLO definitions where the whole team can see them. The command below loads the dashboard file into a ConfigMap, and the comment after it shows where to find the dashboard.
+Picture a teammate who asks where the SLO is written down, and nobody can point to a page. Start by putting the SLO definitions where the whole team can see them. A promise hidden in a file on one laptop is no promise at all. The command below loads the dashboard file into a ConfigMap, which is a Kubernetes object that holds plain configuration, and the comment after it shows where to find the dashboard.
 
 ```bash
 # Define the SLOs in the SLO dashboard
@@ -427,7 +426,7 @@ kubectl -n monitoring create configmap slo-dashboard \
 
 ### 7.3 Step 2: track the error budget
 
-Next, load the error budget alerts and reload Prometheus so the rules take effect. The reload call goes to the Prometheus endpoint in the monitoring namespace. The expected line tells you the alerts are live.
+Picture an alert rule that you wrote yesterday and that never fires. Next, load the error budget alerts and reload Prometheus so the rules take effect. Without the reload, Prometheus keeps running with its old rules, and the new alert never fires. The reload call goes to the Prometheus endpoint in the monitoring namespace. The expected line tells you the alerts are live.
 
 ```bash
 # Add the error budget alert
@@ -441,7 +440,7 @@ curl -X POST http://prometheus.monitoring:9090/-/reload
 
 ### 7.4 Step 3: run a chaos engineering experiment
 
-Install Chaos Mesh, apply the experiment, and watch the events. You should see a pod fail and the workload come back on another node.
+Picture a pod that disappears while the team watches the dashboard. Install Chaos Mesh, apply the experiment, and watch the events. Keep your eyes on the mlops namespace while the experiment runs. You should see a pod fail and the workload come back on another node. If the pod does not come back, stop the experiment and look at the scheduler before you go on.
 
 ```bash
 # Install Chaos Mesh
@@ -458,7 +457,7 @@ kubectl get events -n mlops -w
 
 ### 7.5 Step 4: observe the SLO during the experiment
 
-While the experiment runs, query the availability metric. The result shows whether the SLO held through the failure.
+Picture the minute after the failure starts, when the first question is whether users notice. While the experiment runs, query the availability metric. The result shows whether the SLO held through the failure. A quick look at one number can tell you whether the promise survived the test, so run the query while the failure is still active, not after it has ended.
 
 ```bash
 # Query the SLO during the experiment
@@ -468,7 +467,7 @@ curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=cluster_availabili
 
 ### 7.6 Step 5: run the failover drill
 
-Drain one node to simulate a failure, watch the pods move, and then bring the node back. The drain runs against the production context, so schedule it in a window your team has agreed on.
+Picture a node that must leave service for repair on a weekday afternoon. Drain one node to simulate a failure, watch the pods move, and then bring the node back. Draining means moving the workloads off a node and marking it unavailable for new work. The drain runs against the production context, so schedule it in a window your team has agreed on. Someone should be watching the dashboard when it starts, and someone should be ready to uncordon the node if the move goes wrong.
 
 ```bash
 # Drain a node
@@ -484,7 +483,7 @@ kubectl --context=production uncordon gpu-node-1
 
 ### 7.7 What to record
 
-After the lab, check that you can answer five questions quickly. Each answer should come from the dashboard in a few seconds.
+Picture the next on-call engineer who asks for the state of the platform while you are on a call. After the lab, check that you can answer five questions quickly. Write the answers in your own notes, because the next person on call will ask the same things. Each answer should come from the dashboard in a few seconds.
 
 1. What is the current error budget remaining?
 2. What is the current burn rate (1h)?
@@ -492,13 +491,13 @@ After the lab, check that you can answer five questions quickly. Each answer sho
 4. What was the result of the most recent failover drill?
 5. What is the current SLO compliance per service?
 
-The five-second and 30-second limits in this section are example values. Pick limits that match your own on-call needs. If the answers take longer, the stack still needs work before it can carry production traffic. The lab was not run against a live GKE cluster.
+The five-second and 30-second limits in this section are example values. Pick limits that match your own on-call needs. If the answers take longer, the stack still needs work before it can carry production traffic. A slow answer during an incident is a reliability problem in its own right.
 
 ---
 
 ## Exercises
 
-Work through these on your own cluster or in a sandbox, and write down what you find.
+Imagine your team has the dashboard and the budget but no drill on the calendar yet. Work through these on your own cluster or in a sandbox, and write down what you find. Each exercise starts from a gap that a real team often has, and each one ends with a result you can show someone else.
 
 1. **Add an SLO alert.** Write a Prometheus alert that fires when the SLO is breached, and link it to a runbook. *Solution sketch:* the alert watches the SLI, carries critical severity and points to the runbook for that SLI.
 2. **Add an error budget policy.** Write down what the team does when the budget runs out. *Solution sketch:* a short Markdown document that states the policy and gets reviewed on a schedule.

@@ -99,3 +99,6 @@ Part 15 (18 ch) rewritten and committed (+28-40% words, guard 0 hard, chain <=0.
 
 ## Part 16 status (2026-11-14)
 Part 16 (15 ch) rewritten and committed (+29-39% words, guard 0 hard, chain <=0.4, spans 0 lost, Mermaid 776 ok, build ok). Open items in ledgers voice_rewrite_part16_*.md: 16.5 locked train_elastic.py builds the model twice; 16.15 exercise 2 wording conflicts with 16.14 s7.2 (Kueue limits GPUs, not money); 16.11 "Azure AD" vs Entra ID; 16.9 one added word "production" in 4.4 to check; unverified Production Kubernetes / Practical MLOps chapter attributions. Part 17 (16 ch) in progress.
+
+## Part 17 status (2026-11-14)
+Part 17 (16 ch) rewritten and committed (+28-39% words, guard 0 hard, chain <=1.1 (17.11 locked IC table cells), spans 0 lost, Mermaid 776 ok, build ok). OWNER DECISION: RULES rule 10 asks for scenario-style checkpoints in Parts 16-18, but rule 5 locks checkpoint text; many Part 17 (and some 16/18) checkpoints are recall-style (e.g. 17.13 #8, 17.14 #8, 18.2 #6). Left unchanged; decide whether a separate checkpoint-rewrite pass is wanted. Other open items in ledgers voice_rewrite_part17_*.md (Kubecost pin, 17.11 severity rule, unverified attributions). Part 18 (7 ch) in progress; Part 19 next.

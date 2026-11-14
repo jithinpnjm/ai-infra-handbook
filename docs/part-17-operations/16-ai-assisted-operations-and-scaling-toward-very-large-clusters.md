@@ -26,23 +26,27 @@ lab_venue: "GCP / GKE"
 
 Picture the on-call engineer at the start of a shift. The dashboard shows thousands of time series, and the alert queue keeps growing. Every chapter in Part 17 has taught you to run the cluster you have today. This chapter prepares you for the larger cluster you will run next.
 
-That cluster is bigger, busier, and harder to watch by hand. Its metrics, logs, and incidents now outnumber what one person can read. The on-call engineer is being asked to do more with the same headcount, and AI-assisted operations is the answer many teams reach for. It uses AI to spot anomalies across huge numbers of metrics, draft runbooks from incident transcripts, rank likely root causes across traces and logs, and forecast capacity needs. The argument of this chapter is narrow. AI is useful where a human cannot read everything and a wrong answer is cheap to check. It is dangerous where a wrong answer triggers an action. Every pattern below keeps a person between the model and the cluster.
+That cluster is bigger, busier, and harder to watch by hand. Its metrics, logs, and incidents now outnumber what one person can read. The on-call engineer is being asked to do more with the same headcount, and AI-assisted operations is the answer many teams reach for. It uses AI to spot anomalies across huge numbers of metrics, draft runbooks from incident transcripts, rank likely root causes across traces and logs, and forecast capacity needs. Think of it as an extra pair of eyes that reads faster than you do, and that can be wrong just as quickly.
+
+The argument of this chapter is narrow. AI is useful where a human cannot read everything and a wrong answer is cheap to check. It is dangerous where a wrong answer triggers an action. Every pattern below keeps a person between the model and the cluster. If a model's output is only a suggestion on a ticket, a mistake costs a few minutes. If the same output drains a node, a mistake costs the work that was running on it.
 
 AI can help in four places, and each place has a way to go wrong. An LLM can summarise a burst of alerts, but it can also state a confident cause that is not true. A model can flag a GPU that drifts away from its peers, but with ten thousand series it can also page you every hour. An assistant can draft a runbook, but it can also invent a flag. And a cluster that grows tenfold does not get ten times more people, so the tooling has to scale while Prometheus itself reaches its limits. This chapter shows concrete patterns for each place, the guardrails that keep them honest, and the arithmetic that tells you whether they are worth running.
 
-Three facts make this a platform team problem, not only a data science problem:
+Three facts make this a platform team problem, not only a data science problem. Each one names a piece of work that someone on the platform team has to own.
 
 1. The metrics, logs, and traces from earlier chapters are the raw material for every tool in this chapter. The platform team owns that data, so it should own the tools built on it.
 2. AI-assisted operations is a platform discipline with four jobs: detect anomalies, generate runbooks, find root causes, and predict capacity. The platform team sets those jobs and maintains the tooling that performs them.
 3. Scaling toward very large clusters is also a platform challenge. Gang scheduling, Kueue, and MIG from Chapter 11 reach thousands of GPUs. Multi-cluster, multi-region, and multi-tenant operation needs more, and this chapter covers that.
 
-**Use AI to shorten the time to understand a problem, and never to make the decision that changes the cluster.**
+Use AI to shorten the time to understand a problem, and never to make the decision that changes the cluster.
 
 ## Prerequisites and outcomes
 
-Before you start, check that you have these chapters behind you. They are not optional background. This chapter uses their alerting, failure, and scheduling vocabulary without defining it again.
+Picture a new platform engineer who is handed this chapter on her first week and asked what she must already know. Before you start, check that you have these chapters behind you. They are not optional background. This chapter uses their alerting, failure, and scheduling vocabulary without defining it again.
 
 ### Prerequisites
+
+Picture a reader who opens this chapter cold and needs to know what to read first. Each of these chapters supplies one of the building blocks used below.
 
 - Chapter 17.6 (Alerting and SLOs) for the metrics stack.
 - Chapter 17.7 (Failure modes) for the failure mode catalogue.
@@ -52,13 +56,7 @@ Before you start, check that you have these chapters behind you. They are not op
 
 ### Outcomes
 
-After completing this chapter you will be able to:
-
-1. Build AI-assisted anomaly detection, from training the model to deploying it.
-2. Generate runbooks with an LLM, including the prompt, the context, and the validation.
-3. Correlate traces and logs to produce candidate root-cause hypotheses.
-4. Build a capacity forecast from historical data, a workload forecast, and a buffer.
-5. Run these tools on GKE with the patterns that scale to thousands of GPUs.
+Picture a team that wants to know, before it adds any model, whether the model will save time or create new work. This chapter takes that question through four jobs and one platform question. It starts with anomaly detection, moves through LLM-based runbook generation and then AI-assisted root cause analysis, and covers capacity prediction last. Each job comes with a pattern, the code that implements it and the guardrails that keep a person in charge. The chapter then turns to scaling toward very large clusters, with multi-cluster queues, multi-region failover, multi-tenant isolation and the Prometheus limits that appear first. It ends with the same tools running on GKE, with patterns that hold at thousands of GPUs.
 
 Use this list as a checklist when you finish the lab. If you cannot tick an item, go back to the section that covers it.
 
@@ -66,13 +64,15 @@ Use this list as a checklist when you finish the lab. If you cannot tick an item
 
 ## 1. AI-assisted anomaly detection
 
+Picture a team that wants its first AI tool to watch the GPUs overnight. Anomaly detection is the first job, because it is the one most teams try first. This section explains what an anomaly is in this setting, how a model learns what normal looks like and how to keep the false alarms under control.
+
 ### 1.1 The pattern
 
-Picture a GPU's memory use creeping down over a night. No static threshold fires, because the value still sits inside the range that looks normal for a busy cluster. Anomaly detection tries to catch this kind of change by learning what normal looks like for each metric.
+Picture a GPU's memory use creeping down over a night. No static threshold fires, because the value still sits inside the range that looks normal for a busy cluster. Anomaly detection tries to catch this kind of change by learning what normal looks like for each metric. The model does not know that the GPU is sick. It only knows that the GPU has stopped looking like its history.
 
-Anomaly detection earns its place on slow drifts that fixed thresholds miss and that cost money. Examples are a GPU that draws less power than its neighbours at the same load, a GPU whose NVLink throughput falls behind its peers in one job, or a training step time that creeps up over a week. It does not replace the fault rules from chapter 17.4. A double-bit ECC error or a tier 3 Xid needs no model, because a plain rule is exact, explainable and testable.
+Anomaly detection earns its place on slow drifts that fixed thresholds miss and that cost money. Examples are a GPU that draws less power than its neighbours at the same load, a GPU whose NVLink throughput falls behind its peers in one job, or a training step time that creeps up over a week. It does not replace the fault rules from chapter 17.4. A double-bit ECC error or a tier 3 Xid needs no model, because a plain rule is exact, explainable and testable. An Xid is a numbered error code that the NVIDIA driver writes to the system log.
 
-A model learns from history, predicts the expected value, and alerts when reality strays too far from it. A simpler and often stronger variant compares each GPU with its peers right now. In a healthy job all GPUs of one model do similar work, so a GPU far from the median of its node or job is suspicious without any history.
+A model learns from history, predicts the expected value, and alerts when reality strays too far from it. A simpler and often stronger variant compares each GPU with its peers right now. In a healthy job all GPUs of one model do similar work, so a GPU far from the median of its node or job is suspicious without any history. The peer comparison has one big advantage: it does not need a long history to start working, and it adjusts itself when the whole fleet moves at once.
 
 ```promql
 # GPU power relative to the median power of the GPUs on the same node
@@ -81,7 +81,9 @@ DCGM_FI_DEV_BOARD_POWER_WATTS
   quantile by (node) (0.5, DCGM_FI_DEV_BOARD_POWER_WATTS)
 ```
 
-Utilisation alone can mislead here. A GPU that is busy moving redundant data looks as busy as one doing useful work, so chapter 15.13 covers the profiling signals that show useful work.
+Read the query as a ratio. The numerator is one GPU's power. The denominator is the median power of the GPUs on the same node. A ratio far from one tells you that a GPU is working very differently from its peers, and the query does not need to know what the right power value is in advance.
+
+Utilisation alone can mislead here. A GPU that is busy moving redundant data looks as busy as one doing useful work, so chapter 15.13 covers the profiling signals that show useful work. A model fed only with utilisation will learn to reward busy-but-wasteful GPUs.
 
 ```mermaid
 flowchart LR
@@ -101,13 +103,13 @@ flowchart LR
     D --> Alert
 ```
 
-History trains the model, which predicts the value you should see now. The alert fires when the gap between prediction and reality crosses a threshold you choose.
+History trains the model, which predicts the value you should see now. The alert fires when the gap between prediction and reality crosses a threshold you choose. The diagram shows two streams that meet at the deviation score, and that meeting point is where most of the tuning happens.
 
 **The false-positive budget.** Decide how many false alerts the on-call will tolerate, then work backwards. Take 1,000 GPUs with 10 monitored signals each, checked every 5 minutes. That is 10,000 series times 12 checks an hour times 168 hours, about 20 million checks a week. If the team will tolerate 5 false alerts a week, each check may be wrong about 2.5 times in 10 million. A plain three-sigma rule is wrong about 27 times in 10,000 checks on normal data, which would give roughly 54,000 false alerts a week. This is why anomaly alerts need more than a point threshold. Require the deviation to persist across several windows, require agreement with the peer comparison, and send the result to a ticket queue first. Consecutive windows are correlated, so the persistence rule helps less than independent odds suggest. Measure the real rate on a month of data before you route anything to a pager.
 
 ### 1.2 The implementation
 
-Choosing a model means trading accuracy against data needs and compute. The table compares four common choices.
+Picture an engineer choosing between a simple model and a clever one on a deadline. Choosing a model means trading accuracy against data needs and compute. A small model that you understand can beat a large one that nobody can explain late at night. The table compares four common choices, and each row names what the model is good at and what it demands.
 
 | Model | Strength | Weakness |
 |---|---|---|
@@ -116,11 +118,13 @@ Choosing a model means trading accuracy against data needs and compute. The tabl
 | LSTM autoencoder | Captures complex patterns | Requires more training data |
 | Transformer | State-of-the-art accuracy | Requires significant compute |
 
-A practical path is to start with Prophet. Move to an LSTM autoencoder only when your data volume justifies the extra compute. Whichever model you pick, score it against anomalies your team has already confirmed, not against its own predictions.
+A practical path is to start with Prophet. Move to an LSTM autoencoder only when your data volume justifies the extra compute. Whichever model you pick, score it against anomalies your team has already confirmed, not against its own predictions. A model that agrees with itself has passed a test it wrote for itself.
+
+Picture the first review meeting after a model goes live. The team opens its list of confirmed anomalies from the last quarter and lines each one up against the alerts the model raised. Some alerts match, some were missed, and some were false alarms that nobody had labelled yet. That review, not the training log, tells you whether the model is worth keeping. Build the list before you train anything, because a list written after the results tends to favour the model that was already chosen.
 
 ### 1.3 The deployment
 
-The model runs as a cluster service. It reads history from Prometheus, retrains on a schedule, and publishes its anomaly score back as a metric. The manifest below sets the Prometheus address and the schedule.
+Picture the model's first morning on the cluster, when nobody remembers which schedule it runs on. The model runs as a cluster service. It reads history from Prometheus, retrains on a schedule, and publishes its anomaly score back as a metric. The manifest below sets the Prometheus address and the schedule. Once the score is a metric, every other tool in the stack can read it the same way it reads GPU temperature.
 
 ```yaml
 # code/part17/anomaly_detection.yaml
@@ -147,13 +151,13 @@ spec:
               value: "0 2 * * *"
 ```
 
-The schedule `0 2 * * *` is a cron expression, which runs training once a day at 02:00. Before you deploy, decide who may change that schedule. A retraining run changes what your system treats as normal.
+The schedule `0 2 * * *` is a cron expression, which runs training once a day at 02:00. Before you deploy, decide who may change that schedule. A retraining run changes what your system treats as normal, so a change to the schedule is a change to the definition of normal. Treat it with the same care as a change to an alert threshold.
 
 ### 1.4 Alert summarisation with guardrails
 
-During an alert storm, the on-call opens forty notifications that share one cause. An LLM can read the grouped alerts and write a short summary: what is firing, what changed, and which dashboard to open. That saves minutes at three in the morning. It is also where a model does the most harm if it is trusted, because a fluent wrong cause sends the engineer down the wrong path.
+During an alert storm, the on-call opens forty notifications that share one cause. An LLM can read the grouped alerts and write a short summary: what is firing, what changed, and which dashboard to open. That saves minutes at three in the morning. It is also where a model does the most harm if it is trusted, because a fluent wrong cause sends the engineer down the wrong path. The engineer who reads a confident summary at that hour often does not have the energy to doubt it.
 
-The pattern is simple. Alertmanager groups related alerts and posts one notification. A summariser reads the group, calls the model, and posts the summary next to the original notification. The guardrails are the design.
+The pattern is simple. Alertmanager groups related alerts and posts one notification. A summariser reads the group, calls the model, and posts the summary next to the original notification. The guardrails are the design, not an afterthought. Each guardrail in the table answers one way the summariser could hurt the response.
 
 | Guardrail | What it prevents |
 |---|---|
@@ -166,17 +170,19 @@ The pattern is simple. Alertmanager groups related alerts and posts one notifica
 | The model has no tools that change anything | An assistant acting on its own guess |
 | Every input and output is stored with an on-call rating | No way to measure whether it helps |
 
-Score the summariser on past incidents before it goes live. For each incident, ask whether the summary named the same cause the post-mortem found, and track that rate every month. If the rate is low, phrase the summary as context and do not state a cause at all.
+Score the summariser on past incidents before it goes live. For each incident, ask whether the summary named the same cause the post-mortem found, and track that rate every month. If the rate is low, phrase the summary as context and do not state a cause at all. A summary that says "these alerts all mention the same node" is safer than one that names a root cause, and it still saves the reading time.
 
 ---
 
 ## 2. LLM-based runbook generation
 
+Picture an incident that is already under way, with an alert that has no runbook behind it. Runbook generation is the second job, and it helps exactly in that moment. This section shows how the model drafts the steps, how the code checks the draft and how a person decides what gets published.
+
 ### 2.1 The pattern
 
-During a night-time incident, the on-call engineer finds an alert with no runbook. Writing one from the incident transcript takes time that nobody has in the middle of an outage.
+During a night-time incident, the on-call engineer finds an alert with no runbook. Writing one from the incident transcript takes time that nobody has in the middle of an outage. The transcript is the chat log and the notes from the response, and it already contains most of the steps the team took. The model can turn that raw material into a first draft while the engineer is still working.
 
-In LLM-based runbook generation, the model reads the incident transcript and drafts the runbook steps. A platform engineer then reviews the draft before anyone publishes it.
+In LLM-based runbook generation, the model reads the incident transcript and drafts the runbook steps. A platform engineer then reviews the draft before anyone publishes it. The draft is a starting point, and the reviewer decides what the team keeps.
 
 ```python
 # code/part17/runbook_generation.py
@@ -204,11 +210,13 @@ def generate_runbook(llm, incident_transcript: str, existing_runbooks: list[str]
     return draft
 ```
 
-The script does three things in order. It builds a prompt from the transcript and the existing runbooks, asks the model for a draft, and checks that draft. A draft that fails the check raises an error, so the function never returns it to the caller.
+The script does three things in order. It builds a prompt from the transcript and the existing runbooks, asks the model for a draft, and checks that draft. A draft that fails the check raises an error, so the function never returns it to the caller. The caller never sees a bad draft, because the check runs before the return.
+
+The existing runbooks in the prompt are there for style. A new draft that looks like the team's other runbooks is easier for the next engineer to read. The model copies the shape it sees, so a messy set of examples produces messy drafts.
 
 ### 2.2 The validation
 
-A fluent draft can still be useless, so the code checks it before anyone reads it. The validator confirms that all six section headings appear. It also confirms that at least one line is a runnable command from a known list, such as `kubectl` or `nvidia-smi`. It does not check escalation contacts, and it cannot tell whether a command actually works. A person must check both.
+Picture a draft that reads beautifully and has no commands at all. A fluent draft can still be useless, so the code checks it before anyone reads it. The validator confirms that all six section headings appear. It also confirms that at least one line is a runnable command from a known list, such as `kubectl` or `nvidia-smi`. It does not check escalation contacts, and it cannot tell whether a command actually works. A person must check both.
 
 ```python
 # code/part17/runbook_validation.py
@@ -232,9 +240,11 @@ def validate_runbook(runbook: str) -> tuple[bool, list[str]]:
     return len(errors) == 0, errors
 ```
 
+Read the validator as a gatekeeper with a short list of questions. Are the six headings there? Is there at least one line that starts with a known command? If either answer is no, the draft is rejected with a reason. Passing this check says the draft has the right shape, and nothing more.
+
 ### 2.3 The human-in-the-loop
 
-A draft is a starting point, not a published runbook. Someone on the platform team must correct it and decide that it belongs in the library. The commands below show that sequence, from generation to commit.
+Picture the reviewer opening the draft at the start of a shift. A draft is a starting point, not a published runbook. Someone on the platform team must correct it and decide that it belongs in the library. The commands below show that sequence, from generation to commit. Each step leaves a trace, so the team can later see who reviewed what.
 
 ```bash
 # Generate the runbook
@@ -251,11 +261,11 @@ git add runbooks/gpu-memory-pressure.md
 git commit -m "Add runbook for GPU memory pressure"
 ```
 
-The script writes a draft file, and nothing reaches the repository until you copy and commit it. Once you do, the commit records the approval. Make this review a required step in your publishing process. Do not let it depend on who happens to be on shift.
+The script writes a draft file, and nothing reaches the repository until you copy and commit it. Once you do, the commit records the approval. Make this review a required step in your publishing process. Do not let it depend on who happens to be on shift. A rule that depends on the shift will be skipped on the busiest night.
 
 ### 2.4 How LLM runbook assistants fail
 
-The validator in section 2.2 checks that six headings exist and that one line looks like a command. A draft can pass and still be wrong, so know the ways it fails.
+Picture a draft that passes the validator and still sends the engineer the wrong way. The validator in section 2.2 checks that six headings exist and that one line looks like a command. A draft can pass and still be wrong, so know the ways it fails. The table lists six failures, what each one looks like on the page and the control that catches it.
 
 | Failure | Example | Control |
 |---|---|---|
@@ -266,17 +276,21 @@ The validator in section 2.2 checks that six headings exist and that one line lo
 | Instructions hidden in the transcript | A pasted log line that says to ignore the format | Treat the transcript as data and review the draft line by line |
 | Headings present, content empty | Sections with one vague sentence | Reviewer checks that each section is actionable |
 
-The model never runs a command. A person reviews the draft, and a person publishes it.
+The model never runs a command. A person reviews the draft, and a person publishes it. Keep that sentence in the team's runbook policy, because the easiest way for a generated runbook to cause harm is for someone to assume it has been checked.
+
+Notice that most rows in the table are about people, not about the model. A stale step or a copied node name gets through because a reviewer was tired or trusted the draft. The controls therefore put the check in a place a tired person cannot skip, such as a staging run or a required approval on the commit.
 
 ---
 
 ## 3. AI-assisted root cause analysis
 
+Picture an incident where the evidence is scattered across three tools and nobody has time to join it. Root cause analysis is the third job, and the model can help with that join. The model proposes, and the engineer decides.
+
 ### 3.1 The pattern
 
-During an incident, the evidence lives in three places. Traces sit in one tool, logs in another, and metrics in a third. Someone has to join them before the cause becomes visible, and that join is slow work the model can help with.
+During an incident, the evidence lives in three places. Traces sit in one tool, logs in another, and metrics in a third. Someone has to join them before the cause becomes visible, and that join is slow work the model can help with. A trace is the record of one request as it moves through services, and a log is the text line a program writes about what it did.
 
-AI-assisted root cause analysis has three steps. The model reads the traces, logs, and metrics. It proposes candidate hypotheses. The on-call engineer reviews them and picks the most likely one.
+AI-assisted root cause analysis has three steps. The model reads the traces, logs, and metrics. It proposes candidate hypotheses. The on-call engineer reviews them and picks the most likely one. Each hypothesis carries the evidence and the mitigation it implies, so the engineer can check the reasoning instead of trusting the conclusion.
 
 ```python
 # code/part17/root_cause_analysis.py
@@ -318,13 +332,13 @@ def analyze_root_cause(llm, traces, logs, metrics, failure_mode_catalogue):
     return parse_hypotheses(llm.complete(build_prompt(traces, logs, metrics, failure_mode_catalogue)))
 ```
 
-The code keeps the model's input small. It cuts the trace data to 4000 characters and sends only the first 100 log lines. The parser rejects any reply that is not valid JSON with the required keys, rather than guessing at what the model meant.
+The code keeps the model's input small. It cuts the trace data to 4000 characters and sends only the first 100 log lines. The parser rejects any reply that is not valid JSON with the required keys, rather than guessing at what the model meant. Read the parser as a bouncer at the door. A reply that is not in the right shape never reaches the engineer's screen.
 
-A confidence score helps you rank the hypotheses, but it does not prove any of them. A model can sound certain and still be wrong.
+A confidence score helps you rank the hypotheses, but it does not prove any of them. A model can sound certain and still be wrong. Treat the score as the model's own opinion, and check the evidence line before you act on the top item.
 
 ### 3.2 The trace correlation
 
-Before the model sees anything, plain code narrows the traces to the slow spans. Here, a span counts as slow when it runs longer than one second. Code like this is cheaper and more predictable than asking the model to scan every span.
+Picture a trace with a long list of spans and one slow database call. Before the model sees anything, plain code narrows the traces to the slow spans. A span is one timed step inside a trace, such as a database call or a model inference. Here, a span counts as slow when it runs longer than one second. Code like this is cheaper and more predictable than asking the model to scan every span, and the result is the same every time you run it.
 
 ```python
 # code/part17/trace_correlation.py
@@ -344,11 +358,13 @@ def correlate_traces(traces: list[dict]) -> list[dict]:
     return slow_ops
 ```
 
-Filter in code first, so the model reasons only about the operations that matter. A smaller input also makes the model's answer easier to check.
+Think of the filter as a sieve that runs before the model arrives. Most spans in a busy system are fast and boring, and they would only bury the slow ones if the model had to read them all. The sieve removes the noise, so the model's attention lands where the latency is.
+
+Filter in code first, so the model reasons only about the operations that matter. A smaller input also makes the model's answer easier to check. When the model names a slow operation, you can look up its trace ID and confirm that the operation really was slow.
 
 ### 3.3 The log analysis
 
-Logs are noisy, so a simple scan comes first. The function below sorts each line into errors, warnings, or exception tracebacks. It does this with plain text matching, not with the model.
+Picture a log file with thousands of lines and one traceback hidden in the middle. Logs are noisy, so a simple scan comes first. The function below sorts each line into errors, warnings, or exception tracebacks. A traceback is the list of calls that a program prints when it crashes, and finding one in the logs is often the fastest route to the failing line. The function does this with plain text matching, not with the model.
 
 ```python
 # code/part17/log_analysis.py
@@ -369,21 +385,23 @@ def analyze_logs(logs: list[str]) -> dict:
     return patterns
 ```
 
-The scan finds the lines, but it does not connect them to traces. That correlation is still open in this section. Before you trust the grouping, check that your logs use these exact words for severity.
+The scan finds the lines, but it does not connect them to traces. That correlation is still open in this section. Before you trust the grouping, check that your logs use these exact words for severity. A service that writes "error" in lower case, or "W" instead of "WARN", will slip past the scan without a sound.
 
 ### 3.4 Debugging a failed training run
 
 Picture a training job that fails halfway through a three-month run. Someone must read the error logs, the device statistics and perhaps memory dumps, and decide whether the cause was a hardware fault, a numerical overflow or a network problem. The pattern from this section helps with the joining work. Narrow the evidence with plain code, give the model the failure mode catalogue from chapter 17.7, and ask for ranked hypotheses with evidence.
 
-Two examples show what a good hypothesis looks like. Five ECC memory errors on one node just before the crash point to that GPU's HBM, and chapter 17.4 has the rule. A loss that turns NaN at one iteration points to an unstable gradient, where clipping may help. In both cases the engineer still checks the evidence before changing the job. A hypothesis is a lead and not a verdict.
+Two examples show what a good hypothesis looks like. Five ECC memory errors on one node just before the crash point to that GPU's HBM, and chapter 17.4 has the rule. A loss that turns NaN at one iteration points to an unstable gradient, where clipping may help. In both cases the engineer still checks the evidence before changing the job. A hypothesis is a lead and not a verdict. A good hypothesis says what it saw, what it thinks that means and what it would check next.
 
 ---
 
 ## 4. Capacity prediction
 
+Picture a GPU order that takes weeks to arrive while the queue keeps growing. Capacity prediction is the fourth job, and it is the one with the longest lead time. A GPU order can take weeks to arrive, so the forecast has to look ahead of the work that is already running.
+
 ### 4.1 The forecasting model
 
-Teams often buy GPUs for the demand they had last quarter, then run short when a new project lands. A forecast estimates next quarter's usage from the history you already have. The function below fits a Prophet model to historical usage and projects it forward.
+Teams often buy GPUs for the demand they had last quarter, then run short when a new project lands. A forecast estimates next quarter's usage from the history you already have. The function below fits a Prophet model to historical usage and projects it forward. Prophet is a forecasting library that separates a trend from weekly and yearly rhythms.
 
 ```python
 # code/part17/snippets/capacity_prediction.py
@@ -405,11 +423,11 @@ def predict_capacity(historical_usage: pd.DataFrame, growth_periods: int = 90) -
     return forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]]
 ```
 
-The function uses only the usage history. Growth plans and buffers must be added outside it. It returns the forecast with a lower and an upper bound, and it projects 90 periods by default. Plan against the upper bound when running short costs more than holding spare hardware.
+The function uses only the usage history. Growth plans and buffers must be added outside it. It returns the forecast with a lower and an upper bound, and it projects 90 periods by default. Plan against the upper bound when running short costs more than holding spare hardware. A forecast without the bounds hides how wide the uncertainty really is, and the bounds are where the buying decision lives.
 
 ### 4.2 The workload forecast
 
-A usage curve cannot see a project that has not started yet. The workload forecast adds known growth from roadmaps and customer commitments, using each workload's own growth rate. The function below compounds that rate over the horizon.
+Picture a new project that lands next month and does not appear in any usage curve yet. A usage curve cannot see a project that has not started yet. The workload forecast adds known growth from roadmaps and customer commitments, using each workload's own growth rate. Think of it as the forecast that a product manager can read, because it speaks in projects rather than curves. The function below compounds that rate over the horizon.
 
 ```python
 # code/part17/workload_forecast.py
@@ -422,11 +440,11 @@ def forecast_workloads(workloads: dict, horizon_days: int = 90) -> dict:
     return forecast
 ```
 
-The growth rate in the code is per 90 days. A horizon of two 90-day periods therefore compounds the rate twice. The function handles that exponent for you, so you only supply the rate and the horizon.
+The growth rate in the code is per 90 days. A horizon of two 90-day periods therefore compounds the rate twice. The function handles that exponent for you, so you only supply the rate and the horizon. Compounding means each period grows on top of the one before, which is why a modest rate can look large over a long horizon.
 
 ### 4.3 The cost forecast
 
-Once you have GPU counts, the bill follows. The function below multiplies projected GPUs by a price, by 24 hours, and by 30 days.
+Picture the finance partner asking why the GPU bill jumped this month. Once you have GPU counts, the bill follows. The function below multiplies projected GPUs by a price, by 24 hours, and by 30 days. It is the simplest possible bill, and it is useful exactly because it is simple. A finance partner can check it by hand.
 
 ```python
 # code/part17/cost_forecast.py
@@ -438,11 +456,13 @@ def forecast_cost(workload_forecast: dict, gpu_price: float) -> float:
     return total_cost
 ```
 
-The function assumes every GPU runs all month at the price you pass in. Reserved commitments and idle time change the real bill, so treat the result as a planning figure. Compare the forecast with the actual bill each month to see which assumption was wrong. The monthly figure also feeds your FinOps dashboard, and someone should review it on a regular schedule.
+The function assumes every GPU runs all month at the price you pass in. Reserved commitments and idle time change the real bill, so treat the result as a planning figure. Compare the forecast with the actual bill each month to see which assumption was wrong. The monthly figure also feeds your FinOps dashboard, and someone should review it on a regular schedule. FinOps is the practice of watching cloud spend against the value it buys.
 
 ---
 
 ## 5. Scaling toward very large clusters
+
+Picture the first week after a second site joins the cluster, when the queue, the monitoring and the teams all change at once. The first four jobs assume one cluster. At large scale the cluster itself changes shape, and the problems move from "what is wrong" to "where should work go and how do we keep teams apart". This section covers those problems.
 
 ### 5.1 The scaling challenges
 
@@ -454,11 +474,11 @@ Picture a cluster that now spans several sites and serves many teams. Bigger nod
 | Multi-region failover | The cluster spans multiple regions | Multi-region object storage; multi-region registry |
 | Multi-tenant isolation | The cluster serves multiple teams | Namespaces; RBAC; Kueue ClusterQueues; per-tenant quotas |
 
-These three problems are different. Scheduling across clusters, surviving a region outage, and sharing one cluster between teams each fail in their own way. Plan for each one separately.
+These three problems are different. Scheduling across clusters, surviving a region outage, and sharing one cluster between teams each fail in their own way. Plan for each one separately. A team that solves one of them and assumes the other two are solved will be surprised in the next incident.
 
 ### 5.2 Multi-cluster scheduling
 
-Imagine one cluster that is full while another has idle H100s. Multi-cluster scheduling tries to send the next job to the cluster with room. The pattern in this section is a single queue that holds the GPU quota of several clusters, with each job landing where capacity exists.
+Imagine one cluster that is full while another has idle H100s. Multi-cluster scheduling tries to send the next job to the cluster with room. The pattern in this section is a single queue that holds the GPU quota of several clusters, with each job landing where capacity exists. The manifest below defines two flavors, one per region, and one shared queue that holds both. A flavor is Kueue's name for a set of nodes with the same hardware, and a ClusterQueue is the shared pool of quota that jobs wait in.
 
 ```yaml
 # code/part17/multi_cluster_queue.yaml
@@ -508,11 +528,13 @@ spec:
 
 The manifest lists one GPU flavor per region, each with its own CPU, memory, and GPU quota. The numbers are example values from the manifest, not a sizing guide. Size your own quotas from the capacity you actually have.
 
-The queue sends work to whichever region has room. Do not assume failover is automatic because the queue exists. Prove it in a drill before you rely on it.
+Picture a training job submitted on a Monday morning. The queue looks at the quota in each region, finds room in the one with idle hardware, and starts the job there without anyone choosing a region by hand. That convenience is the point of the design, and it is also why the team has to watch where the work actually lands.
+
+The queue sends work to whichever region has room. Do not assume failover is automatic because the queue exists. Prove it in a drill before you rely on it. A queue that routes jobs well on a quiet day can still stall when a region is actually down, and only a drill shows that gap.
 
 ### 5.3 Multi-region failover
 
-When an entire region goes dark, your inference service needs somewhere else to answer. The pattern is to replicate data to a second region, run the workloads in both, and let a global load balancer send traffic to the healthy one.
+When an entire region goes dark, your inference service needs somewhere else to answer. The pattern is to replicate data to a second region, run the workloads in both, and let a global load balancer send traffic to the healthy one. The diagram shows the two regions and the one load balancer that sits in front of both.
 
 ```mermaid
 flowchart LR
@@ -535,11 +557,11 @@ flowchart LR
     LB --> S3
 ```
 
-The dotted arrows show data copied in the background. Replication lag decides how much recent data the second region can really serve. Decide how far behind the secondary region may be, then measure that lag.
+The dotted arrows show data copied in the background. Think of them as a courier who delivers the newest files to the second region on a regular route. The load balancer, drawn with solid arrows, is the traffic cop that decides which region answers each request. Replication lag decides how much recent data the second region can really serve. Decide how far behind the secondary region may be, then measure that lag. A second region that is always a few minutes behind can answer questions, but it cannot answer with the newest model unless the lag fits the target you chose.
 
 ### 5.4 Multi-tenant isolation at scale
 
-Thousands of teams sharing one cluster need walls between them. Without walls, one team's runaway job can starve everyone else. The pattern gives each team its own namespace, LocalQueue, IAM role, and quota.
+Picture one team's runaway job taking every GPU on the cluster on a Friday night. Thousands of teams sharing one cluster need walls between them. Without walls, one team's runaway job can starve everyone else. The pattern gives each team its own namespace, LocalQueue, IAM role, and quota. A namespace is a separate area of the cluster for one team's objects, and a LocalQueue is the team's entry point into the shared queue. The manifest below sets the team's queue and its cap on CPU, memory and GPUs.
 
 ```yaml
 # code/part17/multi_tenant_isolation.yaml
@@ -563,15 +585,15 @@ spec:
     nvidia.com/gpu: "4"
 ```
 
-The LocalQueue sends a team's jobs to the shared queue. The ResourceQuota caps what that team can use. The numbers in the example are placeholders for your own team sizes.
+The LocalQueue sends a team's jobs to the shared queue. The ResourceQuota caps what that team can use. The numbers in the example are placeholders for your own team sizes. Read the two objects together. One says where the work goes, and the other says how much of the cluster the team may take.
 
-Start each new team with a small quota, and raise it when usage data supports the change.
+Start each new team with a small quota, and raise it when usage data supports the change. A quota that starts large is hard to shrink later, because the team has already built its habits around it.
 
 ### 5.5 Prometheus cardinality at fleet scale
 
-The first thing that breaks at ten thousand GPUs is usually the monitoring system. Every GPU exports many series, and every label multiplies them. As an example, 10,000 GPUs with 50 series each is 500,000 active series. That is manageable. The trouble comes from churn. If a metric carries a pod label and each GPU sees 20 pod restarts a day, that is 10,000 times 50 times 20, or 10 million new series a day. These counts are example arithmetic, so measure your own.
+Picture a dashboard that stops loading once the fleet reaches ten thousand GPUs. The first thing that breaks at that size is usually the monitoring system. Cardinality means the number of distinct time series, and every label multiplies them. Every GPU exports many series. As an example, 10,000 GPUs with 50 series each is 500,000 active series. That is manageable. The trouble comes from churn. Churn is the rate at which new series appear and old ones disappear. If a metric carries a pod label and each GPU sees 20 pod restarts a day, that is 10,000 times 50 times 20, or 10 million new series a day. These counts are example arithmetic, so measure your own.
 
-Prometheus exposes the numbers you need. `prometheus_tsdb_head_series` is the current series count, and the rate of `prometheus_tsdb_head_series_created_total` is the churn. Watch both, and alert when churn jumps after a release.
+Prometheus exposes the numbers you need. `prometheus_tsdb_head_series` is the current series count, and the rate of `prometheus_tsdb_head_series_created_total` is the churn. Watch both, and alert when churn jumps after a release. A release that adds one label to a busy metric can double the series count overnight, and the churn figure is the first place that shows it.
 
 Four levers keep the cost down.
 
@@ -580,29 +602,31 @@ Four levers keep the cost down.
 - Scrape slow signals such as temperature less often than fast ones.
 - Run one Prometheus per cluster and send long-term data to a remote store, so one overloaded server does not blind the whole fleet.
 
-Anomaly models should read the recorded aggregates, not the raw per-GPU series, whenever the question allows it.
+Anomaly models should read the recorded aggregates, not the raw per-GPU series, whenever the question allows it. That one habit keeps the model's input small and the monitoring stack calm.
 
 ### 5.6 Fleet automation: the cordon, drain and RMA loop
 
-At fleet scale a person cannot handle every hardware fault by hand. The loop is simple. A fault alert from chapter 17.4 fires, automation cordons the node, drains it with the policy from chapter 17.10, runs `dcgmi diag -r 3`, and then either returns the node to service or opens a vendor RMA. Chapter 17.13 shows why the speed of this loop sets your pool availability.
+Picture a Tuesday morning with a dozen hardware faults waiting in the queue. At fleet scale a person cannot handle every hardware fault by hand. The loop is simple. A fault alert from chapter 17.4 fires, automation cordons the node, drains it with the policy from chapter 17.10, runs `dcgmi diag -r 3`, and then either returns the node to service or opens a vendor RMA. An RMA is a return merchandise authorisation, the vendor process for sending broken hardware back. Chapter 17.13 shows why the speed of this loop sets your pool availability.
 
-Automation needs its own safety rules, because a bug in it can do more harm than the fault.
+Automation needs its own safety rules, because a bug in it can do more harm than the fault. Each rule below answers one way the loop could make things worse.
 
-- **Rate limit.** Never take more nodes out of service than your spare pool covers.
-- **Common-cause breaker.** If many nodes raise the same alert within a short time, stop and page a person. A bad driver rollout, a switch failure or a power event looks like a hundred hardware faults, and draining a hundred nodes makes it worse. For example, stop when more than 2 percent of the fleet alarms within 10 minutes. The numbers are examples to tune.
-- **Dry run first.** New rules run in log-only mode for a month, and a person compares what they would have done with what happened.
-- **Audit trail.** Every action records the alert, the evidence and the actor.
-- **Human approval for irreversible steps** such as an RMA or a rack power cycle.
+- Rate limit: never take more nodes out of service than your spare pool covers.
+- Common-cause breaker: if many nodes raise the same alert within a short time, stop and page a person. A bad driver rollout, a switch failure or a power event looks like a hundred hardware faults, and draining a hundred nodes makes it worse. For example, stop when more than 2 percent of the fleet alarms within 10 minutes. The numbers are examples to tune.
+- Dry run first: new rules run in log-only mode for a month, and a person compares what they would have done with what happened.
+- Audit trail: every action records the alert, the evidence and the actor.
+- Human approval for irreversible steps, such as an RMA or a rack power cycle.
 
-The common-cause breaker is the part teams forget, and it is the one that prevents the worst night.
+The common-cause breaker is the part teams forget, and it is the one that prevents the worst night. A single broken node is a routine event. A hundred broken nodes in ten minutes is a different event, and the automation should know the difference before it acts.
 
 ---
 
 ## 6. Operating AI-assisted operations on GKE
 
+Picture a platform team putting these tools on GKE for the first time. This section puts the four jobs and the scaling pieces on Google Kubernetes Engine (GKE). It names the components, the access rules and the signals that show whether the tools are helping.
+
 ### 6.1 The components
 
-Each of the five components needs a place to run, storage behind it, and an owner for its target.
+Each of the five components needs a place to run, storage behind it, and an owner for its target. Picture the first week after launch, when the summariser and the anomaly model both begin posting alerts at once. Only a table of owners and targets tells you which one to look at first.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -612,11 +636,11 @@ Each of the five components needs a place to run, storage behind it, and an owne
 | Capacity prediction model | Kubernetes Deployment (cron) | Object storage for forecasts | Forecast frequency daily |
 | Multi-cluster queue | Kueue | (Kueue) | Queue admission p99 < 1 s |
 
-The targets in this table are example values. This chapter did not measure them, and no source recommends them. Choose your own from your own traffic before you set any alert.
+Each row in the table is a place where the tool could fail silently. The model might stop publishing, the generator might stall on a long transcript, or the queue might hold jobs longer than anyone expects. Naming the store and the owner for each row tells the on-call where to look first. The targets in this table are example values. This chapter did not measure them, and no source recommends them. Choose your own from your own traffic before you set any alert. A target that nobody measured is a guess, and a guess that becomes an alert will wake people for the wrong reasons.
 
 ### 6.2 IAM and the AI-assisted operations
 
-Not everyone should retrain a model or change a runbook. The table shows one way to split access into reader, writer, and admin roles.
+Picture a reader who is given write access by accident. Not everyone should retrain a model or change a runbook. IAM, the identity and access management system, sets the rules for who may change what. A model that is retrained by accident changes what the team calls normal, and a runbook that is edited by accident changes what the next engineer does at night. The table shows one way to split access into reader, writer, and admin roles.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -624,11 +648,11 @@ Not everyone should retrain a model or change a runbook. The table shows one way
 | `aiops.writer` | The platform team | Update the models; update the runbooks |
 | `aiops.admin` | The platform team lead | Approve the AI-assisted operations |
 
-Keep write access small, because a changed model or runbook changes what the on-call engineer sees. Write the rules down, enforce them in your identity system, and review them on a schedule.
+Keep write access small, because a changed model or runbook changes what the on-call engineer sees. Write the rules down, enforce them in your identity system, and review them on a schedule. A reader who can edit a runbook has become a writer, even if the role list still says reader.
 
 ### 6.3 Observability
 
-The monitoring for these tools is itself a production service, so it needs alerts. The thresholds in the table are examples, so set your own from a measured baseline.
+Picture the anomaly model going quiet on a busy night, with nobody noticing for hours. The monitoring for these tools is itself a production service, so it needs alerts. If the anomaly model goes quiet, you need to know whether the model is healthy or the feed is broken. The thresholds in the table are examples, so set your own from a measured baseline.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -641,15 +665,15 @@ The monitoring for these tools is itself a production service, so it needs alert
 | Automation actions per day | Whether the loop is behaving | Above the pool's spare capacity |
 | Series churn | Monitoring health | Jump after a release |
 
-Alerting needs restraint. Too many critical alerts wear out on-call engineers, and false positives can bury the real event. Also keep a heartbeat alert that always fires, so that silence itself raises an alarm.
+Alerting needs restraint. Too many critical alerts wear out on-call engineers, and false positives can bury the real event. Also keep a heartbeat alert that always fires, so that silence itself raises an alarm. A heartbeat is the same dead man's switch idea from the on-call runbooks chapter, applied to the AI tools.
 
-**The anomaly detection precision alert matters most.** A low precision means the model fires too many false positives, and the on-call engineer then learns to ignore it.
+**The anomaly detection precision alert matters most.** A low precision means the model fires too many false positives, and the on-call engineer then learns to ignore it. Once the engineer ignores the model, the model is worth nothing, however good it was on paper.
 
 ---
 
 ## 7. How it fails
 
-Six failures recur in these systems. Each one has a symptom you can see and a cause you can check.
+Picture a Friday evening when a summary, a detector and a queue each misbehave in a different way, and the on-call has to sort out which problem is real. Six failures recur in these systems. Each one has a symptom you can see and a cause you can check. Each entry below says what the on-call notices first, the likely cause and the fix.
 
 ### 7.1 "The anomaly detection fires too many false positives"
 
@@ -657,11 +681,11 @@ The detector fires on every small wobble. The on-call engineer stops reading the
 
 ### 7.2 "The LLM-generated runbook is not actionable"
 
-The model produces a runbook with no runnable commands, so the on-call engineer cannot follow it. The likely cause is a vague prompt, too little context, or a validator that misses the problem. Improve the prompt, add context, strengthen the validator, and keep a human reviewer in the loop.
+The model produces a runbook with no runnable commands, so the on-call engineer cannot follow it. The engineer reads the page, finds prose and no commands, and goes back to searching. The likely cause is a vague prompt, too little context, or a validator that misses the problem. Improve the prompt, add context, strengthen the validator, and keep a human reviewer in the loop.
 
 ### 7.3 "The AI-assisted root cause analysis is wrong"
 
-The model suggests a cause that turns out to be wrong, and the on-call engineer loses time chasing it. The likely cause is too little context, or a model that has not been tuned on your production traffic. Add context, tune on production traffic, use the confidence field to rank the hypotheses, and keep a human reviewer.
+The model suggests a cause that turns out to be wrong, and the on-call engineer loses time chasing it. A wrong lead is more expensive than no lead, because it pulls attention away from the real cause. The likely cause is too little context, or a model that has not been tuned on your production traffic. Add context, tune on production traffic, use the confidence field to rank the hypotheses, and keep a human reviewer.
 
 ### 7.4 "The capacity prediction is wrong"
 
@@ -669,19 +693,21 @@ In one example, the forecast says 100 GPUs and real usage reaches 200. The team 
 
 ### 7.5 "The multi-cluster queue is unbalanced"
 
-In one example, region A has 100 GPUs available and region B has 0 GPUs, so every job lands in region A. The likely cause is a workload pinned to region A by an affinity rule, while capacity is uneven across regions. Add a region-affinity weighting, balance the GPU quota across regions, and set a fairness policy.
+In one example, region A has 100 GPUs available and region B has 0 GPUs, so every job lands in region A. Region B sits idle while region A backs up. The likely cause is a workload pinned to region A by an affinity rule, while capacity is uneven across regions. Add a region-affinity weighting, balance the GPU quota across regions, and set a fairness policy.
 
 ### 7.6 "The multi-region failover is slow"
 
-In one example, a regional outage takes 2 hours to recover from, and the service level objective is breached. The likely cause is a failover that is not automated, slow data replication, or a workload that takes a long time to start. Automate the failover, replicate more often, and pre-warm the workloads in the second region.
+In one example, a regional outage takes 2 hours to recover from, and the service level objective is breached. The customers see the breach before the team does. The likely cause is a failover that is not automated, slow data replication, or a workload that takes a long time to start. Automate the failover, replicate more often, and pre-warm the workloads in the second region.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab walks through anomaly detection, runbook generation, root cause analysis, and capacity prediction in one session. The commands were not run on hardware for this book, so check flags against your versions.
+Picture a platform team that wants to see all four jobs working on one cluster in a single afternoon. This lab walks through anomaly detection, runbook generation, root cause analysis, and capacity prediction in one session. The commands were not run on hardware for this book, so check flags against your versions.
 
 ### 8.1 Prerequisites
+
+Picture a lab partner who starts before the API key exists. Check these three things before you start, because each later step relies on one of them.
 
 - The observability stack from earlier chapters.
 - An LLM API key (OpenAI, Anthropic, or local model).
@@ -689,7 +715,7 @@ This lab walks through anomaly detection, runbook generation, root cause analysi
 
 ### 8.2 Step 1: deploy the anomaly detection model
 
-Start by deploying the model with Helm. The command points it at your Prometheus server.
+Picture a new cluster with no anomaly model on it yet. Start by deploying the model with Helm. Helm is the package manager that installs a bundle of Kubernetes objects from one command. The command points the model at your Prometheus server, so the model reads the same history your dashboards read.
 
 ```bash
 helm install anomaly-detection my-charts/anomaly-detection \
@@ -700,7 +726,7 @@ helm install anomaly-detection my-charts/anomaly-detection \
 
 ### 8.3 Step 2: query the anomaly scores
 
-Next, check that the model is publishing scores. The query below asks Prometheus for the score of GPU 0.
+Picture a dashboard panel that stays empty where the score should be. Next, check that the model is publishing scores. The query below asks Prometheus for the score of GPU 0. If the query returns nothing, the model is not publishing yet, and there is no point checking the alerts.
 
 ```bash
 curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=anomaly_score{gpu="0"}' | jq .
@@ -709,7 +735,7 @@ curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=anomaly_score{gpu=
 
 ### 8.4 Step 3: generate a runbook with the LLM
 
-Generate a draft runbook from an incident. The output is a draft, not a published runbook.
+Picture an incident that has just ended with no runbook for its alert. Generate a draft runbook from that incident. The output is a draft, not a published runbook. Keep that distinction in mind, because the next step is the review that makes the draft safe to use.
 
 ```bash
 python code/part17/runbook_generation.py \
@@ -720,7 +746,7 @@ python code/part17/runbook_generation.py \
 
 ### 8.5 Step 4: review the runbook
 
-Read the draft, correct it, and publish only what you have checked.
+Picture the reviewer with the draft open in one window and the cluster in another. Read the draft, correct it, and publish only what you have checked. Read every command as if you were about to run it at night, because that is how the next on-call will read it.
 
 ```bash
 # Open the runbook draft
@@ -734,6 +760,8 @@ git commit -m "Add runbook for GPU memory pressure"
 
 ### 8.6 Step 5: run the AI-assisted root cause analysis
 
+Picture the same incident the next morning, when the team wants a second opinion. Run the analysis for the same incident, so the hypotheses can be compared with the runbook. The output should contain three candidates, each with its evidence and its mitigation. Check each candidate against the traces before you act on it.
+
 ```bash
 python code/part17/root_cause_analysis.py \
   --incident-id INC-2024-03-15-001 \
@@ -742,6 +770,8 @@ python code/part17/root_cause_analysis.py \
 ```
 
 ### 8.7 Step 6: run the capacity prediction
+
+Picture a planning meeting that asks how many GPUs the next quarter needs. Run the forecast for the production cluster. Read the output with its bounds, and plan against the upper one. A single forecast number with no range is a number you should not trust yet.
 
 ```bash
 python code/part17/snippets/capacity_prediction.py \
@@ -752,7 +782,7 @@ python code/part17/snippets/capacity_prediction.py \
 
 ### 8.8 What to record
 
-After the lab, answer five questions quickly. The five-second and 30-second figures here are examples. Choose limits that suit your own on-call process.
+After the lab, answer five questions quickly. Write the answers down, so the team can see them without rerunning the lab. The five-second and 30-second figures here are examples. Choose limits that suit your own on-call process.
 
 1. What is the current anomaly detection precision?
 2. What is the most recent LLM-generated runbook?
@@ -760,13 +790,13 @@ After the lab, answer five questions quickly. The five-second and 30-second figu
 4. What is the Q+1 GPU forecast per the capacity prediction?
 5. What is the current multi-cluster queue latency?
 
-If your team cannot answer these within the limit it chose, the stack is not ready to run as a production service. The lab was not run against a live GKE cluster, so treat its steps as a plan to verify.
+If your team cannot answer these within the limit it chose, the stack is not ready to run as a production service. A slow answer usually means a record is missing or a dashboard is hard to find, and both are fixable before the next incident.
 
 ---
 
 ## Exercises
 
-Each exercise builds on a section in this chapter, so check your work against that section.
+Picture a teammate who asks where to start. Each exercise builds on a section in this chapter, so check your work against that section. Work them in order, because later ones reuse the parts built by earlier ones.
 
 1. Add an anomaly detection model. Train a Prophet model on historical GPU metrics, then deploy it as a Kubernetes Deployment. *Solution sketch:* the Python script in Section 1.2, and the Kubernetes Deployment in Section 1.3. You are done when the alerts reach the on-call engineer and you can name each false positive.
 2. Add an LLM-based runbook generator. Build a script that takes an incident transcript and generates a runbook with the six sections. *Solution sketch:* the Python script in Section 2.1 and the validation in Section 2.2. You are done when a draft missing a section is rejected, not saved.
