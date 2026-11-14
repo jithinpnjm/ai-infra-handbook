@@ -75,9 +75,11 @@ const config = {
   favicon: 'img/favicon.ico',
   future: {v4: true},
 
-  // Private for now; set the real URL and baseUrl before any publication.
-  url: 'http://localhost',
-  baseUrl: '/',
+  url: 'https://jithinpnjm.github.io',
+  baseUrl: '/ai-infra-handbook/',
+  organizationName: 'jithinpnjm',
+  projectName: 'ai-infra-handbook',
+  trailingSlash: false,
   onBrokenLinks: 'throw',
   markdown: {
     mermaid: true,
