@@ -25,13 +25,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A user pastes a long contract into a chat window and presses Enter. Nothing visible happens for a second. Then words start to appear, one after another, at a steady pace. The user sees one smooth reply. The platform team sees a request that crossed a gateway, waited in a queue, was cut into tokens by a CPU, was pushed through the GPU in two very different phases, and was streamed back piece by piece.
+Picture a user who pastes a long contract into a chat window and presses Enter. For about a second, nothing seems to happen. Then words start to appear, one after another, at a steady pace. The user sees one smooth reply. The platform team sees something much more complicated. The request passed through a gateway, waited in a line, was cut into small pieces of text by a CPU, was pushed through the GPU in two very different phases, and was streamed back piece by piece.
 
-Most of the time the user waited was not spent in the part the team paid for. In the worked example later in this chapter, a single-threaded Python tokenizer takes 320 ms of a 412 ms response, while the expensive H100 sits idle. After the first token, a 70B model in 16-bit precision on one H100 can produce at most about 24 tokens per second, because every token must stream all 140 GB of weights out of memory. This chapter follows that one request, stage by stage, so you can tell which of those costs belongs to the network, the CPU, the compute units or the memory.
+It helps to know where the waiting went. Most of the time the user spent waiting was not spent in the part the team pays for. In the worked example later in this chapter, a single-threaded Python tokenizer takes 320 ms of a 412 ms response, while the expensive H100 sits idle. A tokenizer is the piece of software that splits text into tokens, which are the small chunks a model reads and writes. It works a bit like a translator who sits between human words and the numbers the model understands.
 
-Suppose an engineering team finishes training a seventy-billion-parameter language model across sixty-four H100 GPUs. During training, the cluster ran offline batch jobs with predictable tensor shapes, continuous Tensor Core saturation, and static memory allocations. When the team places that same trained model behind a live chat API, the infrastructure rules flip overnight.
+The GPU has its own limit. After the first token, a 70B model in 16-bit precision on one H100 can produce at most about 24 tokens per second. The reason is simple. For every new token, the GPU has to read the whole model out of memory, and the model's weights take up 140 GB. The memory on the card can only move so many gigabytes per second, so the speed limit holds no matter how fast the math units are. This chapter follows that one request, stage by stage. By the end of it, you can look at a slow response and sort its delay into the network, the CPU, the compute units or the memory.
 
-Live user traffic arrives in unpredictable bursts rather than steady batches. Prompt lengths swing wildly from a ten-token question to a large document paste. Users judge service quality in milliseconds as they wait for the first word and read the streaming reply. Meanwhile, GPU memory consumption grows dynamically with every active conversation and every generated token.
+Now imagine an engineering team that has just finished training a language model with seventy billion parameters across sixty-four H100 GPUs. During training, the cluster ran offline batch jobs. Each job used tensor shapes that never changed, so the GPUs stayed busy with the same kind of work. A tensor is a block of numbers, and its shape tells you how many rows, columns and layers the block has. Training kept the shapes fixed, and the memory was reserved up front.
+
+When the team puts that same trained model behind a live chat API, the infrastructure rules change almost overnight. Live user traffic does not arrive as neat, equal batches. It arrives in bursts. A crowd of people may all open the app at lunchtime, and then the traffic drops off. Prompt lengths swing widely too, from a ten-token question to a large document paste. Users judge the service in milliseconds, because they wait for the first word and then read the reply as it streams in. Meanwhile, GPU memory use grows with every active conversation and every token the model generates.
 
 ```text
 Production inference reality check:
@@ -45,27 +47,27 @@ Production inference reality check:
   Up to 60% of end-to-end latency occurs outside the GPU; a single-threaded Python tokenizer can consume 320 ms out of 412 ms (77.7%)
 ```
 
-In large-scale serving systems, even the fastest GPUs can be hindered by non-GPU bottlenecks and memory fragmentation. Treating an inference deployment like a stateless web server or an offline training forward pass causes three classic production failures.
-- **Blind latency monitoring:** Monitoring a single average request duration hides the split between prompt processing and token generation. A long-prompt outlier or a prefill stall can freeze active chat streams for four seconds while average metrics look healthy.
-- **Unbounded KV cache crashes:** Even when model weights fit comfortably inside GPU memory, concurrent long-context requests expand the Key-Value cache. Eventually the allocator runs out of High Bandwidth Memory. Once the first pod crashes with an out-of-memory error, redirected traffic triggers a cascading outage across every surviving replica.
-- **Non-GPU bottlenecks starving expensive silicon:** Adding more H100 GPUs will not raise throughput if a Python tokenizer thread pool is locked by the Global Interpreter Lock. Similarly, pageable host memory copies or reverse-proxy socket buffers can stall token delivery while the GPUs sit idle.
+The first line is a cost fact, and the rest are the numbers this chapter keeps coming back to. The traffic pattern is the reason a training playbook does not carry over. A training job can plan its memory once. A chat service cannot, because the memory it needs depends on how many people are talking to it right now and how long each conversation has run.
 
-The two phases of autoregressive inference, compute-bound prefill and memory-bandwidth-bound decode, run through this whole chapter. The split is a foundation for the rest of Part 15. **Before you tune a serving engine or buy more GPUs, trace the request across all nine host and device stages and separate compute-bound prefill from bandwidth-bound decode**.
+Serving systems can also be slowed down by parts that are not the GPU. Even very fast GPUs wait when memory gets crowded, when a tokenizer runs out of workers, or when a proxy holds bytes back. Treating an inference deployment like a stateless web server, or like the offline forward pass of a training run, leads to three familiar production failures.
+
+- Why can one average hide the problem? An average request duration mixes prompt processing with token generation. A long-prompt outlier or a prefill stall can freeze active chat streams for four seconds while the average still looks healthy.
+- What happens when memory runs out? Even when the weights fit comfortably on the card, long conversations keep growing the Key-Value cache, which is the memory that stores the past tokens for each user. Eventually the allocator runs out of High Bandwidth Memory, or HBM, the fast memory on the GPU. The first pod then crashes with an out-of-memory error, its traffic moves to the surviving replicas, and those replicas fall over one after another.
+- Why do expensive GPUs sit idle? Adding more H100 GPUs will not raise throughput if the Python tokenizer thread pool is locked by the Global Interpreter Lock, or GIL, which lets only one Python thread run Python code at a time. Pageable host memory copies or reverse-proxy socket buffers can also stall token delivery while the GPUs wait.
+
+Two phases run through this whole chapter. Autoregressive inference means the model writes one token at a time, and each new token depends on all the tokens before it. The first phase, prefill, reads the whole prompt in one go and is limited by compute. The second phase, decode, produces one token per step and is limited by memory bandwidth. The split is a foundation for the rest of Part 15. **Before you tune a serving engine or buy more GPUs, trace the request across all nine host and device stages and separate compute-bound prefill from bandwidth-bound decode**.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Transformer decoder layer fundamentals, self-attention projections, and numerical precision formats from Chapters 14.2 and 14.3.
-- GPU hardware hierarchy, High Bandwidth Memory, SRAM, PCIe Gen5, and NVLink interconnects from Part 3 and Part 12.
-- Basic familiarity with HTTP/2, gRPC, Server-Sent Events, and Linux process and socket metrics.
+- You should already know the transformer decoder layer, the self-attention projections and the numerical precision formats from Chapters 14.2 and 14.3.
+- You should be comfortable with GPU hardware basics, including High Bandwidth Memory, SRAM, PCIe Gen5 and NVLink, which Part 3 and Part 12 cover.
+- You should have seen HTTP/2, gRPC, Server-Sent Events and Linux process and socket metrics before, even briefly.
 
 ### Outcomes
-After completing this chapter, you will be able to achieve five core engineering goals.
-1. Contrast offline training infrastructure with online inference serving across arrival distributions, batch dynamics, memory footprints, hardware bottlenecks, and scaling vectors.
-2. Decompose an inference request into Time To First Token, Inter-Token Latency, Time Per Output Token, End-to-End latency, Throughput, and Goodput under strict Service Level Objectives.
-3. Trace a prompt through all nine stages of the end-to-end request path and eliminate non-GPU bottlenecks in CPU tokenization, pinned DMA transfers, and SSE proxy streaming.
-4. Calculate the Arithmetic Intensity of prefill matrix-matrix multiplications versus decode matrix-vector multiplications and locate both phases on the hardware Roofline model.
-5. Size per-token and multi-sequence KV cache footprints across Multi-Head and Grouped-Query Attention models and configure PagedAttention, Chunked Prefill, sampling pipelines, and stopping conditions.
+Picture an on-call engineer who gets paged because a chat product suddenly feels slow. The engineer has a dashboard, a few logs and a short window to decide whether the fix is a bigger GPU, a different setting or a change to the network path. This chapter gives that engineer a way to think it through.
+
+The chapter covers five areas, in order. It starts with how offline training differs from online serving. It then splits latency into named parts and follows one request through nine stages. After that it places prefill and decode on the hardware roofline, and it finishes by sizing the KV cache and the settings that control it. Each area builds on the one before, so read them in sequence the first time.
 
 ---
 
@@ -73,9 +75,9 @@ After completing this chapter, you will be able to achieve five core engineering
 
 ### 1.1 The Paradigm Shift from Offline Batch Learning to Online Interactive Serving
 
-Training a foundation model is an offline throughput problem. A scheduler allocates a fixed pool of GPUs, loads uniform micro-batches from disk, and runs forward and backward passes for days or weeks. Every rank executes the exact same sequence length and batch size on every step. If a node fails, the orchestrator restores the last sharded checkpoint and resumes the run without a customer ever noticing.
+Think about the last time a training run finished on a Friday evening. Nobody outside the team noticed. The job wrote a checkpoint, the scheduler freed the GPUs, and the next run started on Monday. Training a foundation model, which is a large model trained once on broad data and then reused for many tasks, is an offline throughput problem. A scheduler allocates a fixed pool of GPUs, loads uniform micro-batches from disk, and runs forward and backward passes for days or weeks. Every rank executes the same sequence length and batch size on every step. If a node fails, the orchestrator restores the last sharded checkpoint and resumes the run, and a customer never notices.
 
-Serving that trained model in production is a real-time systems problem. In this section, we compare the architectural demands of training and inference. Requests arrive over the public network following bursty Poisson arrival patterns. One user sends an eight-token greeting while the next uploads a thirty-two-thousand-token contract. Users watch tokens stream onto their screens in real time and abandon the application if the response stalls.
+Serving that trained model is a different kind of job. It is a real-time systems problem. Requests arrive over the public network following bursty Poisson arrival patterns, which is a model where requests land at random moments with an average rate. One user sends a short greeting while the next uploads a long contract. People watch tokens stream onto their screens, and they leave the application if the reply stalls. Nobody is waiting for the whole job to finish. Each user is waiting for their own next word.
 
 | Architectural Dimension | Training Infrastructure | Inference Infrastructure |
 |---|---|---|
@@ -88,16 +90,18 @@ Serving that trained model in production is a real-time systems problem. In this
 | Scaling Mechanism | Tightly coupled 3D/4D parallelism across a fixed gang-scheduled allocation | Horizontal autoscaling of independent model replicas driven by KV cache and queue depth |
 | Lifetime Cost Structure | Upfront CapEx / project compute burst | Continuous OpEx scaling with active users (up to 90% of lifetime AI compute spend) |
 
+Read the table row by row. The first row sets the goal. Training wants as much work done as possible for each dollar. Serving wants each user to get a fast first word, even when the total work is spread over many people. The rows that follow show the same pattern again and again. Training keeps everything fixed and predictable. Serving has to cope with whatever shows up, and it has to keep the cost of idle time under control while it does so.
+
 ### 1.2 Deconstructing the Latency Budget: TTFT, ITL, TPOT, and E2E
 
-If you monitor a standard web microservice, a single duration histogram such as http_request_duration_seconds tells you whether the service is fast or slow. If you monitor a Large Language Model with a single duration metric, your dashboards will mislead you. A response that generates five hundred tokens naturally takes much longer than a response that generates ten tokens, even when the GPU is running at peak speed.
+Imagine you are on call for a chat product. Your main dashboard has one panel, a histogram of request duration. The panel looks healthy, with most requests finishing in a reasonable time. Still, support tickets pile up that say the replies "freeze and then dump a paragraph." A single duration number cannot show that. If you monitor a standard web microservice, a single duration histogram such as http_request_duration_seconds tells you whether the service is fast or slow. If you monitor a Large Language Model with a single duration metric, your dashboards will mislead you. A response that generates five hundred tokens naturally takes much longer than a response that generates ten tokens, even when the GPU is running at peak speed.
 
-Autoregressive language models generate text in two distinct phases. First, the engine ingests the entire user prompt in parallel and emits the first output token. Second, the engine loops one token at a time until the answer finishes. Because these two phases stress different hardware resources and feel different to the human reader, we decompose request latency into four Service Level Indicators:
+Autoregressive language models generate text in two distinct phases. First, the engine ingests the entire user prompt in parallel and emits the first output token. Second, the engine loops one token at a time until the answer finishes. These two phases stress different hardware resources, and they feel different to the person reading the screen. So we split request latency into four service level indicators, which are measurements of how the service behaves for a user:
 
-1. **Time To First Token — TTFT:** The elapsed time from when the request arrives at the gateway until the first generated token is emitted to the client. TTFT measures perceived responsiveness. It combines network ingress, admission queueing, CPU tokenization, host-to-device transfer, and the GPU prefill pass.
-2. **Inter-Token Latency — ITL:** The elapsed time between generating consecutive output tokens during the decode loop. ITL governs streaming smoothness. When ITL spikes, the text stream visibly stutters and pauses on the user's screen.
-3. **Time Per Output Token — TPOT:** The average time required to generate each output token after the first token has been emitted. Across a completed response of N_out tokens, TPOT equals the mean of all N_out - 1 inter-token intervals.
-4. **End-to-End Request Latency — E2E:** The total wall-clock duration from request receipt to the final End-of-Sequence token flush.
+1. Time To First Token, or TTFT, is the time from when the request reaches the gateway until the first generated token is sent to the client. It measures how responsive the service feels. It adds up network ingress, the wait in the admission queue, CPU tokenization, the copy from host to device, and the GPU prefill pass.
+2. Inter-Token Latency, or ITL, is the time between two consecutive output tokens during the decode loop. It governs how smooth the stream looks. When ITL spikes, the text visibly stutters and pauses on the user's screen.
+3. Time Per Output Token, or TPOT, is the average time needed to generate each output token after the first one has been sent. For a finished response of N_out tokens, TPOT is the mean of all N_out - 1 gaps between tokens.
+4. End-to-End Request Latency, or E2E, is the total wall-clock time from the moment the request arrives to the final End-of-Sequence token flush. End-of-Sequence is the special token the model emits when it is done.
 
 ```text
 End-to-End Inference Latency Equations (Volume 12 Chapter 1, AI Engineering Chapter 9):
@@ -116,7 +120,9 @@ Worked Baseline Example (50 output tokens, code/part15/inference_request_anatomy
   -> Total E2E Latency = 200.9 ms + 1,176.0 ms = 1,376.9 ms (~1.38 seconds)
 ```
 
-Never evaluate TTFT or ITL using simple arithmetic averages. Because prompt lengths and queueing delays follow heavy-tailed distributions, a single outlier skews the mean while hiding the typical user experience. Always track the median p50 alongside the tail percentiles p90, p95, and p99.
+Walk through the baseline example slowly, because every line tells part of one story. The first token has to wait for the gateway, the queue, the tokenizer, the copy to the GPU and the prefill pass. Those waits add up to the TTFT of 200.9 ms. After that, each later token costs one decode step plus the sampler, the copy back to the host and the stream flush. Together those give the per-step TPOT of 24.0 ms. Multiply that step across the remaining tokens, add the TTFT, and you have the total time for the response. Notice that the GPU decode step is most of each step's time, and the bookkeeping is a small remainder that a single average would hide.
+
+Averages can also mislead you about the typical user. Prompt lengths and queueing delays do not follow a neat bell curve. They follow heavy-tailed distributions, where a few very large values pull the mean far away from what most people see. One slow request can drag the average up while the typical user has a perfectly good experience. That is why the median, which is the p50, should sit next to the tail percentiles p90, p95 and p99. The tail percentiles show the bad experiences that the median hides.
 
 ```text
 Why Average Latency Misleads (AI Engineering Chapter 9 Outlier Example):
@@ -126,13 +132,16 @@ Why Average Latency Misleads (AI Engineering Chapter 9 Outlier Example):
   - P90 / P99:   Captures the 3,000 ms long-prompt or network retransmission outlier for targeted triage
 ```
 
+Look at that list of ten requests. Nine of them finish near 100 ms, and one finishes at 3,000 ms. The mean is pulled up to 390.0 ms, which makes a healthy 100 ms service look nearly 4x slower. The median stays at 100.0 ms, which matches what most users felt. The high percentiles are where the single slow request shows up, so you can pick it out and investigate it. In practice, you want all three views at once: the median for the typical experience and the tail for the bad ones.
+
 ### 1.3 Throughput (RPS and TPS), Goodput, and Request Cost Economics
 
-While users care about low latency, platform owners must maximize hardware efficiency to keep serving costs sustainable. We track throughput at two levels:
-- **Request throughput:** Completed Requests Per Second, or RPS, and Requests Per Minute, or RPM.
-- **Token throughput:** Generated output Tokens Per Second, or TPS, across the server, alongside per-stream `tokens/s/user`. Because prefill and decode have different hardware bottlenecks, always report input token throughput and output token throughput separately.
+Your finance lead asks why the GPU bill rose sharply even though traffic only grew a little. Both questions are fair, and the answer depends on how you count work. Users care about low latency, but the platform owners have to keep the hardware busy enough that the serving cost stays sustainable. So the team tracks throughput at two levels.
 
-Pushing batch sizes higher increases total TPS and lowers cost per token, but it also slows down per-user TTFT and TPOT. If you double TPS by letting queue wait times climb to five seconds, users leave. To capture usable capacity, we measure **Goodput**—the number of completed requests per second or per minute that simultaneously satisfy both the TTFT and TPOT Service Level Objectives.
+- How many requests finish? Request throughput counts completed requests per second, which is RPS, and completed requests per minute, which is RPM.
+- How many tokens come out? Token throughput counts generated output tokens per second, which is TPS, across the whole server. Each stream also has its own rate, written as `tokens/s/user`. Prefill and decode have different hardware limits, so you should always report input token throughput and output token throughput separately.
+
+Pushing the batch size higher raises total TPS and lowers the cost per token. The catch is that it also slows each user's TTFT and TPOT. If you double the TPS by letting the queue wait climb to five seconds, users will leave, and the extra tokens will not help you. A serving fleet that looks busy can still be losing money. To measure the capacity that users actually receive, the team uses Goodput, which is the number of completed requests per second or per minute that meet both the TTFT and the TPOT service level objectives, or SLOs. An SLO is the target a team sets for a metric, such as "TTFT under 200 ms for most users."
 
 ```text
 Throughput vs. Goodput and Cost-per-Request Math (AI Engineering Chapter 9):
@@ -151,6 +160,8 @@ Throughput vs. Goodput and Cost-per-Request Math (AI Engineering Chapter 9):
    - Total serving cost per 1,000 requests = $1.11 (decode) + $0.33 (prefill) = $1.44
 ```
 
+The Goodput example shows why raw numbers can lie. The server completes 100 requests per minute, but only 30 of them meet both targets. The other 70 percent break either the TTFT target or the TPOT target. So the useful capacity is 30 RPM, and that is the attainment rate the team should watch. The cost example works the same way. Decoding is the larger share of the bill, and prefill adds a smaller amount on top. Together they bring the cost of 1,000 requests to $1.44. When you plan capacity, you pay for the requests that users accept, not the ones that merely finish.
+
 **Size and autoscale every inference fleet on Goodput at P99 TTFT and TPOT rather than raw token throughput.**
 
 ---
@@ -159,7 +170,7 @@ Throughput vs. Goodput and Cost-per-Request Math (AI Engineering Chapter 9):
 
 ### 2.1 Latency Beyond the GPU: Tracing the Data and Control Planes
 
-When an inference API misses its latency targets, teams instinctively blame the GPU kernels. In production clusters, **up to 60 percent of total end-to-end request latency occurs outside the GPU**. In this section, we trace how a request travels across host and device boundaries. Before a single Tensor Core instruction executes, a request crosses TLS termination proxies, rate limiters, admission queues, CPU tokenizer thread pools, memory allocators, and PCIe DMA engines. On the return path, every generated token crosses PCIe back to host RAM, runs through detokenization, and flushes through HTTP chunked socket buffers.
+When an inference API misses its latency target, the first instinct is to blame the GPU kernels. The kernels are the programs that run on the GPU, and they are easy to point at because they are the expensive part. In production clusters, **up to 60 percent of total end-to-end request latency occurs outside the GPU**. This section traces how a request moves across the boundary between the host, which is the CPU and its RAM, and the device, which is the GPU. Before a single Tensor Core instruction runs, the request crosses TLS termination proxies, rate limiters, admission queues, CPU tokenizer thread pools, memory allocators and PCIe DMA engines. TLS is the encryption layer that protects HTTPS traffic. DMA is direct memory access, a way for hardware to copy data without the CPU doing each byte. On the way back, every generated token crosses PCIe to host RAM, runs through detokenization, and flushes out through HTTP chunked socket buffers.
 
 ```mermaid
 sequenceDiagram
@@ -187,13 +198,16 @@ sequenceDiagram
     Stream-->>Client: 12. Immediate Socket Flush (TCP_NODELAY)
 ```
 
-High-throughput serving architectures enforce a strict separation between the **Control Plane** and the **Data Plane**:
-- **The Control Plane** runs asynchronously out of band. It handles model repository discovery, `/v2/health/ready` readiness probes, `/metrics` Prometheus scraping, LoRA adapter registration, and Kubernetes autoscaling signals. A slow metric scrape must never block an active token generation loop.
-- **The Data Plane** is lock-free and zero-allocation during steady-state execution. It pre-allocates pinned host memory buffers and CUDA streams at server startup so request handling never stalls on operating system malloc or free locks.
+Read the diagram as a single trip made of numbered steps. Steps 1 through 6 carry the prompt down to the GPU. Steps 7 and 8 are the GPU work, the prefill and decode loop plus sampling. Steps 9 through 12 carry the answer back up, one token at a time. The numbers on the arrows mark the order, so you can point at a step in a trace and say which part of the trip it belongs to.
+
+High-throughput serving systems split their work into separate planes. A plane is a separate lane of work with its own rules. The control plane and the data plane must stay apart, or one can slow down the other.
+
+- What belongs to the control plane? It runs out of band, which means it does not sit on the path of each token. It handles model repository discovery, `/v2/health/ready` readiness probes, `/metrics` Prometheus scraping, LoRA adapter registration and Kubernetes autoscaling signals. A slow metric scrape must never block an active token generation loop.
+- What belongs to the data plane? It has to stay lock-free and avoid allocating memory while requests are running. It allocates pinned host memory buffers and CUDA streams at server startup. A CUDA stream is an ordered queue of GPU work. Doing these allocations early means request handling never waits on the operating system's malloc or free calls.
 
 ### 2.2 Stage-by-Stage Mechanics, Protocols, and Latency Budgets
 
-Every stage along the nine-stage request path has a specific wire protocol, component owner, failure mode, and latency budget.
+Suppose a page arrives in the middle of the night saying that p99 latency tripled on one cluster. To find the culprit, you need to know, for each stage, which protocol it uses, which component owns it, what it is supposed to cost, and what usually breaks. The table below is that map.
 
 | Stage | Protocol / Interface | Payload Transformation | Latency Budget | Primary Bottleneck & Failure Mode | Target Metric Threshold |
 |---|---|---|---|---|---|
@@ -207,18 +221,20 @@ Every stage along the nine-stage request path has a specific wire protocol, comp
 | 8. Device-to-Host (D2H) | `cudaMemcpyAsync` + Detokenizer | `4-byte` `int32` ID to UTF-8 string | `< 1 ms` | Blocking `cudaStreamSynchronize` on host thread | `< 1 ms` per token |
 | 9. Egress SSE Flush | HTTP/1.1 Chunked SSE (`TCP_NODELAY`) | `data: {"delta": ...}\n\n` frame | `1 - 3 ms` | Nginx `4 KB` proxy buffering or slow client window | `stream_flush < 2 ms` |
 
+Each row tells you which stage to suspect first. The budget column is the normal range, and the threshold column is the number that should trigger an alert. When a stage runs far over its budget, the failure mode column lists the most likely cause.
+
 ### 2.3 Non-GPU Bottlenecks: Tokenizer Placement, Pinned Memory, and Backpressure
 
-Three architectural choices outside the GPU determine whether your H100s run at full capacity or sit starved of work:
+Three design choices outside the GPU decide whether your H100s run at full capacity or sit starved for work. Each one looks small on a diagram, and each one can cost you a large part of the cluster if you get it wrong.
 
-1. **Tokenizer placement — Gateway microservice vs. Engine-integrated C++:** You can tokenize either in an external CPU microservice tier or inside the GPU serving engine. Tokenizing in an external Rust/C++ microservice keeps GPU host CPUs completely free for kernel scheduling and allows independent CPU horizontal scaling, at the cost of sending 8x-wider int64 arrays over the internal network. Tokenizing inside the serving engine sends compact UTF-8 strings over the network with zero extra hop. However, it requires dedicating multi-core Rust/C++ worker threads on the GPU node and avoiding single-threaded Python AutoTokenizer calls in the request loop.
-2. **Pageable host memory (`malloc`) vs. Pinned page-locked memory (`cudaHostAlloc`):** Standard operating system memory is pageable. The GPU DMA engine cannot read pageable RAM directly because the OS might swap the page out mid-transfer. Calling cudaMemcpy on pageable RAM forces the CUDA driver to allocate a temporary page-locked staging buffer and copy the tensor on the CPU first, throttling PCIe Gen5 transfers to `10–14 GB/s`. Allocating input and output staging buffers in pinned memory via cudaHostAlloc or cudaHostRegister lets the PCIe DMA engine read directly from host RAM at `55–62 GB/s` out of the `64 GB/s` unidirectional PCIe Gen5 x16 peak.
-3. **Slow-client TCP backpressure propagation:** When a mobile client on a lossy cellular link stops reading its SSE stream, backpressure travels upstream across five layers.
-   - **Layer 1 — Client TCP Receive Window:** The client's local OS receive buffer fills and advertises a `TCP Receive Window = 0`.
-   - **Layer 2 — Gateway Socket Buffer:** The reverse proxy, such as Nginx or Envoy, blocks on socket writes to that client connection.
-   - **Layer 3 — API Server Outbound Queue:** The endpoint handler's per-request asyncio.Queue or Go channel hits its high-water mark.
-   - **Layer 4 — Scheduler Emission Halt:** The continuous batch scheduler cannot push newly generated tokens for that sequence group and pauses its decode slot.
-   - **Layer 5 — GPU KV Cache Eviction:** If the client remains stalled while new requests arrive, the block manager preempts or aborts the stalled sequence via `engine.abort(request_id)`. That way, a dead TCP socket cannot pin gigabytes of GPU HBM.
+1. Where should tokenization run? You can tokenize either in an external CPU microservice tier or inside the GPU serving engine. Tokenizing in an external Rust or C++ microservice keeps the GPU host CPUs free for kernel scheduling, and it lets the CPU tier scale on its own. The cost is that the token IDs travel over the internal network as 8x-wider int64 arrays. Tokenizing inside the serving engine sends compact UTF-8 strings over the network with no extra hop. However, the engine then needs multi-core Rust or C++ worker threads on the GPU node, and it must avoid calling a single-threaded Python AutoTokenizer inside the request loop.
+2. Should host buffers be pageable or pinned? Ordinary memory from the operating system, which is what `malloc` hands out, is pageable, which means the OS can move or swap it at any time. The GPU DMA engine cannot read pageable memory directly, because the page might move in the middle of a transfer. So a plain cudaMemcpy from pageable RAM first makes the CUDA driver allocate a temporary page-locked staging buffer and copy the tensor on the CPU. That path throttles PCIe Gen5 transfers to `10–14 GB/s`. Pinned page-locked memory, allocated with `cudaHostAlloc` or cudaHostRegister, lets the DMA engine read directly from host RAM at `55–62 GB/s`, out of the `64 GB/s` unidirectional PCIe Gen5 x16 peak.
+3. What happens when a client stops reading? Imagine a mobile client on a lossy cellular link that stops reading its SSE stream. Backpressure is the signal that flows back upstream when a receiver cannot keep up, and it travels across five layers.
+   - Which layer notices first? The client's local OS receive buffer fills and advertises a `TCP Receive Window = 0`, which tells the sender to stop.
+   - What does the proxy do next? The reverse proxy, such as Nginx or Envoy, blocks on socket writes to that client connection.
+   - What does the API server do? The endpoint handler's per-request asyncio.Queue or Go channel hits its high-water mark, the limit at which it stops accepting more.
+   - How does the scheduler react? The continuous batch scheduler cannot push newly generated tokens for that sequence group, so it pauses that decode slot.
+   - Where does the GPU memory go? If the client stays stalled while new requests arrive, the block manager preempts or aborts the stalled sequence via `engine.abort(request_id)`. That way a dead TCP socket cannot hold gigabytes of GPU HBM.
 
 ```text
 Non-GPU Latency & Bandwidth Reference Numbers (Volume 12 Chapter 2):
@@ -232,15 +248,21 @@ Non-GPU Latency & Bandwidth Reference Numbers (Volume 12 Chapter 2):
   Tokenization drops from 320.0 ms -> 1.4 ms (228.6x faster); GPU util rises 22% -> 88%; throughput jumps 120 RPS -> 780 RPS (6.5x)
 ```
 
+The reference block above is the case study that ties these three choices together. The GIL-bound tokenizer spent 320.0 ms on CPU work and only 88.0 ms on the GPU. The cluster sat at 22% GPU utilization and could not get past 120 requests per second. Moving to a 16-thread Rust tokenizer cut the tokenize step to 1.4 ms, lifted GPU utilization to 88 percent and raised throughput to 780 RPS. The fix did not touch the model at all. It only changed where the work ran and how many workers did it.
+
 **Always use multi-threaded Rust or C++ tokenizers, stage tensors in pinned host memory, and disable reverse-proxy response buffering on streaming endpoints**.
 
 ---
 
 ## 3. Prefill vs. Decode Mechanics, Arithmetic Intensity, and the Roofline Model
 
+Your team notices something odd on a monitoring screen. The same GPU looks very busy while it writes a long summary, and it looks almost idle during some short answers. Both observations come from the same model, so the difference has to be in the work itself. The two phases of generation run different math, and that math decides what the hardware is waiting for.
+
 ### 3.1 Inside a Decoder-Only Forward Pass: Why Prefill Is GEMM and Decode Is GEMV
 
-A decoder-only Transformer model consists of three structural stages: an input embedding table, a stack of L identical decoder layers, and an output Language Modeling head. Each decoder layer contains a pre-attention RMSNorm, a Multi-Head or Grouped-Query Self-Attention block with q_proj, k_proj, v_proj, and o_proj, a post-attention RMSNorm, and a SwiGLU Feed-Forward Network with gate_proj, up_proj, and down_proj.
+Suppose you open a profiler while one chat request runs. The first burst of work looks dense and steady, with the compute units fully loaded. The bursts after that look thin and repeated, with the same weights read again and again. Why would one request look like two different programs? To answer that, we need to look at what a decoder-only model does with each token.
+
+A decoder-only Transformer model has three structural parts. It has an input embedding table, which turns token IDs into vectors. It has a stack of L identical decoder layers, where L is the number of layers. It also has an output Language Modeling head, which turns the final vector into scores for every word in the vocabulary. Each decoder layer contains a pre-attention RMSNorm, which is a normalization step that keeps the numbers in a sensible range. Next comes a Multi-Head or Grouped-Query Self-Attention block, which uses the q_proj, k_proj, v_proj and o_proj projections. A projection here is a weight matrix that maps each token's vector into queries, keys or values. After attention comes a second RMSNorm and a SwiGLU Feed-Forward Network, which uses the gate_proj, up_proj and down_proj matrices.
 
 ```text
 Concrete Decoder Architecture Reference: Qwen/Qwen2.5-0.5B (Hands-On LLM Serving Chapter 2):
@@ -249,9 +271,14 @@ Concrete Decoder Architecture Reference: Qwen/Qwen2.5-0.5B (Hands-On LLM Serving
 - Decoder layer modules: self_attn (q_proj, k_proj, v_proj, o_proj) + mlp (gate_proj, up_proj, down_proj, SiLU) + Qwen2RMSNorm
 ```
 
-Although both phases run the exact same model weights through the exact same layers, **Prefill** and **Decode** execute fundamentally different linear algebra operations.
-1. **The Prefill Phase — Prompt Ingestion at Iteration 0:** When a user submits a prompt of s tokens—for example, `s = 2,048` tokens—all s tokens are already known. For a single request with `B = 1`, the input activation tensor to every linear projection has shape [s, h], where h is the hidden dimension. Multiplying an [s, h] activation matrix by an [h, h] weight matrix is a dense **General Matrix-Matrix Multiplication, or GEMM**. The GPU loads each weight matrix from off-chip HBM into fast on-chip SRAM once and reuses those weights across all s prompt tokens in parallel, saturating the Tensor Cores.
-2. **The Decode Phase — Autoregressive Generation across Iterations 1 .. N:** Because generation is autoregressive, token i + 1 depends on token i. During each decode step of a single request with `B = 1`, only **one new token** (`s_decode = 1`) enters the model. The activation tensor shrinks to a single row vector of shape [1, h]. Multiplying a [1, h] vector by an [h, h] weight matrix is a **General Matrix-Vector Multiplication, or GEMV**. To compute just one token, the GPU must stream 100 percent of the model weights from HBM into SRAM, perform a tiny vector dot product, and discard the weights before the next layer.
+The reference block above gives real numbers for one small model. Look at hidden_size and num_hidden_layers first, because those two tell you how wide each layer is and how many layers the token passes through. The vocabulary size matters later, when the model picks the next word. Notice that the total parameter count is written out in full. That is the number of weights the GPU has to hold, and it is the reason the memory math in later sections matters.
+
+Both phases use the exact same weights and the exact same layers. The difference is how many tokens are in the input at once. **Prefill and decode execute fundamentally different linear algebra operations**, and that difference decides which hardware limit each phase hits.
+
+1. Prefill is prompt ingestion. It happens at iteration 0. When a user submits a prompt of s tokens, all s tokens are already known. Take `s = 2,048` as an example. For a single request with `B = 1`, the input activation tensor for each linear projection has the shape [s, h], where h is the hidden dimension. Multiplying an [s, h] matrix by an [h, h] weight matrix is a dense General Matrix-Matrix Multiplication, or GEMM. The GPU loads each weight matrix from off-chip HBM into fast on-chip SRAM once, then reuses it across all s prompt tokens in parallel. That reuse keeps the Tensor Cores busy.
+2. Decode is autoregressive generation. It runs across iterations 1 through N. Each new token depends on the token before it, so the model cannot process the answer in one go. During each decode step of a single request with `B = 1`, only one new token (`s_decode = 1`) enters the model. The activation shrinks to a single row vector of shape [1, h]. Multiplying a [1, h] vector by an [h, h] weight matrix is a General Matrix-Vector Multiplication, or GEMV. To produce just one token, the GPU has to stream the full set of model weights from HBM into SRAM, do a small vector dot product, and then move on. The weights are then discarded before the next layer.
+
+Picture a checkout line. Prefill is like a cashier who scans a whole cart at once and reuses the same register for every item. Decode is like a cashier who walks to the back room for every single item and walks back again. The cashier is equally capable in both cases. The walking is what slows the second line down, and in this analogy the walking stands for reading weights from memory.
 
 ```mermaid
 flowchart LR
@@ -273,13 +300,16 @@ flowchart LR
     Prefill ==>|"Transitions after Token 1"| Decode
 ```
 
+Follow the diagram from top to bottom. The prefill phase takes the whole prompt, multiplies it through the weights once, and leaves behind the prompt's KV cache plus the first token. After that the flow switches to decode. Each pass feeds in a single token vector, reloads the weights, reads the cache, appends the new keys and values, and outputs one next token ID. The arrow labeled as the transition marks the moment the engine stops reading the prompt and starts writing the answer.
+
 ### 3.2 Deriving Arithmetic Intensity and the Hardware Roofline Ridge Point
 
-To determine mathematically whether a phase is bottlenecked by compute FLOPS or memory bandwidth, we compute two ratios.
-- **Hardware Ridge Point (`I_ridge`):** The ratio of a GPU's peak Tensor Core throughput in FLOPs/second to its peak HBM bandwidth in Bytes/second. A workload must perform at least I_ridge floating-point operations for every byte moved from HBM to reach peak compute throughput.
-- **Algorithmic Arithmetic Intensity (`I`):** The ratio of floating-point operations executed by a kernel to the total bytes read from and written to HBM, where `I = FLOPs / Bytes`.
+Your capacity sheet says a GPU can do 989 TFLOPS, yet your model runs far below that number. Before you can explain the gap, you need a way to ask one question. For each byte the kernel reads from memory, how many math operations does it perform? That question decides whether the GPU is limited by its math units or by its memory. Two ratios answer it.
 
-Consider multiplying an FP16 input matrix [M, K] by an FP16 weight matrix [K, N] to produce an FP16 output matrix [M, N]. Each of the M * N output elements computes a dot product of length K, requiring K multiplications and K additions for 2 * K FLOPs total. Each FP16 element occupies 2 bytes.
+- What is the hardware ridge point, written `I_ridge`? It is the ratio of a GPU's peak Tensor Core throughput, in FLOPs per second, to its peak HBM bandwidth, in bytes per second. A workload must perform at least I_ridge floating-point operations for every byte moved from HBM to reach peak compute throughput. Here FLOP means one floating-point operation, which is one multiply or one add on a decimal number.
+- What is the arithmetic intensity of a kernel, written `I`? It is the ratio of floating-point operations executed by the kernel to the total bytes read from and written to HBM, where `I = FLOPs / Bytes`. A high value means the kernel does a lot of math per byte, so memory is not the bottleneck.
+
+Consider multiplying an FP16 input matrix [M, K] by an FP16 weight matrix [K, N] to produce an FP16 output matrix [M, N]. FP16 is a 16-bit floating-point format, and each element takes 2 bytes. Each of the M * N output elements is a dot product of length K. A dot product of length K needs K multiplications and K additions, which is 2 * K FLOPs in total. Count the bytes the same way. The kernel reads the input and the weights and writes the output, so the total traffic is the sum of those three matrices, each multiplied by 2 bytes.
 
 ```text
 GEMM Arithmetic Intensity & Roofline Equations (Hands-On LLM Serving Chapter 5, Volume 12 Chapter 1):
@@ -299,7 +329,9 @@ Hardware Ridge Point Examples:
   - NVIDIA B200 Dense:      2250.0 TFLOPS / 8,000 GB/s = 281.25 FLOPs/Byte
 ```
 
-Plugging concrete matrix sizes into this formula reveals why Prefill crosses into the compute-bound regime while single-request Decode is trapped at `1.0 FLOP/Byte`.
+Read the equations as a recipe. The first line counts the math, and the second line counts the bytes. Divide one by the other and the result is the intensity. The trick for LLMs is that a linear layer usually has the same width for its inputs and outputs, so K and N both equal the hidden size h. When you substitute that, the intensity simplifies to (s * h) / (2 * s + h). Look at what happens as s grows. The numerator grows with the prompt, while the denominator grows much more slowly, so long prompts push the intensity up.
+
+Plugging concrete matrix sizes into this formula shows why prefill can become compute-bound while single-request decode stays stuck near `1.0 FLOP/Byte`. The table below runs the same formula for several sizes. Read the last column against the ridge points listed above it.
 
 | Workload Case (`FP16`, `2 bytes/elem`) | `M` (Tokens) | `K` (`d_in`) | `N` (`d_out`) | Arithmetic Intensity (`FLOPs/Byte`) | Regime on L40S (`419` Ridge) & H100 (`295` Dense Ridge) |
 |---|---|---|---|---|---|
@@ -312,11 +344,15 @@ Plugging concrete matrix sizes into this formula reveals why Prefill crosses int
 | LLM Decode Single Stream (`h = 4096`, `B = 1`) | `1` | `4096` | `4096` | `1.00` (`4096 / 4098 = 0.9995`) | Severely memory-bandwidth bound (`~300x-400x` below ridge point) |
 | LLM Decode Batched (`h = 4096`, `B = 64`) | `64` | `4096` | `4096` | `62.06` | Arithmetic intensity rises `~62x` by sharing weight loads across `64` requests |
 
+The table tells a clear story. Small square multiplications are starved for math, so they sit on the memory side of the ridge. As the prompt grows from 64 tokens to 4096 tokens, the same weights get reused across more rows, and the prefill case climbs past the ridge point. Single-stream decode is the outlier at about 1.00 FLOP per byte. Look at the last row, too. Batching 64 requests shares one weight read across all of them, which lifts the decode intensity to the same 62.06 that a short prefill reached. That is the main reason batching matters so much for decode.
+
 ### 3.3 The Memory-Bandwidth Wall, MFU vs. MBU, and Accelerator Selection
 
-Because single-stream decode has an arithmetic intensity of roughly `1.0 FLOP/Byte`, the GPU's Tensor Cores sit idle more than 95 percent of the time waiting for weights to arrive from HBM. Yet nvidia-smi still reports 100% GPU utilization because at least one CUDA kernel is active on the Streaming Multiprocessors while stalled on memory loads.
+A product manager asks whether buying the newest GPU will make chat feel faster. The honest answer depends on the phase. If your slow part is prefill, you need more math. If your slow part is decode, you need more memory bandwidth or fewer bytes per token. Measuring the right thing is how you find out which one you have.
 
-To measure true hardware efficiency during inference, we track **Model FLOP/s Utilization, or MFU,** during compute-bound prefill and **Model Bandwidth Utilization, or MBU,** during bandwidth-bound decode.
+Because single-stream decode has an arithmetic intensity of roughly `1.0 FLOP/Byte`, the GPU's Tensor Cores sit idle for most of the time. They wait for weights to arrive from HBM. In fact, the Tensor Cores can sit idle more than 95 percent of the time. Yet nvidia-smi still reports 100% GPU utilization, because at least one CUDA kernel is active on the Streaming Multiprocessors while that kernel waits on memory loads. A kernel that is busy waiting still counts as busy in that tool.
+
+That is why the team measures efficiency in two different ways. For compute-bound prefill, they track Model FLOP/s Utilization, or MFU, which compares the math the model achieves with the peak math the hardware offers. For bandwidth-bound decode, they track Model Bandwidth Utilization, or MBU, which compares the memory traffic the model achieves with the peak bandwidth the hardware offers.
 
 ```text
 Decode Memory-Bandwidth Wall & MBU Equations (Volume 12 Chapter 1, AI Engineering Chapter 9, Hands-On LLM Serving Chapter 5):
@@ -339,6 +375,8 @@ Decode Memory-Bandwidth Wall & MBU Equations (Volume 12 Chapter 1, AI Engineerin
      Bandwidth_Used = 700 GB/s -> MBU = 700 GB/s / 2,000 GB/s = 35.0% (or 70.0% at 1,400 GB/s)
 ```
 
+The block above is the arithmetic behind the speed limit. Start with the first section, which lists how far each kind of memory can move bytes per second. Then take the 140 GB of weights for a 70B model and divide by the peak bandwidth of the card. That division gives the minimum time to read the weights once per token. Turn that time into tokens per second and you get the ceiling. A faster card raises the ceiling, but only in proportion to its bandwidth. The MBU formula works backwards from what you measure. You multiply the parameters, the bytes per parameter and the tokens per second, then divide by the peak. If the result is far below the peak, the engine is not moving the bytes it could be moving.
+
 | GPU Accelerator | Memory Capacity & Type | Memory Bandwidth | FP16 / BF16 Tensor Core TFLOPS (Dense / Sparse) | FP8 Support | Intra-Node Interconnect | Primary Inference Sweet Spot |
 |---|---|---|---|---|---|---|
 | NVIDIA A10 | `24 GB` GDDR6 | `0.60 TB/s` (`600 GB/s`) | `125 TFLOPS` | No | PCIe Gen4 (`64 GB/s`) | Small `7B-8B` models at low concurrency (`max batch ~ 4` at `4K` seq) |
@@ -350,15 +388,21 @@ Decode Memory-Bandwidth Wall & MBU Equations (Volume 12 Chapter 1, AI Engineerin
 | NVIDIA H200 SXM | `141 GB` HBM3e | `4.8 TB/s` | `989 / 1,979 TFLOPS` | Yes (`3,958 TFLOPS`) | NVLink 4 (`900 GB/s` across `8` GPUs) | Long-context & high-batch decode (`1.76x` HBM capacity, `1.43x` bandwidth vs H100) |
 | NVIDIA B200 / GB200 NVL72 | `192 GB` HBM3e | `8.0 TB/s` | `2,250 / 4,500 TFLOPS` | Yes + FP4 | NVLink 5 (`1.8 TB/s`/GPU; `130 TB/s` across `72` GPUs) | Frontier MoE (`671B` DeepSeek-R1) and disaggregated rack-scale decode |
 
+Use the table to match a card to a job, not to pick the biggest number. The memory bandwidth column sets the decode ceiling. The memory capacity column decides how many KV cache blocks fit beside the weights. The interconnect column matters once one model is split across several GPUs, because every layer then has to pass results to its neighbors. Each row ends with the kind of serving it suits best, which is the quickest way to narrow a shortlist.
+
 **Match your hardware and optimization strategy to the active phase: reduce FLOPs or disaggregate prefill when TTFT is compute-bound, and quantize weights or batch requests when TPOT is memory-bandwidth-bound**.
 
 ---
 
 ## 4. KV Cache Memory Anatomy, Continuous Batching, and Chunked Prefill
 
+Picture a model server that starts cleanly on Monday. By Thursday it crashes with an out-of-memory error during the busiest hour of the day. Nobody changed the model. What changed was the number of conversations held in memory at the same time, and the KV cache is the part of memory that grows with each of them.
+
 ### 4.1 Why the KV Cache Exists and How It Grows Linearly with Context and Concurrency
 
-In self-attention, every new token queries the Key and Value projections of all preceding tokens in the sequence. If the engine recomputed the Key and Value tensors for the entire history at every decode step, generating N tokens would require `O(N^2)` redundant matrix multiplications per token. Instead, serving engines store the Key and Value vectors computed during prefill and append one new Key-Value pair per layer at each decode step via `use_cache=True` and past_key_values.
+Imagine a user who asks the bot to summarize a long report. The first words come out quickly. If the engine had to rebuild everything from scratch for each new word, every word would take longer than the one before, and the reply would crawl. Engines avoid that by remembering their earlier work. The memory that holds this remembered work is the KV cache.
+
+In self-attention, every new token looks back at the Key and Value projections of all the tokens before it. A key is a vector that describes what a token offers, and a value is the content that gets mixed in when that token is attended to. If the engine recomputed the Key and Value tensors for the entire history at every decode step, generating N tokens would require `O(N^2)` redundant matrix multiplications per token. Instead, serving engines store the Key and Value vectors computed during prefill. Then they append one new Key-Value pair per layer at each decode step via `use_cache=True` and past_key_values. Storing is cheaper than recomputing, but storage has a price, and that price is memory.
 
 ```text
 Empirical Impact of KV Caching and vLLM Batching (Hands-On LLM Serving Chapter 2, Qwen/Qwen2.5-0.5B):
@@ -368,7 +412,9 @@ Empirical Impact of KV Caching and vLLM Batching (Hands-On LLM Serving Chapter 2
 - vLLM processing 4 prompts sequentially vs batched together:                  2.3865 seconds vs 1.0626 seconds (2.2x throughput gain; up to 23x with continuous batching)
 ```
 
-While the KV cache rescues decode compute, it turns GPU memory into an elastic bottleneck. Consider a model with L layers, N_heads_kv Key-Value heads per layer, head dimension `H = d_head`, sequence length P_seq, batch size B, and S_precision bytes per element—2 bytes for FP16/BF16 or 1 byte for FP8/INT8. We calculate its KV cache footprint using the equations below.
+The numbers above show the trade. Without a cache, the 100-token generation takes 9.1205 seconds, and each step gets slower as the sequence grows. With the cache, the same job takes 3.1416 seconds, and the decode step time stays flat. The cache turns a growing cost into a steady one. The vLLM lines show the same idea from the serving side. Batching prompts together, and letting the engine schedule them well, makes the same hardware finish more work in the same time.
+
+While the KV cache rescues decode compute, it turns GPU memory into an elastic bottleneck. The cache grows with each token of each conversation, so the total depends on the model shape and on how many conversations run at once. Consider a model with L layers, N_heads_kv Key-Value heads per layer, head dimension `H = d_head`, sequence length P_seq, batch size B, and S_precision bytes per element. S_precision is 2 bytes for FP16 or BF16, and 1 byte for FP8 or INT8. The equations below turn those inputs into a memory footprint.
 
 ```text
 KV Cache Memory Sizing Equations & Worked Production Examples (Volume 12 Chapter 1, Volume 05 Chapter 2, Hands-On LLM Serving Chapter 5):
@@ -396,14 +442,21 @@ KV Cache Memory Sizing Equations & Worked Production Examples (Volume 12 Chapter
      * NVIDIA L40S (48 GB VRAM, ~34 GB free after 14 GB weights): max ~16 concurrent requests (34 * 1024 / (0.5 * 4096) = 17 theoretical, 16 with activations)
 ```
 
+Walk through the first case in the block, because it shows the whole method. Start with the per-token cost, which is 327,680 bytes. Multiply by the 4,096 tokens in one sequence and you get about 1.34 GB for that one conversation. Now multiply by 100 conversations and the cache alone is 134.2 GB. That is already more than one 80 GB card can hold, before you add the 140 GB of weights and the activation workspace. The sum of 284.2 GB is why this model needs at least four H100 GPUs working together with tensor parallelism. Tensor parallelism splits each layer across GPUs so they share the memory.
+
+The comparison with multi-head attention is the lesson of the whole block. Multi-head attention keeps a separate key and value head for each query head. Grouped-query attention shares a small set of key and value heads across many query heads. With 8 KV heads instead of 64, the same 70B model needs 8x less cache per token. Fewer heads means a cache that grows more slowly with every user, so the same card can hold many more conversations.
+
 ### 4.2 PagedAttention, Continuous Batching, and Chunked Prefill Guardrails
 
-Early serving engines allocated a single contiguous slab of GPU HBM sized for max_seq_len whenever a request started. Nobody knows in advance whether a prompt will generate twenty tokens or two thousand tokens. As a result, contiguous reservation wasted 60% to 80% of KV cache memory to internal over-reservation and external heap fragmentation, stranding usable KV capacity at 20% to 40%.
+Think about a request where you do not know yet whether the answer will be twenty tokens or two thousand tokens. An early serving engine had to plan for the worst case. It set aside one large block of GPU HBM, sized for the maximum sequence length, the moment the request started. Most of that block often stayed empty. Early engines wasted a large share of their KV cache this way. Contiguous reservation, which is the one-big-block approach, wasted 60% to 80% of KV cache memory through over-reservation and fragmentation, the scattered gaps that appear when blocks of different sizes come and go. The result was that only 20% to 40% of the cache was really usable.
 
-Modern inference engines combine three scheduling mechanisms to eliminate memory waste and tail-latency stalls, which we cover in depth in Chapters 15.2 and 15.3.
-1. **PagedAttention:** Partitions the KV cache into fixed-size virtual memory blocks holding 16 or 32 tokens each, such as `block_size: 16`. A block table maps logical sequence positions to non-contiguous physical HBM blocks on demand. This design eliminates external fragmentation, caps internal waste to the final block, and raises serving throughput by 2x to 4x.
-2. **Continuous In-Flight Batching:** Instead of waiting for every sequence in a static batch to finish before starting new work, the scheduler evaluates the running batch at every single token iteration. Completed sequences exit the batch immediately, and waiting requests enter on the very next forward pass.
-3. **Chunked Prefill:** Mixing a massive new prompt—such as 16,000 or 32,000 tokens—into an active decode batch creates a severe head-of-line stall. The prefill GEMM monopolizes Tensor Cores for 350+ ms, pausing token generation for every active streaming user. Enabling **Chunked Prefill** via `--enable-chunked-prefill --max-num-batched-tokens 512` splits long prompts into 512-token chunks and piggybacks active decode tokens into each iteration, keeping P99 ITL flat around 22.8 ms instead of spiking to 4,500 ms.
+Modern inference engines fix this with three scheduling mechanisms. Together they remove most of the memory waste and most of the tail-latency stalls. We cover them in depth in Chapters 15.2 and 15.3, and here is the short version.
+
+1. PagedAttention splits the KV cache into fixed-size blocks, each holding 16 or 32 tokens, such as `block_size: 16`. Think of it like a file system that stores a long file in small pages instead of one long run. A block table maps logical positions in the sequence to physical blocks in HBM, and the engine adds blocks as the sequence grows. This design removes external fragmentation. It also limits internal waste to the last block, and it raises serving throughput by 2x to 4x.
+2. Continuous in-flight batching changes how the batch works. Instead of waiting for every sequence in a static batch to finish before starting new work, the scheduler checks the running batch at every single token iteration. Finished sequences leave immediately, and waiting requests join on the very next forward pass. Nobody sits idle while the slowest request in a group finishes.
+3. Chunked Prefill protects the decode streams from long prompts. Imagine a document of 16,000 or 32,000 tokens landing in the middle of a busy chat batch. A single prefill pass over that prompt keeps the Tensor Cores busy for 350+ ms, and every streaming user waits during that time. Enabling Chunked Prefill with `--enable-chunked-prefill --max-num-batched-tokens 512` splits long prompts into 512-token chunks. It also places active decode tokens into each iteration, so streams keep moving. In the example, that keeps P99 ITL flat around 22.8 ms instead of spiking to 4,500 ms.
+
+The table below describes three zones of KV cache use. Each zone has a clear action attached. Read it from top to bottom as the cache fills. The first zone is normal. The second zone warns you to add capacity. The third zone protects the service by refusing or evicting work.
 
 | Operating Capacity Zone | KV Cache Block Utilization | Queue Depth & Wait Time | P99 Inter-Token Latency | Automated Cluster Action |
 |---|---|---|---|---|
@@ -411,15 +464,19 @@ Modern inference engines combine three scheduling mechanisms to eliminate memory
 | Warning Zone (`80% - 90%`) | `80% - 90%` | Rising queue depth | `25 - 35 ms` | Trigger Kubernetes HPA scale-out and token-bucket rate throttling |
 | Emergency Zone (`> 90%`) | `> 90%` | Saturated admission queue | `> 35 ms` (preemption risk) | Shed excess load with `HTTP 429` and swap/recompute lowest-priority KV blocks |
 
+Notice that every zone links a memory number to a latency number. Block utilization tells you how full the cache is. The queue and the P99 inter-token latency tell you whether users already feel it. The action column is what the automation should do. When the cache crosses 80 percent, you scale out before the queue starts to grow. When it crosses 90 percent, the goal changes from speed to survival, so the service sheds load with HTTP 429 responses rather than letting every stream slow down.
+
 **Cap engine memory allocation at `gpu_memory_utilization: 0.85`, trigger horizontal autoscaling when KV cache utilization crosses 80 percent, and enable Chunked Prefill to protect decode streams**.
 
 ---
 
 ## 5. Tokenization, Logit Sampling, Stopping Conditions, and Ecosystem Stack
 
+A user types a question with a typo, a pasted code snippet and an emoji. Before the model can think about any of it, the text has to become numbers. The same is true when the answer comes back: the numbers have to become text again. Both translations happen on the request's path, and both cost time and memory.
+
 ### 5.1 Tokenization, Vocabulary Logits, and the GPU Sampling Pipeline
 
-Every inference request begins and ends with vocabulary translation. During Stage 3, a Byte-Pair Encoding tokenizer such as tiktoken or Hugging Face's Rust tokenizers splits raw UTF-8 strings into subword units and maps them to integer IDs. In English prose, one token corresponds on average to roughly 0.75 words.
+A new teammate asks why the same prompt gives a different answer when the temperature setting moves from zero to 0.7. The answer lives in the sampling pipeline, which is the last stage that picks the next token. Before we get there, though, the text has to be split into tokens. Every inference request begins and ends with this vocabulary translation. During Stage 3, a Byte-Pair Encoding tokenizer, such as tiktoken or Hugging Face's Rust tokenizers, splits raw UTF-8 text into subword units and maps each unit to an integer ID. Byte-Pair Encoding is a method that builds a vocabulary by merging common pieces of text, so frequent words get a single token and rare words get split into several. In English prose, one token corresponds on average to roughly 0.75 words.
 
 ```text
 Tokenization, Logit Projection, and GPU Sampling Math (Hands-On LLM Serving Chapter 2, Volume 12 Chapter 2):
@@ -446,6 +503,10 @@ Tokenization, Logit Projection, and GPU Sampling Math (Hands-On LLM Serving Chap
      Renormalize surviving probabilities to sum to 1.0 and draw 1 token ID (int32) on the GPU
 ```
 
+The block above shows the path from a hidden state to one chosen token. Start with the concrete example, because it makes the idea tangible. The sentence becomes 11 integer IDs, and the model works only with those IDs. Then move to the LM head, which multiplies the last hidden state by a matrix of the vocabulary size. The output is a raw score for every token in the vocabulary, called the logits. Logits are not probabilities yet. They are just scores, and the sampling steps turn them into a choice.
+
+The sampling steps run in order, and each one narrows the candidates. First, the penalties push down tokens the text has already used, which helps prevent loops. Second, temperature rescales the scores before the softmax turns them into probabilities. A temperature of zero means always pick the top token. A low temperature sharpens the distribution, and a high one flattens it. Third, top-K keeps only the K best candidates. Fourth, top-P keeps the smallest group of candidates whose probabilities add up to at least the target. Last, the engine renormalizes the survivors and draws one token. Everything in that chain runs on the GPU, so only the final ID needs to travel back to the host.
+
 | Sampling / Stopping Parameter | Typical Production Value | Mathematical Role in Stage 7 / Stage 8 |
 |---|---|---|
 | `temperature` | `0.0` (code/math) to `0.7-0.8` (chat) | Scales raw logits `z_i / T` before Softmax; `0.0` selects greedy `argmax` |
@@ -455,20 +516,24 @@ Tokenization, Logit Projection, and GPU Sampling Math (Hands-On LLM Serving Chap
 | `max_tokens` (`max_new_tokens`) | `100` to `1024` | Hard upper bound on decode iterations for a single request |
 | `stop` / `eos_token_id` | `["\n", "###"]` / `<\|eot_id\|>` | Halts decode immediately when an End-of-Sequence ID or stop string is emitted |
 
+The table lists the knobs you will actually set. For each one, the typical production value is a starting point, not a rule. Code and math prompts usually run cool, with a temperature near zero, because you want the same correct answer every time. Chat prompts often run warmer, because variety matters there. The last two rows are about stopping. They decide when the loop ends, and they are the bridge to the next subsection.
+
 ### 5.2 The Five Stopping Conditions and the NVIDIA Serving Stack
 
-After each decode step samples a new int32 token ID and copies those four bytes to pinned host memory, the iteration scheduler checks five stopping conditions before scheduling the next pass.
-1. **End-of-Sequence (`eos_token_id`) match:** The sampled token ID matches the model's EOS token, such as `<|eot_id|>` or `<|end_of_text|>`.
-2. **Stop string (`stop`) match:** The detokenized suffix matches a caller-supplied stop sequence such as `"\n"` or `"###"`.
-3. **Maximum output token limit (`max_tokens`):** The number of generated tokens reaches the request's max_tokens or request_output_len budget.
-4. **Model context ceiling (`max_model_len`):** Total sequence length across Prompt + Output reaches the engine's compiled max_seq_len or max_model_len boundary.
-5. **Client stream abort (`engine.abort(request_id)`):** The client disconnects or cancels the HTTP/SSE stream, allowing the engine to free all PagedAttention KV blocks immediately.
+A user closes the browser tab in the middle of a long answer. What should the engine do with the memory that answer was holding? The answer depends on a check that runs after every token. After each decode step samples a new int32 token ID and copies those four bytes to pinned host memory, the iteration scheduler checks five stopping conditions before it schedules the next pass.
 
-In production, these request lifecycle stages map onto the full NVIDIA inference software hierarchy, which we detail across Chapters 15.3 through 15.7.
-- **vLLM:** Open-source serving engine pioneering PagedAttention, continuous batching, chunked prefill, and multi-LoRA paging (`Activation = (Base_Weights * Input) + (LoRA_B_X * (LoRA_A_X * Input))`) behind an OpenAI-compatible server.
-- **TensorRT-LLM — convert_checkpoint.py and trtllm-build:** Ahead-of-time C++/CUDA compiler that fuses attention and GEMM layers and applies FP8/INT4 quantization. It also captures CUDA Graphs across batch-size buckets to eliminate CPU kernel-launch overhead and enables paged context FMHA via `--use_paged_context_fmha enable`.
-- **Triton Inference Server — config.pbtxt:** Enterprise HTTP/gRPC serving orchestrator that wraps the tensorrtllm or vllm backend with `decoupled: True` streaming transaction policies, max_tokens_in_paged_kv_cache, and `kv_cache_free_gpu_mem_fraction: "0.9"`.
-- **NVIDIA NIM — Inference Microservices:** Pre-packaged OCI containers combining Triton, pre-compiled TensorRT-LLM engines, and OpenAI REST endpoints for drop-in Kubernetes deployment.
+1. The end-of-sequence check (`eos_token_id`): the sampled token ID matches the model's EOS token, such as `<|eot_id|>` or `<|end_of_text|>`. This is the model's own signal that it is finished.
+2. The stop string check (`stop`): the detokenized text ends with a stop sequence that the caller supplied, such as `"\n"` or `"###"`. The caller uses this to end an answer at a known marker.
+3. The maximum output check (`max_tokens`): the number of generated tokens reaches the request's max_tokens or request_output_len budget. This keeps one long answer from running forever.
+4. The context ceiling (`max_model_len`): the total length of prompt plus output reaches the engine's compiled max_seq_len or max_model_len boundary. The model cannot read past the length it was built for.
+5. The client abort (`engine.abort(request_id)`): the client disconnects or cancels the HTTP or SSE stream, so the engine frees all PagedAttention KV blocks right away. This is the check that stops a closed tab from holding GPU memory.
+
+In production, these request lifecycle stages sit inside the full NVIDIA inference software stack, which we detail across Chapters 15.3 through 15.7. Each tool in that stack owns a different part of the job. The four short descriptions below show where each one fits.
+
+- What is vLLM for? It is an open-source serving engine that pioneered PagedAttention, continuous batching, chunked prefill and multi-LoRA paging. Multi-LoRA paging lets many small adapter weights share one base model, with the adapter math written as `Activation = (Base_Weights * Input) + (LoRA_B_X * (LoRA_A_X * Input))`. It sits behind an OpenAI-compatible server.
+- What does TensorRT-LLM do? Its convert_checkpoint.py and trtllm-build steps make an ahead-of-time compiler build. The compiler fuses attention and GEMM layers, applies FP8 or INT4 quantization, and captures CUDA Graphs across batch-size buckets. A CUDA Graph records a sequence of GPU work so the CPU does not have to launch each piece, which removes kernel-launch overhead. It also enables paged context FMHA via `--use_paged_context_fmha enable`.
+- What is Triton's job? Triton Inference Server is an enterprise HTTP and gRPC orchestrator. It wraps the tensorrtllm or vllm backend with `decoupled: True` streaming policies, max_tokens_in_paged_kv_cache and `kv_cache_free_gpu_mem_fraction: "0.9"`, all set in its config.pbtxt file.
+- What is NVIDIA NIM? It is a set of pre-packaged containers. Each container combines Triton, pre-compiled TensorRT-LLM engines and OpenAI-style REST endpoints, so it can be dropped into a Kubernetes cluster with little setup.
 
 **Execute logit penalties and Top-K/Top-P sampling directly on the GPU so only a single four-byte token ID crosses PCIe per decode step, and abort disconnected streams immediately to reclaim KV cache blocks**.
 
@@ -476,9 +541,11 @@ In production, these request lifecycle stages map onto the full NVIDIA inference
 
 ## 6. Commands, Configurations, and Production Failure Modes
 
+Imagine you are asked to launch a serving stack for the first time. The model is large, you have a few GPUs, and a chat front end has to stream every token as it arrives. The commands and configuration files in this section are the ones a team usually starts from. Treat them as reference shapes to adapt, because your model path, GPU count and memory budget will differ.
+
 ### 6.1 Production Engine, Triton, and Nginx Streaming Configurations
 
-Below are the production configurations for launching vLLM with Chunked Prefill and PagedAttention memory caps, compiling and hosting a TensorRT-LLM engine inside Triton Inference Server, and configuring Nginx for zero-buffering SSE token streaming.
+A proxy in front of your streaming endpoint shows tokens arriving in clumps, with long gaps and then a burst. The engine may be fine. The stream can still stall on the way out. The next three blocks cover the launch commands and the proxy setting that most often causes that stall. The first block launches vLLM with chunked prefill and tight memory bounds. The second compiles and serves a TensorRT-LLM engine inside Triton. The third configures Nginx so tokens are not held back.
 
 ```bash
 # 1. Launch vLLM OpenAI-compatible server with Chunked Prefill and strict KV memory bounds
@@ -510,6 +577,8 @@ trtllm-build \
   --max_num_tokens 8192
 ```
 
+Read the vLLM command as a list of limits. The tensor parallel size spreads the model over four GPUs. The memory utilization caps how much of each card the engine may claim, and the sequence and token limits keep one burst from taking all of it. The chunked prefill flags protect the decode streams, as discussed earlier in this chapter. The TensorRT-LLM pair works in two steps. The first step converts the Hugging Face checkpoint into the engine's own format, and the second step compiles that into an engine with fixed batch and length limits. The compile step is where the batch and length caps are chosen, so they cannot be raised later without another build.
+
 ```nginx
 # 3. Nginx Reverse Proxy Configuration for Per-Token SSE Streaming (Volume 12 Chapter 2)
 location /v1/chat/completions {
@@ -525,7 +594,11 @@ location /v1/chat/completions {
 }
 ```
 
+The Nginx block is short, but one line in it is the difference between a smooth stream and a stuttering one. The proxy_buffering off line tells Nginx to pass each chunk on as it arrives instead of holding it until a larger block builds up. The tcp_nodelay on line asks the kernel to send small frames right away. The long read and send timeouts keep a slow, legitimate stream from being cut off in the middle of an answer. Apply these settings to streaming routes only, where the goal is a steady flow of small frames.
+
 ### 6.2 How It Fails: Five Production Inference Failure Modes
+
+Your pager goes off because one pod restarted and the graphs show memory spikes and long pauses. Several different causes can produce that same picture. The table below lists five common ones. Each row starts from a symptom you can see, names the stage on the request path where the trouble begins, gives a command to confirm it, and ends with a fix.
 
 | Failure Mode | Observable Symptom & Telemetry Evidence | Root Cause Along the 9-Stage Path | Diagnostic Commands | Production Remediation |
 |---|---|---|---|---|
@@ -535,17 +608,21 @@ location /v1/chat/completions {
 | 4. Nginx `4 KB` Socket Buffering Freezing SSE Streams | UI freezes for `1-2 seconds` then dumps `40` tokens at once; `tcpdump` shows a `600 ms` gap followed by a `4,090-byte` (`~4 KB`) TCP payload flush | Nginx `proxy_buffering on` (default) buffers `20 ms` SSE chunks in OS socket RAM until `4 KB` accumulates before flushing to the client | `curl -N -v https://api.example.com/v1/chat/completions` and `sudo tcpdump -i eth0 -nn -tt 'tcp port 443'` | Set `proxy_buffering off;`, `tcp_nodelay on;`, and `X-Accel-Buffering: no` response header so every token flushes at steady `20 ms` intervals |
 | 5. KV Cache Preemption & PCIe Swapping Thrash | Multi-second generation latency spikes accompanied by PCIe bus saturation alerts and rising `vllm:num_preemptions_total` counters | Scheduler over-admits sequences, runs out of HBM KV blocks, and continuously swaps KV pages over PCIe to host DRAM (or drops and recomputes prompts) | `curl -s http://localhost:8002/metrics \| grep num_preemptions_total` and `nvidia-smi dmon -s gm -c 5` | Lower `max_num_seqs` (e.g., `64 -> 48`), autoscale horizontally on `kv_cache_usage_percent > 80%`, or use `GH200` NVLink-C2C (`900 GB/s`, `7x` PCIe Gen5) for high-speed host memory paging |
 
+Read the table one row at a time, and keep the stage numbers in mind. Failure modes 1 and 5 are memory problems, so you check KV cache usage and preemption counters first. Failure mode 2 is a scheduling problem, where a long prefill blocks decode. Failure modes 3 and 4 are about the CPU and the proxy, so checking GPU utilization alone will not find them. The diagnostic column gives you the first command to run, and the remediation column gives the change to try after you confirm the cause.
+
 ---
 
 ## 7. Hands-on Lab: Verifying Request Anatomy, Roofline Math, and KV Cache Sizing
 
+Imagine a new team member asks whether the numbers in this chapter hold up on their own laptop. That is a fair question, and the lab is built to answer it. It checks the arithmetic against the same formulas the chapter uses, without needing a GPU.
+
 ### Lab Venue and Execution Scope
 - **Target venue:** GCP / GKE GPU cluster or any local workstation with Python 3.10+.
-- **Execution status:** The live multi-GPU H100/L40S vllm, trtllm-build, tritonserver, and perf_analyzer cluster commands in Section 6.1 are reference production configurations from the cited sources. They have not been executed on live GPU hardware in this local build environment and remain untested on live hardware. The deterministic mathematical verification model in `code/part15/inference_request_anatomy.py` and the self-checking test suite in `code/part15/inference_request_anatomy_lab.py` are fully executed and verified locally below.
+- **Execution status:** The live multi-GPU vllm, trtllm-build, tritonserver and perf_analyzer commands in Section 6.1 are reference configurations. They were not run on live GPU hardware in this build environment, so they remain untested. The deterministic verification model in `code/part15/inference_request_anatomy.py` and the self-checking test suite in `code/part15/inference_request_anatomy_lab.py` were executed and verified locally below.
 
 ### Running the Self-Checking Verification Lab
 
-Run the chapter lab script to verify all twenty-six quantitative claims, latency decompositions, Goodput and cost formulas, Roofline ridge points, GEMM vs. GEMV arithmetic intensities, KV cache sizing models, and GPU logit sampling pipelines:
+Run the chapter lab script to verify all twenty-six quantitative claims. The checks cover latency decompositions, Goodput and cost formulas, Roofline ridge points, GEMM vs. GEMV arithmetic intensities, KV cache sizing models and GPU logit sampling pipelines. The script prints one line per claim, so a failure points you straight at the claim that broke.
 
 ```bash
 python3 -B code/part15/inference_request_anatomy_lab.py
@@ -584,38 +661,42 @@ Expected output (`26 passed, 0 failed`):
 Summary: 26 passed, 0 failed
 ```
 
+Each PASS line is a claim from the chapter, with the number it checks written into the line. Read the lines as a map back to the sections above. When you tune a formula later, run the lab again and check which lines change, rather than trusting a number you remember.
+
 ---
 
 ## Key takeaways
 
-1. **Inference is an interactive tail-latency problem, not an offline batch job:** Unlike training, production serving faces bursty Poisson arrivals, wide sequence-length variance, dynamic KV cache growth, and strict P90/P99 latency budgets.
-2. **Every request splits into two hardware regimes:** Prefill processes all prompt tokens in parallel via compute-bound GEMM kernels with `I >> 100 FLOPs/Byte` on long prompts, determining TTFT. Decode generates one token at a time via memory-bandwidth-bound GEMV kernels with `I ≈ 1.0 FLOP/Byte` at `B = 1`, determining ITL and TPOT.
-3. **Measure Goodput, MFU, and MBU instead of raw averages or nvidia-smi utilization:** nvidia-smi reports 100% utilization even when Tensor Cores sit 95% idle waiting on HBM weight loads. Track Goodput—requests/sec meeting both TTFT and TPOT SLOs simultaneously—alongside MFU and MBU.
-4. **Up to 60 percent of end-to-end latency happens outside the GPU:** Single-threaded Python tokenizers taking 320 ms out of 412 ms can bottleneck an entire H100 cluster. Pageable host memory copies at `10–14 GB/s` vs `55–62 GB/s` pinned DMA and Nginx 4 KB socket buffering causing 600 ms stalls also starve the GPUs.
-5. **Bound KV cache growth and interleave prefills:** A 70B GQA model consumes 1.342 GB of KV cache per 4,096-token sequence. At 100 concurrent users, that is 134.2 GB, requiring 4x 80 GB H100s at 284.2 GB total VRAM. Enforce `gpu_memory_utilization: 0.85`, PagedAttention with `block_size: 16`, and Chunked Prefill at 512 tokens to prevent cascading OOMs and decode starvation.
+Read these five points as a short memory aid for the chapter. Each one names a mistake to avoid, and each one points back to the section that explains it.
 
----
+1. Inference is a tail-latency problem, not an offline batch job. Training runs on predictable work, but serving faces bursty Poisson arrivals, very different sequence lengths, a KV cache that grows during the run, and strict P90 and P99 budgets.
+2. Each request passes through two hardware regimes. Prefill processes all prompt tokens in parallel with compute-bound GEMM kernels, where `I >> 100 FLOPs/Byte` on long prompts, and prefill sets the TTFT. Decode makes one token at a time with memory-bandwidth-bound GEMV kernels, where `I ≈ 1.0 FLOP/Byte` at `B = 1`, and decode sets the ITL and TPOT.
+3. Measure Goodput, MFU and MBU instead of raw averages or the nvidia-smi utilization number. nvidia-smi can report 100% utilization while the Tensor Cores sit 95% idle, waiting on HBM weight loads. Goodput counts the requests per second that meet both the TTFT and TPOT targets at once, and it is the number to size a fleet on.
+4. Up to 60 percent of end-to-end latency happens outside the GPU. A single-threaded Python tokenizer that takes 320 ms out of 412 ms can hold back a whole H100 cluster. Pageable host copies at `10–14 GB/s` are much slower than pinned DMA at `55–62 GB/s`, and Nginx socket buffering that holds back chunks can cause 600 ms stalls. Both starve the GPUs of work.
+5. Bound KV cache growth and interleave prefills. A 70B GQA model uses 1.342 GB of KV cache per 4,096-token sequence. At 100 concurrent users, that is 134.2 GB, which needs 4x 80 GB H100 cards to hold 284.2 GB of total VRAM. Set `gpu_memory_utilization: 0.85`, use PagedAttention with `block_size: 16`, and use Chunked Prefill at 512 tokens to prevent cascading OOMs and decode starvation.
 
 ## Exercises
 
-1. **End-to-End Latency Decomposition, Outliers, and Goodput.**
-   - **Part a:** Using RequestStageTimingsMs (`t_ingress=2.0 ms`, `t_queue=12.0 ms`, `t_tokenize=4.0 ms`, `t_schedule=0.5 ms`, `t_h2d=0.4 ms`, `t_prefill_gpu=180.0 ms`, `itl_gpu_decode=22.0 ms`, `t_sampler=0.5 ms`, `t_d2h_detok=0.5 ms`, `t_sse_flush=1.0 ms`), compute TTFT, per-step ITL, TPOT, and total E2E latency for a 50-token output response.
-   - **Part b:** Given ten requests with `TTFT = [100, 102, 100, 100, 99, 104, 110, 90, 3000, 95] ms`, calculate the mean TTFT and median p50 TTFT. Suppose a service completes 100 requests per minute—10 RPS in a 1 s burst—under SLOs of `TTFT <= 200 ms` and `TPOT <= 100 ms`. If only 30% of requests satisfy both SLOs, state the Goodput in RPM and RPS. Then compute the cost per 1,000 requests at 200 output tokens/req on a `$2.00/hr` GPU running at `100 tok/s` decode and 100 RPM prefill.
-2. **Non-GPU Request Path Bottlenecks — Python GIL Tokenizer, Pinned DMA, and SSE Buffering.**
-   - **Part a:** In the 412.0 ms OpenTelemetry trace, you observe 2.0 ms HTTP parse, 320.0 ms Python tokenizer, 0.4 ms H2D copy, 88.0 ms GPU execution, and 1.6 ms SSE serialization. Compute the percentage of total latency spent outside the GPU and inside CPU tokenization. Calculate the new total span duration and cluster RPS speedup when a 16-thread Rust tokenizer cuts tokenization to 1.4 ms (`120 RPS -> 780 RPS`).
-   - **Part b:** Compare pageable malloc host-to-device throughput (`10–14 GB/s`) against pinned cudaHostAlloc throughput (`55–62 GB/s`) on PCIe Gen5 x16 (`64 GB/s`). Explain why default Nginx `proxy_buffering on` with a 4 KB buffer creates 600 ms freezes on a `20 ms/token` stream.
-3. **Roofline Ridge Points and GEMM vs. GEMV Arithmetic Intensity.**
-   - **Part a:** Compute the FP16 Roofline ridge point in `FLOPs/Byte` for an NVIDIA L40S at 362.05 TFLOPS and `864 GB/s`. Next, compute it for an NVIDIA H100 SXM5 at 989 TFLOPS dense / 1,979 TFLOPS sparse and `3,350 GB/s`.
-   - **Part b:** Using `I = (M * N * K) / (M*K + K*N + M*N)` for 2-byte FP16 matrices with hidden size `K = N = h = 4096`, calculate the Arithmetic Intensity for prefill at `M = s = 64`, 512, and 4096 tokens versus single-sequence decode at `M = 1` token. Classify each case as compute-bound or memory-bandwidth-bound on the L40S and H100.
-4. **The Memory-Bandwidth Wall and Model Bandwidth Utilization — MBU.**
-   - **Part a:** For a 70B parameter model in FP16 with 140 GB weights, compute the minimum HBM weight-transfer time per decode token in ms. Also compute the theoretical maximum single-stream token generation rate in `tokens/sec` on an H100 SXM5 (`3,350 GB/s`), H200 SXM (`4,800 GB/s`), and B200 (`8,000 GB/s`).
-   - **Part b:** Using the MBU equation, compute the memory bandwidth consumed in `GB/s` and MBU percentage on an A100-80GB with `2,000 GB/s` peak bandwidth. Evaluate serving a 7B model at `700 GB/s` (`50 tok/s` in 2-byte FP16 or `100 tok/s` at 1 byte/param) versus `1,400 GB/s`.
-5. **KV Cache Sizing, GQA vs. MHA Compression, and Multi-GPU Provisioning.**
-   - **Part a:** Calculate the per-token (bytes and KB), per-sequence (GB at `P_seq = 4096`), 64-sequence (GB), and 100-sequence (GB) KV cache footprint for Llama-3-70B (`L = 80`, `N_heads_kv = 8`, `d_head = 128`, FP16 2 bytes). Add 140 GB weights and 10 GB activation workspace to determine the minimum number of 80 GB H100 GPUs and TP degree needed for 100 concurrent 4K sequences.
-   - **Part b:** Compare that 70B GQA KV cache against a 64-head MHA 70B configuration at `B = 128` and `P_seq = 2048`. Also compute the KV cache size for Llama-2-7B (`L = 32, N_heads_kv = 32, d_head = 128`, FP16) at `B = 16, P_seq = 4096`. Explain why an L40S with 48 GB supports 16 concurrent requests while an A10 with 24 GB supports only 4.
-6. **GPU Logit Sampling Pipeline and Stopping Conditions.**
-   - **Part a:** Given raw logits `z = [4.0, 3.0, 2.0, 1.0, 0.0]`, trace `sample_next_token_pipeline()` under three cases. First, evaluate greedy decoding with `temperature = 0.0`. Second, evaluate `temperature = 1.0` with `top_k = 3` and `top_p = 0.80`; third, evaluate `repetition_penalty = 2.0` when token 0 was already generated.
-   - **Part b:** List all five production stopping conditions checked by `check_stopping_criteria()`. Explain how Chunked Prefill at 512 tokens resolves the 4,500 ms P99 ITL degradation (3,850 ms stall) down to 22.8 ms.
+These exercises use the numbers from this chapter. Work through each one with pencil and paper first, then check your answer with the lab. Each exercise has two parts, and the second part builds on the first.
+
+1. The first exercise is about one request's timing and a set of outliers. Your trace shows the stage timings `t_ingress=2.0 ms` and `t_queue=12.0 ms` for a request. The tokenizer takes `t_tokenize=4.0 ms`, and the scheduler takes `t_schedule=0.5 ms`. The host-to-device copy takes `t_h2d=0.4 ms`, and the GPU prefill takes `t_prefill_gpu=180.0 ms`. The GPU decode step takes `itl_gpu_decode=22.0 ms`. Sampling takes `t_sampler=0.5 ms`, and detokenization takes `t_d2h_detok=0.5 ms`. Last, the SSE flush takes `t_sse_flush=1.0 ms`.
+   - Part a: Compute the TTFT for this request. Then compute the per-step ITL and the TPOT. Finally, compute the total E2E latency for a 50-token output response.
+   - Part b: Look at ten TTFT samples, `TTFT = [100, 102, 100, 100, 99, 104, 110, 90, 3000, 95] ms`. Most of them sit near 100 ms, and one reaches 3000 ms. What is the mean TTFT, and what is the median p50 TTFT? The service completes 100 requests per minute. In a 1 s burst, that is 10 RPS. The targets are `TTFT <= 200 ms` and `TPOT <= 100 ms`. If only 30% of requests meet both targets, what is the Goodput in RPM and in RPS? Then work out the cost per 1,000 requests. Each request makes 200 output tokens. The GPU costs `$2.00/hr` and decodes at `100 tok/s`. Prefill runs at 100 RPM.
+2. The second exercise follows the non-GPU path of a slow request. A 412.0 ms trace is your starting point. It shows 2.0 ms of HTTP parsing. It also shows 320.0 ms of Python tokenizer work. The trace also shows an H2D copy of 0.4 ms, GPU execution of 88.0 ms and SSE serialization of 1.6 ms.
+   - Part a: What percentage of the total latency sits outside the GPU, and what percentage is CPU tokenization? If a 16-thread Rust tokenizer cuts tokenization to 1.4 ms, what is the new total span? Also work out the cluster speedup for `120 RPS -> 780 RPS`.
+   - Part b: Pageable malloc reaches `10–14 GB/s` for host-to-device copies. Pinned cudaHostAlloc reaches `55–62 GB/s`. PCIe Gen5 x16 peaks at `64 GB/s`. Explain why the default `proxy_buffering on` setting causes trouble. It holds data in a 4 KB buffer. That buffer can create 600 ms freezes on a `20 ms/token` stream.
+3. The third exercise is about where a workload sits on the roofline. Start with the ridge point, which is the peak math divided by the peak bandwidth. Use `FLOPs/Byte` as the unit.
+   - Part a: Compute the FP16 Roofline ridge point for an NVIDIA L40S at 362.05 TFLOPS and `864 GB/s`. Then compute it for an NVIDIA H100 SXM5 at 989 TFLOPS dense. Use `3,350 GB/s` for that card. Repeat the H100 calculation using 1,979 TFLOPS sparse.
+   - Part b: Use `I = (M * N * K) / (M*K + K*N + M*N)` for 2-byte FP16 matrices, with `K = N = h = 4096`. Calculate the intensity for prefill at `M = s = 64`. Then repeat it at 512 tokens, and then at 4096 tokens. Compare those with single-sequence decode at `M = 1` token. Classify each case as compute-bound or memory-bandwidth-bound on the L40S and the H100.
+4. The fourth exercise is about the memory-bandwidth wall. Picture a 70B model in FP16 that has to read 140 GB of weights for every token.
+   - Part a: Compute the minimum HBM weight-transfer time per decode token, in ms. Then compute the maximum single-stream rate in `tokens/sec` on an H100 SXM5 at `3,350 GB/s`. Repeat the rate for an H200 SXM at `4,800 GB/s` and a B200 at `8,000 GB/s`.
+   - Part b: Use the MBU equation to find the bandwidth in `GB/s` and the MBU percentage for an A100-80GB with `2,000 GB/s` of peak bandwidth. Test a 7B model at `700 GB/s`. That bandwidth is `50 tok/s` in 2-byte FP16. It is also `100 tok/s` at 1 byte per parameter. Then repeat the test at `1,400 GB/s`.
+5. The fifth exercise is about KV cache sizing and provisioning. Start with Llama-3-70B. It uses `L = 80`, `N_heads_kv = 8` and `d_head = 128`. Its elements are FP16, at 2 bytes each.
+   - Part a: Calculate the per-token footprint in bytes and in KB. Then calculate the per-sequence footprint in GB at `P_seq = 4096`. Next, calculate the footprint for 64 sequences and for 100 sequences, both in GB. Add 140 GB of weights and 10 GB of activation workspace. Then work out how many 80 GB H100 GPUs and what TP degree you need for 100 concurrent 4K sequences.
+   - Part b: Compare that GQA cache with a 64-head MHA 70B configuration. Use `B = 128` for the batch. Use `P_seq = 2048` for the sequence length. Then compute the KV cache for Llama-2-7B. Its shape is `L = 32, N_heads_kv = 32, d_head = 128`, in FP16. Evaluate it at `B = 16, P_seq = 4096`. Last, explain why a 48 GB L40S supports 16 concurrent requests while a 24 GB A10 supports only 4.
+6. The sixth exercise follows one token through the sampler and the stopping rules.
+   - Part a: Take the raw logits `z = [4.0, 3.0, 2.0, 1.0, 0.0]` and trace `sample_next_token_pipeline()` through three cases. In the first case, use greedy decoding with `temperature = 0.0`. In the second case, use `temperature = 1.0` with `top_k = 3` and `top_p = 0.80`. In the third case, apply `repetition_penalty = 2.0` after token 0 has already been generated.
+   - Part b: List the five production stopping conditions that `check_stopping_criteria()` checks. Then explain how Chunked Prefill at 512 tokens fixes the problem. Start from the 4,500 ms P99 ITL. The 3,850 ms stall is what caused it. The result is 22.8 ms.
 
 ---
 
@@ -740,8 +821,6 @@ The GPU sampler takes the [B, 1, V_vocab] logits from the LM Head and applies re
 
 **TensorRT-LLM** compiles the model into fused C++/CUDA kernels and records **CUDA Graphs** across batch-size buckets so the GPU launches an entire decode step with a single CPU instruction. **Triton Inference Server** hosts the compiled engine using `decoupled: True` so one HTTP/gRPC request can stream N asynchronous SSE token responses. **NVIDIA NIM** packages Triton, TensorRT-LLM/vLLM, CUDA drivers, and an OpenAI-compatible API into a single pre-tuned OCI container.
 </details>
-
----
 
 ## Sources and review notes
 

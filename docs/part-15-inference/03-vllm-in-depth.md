@@ -25,9 +25,9 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Training a foundation model optimizes for raw token throughput across predictable batch sizes over weeks. Serving that model to live users flips the engineering problem upside down. An online inference cluster must deliver responses in milliseconds while handling thousands of concurrent requests whose arrival times, prompt lengths, and output lengths are completely unpredictable.
+Picture an engineer who has just finished a training run on a cluster that ran for weeks without a hiccup. The model is good, and now the product team wants it in front of real users. The engineer is about to learn that training and serving are different jobs. Training optimizes for raw token throughput across predictable batch sizes over weeks. Serving that model to live users flips the engineering problem upside down. An online inference cluster must deliver responses in milliseconds while handling thousands of concurrent requests whose arrival times, prompt lengths, and output lengths are completely unpredictable.
 
-Early serving systems borrowed contiguous tensor allocation directly from training frameworks. For every incoming request, they reserved a single contiguous slab of GPU memory large enough to hold the model's maximum sequence length. Because actual generation lengths are unknown ahead of time, contiguous allocation wastes 60% to 80% of GPU memory on unused reservations and fragmented gaps. Worse, batching variable-length sequences together required padding shorter sequences with dummy tokens, wasting a third or more of attention compute on meaningless math.
+The first thing that surprises most teams is memory. Early serving systems borrowed contiguous tensor allocation directly from training frameworks. For every incoming request, they reserved a single contiguous slab of GPU memory large enough to hold the model's maximum sequence length. A slab is one solid block of memory, and it has to be the full size from the start. Because actual generation lengths are unknown ahead of time, contiguous allocation wastes 60% to 80% of GPU memory on unused reservations and fragmented gaps. Worse, batching variable-length sequences together required padding shorter sequences with dummy tokens, wasting a third or more of attention compute on meaningless math.
 
 ```text
 vLLM and PagedAttention Production Impact Reference (Volume 12 Ch. 6–8; DAI Ch. 6):
@@ -44,29 +44,27 @@ vLLM and PagedAttention Production Impact Reference (Volume 12 Ch. 6–8; DAI Ch
   Reduced p99 Inter-Token Latency (ITL) from 420 ms to 19.1 ms while increasing total token throughput by 3.8x
 ```
 
-Researchers at UC Berkeley built vLLM around a simple operating system insight. Just as an operating system kernel maps contiguous virtual memory addresses onto non-contiguous physical RAM pages, vLLM partitions the KV cache into fixed-size physical blocks and maps them through a per-request Block Table. That single abstraction—PagedAttention—eliminates external memory fragmentation, bounds internal waste to a few tokens per sequence, and removes padding FLOPs from decode attention.
+Researchers at UC Berkeley built vLLM around a simple operating system insight. Think about how a normal computer runs a program. The program sees one neat block of addresses, but the operating system quietly maps those addresses onto scattered pages of physical memory. Just as an operating system kernel maps contiguous virtual memory addresses onto non-contiguous physical RAM pages, vLLM partitions the KV cache into fixed-size physical blocks and maps them through a per-request Block Table. That single abstraction, PagedAttention, eliminates external memory fragmentation, bounds internal waste to a few tokens per sequence, and removes padding FLOPs from decode attention. A FLOP is one floating-point operation, so removing padding FLOPs means the GPU stops doing math on empty slots.
 
-Yet PagedAttention is only the foundation of a production vLLM deployment. Operating vLLM reliably on GPU clusters requires mastering its full execution stack.
-- **Cross-request and intra-request block sharing:** Use Copy-on-Write reference counting for beam search and parallel sampling. Also configure Automatic Prefix Caching to skip redundant prefill compute across shared system prompts.
-- **Token-level scheduling and preemption:** Tune continuous batching and chunked prefill token budgets so long prompts do not stall active decode streams. Understand why V1 recomputes preempted sequences instead of swapping them to host memory.
-- **Engine architecture and distributed scaling:** Navigate vLLM V1's asynchronous dual-process architecture and map Tensor, Pipeline, Data, and Expert Parallelism onto NVLink and InfiniBand topologies. Serve dozens of domain adapters on a single base model with Punica and S-LoRA kernels.
+Yet PagedAttention is only the foundation of a production vLLM deployment. Operating vLLM reliably on GPU clusters requires mastering its full execution stack. The three areas below are the ones that most often decide whether a launch goes smoothly.
+
+- How do requests share memory? Copy-on-Write reference counting lets beam search and parallel sampling share the prompt blocks. Automatic Prefix Caching skips redundant prefill compute when many requests share the same system prompt.
+- How does the scheduler keep long prompts from stalling chat? Continuous batching and chunked prefill token budgets keep a long prompt from freezing the active decode streams. You also need to understand why V1 recomputes preempted sequences instead of swapping them to host memory.
+- How do many GPUs act as one engine? vLLM V1 uses an asynchronous dual-process architecture, and Tensor, Pipeline, Data and Expert Parallelism must line up with NVLink and InfiniBand topologies. Multi-LoRA kernels such as Punica and S-LoRA let one base model serve dozens of domain adapters.
 
 **Treat GPU memory blocks, token budgets, and interconnect boundaries as coupled system resources before putting vLLM into production.**
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- GPU memory hierarchy, Streaming Multiprocessor execution, and CUDA Graphs from Part 10.
-- NVLink, PCIe, InfiniBand, GPUDirect RDMA, and NCCL collective operations from Part 12.
-- Distributed parallelism fundamentals from Chapters 14.7 and 14.10, plus inference request lifecycle and KV cache fundamentals from Chapters 15.1 and 15.2.
+- You should know the GPU memory hierarchy, Streaming Multiprocessor execution and CUDA Graphs from Part 10.
+- You should know NVLink, PCIe, InfiniBand, GPUDirect RDMA and NCCL collective operations from Part 12.
+- You should know distributed parallelism from Chapters 14.7 and 14.10, and the inference request lifecycle and KV cache basics from Chapters 15.1 and 15.2.
 
 ### Outcomes
-After completing this chapter, you will be able to accomplish five core goals.
-1. Calculate exact KV cache footprints across Multi-Head, Grouped-Query, and Multi-Query Attention. Explain how PagedAttention's Block Table eliminates external fragmentation, bounds internal fragmentation below 4%, and removes padding FLOPs.
-2. Trace how vLLM's `BlockSpaceManager` implements Copy-on-Write block sharing for parallel sampling and beam search. Compare vLLM's hash-based Automatic Prefix Caching against SGLang's tree-based RadixAttention and long-context Cache-Augmented Generation.
-3. Configure iteration-level continuous batching, chunked prefill token budgets, and preemption policies. Work out the swap versus recompute arithmetic for a GQA model and explain why V1 recomputes.
-4. Deconstruct vLLM's layered architecture, including `LLMEngine`, `EngineCore`, `Scheduler`, `SchedulerOutput`, `MultiProcessExecutor`, `GPUWorker`, `GPUModelRunner`, and vLLM V1's dual-process separation. Compare vLLM against TGI, SGLang, LMDeploy, TensorRT-LLM, and llama.cpp.
-5. Architect multi-GPU and multi-node vLLM deployments using Tensor, Pipeline, Data, and Expert Parallelism alongside Multi-LoRA serving and speculative decoding. Diagnose KV cache OOMs, preemption storms, and tail-latency spikes using Prometheus telemetry.
+Picture a platform lead who has to sign off on a vLLM rollout next week. The lead needs to know the memory math, the scheduling rules, the engine layout, the cluster shape and the failure signs. This chapter is built to give that person all five.
+
+The chapter covers five areas. It starts with KV cache footprints and the way PagedAttention's Block Table removes fragmentation. It then follows copy-on-write sharing through the `BlockSpaceManager` and the two prefix caching designs. After that it covers the scheduler, the preemption choice and the arithmetic behind it. The fourth area is the engine itself, from `LLMEngine` and `EngineCore` down through `Scheduler`, `SchedulerOutput`, `MultiProcessExecutor`, `GPUWorker` and `GPUModelRunner`, and it includes how vLLM compares with other serving engines. The last area is multi-GPU and multi-node deployment, followed by the metrics and failures you have to diagnose in production.
 
 ---
 
@@ -74,13 +72,14 @@ After completing this chapter, you will be able to accomplish five core goals.
 
 ### 1.1 Decoder-Only Transformers: Prefill vs Decode and the KV Cache Footprints
 
-Modern foundation models such as Llama, Qwen, Mistral, and DeepSeek use a decoder-only Transformer stack. A seven-billion-parameter model typically stacks 32 identical Transformer layers, while a seventy-billion-parameter model stacks 80 layers. Each layer applies pre-normalization, a causally masked self-attention sub-layer, and a gated feed-forward network such as SwiGLU.
+Imagine you are reading a long contract with a colleague who answers questions about it one word at a time. Your colleague reads the whole contract once, then writes the answer slowly, and each new word depends on the words before it. Modern foundation models such as Llama, Qwen, Mistral, and DeepSeek use a decoder-only Transformer stack, which works in much the same way. A seven-billion-parameter model typically stacks 32 identical Transformer layers, while a seventy-billion-parameter model stacks 80 layers. Each layer applies pre-normalization, a causally masked self-attention sub-layer, and a gated feed-forward network such as SwiGLU. A causally masked layer is one that cannot look at tokens that come later in the text.
 
-Inside each self-attention layer, the model projects every token hidden state into three vectors: Query, Key, and Value. A causal mask sets attention scores for future positions to negative infinity before the softmax normalization so that token position *i* only attends to positions up to *i*. Because language generation is autoregressive, serving every request unfolds across two distinct computational phases.
-1. **Prefill phase (prompt processing):** The engine processes all prompt tokens in parallel across every Transformer layer. Because all prompt tokens are known upfront, prefill executes dense matrix-matrix multiplications with high arithmetic intensity. Prefill is **compute-bound** on GPU Tensor Cores and populates the initial Key and Value tensors for every prompt token.
-2. **Decode phase (token generation):** The engine generates output tokens one at a time in a sequential loop. Each step feeds a single new token per sequence into the model. Without a cache, generating each new token would require concatenating the entire history and recomputing Key and Value projections for all past tokens, incurring quadratic time per step and cubic time across the full response.
+Inside each self-attention layer, the model projects every token hidden state into three vectors: Query, Key, and Value. The Query asks what the current token is looking for. The Key describes what each earlier token offers, and the Value carries the content to mix in. A causal mask sets attention scores for future positions to negative infinity before the softmax normalization so that token position *i* only attends to positions up to *i*. The softmax is the step that turns the scores into weights that add up to one. Because language generation is autoregressive, serving every request unfolds across two distinct computational phases.
 
-Storing previously computed Key and Value vectors in the **KV Cache** reduces per-step attention complexity from quadratic to linear in sequence length. During each decode step, the GPU computes Query, Key, and Value projections only for the single newly generated token and attends against the cached Keys and Values in High-Bandwidth Memory. Because only one token vector is processed per sequence, decode executes matrix-vector multiplications with low arithmetic intensity and is **memory-bandwidth bound**.
+1. Prefill phase (prompt processing) comes first. The engine processes all prompt tokens in parallel across every Transformer layer. Because all prompt tokens are known upfront, prefill executes dense matrix-matrix multiplications with high arithmetic intensity. Prefill is **compute-bound** on GPU Tensor Cores and populates the initial Key and Value tensors for every prompt token.
+2. Decode phase (token generation) comes second. The engine generates output tokens one at a time in a sequential loop. Each step feeds a single new token per sequence into the model. Without a cache, generating each new token would require concatenating the entire history and recomputing Key and Value projections for all past tokens, incurring quadratic time per step and cubic time across the full response.
+
+Storing previously computed Key and Value vectors in the **KV Cache** reduces per-step attention complexity from quadratic to linear in sequence length. Think of it as keeping notes on a document you have already read, so you never reread the same page. During each decode step, the GPU computes Query, Key, and Value projections only for the single newly generated token and attends against the cached Keys and Values in High-Bandwidth Memory. Because only one token vector is processed per sequence, decode executes matrix-vector multiplications with low arithmetic intensity and is **memory-bandwidth bound**. That means the speed is set by how fast the GPU can read the cache and the weights, not by how fast it can multiply.
 
 ```text
 Decoder-Only Transformer Notation and Phase Complexity (DAI Ch. 6; Volume 12 Ch. 7–8):
@@ -113,7 +112,11 @@ KV Cache Memory Equations and Llama-3-70B Worked Numbers (Volume 12 Ch. 8; ASP C
   At FP16 (2 B): 1,310,720 B (~1.31 MB/token) * 250,000 = 327.68 GB (~328 GB) vs 100–150 GB with FP8 + selective caching
 ```
 
-The attention head layout directly governs how many concurrent users a GPU can hold. In standard Multi-Head Attention, every query head maintains its own Key and Value head. Grouped-Query Attention shares a single Key and Value head across a group of query heads, cutting the Llama-3-70B KV cache footprint by 87.5%. Multi-Query Attention uses a single Key and Value head across all query heads.
+Read the notation block at the top as a set of labels for the shapes you will meet again. B is the batch, D is the hidden width, and H_kv is the number of KV heads. The phase rules show why the cache matters. Without it, every step repeats work on the whole history, so the total cost grows like the cube of the response length. With it, each step touches only the new token and the cached rows, so the total cost falls to the square. The label memory-bound GEMV at the end is the important bit. It tells you the decode step will wait on memory, which is the same lesson the earlier chapters kept returning to.
+
+The second half of that same block turns the sizing rule into numbers. Start with the per-token line, which multiplies two tensors by the layers, the KV heads, the head width and the bytes per value. Then look at the Llama-3-70B lines. Grouped-query attention with 8 KV heads costs 320 KiB per token, while the full multi-head version costs 2.50 MiB, so the 8:1 layout saves 87.5 percent. The last line shows what happens when the sequence gets very long. A single 128,000-token sequence needs 39.06 GiB under the grouped layout, and 312.5 GiB under the full layout that the earlier chapter used as its baseline.
+
+The attention head layout directly governs how many concurrent users a GPU can hold. In standard Multi-Head Attention, every query head maintains its own Key and Value head. Grouped-Query Attention shares a single Key and Value head across a group of query heads, cutting the Llama-3-70B KV cache footprint by 87.5%. Multi-Query Attention uses a single Key and Value head across all query heads. Think of the three designs as three choices about how many note-takers you hire for a reading team. More note-takers cost more memory, and fewer note-takers can make the notes less useful for hard questions.
 
 | Attention Architecture | Key-Value Heads (`H_kv`) | KV Memory Ratio vs MHA | Representative Models |
 |---|---|---|---|
@@ -121,20 +124,23 @@ The attention head layout directly governs how many concurrent users a GPU can h
 | Grouped-Query Attention (GQA) | `H_kv = H_q / G` (group size `G`) | `(1 / G)x` (`0.125x` for 8:1 GQA) | Llama-2-70B, Llama-3-8B/70B, Mistral-7B |
 | Multi-Query Attention (MQA) | `H_kv = 1` | `(1 / H_q)x` (`~0.015x` for 64 heads) | Falcon-40B, Command-R |
 
+Use the table to find the design behind a model card. The first column is the attention type, the second shows how many KV heads it keeps, and the third turns that choice into a memory ratio against full attention. The last column lists models you may already know. When you see a model card that says grouped-query attention, you can read its KV footprint straight off this table.
+
 ### 1.2 Why Contiguous KV Allocation Fails: The 60% to 80% Fragmentation Trap
 
-Even with Grouped-Query Attention, the KV cache for each active request grows by one token on every decode step. Traditional serving frameworks stored each sequence's KV cache as a single contiguous tensor in GPU memory so standard attention kernels could index positions by simple pointer stride. Because a sequence's final output length is unknown when its prompt arrives, the allocator had to pre-allocate a contiguous slab sized to the maximum allowed sequence length.
+Picture a serving node that looks almost full on the dashboard, yet a new request is refused because it cannot find a big enough free space. Even with Grouped-Query Attention, the KV cache for each active request grows by one token on every decode step. Traditional serving frameworks stored each sequence's KV cache as a single contiguous tensor in GPU memory so standard attention kernels could index positions by simple pointer stride. Because a sequence's final output length is unknown when its prompt arrives, the allocator had to pre-allocate a contiguous slab sized to the maximum allowed sequence length.
 
-That contiguous requirement creates three forms of memory waste.
-- **Reservation waste:** Memory slots reserved upfront for future tokens that have not been generated yet.
-- **Internal fragmentation:** Unused memory inside a request's pre-allocated buffer when generation finishes early at an end-of-sequence token. If a request reserves 4,096 tokens but finishes at 500 tokens, over 87% of its reserved slab was never used.
-- **External fragmentation:** Variable-sized free gaps scattered across physical HBM when sequences of different lengths complete. If an 8-token request finishes between two active requests, its freed 8-token gap cannot satisfy a new request that requires a 12-token contiguous slab, nor can it extend a non-adjacent active sequence.
+That contiguous requirement creates three forms of memory waste. Each one hides in a different place on the dashboard, so it helps to know them by name.
 
-In high-concurrency serving, these three effects waste 60% to 80% of total GPU VRAM. Even worse, batching sequences of different active lengths in contiguous tensors requires right-padding every sequence to the longest sequence in the batch. Although causal masks zero out the padded positions after the dot product, the GPU still executes all dot-product FLOPs over the padding tokens.
+- What is reservation waste? It is memory slots reserved up front for future tokens that have not been generated yet. The slab sits empty while the request is still young.
+- What is internal fragmentation? It is unused memory inside a request's pre-allocated buffer when generation finishes early at an end-of-sequence token. If a request reserves 4,096 tokens but finishes at 500 tokens, over 87% of its reserved slab was never used.
+- What is external fragmentation? It is the set of variable-sized free gaps scattered across physical HBM when sequences of different lengths complete. If an 8-token request finishes between two active requests, its freed 8-token gap cannot satisfy a new request that requires a 12-token contiguous slab, nor can it extend a non-adjacent active sequence.
+
+In high-concurrency serving, these three effects waste 60% to 80% of total GPU VRAM. Even worse, batching sequences of different active lengths in contiguous tensors requires right-padding every sequence to the longest sequence in the batch. Although causal masks zero out the padded positions after the dot product, the GPU still executes all dot-product FLOPs over the padding tokens. So the waste is not only in memory. The GPU also spends time multiplying numbers that are thrown away.
 
 ### 1.3 How PagedAttention Works: Block Tables, Physical Blocks, and Zero Padding FLOPs
 
-PagedAttention eliminates contiguous KV cache buffers by applying operating system virtual memory paging directly to attention tensors. The `BlockSpaceManager` partitions the GPU's KV cache memory pool into uniform, fixed-size **Physical Blocks**. Each physical block holds the Key and Value vectors for a fixed number of tokens, typically 16 or 32 tokens per block.
+Picture the same serving node after the team switches to paged memory. The free space that used to be scattered in unusable gaps now serves any request that needs a block. PagedAttention eliminates contiguous KV cache buffers by applying operating system virtual memory paging directly to attention tensors. The `BlockSpaceManager` partitions the GPU's KV cache memory pool into uniform, fixed-size **Physical Blocks**. Each physical block holds the Key and Value vectors for a fixed number of tokens, typically 16 or 32 tokens per block. Because every block is the same size, any free block can go to any request.
 
 ```mermaid
 flowchart LR
@@ -164,12 +170,16 @@ flowchart LR
     BT --> P87
 ```
 
+The diagram shows the mapping in three layers. The logical blocks are the neat sequence of token ranges that the request believes it owns. The block table is the per-request lookup that says where each logical block really lives. The physical pool at the bottom is the set of scattered pages on the card. Notice that the third logical block is only partly full, with 3 of its 16 slots in use. That partial block is the only place where waste can hide, and it is the reason the bound is so tight.
+
 | PagedAttention Component | Architectural Role | Fragmentation & Compute Impact |
 |---|---|---|
 | Logical KV Blocks | Contiguous token view (`Block 0: tokens 0..15`, `Block 1: tokens 16..31`, ...) seen by the sequence | Grows dynamically one block at a time as tokens are generated; zero upfront `S_max` reservation |
 | Block Table (`BlockTable(r)`) | Per-request lookup table mapping `LogicalBlockIndex -> PhysicalBlockIndex` and tracking filled slots | Decouples logical sequence continuity from physical HBM layout |
 | Physical KV Blocks (`B = 16` or `32`) | Uniform memory pages allocated non-contiguously in GPU VRAM by `BlockSpaceManager` | **0% external fragmentation** (any free block fits any request); **< 4% internal fragmentation** (only the final block can be partially empty) |
 | PagedAttention CUDA Kernel | Reads non-contiguous physical blocks via the Block Table using coalesced thread-block memory loads | Iterates strictly over allocated blocks; **0% wasted padding FLOPs** (`14` real positions instead of `21` padded positions for lengths `[4, 7, 3]`) |
+
+The component table lists the four pieces that make the design work, and each row also states the cost it removes. The block table row is the one to remember. It decouples the logical view of the sequence from the physical layout, so the kernel can walk the table instead of needing one long run of memory. The physical blocks row explains the two bounds. External fragmentation is zero because any free block fits any request, and internal fragmentation is under 4 percent because only the final block can be partly empty. The kernel row explains the padding result that the next block makes concrete.
 
 ```text
 PagedAttention Block Math and Kernel Formula (Volume 12 Ch. 6 & 8; DAI Ch. 6):
@@ -186,30 +196,35 @@ PagedAttention Block Math and Kernel Formula (Volume 12 Ch. 6 & 8; DAI Ch. 6):
   Worked check (B = 16, S_actual = 500): ceil(500 / 16) = 32 blocks (512 slots, 12 unused = 2.4% < 3.2% bound, vs 87.79% contiguous waste)
 ```
 
-Because the PagedAttention CUDA kernel iterates over each request's Block Table rather than a padded rectangular matrix, positions that do not exist are never visited. In a batch of three sequences with lengths 4, 7, and 3 tokens, traditional batching pads all three to length 7 and computes 21 attention positions, wasting 33% of its FLOPs on 7 padding positions. PagedAttention computes only the 14 real token positions. Together, near-zero memory waste and zero padding FLOPs allow vLLM to serve two to four times more concurrent requests on the same GPU hardware.
+The math block turns the layout into a few formulas you can check by hand. The number of blocks for a request is the total length divided by the block size, rounded up. Each lookup finds the block index by dividing the token position by the block size, then uses the remainder as the offset inside that block. The bounds at the bottom say that the waste per sequence is at most one block minus one token, and the worked check shows the case of 500 tokens. Work it through once yourself. You get 32 blocks, 512 slots, and 12 unused slots, which is a small waste that stays under the bound.
+
+Because the PagedAttention CUDA kernel iterates over each request's Block Table rather than a padded rectangular matrix, positions that do not exist are never visited. In a batch of three sequences with lengths 4, 7, and 3 tokens, traditional batching pads all three to length 7 and computes 21 attention positions, wasting 33% of its FLOPs on 7 padding positions. PagedAttention computes only the 14 real token positions. Together, near-zero memory waste and zero padding FLOPs allow vLLM to serve two to four times more concurrent requests on the same GPU hardware. The small example is the whole idea in miniature. Padding wastes math, and the block table lets the kernel skip it.
 
 ---
 
 ## 2. Copy-on-Write, Automatic Prefix Caching (APC), and RadixAttention
 
+Picture a product that asks the model for four alternative answers to the same question, so the user can pick the best one. Each of those four answers starts from the same prompt. If the server stored four full copies of that prompt, it would waste memory on four copies of the same text. The sections below show how vLLM shares those blocks, and how it extends the same sharing to requests that arrive at different times.
+
 ### 2.1 Copy-on-Write Block Sharing for Parallel Sampling and Beam Search
 
-Paging the KV cache into uniform physical blocks unlocks a second operating system optimization: memory sharing across sequences via reference counting. Whenever a single prompt spawns multiple output completions—such as parallel sampling with `n=4` or beam search with `"use_beam_search": true, "n": 4`—every candidate branch shares the exact same prompt tokens.
+Paging the KV cache into uniform physical blocks unlocks a second operating system optimization: memory sharing across sequences via reference counting. A reference count is simply the number of users of a block. When the count reaches zero, the block can go back to the free pool. Whenever a single prompt spawns multiple output completions, such as parallel sampling with `n=4` or beam search with `"use_beam_search": true, "n": 4`, every candidate branch shares the exact same prompt tokens.
 
-Instead of duplicating the prompt's KV cache across four separate memory buffers, vLLM's `BlockSpaceManager` forks the parent's Block Table for each child candidate and increments the reference count on every shared physical block. If a 35-token prompt occupies two full 16-token physical blocks and three token slots inside a third physical block, all four branches point to those same three physical blocks with a reference count of 4.
+Instead of duplicating the prompt's KV cache across four separate memory buffers, vLLM's `BlockSpaceManager` forks the parent's Block Table for each child candidate and increments the reference count on every shared physical block. A fork here means the child gets its own copy of the table, which points at the same physical blocks. If a 35-token prompt occupies two full 16-token physical blocks and three token slots inside a third physical block, all four branches point to those same three physical blocks with a reference count of 4. Only the table is copied, not the cache itself, so forking is cheap.
 
-When the first decode step generates a distinct token for one of the branches, vLLM checks the reference count of the tail physical block. Because that incomplete block has a reference count greater than 1, the `BlockSpaceManager` executes a **Copy-on-Write** operation.
+When the first decode step generates a distinct token for one of the branches, vLLM checks the reference count of the tail physical block. Because that incomplete block has a reference count greater than 1, the `BlockSpaceManager` executes a **Copy-on-Write** operation. The name says what happens. The shared block is copied only at the moment someone needs to write to it, and the other branches keep reading the original.
+
 1. It decrements the shared tail block's reference count from 4 to 3.
 2. It allocates a single new physical block from the free pool with a reference count of 1.
 3. It copies only the three existing tokens from the tail block into the new block, appends the branch's fourth token, and updates that branch's last Block Table entry.
 
-The two full prefix blocks covering tokens 0 through 31 are never copied and remain shared with a reference count of 4 across all branches. In beam search, as low-scoring beams are pruned and high-scoring beams fork new candidates, vLLM simply decrements and increments block reference counts without copying full sequence histories.
+The two full prefix blocks covering tokens 0 through 31 are never copied and remain shared with a reference count of 4 across all branches. In beam search, as low-scoring beams are pruned and high-scoring beams fork new candidates, vLLM simply decrements and increments block reference counts without copying full sequence histories. A pruned beam releases its blocks, and a new beam takes references to blocks that already exist. The cost of each choice is a counter update, not a memory copy.
 
 ### 2.2 Automatic Prefix Caching (APC) vs SGLang RadixAttention
 
-Copy-on-Write shares blocks across branches within a single request. **Automatic Prefix Caching**, enabled via `--enable-prefix-caching` or `enable_prefix_caching=True`, extends block sharing across completely independent requests over time.
+Copy-on-Write shares blocks across branches within a single request. Think of it as sharing within one family. **Automatic Prefix Caching**, enabled via `--enable-prefix-caching` or `enable_prefix_caching=True`, extends block sharing across completely independent requests over time. It is more like a shared library that every visitor can use, as long as they bring the same opening pages.
 
-In vLLM, Automatic Prefix Caching uses a global hash table of physical KV blocks. Each full 16-token block is identified by a cryptographic hash—such as SHA-256—computed recursively over its parent block's hash and the block's 16 token IDs. When a new request arrives with zero computed tokens, the `Scheduler` invokes `kv_cache_manager.get_computed_blocks(request)` to hash its prompt in 16-token steps and look up matches in the global block pool. If an external cache connector is attached, the scheduler also queries `connector.get_num_new_matched_tokens()`. Any matched blocks have their reference counts incremented and are mapped directly into the new request's Block Table, skipping prefill computation for those tokens and cutting Time To First Token by 80% to 90%. When a request finishes, its blocks remain in the hash table with a reference count of zero and are evicted only in Least Recently Used order when free blocks are needed.
+In vLLM, Automatic Prefix Caching uses a global hash table of physical KV blocks. A hash is a short fingerprint of some content, so two identical pieces of text get the same fingerprint. Each full 16-token block is identified by a cryptographic hash, such as SHA-256, computed recursively over its parent block's hash and the block's 16 token IDs. Because each hash includes the one before it, a block is identified by the whole prefix that leads to it, not only by its own 16 tokens. When a new request arrives with zero computed tokens, the `Scheduler` invokes `kv_cache_manager.get_computed_blocks(request)` to hash its prompt in 16-token steps and look up matches in the global block pool. If an external cache connector is attached, the scheduler also queries `connector.get_num_new_matched_tokens()`. Any matched blocks have their reference counts incremented and are mapped directly into the new request's Block Table, skipping prefill computation for those tokens and cutting Time To First Token by 80% to 90%. When a request finishes, its blocks remain in the hash table with a reference count of zero and are evicted only in Least Recently Used order when free blocks are needed. Least Recently Used means the block that nobody has touched for the longest time goes first.
 
 ```mermaid
 flowchart TB
@@ -231,6 +246,8 @@ flowchart TB
     end
 ```
 
+The diagram shows two different ways to remember a prefix. On the top, vLLM's hash table chains each full block to the block before it. On the bottom, SGLang's radix tree stores the shared system prompt once as a node and hangs each conversation turn below it as a leaf. The shape of the structure decides what can be matched. A flat chain of full blocks matches only at block edges, while a tree can branch at any token.
+
 | Caching Dimension | vLLM Automatic Prefix Caching (APC) | SGLang RadixAttention |
 |---|---|---|
 | Core Data Structure | Global hash table mapping cumulative block hashes (`SHA-256`) to physical KV blocks | Explicit **Radix Tree** (compressed prefix trie) in host memory with edges pointing to GPU KV tensors |
@@ -238,12 +255,15 @@ flowchart TB
 | Eviction Mechanism | Flat LRU eviction queue over zero-reference physical blocks | Recursive **Radix Tree LRU eviction** of leaf nodes while pinning shared parent prefix nodes |
 | Best Workload Fit | Shared system prompts, few-shot templates, and long-context document Q&A aligned to block sizes | Multi-turn agent loops, tree-of-thought branching, and dynamic sub-block prefix sharing |
 
+Choose between the two by looking at the traffic. If many requests share one long system prompt and the boundaries fall on whole blocks, the hash table is simple and works well. If conversations branch in many directions, or the shared part ends in the middle of a block, the radix tree can match more of the prefix. A partial block is simply a block that is not yet full, and the hash table cannot use it.
+
 ### 2.3 Prompt Structuring, Multi-Tenant Prefix Isolation, and RAG vs CAG Economics
 
-Because prefix hashes chain from the very first token of a prompt, even a single character change near the front—such as changing `Document:` to `Documents:` or omitting a space—invalidates every downstream block hash. To maximize prefix cache hits, structure prompts deterministically with static content first and dynamic content last.
-1. Place the static `<system>` instructions at the very beginning of the prompt.
-2. In multi-tenant deployments where different customers share one vLLM instance, inject a tenant identifier `<id> {user_id_or_session_id}` immediately after `<system>` and before `<context>`. Without a tenant delimiter, Customer A could measure TTFT latency differences to infer whether Customer B had recently queried a specific confidential document. Placing `<id>` after `<system>` lets all tenants share the system prompt blocks while strictly isolating each tenant's private document cache.
-3. Place static `<context>` documents in canonical chunk order before the dynamic `<user>` question at the end.
+Picture two customers sharing one vLLM instance. Each one sends a long system prompt, a private document and a question. Their prompts look similar at the start and differ at the end. Whether they share cache depends on the order of the text, and whether they leak information depends on how the tenant boundary is placed. Because prefix hashes chain from the very first token of a prompt, even a single character change near the front, such as changing `Document:` to `Documents:` or omitting a space, invalidates every downstream block hash. To maximize prefix cache hits, structure prompts deterministically with static content first and dynamic content last.
+
+1. Place the static `<system>` instructions at the very beginning of the prompt. Every request then starts with the same bytes, and the same hashes.
+2. In multi-tenant deployments where different customers share one vLLM instance, inject a tenant identifier `<id> {user_id_or_session_id}` immediately after `<system>` and before `<context>`. Without a tenant delimiter, Customer A could measure TTFT latency differences to infer whether Customer B had recently queried a specific confidential document. Placing `<id>` after `<system>` lets all tenants share the system prompt blocks while strictly isolating each tenant's private document cache. The shared part is the system prompt, and the private part starts at the tenant identifier.
+3. Place static `<context>` documents in canonical chunk order before the dynamic `<user>` question at the end. Canonical order means every request lays out the same documents in the same way, so their hashes match.
 
 ```text
 RAG vs Long-Context Cache-Augmented Generation (CAG) Comparison (HLS Ch. 7):
@@ -267,17 +287,24 @@ RAG vs Long-Context Cache-Augmented Generation (CAG) Comparison (HLS Ch. 7):
   collating 16-token PagedAttention blocks into >= 128-token slabs before NIXL/UCX RDMA transfer cuts 7,500-token (470-page) transfer time from 20 ms to 8 ms.
 ```
 
+The RAG and CAG block is a cost story. RAG retrieves fresh chunks for each question, so almost every token is new and must be prefilled again. CAG loads the whole knowledge base into the cached prefix once, so each question only prefills its own short query. The arithmetic in the block shows the trade. The uncached work drops from 5,500 tokens to 500 tokens, which is the 11x figure, and the time to first token falls in the same proportion. The cost lines show the other side. Holding a large cache is not free, so the per-request price is not always lower. Compare both numbers before you pick the design.
+
+The offloading lines are a reminder that the GPU is not the only place to keep a cache. Host RAM and local NVMe can hold more of it, but every trip back to the card takes time. Treat those numbers as ranges from specific setups, and measure your own traffic before you rely on them.
+
 **Structure every prompt with static prefixes at the front and tenant IDs before private context so Automatic Prefix Caching maximizes hit rates without leaking cross-tenant state.**
 
 ---
 
 ## 3. Continuous Batching, Chunked Prefill, and Preemption Policies
 
+Picture a voice assistant that answers many people at the same time. Most replies are short, and one user has just pasted a long document. If the scheduler treats all of them as one fixed group, the short replies wait for the document. This section explains how vLLM keeps the short replies moving, and what it does when the memory pool runs out.
+
 ### 3.1 Iteration-Level Continuous Batching vs Request-Level Dynamic Batching
 
-Traditional deep learning servers use request-level dynamic batching. They collect incoming requests until a batch size `B=32` or queue timeout `tau=50 ms` expires. Then they pad all sequences to the longest sequence in the batch and lock the entire batch on the GPU until the slowest request finishes. If 31 users ask a short question that finishes in 10 tokens and one user requests a 2,000-token essay, the 31 finished requests remain trapped in GPU memory for 1,990 extra iterations. In heterogeneous LLM traffic, padding waste exceeds 65% and p99 Inter-Token Latency spikes to 420 ms per token.
+Traditional deep learning servers use request-level dynamic batching. They collect incoming requests until a batch size `B=32` or queue timeout `tau=50 ms` expires. Then they pad all sequences to the longest sequence in the batch and lock the entire batch on the GPU until the slowest request finishes. If 31 users ask a short question that finishes in 10 tokens and one user requests a 2,000-token essay, the 31 finished requests remain trapped in GPU memory for 1,990 extra iterations. In heterogeneous LLM traffic, padding waste exceeds 65% and p99 Inter-Token Latency spikes to 420 ms per token. The short users finish early, and then they sit and wait for the essay to end.
 
-Following the Orca paradigm, vLLM implements **iteration-level continuous batching**. The scheduler evaluates the batch after every single token generation step.
+Following the Orca paradigm, vLLM implements **iteration-level continuous batching**. The scheduler evaluates the batch after every single token generation step. Instead of locking a group, it makes a fresh decision each time a token is produced.
+
 1. Any sequence that emitted an end-of-sequence token or hit `max_tokens` at step *t* is evicted immediately, and its physical KV blocks return to the `BlockSpaceManager` free pool.
 2. Waiting requests in the arrival queue are slotted into the batch at step *t+1* as soon as free token budget and KV blocks are available.
 3. Combined with PagedAttention, matrix operations run strictly on active tokens with 0% padding waste.
@@ -289,11 +316,13 @@ Following the Orca paradigm, vLLM implements **iteration-level continuous batchi
 | Inter-Token Latency (ITL) | Poor (blocked by longest request) | Poor (`420 ms` p99 tail spike) | Moderate (spikes during long prefills) | **Bounded & deterministic (`< 20–25 ms`)** |
 | GPU Compute Occupancy | Very low | Low (`15%` to `30%`, `18%` avg) | Medium (`40%` to `60%`) | **High (`75%` to `92%`)** |
 
+The table compares four ways to schedule the same traffic. Read the padding row first, because it shows the most visible difference. The static and dynamic columns both pay for padding, while the continuous columns pay none. The ITL row shows what users feel during a long prompt. Continuous batching alone still has spikes when a long prompt arrives, and chunked prefill is what removes them. The occupancy row shows the cost of the spikes in a different form. A scheduler that keeps the GPU busy is a scheduler that makes money on the same hardware.
+
 ### 3.2 Chunked Prefill and Token-Budget Scheduling
 
-Continuous batching alone still suffers from **prefill bubbles**. Suppose 45 decode streams are generating voice-assistant audio at an average Inter-Token Latency of 18 ms on a 4x H100 node. If a new user submits a 12,288-token document and chunked prefill is disabled, the scheduler executes the entire 12,288-token prefill in a single iteration step. That compute-heavy GEMM monopolizes the GPU for 320 ms, stalling all 45 decode streams and spiking p99 ITL to 340 ms.
+Picture the moment a long document lands in the middle of a busy voice session. The first thing the users notice is a stutter. Continuous batching alone still suffers from **prefill bubbles**, which are the gaps where every decode stream stops while one big prefill runs. Suppose 45 decode streams are generating voice-assistant audio at an average Inter-Token Latency of 18 ms on a 4x H100 node. If a new user submits a 12,288-token document and chunked prefill is disabled, the scheduler executes the entire 12,288-token prefill in a single iteration step. That compute-heavy GEMM monopolizes the GPU for 320 ms, stalling all 45 decode streams and spiking p99 ITL to 340 ms.
 
-**Chunked Prefill** is enabled by default in vLLM V1 and eliminates prefill stalls. It slices long prompts into fixed-size chunks controlled by `long_prefill_token_threshold`, typically 512 or 1,024 tokens. The scheduler then piggybacks one chunk alongside active decode tokens in each iteration.
+**Chunked Prefill** is enabled by default in vLLM V1 and eliminates prefill stalls. It slices long prompts into fixed-size chunks controlled by `long_prefill_token_threshold`, typically 512 or 1,024 tokens. The scheduler then piggybacks one chunk alongside active decode tokens in each iteration. The long prompt still finishes, but it does so in small slices that the decode streams can share.
 
 ```text
 vLLM Unified Token-Budget Scheduler Logic (HLS Ch. 8; Volume 12 Ch. 7):
@@ -313,14 +342,16 @@ vLLM Unified Token-Budget Scheduler Logic (HLS Ch. 8; Volume 12 Ch. 7):
   The 12,288-token prompt completes across 12,288 / 512 = 24 smooth steps while p99 ITL drops from 340 ms to 21.4 ms
 ```
 
-In vLLM, the `Scheduler` maintains two primary queues—`RUNNING` and `WAITING`—and prioritizes `RUNNING` requests first because they already hold allocated KV cache blocks and active streaming timelines. Only after all running decode and in-flight chunked-prefill requests receive their token allocations does the scheduler admit new requests from `WAITING` using the remaining token budget.
+The scheduler logic has two parts. The first part is the budget rule. Every step counts the decode tokens and the prefill chunk tokens, and the total must stay under the per-step limit. The second part is the loop that walks the queues. It starts with the running requests, computes how many new tokens each one needs, caps that number at the chunk threshold, and then trims it to whatever budget is left. The worked example at the bottom puts the numbers together. Each step carries 45 decode tokens and a 512-token chunk, which is 557 tokens. That fits under the 2048 budget, and the 12,288-token prompt finishes over 24 steps. During those steps the p99 ITL drops from 340 ms to 21.4 ms.
+
+In vLLM, the `Scheduler` maintains two primary queues, `RUNNING` and `WAITING`, and prioritizes `RUNNING` requests first because they already hold allocated KV cache blocks and active streaming timelines. Only after all running decode and in-flight chunked-prefill requests receive their token allocations does the scheduler admit new requests from `WAITING` using the remaining token budget. That order protects people who are already talking to the model. A new arrival has to wait for room, and it never pushes an active stream aside.
 
 ### 3.3 Request Preemption: Swap vs Recompute
 
-Picture a busy server where every running sequence needs one more KV block for its next token, and the pool has none left. The scheduler cannot simply refuse. It must preempt one or more lower-priority or most-recently-arrived sequences, which means taking their KV blocks away. There are two ways to give the work back later.
+Picture a busy server where every running sequence needs one more KV block for its next token, and the pool has none left. The scheduler cannot simply refuse. It must preempt one or more lower-priority or most-recently-arrived sequences, which means taking their KV blocks away. There are two ways to give the work back later. Preemption is the general word for pausing a request so another can use its memory.
 
-1. **Host-device swapping:** copy the preempted sequence's KV blocks across the PCIe bus into pinned host RAM, then copy them back when space frees up. Older vLLM releases sized that host buffer with `--swap-space`.
-2. **Recomputation:** free the blocks at once. When capacity returns, the sequence goes through prefill again, rebuilding its KV cache from the original prompt plus the tokens generated so far.
+1. Host-device swapping copies the preempted sequence's KV blocks across the PCIe bus into pinned host RAM, then copies them back when space frees up. Older vLLM releases sized that host buffer with `--swap-space`.
+2. Recomputation frees the blocks at once. When capacity returns, the sequence goes through prefill again, rebuilding its KV cache from the original prompt plus the tokens generated so far.
 
 vLLM V1 only recomputes. The `--swap-space` flag exists in v0.17.0 and is gone in v0.18.0, and the vLLM optimisation guide says V1 preempts by recompute because recomputation has lower overhead in the V1 architecture (checked 2026-11-12). So this section is about why the choice is less obvious than it looks, not about a setting you can change.
 
@@ -350,13 +381,16 @@ Why does V1 recompute anyway? The transfer time is not the whole cost. Swapped b
 
 ## 4. vLLM Engine Architecture, V1 Dual-Process Design, and Distributed Parallelism
 
+Picture an engineer who opens a vLLM stack trace for the first time and sees a dozen class names in a row. Each name stands for a part that has a job. Once you know the jobs, the trace reads like a route map instead of a wall of text. The sections below walk through the layers in the order a request travels, then through the parallelism choices for models too big for one card, and then through the engines you might compare vLLM against.
+
 ### 4.1 Internal Component Hierarchy and the 4-Layer Optimization Strategy
 
-vLLM exposes two primary entry points. Developers can import the in-process `LLM` Python class for offline batch generation. Alternatively, operators can launch the standalone OpenAI-compatible HTTP server via `vllm serve`. Under both interfaces, vLLM organizes execution across four core layers.
-1. **Engine Facade (`LLMEngine` and `EngineCore`):** The `LLMEngine` class acts as the public engine entry point. It receives tokenized request objects from the input processor. Inside it, `EngineCore` runs the inner execution loop that connects the scheduler, model executor, and output processor.
-2. **Traffic Controller (`Scheduler` and `SchedulerOutput`):** On every iteration step, the `Scheduler` inspects the running and waiting queues. It queries the KV cache manager for cached prefix blocks and enforces token budgets and chunked prefill limits. It also tracks active LoRA adapters and speculative draft tokens before emitting a `SchedulerOutput` work order.
-3. **Distributed Coordinator (`ModelExecutor`):** The executor translates each work order into distributed worker commands. For single-node multi-GPU serving, `MultiProcessExecutor` spawns one process per GPU and broadcasts work orders over the `rpc_broadcast_mq` shared-memory queue. For multi-node clusters, the Ray executor coordinates actors across hosts.
-4. **Device Execution (`GPUWorker` and `GPUModelRunner`):** Each worker process runs a `GPUWorker` that initializes its CUDA device and NCCL group. It receives work orders and returns results via `worker_response_mq`. Inside each worker, `GPUModelRunner` loads the model class from the registry, flattens input token IDs into ragged tensors without padding, and replays captured CUDA Graphs up to `--max-seq-len-to-capture`.
+vLLM exposes two primary entry points. Developers can import the in-process `LLM` Python class for offline batch generation. Alternatively, operators can launch the standalone OpenAI-compatible HTTP server via `vllm serve`. Under both interfaces, vLLM organizes execution across four core layers. The first layer is the engine that accepts requests. The second decides what runs on each step. The third is the model's own math. The fourth is the hardware instructions that do that math.
+
+1. The Engine Facade (`LLMEngine` and `EngineCore`) is the public entry point. The `LLMEngine` class receives tokenized request objects from the input processor. Inside it, `EngineCore` runs the inner execution loop that connects the scheduler, model executor, and output processor. Think of the facade as the front desk, and the core as the back office that does the work.
+2. The Traffic Controller (`Scheduler` and `SchedulerOutput`) runs on every iteration step. The `Scheduler` inspects the running and waiting queues. It queries the KV cache manager for cached prefix blocks and enforces token budgets and chunked prefill limits. It also tracks active LoRA adapters and speculative draft tokens before emitting a `SchedulerOutput` work order. A work order is the list of decisions for one step, handed down to the workers.
+3. The Distributed Coordinator (`ModelExecutor`) turns each work order into distributed worker commands. For single-node multi-GPU serving, `MultiProcessExecutor` spawns one process per GPU and broadcasts work orders over the `rpc_broadcast_mq` shared-memory queue. For multi-node clusters, the Ray executor coordinates actors across hosts. An actor here is a worker process that holds state and takes commands.
+4. Device Execution (`GPUWorker` and `GPUModelRunner`) runs in each worker process. Each `GPUWorker` initializes its CUDA device and NCCL group. It receives work orders and returns results via `worker_response_mq`. Inside each worker, `GPUModelRunner` loads the model class from the registry, flattens input token IDs into ragged tensors without padding, and replays captured CUDA Graphs up to `--max-seq-len-to-capture`. A ragged tensor has rows of different lengths stored without filler, which is exactly what removes the padding.
 
 ```mermaid
 flowchart TB
@@ -382,6 +416,8 @@ flowchart TB
     W1 --> OutP
 ```
 
+The diagram splits the work across two processes. Process 0 talks to clients, and it handles the HTTP server, tokenization and the streaming output. Process 1 runs the scheduler and the executor, and it drives the GPU workers. The two sides talk through queues, so the scheduler never waits on a slow HTTP client, and the HTTP server never waits on a GPU kernel launch. Keep that split in mind when you read the next subsection, because it is why V1 is faster on busy nodes.
+
 | Optimization Layer | Component Scope | Concrete Optimizations Applied |
 |---|---|---|
 | Layer 1: System-Wide (`Scheduler`) | Model-agnostic traffic and resource controller | Token-level continuous batching, chunked prefill (`long_prefill_token_threshold`), Automatic Prefix Caching (`get_computed_blocks`), speculative token budgeting, and FCFS/priority preemption |
@@ -389,9 +425,11 @@ flowchart TB
 | Layer 3: Model Layer (Attention & FFN) | Sub-layer neural network blocks | PagedAttention block-table traversal, FlashAttention-3 (Hopper) / FlashInfer (Ampere), FlashMLA / ThunderMLA (`20%–35%` faster decode), and layer-wise operator fusion |
 | Layer 4: Hardware (`CustomOp`) | Accelerator instruction and register level | Marlin (Ampere W4A16), Machete (Hopper W4A16), Transformer Engine FP8 (`E4M3`/`E5M2`), NVFP4/MXFP4 (`E2M1`), and Punica / S-LoRA segmented gather-scatter GEMM kernels |
 
+The table lists what each layer does, and it adds the specific optimizations that live there. Layer 1 is the scheduler's job, and it is model-agnostic. Layer 2 is the executor's job, and it handles how the model family runs across GPUs. Layer 3 is the attention and feed-forward math, where PagedAttention's block walk happens. Layer 4 is the lowest level, where the number formats and the LoRA kernels run. Read the table from the bottom up when you want to know which setting affects which part of the stack.
+
 ### 4.2 vLLM V1 Asynchronous Dual-Process Separation
 
-In vLLM V0, the HTTP API server, tokenizer, multimodal image processor, scheduler, and GPU kernel launcher shared a single Python process. When serving fast GPUs at large batch sizes or processing Vision-Language Model requests, that shared process became a bottleneck. High-resolution images expand into hundreds of placeholder tokens on the CPU. Decoding pixels, resizing images, and contending for the Python Global Interpreter Lock stalled the GPU kernel launch loop.
+Picture a vision model that receives a high-resolution photo with each question. In vLLM V0, the HTTP API server, tokenizer, multimodal image processor, scheduler, and GPU kernel launcher shared a single Python process. When serving fast GPUs at large batch sizes or processing Vision-Language Model requests, that shared process became a bottleneck. High-resolution images expand into hundreds of placeholder tokens on the CPU. Decoding pixels, resizing images, and contending for the Python Global Interpreter Lock stalled the GPU kernel launch loop. The Global Interpreter Lock lets only one Python thread run Python code at a time, so one busy thread can hold up the others.
 
 ```text
 vLLM V1 Dual-Process Multimodal Token Expansion & RLHF Determinism Reference (HLS Ch. 10; DAI Ch. 6):
@@ -404,19 +442,22 @@ vLLM V1 Dual-Process Multimodal Token Expansion & RLHF Determinism Reference (HL
   To eliminate batch-shape floating-point drift during greedy decoding, set temperature=0 and VLLM_ENABLE_V1_MULTIPROCESSING=0.
 ```
 
-vLLM V1 eliminates host-side stalls by splitting execution into two asynchronous operating system processes.
-- **Process 0 (CPU I/O and Preprocessing):** Runs the FastAPI HTTP server, request validation, tokenization, CPU-intensive multimodal vision preprocessing, and streaming Server-Sent Events detokenization.
-- **Process 1 (EngineCore and GPU Scheduling):** Runs the `EngineCore` loop, token-budget `Scheduler`, and `ModelExecutor` worker dispatch on a dedicated process isolated from HTTP and vision CPU spikes.
+The reference block shows what the expansion looks like. A single image becomes a long run of special tokens that the language model reads as part of the prompt. The vision encoder cuts the image into patches and projects each patch into the model's hidden size before attention runs. The second part of the block is a determinism rule for reinforcement learning rollouts. Sample generation can take most of the training time in that workflow, so small floating-point drift in generation can matter. Setting temperature to zero and turning off V1 multiprocessing removes most of the variation.
 
-Dynamic batch composition and asynchronous multiprocessing can introduce tiny floating-point variations across different batch shapes. Therefore, setting greedy decoding alone does not guarantee bit-for-bit reproducibility in reinforcement learning rollout pipelines. When strict determinism is required, disable V1 multiprocessing via `VLLM_ENABLE_V1_MULTIPROCESSING=0` and enable batch-invariant kernels.
+vLLM V1 eliminates host-side stalls by splitting execution into two asynchronous operating system processes. Each process has one clear job, and they talk through queues.
+- What does Process 0 do? It runs the FastAPI HTTP server, request validation, tokenization, CPU-intensive multimodal vision preprocessing, and streaming Server-Sent Events detokenization. These are the jobs that touch the outside world.
+- What does Process 1 do? It runs the `EngineCore` loop, the token-budget `Scheduler`, and `ModelExecutor` worker dispatch on a dedicated process. It is isolated from HTTP and vision CPU spikes, so a burst of image uploads cannot delay the next kernel launch.
+
+Dynamic batch composition and asynchronous multiprocessing can introduce tiny floating-point variations across different batch shapes. Therefore, setting greedy decoding alone does not guarantee bit-for-bit reproducibility in reinforcement learning rollout pipelines. When strict determinism is required, disable V1 multiprocessing via `VLLM_ENABLE_V1_MULTIPROCESSING=0` and enable batch-invariant kernels. Batch-invariant kernels produce the same result no matter how the requests are grouped. Use that setting when you need repeatable results.
 
 ### 4.3 Distributed Parallelism in vLLM: TP, PP, DP, and MoE Expert Parallelism
 
-Large frontier models exceed the memory capacity of a single GPU. For example, Llama-3.1-405B requires 810 GB in FP16, while DeepSeek-R1 has 671 billion parameters. Even when weights are quantized, long-context KV caches can exceed weight memory. To scale across GPUs and nodes, vLLM combines four parallelism strategies.
-1. **Tensor Parallelism (`--tensor-parallel-size`):** Shards individual layer weights horizontally across GPUs within a single node. It chains column-parallel projections for attention Query, Key, Value and MLP gate/up layers directly into row-parallel projections for attention output and MLP down layers. That chaining requires only two synchronous AllReduce operations per Transformer layer, or 160 AllReduces per token on an 80-layer model. Because those collectives sit on the per-token critical path, Tensor Parallelism must stay inside intra-node NVLink. Sharding across two 141 GB H200 GPUs also expands free KV cache headroom for a 140B model from roughly 20 GB on one GPU to 70 GB per GPU.
-2. **Pipeline Parallelism (`--pipeline-parallel-size`):** Partitions layers vertically into sequential stages across nodes over InfiniBand or RoCEv2 using GPUDirect RDMA. In a naive 3-stage pipeline processing one batch, pipeline bubbles leave each GPU idle two-thirds of the time. vLLM keeps stages busy using virtual-engine request groups and chunked prefill, though four pipeline stages divide total KV cache capacity into roughly one-quarter per group. Combining intra-node Tensor Parallelism with inter-node Pipeline Parallelism also shrinks cross-node transfers because each GPU sends only its horizontal activation shard.
-3. **Data Parallelism (`--data-parallel-size`):** Creates multiple complete model replicas, where each replica spans its own Tensor Parallel group. Dense model replicas share zero runtime communication and scale throughput linearly behind internal or external KV-cache-aware load balancers.
-4. **Expert Parallelism (`--enable-expert-parallel`):** Modifies how Mixture-of-Experts layers distribute expert weights when combined with Tensor or Data Parallelism. Instead of slicing every expert across all GPUs, Expert Parallelism assigns complete experts to each GPU. Combining Expert Parallelism with Tensor Parallelism uses AllReduce for low-latency serving. Combining Expert Parallelism with Data Parallelism enables DP Attention to partition the KV cache by request and uses All-to-All token routing for high-throughput serving.
+Picture a team that wants to serve a model that is larger than any single card they own. Large frontier models exceed the memory capacity of a single GPU. For example, Llama-3.1-405B requires 810 GB in FP16, while DeepSeek-R1 has 671 billion parameters. Even when weights are quantized, long-context KV caches can exceed weight memory. To scale across GPUs and nodes, vLLM combines four parallelism strategies. Each one splits the work in a different direction, and each one has a different cost in communication.
+
+1. Tensor Parallelism (`--tensor-parallel-size`) shards individual layer weights horizontally across GPUs within a single node. It chains column-parallel projections for attention Query, Key, Value and MLP gate/up layers directly into row-parallel projections for attention output and MLP down layers. A column-parallel layer splits its output columns across GPUs, and a row-parallel layer splits its inputs, so the pair needs only one combining step. That chaining requires only two synchronous AllReduce operations per Transformer layer, or 160 AllReduces per token on an 80-layer model. An AllReduce is a collective step where every GPU shares its partial result and receives the sum. Because those collectives sit on the per-token critical path, Tensor Parallelism must stay inside intra-node NVLink. Sharding across two 141 GB H200 GPUs also expands free KV cache headroom for a 140B model from roughly 20 GB on one GPU to 70 GB per GPU.
+2. Pipeline Parallelism (`--pipeline-parallel-size`) partitions layers vertically into sequential stages across nodes over InfiniBand or RoCEv2 using GPUDirect RDMA. Think of it as an assembly line, where each stage hands its output to the next. In a naive 3-stage pipeline processing one batch, pipeline bubbles leave each GPU idle two-thirds of the time. vLLM keeps stages busy using virtual-engine request groups and chunked prefill, though four pipeline stages divide total KV cache capacity into roughly one-quarter per group. Combining intra-node Tensor Parallelism with inter-node Pipeline Parallelism also shrinks cross-node transfers because each GPU sends only its horizontal activation shard.
+3. Data Parallelism (`--data-parallel-size`) creates multiple complete model replicas, where each replica spans its own Tensor Parallel group. Dense model replicas share zero runtime communication and scale throughput linearly behind internal or external KV-cache-aware load balancers. A load balancer that is aware of the cache sends a request to the replica that already holds its prefix.
+4. Expert Parallelism (`--enable-expert-parallel`) modifies how Mixture-of-Experts layers distribute expert weights when combined with Tensor or Data Parallelism. Instead of slicing every expert across all GPUs, Expert Parallelism assigns complete experts to each GPU. Combining Expert Parallelism with Tensor Parallelism uses AllReduce for low-latency serving. Combining Expert Parallelism with Data Parallelism enables DP Attention to partition the KV cache by request and uses All-to-All token routing for high-throughput serving. All-to-All means every GPU sends pieces of its data to every other GPU.
 
 ```text
 Distributed Parallelism Reference Numbers (DAI Ch. 6; Volume 12 Ch. 8 & Ch. 9; HLS Ch. 7):
@@ -436,16 +477,20 @@ Distributed Parallelism Reference Numbers (DAI Ch. 6; Volume 12 Ch. 8 & Ch. 9; H
   TP=8 + EP uses AllReduce; DP=8 + EP uses All-to-All + DP Attention (beneficial when expert activation density > 3%, hurts when < 1%)
 ```
 
+The reference numbers explain when each choice is worth it. The tensor parallel line says that the per-token collectives must be fast, which is why they stay on NVLink. The pipeline line shows the cost of crossing nodes, and it uses GPUDirect RDMA to move data without a CPU copy. The mixture-of-experts lines show the expert math for a 256-expert model on eight GPUs. The rule at the bottom is the planning tool. Expert activation density decides whether the All-to-All pattern pays off, so a model that uses only a sliver of its experts per token needs a different layout from one that uses many.
+
 | Hardware Topology (Llama-3-70B BF16) | Total VRAM | Weight Memory | Available KV Pool (`0.90` util) | `C_max` (`S=2048`) | `C_max` (`S=8192`) | `C_max` (`S=32768`) |
 |---|---|---|---|---|---|---|
 | 4x A100-80GB or 4x H100-80GB (`TP=4`) | `320 GB` | `140 GB` | `140 GB` (`1.25 GiB` @ 4K) | `218` requests | `54` requests | `13` requests |
 | 8x A100-80GB or 8x H100-80GB (`TP=8`) | `640 GB` | `140 GB` | `428 GB` | `668` requests | `167` requests | `41` requests |
 
+The capacity table ties the parallelism choice to memory. Going from four GPUs to eight does not just double the cache. The extra cards add free memory on top of a single copy of the weights, so the number of requests you can hold rises much faster. The table counts requests at three average lengths, and the same node holds far fewer long requests than short ones. Use it to decide the node size before you buy the hardware.
+
 ### 4.4 Multi-LoRA Serving (Punica / S-LoRA), Quantization, and Speculative Decoding
 
-Enterprise platforms frequently serve dozens of tenant-specific Low-Rank Adaptation fine-tunes. Each adapter modifies less than 1 percent of a base model's parameters. Deploying separate base model instances for dozens of low-traffic adapters wastes GPUs.
+Picture a platform that serves a different fine-tuned model for each of dozens of customers. Each fine-tune is small, but it would be wasteful to load a whole base model for each one. Enterprise platforms frequently serve dozens of tenant-specific Low-Rank Adaptation fine-tunes. Low-Rank Adaptation, or LoRA, is a small add-on that changes a model's behavior by learning a few extra weight matrices. Each adapter modifies less than 1 percent of a base model's parameters. Deploying separate base model instances for dozens of low-traffic adapters wastes GPUs.
 
-vLLM's Multi-LoRA serving, enabled via `--enable-lora`, co-locates a single frozen base model in GPU memory alongside multiple active LoRA adapters while caching cold adapters in host RAM. During continuous batching, requests inside the same iteration batch can target different adapters. Specialized Punica and S-LoRA segmented gather-scatter GEMM kernels compute the shared base projection in one dense matrix multiplication across the whole batch. They then add each token's specific low-rank adapter update in parallel, serving many adapters on a single GPU. When a single adapter's traffic grows large enough to saturate multiple dedicated replicas, merge its weights into the base model and serve it with Data Parallelism.
+vLLM's Multi-LoRA serving, enabled via `--enable-lora`, co-locates a single frozen base model in GPU memory alongside multiple active LoRA adapters while caching cold adapters in host RAM. During continuous batching, requests inside the same iteration batch can target different adapters. Specialized Punica and S-LoRA segmented gather-scatter GEMM kernels compute the shared base projection in one dense matrix multiplication across the whole batch. They then add each token's specific low-rank adapter update in parallel, serving many adapters on a single GPU. A gather-scatter kernel collects the rows that belong to each adapter, runs the small update, and places the results back. When a single adapter's traffic grows large enough to saturate multiple dedicated replicas, merge its weights into the base model and serve it with Data Parallelism.
 
 ```text
 Multi-LoRA Footprint, Quantization (W4A16 / W8A8 / FP4), and Speculative Decoding Reference (HLS Ch. 6, 7 & 10):
@@ -471,7 +516,11 @@ Multi-LoRA Footprint, Quantization (W4A16 / W8A8 / FP4), and Speculative Decodin
     Doubles throughput at concurrency 1 from 28.9 tokens/s (vanilla vLLM) to 56.5 tokens/s (1.96x speedup)
 ```
 
+The footprint lines show why adapters are cheap. The base model is the big cost, and each adapter adds only a fraction of a percent of that size. The hardware lines list the peak math for each precision, and they carry a warning. The sparse figures in the datasheet need a special weight pattern, so they are not what dense serving sees. The quantization lines compare the three families by size and speed, and the speculative decoding lines show the gain from proposing several tokens at once and checking them in a single pass. Read each figure with its setup in mind, because a number from a sparse or low-batch run does not carry over to a dense, busy one.
+
 ### 4.5 Serving Engine Comparison: vLLM vs TGI vs SGLang vs LMDeploy vs TensorRT-LLM vs llama.cpp
+
+Picture a team choosing an engine for a new service. Several engines look good on paper, and each one is strongest in a different place. Comparing them on the same dimensions makes the choice clearer. The table below uses five columns, one for each major engine, and it lists the same rows for each. Read down a column to see one engine's strengths, or across a row to see how the engines compare on one question.
 
 | Dimension | vLLM | Hugging Face TGI | SGLang | LMDeploy (`TurboMind`) | TensorRT-LLM / llama.cpp |
 |---|---|---|---|---|---|
@@ -480,13 +529,17 @@ Multi-LoRA Footprint, Quantization (W4A16 / W8A8 / FP4), and Speculative Decodin
 | Structured Output & Quantization | Outlines / XGrammar; FP8, INT8, GPTQ/AWQ (Marlin/Machete) | Grammar/regex JSON; FP8, INT8, AWQ, GPTQ, EETQ | **Native `XGrammar` compressed state graph**; FP8, AWQ | Schema-guided JSON; **native fused W4A16 AWQ** | **TRT-LLM:** FP8/FP4 Tensor Core peak; **llama.cpp:** `Q8_0`/`Q4_0` CPU SIMD/Metal |
 | Inter-Token Latency & Sweet Spot | Low (`15–25 ms`); broadest model support & Multi-LoRA | Low (`15–25 ms`); Rust connection safety & fast cold start | Low (`12–22 ms`); multi-turn agents & structured JSON | **Ultra-low (`8–14 ms`)**; lowest single-stream ITL | **TRT-LLM:** max tokens/$ on NVIDIA; **llama.cpp:** laptop/edge privacy |
 
+Use the comparison as a shortlist, not a verdict. vLLM is the broadest choice, with the most model support and Multi-LoRA. TGI is a good fit when the Rust router and fast cold start matter. SGLang suits multi-turn agents and structured JSON. LMDeploy has the lowest single-stream latency in the table. TensorRT-LLM and llama.cpp sit at opposite ends, one for maximum tokens per dollar on NVIDIA hardware and the other for laptops and edge devices. Run your own workload on the shortlist before you decide.
+
 ---
 
 ## 5. Commands, Configurations, and Prometheus Telemetry That Matter
 
+Picture the first afternoon of a new vLLM deployment. The engineer needs an install path, a launch command that fits the node, and a set of metrics to watch so the first load test does not turn into a surprise. This section gives the commands and the telemetry names that go with them. Each command is a starting point, so change the model and the paths to match your environment.
+
 ### 5.1 Installation, Docker Launch, Offline Batching, and Distributed Serving Commands
 
-All CLI and container commands below are marked `(untested here)` for local build verification. They follow the exact flags from *Distributed AI Systems* Chapter 6, *Hands-On LLM Serving* Chapters 7–8, and Volume 12.
+All CLI and container commands below are marked `(untested here)` for local build verification. They follow the exact flags from the sources listed at the end of this chapter, including *Distributed AI Systems* Chapter 6 and *Hands-On LLM Serving* Chapters 7–8. The block groups six examples, from a simple install to a multi-node data-parallel setup. Run the first two on a single workstation before you try the multi-node examples. Each example is labeled with its purpose, so you can pick the one that matches your node.
 
 ```bash
 # 1. Environment installation via uv (recommended, ~8 GB Docker image alternative below) (untested here)
@@ -536,9 +589,11 @@ nsys profile --trace=cuda,nvtx --output=profile.qdrep \
   vllm serve meta-llama/Llama-2-70b-hf --tensor-parallel-size 4
 ```
 
+The first command installs the Python package in a fresh environment. The Docker command starts the OpenAI-compatible server with the Hugging Face cache mounted, so the model is not downloaded again on every run. The third command is the production shape from the earlier sections, with four tensor-parallel GPUs, chunked prefill, prefix caching and a 2048-token batch budget. The fourth and fifth commands spread one very large model across nodes. The last command profiles the server with Nsight Systems so you can see the CUDA kernels and the NCCL collectives on a timeline.
+
 ### 5.2 Prometheus Metrics, Alerting Thresholds, and Kubernetes HPA / KEDA Autoscaling
 
-Exposing `:8000/metrics` provides real-time visibility into the PagedAttention block pool, admission queue, and preemption counters. In Kubernetes, never autoscale LLM pods on raw CPU or raw instantaneous GPU utilization. Individual GPU utilization oscillates between 0 percent and 100 percent and causes severe replica flapping. Instead, export DCGM and vLLM metrics through Prometheus and KEDA using the custom metrics API. Configure a downscale stabilization window of at least 300 seconds and slow down pod termination so replicas are not killed while loading weights. For rolling updates on eight-GPU pods when spare nodes are scarce, set `maxSurge` to 1 and `maxUnavailable` to 3.
+Exposing `:8000/metrics` provides real-time visibility into the PagedAttention block pool, admission queue, and preemption counters. Those counters are the signals you should alert on, because they show pressure before users complain. In Kubernetes, never autoscale LLM pods on raw CPU or raw instantaneous GPU utilization. Individual GPU utilization oscillates between 0 percent and 100 percent and causes severe replica flapping. Flapping means pods are added and removed over and over, because the metric swings faster than the scaler can settle. Instead, export DCGM and vLLM metrics through Prometheus and KEDA using the custom metrics API. Configure a downscale stabilization window of at least 300 seconds and slow down pod termination so replicas are not killed while loading weights. For rolling updates on eight-GPU pods when spare nodes are scarce, set `maxSurge` to 1 and `maxUnavailable` to 3.
 
 ```text
 Kubernetes HPA / KEDA Autoscaling, Rolling Updates, and Locust Load Testing Reference (LLP Ch. 6; GAK Ch. 4):
@@ -550,6 +605,8 @@ Kubernetes HPA / KEDA Autoscaling, Rolling Updates, and Locust Load Testing Refe
 - Locust streaming load test baseline: target >= 11 tokens/s per user (human reading speed); sample 50-user test (spawn rate 1/s) peaked at 34 users
 ```
 
+The autoscaling reference gives the rule of thumb for the scaler. The desired replica count follows from the ratio of the current metric to the target, and the target depends on how bursty the traffic is. Scale up quickly, and scale down slowly, so the pods do not thrash. The load test line is a reminder to measure the streaming rate per user, because that is what the user actually feels.
+
 | Prometheus Metric / CLI Flag | Type / Default | Operational Meaning | Production Target / Alert Rule |
 |---|---|---|---|
 | `vllm:gpu_cache_usage_perc` | Gauge (`0.0–1.0`) | Fraction of physical GPU PagedAttention blocks currently allocated | Nominal `< 0.85`; critical alert `> 0.95` for `2m` (`LLMKVCacheSaturated`) |
@@ -559,15 +616,21 @@ Kubernetes HPA / KEDA Autoscaling, Rolling Updates, and Locust Load Testing Refe
 | `vllm:num_preemptions_total` / `vllm:num_preempted_requests_total` | Counter | Cumulative sequence preemptions triggered by block exhaustion | `rate(...[2m]) > 0` for `30s` fires critical alert (`LLMRequestPreemptionsOccurring`) |
 | `--gpu-memory-utilization` | Float (`0.90` default) | Fraction of total GPU VRAM reserved for weights + workspace + KV pool | Set `0.85` to `0.90` (`0.92–0.95` only with bounded `--max-model-len`); never `0.98` |
 
+The metrics table lists the names you will see on a dashboard. Each row gives the type, what the metric means, and the alert rule that uses it. The cache usage gauge and the waiting-request gauge tell you whether the node is nearly full. The preemption counters tell you whether the node has already started to shuffle work. The memory utilization flag is the one you set at launch, and the table gives the range that is safe to use.
+
 ---
 
 ## 6. How It Fails: Production Failure Modes and Diagnostic Runbooks
 
+Picture a pager that goes off during a traffic spike. Latency has jumped, some requests fail, and the on-call engineer has ten minutes to decide what to change. A runbook is a short written path from a symptom to a cause to a fix. The five runbooks below follow the same shape, so you can read any one of them under pressure. Each one gives the symptom, the diagnosis, and the fix, and the evidence block shows the numbers behind the diagnosis.
+
 ### Failure Mode 1: Physical Block Exhaustion and PCIe Swap Stalls Under Long-Context RAG
 
-- **Symptom:** On a two-GPU A100 RAG deployment serving long legal documents, response latency spikes from 1.2 seconds to over 45 seconds. Engine logs warn that free physical blocks are low and requests are swapping to CPU RAM. In a related eight-GPU PCIe deployment with host swap space enabled, GPU utilization drops to zero for several seconds while Inter-Token Latency degrades from 20 ms to 850 ms per token.
-- **Diagnosis:** At a 16-token block size, a 24,000-token prompt consumes 1,500 physical blocks. Ten concurrent requests demand 15,000 blocks and exhaust the GPU pool. Swapping 28 GB of KV cache across PCIe saturates the host bus and stalls kernel launches.
-- **Fix:** On V1 there is no swap to turn off, since preemption always recomputes; on a pre-v0.18 engine set `--swap-space 0`. Enable `--enable-prefix-caching`, raise `--block-size` to 32, and cap `--max-num-seqs` at 64.
+Symptom: On a two-GPU A100 RAG deployment serving long legal documents, response latency spikes from 1.2 seconds to over 45 seconds. Engine logs warn that free physical blocks are low and requests are swapping to CPU RAM. In a related eight-GPU PCIe deployment with host swap space enabled, GPU utilization drops to zero for several seconds while Inter-Token Latency degrades from 20 ms to 850 ms per token.
+
+Diagnosis: At a 16-token block size, a 24,000-token prompt consumes 1,500 physical blocks. Ten concurrent requests demand 15,000 blocks and exhaust the GPU pool. Swapping 28 GB of KV cache across PCIe saturates the host bus and stalls kernel launches. The arithmetic is the whole story. The prompts are simply too big for the pool, and the swap makes the situation worse by blocking the card.
+
+Fix: On V1 there is no swap to turn off, since preemption always recomputes; on a pre-v0.18 engine set `--swap-space 0`. Enable `--enable-prefix-caching`, raise `--block-size` to 32, and cap `--max-num-seqs` at 64. The block size change halves the number of blocks per prompt, and the prefix cache lets shared legal headers be reused.
 
 ```text
 Failure Mode 1 Quantitative Evidence (Volume 12 Ch. 6, Ch. 7 & Ch. 8):
@@ -582,11 +645,15 @@ Failure Mode 1 Quantitative Evidence (Volume 12 Ch. 6, Ch. 7 & Ch. 8):
   Preemptions dropped to 0, vllm:gpu_cache_usage_perc stabilized at 0.81, and ITL returned to 18 ms/token
 ```
 
+Read the evidence block as two cases. Case A shows the block arithmetic and a fix that cut the blocks per prompt in half. Case B is the swap storm, and it comes from an older engine. The lesson is the same in both. Count the blocks before you launch, and do not let a swap path turn a memory shortage into a bus shortage.
+
 ### Failure Mode 2: Unbounded `--max-model-len` and `0.98` VRAM Utilization Causing CUDA OOM
 
-- **Symptom:** On a four-GPU H100 cluster serving Llama-3-70B, users submit 28,000-token codebase prompts. Within three minutes, HTTP 500 errors reach 42 percent of traffic and worker pods enter crash loops with exit code 139.
-- **Diagnosis:** Setting `--gpu-memory-utilization` to 0.98 left only 1.6 GB of headroom for PyTorch workspace and NCCL buffers. Meanwhile, leaving `--max-model-len` at 131,072 with chunked prefill disabled allowed massive prompt allocations to trigger CUDA out-of-memory faults.
-- **Fix:** Set `--gpu-memory-utilization` to 0.90, bound `--max-model-len` to 16,384, cap `--max-num-seqs` at 128, and enable `--enable-chunked-prefill` with `--max-num-batched-tokens` set to 2,048. Also reject prompts over 12,000 tokens at the API gateway.
+Symptom: On a four-GPU H100 cluster serving Llama-3-70B, users submit 28,000-token codebase prompts. Within three minutes, HTTP 500 errors reach 42 percent of traffic and worker pods enter crash loops with exit code 139.
+
+Diagnosis: Setting `--gpu-memory-utilization` to 0.98 left only 1.6 GB of headroom for PyTorch workspace and NCCL buffers. Meanwhile, leaving `--max-model-len` at 131,072 with chunked prefill disabled allowed massive prompt allocations to trigger CUDA out-of-memory faults. Headroom is the free margin that the framework needs for its own work, and it is the first thing a high utilization setting removes.
+
+Fix: Set `--gpu-memory-utilization` to 0.90, bound `--max-model-len` to 16,384, cap `--max-num-seqs` at 128, and enable `--enable-chunked-prefill` with `--max-num-batched-tokens` set to 2,048. Also reject prompts over 12,000 tokens at the API gateway. Each of these changes gives the framework room to breathe, and the gateway rule keeps the worst prompts from arriving at all.
 
 ```text
 Failure Mode 2 Crash Trace and Post-Fix Telemetry (Volume 12 Ch. 8):
@@ -598,23 +665,29 @@ Failure Mode 2 Crash Trace and Post-Fix Telemetry (Volume 12 Ch. 8):
   vllm:gpu_cache_usage_perc = 0.84 | vllm:num_requests_running = 96 | vllm:num_requests_waiting = 12
 ```
 
+The crash trace is worth reading line by line. It shows the allocation that failed, how much memory was already in use, and how little was left. The clean telemetry after the patch shows the cache at 0.84, with 96 running requests and 12 waiting. Those are the numbers to keep on a dashboard, because they show a node that is full but still breathing.
+
 ### Failure Mode 3: Unchunked Prefill Bursts or Mis-Sized Chunk Thresholds Spiking p99 ITL
 
-- **Symptom:** Real-time voice streams on four H100 GPUs stutter as p99 Inter-Token Latency spikes from 18 ms to 340 ms whenever a 12,288-token prompt arrives. Conversely, setting the chunk budget too small at 512 tokens worsens p99 ITL from 28 ms to 45 ms and increases Time To First Token from 180 ms to 320 ms.
-- **Diagnosis:** Without chunked prefill, a 12,288-token prompt runs a 320 ms monolithic GEMM that blocks all 45 active decode streams. Conversely, a 512-token cap causes 450 scheduler context switches per second.
-- **Fix:** Enable `--enable-chunked-prefill` and tune `--max-num-batched-tokens` to 2,048 or 1,024. That setting cut p99 ITL during 12,000-token bursts from 340 ms down to 21.4 ms.
+Symptom: Real-time voice streams on four H100 GPUs stutter as p99 Inter-Token Latency spikes from 18 ms to 340 ms whenever a 12,288-token prompt arrives. Conversely, setting the chunk budget too small at 512 tokens worsens p99 ITL from 28 ms to 45 ms and increases Time To First Token from 180 ms to 320 ms. This case has two faces. The first is too little chunking, and the second is too much.
+
+Diagnosis: Without chunked prefill, a 12,288-token prompt runs a 320 ms monolithic GEMM that blocks all 45 active decode streams. Conversely, a 512-token cap causes 450 scheduler context switches per second. Each switch costs a little time, and at that rate the small chunks add up to real delay.
+
+Fix: Enable `--enable-chunked-prefill` and tune `--max-num-batched-tokens` to 2,048 or 1,024. That setting cut p99 ITL during 12,000-token bursts from 340 ms down to 21.4 ms. The lesson is to tune the budget, not to make the chunks as small as possible.
 
 ### Failure Mode 4: Cross-Node Tensor Parallelism (`TP=16`) NCCL Timeout
 
-- **Symptom:** Deploying a 405B model across two eight-GPU H100 nodes with `--tensor-parallel-size 16` hangs at startup and terminates after 30 seconds with an NCCL AllReduce watchdog timeout.
-- **Diagnosis:** Inspect `nvidia-smi topo -m` and enable `NCCL_DEBUG=INFO`. Setting `TP=16` forced 160 AllReduces per token across host TCP sockets at 45 ms latency instead of NVLink microseconds.
-- **Fix:** Keep Tensor Parallelism inside the node at `--tensor-parallel-size 8` and use `--pipeline-parallel-size 2` across nodes with `NCCL_IB_DISABLE=0` and `NCCL_NET_GDR_LEVEL=5`. When the model fits within a single eight-GPU node, run independent `TP=8` Data Parallel replicas on each node instead.
+Symptom: Deploying a 405B model across two eight-GPU H100 nodes with `--tensor-parallel-size 16` hangs at startup and terminates after 30 seconds with an NCCL AllReduce watchdog timeout. A watchdog is a timer that kills a job when a collective step stops making progress.
+
+Diagnosis: Inspect `nvidia-smi topo -m` and enable `NCCL_DEBUG=INFO`. Setting `TP=16` forced 160 AllReduces per token across host TCP sockets at 45 ms latency instead of NVLink microseconds. The topology output shows which GPUs can talk directly, and the debug log shows which transport NCCL chose.
+
+Fix: Keep Tensor Parallelism inside the node at `--tensor-parallel-size 8` and use `--pipeline-parallel-size 2` across nodes with `NCCL_IB_DISABLE=0` and `NCCL_NET_GDR_LEVEL=5`. When the model fits within a single eight-GPU node, run independent `TP=8` Data Parallel replicas on each node instead. The rule is simple. Keep the chatty collectives on the fast link, and let the slower link carry the pipeline stages.
 
 ### Failure Mode 5: Degraded Prefix Cache Hit Rate and Block Reference Leaks
 
-- **Symptom:** Despite enabling prefix caching, the measured hit rate stays at 12 percent, or drops from 45 percent to 8 percent after enabling chunked prefill. In long-running servers, KV cache utilization climbs from 72 percent to 89 percent over eight hours while active request counts stay flat.
-- **Diagnosis:** Non-deterministic prompt prefixes break block hash chains, unaligned prefill chunks miss whole-sequence cache boundaries, or sequence teardown fails to clear block references.
-- **Fix:** Standardize static system prefixes at the start of every prompt and align chunk sizes to multiples of the 16-token block size. Use prefix-aware consistent routing while replicating hot prefixes across multiple workers to avoid load skew.
+Symptom: Despite enabling prefix caching, the measured hit rate stays at 12 percent, or drops from 45 percent to 8 percent after enabling chunked prefill. In long-running servers, KV cache utilization climbs from 72 percent to 89 percent over eight hours while active request counts stay flat. A leak here means memory keeps climbing even though the number of users is steady.
+
+Diagnosis: Non-deterministic prompt prefixes break block hash chains, unaligned prefill chunks miss whole-sequence cache boundaries, or sequence teardown fails to clear block references. Any one of these can cause the symptom, so the evidence block shows how to tell them apart.
 
 ```text
 Failure Mode 5 Diagnostic Evidence (Volume 12 Ch. 6, Ch. 8 & Ch. 9):
@@ -624,19 +697,27 @@ Failure Mode 5 Diagnostic Evidence (Volume 12 Ch. 6, Ch. 8 & Ch. 9):
 - Prefix-routing load skew across 4 DP nodes: Node 0 handled 3,600 requests (280K tokens, 91% KV usage) vs Node 1 with 1,100 requests (95K tokens, 32% KV usage) = 3.27x imbalance
 ```
 
+Fix: Standardize static system prefixes at the start of every prompt and align chunk sizes to multiples of the 16-token block size. Use prefix-aware consistent routing while replicating hot prefixes across multiple workers to avoid load skew. Prefix-aware routing sends requests that share a prefix to the same worker, so the hits add up. The evidence shows the cost of skipping that step. One node runs at 91 percent cache usage while its neighbor sits at 32 percent.
+
 ---
 
 ## 7. Hands-On Lab: Verify PagedAttention, APC, Chunked Prefill, and Lab 03 Telemetry
 
+Picture a teammate who wants to check the chapter's claims before they trust the numbers. They do not have a GPU on their laptop, so they start with the deterministic model. The lab answers that first question with no hardware at all. Then it offers a second, live step for when a GPU is available.
+
 ### Lab Venue and Execution Modes
-- **Part A (Deterministic Python Model and Self-Checking Lab):** Runs locally on CPU in under one second via `code/part15/vllm_paged_attention.py` and `code/part15/vllm_paged_attention_lab.py` to verify all 25 quantitative checks.
-- **Part B (Live GPU Container Deployment, `untested here`):** Runs on a GPU host with at least 16 GB VRAM using `vllm/vllm-openai:latest` and `Qwen/Qwen2.5-Coder-1.5B-Instruct` to measure streaming latencies and inject KV block exhaustion.
+- Part A (Deterministic Python Model and Self-Checking Lab) runs locally on CPU in under one second via `code/part15/vllm_paged_attention.py` and `code/part15/vllm_paged_attention_lab.py` to verify all 25 quantitative checks. Run it first, because it needs nothing more than Python.
+- Part B (Live GPU Container Deployment, `untested here`) runs on a GPU host with at least 16 GB VRAM using `vllm/vllm-openai:latest` and `Qwen/Qwen2.5-Coder-1.5B-Instruct` to measure streaming latencies and inject KV block exhaustion. Those commands have not been run on a live GPU in this build, so treat their output as something to confirm on your own host.
 
 ### Part A: Run the Self-Checking PagedAttention & vLLM Engine Verification Suite
+
+Suppose you have just changed a constant in the block math and need to know whether the chapter still holds. Run the lab script from the repository root.
 
 ```bash
 python3 -B code/part15/vllm_paged_attention_lab.py
 ```
+
+The expected output is a list of numbered checks, one per claim, each with its PASS or FAIL status and the number it verifies. Read the lines in order, and match each one to the section it cites. The summary line at the bottom is the one to watch in a continuous check.
 
 Expected output (`25 passed, 0 failed`):
 
@@ -671,7 +752,11 @@ Expected output (`25 passed, 0 failed`):
 Summary: 25 passed, 0 failed
 ```
 
+Each line names a claim and the number behind it. Check 13 is worth a second look. It says swap is faster on paper for the grouped model at 4,096 tokens, which matches the preemption discussion earlier in this chapter. The lesson is not that swap wins in practice, but that the arithmetic alone does not decide the policy.
+
 ### Part B: Deploy and Benchmark `Qwen2.5-Coder-1.5B-Instruct` on GPU (`untested here`)
+
+Suppose you finally have a host with a real GPU and want to see the block counts and the startup log with your own eyes. The commands below launch the small model at two memory settings. The first run uses 0.85 of the card, and the second deliberately constrains it to 0.25 to inject block exhaustion. Use the startup log to compare the block counts, and use the metrics endpoint to watch the preemption counter.
 
 ```bash
 # 1. Launch vLLM v0.4.2+ OpenAI server with 0.85 VRAM utilization and 4096 max context (untested here)
@@ -705,34 +790,33 @@ docker run -d --name vllm_constrained \
 # and incrementing vllm:num_preemptions_total on http://localhost:8000/metrics.
 ```
 
+Compare the two startup logs before you move on. The first shows many more GPU blocks, and the second shows few enough that a long prompt cannot fit. The second run is the point of the exercise. Watch the preemption counter climb when the long prompt arrives, because that is the same signal the production alerts use.
+
 ---
 
 ## Key takeaways
 
-1. **PagedAttention turns contiguous KV reservation waste into fixed-size virtual memory paging.** It maps logical sequence blocks to non-contiguous physical HBM blocks via a per-request Block Table. That layout eliminates external fragmentation, restricts internal waste to under 4 percent inside the final active block, removes padding FLOPs, and increases concurrency by two to four times.
-2. **Grouped-Query Attention and block sharing multiply effective VRAM capacity.** On Llama-3-70B in BF16, 8:1 Grouped-Query Attention shrinks per-token KV cache by 87.5 percent down to 320 KiB per token. Copy-on-Write shares prompt blocks across parallel branches, while Automatic Prefix Caching reuses SHA-256-hashed blocks across requests to cut Time To First Token by 80 to 90 percent.
-3. **Iteration-level continuous batching, chunked prefill, and recompute preemption protect tail latency.** Slicing long prompts into 512-token chunks under a 2,048-token step budget prevents prefill matrix multiplications from stalling active decode streams. That bounds p99 Inter-Token Latency to 21.4 ms. For sequences under 8,192 tokens, GPU prefill recomputation is much faster than PCIe host swapping, so always set recompute-only preemption (`--swap-space 0` on vLLM before v0.18) in latency-critical serving.
-4. **vLLM V1 decouples CPU preprocessing from GPU execution, and parallelism must match physical interconnects.** Process 0 handles HTTP, tokenization, and multimodal patch processing while Process 1 runs `EngineCore` and `Scheduler` without Python lock stalls. Keep Tensor Parallelism inside intra-node NVLink and use Pipeline Parallelism over GPUDirect RDMA across nodes. Add Data Parallelism and Expert Parallelism for scale-out throughput, and batch low-traffic domain adapters on a single GPU with Punica and S-LoRA kernels.
+1. PagedAttention turns contiguous KV reservation waste into fixed-size virtual memory paging. It maps logical sequence blocks to non-contiguous physical HBM blocks through a per-request Block Table. That layout removes external fragmentation, keeps internal waste under 4 percent inside the final active block, removes padding FLOPs, and raises concurrency by two to four times.
+2. Grouped-Query Attention and block sharing multiply effective VRAM capacity. On Llama-3-70B in BF16, 8:1 Grouped-Query Attention shrinks the per-token KV cache by 87.5 percent, down to 320 KiB per token. Copy-on-Write shares prompt blocks across parallel branches, while Automatic Prefix Caching reuses SHA-256-hashed blocks across requests to cut Time To First Token by 80 to 90 percent.
+3. Iteration-level continuous batching, chunked prefill, and recompute preemption protect tail latency. Slicing long prompts into 512-token chunks under a 2,048-token step budget keeps prefill matrix multiplications from stalling active decode streams. That bounds p99 Inter-Token Latency to 21.4 ms. For sequences under 8,192 tokens, GPU prefill recomputation is much faster than PCIe host swapping, so always set recompute-only preemption (`--swap-space 0` on vLLM before v0.18) in latency-critical serving.
+4. vLLM V1 decouples CPU preprocessing from GPU execution, and parallelism must match physical interconnects. Process 0 handles HTTP, tokenization, and multimodal patch processing while Process 1 runs `EngineCore` and `Scheduler` without Python lock stalls. Keep Tensor Parallelism inside intra-node NVLink and use Pipeline Parallelism over GPUDirect RDMA across nodes. Add Data Parallelism and Expert Parallelism for scale-out throughput, and batch low-traffic domain adapters on a single GPU with Punica and S-LoRA kernels.
 
 ---
 
 ## Exercises
 
-1. **KV Cache Sizing and PagedAttention Fragmentation Math.**
-   - **(a)** Consider Llama-3-70B with 80 layers, 64 query heads, 8 KV heads, 128 head dimension, and 2-byte BF16 precision. Calculate the per-token KV cache footprint in bytes and KiB. Then compute the per-sequence footprint at 4,096 and 128,000 tokens in GiB, along with the percentage memory savings compared to 64-head Multi-Head Attention.
-   - **(b)** Suppose a request generates 500 tokens on an engine with a 4,096-token maximum length and a 16-token PagedAttention block size. Compute the number of allocated physical blocks, the unused token slots in the final block, the actual and theoretical maximum internal fragmentation percentages, and the contiguous allocation waste percentage. Also calculate the wasted attention FLOPs percentage when a contiguous batch pads three sequences of lengths 4, 7, and 3 to length 7 versus PagedAttention.
-2. **Copy-on-Write Beam Search, Automatic Prefix Caching, and RAG vs CAG Economics.**
-   - **(a)** A 35-token prompt is served with a 16-token block size and forked across 4 parallel sampling branches. How many physical blocks are allocated initially, and what is each block's reference count? When the second branch appends its 36th token, explain which physical block triggers Copy-on-Write and give the resulting reference counts of all blocks.
-   - **(b)** Compare a RAG pipeline with 500 cached system tokens, 5,000 dynamic RAG tokens, and 500 user tokens against Long-Context Cache-Augmented Generation with 500 system tokens, 100,000 cached context tokens, and 500 user tokens. Compute the uncached prefill token count and the expected Time To First Token if RAG takes 5.0 seconds. Also compute the per-request token cost at 1.25 dollars per million regular tokens and 0.125 dollars per million cached tokens.
-3. **Chunked Prefill Token Budgeting and Preemption Policies.**
-   - **(a)** A four-GPU H100 vLLM server runs 45 active decode sequences with `--enable-chunked-prefill`, `--max-num-batched-tokens 2048`, and a 512-token prefill chunk threshold. When a 12,288-token prompt arrives, calculate the total tokens scheduled per step and how many iteration steps are required to complete the prompt prefill.
-   - **(b)** Calculate the one-way and round-trip transfer latency of a 4 GB KV cache buffer across a 64 GB/s PCIe bus. Using the swap versus recompute equations for an 80-layer, 8,192-hidden-size model on a 989 TFLOPS dense BF16 H100 GPU, compare swap time and recompute time at 4,096 tokens versus 65,536 tokens, once with 8 KV heads and once with 64. Then say which policy vLLM V1 uses and why.
-4. **Distributed Parallelism and Cluster Capacity Planning.**
-   - **(a)** Use the VRAM budget formula at 0.90 utilization with 140 GB weights and 8 GB workspace. Compute the available KV cache pool and maximum concurrent sequences for Llama-3-70B on four 80 GB GPUs and eight 80 GB GPUs at average sequence lengths of 2,048, 8,192, and 32,768. Also state how many synchronous AllReduce operations execute per generated token on an 80-layer Tensor Parallel model.
-   - **(b)** Consider DeepSeek-R1 with 671B parameters, 256 routed experts, and an 8,192 hidden size. Compute the total GPUs, parameters per pipeline stage, and per-token inter-node activation elements transferred per GPU under 4-way Tensor Parallelism and 8-way Pipeline Parallelism. Then compute the Expert Parallel size, complete experts per GPU, and the collective communication pattern under 8-way Tensor Parallelism versus 8-way Data Parallelism with `--enable-expert-parallel`.
-5. **Multi-LoRA Serving and Lab 03 Telemetry Triage.**
-   - **(a)** An 8B BF16 base model with 32 layers and a 4,096 hidden dimension serves 8 active rank-16 LoRA adapters. Each adapter modifies 4 linear projections per layer. Calculate the parameter count and megabyte footprint of one LoRA adapter, the total HBM footprint of the base model plus all 8 adapters, and the number of GPUs saved compared to dedicated single-model serving.
-   - **(b)** In Lab 03 with `Qwen/Qwen2.5-Coder-1.5B-Instruct`, a 16-token block size, and a 4,096 maximum length, vLLM allocates 14,258 GPU blocks at 0.85 memory utilization and 120 GPU blocks at 0.25 utilization. Verify the 55.69x maximum concurrency multiplier at 0.85 utilization and the 1,920-token capacity at 0.25 utilization. Explain which Prometheus metrics fire when a 1,500-repetition prompt is submitted to the constrained server.
+These exercises use the same formulas as the chapter. Imagine you are preparing the numbers for a design review. Work through each part on paper, then check the answer against the lab output.
+
+1. Start with KV cache sizing and fragmentation. Consider Llama-3-70B with 80 layers, 64 query heads and 8 KV heads. The head dimension is 128, and the precision is 2-byte BF16. Calculate the per-token KV cache footprint in bytes and KiB. Then compute the per-sequence footprint at 4,096 tokens and at 128,000 tokens, in GiB. Also give the percentage memory saving compared with 64-head Multi-Head Attention.
+   The second part looks at a single short request. Suppose a request generates 500 tokens on an engine with a 4,096-token maximum length. Its block size is 16 tokens. Compute the number of allocated physical blocks and the unused slots in the final block. Then work out the actual and maximum internal fragmentation, and the contiguous waste. Last, find the wasted attention FLOPs when a contiguous batch pads three sequences of lengths 4, 7, and 3 to length 7.
+2. Start with a copy-on-write case. A 35-token prompt is served with a 16-token block size and forked across 4 parallel sampling branches. How many physical blocks are allocated at first, and what is the reference count of each one? When the second branch appends its 36th token, which physical block triggers Copy-on-Write? Give the resulting reference counts of all blocks.
+   The second part compares two designs. A RAG pipeline has 500 cached system tokens, 5,000 dynamic RAG tokens and 500 user tokens. Long-Context Cache-Augmented Generation has 500 system tokens, 100,000 cached context tokens and 500 user tokens. Compute the uncached prefill count for each. If RAG takes 5.0 seconds to first token, estimate the CAG time. Then compute the per-request token cost at 1.25 dollars per million regular tokens and 0.125 dollars per million cached tokens.
+3. Start with chunked prefill budgeting. A four-GPU H100 server runs 45 active decode sequences with `--enable-chunked-prefill` and `--max-num-batched-tokens 2048`. The batch budget is 2048 tokens, and the prefill chunk is 512 tokens. When a 12,288-token prompt arrives, calculate the tokens scheduled per step. Then count how many iteration steps the prompt prefill needs.
+   The second part compares preemption policies. Calculate the one-way and round-trip transfer time for a 4 GB KV cache buffer over a 64 GB/s PCIe bus. Use the swap and recompute equations for an 80-layer model with 8,192 hidden size on a 989 TFLOPS dense BF16 H100. Compare the two policies at 4,096 tokens and at 65,536 tokens, once with 8 KV heads and once with 64. Then say which policy vLLM V1 uses, and why.
+4. Start with parallelism and capacity. Use the VRAM budget at 0.90 utilization, with 140 GB of weights and 8 GB of workspace. Compute the KV cache pool and the maximum concurrent sequences for Llama-3-70B on four 80 GB GPUs. Repeat the calculation for eight 80 GB GPUs. Use average sequence lengths of 2,048, 8,192 and 32,768. Then state how many synchronous AllReduce operations run per generated token on an 80-layer Tensor Parallel model.
+   The second part looks at a very large mixture-of-experts model. Consider DeepSeek-R1 with 671B parameters, 256 routed experts and an 8,192 hidden size. Compute the total GPUs, the parameters per pipeline stage, and the activation elements each GPU sends between nodes under 4-way Tensor Parallelism and 8-way Pipeline Parallelism. Then compute the Expert Parallel size and the complete experts per GPU for a server started with `--enable-expert-parallel`. Compare the collective pattern for 8-way Tensor Parallelism with 8-way Data Parallelism.
+5. Start with Multi-LoRA memory. An 8B BF16 base model has 32 layers and a 4,096 hidden dimension. It serves 8 active rank-16 LoRA adapters, and each adapter modifies 4 linear projections per layer. Calculate the parameter count and the megabyte footprint of one adapter. Then compute the total HBM footprint of the base model plus all 8 adapters, and the number of GPUs saved compared with dedicated serving.
+   The second part checks the Lab 03 telemetry. With `Qwen/Qwen2.5-Coder-1.5B-Instruct`, a 16-token block size and a 4,096 maximum length, vLLM allocates 14,258 GPU blocks at 0.85 utilization and 120 GPU blocks at 0.25. Verify the 55.69x maximum concurrency at 0.85 utilization, and the 1,920-token capacity at 0.25. Then explain which Prometheus metrics fire when a 1,500-repetition prompt reaches the constrained server.
 
 ---
 
@@ -857,8 +941,6 @@ First, monitor `vllm:gpu_cache_usage_perc` and keep it below 0.85 nominally whil
 
 Setting `"temperature": 0` enables greedy token selection, but dynamic continuous batching and asynchronous multiprocessing can still introduce minor floating-point variations across different batch sizes. For strict bit-for-bit reproducibility, set `temperature=0` together with `VLLM_ENABLE_V1_MULTIPROCESSING=0` and enable batch-invariant execution settings.
 </details>
-
----
 
 ## Sources and review notes
 
