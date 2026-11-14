@@ -25,13 +25,17 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-You spent Parts 1 through 15 learning to wire the data center floor. You learned how Linux boots, how BGP chooses a path, how the Kubernetes scheduler places a Pod on a NUMA node, how RDMA bypasses the CPU, and how a vLLM engine streams tokens out of an H100. Each of those layers had a hardware or systems problem with a clean answer.
+Picture a Tuesday morning when every GPU node looks healthy, the queue is short, and the model still gives wrong answers. That is the kind of problem this part of the handbook is about, and it is a different kind of problem from the ones you have already solved.
 
-The work in this part is a different kind of problem. The model you put into production tomorrow was trained yesterday, on a dataset that nobody can name precisely. The training ran in a notebook on one engineer's laptop, with a random seed that was picked because the first run looked good. None of the systems knowledge from the earlier chapters protects you from that notebook. The defect sits upstream of the GPU.
+Think back to what you learned in Parts 1 through 15. You learned how Linux boots, how BGP chooses a path, how the Kubernetes scheduler places a Pod on a NUMA node, how RDMA bypasses the CPU, and how a vLLM engine streams tokens out of an H100. Each of those layers had a hardware or systems problem with a clean answer. If a link is slow, you can measure it. If a Pod is pending, the scheduler events tell you why.
+
+The work in this part is harder to pin down. The model you put into production tomorrow was trained yesterday, on a dataset that nobody can name precisely. The training ran in a notebook on one engineer's laptop, with a random seed that was picked because the first run looked good. None of the systems knowledge from the earlier chapters protects you from that notebook. The defect sits upstream of the GPU, in the choices people made before the job ever started.
 
 Suppose a fintech team ships a fraud model that performs well in offline tests for two months. In week nine it quietly starts missing new attack patterns. The on-call engineer opens the training notebook to retrain, and the notebook reads a CSV file from a path that no longer exists. The original data was overwritten by a re-pull last quarter. No record shows which feature engineering version produced the live weights. The model is, for all practical purposes, impossible to reproduce, and the engineer cannot answer the simplest question: what data did this model see?
 
-This chapter exists to prevent that. MLOps is the discipline that closes the gap between a notebook that produced a number and a model that runs in production, traceably and reproducibly. It covers everything that lives above the cluster and below the user.
+The story is ordinary, and that is why it is worth studying. Nobody in it acted carelessly on purpose. Each step made sense at the time, such as overwriting a file to save space or keeping a seed fixed to make a demo repeatable. The failure came from the sum of those small choices, and no single person could see the whole chain. When you review a model, look for the same pattern of reasonable shortcuts.
+
+This chapter is about preventing that story. MLOps, which is short for machine learning operations, is the discipline that closes the gap between a notebook that produced a number and a model that runs in production, traceably and reproducibly. It is the set of records, checks and handoffs that let you answer questions about a model later, even after the people who built it have moved on. It covers everything that lives above the cluster and below the user.
 
 ```text
 The cost of ungoverned ML (background reading: Practical MLOps; Engineering AI Systems; the figures below are examples, not quotations):
@@ -46,37 +50,33 @@ The cost of ungoverned ML (background reading: Practical MLOps; Engineering AI S
   live weights (Designing Machine Learning Systems Ch 1).
 ```
 
-MLOps is not one tool. It is a set of practices that together answer four questions about every model in production. Which data trained it? Which code trained it? How was it validated? How does it step aside when it goes stale? The rest of this chapter lays those foundations.
+MLOps is not one tool. Teams often buy a tracking server or a registry and believe the work is done, then discover that nobody wrote down which data went into the last run. MLOps is a set of practices that together answer four questions about every model in production. Which data trained it? Which code trained it? How was it validated? How does it step aside when it goes stale? The rest of this chapter lays those foundations, one practice at a time.
 
-Three operational facts explain why this matters to you as an infrastructure engineer, and not only to the data scientist.
+Three operational facts explain why this matters to you as an infrastructure engineer, and not only to the data scientist who wrote the model. Each one shows up in the work you already do on the cluster.
 
-1. The cluster you built is where MLOps errors show up. When a model silently degrades, the symptom looks like a queue spike or a burst of 5xx errors. That alert pages you, the platform engineer, not the person who trained the model. You need to read the lineage and the metric history without paging five teams.
-2. ML workloads stress GPU clusters in ways the earlier parts did not. A misconfigured notebook can submit a job that runs for two weeks and blocks the queue. Checkpoint writes can drain a parallel file system. A large model can be pulled into GPU memory and never evicted. Lifecycle discipline stops these mistakes before they reach the cluster.
-3. LLMOps, the focus of Part 16, is MLOps plus new failure modes. Fine-tunes, retrieval pipelines, agent loops and prompt regressions are all machine learning system problems at heart. The MLOps foundations come first, because the LLMOps details only make sense on top of them.
+1. The cluster you built is where MLOps errors show up. When a model silently degrades, the symptom looks like a queue spike or a burst of 5xx errors, which are server-side failures returned to users. That alert pages you, the platform engineer, not the person who trained the model. You need to read the lineage and the metric history without paging five teams first.
+2. ML workloads stress GPU clusters in ways the earlier parts did not. A misconfigured notebook can submit a job that runs for two weeks and blocks the queue for everyone else. Checkpoint writes, which are periodic saves of the model's state during training, can drain a parallel file system. A large model can be pulled into GPU memory and never evicted. Lifecycle discipline stops these mistakes before they reach the cluster, rather than after the queue is already blocked.
+3. LLMOps, the focus of Part 16, is MLOps plus new failure modes. LLMOps means large language model operations, the same practices applied to systems built around LLMs. Fine-tunes, retrieval pipelines, agent loops and prompt regressions are all machine learning system problems at heart. The MLOps foundations come first, because the LLMOps details only make sense on top of them.
 
 **Before you connect a model to a serving engine, make sure its lifecycle can be audited from start to finish. A model is only as reproducible as its weakest piece of metadata.**
 
 ## Prerequisites and outcomes
 
-Picture yourself starting this chapter with a model that a colleague trained last month. You need to trace it back to its data, its code and its tests. That work only goes smoothly if the tools below already feel familiar.
+Picture yourself starting this chapter with a model that a colleague trained last month. You need to trace it back to its data, its code and its tests. That work only goes smoothly if the tools below already feel familiar, so use this list as a self-check before you read on.
 
 ### Prerequisites
 
-- Comfortable with Python packaging, virtual environments and CLI tooling from Part 3.
-- Working knowledge of containers, Kubernetes and the cluster primitives from Part 5 (pods, jobs, services, secrets, RBAC).
-- Familiarity with the GPU node and CUDA stack from Part 10, and with the inference engines from Part 15.
-- For the LLMOps sections: Chapter 14.2 (Transformers and LLM architecture) and Chapter 14.13 (Fine-tuning).
-- For the platform sections: Chapter 16.14 (Platform design: multi-tenant AI factory).
+- Can you install a Python package in a virtual environment and explain why you did it? That is the Python packaging and CLI tooling from Part 3.
+- Can you read a Pod spec and say what a job, a service and a secret each do? That is the container and Kubernetes material from Part 5, which covers pods, jobs, services, secrets and RBAC.
+- Can you check a GPU node and its CUDA stack, and explain what an inference engine does with the GPU? That comes from Part 10 and Part 15.
+- For the LLMOps sections, you should know the transformer architecture from Chapter 14.2 and the fine-tuning methods from Chapter 14.13.
+- For the platform sections, Chapter 16.14 on multi-tenant platform design is the reference.
 
 ### Outcomes
 
-After completing this chapter you will be able to:
+Picture the Monday after a model incident, when someone asks which data and which code produced the model that is live right now. This chapter walks through what goes wrong when a team skips the records that answer that question. It shows how a failure like that is prevented, one mechanism at a time.
 
-1. Explain, with a worked incident, what goes wrong when a team skips data versioning, experiment tracking, a model registry and promotion gates, and why "just be more careful" is not a fix.
-2. Walk a model through the full lifecycle, from problem framing to retirement, naming the artifact, the owner, the gate and the tool at each stage.
-3. Name the four pillars of MLOps (data, model, code, deployment), describe the minimal mechanism for each, and place an organisation on the maturity ladder.
-4. Decide which capability to add next, given the current pain, and distinguish classical MLOps from LLMOps by the new failure modes that fine-tunes, retrieval pipelines and agents introduce.
-5. Connect every lifecycle gate to the infrastructure primitives that enforce it, including registries, schedulers, admission controllers, secrets and audit logs.
+The chapter then follows a model through the full lifecycle, from problem framing to retirement, and names the artifact, the owner, the gate and the tool at each stage. It explains the four pillars of MLOps (data, model, code and deployment), the minimal mechanism for each, and the maturity ladder that teams climb as their pain grows. It shows how the same ideas stretch into LLMOps, and where the new failure modes come from. Finally, it connects every lifecycle gate to the cluster primitive that enforces it, such as a registry, a scheduler, an admission controller, secrets and audit logs.
 
 ---
 
@@ -84,17 +84,21 @@ After completing this chapter you will be able to:
 
 ### 1.1 The classic incident: a notebook, a lucky seed, an unrecoverable dataset
 
-Start with the failure, because it teaches more than a definition does. Imagine a small team that builds a churn model for a subscription product. One data scientist writes the model in a notebook on a laptop. The notebook reads a CSV file that a colleague pulled from the data warehouse and saved to shared storage as `churn_q3.csv`. The notebook cleans the columns, encodes the categories, fits a gradient boosted tree, and reports a 0.92 AUC, a score for how well the model ranks likely churners above everyone else.
+Picture a small team that builds a churn model for a subscription product. Churn means customers who cancel. One data scientist writes the model in a notebook on a laptop. The notebook reads a CSV file that a colleague pulled from the data warehouse and saved to shared storage as `churn_q3.csv`. The notebook cleans the columns, encodes the categories, fits a gradient boosted tree, and reports a 0.92 AUC. AUC, short for area under the ROC curve, is a score for how well the model ranks likely churners above everyone else. A higher AUC means the ranking is better, and 0.92 looks like a model worth shipping.
 
-In this illustrative story, the production AUC drifts down to 0.78 three months later. The team opens the notebook to retrain, and three things break at once:
+Start with the failure, because it teaches more than a definition does. The notebook works, the number looks good, and the team moves on. Nobody has written down which file, which helper and which seed produced that number.
 
-- The CSV file was overwritten by a later pull. The exact data behind the live model is gone.
-- The categorical encoding helper was edited in place a month ago. The notebook now encodes `tier="gold"` differently from the original, and the change was committed as `cleanup.py`, not as a tracked experiment.
-- The seed was hard-coded. A second engineer running the same notebook gets 0.86 AUC, and nobody can tell which number was the production one.
+In this illustrative story, the production AUC drifts down to 0.78 three months later. Nothing in the serving code changed, but the customers changed, and the model was never retrained on them. The team opens the notebook to retrain, and three things break at once:
 
-This story is not far-fetched. *Practical MLOps*, chapter 1, frames the whole discipline around three failure shapes. The first is the works-on-my-machine problem, where the data cannot be reproduced. The second is the magic seed problem, where no experiment record exists. The third is the silent promotion problem, where a model reaches production on human judgment alone. *Engineering AI Systems*, chapter 5, adds a fourth: the stale model, whose registry entry is months older than the code that trained it.
+- The CSV file was overwritten by a later pull, so the exact data behind the live model is gone. The team can no longer say which rows the model learned from.
+- The categorical encoding helper was edited in place a month ago. The notebook now encodes `tier="gold"` differently from the original, and the change was committed as `cleanup.py`, not as a tracked experiment. The new encoding might be correct, but nobody can say when it changed the model.
+- The seed was hard-coded. A second engineer running the same notebook gets 0.86 AUC, and nobody can tell which number was the production one. The gap between 0.86 and 0.92 is a sign that the result depends on details nobody recorded.
 
-Each of these failures has a narrow, mechanical fix. The discipline of MLOps is to install that fix in the toolchain, so the failure cannot happen again.
+This story is not far-fetched. *Practical MLOps*, chapter 1, frames the whole discipline around three failure shapes. The first is the works-on-my-machine problem, where the data cannot be reproduced. The second is the magic seed problem, where no experiment record exists. The third is the silent promotion problem, where a model reaches production on human judgment alone. *Engineering AI Systems*, chapter 5, adds a fourth: the stale model, whose registry entry is months older than the code that trained it. Each of these shapes looks small on the day it happens, and each one costs weeks later.
+
+Each of these failures has a narrow, mechanical fix. The fix is rarely clever. It is a record, a check or a gate that runs every time. The discipline of MLOps is to install that fix in the toolchain, so the failure cannot happen again without someone noticing.
+
+When you choose a fix, start with the failure you can reproduce. A fix you can test on your own laptop is a fix you can trust. A fix you can only describe in a meeting is a hope, and it will be the first thing dropped when the next deadline arrives.
 
 | Failure shape | What specifically goes wrong | The MLOps mechanism that prevents it |
 |---|---|---|
@@ -103,11 +107,11 @@ Each of these failures has a narrow, mechanical fix. The discipline of MLOps is 
 | Silent promotion | A new model reaches production because a human approved it verbally | A promotion gate function with hard, mechanical criteria, called by the pipeline (Section 4.3 below) |
 | Stale model | The live artifact is months older than the training pipeline because retraining is manual | A retraining trigger, scheduled or drift-driven, that publishes to the registry (Chapter 16.10) |
 
-Look down the last column, and you see one pattern. **Make the discipline structural, not optional.** Telling people to be more careful does not survive a deadline. Putting a function in the path of the artifact, and gating deployment on what that function returns, does survive one.
+Look down the last column, and you see one pattern. **Make the discipline structural, not optional.** Telling people to be more careful does not survive a deadline. Putting a function in the path of the artifact, and gating deployment on what that function returns, does survive one. The rest of this chapter returns to that idea again and again, because it is the core of the job.
 
 ### 1.1.1 Why teams fail to install the discipline: the ML hierarchy of needs
 
-*Practical MLOps*, chapter 1, borrows Maslow's hierarchy of needs to explain why teams struggle to adopt MLOps. The layers, from bottom to top, are DevOps, data engineering, platform automation and finally MLOps. A team without automated CI/CD cannot run an MLOps pipeline reliably, because every training run becomes a hand-built deployment. A team with CI/CD but no data platform has nowhere to land its datasets. A team with both, but no platform automation, ends up writing a one-off pipeline for each project.
+Picture a team that has just bought a feature store and a model registry. Later, the team still cannot retrain a model without a person copying files by hand. *Practical MLOps*, chapter 1, borrows Maslow's hierarchy of needs to explain why this happens. The layers, from bottom to top, are DevOps, data engineering, platform automation and finally MLOps. A team without automated CI/CD, which is continuous integration and delivery of code, cannot run an MLOps pipeline reliably, because every training run becomes a hand-built deployment. A team with CI/CD but no data platform has nowhere to land its datasets. A team with both, but no platform automation, ends up writing a one-off pipeline for each project.
 
 ```text
 ML hierarchy of needs (background reading: Practical MLOps; the figures below are examples, not quotations):
@@ -117,21 +121,21 @@ ML hierarchy of needs (background reading: Practical MLOps; the figures below ar
 - Layer 4 (top): MLOps — automated training, tracking, registry, deployment, monitoring.
 ```
 
-The failure this captures is easy to predict. A team buys a feature store and a registry before it builds images on every commit. The platform then collapses under its own weight, because every artifact change is coordinated by hand. The cure is not more tooling. It is climbing the pyramid one layer at a time.
+The failure this captures is easy to predict. The team skipped the lower layers, so the upper layers rest on sand. The platform collapses under its own weight, because every artifact change is coordinated by hand. The cure is not more tooling. It is climbing the pyramid one layer at a time, and fixing the layer that is missing before adding the one above it.
 
 ### 1.1.2 The cultural failure modes: HiPPO and the absence of Kaizen
 
-Two cultural patterns from *Practical MLOps*, chapter 1, appear in nearly every failed MLOps adoption.
+Two cultural patterns from *Practical MLOps*, chapter 1, appear in nearly every failed MLOps adoption. Neither one is about technology. Both are about how decisions get made and who remembers them.
 
-The first is HiPPO, the Highest Paid Person's Opinion. The most senior person in the room decides whether a model is good enough to ship, and the data is not the deciding factor. The promotion gate then turns into a chat thread, and it gets bypassed, because a meeting is not a function. The fix is the same as in Section 1.1: write the gate as code, and let its return value be the only thing that moves the registry.
+The first is HiPPO, the Highest Paid Person's Opinion. Picture a release meeting where the most senior person in the room asks whether the model looks good, and everyone nods. The data is not the deciding factor. The promotion gate then turns into a chat thread, and it gets bypassed, because a meeting is not a function. The fix is the same as in Section 1.1: write the gate as code, and let its return value be the only thing that moves the registry.
 
-The second is the absence of Kaizen, the habit of small, continuous, data-driven improvement. The team ships a model once, calls the work done, and returns only when the model visibly breaks. In MLOps terms, Kaizen means a retraining trigger from Chapter 16.10, plus a monitoring feedback loop that alerts the team when a key metric slips. That alert should fire on a small, agreed drop, not only after the metric collapses.
+The second is the absence of Kaizen, the habit of small, continuous, data-driven improvement. Picture a team that ships a model once, calls the work done, and returns only when the model visibly breaks. In MLOps terms, Kaizen means a retraining trigger from Chapter 16.10, plus a monitoring feedback loop that alerts the team when a key metric slips. That alert should fire on a small, agreed drop, not only after the metric collapses. By then the users have already noticed.
 
-The two patterns feed each other. HiPPO decides without data, and without Kaizen the team never builds the mechanism that would make HiPPO unnecessary.
+The two patterns feed each other. HiPPO decides without data, and without Kaizen the team never builds the mechanism that would make HiPPO unnecessary. Breaking that loop starts with one small change: a metric that someone is required to look at every week.
 
 ### 1.1.3 Why "ML in production" is not "ML in research": the five-dimension gap
 
-Teams that have only done research ML expect production ML to be the same work at a larger scale. It is not. *Designing Machine Learning Systems*, chapter 1, names five dimensions where production differs from research, and each one creates an MLOps requirement.
+Picture a data scientist who has only ever worked in research. Her model scored well on the benchmark, so she assumes that putting it into production is the same job at a larger scale. It is not. *Designing Machine Learning Systems*, chapter 1, names five dimensions where production differs from research, and each one creates an MLOps requirement.
 
 | Dimension | Research ML | Production ML | The MLOps mechanism that addresses it |
 |---|---|---|---|
@@ -141,29 +145,31 @@ Teams that have only done research ML expect production ML to be the same work a
 | **Fairness and harm** | Lower stakes | Decisions affect real users | Audit logs, lineage, governance committee (Chapter 16.13) |
 | **Interpretability** | Optional | Often required by regulator or operator | Model card, evaluation report in registry entry (Section 3.2) |
 
-The left column is what a team already knows. The right column is what the platform has to add. Each row is a surprise your team will meet, and the mechanism in the last column is how you handle it.
+The left column is what a team already knows. The right column is what the platform has to add. Each row is a surprise your team will meet, usually in the middle of a launch. The mechanism in the last column is how you handle it before the surprise arrives.
 
 ### 1.1.4 A threat that hides in the training set: data poisoning
 
-*Designing Machine Learning Systems*, chapter 1, names data poisoning as an attack surface an MLOps platform must defend. The attack is simple. An adversary plants bad examples in the training set, and the model learns to link a trigger pattern with a target label. Picture a spam classifier taught to let through any email that contains a string the attacker chose. The model behaves normally until the trigger appears in production.
+Picture a spam classifier that has been trained on mail from many users. *Designing Machine Learning Systems*, chapter 1, names data poisoning as an attack surface an MLOps platform must defend. The attack is simple. An adversary plants bad examples in the training set, and the model learns to link a trigger pattern with a target label. The model behaves normally on most mail, then lets through any message that contains the trigger string the attacker chose. It behaves normally until the trigger appears in production, and by then nobody remembers which training example caused it.
 
-The defence is the data versioning contract from Chapter 16.2. Every training example has a content hash and a source-system record, so a poisoned example can be traced to its origin. The snapshot that introduced it can then be excluded from future training runs. None of this works without immutable, hash-addressed data.
+The defence is the data versioning contract from Chapter 16.2. Every training example has a content hash and a source-system record, so a poisoned example can be traced to its origin. The snapshot that introduced it can then be excluded from future training runs. None of this works without immutable, hash-addressed data, because a file that can be silently edited cannot prove what it contained last month.
 
-The same defence protects you from a well-meaning engineer. Suppose someone overwrites a production snapshot with a re-pull that dropped a column. The audit log shows what happened, and the rollback is one snapshot revert away.
+The same defence protects you from a well-meaning engineer. Suppose someone overwrites a production snapshot with a re-pull that dropped a column. The model still trains, and the metrics look close to normal. The audit log shows what happened, and the rollback is one snapshot revert away, instead of a week of archaeology.
+
+A short example makes the difference clear. Say the nightly job overwrites the training file with a fresh export. On Monday the model is fine. On Tuesday the export has lost a column, and the model quietly learns from less information. A content hash in the run record would show that the Tuesday data is different from the Monday data, even though both files have the same name. That one line of metadata turns a mystery into a short investigation.
 
 ### 1.2 Why DevOps muscle alone is not enough
 
-Many teams first try to solve MLOps with classical DevOps. They version the training code, run CI on every pull request, and deploy the resulting model behind a Kubernetes service. That is necessary, but it is not sufficient. Three kinds of state in an ML system sit outside what DevOps versions well.
+Picture a team that has done everything right with classical DevOps. Their training code lives in Git, CI runs on every pull request, and the model is deployed behind a Kubernetes service. Many teams first try to solve MLOps this way, and it is a good start. They version the training code, run CI on every pull request, and deploy the resulting model behind a Kubernetes service. That is necessary, but it is not sufficient. Three kinds of state in an ML system sit outside what DevOps versions well.
 
-1. The data itself. Datasets are large, mutable and partly shared. Git cannot hold a 200 GB Parquet file, for example, and object storage cannot say which version is current without a metadata layer. MLOps adds that layer with content hashes, such as the `.dvc` files from DVC or the commits from Pachyderm, so every snapshot has an immutable address.
-2. The training environment. The same script with the same seed can produce different numbers on different CUDA, cuDNN or NCCL versions. Classical CI pins Python and operating system packages. MLOps also pins the CUDA driver, the cuDNN version, the container image hash and the cluster topology.
-3. The evaluation and decision record. Classical CI gives you pass or fail results and text logs. An ML experiment gives you a set of metrics, an artifact, a confusion matrix and sometimes per-segment slices. MLOps treats that experiment record as a first-class artifact, in tools such as MLflow, Weights and Biases or Vertex AI experiments, that you can query and compare.
+1. The data itself. Datasets are large, mutable and partly shared. Git cannot hold a 200 GB Parquet file, for example, and object storage cannot say which version is current without a metadata layer. MLOps adds that layer with content hashes, such as the `.dvc` files from DVC or the commits from Pachyderm, so every snapshot has an immutable address. DVC and Pachyderm are both covered in Chapter 16.2.
+2. The training environment. The same script with the same seed can produce different numbers on different CUDA, cuDNN or NCCL versions. CUDA is NVIDIA's GPU programming platform, cuDNN is its deep learning library, and NCCL is the library that moves data between GPUs. Classical CI pins Python and operating system packages. MLOps also pins the CUDA driver, the cuDNN version, the container image hash and the cluster topology.
+3. The evaluation and decision record. Classical CI gives you pass or fail results and text logs. An ML experiment gives you a set of metrics, an artifact, a confusion matrix and sometimes per-segment slices. A confusion matrix is a table of right and wrong predictions by class. MLOps treats that experiment record as a first-class artifact, in tools such as MLflow, Weights and Biases or Vertex AI experiments, that you can query and compare.
 
-DevOps gets you reproducible code. MLOps gets you reproducible decisions, and no YAML file closes that gap on its own.
+DevOps gets you reproducible code. MLOps gets you reproducible decisions, and no YAML file closes that gap on its own. The gap is closed by records, and by a habit of looking at them before every promotion.
 
 ### 1.3 What "governance" means in an ML system
 
-Governance is the word you will hear in every MLOps meeting. In an ML system it has three concrete meanings, and each one is tied to a stage of the lifecycle.
+Picture the first MLOps meeting your company holds. Someone says the word governance, and everyone nods, but nobody agrees on what it means. In an ML system the word has three concrete meanings, and each one is tied to a stage of the lifecycle.
 
 | Governance meaning | Lifecycle stage | Concrete artifact |
 |---|---|---|
@@ -171,9 +177,11 @@ Governance is the word you will hear in every MLOps meeting. In an ML system it 
 | Auditability | Deployment | The promotion decision log (who approved what, against which gate) |
 | Accountability | Production | The lineage record (model id, data id, training run id, deployer, SLO owner) |
 
-Reproducibility asks whether you can rerun training and get the same model. Auditability asks who approved the release, and against which rule. Accountability asks who owns the model when it misbehaves, and which data and run produced it.
+Reproducibility asks whether you can rerun training and get the same model. Auditability asks who approved the release, and against which rule. Accountability asks who owns the model when it misbehaves, and which data and run produced it. Each question maps to a record that either exists or does not, which is why the table above is useful in a meeting.
 
-*Practical MLOps*, chapter 2, adds a fourth and harder requirement: rollback readiness. If a model is in production, you must be able to take it out without taking the service down. The previous model should still be in the registry, and the new model should have passed shadow traffic before the cutover. Decide in advance how quickly that rollback must happen. Chapter 16.6 returns to this in detail.
+In a real governance review, the three meanings usually come up in the same order. The reviewer asks whether the run can be reproduced, then asks who approved it, and then asks who answers for it in production. If any of the three answers depends on memory, the review should record that as a gap. Gaps like that are cheap to fix early and expensive to explain during an incident.
+
+*Practical MLOps*, chapter 2, adds a fourth and harder requirement: rollback readiness. If a model is in production, you must be able to take it out without taking the service down. The previous model should still be in the registry, and the new model should have passed shadow traffic before the cutover. Shadow traffic means copies of real requests sent to the new model while the old one still answers the users. Decide in advance how quickly that rollback must happen. Chapter 16.6 returns to this in detail.
 
 **The four shapes of MLOps failure collapse into one sentence: "I cannot answer a specific question about a model that is in production." MLOps is the set of mechanisms that makes every such question answerable in seconds, not days.**
 
@@ -183,17 +191,19 @@ Reproducibility asks whether you can rerun training and get the same model. Audi
 
 ### 2.1 Two phases: experimentation, then development-staging-production
 
-A notebook that works on your laptop and a model that runs in production are different things. The lifecycle has two phases, and each phase follows different rules. *Machine Learning Platform Engineering*, chapter 1, splits the lifecycle this way, even though the two phases look alike on a slide.
+Picture a notebook that works well on your laptop, with a clean number on the last cell. Now picture the same model running in production, answering real traffic at three in the morning. These are different things, and the gap between them is the subject of this section. The lifecycle has two phases, and each phase follows different rules. *Machine Learning Platform Engineering*, chapter 1, splits the lifecycle this way, even though the two phases look alike on a slide.
 
-In the experimentation phase, the data scientist moves fast. Every step is a hypothesis, the code can be messy, and the run time is whatever the laptop allows. The deliverable is a metric on a held-out set. In the development, staging and production phase, every step is an artifact. The training script is the same script, the data is a frozen snapshot, and the environment is a fixed container image. The output is a model bound to a registry entry and a deployment record.
+In the experimentation phase, the data scientist moves fast. Every step is a hypothesis, so the code can be messy and the run time is whatever the laptop allows. The deliverable is a metric on a held-out set, which is a slice of the data kept aside for testing. In the development, staging and production phase, every step is an artifact, meaning something that is saved, named and can be found again. The training script is the same script, the data is a frozen snapshot, and the environment is a fixed container image. The output is a model bound to a registry entry and a deployment record.
 
-The move between the two phases is where MLOps earns its name. When a notebook becomes a pipeline, three things must happen:
+The move between the two phases is where MLOps earns its name. Picture the week a notebook is handed over to the platform team. The first question is what must change before the same work can run again without its author. When a notebook becomes a pipeline, three things must happen:
 
-- The data moves from a laptop path to a versioned dataset with a hash.
-- The training code moves from a `.ipynb` cell to a tracked Python module with a commit hash.
+- The data moves from a laptop path to a versioned dataset with a hash. A hash is a short fingerprint of the file's bytes, so two files with different contents never share one.
+- The training code moves from a `.ipynb` cell to a tracked Python module with a commit hash. An `.ipynb` file is a Jupyter notebook, and a commit hash is the ID Git gives a saved version of the code.
 - The experiment record moves from a printed number to a tracking server that the rest of the platform can query.
 
-If you skip any of these steps, the notebook stays your only record, and you will be the one who reconstructs it later.
+Each bullet above is a change in ownership, not only a change in tooling. The data scientist who used to keep the file on a laptop now has to publish it. The platform team that used to receive a file by email now has to accept a versioned dataset with a clear owner. Plan for those handoffs in the same way you plan for the software, or the tooling will sit unused.
+
+If you skip any of these steps, the notebook stays your only record, and you will be the one who reconstructs it later, usually at a bad time. Each step is small on its own. Together they turn a personal experiment into a shared, checkable fact.
 
 ```mermaid
 flowchart LR
@@ -219,11 +229,11 @@ flowchart LR
     P -->|End of life| R[Retire]
 ```
 
-Designing Machine Learning Systems, Practical MLOps, Machine Learning Platform Engineering and LLMOps all draw versions of this diagram. They differ in emphasis. The first stresses the feedback loop from monitoring back into data collection. The second stresses the gate between offline evaluation and deployment. The third stresses the tool boundary between experiments and pipelines. This chapter borrows from all three, because they look at the same problem from different angles.
+*Designing Machine Learning Systems*, *Practical MLOps*, *Machine Learning Platform Engineering* and *LLMOps* all draw versions of this diagram. They differ in emphasis. The first stresses the feedback loop from monitoring back into data collection. The second stresses the gate between offline evaluation and deployment. The third stresses the tool boundary between experiments and pipelines. This chapter borrows from all three, because they look at the same problem from different angles. Read the diagram from left to right, then follow the loop back from monitoring, because that loop is the part teams most often leave out.
 
 ### 2.2 The artifacts at each stage
 
-A lifecycle without artifacts is only a slide. At each stage the work should leave an artifact behind, and someone should be able to query it later. The table below is the cheat sheet.
+Picture a Monday review where someone asks who owns the model's feature table, and nobody can point to a file. A lifecycle without artifacts is only a slide. At each stage the work should leave an artifact behind, and someone can query it later. The table below is the cheat sheet. Read a row as a promise: this stage leaves this record, this team owns it, and this check must pass before the next stage can start.
 
 | Lifecycle stage | Artifact produced | Where it lives | Who owns it | What gate it must pass |
 |---|---|---|---|---|
@@ -241,13 +251,15 @@ A lifecycle without artifacts is only a slide. At each stage the work should lea
 | Retraining trigger | New training run, scheduled or drift-driven | Pipeline orchestrator | ML platform team | Same training gate as before |
 | Retirement | Deregistered model, archived artifacts | Cold storage | Platform + product | Data retention policy |
 
-Two things stand out. First, the owner changes from stage to stage. A data scientist owns training and offline evaluation. A platform engineer owns the registry and deployment. A product owner owns the brief and the retirement. Most MLOps failures are failures of role clarity. A notebook that graduates to production with no owner for its registry entry is a model waiting to drift.
+Two things stand out. First, the owner changes from stage to stage. A data scientist owns training and offline evaluation. A platform engineer owns the registry and deployment. A product owner owns the brief and the retirement. Most MLOps failures are failures of role clarity. A notebook that graduates to production with no owner for its registry entry is a model waiting to drift, because nobody is responsible for noticing when it does.
 
-Second, every artifact has to be queryable. Ask the registry which model currently serves a share of traffic. If you cannot get that answer quickly, you do not have an MLOps platform. You have a folder of YAML files.
+Second, every artifact has to be queryable. Ask the registry which model currently serves a share of traffic. If you cannot get that answer quickly, you do not have an MLOps platform. You have a folder of YAML files, and a folder of YAML files does not answer questions on its own.
 
 ### 2.3 The minimum mechanism at each gate
 
-Walk the diagram and ask one question at each gate: what is the cheapest mechanism that enforces it? For many gates the answer is small and mechanical, and you can start there.
+Walk the diagram and ask one question at each gate: what is the cheapest mechanism that enforces it? Picture a gate that exists only in a slide deck. It looks fine in a review, and it does nothing on a deadline. For many gates the answer is small and mechanical, and you can start there, then make the mechanism stronger when the pain grows.
+
+A useful test for any gate is to ask what happens when the person who owns it is on leave. If the gate still runs and still writes its record, it is structural. If the gate needs one specific person to press a button, it is a habit, and habits break under pressure. Write the gate so that a colleague can run it from a runbook on a Saturday.
 
 | Gate | Minimum mechanism |
 |---|---|
@@ -260,7 +272,7 @@ Walk the diagram and ask one question at each gate: what is the cheapest mechani
 | Monitoring | An alert rule that pages the model owner on SLO violation or drift threshold breach |
 | Retraining | A scheduled or drift-triggered pipeline that follows the same gates as the initial training |
 
-The cheapest mechanism is not always the right one for an enterprise. It is always a useful starting point. If you cannot afford a managed tracking server, a `metrics.json` file in object storage still records each run.
+The cheapest mechanism is not always the right one for an enterprise. It is always a useful starting point. Picture a small team with no budget for a managed tracking server. If the team cannot afford one, a `metrics.json` file in object storage still records each run, and that file is far better than a number in a chat message. You can replace it later without losing the history it already holds.
 
 ---
 
@@ -268,15 +280,17 @@ The cheapest mechanism is not always the right one for an enterprise. It is alwa
 
 ### 3.1 Data: the artifact that is hardest to version
 
-Imagine your team retrains a model in March, and someone asks what data the model saw last March. If the old data was overwritten, nobody can answer. Data is the hardest pillar to version, for three reasons.
+Picture your team retraining a model in March. A reviewer asks what data the model saw last March, when the previous version was trained. If the old data was overwritten, nobody can answer, and the review stalls. Data is the hardest pillar to version, for three reasons that show up again and again in real teams.
 
-- Size. A training corpus can be very large. Git cannot hold it, and object storage holds it without versioning it on its own.
-- Mutability. Datasets get appended, cleaned and re-partitioned. If you overwrite a partition, you cannot easily say what a model saw.
-- Partial sharing. Several models share some of the same features. A change to a shared feature reaches every model that uses it, and without lineage you cannot find those dependents.
+- Size. A training corpus can be very large. Git cannot hold it, and object storage holds it without versioning it on its own. You need a second system that knows which bytes belong to which version.
+- Mutability. Datasets get appended, cleaned and re-partitioned. If you overwrite a partition, you cannot easily say what a model saw, because the old bytes no longer exist anywhere.
+- Partial sharing. Several models share some of the same features. A change to a shared feature reaches every model that uses it, and without lineage, which is the record of where data came from and what was done to it, you cannot find those dependents.
 
-The standard pattern is content-addressed storage plus a metadata layer. *Practical MLOps*, chapter 1, walks through DVC, which stores large files in object storage and keeps small `.dvc` hash files in Git. *LLMOps*, chapter 4, introduces Pachyderm and lakeFS, which offer branch and merge semantics over data. *Designing Machine Learning Systems*, chapter 3, introduces the feature store, the layer that separates feature engineering from model training.
+The standard pattern is content-addressed storage plus a metadata layer. Content-addressed means the storage key is derived from the bytes themselves, so the same content always has the same address. *Practical MLOps*, chapter 1, walks through DVC, which stores large files in object storage and keeps small `.dvc` hash files in Git. *LLMOps*, chapter 4, introduces Pachyderm and lakeFS, which offer branch and merge semantics over data, so a team can experiment on a copy and merge the result back. *Designing Machine Learning Systems*, chapter 3, introduces the feature store, the layer that separates feature engineering from model training.
 
-The mechanism that closes the data pillar looks like this:
+Think of content addressing as a fingerprint for data. Two copies of the same file have the same fingerprint, and any change to even one byte gives a different one. That property is what lets you say, months later, that the bytes used for a model are exactly the bytes in the snapshot. Without it, the phrase "the same data" means only that the file names match.
+
+The mechanism that closes the data pillar looks like this. Read it as a short checklist that the pipeline follows on every run, not as a one-time setup.
 
 ```text
 Minimum data versioning flow (background reading: Practical MLOps; LLMOps; the figures below are examples, not quotations):
@@ -290,13 +304,13 @@ Minimum data versioning flow (background reading: Practical MLOps; LLMOps; the f
    retention window, never overwritten.
 ```
 
-Two habits follow from this flow. First, never read from a hard-coded path inside a training script. Take the path or the dataset ID as an argument. The rule sounds obvious, and it is still the most commonly broken rule in MLOps. Second, log the data hash, not the data path. A path can move, but a hash identifies the artifact itself.
+Two habits follow from this flow. First, never read from a hard-coded path inside a training script. Take the path or the dataset ID as an argument. The rule sounds obvious, and it is still the most commonly broken rule in MLOps, because a path in a script feels harmless until the file moves. Second, log the data hash, not the data path. A path can move, but a hash identifies the artifact itself, so a moved file still has the same identity.
 
 ### 3.2 Model: the artifact with the most versions per byte
 
-Every change to the data, the code, the seed, the hyperparameters, the environment or the framework version produces another model artifact. A busy team's registry therefore fills up with runs, and most of those runs should never be promoted. The registry's job is to make the few promoted models easy to find.
+Picture a busy team that retrains its models every week. Every change to the data, the code, the seed, the hyperparameters, the environment or the framework version produces another model artifact. Hyperparameters are the settings you choose before training, such as the learning rate. A busy team's registry therefore fills up with runs, and most of those runs should never be promoted. The registry's job is to make the few promoted models easy to find, and to keep the rest on record without getting in the way.
 
-*Practical MLOps*, chapter 1, *Machine Learning Platform Engineering*, chapter 1, and *Designing Machine Learning Systems*, chapter 6, agree on the registry contract. A registered model carries the metadata below, and nothing less.
+*Practical MLOps*, chapter 1, *Machine Learning Platform Engineering*, chapter 1, and *Designing Machine Learning Systems*, chapter 6, agree on the registry contract. A registered model carries the metadata below, and nothing less. Each field answers a question someone will eventually ask, and a missing field means that question has no answer.
 
 ```text
 Minimum registered-model record (background reading: Practical MLOps; Designing Machine Learning Systems; Machine Learning Platform Engineering; the figures below are examples, not quotations):
@@ -317,25 +331,25 @@ Minimum registered-model record (background reading: Practical MLOps; Designing 
 - lineage (parent model_id, parent run_id; if a fine-tune)
 ```
 
-The stage field is what the deployment pipeline reads. The pipeline does not read the artifact URI directly. It reads `stage = production` and pulls whatever model is in that stage.
+The stage field is what the deployment pipeline reads. The pipeline does not read the artifact URI directly. It reads `stage = production` and pulls whatever model is in that stage. That indirection is what lets you roll back. Change the stage to point at the previous version, and the next deployment picks it up without anyone editing the pipeline.
 
-MLflow Registry, Vertex AI Model Registry, SageMaker Model Registry and Weights and Biases Registry differ in tooling, access control and user interface. On the contract above, they are interchangeable.
+MLflow Registry, Vertex AI Model Registry, SageMaker Model Registry and Weights and Biases Registry differ in tooling, access control and user interface. On the contract above, they are interchangeable. Pick the one your team can operate, and keep the fields in the contract the same, so that a move from one tool to another does not lose the history.
 
 ### 3.3 Code: the artifact DevOps already knows how to version
 
-Code is the easy pillar, because DevOps already knows how to version it. Treat the training repository like a service repository. Use trunk-based development, protected branches, pull request review, CI on every commit, pinned dependencies, and container images referenced by digest.
+Picture a training repository where anyone can push directly to the main branch and nobody remembers which Dockerfile built last month's model. Code is the easy pillar, because DevOps already knows how to version it. Treat the training repository like a service repository. Use trunk-based development, protected branches, pull request review, CI on every commit, pinned dependencies, and container images referenced by digest. A digest is the hash of an image, and it never changes the way a tag can.
 
-Three practices are specific to machine learning.
+Three practices are specific to machine learning. Each one exists because a training run is harder to reproduce than a web service.
 
-- Separate the training entry point from the rest of the code. The function the pipeline calls should be small, and it should take its inputs explicitly. Everything else lives in modules that you test on their own. That separation is what makes training reproducible.
-- Pin the environment, not just the packages. A Dockerfile that installs `python=3.11` is not enough. Pin the CUDA base image, the driver compatibility matrix and the cuDNN version. *Designing Machine Learning Systems*, chapter 6, calls this the reproducibility stack.
+- Separate the training entry point from the rest of the code. The function the pipeline calls should be small, and it should take its inputs explicitly. Everything else lives in modules that you test on their own. That separation is what makes training reproducible, because the inputs of a run are visible in one place.
+- Pin the environment, not just the packages. A Dockerfile that installs `python=3.11` is not enough. Pin the CUDA base image, the driver compatibility matrix and the cuDNN version. *Designing Machine Learning Systems*, chapter 6, calls this the reproducibility stack. Without those pins, the same code can produce a different model on a different node.
 - Sign the training image. A tampered training image is a supply chain attack, and it can produce a backdoored model. Treat the image like a release artifact. *Production Kubernetes*, chapter 15, describes signing an image at each pipeline stage, for example after tests pass and again after release approval, and then gating deployment on those signatures. The promotion gate should refuse unsigned images.
 
 ### 3.4 Deployment: the artifact that lives in two systems at once
 
-Deployment is the most subtle pillar, because a deployed model lives in two systems at the same time. The serving system runs the inference, and the registry describes it. The two can drift apart. When they do, you get the worst incident in this area: the registry says version 12 is in production, while the serving system is still running version 9.
+Deployment is the most subtle pillar, because a deployed model lives in two systems at the same time. Picture the registry showing one version in production while the cluster quietly serves an older one. The serving system runs the inference, and the registry describes it. The two can drift apart. When they do, you get the worst incident in this area: the registry says version 12 is in production, while the serving system is still running version 9.
 
-Three patterns prevent that drift. Each has its own trade-off, so choose the one your platform team can operate.
+Three patterns prevent that drift. Each has its own trade-off, so choose the one your platform team can operate day to day.
 
 | Pattern | What it does | Where you see it |
 |---|---|---|
@@ -343,13 +357,13 @@ Three patterns prevent that drift. Each has its own trade-off, so choose the one
 | Image-as-source | The serving system reads its model from an image tag that the registry updates. Reverting the tag reverts the deployment. | KServe, BentoML, Seldon, Triton model repository |
 | Signed promotion | The deployed artifact carries the same signature as the registry entry; the serving system refuses an unsigned artifact | cosign + admission controller, Sigstore policy controller |
 
-GitOps gives the most audit trail, because every promotion is a reviewed change. Image tags give the simplest rollback, because reverting a tag reverts the deployment. Signed promotion gives the strongest guarantee that what runs is what was approved.
+GitOps gives the most audit trail, because every promotion is a reviewed change. Image tags give the simplest rollback, because reverting a tag reverts the deployment. Signed promotion gives the strongest guarantee that what runs is what was approved. Many teams combine two of them, for example a reviewed pull request that also updates a signed image tag.
 
-*Designing Machine Learning Systems*, chapter 7, covers model deployment in depth. The contract you need here is simpler to state. The model whose registry entry has `stage = production` should be the model that serves all production traffic once any canary finishes. Any other state should raise an alert.
+*Designing Machine Learning Systems*, chapter 7, covers model deployment in depth. The contract you need here is simpler to state. The model whose registry entry has `stage = production` should be the model that serves all production traffic once any canary finishes. A canary is a small share of traffic sent to the new version first. Any other state should raise an alert, because the registry and the cluster are telling different stories.
 
 ### 3.5 The pillar diagram
 
-Draw the four pillars as a graph, and inspect every arrow. Each arrow should carry an identifier. An arrow without one is a place where you cannot trace an artifact.
+Picture an auditor who asks how a model got from a notebook into production. The answer should be a drawing of four pillars, with a path through each one. Draw the four pillars as a graph, and inspect every arrow. Each arrow should carry an identifier. An arrow without one is a place where you cannot trace an artifact.
 
 ```mermaid
 flowchart TB
@@ -390,7 +404,7 @@ flowchart TB
     DP2 -->|agreement ok| DP3
 ```
 
-The diagram rests on one rule. Every arrow carries an artifact with an identifier, and no arrow carries an anonymous blob. If the pipeline cannot tell you which dataset trained the model on the canary stage, one of the arrows is missing its identifier.
+The diagram rests on one rule. Every arrow carries an artifact with an identifier, and no arrow carries an anonymous blob. If the pipeline cannot tell you which dataset trained the model on the canary stage, one of the arrows is missing its identifier. Use the diagram as a checklist during design reviews, and ask the team to point at each identifier on it.
 
 **When you audit an MLOps platform, audit the arrows, not the boxes. The boxes are tools you can buy. The arrows are practices you have to install.**
 
@@ -400,7 +414,7 @@ The diagram rests on one rule. Every arrow carries an artifact with an identifie
 
 ### 4.1 The three levels that everyone agrees on
 
-Picture a team whose notebook is the only copy of its model. Most teams start there, and most maturity models describe the same three levels, each with different names. *Designing Machine Learning Systems*, chapter 10, uses a similar three-level split. *Practical MLOps*, chapter 1, lists the same progression in other words. *Machine Learning Platform Engineering*, chapter 1, calls the levels manual, pipeline and platform. This chapter uses the most common wording: Level 0 (manual), Level 1 (ML pipeline) and Level 2 (CI/CD for ML).
+Picture a team whose notebook is the only copy of its model. Nobody else can run it, and the person who wrote it is the only one who knows which cell to run first. Most teams start there, and most maturity models describe the same three levels, each with different names. *Designing Machine Learning Systems*, chapter 10, uses a similar three-level split. *Practical MLOps*, chapter 1, lists the same progression in other words. *Machine Learning Platform Engineering*, chapter 1, calls the levels manual, pipeline and platform. This chapter uses the most common wording: Level 0 (manual), Level 1 (ML pipeline) and Level 2 (CI/CD for ML). The names matter less than the order.
 
 | Level | What it looks like | Pain that drives the next level |
 |---|---|---|
@@ -408,11 +422,11 @@ Picture a team whose notebook is the only copy of its model. Most teams start th
 | **1: ML pipeline** | Training is automated; experiment tracking is real; registry exists; deployment is manual | "Promotions are slow"; "we deployed a model that beat the offline metric but failed in production"; "the new model regressed last week's traffic" |
 | **2: CI/CD for ML** | Pipeline is triggered on code/data changes; promotion gate is automated; canary deployment is real; monitoring feeds back into retraining | "Our drift detection is too slow"; "two teams have competing pipelines and no shared feature store"; "we cannot rollback in under 5 minutes" |
 
-The pain in each row points to the next level. Do not skip levels. A team at Level 0 that installs Level 2 tooling will find that nobody can debug it, because nobody has run the manual flow first.
+The pain in each row points to the next level. Read the table as a map of what hurts. The team does not climb because a vendor says so. It climbs because a specific sentence in the pain column keeps coming up in meetings. Do not skip levels. A team at Level 0 that installs Level 2 tooling will find that nobody can debug it, because nobody has run the manual flow first, and the automation hides the steps that would have taught them how it works.
 
 ### 4.2 The capabilities that move you up
 
-You rarely adopt everything at once. The table lists ten capabilities in the order most teams tend to adopt them, and each one answers a failure from Section 1. That order reflects common practice described in the gem books. It is not a measured survey, so treat it as a default you can adjust.
+Picture a platform team with a long list of wishes and a small budget. They cannot build everything at once, and they should not try. You rarely adopt everything at once. The table lists ten capabilities in the order most teams tend to adopt them, and each one answers a failure from Section 1. The order reflects common practice described in the gem books, which are the reference books this handbook draws on, It is not a measured survey, so treat it as a default you can adjust.
 
 | Order | Capability | Failure it addresses | Tooling reference |
 |---|---|---|---|
@@ -427,13 +441,15 @@ You rarely adopt everything at once. The table lists ten capabilities in the ord
 | 9 | Feature store | "Two models use different definitions of the same feature" | Feast, Tecton, Vertex AI Feature Store, Databricks Feature Store |
 | 10 | Multi-tenant platform | "Five teams each built their own pipeline" | Internal developer platform layer; chargeback and quotas |
 
-Follow this order unless your pain points somewhere else. If the first pain is "I cannot reproduce my experiment," adopt tracking and data versioning before you buy a feature store.
+Follow this order unless your pain points somewhere else. If the first pain is "I cannot reproduce my experiment," adopt tracking and data versioning before you buy a feature store. A feature store is a shared place for computed features, and it is valuable, but it cannot fix a run that nobody recorded. Let the most painful symptom in this week's incident review choose the next capability, and write down why.
+
+A simple way to choose the next capability is to write down the last three incidents and tag each one with the layer it touched. If most tags point to reproducibility, tracking and data versioning come first. If most point to promotion, the gate comes first. The point of the exercise is not precision. It is to stop the team from buying the tool that is easiest to demo.
 
 ### 4.3 The promotion gate, in code
 
-Picture the night a regressed model reaches production because a manager approved it in a chat thread. The promotion gate is the mechanical pattern that prevents that night. It is a function that takes the candidate run, a baseline run and a policy, and it returns pass or fail with a reason. The pipeline checks the exit code. On the happy path, no human sits in the loop.
+Picture the night a regressed model reaches production because a manager approved it in a chat thread. Nobody did anything malicious. The approval felt quick and reasonable, and the thread disappeared the next day. The promotion gate is the mechanical pattern that prevents that night. It is a function that takes the candidate run, a baseline run and a policy, and it returns pass or fail with a reason. The pipeline checks the exit code. On the happy path, no human sits in the loop, and a human only edits the policy when the rules themselves need to change.
 
-The sketch below shows the shape. It is deliberately simple. A production version would read the policy from a registry, sign the decision, and write to an audit log.
+The sketch below shows the shape. It is deliberately simple, so you can read the whole decision in one screen. A production version would read the policy from a registry, sign the decision, and write to an audit log. The sketch leaves those out on purpose, so the core idea stays visible.
 
 ```python
 # code/part16/mlops_promotion_gate.py
@@ -502,12 +518,14 @@ def promote(candidate_path: str, baseline_path: str, policy_path: str) -> int:
     return 0
 ```
 
-The design choices in this sketch matter more than the syntax. Four of them are worth copying.
+The design choices in this sketch matter more than the syntax. Four of them are worth copying, and each one prevents a specific failure from earlier in the chapter.
 
-- The gate is a function, not a person. A human approves the policy, not every single promotion.
-- The decision is logged before the registry is written. If the registry is damaged, the audit log still shows what should have happened.
-- The gate refuses to advance when the seed is unpinned. A run that cannot be reproduced should not be promoted.
-- The reasons are explicit. *Practical MLOps*, chapter 1, treats a printed, specific reason for a blocked promotion as the mechanism that makes the discipline structural.
+- The gate is a function, not a person. A human approves the policy, not every single promotion. That turns a meeting into a rule that anyone can run and read.
+- The decision is logged before the registry is written. If the registry is damaged, the audit log still shows what should have happened. The order matters, because a registry write that happens first can leave no trace when the log fails.
+- The gate refuses to advance when the seed is unpinned. A run that cannot be reproduced should not be promoted, because nobody can check its numbers later.
+- The reasons are explicit. *Practical MLOps*, chapter 1, treats a printed, specific reason for a blocked promotion as the mechanism that makes the discipline structural. A vague refusal teaches nobody anything, and a specific one tells the data scientist exactly what to fix.
+
+Notice what the gate does not do. It does not judge whether the model is wise, fair or useful in the business sense. Those questions still need people and their judgment. The gate answers a narrower question, which is whether the candidate meets the rules the team wrote down before it saw the result. That narrow question is the one that can be automated safely.
 
 **Adopt the promotion gate before the canary deployment. A gate without a deploy still keeps bad models out of the registry. A deploy without a gate moves the failure from the registry to the cluster.**
 
@@ -517,17 +535,19 @@ The design choices in this sketch matter more than the syntax. Four of them are 
 
 ### 5.1 What stays the same
 
-Imagine a team that already runs MLOps asks whether it needs a new platform for language models. Mostly, it does not. The four pillars from Section 3 still apply, and the lifecycle keeps the same gates.
+Picture a team that already runs MLOps well. Its registry works, its gates run, and its dashboards are clean. Then someone proposes a chatbot built on a language model, and asks whether the team needs a new platform for it. Mostly, it does not. The four pillars from Section 3 still apply, and the lifecycle keeps the same gates.
 
-The reason is structural. A fine-tuned language model is still a model. A training run produces it from a dataset version. It is validated offline, registered with metadata, deployed behind a serving system, monitored and eventually retired. *LLMOps*, chapter 2, puts it plainly: it applies MLOps to LLM-based systems. The base discipline does not change. If you already run the MLOps platform, you do not need a second stack for language models.
+The reason is structural. A fine-tuned language model is still a model. A training run produces it from a dataset version. It is validated offline, registered with metadata, deployed behind a serving system, monitored and eventually retired. *LLMOps*, chapter 2, puts it plainly: it applies MLOps to LLM-based systems. The base discipline does not change. If you already run the MLOps platform, you do not need a second stack for language models. You need to add a few new artifacts and a few new checks to the one you have.
+
+The difference is easy to see in a small case. A Level 0 team and a Level 2 team can both ship a model, but only the Level 2 team can say which data, code and check produced it without a phone call. The Level 0 team may be faster on the first day. The Level 2 team is faster on the hundredth day, because it does not stop to rebuild the history each time someone asks.
 
 ### 5.2 What changes: three new artifact types
 
-The change happens inside the pillars, not to the pillars themselves. Three new artifact types appear when you move from tabular models to LLM-based systems.
+The change happens inside the pillars, not to the pillars themselves. Picture a prompt edit that a developer makes on a Friday afternoon, which changes how a support bot answers customers on Monday. Three new artifact types appear when you move from tabular models to LLM-based systems. Each one needs a version, an owner and a check.
 
 1. The prompt template. The model input now mixes system instructions, retrieved context and user text. The template is an artifact with versions. Changing a prompt changes the model, as far as the user can tell.
-2. The retrieval index. A retrieval-augmented generation system keeps a vector index over a corpus. The index has versions tied to the corpus snapshot, the embedding model, the chunking policy and the metadata filters. Change the corpus, and you change the index, which changes the answers.
-3. The agent trace. An agent loop writes a record of its tool calls, intermediate prompts and decisions. You use that trace for evaluation, debugging and audit.
+2. The retrieval index. A retrieval-augmented generation system keeps a vector index over a corpus. A vector index stores each document as a list of numbers that capture its meaning, so similar text can be found quickly. The index has versions tied to the corpus snapshot, the embedding model, the chunking policy and the metadata filters. Change the corpus, and you change the index, which changes the answers.
+3. The agent trace. An agent loop writes a record of its tool calls, intermediate prompts and decisions. You use that trace for evaluation, debugging and audit. Without it, a strange answer is a mystery, and with it, you can see the exact step where the agent went off course.
 
 | New artifact | Owner | Where it lives | Gate that catches a bad version |
 |---|---|---|---|
@@ -535,11 +555,11 @@ The change happens inside the pillars, not to the pillars themselves. Three new 
 | Retrieval index | App developer + data engineering | Vector store with snapshot id | Retrieval recall and answer faithfulness eval |
 | Agent trace | App developer + SRE | Observability backend (Langfuse, OpenTelemetry) | Trace-based regression tests + cost guardrails |
 
-*LLMOps*, chapter 2, calls these the three artifacts of LLMOps. *AI Engineering*, chapter 10, describes the same idea under the heading of architecture and user feedback. *LLM Engineer's Handbook*, chapter 11, and *Practical MLOps*, chapter 1, both extend the MLOps lifecycle to include them.
+*LLMOps*, chapter 2, calls these the three artifacts of LLMOps. *AI Engineering*, chapter 10, describes the same idea under the heading of architecture and user feedback. *LLM Engineer's Handbook*, chapter 11, and *Practical MLOps*, chapter 1, both extend the MLOps lifecycle to include them. The table is a useful checklist, because each artifact has a different owner, and the gate that catches a bad version is different for each one.
 
 ### 5.2.1 The four goals of LLMOps, and the SLO/SLA/KPI contract
 
-An LLM application faces regulators, customers and the press, so its targets must be stricter and clearer than those of a typical internal model. *LLMOps*, chapter 2, names four goals for this layer. None of them is a new practice. Each one is a tighter version of an MLOps practice.
+Picture a customer support chatbot. Its answers go to a large number of customers, a regulator reads the logs, and a journalist may quote one bad reply. An LLM application faces regulators, customers and the press, so its targets must be stricter and clearer than those of a typical internal model. *LLMOps*, chapter 2, names four goals for this layer. None of them is a new practice. Each one is a tighter version of an MLOps practice.
 
 | Goal | Definition | Concrete metric in production |
 |---|---|---|
@@ -548,9 +568,9 @@ An LLM application faces regulators, customers and the press, so its targets mus
 | **Robustness** | Maintaining high performance over time in the face of data drift, model drift, and third-party updates | Drift score (KS test, PSI); eval-set regression rate; freshness SLO on retrieval index; vendor model update detection |
 | **Reliability** | Rigorous inference monitoring, error handling, and redundancy to prevent downtime and failures | Availability SLO (e.g. 99.9% monthly); 5xx rate; CSAT and NPS; RTO and RTO attainment |
 
-The four goals depend on each other. A robust model that crashes under load is a single point of failure. A scalable system that leaks personal data under load is a regulated incident. Real incident reviews usually find a failure in one goal, hidden behind good numbers in another.
+The four goals depend on each other. A robust model that crashes under load is a single point of failure. A scalable system that leaks personal data under load is a regulated incident. Real incident reviews usually find a failure in one goal, hidden behind good numbers in another. Read each row of the table with the other three in mind, and ask which metric would catch a failure that the others miss.
 
-The SLO, SLA and KPI framework from *LLMOps*, chapter 2, turns those goals into contracts. The table shows the three terms at three levels of audience.
+The SLO, SLA and KPI framework from *LLMOps*, chapter 2, turns those goals into contracts. Each term is a kind of promise, made to a different audience. The table shows the three terms at three levels of audience.
 
 | Concept | Audience | What it says | Example for an LLM serving system |
 |---|---|---|---|
@@ -558,15 +578,17 @@ The SLO, SLA and KPI framework from *LLMOps*, chapter 2, turns those goals into 
 | **SLA** (Service Level Agreement) | External, customer | What the team commits to, with consequences for breach | p95 TTFT &lt;= 500 ms; if breached, customer receives 10% credit |
 | **KPI** (Key Performance Indicator) | Business, executive | Whether the system is delivering the value the business is paying for | CSAT >= 90; cost per million tokens below target; revenue impact |
 
-The SLO is what the engineers aim for. The SLA is what the customer is promised, with consequences if it is missed. The KPI is what the business measures. The numbers in the example column are example values only. Your team should choose its own targets from its own traffic and risk. The platform team owns the SLOs, each SLO defines an alert rule, and each alert rule feeds a runbook that names the rollback path.
+The SLO is what the engineers aim for. The SLA is what the customer is promised, with consequences if it is missed. The KPI is what the business measures. The numbers in the example column are example values only. Your team should choose its own targets from its own traffic and risk. The platform team owns the SLOs, each SLO defines an alert rule, and each alert rule feeds a runbook that names the rollback path. A runbook is a short written procedure for what the on-call engineer does next.
 
-A useful discipline from *LLMOps*, chapter 2: every SLO needs a measurement method and a budget. The method is the metric, its data source and its aggregation window. The budget is how long the SLO may be violated before the on-call engineer is paged. An SLO without a budget is a wish.
+A useful discipline from *LLMOps*, chapter 2: every SLO needs a measurement method and a budget. The method is the metric, its data source and its aggregation window. The aggregation window is the period over which the metric is averaged or counted. The budget is how long the SLO may be violated before the on-call engineer is paged. An SLO without a budget is a wish, because nobody knows when to act on it.
 
-The Gartner statistics in that chapter are a useful reality check. A 2024 study predicted that about 30% of GenAI projects would fail by 2025, mostly for operational reasons such as data quality, weak evaluation and the cost of scaling. A 2018 study predicted that 85% of ML projects would fail in production by 2022. The headline numbers vary, but the diagnosis is stable. MLOps is the practice that turns that failure rate into something a team can manage.
+The Gartner statistics in that chapter are a useful reality check. Gartner is an industry research firm, and its forecasts are predictions, not measurements. A 2024 study predicted that about 30% of GenAI projects would fail by 2025, mostly for operational reasons such as data quality, weak evaluation and the cost of scaling. A 2018 study predicted that 85% of ML projects would fail in production by 2022. The headline numbers vary, but the diagnosis is stable. MLOps is the practice that turns that failure rate into something a team can manage.
+
+When you read a headline statistic, check three things before you repeat it: who measured it, what they counted as a project, and what they meant by failure. Those answers change the number more than the headline does. Use the statistic to argue that discipline matters, and avoid using it as a precise forecast for your own team.
 
 ### 5.3 What changes: three new failure modes
 
-The new failures do not look like outages. The cluster is healthy, and the model loads. The system is still wrong. Three failure modes become central in LLMOps, and each one needs its own detection.
+Picture a dashboard that is green all day, while users quietly receive wrong answers. The new failures do not look like outages. The cluster is healthy, and the model loads. The system is still wrong. Three failure modes become central in LLMOps, and each one needs its own detection, because none of them shows up in CPU or latency graphs.
 
 | Failure mode | What happens | Detection |
 |---|---|---|
@@ -574,11 +596,11 @@ The new failures do not look like outages. The cluster is healthy, and the model
 | Retrieval staleness | The corpus is updated but the index is not; answers reference old data | Index age alert + freshness check in retrieval pipeline |
 | Agent runaway | The agent loops or escalates cost in a way no human intended | Cost guardrails per request; loop detector; max-iteration cap |
 
-Because the cluster looks healthy, the lifecycle has to grow to catch these failures. Your dashboards for CPU, GPU and latency will stay green while the answers go bad. When a user reports a wrong answer, you need the prompt, the retrieved context and the agent trace to explain it.
+Because the cluster looks healthy, the lifecycle has to grow to catch these failures. Your dashboards for CPU, GPU and latency will stay green while the answers go bad. When a user reports a wrong answer, you need the prompt, the retrieved context and the agent trace to explain it. Without those three records, the only honest answer is that the system did something unexpected, and nobody can say why.
 
 ### 5.4 The extended lifecycle diagram
 
-Look at the loop on the right of this diagram. Serving sends traces to evaluation, and evaluation sends regressions back to the prompt and the index.
+Picture a user who reports a wrong answer, and an engineer who opens the trace to find out why. Look at the loop on the right of this diagram. Serving sends traces to evaluation, and evaluation sends regressions back to the prompt and the index. That loop is how a bad answer in production becomes a better prompt or a fresher index on the next release.
 
 ```mermaid
 flowchart LR
@@ -607,7 +629,7 @@ flowchart LR
     O -->|drift| D
 ```
 
-LLMOps does not replace MLOps. It adds a tighter loop between the serving system and the prompt and index artifacts.
+LLMOps does not replace MLOps. It adds a tighter loop between the serving system and the prompt and index artifacts. Think of MLOps as the foundation and LLMOps as the added floor on top of it, with its own stairs and its own guardrails.
 
 **Build the MLOps foundation first. The LLMOps layer adds new artifacts and a new feedback loop, but it does not replace the four pillars.**
 
@@ -617,7 +639,7 @@ LLMOps does not replace MLOps. It adds a tighter loop between the serving system
 
 ### 6.1 Who owns what on the platform
 
-Imagine a misconfigured network namespace on a GPU node. The pipeline orchestrator's pods hang, and then a data scientist's notebook times out. A failure in one layer shows up in the layer above it. An AI factory has three teams whose responsibilities overlap, so they need a shared way to talk about the stack. If you run the cluster, you will be the first person paged when that shared vocabulary is missing.
+Picture a misconfigured network namespace on a GPU node. The pipeline orchestrator's pods hang, and then a data scientist's notebook times out. A failure in one layer shows up in the layer above it, and the person who sees the timeout is rarely the person who can fix the namespace. An AI factory has three teams whose responsibilities overlap, so they need a shared way to talk about the stack. If you run the cluster, you will be the first person paged when that shared vocabulary is missing.
 
 | Layer | Owner | Artifacts they produce |
 |---|---|---|
@@ -625,11 +647,11 @@ Imagine a misconfigured network namespace on a GPU node. The pipeline orchestrat
 | MLOps platform | ML platform team | Tracking server, registry, pipeline orchestrator, feature store, promotion gates, drift detection |
 | Application and data science | Product teams | Prompts, retrieval indices, agent code, training notebooks, feature definitions |
 
-The shared vocabulary matters in both directions. The data scientist needs to know what `stage = production` means in Kubernetes. The platform engineer needs to know what a data snapshot ID means in the registry.
+The shared vocabulary matters in both directions. The data scientist needs to know what `stage = production` means in Kubernetes, because a label in the registry can decide where a pod runs. The platform engineer needs to know what a data snapshot ID means in the registry, because that ID is the only way to find the data behind a model in an incident. Neither side can afford to guess at the other's words.
 
 ### 6.2 The cluster primitives that enforce the lifecycle
 
-The lifecycle gates in Section 4 are policy written on paper. The cluster primitives below turn that policy into something that cannot be skipped.
+The lifecycle gates in Section 4 are policy written on paper. Picture a gate that exists in a document and nowhere in the cluster. A determined engineer can skip it on a Friday night. The cluster primitives below turn that policy into something that cannot be skipped, because the cluster refuses the request before it runs.
 
 | Lifecycle gate | Cluster primitive |
 |---|---|
@@ -642,13 +664,15 @@ The lifecycle gates in Section 4 are policy written on paper. The cluster primit
 | Cost attribution | Kubecost or OpenCost tagged by namespace and label selector |
 | Audit | Cluster log shipping to an immutable bucket; admission webhook decision log |
 
-Two cautions from *Production Kubernetes* apply directly to these primitives. Chapter 8 warns that Gatekeeper fails open by default, so a request is admitted when the policy engine cannot answer. Set that failure behaviour on purpose, and test it. Chapter 9 adds that the API server writes no audit logs until you give it an audit policy file. Without that file, the audit row in the table above is empty.
+Two cautions from *Production Kubernetes* apply directly to these primitives. Chapter 8 warns that Gatekeeper fails open by default, so a request is admitted when the policy engine cannot answer. A fail-open policy looks safe on paper and quietly lets unsigned pods through during an outage. Set that failure behaviour on purpose, and test it. Chapter 9 adds that the API server writes no audit logs until you give it an audit policy file. Without that file, the audit row in the table above is empty, and nobody can prove what the cluster did.
 
-The mental model is simple. The lifecycle is policy expressed in code, and the cluster is the executor of that policy. The promotion gate function from Section 4.3 is the policy, and the admission webhook is what enforces it.
+The mental model is simple. The lifecycle is policy expressed in code, and the cluster is the executor of that policy. The promotion gate function from Section 4.3 is the policy, and the admission webhook is what enforces it. When the two disagree, the cluster wins, so the gate and the webhook need to be tested together.
+
+A practical habit helps here. Before a change to the cluster goes live, ask which lifecycle gate the change touches, and ask which primitive enforces it. If you cannot name the primitive, the gate is not enforced, and the change is not ready. This habit takes a minute and catches most of the gaps that would otherwise surface during an audit.
 
 ### 6.3 The data path through the AI factory
 
-Three storage systems carry ML data through the lifecycle, and each plays a different role. A training job reads from one, writes checkpoints to another, and serves retrieval from a third.
+Three storage systems carry ML data through the lifecycle, and each plays a different role. Picture a training job that reads its data from one system, writes its checkpoints to a second, and serves retrieval from a third. Each system has its own rules for how data can change, so mixing them up causes quiet bugs.
 
 | Storage system | Role | Artifact | Lifecycle |
 |---|---|---|---|
@@ -656,15 +680,19 @@ Three storage systems carry ML data through the lifecycle, and each plays a diff
 | Distributed filesystem (Lustre, Weka, BeeGFS, VAST) | Hot training data, checkpoint workspace | Files and directories | Snapshotted; mounted per namespace |
 | Vector store (Milvus, Qdrant, pgvector, Pinecone) | Retrieval indices for LLMOps | Embedding vectors + metadata | Snapshot id bound to corpus version |
 
-The lines between them are not arbitrary. Object storage holds artifacts that must not change. The distributed filesystem holds hot working data, where small-file performance matters, and Chapter 13.6 covers that in detail. The vector store has its own snapshot rules, tied to the corpus version.
+The lines between them are not arbitrary. Object storage holds artifacts that must not change. The distributed filesystem holds hot working data, where small-file performance matters, and Chapter 13.6 covers that in detail. Hot data means data that is read again and again during a job. The vector store has its own snapshot rules, tied to the corpus version, so its contents can be rebuilt from a known source.
 
-A model trained on data in the distributed filesystem must record a content hash of that data, not just a path. A path can be unmounted, and the hash is what identifies the artifact.
+A model trained on data in the distributed filesystem must record a content hash of that data, not just a path. A path can be unmounted, and the hash is what identifies the artifact. The distributed filesystem is also the place where a quiet change is easiest to make, because anyone with write access can overwrite a file, so the hash in the run record is the only way to notice.
+
+The same rule applies to other data stores. Whenever a job reads a file, ask whether the run record can name the file's content, not only its location. Location tells you where to look, and content tells you what the model actually saw. Only the second answer survives a migration to new storage.
 
 ### 6.4 The GPU node as the MLOps boundary
 
-Picture a pipeline that submits a training job with no queue, no GPU slicing rules and no NUMA alignment. The job lands somewhere and runs badly, and the on-call engineer hears about it. That failure belongs to the pipeline, which did not declare what the job needed.
+Picture a pipeline that submits a training job with no queue, no GPU slicing rules and no NUMA alignment. The job lands somewhere and runs badly, and the on-call engineer hears about it at the worst moment. That failure belongs to the pipeline, which did not declare what the job needed. The fix is in the job definition, not in the node.
 
-The GPU node is the boundary between the lifecycle and the cluster. Whatever the lifecycle says about a model, the GPU node is what enforces it. A platform engineer who treats the GPU node as a dumb compute target gets paged for jobs that should never have been submitted. The primitives from earlier chapters form this boundary: the kube-scheduler in Chapter 5.18, autoscaling in Chapter 5.23, NUMA alignment in Chapter 11.6 and the KAI queues in Chapter 11.15. The gate that runs `kubectl apply -f training-job.yaml` is only as good as the YAML it produces.
+The GPU node is the boundary between the lifecycle and the cluster. Whatever the lifecycle says about a model, the GPU node is what enforces it. A platform engineer who treats the GPU node as a dumb compute target gets paged for jobs that should never have been submitted. The primitives from earlier chapters form this boundary: the kube-scheduler in Chapter 5.18, autoscaling in Chapter 5.23, NUMA alignment in Chapter 11.6 and the KAI queues in Chapter 11.15. The gate that runs `kubectl apply -f training-job.yaml` is only as good as the YAML it produces, so review that YAML as carefully as the code it runs.
+
+When you review a training job, read the resource requests first, then the queue, then the node selector, then the image. Each of those tells you a different story about how the job will behave once it is running. A job that looks correct in the pipeline view can still fail on the node if the requests do not match what the training code needs.
 
 **The MLOps platform and the GPU platform are one system. The lifecycle gates are policy, the cluster primitives are the executor, and the audit log is the proof that the policy was enforced.**
 
@@ -672,19 +700,19 @@ The GPU node is the boundary between the lifecycle and the cluster. Whatever the
 
 ## 7. How it fails
 
-Seven failure modes recur across real MLOps deployments. Each one below has a symptom that pages an engineer, a diagnosis that traces the symptom back to the lifecycle, and a fix that lives in the right pillar. Read them as a checklist for your own platform. Each symptom is the one that will page you first.
+Picture your first on-call week on the MLOps platform. A page arrives at night, and the model in question is one you have never seen. Seven failure modes recur across real MLOps deployments, and you will probably meet most of them in your first year. Each one below has a symptom that pages an engineer, a diagnosis that traces the symptom back to the lifecycle, and a fix that lives in the right pillar. Read them as a checklist for your own platform. Each symptom is the one that will page you first.
 
 ### 7.1 "The data scientist left and we lost the pipeline"
 
-**Symptom:** A model in production is misbehaving. The on-call engineer opens the tracking server, finds the run and looks for the training script. The script sits on the data scientist's laptop, which is in a desk drawer in another office. There is no Git repo, no container image and no record of the data snapshot.
+**Symptom:** A model in production is misbehaving, and the on-call engineer needs to retrain it. The engineer opens the tracking server, finds the run and looks for the training script. The script sits on the data scientist's laptop, which is in a desk drawer in another office. There is no Git repo, no container image and no record of the data snapshot. The run is a number with no way to reproduce it.
 
-**Diagnosis:** The training artifact is the engineer, not the code. The team was at Level 0, even though a tracking server and a registry existed.
+**Diagnosis:** The training artifact is the engineer, not the code. The team was at Level 0, even though a tracking server and a registry existed. Tools were in place, but the work still lived in one person's head.
 
-**Fix:** Adopt the pipeline orchestrator from capability 3, and treat the training script as a pipeline definition. Move every run into a Git repo and a container image. Refuse to register any model whose `code_commit` field is empty.
+**Fix:** Adopt the pipeline orchestrator from capability 3, and treat the training script as a pipeline definition. Move every run into a Git repo and a container image. Refuse to register any model whose `code_commit` field is empty, because a model without a commit cannot be rebuilt.
 
 ### 7.2 "The promotion was approved verbally"
 
-**Symptom:** A regression reaches production. The on-call engineer asks who approved it, and the answer is a Slack thread. The thread is gone by the time anyone looks.
+**Symptom:** A regression reaches production. The on-call engineer asks who approved it, and the answer is a Slack thread. The thread is gone by the time anyone looks, and the person who said "looks good" has moved on to another project.
 
 **Diagnosis:** The promotion gate is a human decision with no audit trail.
 
@@ -692,60 +720,68 @@ Seven failure modes recur across real MLOps deployments. Each one below has a sy
 
 ### 7.3 "The new model beat the offline metric but failed in production"
 
-**Symptom:** In one illustrative incident, the offline AUC rises from 0.91 to 0.93. The canary then breaches its error budget at a small share of traffic. The dashboard catches it, and the rollback is clean. The rollback still takes 18 minutes, because the previous production model has to be found and redeployed. The numbers are example values.
+**Symptom:** In one illustrative incident, the offline AUC rises from 0.91 to 0.93. The canary then breaches its error budget at a small share of traffic. The dashboard catches it, and the rollback is clean. The rollback still takes 18 minutes, because the previous production model has to be found and redeployed. The team looks at the number and thinks the new model was the right call. The numbers are example values.
 
-**Diagnosis:** The canary step exists, but the rollback path is manual. The previous model was not kept ready.
+A quick check helps when a team is tempted to roll back by hand. Write down the rollback steps before the next release, and time them once in a rehearsal. The rehearsal finds the missing step, such as a secret that only one person can read. Finding that gap in a drill is far better than finding it during a live incident.
 
-**Fix:** Keep the previous production model warm. The serving system reads its model from a tag or a registry stage, so a rollback becomes a tag change, not a retrain.
+**Diagnosis:** The canary step exists, but the rollback path is manual. The previous model was not kept ready, so every minute of the rollback is spent finding it.
+
+**Fix:** Keep the previous production model warm. The serving system reads its model from a tag or a registry stage, so a rollback becomes a tag change, not a retrain. A tag change takes seconds, while a retrain takes hours or days.
 
 ### 7.4 "Two teams use different definitions of the same feature"
 
-**Symptom:** Two models in production use a feature called `user_tenure_days`. In this example, the values differ by 6 percent, because one team computes it from `signup_date` and the other from `first_active_date`. The two teams' dashboards disagree about which value is correct.
+**Symptom:** Two models in production use a feature called `user_tenure_days`. In this example, the values differ by 6 percent, because one team computes it from `signup_date` and the other from `first_active_date`. The two teams' dashboards disagree about which value is correct, and each team is sure it is right.
 
-**Diagnosis:** There is no feature store, so each team recomputes the feature in its own pipeline.
+**Diagnosis:** There is no feature store, so each team recomputes the feature in its own pipeline. Two copies of one idea drift apart, one small change at a time.
 
-**Fix:** Adopt capability 9, the feature store. Keep one definition with one owner, and two read paths: online for serving and offline for training. Audit any consumer that bypasses the store.
+**Fix:** Adopt capability 9, the feature store. Keep one definition with one owner, and two read paths: online for serving and offline for training. Audit any consumer that bypasses the store, because a single bypass brings the drift back.
 
 ### 7.5 "The corpus updated but the index did not"
 
-**Symptom:** A RAG application answers from documentation that was edited in the source system. The source timestamps are newer than the index, and some answers cite content that was deleted last week.
+**Symptom:** A RAG application answers from documentation that was edited in the source system. RAG, or retrieval-augmented generation, means the model answers using passages it fetches from an index. The source timestamps are newer than the index, and some answers cite content that was deleted last week. Users trust the answers because they cite a real document, and the document is no longer real.
 
-**Diagnosis:** The retrieval index has no freshness signal. The job that rebuilds it runs on a weekly schedule.
+**Diagnosis:** The retrieval index has no freshness signal. The job that rebuilds it runs on a weekly schedule, so every change in the corpus waits for the next run.
 
-**Fix:** Tie the index snapshot ID to the corpus snapshot ID. Alert when the index age passes a threshold your team chooses. Add a freshness check to the retrieval path that refuses to serve when the index is older than the policy window.
+**Fix:** Tie the index snapshot ID to the corpus snapshot ID. Alert when the index age passes a threshold your team chooses. Add a freshness check to the retrieval path that refuses to serve when the index is older than the policy window. A refusal is better than a confident answer built on a deleted page.
+
+Think of the freshness check as a seatbelt. Most of the time the index is fresh, and the check does nothing. On the day a source system breaks, the check is the only thing standing between the team and a confident answer built on old pages. The cost of the check is small, and the cost of skipping it can be a public mistake.
 
 ### 7.6 "The agent loop ran away"
 
-**Symptom:** In an illustrative case, an agent application made 800 LLM calls for one user request. The cost guardrail fired at 700 calls, but the loop kept running until it hit the hard limit. The user received a half-formed answer. The counts are example values.
+**Symptom:** In an illustrative case, an agent application made 800 LLM calls for one user request. The cost guardrail fired at 700 calls, but the loop kept running until it hit the hard limit. The user received a half-formed answer, and the bill for that one request was far larger than the team expected. The counts are example values.
 
-**Diagnosis:** The loop had no iteration cap, and the cost guardrail only reported. It did not block anything.
+**Diagnosis:** The loop had no iteration cap, and the cost guardrail only reported. It did not block anything, so the alarm rang while the agent kept spending.
 
-**Fix:** Set a hard iteration cap and a hard cost cap per request in the runtime, and make both blocking, not advisory. Add a loop detector that aborts after a run of identical tool calls. Choose that run length from your own traces.
+**Fix:** Set a hard iteration cap and a hard cost cap per request in the runtime, and make both blocking, not advisory. Add a loop detector that aborts after a run of identical tool calls. Choose that run length from your own traces, because a healthy agent and a runaway agent look different only in your own data.
 
 ### 7.7 "Nobody tested the model against adversarial inputs"
 
-**Symptom:** In an illustrative case, a model scores 0.94 AUC on the offline suite and goes into production. Within a month, users discover that pasting one specific string into a chat box makes the model ignore its system prompt and emit credentials from its training data. It becomes a privacy breach, and the regulator gets involved.
+**Symptom:** In an illustrative case, a model scores 0.94 AUC on the offline suite and goes into production. Within a month, users discover that pasting one specific string into a chat box makes the model ignore its system prompt and emit credentials from its training data. It becomes a privacy breach, and the regulator gets involved. The offline score said nothing about any of this.
 
-**Diagnosis:** The team never red-teamed the model. Its validation tested accuracy, not robustness. *Engineering AI Systems*, chapter 5, names red-teaming as a required capability for AI models, especially those built on foundation models. An outside team simulates attacks such as prompt injection, training-data extraction, jailbreaks and denial of service through long inputs. It then reports what it found to the model developers, the system developers and the deployers.
+**Diagnosis:** The team never red-teamed the model. Its validation tested accuracy, not robustness. *Engineering AI Systems*, chapter 5, names red-teaming as a required capability for AI models, especially those built on foundation models. Red-teaming means an outside team simulates attacks such as prompt injection, training-data extraction, jailbreaks and denial of service through long inputs. It then reports what it found to the model developers, the system developers and the deployers.
 
 **Fix:** Stand up a red-team capability that runs on every promotion to staging. The red-team report is a required artifact in the promotion gate, so no model reaches production without a pass. Automate what you can with prompt-injection and jailbreak suites, and keep humans on the high-stakes cases, such as personal data extraction and regulated prompts. Staff the blue team, the engineers who defend the system, at parity with the red team. *Engineering AI Systems*, chapter 5, warns that under-funded blue teams are the most common reason red-team findings never become model fixes.
+
+If you are unsure which adversarial tests to run first, start with the attacks that would cause the most harm if they worked. A model that can leak personal data needs that test before a model that only gets a few answers wrong. Ranking the tests by harm keeps the red team focused on the failures that the business would not forgive.
 
 ---
 
 ## 8. Hands-on lab
 
-This lab runs on GCP and GKE. It walks you through experiment tracking (Capability 1) and data versioning (Capability 2), from start to finish. The lab is **untested** in the sense that the cluster is not yet provisioned in this repository. The structure and commands are a working template. When you run it on a real GKE cluster, follow the steps in order, and check each `expected` line before you move on.
+Picture a new GKE cluster with nothing on it, and a team that needs its first tracked model before the end of the week. This lab runs on GCP and GKE. It walks you through experiment tracking (Capability 1) and data versioning (Capability 2), from start to finish. These steps were not run on a live cluster in this repository, so treat the commands as a working template. When you run them on a real GKE cluster, follow the steps in order, and check each `expected` line before you move on.
 
 ### 8.0 Prerequisites
 
-- GCP project with billing enabled, `gcloud` and `kubectl` installed.
-- A GKE Autopilot or Standard cluster (1.27+) with at least one node pool that can run small jobs.
-- Helm 3 for installing the tracking server and the registry.
-- `dvc` installed locally for the data versioning step (`pip install dvc[gcs]`).
+- You need a GCP project with billing enabled, plus `gcloud` and `kubectl` installed on your machine.
+- You need a GKE Autopilot or Standard cluster (1.27+) with at least one node pool that can run small jobs.
+- You need Helm 3 for installing the tracking server and the registry.
+- You need `dvc` installed locally for the data versioning step, which you can add with `pip install dvc[gcs]`.
 
 ### 8.1 Step 1: install a tracking server and a registry
 
-Install an MLflow Tracking Server backed by Postgres for metadata and GCS for artifacts, and run the MLflow Registry in the same deployment. The tracking server is the place where every run lands, so you check it first. The commands create the artifact bucket, install the chart and open a local port to confirm the server answers.
+Install an MLflow Tracking Server backed by Postgres for metadata and GCS for artifacts, and run the MLflow Registry in the same deployment. Picture the server as the front door where every run lands, so you check it first. The commands create the artifact bucket, install the chart and open a local port to confirm the server answers. If the port check returns an empty list, the server is up, and the lab can continue.
+
+Keep a notebook while you work through the steps, and write down the value of each `expected` line the first time you see it. When the same line changes later, you can tell that something upstream moved. That small habit turns the lab into a baseline for the rest of the course.
 
 ```bash
 # Create a GCS bucket for artifacts
@@ -771,7 +807,7 @@ curl -s http://localhost:5000/api/2.0/mlflow/experiments/list | jq .
 
 ### 8.2 Step 2: version a dataset with DVC
 
-Next, version a small dataset. The commands create a local demo project, point DVC at a Google Cloud Storage bucket and push one snapshot. Git then stores a small hash file, not the data itself.
+Next, version a small dataset. The commands create a local demo project, point DVC at a Google Cloud Storage bucket and push one snapshot. Git then stores a small hash file, not the data itself, so the repository stays small while the bytes sit safely in the bucket.
 
 ```bash
 mkdir churn-demo && cd churn-demo
@@ -789,7 +825,7 @@ dvc push
 
 ### 8.3 Step 3: train a model and log to MLflow
 
-Now train a model and log everything to MLflow. The script opens a run first, logs the dataset hash, the commit and the seed, and then registers the model. It is short enough to read end to end before you run it.
+Now train a model and log everything to MLflow. The script opens a run first, logs the dataset hash, the commit and the seed, and then registers the model. It is short enough to read end to end before you run it, and reading it first is the best way to know what the run record will contain.
 
 ```bash
 pip install mlflow scikit-learn pandas
@@ -801,7 +837,7 @@ python train.py --dataset data/churn.csv --seed 42
 #   - artifacts: model.pkl
 ```
 
-The training script structure:
+Here is the full training script, so you can match each tag and metric to the line that writes it.
 
 ```python
 # code/part16/train.py
@@ -844,18 +880,18 @@ with mlflow.start_run(run_name=f"churn-{data_hash[:8]}") as run:
 
 ### 8.4 Step 4: add a promotion gate
 
-Run the promotion gate against the new run and the previously registered model. The gate blocks the promotion if a required tag is missing or the AUC regressed. This lab uses `code/part16/promotion_gate.py`, which reads runs from MLflow. The file `promote.py` in the same folder is a different version that reads run records from the local stand-in registry used by the tests, so it does not work with these MLflow run IDs.
+Run the promotion gate against the new run and the previously registered model. The gate blocks the promotion if a required tag is missing or the AUC regressed. This lab uses `code/part16/promotion_gate.py`, which reads runs from MLflow. The file `promote.py` in the same folder is a different version that reads run records from the local stand-in registry used by the tests, so it does not work with these MLflow run IDs. Use the first file for this lab, and leave the second one alone.
 
 ```bash
 python -c "import sys; sys.path.insert(0, 'code/part16'); import promotion_gate; sys.exit(promotion_gate.promote('<new-run-id>', '<previous-run-id>'))"
 # expected: "PROMOTION BLOCKED: ..." with a reason, or "PROMOTED churn-model vN to Staging"
 ```
 
-This version prints its decision but does not write an audit log. Add an audit sink of your own before you rely on it, as Section 4.3 describes.
+This version prints its decision but does not write an audit log. Add an audit sink of your own before you rely on it, as Section 4.3 describes. Without that sink, the decision lives only in the terminal output, and a terminal output is not a record.
 
 ### 8.5 Step 5: deploy the staged model behind KServe
 
-Last, deploy the staged model behind KServe. The InferenceService below points at a model file, and KServe serves it over HTTP. The resource requests and limits are example values for a small model, so size them from your own load tests.
+Last, deploy the staged model behind KServe. The InferenceService below points at a model file, and KServe serves it over HTTP. The resource requests and limits are example values for a small model, so size them from your own load tests. Read the YAML top to bottom once before you apply it, and notice which field tells KServe where the model lives.
 
 ```yaml
 # code/part16/inference_service.yaml
@@ -895,7 +931,7 @@ kubectl get inferenceservice churn-model -n mlops
 
 ### 8.6 Step 6: smoke-test the deployment
 
-Send a small batch of requests, and check that the response matches the registered signature. The command reads the service URL from the cluster and posts two rows.
+Send a small batch of requests, and check that the response matches the registered signature. The command reads the service URL from the cluster and posts two rows. A matching response means the model answers in the shape the registry promised, and that is the last check before you call the lab done.
 
 ```bash
 URL=$(kubectl get inferenceservice churn-model -n mlops -o jsonpath='{.status.url}')
@@ -907,7 +943,9 @@ curl -X POST $URL/v2/models/churn-model/infer \
 
 ### 8.7 What to record
 
-At the end of the lab, you should be able to answer five questions using only the tracking server, the registry and `kubectl`. Time yourself. The chapter uses five seconds per answer as an example target and thirty seconds as the outer limit. Your team should set its own targets.
+At the end of the lab, try to answer five questions using only the tracking server, the registry and `kubectl`. Time yourself, because a team that needs a long search to find a model version has a problem worth fixing. The chapter uses five seconds per answer as an example target and thirty seconds as the outer limit. Your team should set its own targets.
+
+A good way to practise these answers is to pick one model from your own team and ask a colleague to answer the five questions cold. Watch where they hesitate. Each hesitation points to a record that is missing, or to a record that exists but cannot be found. Both cases are worth fixing before the next incident.
 
 1. Which dataset version trained the model that is currently serving traffic?
 2. What is the commit hash of the training script that produced that model?
@@ -915,20 +953,20 @@ At the end of the lab, you should be able to answer five questions using only th
 4. What is the rollback path to the previous production model?
 5. What is the freshness of the data the model was trained on?
 
-If any answer takes longer than your limit, the lifecycle is still at Level 0. The lab is **untested** against a live GKE cluster in this repository. The commands and structure are provided as a working template.
+If any answer takes longer than your limit, the lifecycle is still at Level 0. Treat that as a finding, not a failure, and write down which record was hard to find. That record is the next thing to add to the pipeline.
 
 ---
 
 ## Exercises
 
-These exercises extend the lab. Each one has a deliverable you can check by reading the tracking server, the registry and `kubectl`. Solutions are sketched at the end of each exercise, not written out step by step.
+Picture the lab finished, with a tracking server full of runs and a registry that someone must keep honest. The exercises below extend that lab. Each one has a deliverable you can check by reading the tracking server, the registry and `kubectl`. Solutions are sketched at the end of each exercise, not written out step by step, so the thinking stays with you.
 
-1. Wire a retraining trigger on a schedule. Add a Kubernetes CronJob that runs `train.py` weekly with a fixed seed, and pushes the resulting model into the registry. Check that a new run appears in MLflow within the next scheduled window. *Solution sketch:* a `CronJob` YAML that runs `python train.py --dataset data/churn.csv --seed 42` with a service account that has write access to the bucket. Expect one new run per scheduled period.
-2. Add a drift detector. Install whylogs or Evidently, and profile the served traffic. Compare the served input distribution with the training distribution, and log the result to MLflow. *Solution sketch:* a sidecar that profiles the JSON body of each request and emits a profile at an interval you choose. Expect the profile in object storage and the metric in MLflow.
-3. Add a promotion-gate rule for fairness. Extend the gate in `mlops_promotion_gate.py` so it refuses promotion if a segment-level metric drops too far. For example, use the AUC for the tier=silver slice, with a drop limit that your team chooses. *Solution sketch:* add a `segment_metrics` field to the dataclass that holds a run, and add a rule to `rules["max_segment_drop"]`. The sketch uses 5 percentage points as an example limit. Expect the gate to print a fairness reason on regression.
-4. Sign the training image. Build the training image, sign it with `cosign`, and add an admission policy that refuses unsigned images in the `mlops` namespace. *Solution sketch:* `cosign sign --key cosign.key $IMAGE` and a Kyverno policy that requires a `cosign.sigstore.dev` signature. Expect unsigned pods to be rejected by the admission controller.
-5. Add a feature store. Replace the inline feature `tier_gold` with a feature from Feast, Tecton or the Vertex AI Feature Store. Verify that the training pipeline reads the offline view and the serving pipeline reads the online view. *Solution sketch:* define an entity (`user_id`) and a feature (`tier_gold`). Train with `get_historical_features` and serve with `get_online_features`. Expect both views to return the same value.
-6. Add an LLM regression set. For an LLM application, freeze a set of input and output pairs as a regression set. The sketch uses 50 pairs as an example size. Add the set to a CI step that runs on every prompt-template change, and fail the pull request if any regression fails. *Solution sketch:* a JSON file of pairs checked into the prompt repo, and a CI step that calls the LLM with each input and checks the output against a stored expectation. Expect CI to fail on a known-bad prompt edit.
+1. Wire a retraining trigger on a schedule, because a model that is never retrained goes stale quietly. Add a Kubernetes CronJob that runs `train.py` weekly with a fixed seed, and pushes the resulting model into the registry. Check that a new run appears in MLflow within the next scheduled window. *Solution sketch:* a `CronJob` YAML that runs `python train.py --dataset data/churn.csv --seed 42` with a service account that has write access to the bucket. Expect one new run per scheduled period.
+2. Add a drift detector, so you hear about changing inputs before the metrics fall. Install whylogs or Evidently, and profile the served traffic. Compare the served input distribution with the training distribution, and log the result to MLflow. *Solution sketch:* a sidecar that profiles the JSON body of each request and emits a profile at an interval you choose. Expect the profile in object storage and the metric in MLflow.
+3. Add a promotion-gate rule for fairness, so a model that helps most users but hurts one group cannot pass quietly. Extend the gate in `mlops_promotion_gate.py` so it refuses promotion if a segment-level metric drops too far. For example, use the AUC for the tier=silver slice, with a drop limit that your team chooses. *Solution sketch:* add a `segment_metrics` field to the dataclass that holds a run, and add a rule to `rules["max_segment_drop"]`. The sketch uses 5 percentage points as an example limit. Expect the gate to print a fairness reason on regression.
+4. Sign the training image, so a tampered image cannot reach the cluster. Build the training image, sign it with `cosign`, and add an admission policy that refuses unsigned images in the `mlops` namespace. *Solution sketch:* `cosign sign --key cosign.key $IMAGE` and a Kyverno policy that requires a `cosign.sigstore.dev` signature. Expect unsigned pods to be rejected by the admission controller.
+5. Add a feature store, so the training path and the serving path read one definition. Replace the inline feature `tier_gold` with a feature from Feast, Tecton or the Vertex AI Feature Store. Verify that the training pipeline reads the offline view and the serving pipeline reads the online view. *Solution sketch:* define an entity (`user_id`) and a feature (`tier_gold`). Train with `get_historical_features` and serve with `get_online_features`. Expect both views to return the same value.
+6. Add an LLM regression set, so a prompt edit cannot break answers that used to work. For an LLM application, freeze a set of input and output pairs as a regression set. The sketch uses 50 pairs as an example size. Add the set to a CI step that runs on every prompt-template change, and fail the pull request if any regression fails. *Solution sketch:* a JSON file of pairs checked into the prompt repo, and a CI step that calls the LLM with each input and checks the output against a stored expectation. Expect CI to fail on a known-bad prompt edit.
 
 ## Checkpoint questions
 
