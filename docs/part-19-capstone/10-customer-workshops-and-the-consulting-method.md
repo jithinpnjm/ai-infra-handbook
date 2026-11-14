@@ -26,42 +26,36 @@ lab_venue: "Local (standard-library Python, no GPU)"
 
 ## Why this matters for AI infrastructure
 
-A customer tells you on a call that they want "an AI platform by spring." Nobody on the call can say what the platform will run, who will operate it, how it will be judged, or who signs the cheque. Two months later the team has built a cluster that is technically sound and that the customer does not want. The failure was not in the cluster. It was in the first week.
+A customer tells you on a call that they want "an AI platform by spring." It sounds like a clear request, and everyone on the call nods. Then you try to answer the simple questions. What will the platform run? Who will operate it once it exists? How will anyone judge whether it worked? Who signs the cheque? Nobody on the call can answer those yet. Two months later the team has built a cluster that is technically sound, and the customer does not want it. The cluster was not the failure. The failure happened in the first week, when nobody asked the questions that the cluster depended on.
 
-This capstone teaches the part of the job that happens before and around the technical build. You will learn what to ask, how to turn the answers into a short list of risks, how to score the customer's current state, how to turn requirements into a design with the costs written down, how to run a proof of concept that can fail honestly, and how to hand the result over. The method is a sequence of small artefacts, each of which another person can check.
+This capstone is about the part of the job that happens before and around the technical build. Think of it as the work a good engineer does in the first weeks, before any rack is ordered. In those weeks you learn what to ask, turn the answers into a short list of risks, score the customer's current state, turn requirements into a design with the costs written down, run a proof of concept that is allowed to fail, and hand the result to people who can run it. The method is a sequence of small artefacts. Each one is a file that another person can check, argue with and reuse.
 
-An honest word about sourcing. The gem books describe customer projects and platform choices, and this chapter uses them for what they say. They do not contain a consulting playbook. The workshop agenda, the questionnaire weights, the scorecard scale and the verdict rules here are this chapter's own recommended practice, and the text says so each time. This chapter does not describe how NVIDIA, Nebius or any named company runs its engagements, because there is no source for that.
+Before going further, I want to be honest about where the material comes from. Several gem books describe real customer projects and platform choices, and this chapter uses them only for what they actually say. None of them contains a consulting playbook. So the workshop agenda, the questionnaire weights, the scorecard scale and the verdict rules are this chapter's own recommended practice, and the text labels them each time they appear. This chapter also does not describe how NVIDIA, Nebius or any other named company runs its engagements. There is no source for that, so I do not guess.
 
-Everything runnable is in `code/part19/c10_*`. The customer in the worked example, Larkfield Mutual, is fictional. Every number about it is invented to make the arithmetic readable, and none of it was measured on a system.
+Everything you can run is in `code/part19/c10_*`, so you can check the arithmetic yourself instead of trusting the prose. The customer in the worked example, Larkfield Mutual, is fictional. I made up every number about it so that the arithmetic stays easy to follow. None of those numbers was measured on a real system, and you should not carry them into a real conversation as evidence.
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
 
-- Chapter 19.9 for how sizing and uncertainty are written down.
-- Chapters 19.11 to 19.13 for the designs you will propose.
-- Chapter 20.28 for how to talk about a project afterwards.
-- Python 3 and pytest on a laptop for the lab.
+Your first customer call goes better when the tools and the earlier chapters are already familiar. Before the call, check that each item below is in place.
+
+- Chapter 19.9 explains how to write sizing and uncertainty down, which you need before you argue about any number with a customer.
+- Chapters 19.11 to 19.13 cover the designs you will propose once discovery and assessment are done.
+- Chapter 20.28 shows how to talk about a project afterwards, which matters when someone asks what you learned.
+- Python 3 and pytest on a laptop are enough for the lab, with no GPU and no cluster.
 
 ### Outcomes
 
-After this capstone you will be able to:
-
-1. Run a discovery conversation with a question list that covers eight areas, and score how complete it is.
-2. Turn the answers into named risk flags with a severity.
-3. Score a customer's current state with evidence for every score, and rank the gaps.
-4. Write an architecture decision record that shows the rejected options and their costs.
-5. Define a proof of concept with success criteria, minimum run counts and exit criteria before it starts.
-6. Say "go", "no-go", "inconclusive" or "stop" from results, and defend the choice.
-7. Answer the interview question "walk me through how you would run a discovery workshop."
+Picture the first meeting with a customer who wants a platform in a hurry, and you have a laptop and an afternoon to prepare. This chapter walks through the path a platform engagement takes from that first discovery call to a proof of concept verdict and a handover. It covers the question list and how it is scored, the risk flags, the scorecard with its evidence, the decision record with its rejected options, the success and exit criteria, and the verdict rules. It ends with the interview question about how you would run a discovery workshop.
 
 ## 1. The shape of an engagement
 
-A customer asks for a quote after one meeting. The sales note says "GPU cluster, 64 GPUs." Three weeks later the engineers learn that the data cannot leave the building and the team has never run a GPU. The quote is now wrong in two ways. An engagement needs a shape that surfaces these facts early and cheaply.
+A customer asks for a quote after one meeting. The sales note says "GPU cluster, 64 GPUs." Three weeks later the engineers learn that the data cannot leave the building and the team has never run a GPU. The quote is now wrong in two ways. Nobody lied in that first meeting. The sales note was a fair summary of what the customer said, and the missing facts were simply not on the table yet. An engagement needs a shape that brings those facts out early, while changing course still costs little. Think of the shape as a set of gates. Each gate produces a small artefact, and the next gate opens only when that artefact exists.
 
-The only gem-book description of a whole customer engagement is the Fraunhofer case in *Engineering AI Systems*, chapter 12. It splits the project into three phases. A proof of concept proves the approach is feasible. A main project integrates the application on the customer side. Maintenance and operation follow after deployment. The proof of concept ran three months with a break at the halfway point where either partner could stop the project if progress was not significant.
+The only gem-book description of a whole customer engagement is the Fraunhofer case in *Engineering AI Systems*, chapter 12. It splits the project into three phases, and each phase answers a different question. The proof of concept asks whether the approach is feasible at all. The main project asks how to integrate the application on the customer side. Maintenance and operation begin after deployment and ask whether the system keeps working. The proof of concept ran three months, with a break at the halfway point where either partner could stop the project if progress was not significant. That break is a useful model. It is a planned place to stop, written into the schedule before anyone is tired of the work.
 
-My engagement shape adds the steps that come before and after those phases. It is the author's recommended practice, not a published standard.
+The shape in this chapter adds steps before and after those phases. Discovery and assessment come before the proof of concept, and handover comes after it. This is my recommended practice, not a published standard, so treat it as a starting point you can adapt to your own customers.
 
 ```mermaid
 flowchart LR
@@ -81,7 +75,9 @@ flowchart LR
 | Proof of concept | Criteria, results, verdict | `c10_poc_tracker.py` | Both sides, before it starts |
 | Handover | Memo, runbooks, owner list | Template in section 7 | Named operator on the customer side |
 
-Notice that each artefact is small and can be read in five minutes. That is deliberate. A long report is read once. A short file with a score and a reason is argued over, corrected and reused.
+Notice that each artefact is small and can be read in five minutes. That is deliberate. A long report is read once and then filed away. A short file with a score and a reason gets argued over, corrected and reused, and that argument is how the customer comes to trust the result.
+
+The same test works for every artefact in the table above. Ask whether a colleague could read it in a few minutes, understand it without a phone call, and find the one line they would challenge. If the answer is no, the artefact is too big or too vague, and the next step should wait until it is fixed.
 
 **Decision rule:** Do not start the next step until the artefact of the current step exists and the customer has seen it.
 
@@ -89,13 +85,13 @@ Notice that each artefact is small and can be read in five minutes. That is deli
 
 ## 2. Discovery: what to ask and why
 
-On the first call the customer says the use case is "document search." After twenty minutes you learn there are two languages, a scanned archive, an angry compliance officer, and a failed attempt last year. None of this was in the brief. Discovery is the work of finding these facts while they are cheap to find.
+On the first call the customer says the use case is "document search." It sounds simple. Then, twenty minutes in, you learn that the documents are in two languages, that many of them are scanned images, that the compliance officer is angry, and that a failed attempt happened last year. None of this was in the brief. Discovery is the work of finding these facts while they are still cheap to find, before a design or a budget has been built on a wrong guess.
 
-The Fraunhofer client had already had an unsuccessful proof of concept with another company. The book says the major challenges were mostly language hurdles, and that the client had failed to reach a mutual understanding of the business goals and the data. That sentence is the best argument for a structured discovery. Both sides must say, in plain words, what the goal is and what the data looks like.
+The Fraunhofer client had already run an unsuccessful proof of concept with another company. *Engineering AI Systems*, chapter 12, reports that the main challenges were mostly language hurdles, and that the client had failed to reach a mutual understanding of the business goals and the data. That is why I put a structured discovery first. Both sides must say, in plain words, what the goal is and what the data looks like, before anyone builds anything.
 
 ### 2.1 The eight areas
 
-The questionnaire in `c10_questionnaire.json` has 29 questions in eight areas. Seven are the areas you would expect: workload, data, scale, team skills, compliance, budget and timeline. The eighth is stakeholders. The Fraunhofer chapter lists five kinds of client stakeholder: a decision maker, a business unit lead, a project lead, the employees who are the end users, and IT professionals. It calls the involvement of these people a key success factor, so I ask about them first.
+The questionnaire in `c10_questionnaire.json` has 29 questions in eight areas. Most of the areas are the ones you would expect from any technical project. They are workload, data, scale, team skills, compliance, budget and timeline, which makes seven of the eight. The eighth area is stakeholders, and I put it first on purpose. The Fraunhofer chapter lists five kinds of client stakeholder: a decision maker, a business unit lead, a project lead, the employees who are the end users, and IT professionals. It treats the involvement of these people as a key success factor. If the right people are missing, the rest of the answers are hard to trust, so I ask about them first.
 
 | Area | Example question | Why it matters | Source or status |
 |---|---|---|---|
@@ -110,19 +106,27 @@ The questionnaire in `c10_questionnaire.json` has 29 questions in eight areas. S
 | Budget | A fixed number, a range, or nothing yet? | An unknown budget means options cannot be ranked by cost | My practice |
 | Timeline | How many weeks can the proof of concept run? | It must be long enough for repeated measurements | My practice |
 
+Use the table as a guide to the meeting, not as a script to read aloud. Some questions get a one-word answer, and some open a long discussion. When an answer is vague, ask for the example behind it. "Fast" becomes a latency target, and "secure" becomes a named rule. Each of those can be checked later, which is the whole reason for asking.
+
 ### 2.2 Why the questions are data
 
-The questionnaire is a JSON file and not a document. Each question has an area, a type, a "critical" flag and a one-line reason. Because it is data, a script can count what has been answered and a second engineer can see exactly what you asked. The reason field is there for the facilitator. When a customer asks "why do you need this," you read the line aloud.
+Your colleague edits the question list late on a Tuesday and asks whether the change broke anything. A question stored as data can be tested. A question buried in a document cannot.
 
-Two kinds of answer count as unanswered: an empty one, and the word "unknown." Customers often say "I think so," and that is a gap.
+The questionnaire is a JSON file and not a document. A document can be skimmed and forgotten. A data file has a fixed shape, so every question carries an area, a type, a "critical" flag and a one-line reason. Because it is data, a script can count what has been answered, and a second engineer can open the file and see exactly what you asked. The reason field is written for the facilitator. When a customer asks "why do you need this," you read the line aloud, and the answer is already on the page.
+
+Two kinds of answer count as unanswered. One is an empty answer. The other is the word "unknown." Customers often say "I think so" in the meeting, and the scorer treats that as a gap too, because a hope is not a fact you can plan on.
+
+In practice your notes should show the difference. A line that says "they think it is fine" goes into the file as unknown, with the name of the person who will confirm it. The gap is visible, and nobody has to pretend that the fact is settled when it is not.
 
 ### 2.3 Scoring completeness and risk flags
 
-The scorer in `c10_discovery.py` does two jobs. It computes a weighted completeness, where a critical question counts twice. It also evaluates 14 risk rules. Each rule is a list of conditions over answers. A rule can compare an answer to a constant, or to another answer. For example, rule R10 fires when the weeks of security approval exceed the weeks until the pilot, which is a date the customer cannot meet as stated.
+The scorer prints a risk flag, and the customer asks why the flag fired. The answer should be in the code and in the rule, not in the memory of whoever wrote it.
 
-Two behaviours are worth knowing. A rule never fires on an unanswered question, because guessing would create false alarms. Instead every unanswered critical question produces its own high-severity flag. And the scorer refuses bad input. An unknown question id, a number given as text, or a choice outside the list raises an error. The tests prove this, because a scorer that silently accepts typos is worse than no scorer.
+The scorer in `c10_discovery.py` does two jobs, and it helps to keep them apart in your head. The first job is a weighted completeness score, where a critical question counts twice. The second job is to evaluate 14 risk rules. Each rule is a list of conditions over the answers. A rule can compare an answer with a constant, or compare one answer with another. For example, rule R10 fires when the weeks of security approval are longer than the weeks left until the pilot. In that case the customer's date cannot be met as stated, and the flag says so before the date appears in a proposal.
 
-The completeness threshold of 80 percent weighted, with no critical question unanswered, is my heuristic. I have no source for the number. Treat it as a default to argue with.
+Two behaviours are worth knowing before you rely on the tool. First, a rule never fires on an unanswered question, because a guess would create false alarms and waste a meeting. Instead, every unanswered critical question produces its own high-severity flag, so the gap is visible on its own line. Second, the scorer refuses bad input. An unknown question id, a number typed as text, or a choice outside the list raises an error. The tests check this, because a scorer that quietly accepts a typo is worse than having no scorer at all. It gives you a false sense of safety.
+
+The completeness threshold of 80 percent weighted, with no critical question unanswered, is my heuristic. I have no source for that number. I chose it because it felt like a reasonable bar for moving on. Treat it as a default to argue with, and change it if your customers need a stricter or looser bar.
 
 **Decision rule:** Move to assessment only when every critical question has a real answer, and write down every flag with the person who will own it.
 
@@ -130,13 +134,15 @@ The completeness threshold of 80 percent weighted, with no critical question una
 
 ## 3. Running the workshop
 
-At 10:15 the customer's architect and the security lead start arguing about whether production data may be used in the proof of concept. The facilitator has a flip chart and forty minutes of agenda left. What the facilitator does in the next two minutes decides whether the day produces a decision or a stalemate.
+At 10:15 the customer's architect and the security lead start arguing about whether production data may be used in the proof of concept. The facilitator has a flip chart, a printed agenda and forty minutes of agenda left. The room is watching. What the facilitator does in the next two minutes decides whether the day produces a decision or a stalemate. A good facilitator does not pick a side. They turn the argument into a question that can be written on the chart and answered later.
 
-In the Fraunhofer project a workshop was held to jointly determine the goals of the proof of concept and the approach. It included the employees who would actually use the application. That is the model I use: the people who do the work are in the room when the goals are set.
+In the Fraunhofer project a workshop was held to decide together the goals of the proof of concept and the approach. It included the employees who would actually use the application. That is the model I use. The people who do the work are in the room when the goals are set, so the goals describe real work and not a slide written by someone who has never seen the documents.
 
 ### 3.1 An agenda I recommend
 
-This agenda is my practice. The times are a starting point for a half day and not a rule from any source.
+The facilitator arrives at nine with a blank wall, a list of attendees and no plan for the first hour. A fixed agenda gives the room something to follow.
+
+The agenda below is my practice, not a rule from any source. A customer who has never run a workshop before needs a firm structure, and a fixed agenda makes it easier to steer away from tangents. Treat the times as a starting point for a half day. You will change them the first time the room runs out of patience or energy.
 
 | Time | Block | Output |
 |---|---|---|
@@ -147,21 +153,25 @@ This agenda is my practice. The times are a starting point for a half day and no
 | 2:15 to 2:50 | Team, budget, timeline | Remaining questions answered |
 | 2:50 to 3:30 | Read back risks, agree owners and next steps | Flag list with an owner and a date each |
 
-Prepare before the day. Send the questionnaire two days ahead, ask for the decision maker by name, and raise any failed earlier attempt. Fraunhofer's client wanted to see what differed from the last try.
+Prepare before the day, because most of the work happens before anyone enters the room. Send the questionnaire two days ahead, so people can look up the answers they do not know off the top of their heads. Ask for the decision maker by name, and check that person's diary. Raise any failed earlier attempt too, since people often do not mention it unless asked. Fraunhofer's client wanted to see what differed from the last try, and your customer will probably want the same.
 
 ### 3.2 Facilitation habits and disagreement
 
-Five habits do most of the work, and all are my practice. Write the goal sentence on the wall. Ask for an example before accepting an adjective, so that "fast" becomes "an adjuster waits no more than eight seconds." Ask who would be unhappy if this went wrong. Record every claim with its owner. Read the flags back aloud at the end.
+Two senior people start talking over each other, and the room goes quiet. The facilitator needs habits that keep the discussion moving without choosing a winner.
 
-Disagreement in the room is information. Three kinds appear again and again.
+Five habits do most of the work, and all five are my practice rather than a published method. Write the goal sentence on the wall where everyone can see it. Ask for an example before you accept an adjective, so that "fast" becomes "an adjuster waits no more than eight seconds." Ask who would be unhappy if this went wrong, because the answer often names a stakeholder you missed. Record every claim with the name of the person who owns it. Read the flags back aloud at the end, so nobody can say later that they did not hear them.
 
-The first is a disagreement about a fact, such as whether the data is clean. Do not debate it. Turn it into a measurement with an owner and a date. The proof of concept exists partly to settle facts like this.
+A small example helps. Suppose someone says the data is "mostly clean." Ask what share of the sample they checked, who checked it and when. Each question turns a comfortable phrase into something that can be verified in the next week. The room usually relaxes once it sees that the question is about evidence and not about blame.
 
-The second is a disagreement about a priority, such as speed against cost. Put both on the wall, ask the decision maker to rank them, and write the ranking into the design record as a driver. If the decision maker is absent, the flag from the questionnaire (R01) has just become real.
+Disagreement in the room is information, not a failure of the workshop. Three kinds appear again and again, and each one needs a different response.
 
-The third is a disagreement between two senior people who each own part of the answer, such as security and the architect. Do not pick a side. Write each position as an option in the decision record with its cost, and ask what evidence would change each person's mind. That evidence often becomes a proof of concept criterion.
+The first is a disagreement about a fact, such as whether the data is clean. Two people can argue about it for an hour and still not know the answer. Do not debate it. Turn it into a measurement with an owner and a date. The proof of concept exists partly to settle facts like this one, so the argument becomes a task rather than a stalemate.
 
-The Fraunhofer chapter points at the same lesson from the other side. It says that this was not a turnkey solution handed over, and that sophisticated, engaged clients are required. If the client will not engage, the method cannot work, and saying so early is part of the job.
+The second is a disagreement about a priority, such as speed against cost. Both sides may be right about their own goal. Put both on the wall, ask the decision maker to rank them, and write the ranking into the design record as a driver. If the decision maker is absent, the flag from the questionnaire (R01) has just become real, because the customer has not yet said which priority wins.
+
+The third is a disagreement between two senior people who each own part of the answer, such as security and the architect. Picking a side here makes an enemy and hides the trade-off. Instead, write each position as an option in the decision record with its cost. Then ask what evidence would change each person's mind. That evidence often becomes a proof of concept criterion, so the disagreement turns into a test that both people agreed to in advance.
+
+The Fraunhofer chapter points at the same lesson from the other side. It says that the project was not a turnkey solution handed over to the client, and that sophisticated, engaged clients are required. If the client will not engage, the method cannot work. Saying so early, and politely, is part of the job. It is kinder to everyone than a long project that quietly fails.
 
 **Decision rule:** When people disagree, convert the disagreement into a measurement, a ranked driver or an option with a cost, and never into a winner.
 
@@ -169,11 +179,13 @@ The Fraunhofer chapter points at the same lesson from the other side. It says th
 
 ## 4. Assessing the current state
 
-Midway through the workshop the customer's lead says "we have solid MLOps." The following week you ask for the model registry URL. It turns out to be a shared folder with dated file names. The lead was not lying. They were describing the practice they hoped to have. An assessment replaces hope with evidence.
+Midway through the workshop the customer's lead says "we have solid MLOps." It is a confident statement, and the room nods. The following week you ask for the model registry URL. It turns out to be a shared folder with dated file names. The lead was not lying. They were describing the practice they hoped to have, which is a common and understandable thing to do. An assessment replaces hope with evidence, and it does so without blaming anyone.
 
 ### 4.1 The scorecard
 
-`c10_scorecard.json` lists 16 criteria in five categories: infrastructure, security, MLOps, team and governance. Each criterion has a weight from 1 to 3 and a plain-English sentence. The scale is this chapter's own and has four levels.
+A new engineer opens the scorecard file and asks what a 2 means, and whether a 3 is always better.
+
+`c10_scorecard.json` lists 16 criteria in five categories: infrastructure, security, MLOps, team and governance. Each criterion has a weight from 1 to 3 and a plain-English sentence that says what the criterion means. Plain English matters, because the person scoring a criterion may not be the person who reads the result. The scale is this chapter's own and has four levels, shown below.
 
 | Score | Meaning |
 |---|---|
@@ -182,19 +194,25 @@ Midway through the workshop the customer's lead says "we have solid MLOps." The 
 | 2 | Defined and repeatable |
 | 3 | Measured and automated |
 
-The five categories are this chapter's own grouping of the topics those books cover: the infrastructure, the access and secrets, the pipelines and monitoring, and the people who run them. The weights and the default target of 2 are heuristics.
+The five categories are this chapter's own grouping of the topics that the books cover. They are the infrastructure, the access and secrets, the pipelines and monitoring, and the people who run them. You may group them differently for your customer. The weights and the default target of 2 are heuristics, so argue with them in the open rather than hide them.
 
 ### 4.2 Evidence is mandatory
 
-The tool rejects any score without evidence. A score of 2 with the text "they said so" is evidence of a kind, and I would write exactly that, because it tells the next reader how much to trust it. The point is that a score without a reason cannot be challenged and cannot be checked.
+The customer's lead says the team has a runbook, and you ask where it is. The answer decides the score, and the answer should be written next to the score.
 
-The evaluator also reports coverage. If you assessed three of four team criteria, the team category is flagged incomplete. A maturity number built from half the facts is a trap.
+The tool rejects any score without evidence. A score of 2 with the text "they said so" is evidence of a kind. I would write exactly that, because it tells the next reader how much to trust the score. The point is that a score without a reason cannot be challenged and cannot be checked. Someone reading the report later needs to see where each number came from, even when the answer is weak.
+
+Good evidence is specific and short. "Two architects reviewed the cluster runbook and found it current" says far more than "they have a runbook." A reader can check the first sentence by asking for the document, while the second leaves nothing to check.
+
+The evaluator also reports coverage. Suppose you assessed three of the four team criteria. The team category is then flagged as incomplete, so nobody reads it as a finished score. A maturity number built from half the facts looks precise, and that is exactly why it is a trap.
 
 ### 4.3 Gaps and targets
 
-A gap is the target minus the score, multiplied by the weight. The default target is 2 for everything. You override it where the requirements demand more. In the worked example the evaluation criterion has a target of 3 because the customer must prove quality before release.
+The scorecard prints its top gaps, and a manager asks why the first one matters most. The answer is the product of the weight and the distance to target.
 
-A gap is not automatically a thing to build. *Production Kubernetes* advises understanding existing workflows and deciding which requirements belong at the platform level and which at the application level. Some gaps belong to a purchased service, and some to training.
+A gap is the target minus the score, multiplied by the weight. The default target is 2 for everything, which means a criterion counts as a gap until it is at least defined and repeatable. You override the target where the requirements demand more. In the worked example the evaluation criterion has a target of 3, because the customer must prove quality before release. A higher target makes that gap count for more in the ranking, and the ranking is what the customer reads first.
+
+A gap is not automatically a thing to build. Before you plan any work, ask whether the gap should be filled at all. *Production Kubernetes* advises understanding the existing workflows first, and then deciding which requirements belong at the platform level and which at the application level. Some gaps belong to a purchased service, and some belong to training, so the cheapest fix is not always new engineering.
 
 **Decision rule:** Score only what you saw or were shown, write the evidence next to the score, and set the targets from requirements rather than from a template.
 
@@ -202,29 +220,29 @@ A gap is not automatically a thing to build. *Production Kubernetes* advises und
 
 ## 5. From requirements to an architecture with trade-offs
 
-The assessment is finished and a colleague says "just put everything on Kubernetes with the open-source stack." The customer has three engineers and no GPU history. The colleague's design is not wrong in general. It is wrong for this team. A good design names the alternatives and what each one costs this particular customer.
+The assessment is finished, and a colleague says "just put everything on Kubernetes with the open-source stack." It sounds tidy, and it may be the right answer for some teams. The customer has three engineers and no GPU history, though. The colleague's design is not wrong in general. It is wrong for this team, at this time. A good design names the alternatives and says what each one costs this particular customer.
 
 ### 5.1 What the books say about choosing
 
-*Production Kubernetes* chapter 1 describes a spectrum of approaches to an application platform. At one end are managed platforms that hide the infrastructure, such as Heroku. At the other is building a platform on Kubernetes, which the authors say requires the most engineering effort but can line up most closely with your needs. They warn that a prebuilt platform asks you to conform to its view of the world and can carry lock-in. They also say you must understand your engineering maturity, appetite for building and available resources before deciding to build.
+A platform team is about to choose between buying a managed platform and building its own, and the team wants to know what the books say. *Production Kubernetes* chapter 1 describes a spectrum of approaches to an application platform. At one end are managed platforms that hide the infrastructure, such as Heroku. At the other end is building a platform on Kubernetes. The authors say that building takes the most engineering effort, but it can line up most closely with your needs. They warn that a prebuilt platform asks you to conform to its view of the world, and that it can carry lock-in. They also say you must understand your engineering maturity, your appetite for building and the resources you have before you decide to build.
 
-The same chapter describes an abstraction spectrum. At one end every team gets its own cluster and carries the responsibility for Kubernetes knowledge. At the other end Kubernetes is entirely hidden behind a platform as a service. Neither end is right in general. The right point depends on whether the application teams can operate Kubernetes.
+The same chapter describes an abstraction spectrum, which is a separate question from who builds the platform. At one end, every team gets its own cluster and carries the responsibility for Kubernetes knowledge. At the other end, Kubernetes is hidden completely behind a platform as a service, and the application teams never see it. Neither end is right in general. The right point depends on whether the application teams can operate Kubernetes at all.
 
-*Machine Learning Platform Engineering* chapter 1 says there is no one-size-fits-all platform architecture and recommends growing a platform incrementally. It also recommends trying a tool for a few days with a proof of concept to find deal-breaking limits early. On build versus buy it acknowledges that organisations may already have a vendor platform, and argues that building one from scratch once is valuable for learning.
+*Machine Learning Platform Engineering* chapter 1 says there is no one-size-fits-all platform architecture. It recommends growing a platform in small steps rather than designing the whole thing at once. It also recommends trying a tool for a few days, as a short proof of concept, so that deal-breaking limits show up early and cheaply. On build versus buy, it acknowledges that an organisation may already have a vendor platform. It argues that building one from scratch once is valuable for learning.
 
-*AI Engineering* chapter 10 shows the same incremental stance, adding context, guardrails, a router, caches and agents one step at a time. *Engineering AI Systems* chapter 13 describes a consulting organisation serving small manufacturers with no IT team. It chose cloud-agnostic tools so clients keep flexibility, offered ongoing support, and avoided financial lock-in contracts. It names data ingestion as a major problem. Chapter 14 adds that in banking, privacy rules such as GDPR and PCI DSS apply and decisions must be traceable.
+*AI Engineering* chapter 10 shows the same incremental stance. It adds context, guardrails, a router, caches and agents one step at a time, rather than all at once. *Engineering AI Systems* chapter 13 describes a consulting organisation that serves small manufacturers with no IT team. It chose cloud-agnostic tools so that clients keep their flexibility. It offered ongoing support and avoided financial lock-in contracts. The chapter names data ingestion as a major problem, which is the same problem you will meet in discovery. Chapter 14 adds that in banking, privacy rules such as GDPR and PCI DSS apply, and decisions must be traceable.
 
 ### 5.2 Turning gaps into options
 
-My procedure is the author's practice. List the hard constraints such as residency, deadline and team size. List the drivers that can be traded, such as cost, speed and control. Write at least two options, including the one the customer prefers and one deliberately different. State what each option costs this customer. Choose, say why in one sentence, and write when you would change your mind.
+Imagine a whiteboard covered with requirements and a team that wants to start building on Monday. The procedure below turns that mess into options you can compare. It is my practice, not a published standard. Start by listing the hard constraints, such as residency, deadline and team size. Then list the drivers that can be traded, such as cost, speed and control. Write at least two options, including the one the customer prefers and one that is deliberately different. For each option, state what it costs this customer. Choose one, say why in a single sentence, and write down when you would change your mind.
 
 ### 5.3 The decision record
 
-`c10_adr.py` turns a small JSON decision into a numbered markdown record. It refuses a record with fewer than two options, an option with no cons, an option with no pros, a decision that is not one of the options, or no revisit trigger. These checks exist because the most common failure of a design document is a one-sided case.
+A design decision is easy to forget, and the reason for it fades faster. `c10_adr.py` turns a small JSON decision into a numbered markdown record. It refuses a record with fewer than two options, an option with no cons, an option with no pros, a decision that is not one of the options, or no revisit trigger. These checks exist because the most common failure of a design document is the one-sided case, where the chosen option looks perfect and the others are not described honestly.
 
-The record format, with context, options, decision and consequences, is a widely used convention. It is described from common practice and is not verified against a source, so it is not called a standard.
+The record format, with context, options, decision and consequences, is a widely used convention. I describe it from common practice. I have not verified it against a source, so this chapter does not call it a standard, and your team may use a different template.
 
-The record for the Larkfield example ends like this, produced by the script:
+Here is how the record for the Larkfield example ends. The script produces this text, so you can compare it with your own output line by line:
 
 ```text
 ## Decision
@@ -238,7 +256,7 @@ We will use: Self-hosted on customer-owned hardware.
 - Peak handling needs a queue or degraded mode, to be agreed with the business
 ```
 
-Notice that the consequences are not all good news. A decision record that lists only benefits will be distrusted, and rightly.
+Notice that the consequences are not all good news. Lead time, a new training workstream and a need for a queue are all costs. A decision record that lists only benefits will be distrusted, and rightly so, because the reader can see that the costs are missing.
 
 **Decision rule:** Never present one option. Write at least two, state what each costs this customer, and add the condition that would reverse your choice.
 
@@ -246,15 +264,17 @@ Notice that the consequences are not all good news. A decision record that lists
 
 ## 6. The proof of concept
 
-Three weeks into a proof of concept the customer asks "so is it working?" The team shows a demo. It looks impressive, and nobody can say whether it passed, because nobody wrote down what passing means. The proof of concept now has no ending except exhaustion.
+Three weeks into a proof of concept, the customer asks "so is it working?" The team shows a demo. It looks impressive, and the room is pleased. Still, nobody can say whether it passed, because nobody wrote down what passing means. The proof of concept now has no ending except exhaustion, and the team is tired before anyone has decided anything.
 
-The Fraunhofer proof of concept had a defined window, a halfway decision point and a goal. The client emphasised precision over recall, so the model had to be certain in its recommendations even if it covered fewer products. The evaluation combined numbers from a held-out test set with a qualitative review by the employees, who also sorted recommendations into incorrect, correct and functionally correct. The bulk of the work went into parsing the input. A simple embedding-based model was enough to convince the client to proceed, and a heavier model came later in the main project.
+The Fraunhofer proof of concept had a defined window, a halfway decision point and a clear goal. The client cared more about precision than recall, which means the model had to be right when it made a recommendation, even if it covered fewer products. The evaluation combined numbers from a held-out test set with a qualitative review by the employees. The employees sorted each recommendation into incorrect, correct or functionally correct. Most of the work went into parsing the input documents, which is a reminder that the model is rarely the only hard part. A simple embedding-based model was enough to convince the client to proceed. A heavier model came later, in the main project.
 
 ### 6.1 Success criteria and exit criteria
 
-I recommend two lists, written and agreed before the proof of concept starts. The first is success criteria. Each has a metric, a threshold, a priority and a minimum number of runs. The second is exit criteria. These are conditions that stop or pause the work no matter how the success criteria look.
+The sponsor wants to start the proof of concept on Monday, and nobody has agreed what passing means. That is the moment to write the criteria down.
 
-Here is the criteria file for the fictional Larkfield proof of concept. It is exactly the file `code/part19/c10_poc_criteria.json`.
+Before the proof of concept starts, I recommend writing down two lists and getting both sides to sign them. The first list is the success criteria. Each one has a metric, a threshold, a priority and a minimum number of runs. The second list is the exit criteria. These are conditions that stop or pause the work, no matter how well the success criteria look. A team that agrees on both lists in advance has a much easier time saying no later.
+
+Here is the criteria file for the fictional Larkfield proof of concept. It is exactly the file `code/part19/c10_poc_criteria.json`, so the text and the file cannot drift apart. Read the file once, slowly, before you look at any results.
 
 ```json
 {
@@ -280,11 +300,13 @@ Here is the criteria file for the fictional Larkfield proof of concept. It is ex
 }
 ```
 
-Three details deserve attention. The priority "must" separates what decides the verdict from what only shapes conditions. The minimum run count prevents a single lucky run from passing a criterion. And the exit criteria cover three different stops: time, compute budget and an open security blocker.
+Three details deserve attention. The priority "must" separates what decides the verdict from what only shapes the conditions of a go. The minimum run count stops a single lucky run from passing a criterion. The exit criteria cover three different stops, which are time, compute budget and an open security blocker. Each one stops the work for a different reason, and the customer needs to hear which one applied.
 
 ### 6.2 Results and the verdict
 
-Results are a small JSON file of measured values with the number of runs behind each. This is the fictional results file.
+The results file arrives on Friday afternoon, and the tracker has to say what happened. The verdict should follow from the rules alone, with nobody adjusting it to fit the mood of the room.
+
+The results come in a small JSON file. For each metric it records the measured value and the number of runs behind that value. This is the fictional results file, and the tracker reads it together with the criteria file to produce the verdict.
 
 ```json
 {
@@ -302,7 +324,7 @@ Results are a small JSON file of measured values with the number of runs behind 
 }
 ```
 
-The tracker applies rules in a fixed order, first match wins.
+The tracker applies its rules in a fixed order, and the first rule that matches wins. The order matters more than it first appears, as the next paragraphs show.
 
 | Verdict | Condition | Exit code |
 |---|---|---|
@@ -312,9 +334,11 @@ The tracker applies rules in a fixed order, first match wins.
 | GO WITH CONDITIONS | All musts pass, a should fails or is missing | 0 |
 | GO | Everything passes | 0 |
 
-The order has consequences. STOP beats NO-GO, because a spent budget ends the work whatever the numbers say. A failed measurement with too few runs does not count as a failure. It is inconclusive, because three runs is the agreement and two runs is not evidence. This is my policy, and the tests prove the tool follows it.
+The order has consequences. STOP beats NO-GO, because a spent budget ends the work whatever the numbers say, and the customer must decide what happens next. A failed measurement with too few runs does not count as a failure. It is inconclusive, because the agreement said three runs and two runs is not enough evidence to fail anything. This is my policy, and the tests check that the tool follows it.
 
-Run on the fictional results, the tracker prints the following.
+Think of the verdict as a set of rules with a fixed precedence. A stop beats a go, even when the numbers look good. The customer can see that order in the file before the first run, so nobody is surprised when the tracker reports a stop after a week of encouraging results.
+
+When the tracker runs on the fictional results, it prints the following.
 
 ```text
   S1 must   acceptable_answer_rate   0.84 >= 0.8  runs 3/3  PASS
@@ -325,7 +349,7 @@ Run on the fictional results, the tracker prints the following.
 VERDICT: GO WITH CONDITIONS
 ```
 
-The cost criterion failed, but it is a should. The verdict is go with conditions, and the condition is a cost conversation. Now see what happens if the latency run comes back at 9.4 seconds.
+The cost criterion failed, but it is only a should. The verdict is go with conditions, and the condition becomes a cost conversation with finance. Now see what happens if the latency run comes back at 9.4 seconds instead of the passing value in the file.
 
 ```text
   S1 must   acceptable_answer_rate   0.84 >= 0.8  runs 3/3  PASS
@@ -336,11 +360,11 @@ The cost criterion failed, but it is a should. The verdict is go with conditions
 VERDICT: NO-GO
 ```
 
-The same file with one changed number is a no-go. Because the threshold was agreed in advance, nobody argues about whether 9.4 is "close enough."
+The same file with one changed number is a no-go. Because the threshold was agreed in advance, nobody can argue that 9.4 is "close enough." The argument was settled before the test began, and that is the whole point of writing it down first.
 
 ### 6.3 Keeping it honest
 
-The Fraunhofer team used containers from the start so the demo was repeatable on different platforms. Its employees reviewed outputs and found that the model recommended products even when none fitted, so it was retrained to suggest nothing in that case. A metric can look good while a behaviour is wrong. Fraunhofer also built a halfway decision point, and my exit criteria turn that into a rule rather than a meeting.
+A demo that looks good on Friday can still hide a wrong behaviour that users notice on Monday. The Fraunhofer team used containers from the start, so the demo could be repeated on different platforms. Its employees reviewed the outputs. They found that the model recommended products even when none fitted, so it was retrained to suggest nothing in that case. A metric can look good while a behaviour is wrong. Fraunhofer also built a halfway decision point, and my exit criteria turn that idea into a rule rather than a meeting that someone has to call.
 
 **Decision rule:** Agree success criteria, minimum run counts and exit criteria in writing before the first run, and let a script produce the verdict.
 
@@ -348,26 +372,32 @@ The Fraunhofer team used containers from the start so the demo was repeatable on
 
 ## 7. Findings, recommendation and handover
 
-The proof of concept passed. The customer's team is delighted and asks when the platform goes live. You realise that the only people who understand how it works are the two engineers who built it, and they are leaving the engagement on Friday. Delivering a result is not the same as delivering a platform someone can run.
+The proof of concept passed. The customer's team is delighted and asks when the platform goes live. Then you realise that the only people who understand how it works are the two engineers who built it, and they leave the engagement on Friday. Delivering a result is not the same as delivering a platform that someone else can run. The handover is where that difference shows up.
 
 ### 7.1 The findings memo
 
-Write one memo of about three pages. This structure is my recommendation.
+The customer's director forwards your memo to a few people who were not in any of the meetings. They read the first page and skip the rest, so the memo has to work for both kinds of reader.
 
-1. The ask, in the customer's words, and the goal sentence agreed in the workshop.
-2. What we learned, with the discovery flags and what happened to each.
+The memo is the document the customer will forward to people who were not in the room. Write one memo of about three pages. This structure is my recommendation, and each heading answers a question those readers will ask.
+
+1. The ask, in the customer's own words, followed by the goal sentence agreed in the workshop.
+2. What we learned, listing each discovery flag and what happened to it.
 3. Current state, as the scorecard table with the top gaps.
 4. Options and the recommendation, linked to the decision record.
 5. Proof of concept results, with the verdict and the raw results file attached.
-6. Risks and conditions, including the failed should criteria.
-7. What we did not verify, stated plainly.
-8. Next steps with owners and dates.
+6. Risks and conditions, including any failed should criteria.
+7. What we did not verify, stated plainly and without apology.
+8. Next steps, each with an owner and a date.
+
+A reader in a hurry reads the first paragraph and the verdict. Put the decision and the condition there, in plain words, before any detail. The rest of the memo is for the person who will check your work, and that person will read every line.
 
 ### 7.2 Handover
 
-*Engineering AI Systems* chapter 12 offers a useful picture. The Fraunhofer team ran development and CI/CD at its own site, and operation took place on the client side. Organisational challenges included the timing of data handover and the handover of the machine learning component into the client's processes. Deployment into production was done manually, as the client preferred, even though automation was feasible. The lesson is that handover has its own design.
+The engineers who built the platform are about to leave, and nobody has written down how to restart it after a power cut. Handover is the work of making sure the platform outlives the people who built it.
 
-My handover checklist is the author's practice.
+Handover has its own design, and the Fraunhofer case shows why. *Engineering AI Systems* chapter 12 offers a useful picture. The Fraunhofer team ran development and CI/CD at its own site, while operation took place on the client side. The organisational challenges included the timing of the data handover and the handover of the machine learning component into the client's processes. Deployment into production was done manually, as the client preferred, even though automation was feasible. The lesson is that handover needs planning of its own, and that the customer's preferences count, even when they are not the most automated option.
+
+The handover checklist below is my practice. Each row is a test you can run. The question is not whether the item exists on paper, but whether it works when someone who did not build it tries it.
 
 | Item | Test that it is done |
 |---|---|
@@ -378,11 +408,11 @@ My handover checklist is the author's practice.
 | The criteria file and results archived | They can rerun the evaluation |
 | A review date for the revisit triggers | It is in a calendar |
 
-For monitoring, *AI Engineering* chapter 10 offers three measures from the DevOps community: mean time to detection, mean time to response and change failure rate. It says that if you do not know your change failure rate it is time to redesign the platform to be more observable. These are good measures to agree with the customer for the first quarter after handover.
+For monitoring, *AI Engineering* chapter 10 offers three measures from the DevOps community: mean time to detection, mean time to response and change failure rate. Each one tells you something different. Detection shows how long a problem hides, response shows how long it lasts once it is seen, and the change failure rate shows how often a change breaks something. The chapter says that if you do not know your change failure rate, it is time to redesign the platform to be more observable. These are good measures to agree with the customer for the first quarter after handover, because they give both sides the same scoreboard.
 
 ### 7.3 After go-live
 
-The Fraunhofer production phase added communication as a seventh MLOps area, because real-world drift needs continuous coordination. The *AI Factory* chapter says early pilots should aim to succeed rather than chase fast return, and names an internal leader and clear business goals as conditions. For incidents after handover see chapter 20.27.
+A few weeks after go-live, the model starts giving slightly worse answers, and nobody on the customer side knows whom to tell. This is the stage where many projects quietly die. The Fraunhofer production phase added communication as a seventh MLOps area, because real-world drift needs continuous coordination between the people who see the drift and the people who can fix it. The *AI Factory* chapter says early pilots should aim to succeed rather than chase a fast return. It names an internal leader and clear business goals as conditions for that. For incidents after handover, see chapter 20.27.
 
 **Decision rule:** The engagement is not finished until a named customer operator has run the system without you and the memo says what you did not verify.
 
@@ -390,13 +420,15 @@ The Fraunhofer production phase added communication as a seventh MLOps area, bec
 
 ## 8. A worked scenario: Larkfield Mutual (fictional)
 
-Everything in this section is invented. Larkfield Mutual is not a real insurer. No data was measured. The scenario exists so the tools produce output you can read.
+Picture an insurer's platform lead on a Monday morning, with a claims team that wants help reading long files. That is the situation this scenario imitates, and the name Larkfield Mutual is made up. Everything in this section is invented. Larkfield Mutual is not a real insurer, and no data was measured. The scenario exists so that the tools produce output you can read and discuss.
 
-The customer. Larkfield wants adjusters to get summaries of 40-page claim files and to ask questions of them. About forty adjusters may use it at the same time at peak. The claim data contains personal information and must stay on premises. The platform team has three engineers, basic Kubernetes experience, no GPUs and no GPU history. The pilot is due in 16 weeks. Security and legal approval take 10 weeks. A previous attempt failed, and nobody wrote down why.
+The customer. Larkfield wants adjusters to get summaries of 40-page claim files and to ask questions of them. Adjusters are the people who assess claims, and a summary saves them from reading every page first. About forty adjusters may use it at the same time at peak. The claim data contains personal information and must stay on premises, which rules out a hosted API. The platform team has three engineers, basic Kubernetes experience, no GPUs and no GPU history. The pilot is due in 16 weeks. Security and legal approval take 10 weeks of that time, so the build window is shorter than it first looks. A previous attempt failed, and nobody wrote down why, which is the first thing to find out.
 
 ### 8.1 Discovery
 
-The answers are in `code/part19/c10_answers_larkfield.json`. The tool prints:
+The discovery answers arrive as a file, and the first question is whether the workshop was complete enough to score.
+
+The answers are in `code/part19/c10_answers_larkfield.json`, and the tool prints the summary below. Read it the way a facilitator would, looking for what is missing as well as what is present.
 
 ```text
 Completeness (weighted): 95.6%
@@ -416,13 +448,17 @@ Risk flags:
   [info  ] R03: A previous attempt failed. Ask what was different about the goals and the data.
 ```
 
-Read the flags as the agenda for the next conversation. R05 says no ground truth exists. Before any proof of concept can succeed, someone must create a scored sample. R07 says no GPU experience and no GPUs. R09 says peak is six times average, so ask what can queue. R03 reminds us to ask what the failed attempt got wrong.
+Read the flags as the agenda for your next conversation. R05 says that no ground truth exists, so before any proof of concept can succeed, someone must create a scored sample. R07 says the team has no GPU experience and no GPUs, so training or a managed service has to enter the plan. R09 says the peak is six times the average, so ask what can wait in a queue. R03 reminds you to ask what the failed attempt got wrong, so that you do not repeat it.
 
-Two non-critical questions stayed unknown, namely existing vendor commitments and the reason for the deadline. Completeness of 95.6% is enough to proceed, but both go on the action list.
+When you read the flags aloud, watch the faces in the room. A flag that surprises the customer is often the one that matters most. The next question should ask where the assumption came from, and who would notice first if it were wrong.
+
+Two non-critical questions stayed unknown. They are the existing vendor commitments and the reason for the deadline. A completeness of 95.6% is enough to proceed, so the scorer does not block the work. Both unknowns still go on the action list, because a quiet gap has a way of becoming a surprise later.
 
 ### 8.2 Assessment
 
-The scores and their fictional evidence are in `c10_scores_larkfield.json`.
+The team lead wants the scores on one page before the next steering meeting, and wants to know where to spend the money first.
+
+The scores and their fictional evidence are in `c10_scores_larkfield.json`. Each score comes with a sentence of evidence, which is what lets the tool print the summary below.
 
 ```text
 Category maturity (0 to 3, weighted):
@@ -443,15 +479,19 @@ Gaps by priority (weight x distance to target):
    2  ml.deploy_pipeline   score 1 target 2
 ```
 
-Security is the strongest category. MLOps is the weakest. The top gap by far is evaluation, which has weight 3 and a target of 3 and a score of 0. This agrees with flag R05. The two sources of evidence reinforce each other, which is a good sign that the picture is right.
+Security is the strongest category, and MLOps is the weakest. The top gap by far is evaluation. It has weight 3, a target of 3 and a score of 0. This agrees with flag R05 from discovery, which said there was no ground truth. Two separate sources of evidence point at the same problem, and that is a good sign the picture is right.
 
 ### 8.3 Design
 
-The decision record has three options. A hosted API conflicts with residency. A managed GPU Kubernetes service might satisfy residency only if a suitable region exists. Customer-owned hardware satisfies residency and has predictable cost but a long lead time and a fixed capacity against a peak six times the average. The record chooses owned hardware and lists the consequences. One of them is that the proof of concept must run on rented capacity first, because the hardware order must start before the proof of concept ends.
+The customer asks which option is cheapest, and the honest answer depends on residency. The record has to show why the cheapest option is not automatically the right one.
+
+The decision record has three options, and each one is tested against the residency rule first. A hosted API conflicts with residency, so it is out. A managed GPU Kubernetes service might satisfy residency, but only if a suitable region exists, and nobody has confirmed that yet. Customer-owned hardware satisfies residency and has a predictable cost. Its downsides are a long lead time and a fixed capacity, set against a peak that is six times the average. The record chooses owned hardware and lists the consequences. One consequence is that the proof of concept must run on rented capacity first, because the hardware order has to start before the proof of concept ends.
 
 ### 8.4 Proof of concept
 
-The criteria and results in section 6 belong to this scenario. The verdict was go with conditions, and the condition is that cost per thousand requests was 2.4 against a target of 2.0. In the findings memo the recommended action is to review the cost model with finance before ordering hardware, and to keep the decision record open until that is done.
+Finance asks why the hardware order is on hold after a successful pilot. The answer is in the verdict and its condition.
+
+The criteria and results in section 6 belong to this scenario. The verdict was go with conditions. The condition is that the cost per thousand requests was 2.4 against a target of 2.0, which is the failed should criterion. In the findings memo, the recommended action is to review the cost model with finance before ordering hardware. The decision record stays open until that review is done, so the hardware order does not run ahead of the numbers.
 
 **Decision rule:** Use the worked example to practise reading flags into actions, and never quote its numbers as evidence about any real system.
 
@@ -459,82 +499,100 @@ The criteria and results in section 6 belong to this scenario. The verdict was g
 
 ## 9. Hands-on lab
 
-All steps run on a laptop with Python 3 and pytest. No GPU, no cluster and no customer data are involved. Steps 1 to 5 were run on 2026-11-11 on macOS arm64, and the outputs quoted are from that run.
+Your team lead asks you to show that the scorer works before the Friday review. You have a laptop, Python 3 and pytest, and that is enough. All steps run locally. No GPU, no cluster and no customer data are involved. Steps 1 to 5 were run on 2026-11-11 on macOS arm64, and the outputs quoted are from that run.
 
 ### Step 1: score the discovery answers
+
+Start with the answers file that the customer returned, and run the scorer on it before you read a single answer by hand.
 
 ```bash
 cd code/part19
 python3 c10_discovery.py c10_answers_larkfield.json
 ```
 
-Expected result: the output in section 8.1, with exit code 0. Try deleting a critical answer from a copy of the file and rerun. The exit code becomes 1 and an `UNKNOWN:` flag appears.
+Expected result: the output in section 8.1, with exit code 0. Then try deleting a critical answer from a copy of the file and run it again. The exit code becomes 1, and an `UNKNOWN:` flag appears on that question.
 
-What to record: the flag ids, the completeness number and the owner you would give each flag.
+What to record: the flag ids, the completeness number and the owner you would give each flag, because a flag without an owner does not get fixed.
 
 ### Step 2: score the assessment
+
+Open the scores file next to the evidence it cites. The scorer checks that the evidence exists, and you check that it says what the score claims.
 
 ```bash
 python3 c10_scorecard.py c10_scores_larkfield.json
 ```
 
-Expected result: the output in section 8.2. Then delete the `evidence` text from one entry in a copy. The tool refuses it. What to record: the three highest-priority gaps.
+Expected result: the output in section 8.2. Then delete the `evidence` text from one entry in a copy of the file. The tool refuses that entry, which is the rule from section 4 working as designed. What to record: the three highest-priority gaps.
 
 ### Step 3: evaluate the proof of concept
+
+The results file is what the customer will argue about. Run the tracker on the original, then on copies that you change on purpose, so you see how each rule responds.
 
 ```bash
 python3 c10_poc_tracker.py c10_poc_criteria.json c10_poc_results_larkfield.json
 echo $?
 ```
 
-Expected result: GO WITH CONDITIONS and exit code 0. Copy the results file, set the p95 latency value to 9.4 and rerun. You get NO-GO and exit code 1. Set the runs for that metric to 2 instead and you get INCONCLUSIVE and exit code 2. Set gpu_hours_used to 1300 and you get STOP and exit code 3. What to record: the verdict for each of the four changes.
+Expected result: GO WITH CONDITIONS and exit code 0. Copy the results file in one place, and set the p95 latency value to 9.4 in the copy. Run it again. You get NO-GO and exit code 1. In a fresh copy, set the runs for that metric to 2. You get INCONCLUSIVE and exit code 2. In another copy, set gpu_hours_used to 1300. You get STOP and exit code 3. What to record: the verdict for each of the four changes.
 
 ### Step 4: generate the decision record
+
+Someone asks for the decision in writing, and the record needs a number and a file name. The generator writes both, and it refuses an incomplete record.
 
 ```bash
 python3 c10_adr.py c10_adr_input_larkfield.json /tmp/adr_out
 ```
 
-Expected result: a path such as `/tmp/adr_out/0001-serve-the-claims-summariser-...md`. Run it twice and the second file is numbered 0002. Remove all the cons from one option and the generator refuses. What to record: the three consequences, and whether you agree they are complete.
+Expected result: a path such as `/tmp/adr_out/0001-serve-the-claims-summariser-...md`, which is a file in the output folder. Run the script twice, and the second file is numbered 0002. Remove all the cons from one option, and the generator refuses to write the record. What to record: the three consequences, and whether you agree they are complete.
 
 ### Step 5: run the tests
+
+Before you show the lab to anyone, run the test suite once from a clean terminal. A failing test shows you which rule has drifted.
 
 ```bash
 python3 -m pytest test_c10_consulting.py -q
 ```
 
-Result: 37 passed. The tests cover the scoring arithmetic, every verdict path, input validation and the refusal cases.
+Result: 37 passed. The tests cover the scoring arithmetic, each verdict path, the input checks and the refusal cases, so a failing test points at one specific rule.
 
 ### What was run and what was not
 
-Run here: steps 1 to 5 and the demo script `c10_engagement_demo.py`. Not run: nothing here touched a GPU, a cluster or a real customer. The questionnaire, scorecard and thresholds were not validated on a real engagement. The tests prove that the code does what this chapter says. They do not prove the method is right.
+A reviewer asks, in one breath, what you actually ran and what you only read about.
+
+Run here: steps 1 to 5 and the demo script `c10_engagement_demo.py`. Not run: nothing here touched a GPU, a cluster or a real customer. The questionnaire, the scorecard and the thresholds were not validated on a real engagement. The tests show that the code does what this chapter says. They do not show that the method is right, and you should keep those two claims apart when you talk about the work.
 
 ## How to answer out loud
 
-The question is "walk me through how you would run a discovery workshop." The interviewer wants to hear a structure, an awareness of risk and some humility about what you do not know. This chapter's method is built from the gem books and the chapter's own practice. It is not how any particular company works, and you should not claim it is.
+An interviewer leans forward and asks, "walk me through how you would run a discovery workshop." You have about a minute to answer, and the interviewer is listening for three things. They want a clear structure, some awareness of risk, and humility about what you do not know. This chapter's method is built from the gem books and the chapter's own practice. It is not how any particular company works, so do not claim that it is.
 
 ### Speaking order
 
-1. State the goal of discovery in one sentence: find the facts that would make the design wrong, while that is cheap.
-2. Say who is in the room: a decision maker, the end users, the technical lead, security or compliance.
-3. Describe preparation: a question list sent in advance, and data to bring.
-4. Walk the agenda: goals, use case with end users, data and constraints, team and budget and timeline, read back risks.
-5. Name the areas you ask about: workload, data, scale, team skills, compliance, budget, timeline.
-6. Say what you produce: answers, a short risk list with owners, and next steps.
+You have a few minutes to answer the question, and the interviewer will remember the order more than the details. Use the order below.
+
+1. Start with the goal of discovery, in one sentence: find the facts that would make the design wrong, while finding them is still cheap.
+2. Say who is in the room, namely a decision maker, the end users, the technical lead, and security or compliance.
+3. Describe the preparation, which is a question list sent in advance and the data you ask people to bring.
+4. Walk through the agenda: goals, the use case with end users, data and constraints, team and budget and timeline, and a read back of the risks.
+5. Name the areas you ask about: workload, data, scale, team skills, compliance, budget and timeline.
+6. Say what you produce: the answers, a short risk list with owners, and the next steps.
 7. Say what happens next: an assessment with evidence, then options with costs, then a proof of concept with criteria.
 
 ### Numbers and facts to be ready to state
 
-- The Fraunhofer proof of concept lasted three months with a halfway break.
-- The client there had a failed earlier attempt and had trouble reaching a shared understanding of goals and data.
-- Five stakeholder types: decision maker, business unit lead, project lead, end users and IT.
-- Everything else, such as a half-day agenda or 80 percent completeness, is a convention you choose, so call it that.
+A panel member asks for one fact you can state from memory, so keep the list short and exact.
+
+- The Fraunhofer proof of concept lasted three months, with a halfway break where either side could stop.
+- The client there had a failed earlier attempt, and it struggled to reach a shared understanding of the goals and the data.
+- The five stakeholder types are decision maker, business unit lead, project lead, end users and IT.
+- Everything else, such as the half-day agenda or the 80 percent completeness bar, is a convention you choose, so call it that when you speak.
 
 ### Trade-offs to mention
 
-A longer workshop finds more facts and costs the customer more time. A strict questionnaire gives comparability but can feel like an interrogation, so ask for examples. Early scores give structure but can anchor the customer, so show the evidence with each one.
+Every design choice in discovery has a price, and interviewers like to hear you name it. A longer workshop finds more facts, but it costs the customer more time, and busy people may stop attending. A strict questionnaire gives you comparable answers across customers, but it can feel like an interrogation, so ask for examples as you go. Early scores give the room structure, but they can also anchor the customer on a number, so show the evidence beside each one.
 
 ### Follow-ups to expect
+
+The interviewer's first answer makes them ask the follow-up you were hoping to avoid. The table gives a short answer to each one.
 
 | Follow-up | Short answer |
 |---|---|
@@ -544,16 +602,18 @@ A longer workshop finds more facts and costs the customer more time. A strict qu
 | How do you know the proof of concept passed? | Criteria and exit rules agreed before it started, with minimum runs |
 | What did you get wrong once? | Use a real story, and link it to chapter 20.28 for how to tell it |
 
-For a spoken example of telling a project story after the fact, see chapter 20.28. For incident stories use chapter 20.27.
+If the interviewer asks about a project you delivered, the story is different. Chapter 20.28 shows how to tell that kind of story, and chapter 20.27 covers the incident version.
 
 ## Exercises
 
-1. **Add a question.** The questionnaire does not ask about model update frequency. Add a question with a reason and a risk rule that fires when updates are weekly and no deployment pipeline exists. *Solution sketch:* add the question to `c10_questionnaire.json` in the workload area. Add a rule that tests the update answer together with a scorecard-derived answer, or add a second question about pipelines. Add a test that the rule fires and one that it does not.
-2. **Find the missing flag.** Change the Larkfield answers so residency is required and the model source is a hosted API. Which flag fires and what do you say to the customer? *Solution sketch:* R04 fires. Say that the two requirements conflict and ask which one gives way, or whether a regional hosted option satisfies the residency rule.
-3. **Rescore with a new target.** Set the target for `tm.gpu_ops` to 3 in the Larkfield scores. How does the top-gap list change? *Solution sketch:* the priority becomes 3 times 3, which is 9, and ties with `ml.evaluation`. Ties sort by id, so `ml.evaluation` stays first. Explain why you might raise the target.
+A customer's architect asks you to change the questionnaire before Thursday's meeting, and every change has to stay testable. Here are the six exercises for this chapter.
+
+1. **Add a question.** The questionnaire does not ask how often the model is updated. Add a question with a reason, and add a risk rule that fires when updates are weekly and no deployment pipeline exists. *Solution sketch:* add the question to `c10_questionnaire.json` in the workload area. Then add a rule that tests the update answer together with a scorecard-derived answer, or add a second question about pipelines instead. Add a test that the rule fires and one that it does not.
+2. **Find the missing flag.** Change the Larkfield answers so that residency is required and the model source is a hosted API. Which flag fires, and what do you say to the customer? *Solution sketch:* R04 fires. Say that the two requirements conflict, and ask which one gives way, or whether a regional hosted option satisfies the residency rule.
+3. **Rescore with a new target.** Set the target for `tm.gpu_ops` to 3 in the Larkfield scores. How does the top-gap list change? *Solution sketch:* the priority becomes 3 times 3. That is 9, which ties with `ml.evaluation`. Ties sort by id, so `ml.evaluation` stays first. Explain why you might raise a target at all.
 4. **Break the proof of concept.** Produce a results file that gives each of the four verdicts using only edits to the Larkfield file. *Solution sketch:* use the four edits in lab step 4. Check each with the tracker and its exit code.
-5. **Write a decision record.** Write the JSON for a different decision: managed API versus self-hosted for a customer with no residency rule and a team of ten. Include a revisit trigger. *Solution sketch:* the options change and the decision may flip. Verify the generator accepts it and that each option has a real con.
-6. **Handle a disagreement.** The security lead refuses production data in the proof of concept and the architect says synthetic data will not prove anything. Write what you do. *Solution sketch:* write two options with costs, a masked-copy option and a synthetic option. Add an exit criterion that pauses work while the security blocker is open. Ask what evidence would convince each person. Add the answer as a success criterion.
+5. **Write a decision record.** Write the JSON for a different decision: managed API versus self-hosted for a customer with no residency rule and a team of ten. Include a revisit trigger. *Solution sketch:* the options change, and the decision may flip. Verify that the generator accepts it and that each option has a real con.
+6. **Handle a disagreement.** The security lead refuses production data in the proof of concept, and the architect says synthetic data will not prove anything. Write what you do. *Solution sketch:* write two options with costs, a masked-copy option and a synthetic option. Add an exit criterion that pauses work while the security blocker is open. Ask what evidence would convince each person. Add the answer as a success criterion.
 
 ## Checkpoint questions
 
