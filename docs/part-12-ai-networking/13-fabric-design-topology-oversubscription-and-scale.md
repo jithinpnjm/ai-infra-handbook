@@ -25,13 +25,13 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Picture a training run that suddenly takes twice as long as it did last week. Nothing crashed, and the GPUs look busy, but every collective step now waits on the network. The cause can sit in the fabric, because a cluster behaves the way its wiring allows.
+Picture a training run that suddenly takes twice as long as it did last week. Nothing crashed, and the GPUs still look busy on the dashboard. The slowdown hides in the fabric. Every collective step now waits on packets that cross a congested or badly wired part of the network, so the GPUs spend their time waiting instead of computing. The cause can sit in the fabric even when nothing in the servers has changed, because a cluster behaves the way its wiring allows.
 
-An AI cluster is not a pile of switches joined by whatever fiber happens to reach. It is a physical communication graph. Its bisection cuts, hop counts, cable spans, and thermal limits decide how much throughput the cluster delivers. Those limits determine whether thousands of GPUs act like one supercomputer or like isolated islands that keep stalling each other.
+An AI cluster is not a pile of switches joined by whatever fiber happens to reach. It is a physical communication graph, a map of which GPU can talk to which other GPU and how many hops and how much cable lie between them. Its bisection cuts, hop counts, cable spans, and thermal limits decide how much throughput the cluster delivers. Those limits determine whether thousands of GPUs act like one supercomputer or like isolated islands that keep stalling each other. A bisection cut is the number of links that must be crossed to split the cluster into two equal halves, and it tells you how much traffic can flow between the halves at once.
 
-If an architect accepts an enterprise oversubscription ratio for a multi-rack job, cross-rack bandwidth drops in half. That bottleneck doubles collective time on every step. Worse, routing a storage checkpoint burst over the compute switches fills buffers and stalls every rank in the job.
+Oversubscription is the ratio of the capacity facing the servers to the capacity facing the spines. Enterprise networks often run with some oversubscription, because not every server talks at full speed at the same moment. An AI job does the opposite. It asks every GPU to send at full speed in the same instant. If an architect accepts an enterprise oversubscription ratio for a multi-rack job, cross-rack bandwidth drops in half. That bottleneck doubles collective time on every step. Worse, routing a storage checkpoint burst over the compute switches fills buffers and stalls every rank in the job.
 
-Designing an AI fabric means solving physical, topological, and facility constraints at the same time. You choose between Rail-Optimized Design, Rail-Only Design, and Rail-Unified Design. You also decide where the leaf switches go across high-power GPU racks: Top-of-Rack, Middle-of-Row, or End-of-Row. Beyond rack wiring, you size three-stage and five-stage Clos networks and evaluate Scheduled Fabrics, Dragonfly, Torus, and Multi-Planar architectures. Finally, you budget switch power, optical transceiver heat, fan airflow directions, and liquid cooling.
+Designing an AI fabric means solving physical, topological, and facility constraints at the same time. You choose between Rail-Optimized Design, Rail-Only Design, and Rail-Unified Design. You also decide where the leaf switches go across high-power GPU racks: Top-of-Rack, Middle-of-Row, or End-of-Row. Beyond rack wiring, you size three-stage and five-stage Clos networks and evaluate Scheduled Fabrics, Dragonfly, Torus, and Multi-Planar architectures. Finally, you budget switch power, optical transceiver heat, fan airflow directions, and liquid cooling. Each of these choices limits the others, so it helps to see the whole picture before you pick any single part.
 
 The block below lists the baseline numbers this chapter works from. Most of them come back in the sections that follow.
 
@@ -46,15 +46,9 @@ Motivating fabric bottleneck and facility baselines:
 
 ## Prerequisites and outcomes
 
-Before you start, review Chapters 9.6, 9.8, and 9.9. They cover SuperPOD Scalable Units, the B200 and GB300 reference architectures, and the five logical network segments. Then review Chapters 12.1 through 12.12, which cover AI collectives, RDMA, RoCEv2, PFC, ECN, DCQCN, QoS, InfiniBand routing, optics, Spectrum-X, and the InfiniBand versus Ethernet guide.
+Say your manager asks you to size a fabric for a 1,024-GPU job by Friday. You will need the ideas from earlier in Part 12 before you can answer. Before you start, review Chapters 9.6, 9.8, and 9.9. They cover SuperPOD Scalable Units, the B200 and GB300 reference architectures, and the five logical network segments. Then review Chapters 12.1 through 12.12, which cover AI collectives, RDMA, RoCEv2, PFC, ECN, DCQCN, QoS, InfiniBand routing, optics, Spectrum-X, and the InfiniBand versus Ethernet guide.
 
-By the end of this chapter, you will be able to do five things:
-
-1. Map the three AI/ML lifecycle stages onto the three server-attached fabrics, and explain why storage and compute planes must be physically isolated.
-2. Contrast Rail-Optimized Design, Rail-Only Design, and Rail-Unified Design across GPU-to-leaf wiring and hop latency, and evaluate Deterministic Path Forwarding and single-leaf failure blast radius.
-3. Compare Top-of-Rack, Middle-of-Row, and End-of-Row leaf placements across rack space, power, cooling, intra-rack cabling, and maximum cable spans.
-4. Calculate exact switch and port counts for three-stage and five-stage Clos fabrics across fixed and modular chassis spines.
-5. Evaluate Scheduled Fabrics, Dragonfly, Torus, and Multi-Planar architectures alongside power efficiency, switch airflow directions, and liquid cooling.
+The chapter then works through five questions in order. First, how the three lifecycle stages map onto the three server-attached fabrics, and why storage and compute planes must be physically isolated. Second, how Rail-Optimized, Rail-Only, and Rail-Unified designs differ in GPU-to-leaf wiring and hop latency, including Deterministic Path Forwarding and the blast radius of a single leaf failure. Third, how Top-of-Rack, Middle-of-Row, and End-of-Row placements compare on rack space, power, cooling, intra-rack cabling, and maximum cable spans. Fourth, how to count switches and ports in three-stage and five-stage Clos fabrics with fixed and modular chassis spines. Fifth, how Scheduled Fabrics, Dragonfly, Torus, and Multi-Planar designs compare on power efficiency, switch airflow, and liquid cooling.
 
 ---
 
@@ -62,23 +56,23 @@ By the end of this chapter, you will be able to do five things:
 
 ### 1.1 The three AI/ML processing stages and three server-attached fabrics
 
-Put dataset ingestion, gradient synchronization, and live user queries on one converged network, and they all compete for the same switch queues. Before you fix that, it helps to see how an AI workload moves through its lifecycle. The lifecycle shows why modern GPU servers split these flows across separate physical ports.
+Put dataset ingestion, gradient synchronization, and live user queries on one converged network, and they all compete for the same switch queues. A training job that needs its gradients on time gets slowed down by a data loader that is copying files at the same moment. An inference request that needs a fast reply waits behind both. Before you fix that, it helps to see how an AI workload moves through its lifecycle. The lifecycle shows why modern GPU servers split these flows across separate physical ports.
 
 An AI workload passes through three stages, and the last one feeds back into the first.
 
-1. Data gathering and preprocessing come first. Raw data is collected from distributed sources, cleaned of errors, missing values, and inconsistencies, and tagged with labels. Inference output quality depends directly on input data quality, so this stage feeds curated datasets into training.
-2. Model selection and training come next. Candidate algorithms are trained iteratively across parameter sets, using supervised, expert-guided, or reinforcement learning, until model accuracy converges.
-3. Deployment and monitoring close the loop. The trained model serves external inference requests in production and is watched continuously for drift. It then loops back to data gathering for periodic fine-tuning on newer datasets.
+1. Data gathering and preprocessing come first. Raw data is collected from distributed sources, cleaned of errors, missing values, and inconsistencies, and tagged with labels. Inference output quality depends directly on input data quality, so this stage feeds curated datasets into training. A bad dataset produces a model that is confidently wrong, and no amount of network speed fixes that.
+2. Model selection and training come next. Candidate algorithms are trained iteratively across parameter sets, using supervised, expert-guided, or reinforcement learning, until model accuracy converges. This is the stage that sends the heavy gradient traffic across the fabric, step after step.
+3. Deployment and monitoring close the loop. The trained model serves external inference requests in production and is watched continuously for drift. Drift means the live data slowly stops looking like the training data. The stage then loops back to data gathering for periodic fine-tuning on newer datasets.
 
-To keep these stages from interfering with each other, an AI server exposes three classes of network ports. Each class connects to its own data center fabric.
+To keep these stages from interfering with each other, an AI server exposes three classes of network ports. Each class connects to its own data center fabric. Think of it as three separate roads that all leave the same building, so a traffic jam on one road does not block the other two.
 
-The training backend fabric uses dedicated high-speed NICs, one for each of the server's eight GPUs. Two NICs per GPU would be technically feasible. Optics cost, NIC power, and switch port scalability favor one NIC per GPU, though. The one-to-one mapping also removes server-side port redundancy and multi-homing overhead.
+The training backend fabric uses dedicated high-speed NICs, one for each of the server's eight GPUs. A NIC is the network card that moves packets in and out of a server. Two NICs per GPU would be technically feasible. Optics cost, NIC power, and switch port scalability favor one NIC per GPU, though. The one-to-one mapping also removes server-side port redundancy and multi-homing overhead. Multi-homing is the practice of connecting one server to several switches for backup, and it costs ports and cables at every step.
 
-The storage fabric is a low-latency, lossless network. It is either InfiniBand or a three-stage or five-stage RoCEv2 Clos. It connects NVMe and BlueField DPU storage ports to high-capacity storage arrays.
+The storage fabric is a low-latency, lossless network. It is either InfiniBand or a three-stage or five-stage RoCEv2 Clos. Lossless here means the fabric is built so that packets are not dropped under normal load, because a dropped packet in a collective stalls every GPU that waits for it. It connects NVMe and BlueField DPU storage ports to high-capacity storage arrays. NVMe is the fast solid-state storage interface, and a DPU is a data processing unit, a card that offloads networking and storage work from the server CPU.
 
-The inference frontend fabric carries northbound traffic. That covers CPU-to-CPU communication, external user inference requests, and cluster services. It is typically built as a collapsed three-stage or five-stage enterprise Clos fabric.
+The inference frontend fabric carries northbound traffic. That covers CPU-to-CPU communication, external user inference requests, and cluster services. Northbound means traffic moving toward the outside world, away from the GPUs. It is typically built as a collapsed three-stage or five-stage enterprise Clos fabric. Collapsed means that the layers that an enterprise would keep apart are merged into one fabric to save cost.
 
-The block below lists the speed tier and fabric type for each port class.
+Each port class has a different job, and that job sets the speed and the fabric. The training ports need the lowest possible delay between GPUs. The storage ports need to move very large volumes without drops. The inference ports talk to users and to cluster services, which is ordinary network traffic. The block below lists the speed tier and fabric type for each port class.
 
 ```text
 Server port mapping and speed tiers (ADC Ch. 3):
@@ -87,17 +81,17 @@ Server port mapping and speed tiers (ADC Ch. 3):
 - Inference (CPU-mapped) ports: Collapsed 3-stage or 5-stage enterprise/cloud Clos
 ```
 
-Match each traffic flow to its port class before you assign it to a fabric.
+Match each traffic flow to its port class before you assign it to a fabric. Ask first what kind of traffic the flow is, then ask which fabric was built for that kind. Most design mistakes start when someone skips the first question.
 
 ### 1.2 Why storage and multi-tenant traffic cannot share the compute fabric or oversubscribed uplinks
 
-Architects who come from enterprise cloud environments often try two shortcuts. They cut spine links in half to save money, or they run storage traffic over the compute switches. In a synchronous AI training cluster, both shortcuts fail as soon as the load arrives.
+Architects who come from enterprise cloud environments often try two shortcuts. The habit makes sense in a web farm, where most servers are idle most of the time and a shared link is cheap insurance. A training cluster is the reverse, because the servers are busy at the same moment. They cut spine links in half to save money, or they run storage traffic over the compute switches. In a synchronous AI training cluster, both shortcuts fail as soon as the load arrives. The reason is the timing. Every GPU in the job finishes its share of the work and then waits for all the others. The slowest path sets the pace for the whole group.
 
-Start with the 1,024-GPU non-blocking fat-tree. A single 64-port switch cannot connect 1,024 GPUs directly. Half of each leaf's ports must face servers, and the other half must face the spine tier, which keeps the ratio one-to-one and non-blocking. Connecting 128 eight-GPU servers therefore takes four rail-optimized leaf groups. Those groups total 32 leaf switches and 16 spine switches.
+Start with the 1,024-GPU non-blocking fat-tree. A fat-tree is a layered network where the links get thicker, or more numerous, closer to the top. A non-blocking fat-tree has enough uplink capacity that any server can send at full speed without waiting for an upper switch. A single 64-port switch cannot connect 1,024 GPUs directly. Half of each leaf's ports must face servers, and the other half must face the spine tier, which keeps the ratio one-to-one and non-blocking. Connecting 128 eight-GPU servers therefore takes four rail-optimized leaf groups. Those groups total 32 leaf switches and 16 spine switches.
 
-Now consider the multi-tenant trap. Suppose an organization splits a 1,024-GPU cluster into two 512-GPU departmental partitions. It then cuts spine links in half, assuming the two departments will never burst at the same time. A single 512-GPU training job, though, synchronizes at the end of every step. That drives all 512 GPUs to full line rate in the same microsecond. On a two-to-one oversubscribed leaf, per-node cross-leaf bandwidth drops in half, and collective time doubles on every step. Losing one of two spines degrades that leaf to four-to-one.
+Now consider the multi-tenant trap. Suppose an organization splits a 1,024-GPU cluster into two 512-GPU departmental partitions. It then cuts spine links in half, assuming the two departments will never burst at the same time. A single 512-GPU training job, though, synchronizes at the end of every step. That drives all 512 GPUs to full line rate in the same microsecond. On a two-to-one oversubscribed leaf, per-node cross-leaf bandwidth drops in half, and collective time doubles on every step. Losing one of two spines degrades that leaf to four-to-one. The departments were not the problem. The job was, because one job alone is enough to saturate the thinner links.
 
-The storage collision is the third trap. Routing a parallel file system over the same switches used for GPU collectives destroys tail latency, even when aggregate bandwidth looks sufficient. Writing a massive model checkpoint floods switch buffers. Lossless flow control prevents drops, but tiny, latency-sensitive collective packets still queue behind multi-kilobyte storage frames. Separating traffic onto different Virtual Lanes helps only partly, because the physical wire is still shared. Production clusters therefore attach a physically separate storage fabric to the BlueField-3 DPUs.
+The storage collision is the third trap. Routing a parallel file system over the same switches used for GPU collectives destroys tail latency, even when aggregate bandwidth looks sufficient. Tail latency is the slow end of the response times, the few packets that arrive last and hold up the whole group. Writing a massive model checkpoint floods switch buffers. A checkpoint is a saved snapshot of the model state, and writing one is a very large, sudden burst of data. Lossless flow control prevents drops, but tiny, latency-sensitive collective packets still queue behind multi-kilobyte storage frames. Separating traffic onto different Virtual Lanes helps only partly, because the physical wire is still shared. Picture two trucks sharing one bridge with separate lanes painted on it. The lanes keep the trucks from crashing into each other, but a truck that is too heavy still slows down everyone behind it. Virtual Lanes are logical lanes that share one physical link, so they separate traffic in the queues but not on the wire. Production clusters therefore attach a physically separate storage fabric to the BlueField-3 DPUs.
 
 The block below shows the arithmetic behind each trap.
 
@@ -115,15 +109,17 @@ Production oversubscription and shared-fabric failure math (V7 Ch. 11 Scenarios 
   * Separated SLs/VLs on shared physical wire: 3.1 ms (physical Multi-Plane DPU isolation required)
 ```
 
-Read the 2:1 case as a worked example. The leaf has 16 downlinks at 400G, which adds up to 6,400 Gbps. It has only 8 uplinks at 400G, which is 3,200 Gbps. Each node therefore gets 200 Gbps instead of 400 Gbps, and a 2 GB AllReduce takes 80 ms instead of 40 ms.
+Read the 2:1 case as a worked example. The leaf has 16 downlinks at 400G, which adds up to 6,400 Gbps. It has only 8 uplinks at 400G, which is 3,200 Gbps. Each node therefore gets 200 Gbps instead of 400 Gbps, and a 2 GB AllReduce takes 80 ms instead of 40 ms. An AllReduce is the collective step where every GPU ends up with the sum of everyone's gradients, so it runs at the speed of the narrowest link. The thin uplinks set the pace for the entire step.
 
-Keep compute, storage, and multi-tenant traffic on separate fabrics, and size the uplinks for the job that will actually run. If you size a fabric this way, you can check the 2:1 arithmetic against your own leaf radix before the first rack goes in.
+Try the same reasoning on your own leaf before you trust any table. Count the ports that face servers, count the ports that face spines, and compare the two totals. If the spine side is smaller, the leaf is oversubscribed, and the ratio tells you how much slower the cross-rack steps will run. A quick check like this catches most of the sizing mistakes in this chapter before any hardware arrives.
+
+Keep compute, storage, and multi-tenant traffic on separate fabrics, and size the uplinks for the job that will actually run. Sizing for the average day is the mistake that causes the outage, because the job that hurts you is the one that runs at full speed on every GPU at once. If you size a fabric this way, you can check the 2:1 arithmetic against your own leaf radix before the first rack goes in. Leaf radix is the number of ports a leaf switch has, and it sets how many servers and spines one leaf can serve.
 
 ### 1.3 Rail-Optimized Design vs Rail-Only vs Rail-Unified Design
 
-Once a job spans more than one server, the wiring decides how traffic moves. Choose the wrong attachment model, and you either run long inter-rack cables or risk losing a whole eight-GPU server when one Top-of-Rack switch reboots.
+Once a job spans more than one server, the wiring decides how traffic moves. Picture a team that cables every GPU card in a server to whichever switch happens to have a free port. The first job that spans two racks then runs over long, messy cables, and the next failed switch takes down a whole server. Choose the wrong attachment model, and you either run long inter-rack cables or risk losing a whole eight-GPU server when one Top-of-Rack switch reboots.
 
-Inside each eight-GPU server, an internal high-speed switch such as NVIDIA NVSwitch gives each GPU 900 GB/s of intra-node bandwidth. That internal fabric carries all traffic inside the box. East-west traffic leaves the box through the eight GPU-mapped NICs, and those NICs connect under one of three leaf-attachment architectures.
+Inside each eight-GPU server, an internal high-speed switch such as NVIDIA NVSwitch gives each GPU 900 GB/s of intra-node bandwidth. That internal fabric carries all traffic inside the box. East-west traffic, meaning traffic between servers in the same cluster, leaves the box through the eight GPU-mapped NICs. Those NICs connect under one of three leaf-attachment architectures, which are Rail-Optimized Design (ROD), Rail-Only Design, and Rail-Unified Design (RUD). A rail is the set of GPUs that share the same position across all servers, so GPU 1 of every server sits on rail 1.
 
 ```mermaid
 flowchart TB
@@ -144,6 +140,8 @@ flowchart TB
     end
 ```
 
+The three designs differ in one main choice, which is where each GPU's NIC plugs in. Rail-Optimized Design gives each rail its own leaf, so the rails never share a switch. Rail-Only Design keeps that rail-per-leaf wiring but drops the links between rails at the fabric level, so cross-rail traffic must hop through the server's own NVSwitch. Rail-Unified Design does the reverse. It gathers all eight NICs of a server onto one local leaf, which makes the cabling short but puts every rail in one switch.
+
 The table compares the three designs one dimension at a time. Use it as a lookup when you choose a design.
 
 | Architectural Dimension | Rail-Optimized Design (`ROD`) | Rail-Only Design | Rail-Unified Design (`RUD`) |
@@ -157,15 +155,17 @@ The table compares the three designs one dimension at a time. Use it as a lookup
 
 You will meet these three designs again when you choose leaf placement in the next section. The trade-off is clear once you read across the rows. Rail-Unified has the lowest cabling cost, but a single leaf failure can take a whole server offline. Rail-Optimized limits the damage to one rail out of eight, at the price of longer cabling.
 
+Deterministic Path Forwarding deserves a short explanation, because two of the designs depend on it. When you read the table, look for the word DPF in the Rail-Unified column and the word NVSwitch in the Rail-Only column. Those two words show where each design hands the rail separation to the switch and where it hands it to the server. A fabric that uses many equal paths normally lets the switches pick a path per flow, and that choice can put two rails on the same link by accident. Deterministic Path Forwarding fixes each rail to a predictable path, so rails that share a switch still stay separate on the wire. Rail-Unified Design needs this feature for exactly that reason.
+
 ---
 
 ## 2. Rack engineering and leaf physical placement: ToR, MoR, and EoR
 
 ### 2.1 Rack dimensions, server U-heights, and the 48 kW to 60 kW power jump
 
-Before you place leaf switches in a row, check the rack against facility power and cooling. Packing eight-GPU servers into a standard enterprise rack without checking power density trips breakers. It can also starve the switches of cooling air.
+Before you place leaf switches in a row, check the rack against facility power and cooling. Packing eight-GPU servers into a standard enterprise rack without checking power density trips breakers. It can also starve the switches of cooling air. A U is one unit of rack height, and a server's U-height tells you how much of the rack it takes. Power density is the watts drawn per rack, and it is the number that the room was designed around.
 
-The block below compares a standard enterprise rack with the rack an AI server needs.
+Think of the rack as a budget with a hard ceiling. The power a rack can draw is fixed when the hall is built, and every server and switch you add spends part of that budget. The block below compares a standard enterprise rack with the rack an AI server needs.
 
 ```text
 Rack geometry and power density specifications (ADC Ch. 3 & Ch. 5):
@@ -176,13 +176,15 @@ Rack geometry and power density specifications (ADC Ch. 3 & Ch. 5):
 - Traditional enterprise rack budget: 20 kW to 25 kW average (10 kW to 25 kW range; most legacy halls run at 16 kW to 18 kW)
 ```
 
-The gap is the point. An AI rack needs 48 kW to 60 kW, while many legacy halls run at 16 kW to 18 kW. A rack that was fine for enterprise servers can fail the moment you fill it with GPUs.
+The gap is the point. An AI rack needs 48 kW to 60 kW, while many legacy halls run at 16 kW to 18 kW. A rack that was fine for enterprise servers can fail the moment you fill it with GPUs. The rack itself may look the same from the front. What changes is the power that flows into it and the heat that flows out.
+
+Before you approve a rack layout, ask the facility team three questions. What is the design power per rack? What is the cooling method for that rack? Does the power feed have room for the peak draw, not just the average? The average can look safe while the peak trips the breaker during a large collective. Answering these questions first keeps the switch and cable plan from being redrawn after the racks are already full.
 
 ### 2.2 Comparing ToR, MoR, and EoR across an 8-rack stripe
 
-Where you mount the leaf switches changes three things: how many racks you need, how much heat each compute rack produces, and how far the cables must reach. Take a Rail-Optimized stripe of eight compute racks, with four servers in each rack. Every server runs eight cables to eight different leaf switches. There are three ways to place those leaves.
+Where you mount the leaf switches changes three things: how many racks you need, how much heat each compute rack produces, and how far the cables must reach. Take a Rail-Optimized stripe of eight compute racks, with four servers in each rack. Imagine walking the row with a tape measure. Each server has eight cables, and each cable has to reach a leaf that may sit in a different rack. The placement you choose decides how far each of those cables must run. Every server runs eight cables to eight different leaf switches. There are three ways to place those leaves. The names describe where the switch sits. Top-of-Rack (ToR) puts it in the same rack as the servers, Middle-of-Row (MoR) puts it in a rack at the middle of the row, and End-of-Row (EoR) puts it in a rack at the end of the row.
 
-With Top-of-Rack, one leaf switch sits at the top of each of the eight compute racks, next to four servers. Spines can go in two separate spine racks or inside the compute racks. In Rail-Optimized Design, each server connects to its local leaf and then reaches across the other seven racks to the remaining rail leaves. Top-of-Rack is the best match for Rail-Unified Design. All eight NICs of the four local servers plug into their own rack's switch, using short intra-rack Direct Attach Copper or Active Electrical Cable assemblies.
+With Top-of-Rack, one leaf switch sits at the top of each of the eight compute racks, next to four servers. Spines can go in two separate spine racks or inside the compute racks. In Rail-Optimized Design, each server connects to its local leaf and then reaches across the other seven racks to the remaining rail leaves. Top-of-Rack is the best match for Rail-Unified Design. All eight NICs of the four local servers plug into their own rack's switch, using short intra-rack Direct Attach Copper or Active Electrical Cable assemblies. Direct Attach Copper (DAC) is a short copper cable with the transceivers built in, and Active Electrical Cable (AEC) is a similar cable with a signal booster inside it.
 
 With Middle-of-Row, four compute racks sit on the left and four on the right of one or two dedicated network racks in the middle of the row. No switches sit inside the compute racks, so switch power and heat stay out of the compute rack budget. The compute racks need no intra-rack server-to-switch cabling. The worst-case cable run from the outer compute racks to the center is the shortest of any Rail-Optimized layout.
 
@@ -200,7 +202,7 @@ The table compares the three placements on space, power, cooling, cabling, and c
 | **Maximum cable length (`ROD`)** | **To span `8` racks** | **To span `6` racks** (`5`–`6` racks) | **To span `10` racks** |
 | **Best fit for `RUD` with copper `DAC`/`AEC`** | **Ideal** (all `8` NICs terminate inside the same rack) | Not optimal for intra-rack `DAC` | Not optimal for intra-rack `DAC` |
 
-If you plan copper cables under Rail-Unified Design, check Top-of-Rack first. Middle-of-Row gives the shortest maximum span for Rail-Optimized wiring, so it is the placement to check first when cable reach is the limit.
+If you plan copper cables under Rail-Unified Design, check Top-of-Rack first. Middle-of-Row gives the shortest maximum span for Rail-Optimized wiring, so it is the placement to check first when cable reach is the limit. Read the table as a trade. Top-of-Rack saves cable and space, but it loads the compute racks with switch heat. Middle-of-Row and End-of-Row keep the compute racks cool, and they pay for that with more rack space and longer runs.
 
 ---
 
@@ -208,11 +210,11 @@ If you plan copper cables under Rail-Unified Design, check Top-of-Rack first. Mi
 
 ### 3.1 3-stage Clos scaling up to 2,048 GPUs and 9,216 GPUs
 
-Picture a cluster that has outgrown its single row of eight leaf switches. You need a spine tier to add more racks. Once you add it, the fabric becomes a two-tier leaf-spine network. Switching theory calls this a three-stage Clos, because packets pass through an ingress leaf, a spine, and an egress leaf. If you miscalculate the port count on the spine switches, you hit a hard ceiling. Adding one more rack then means recabling into a five-stage fabric.
+Picture a cluster that has outgrown its single row of eight leaf switches. You need a spine tier to add more racks. Once you add it, the fabric becomes a two-tier leaf-spine network. Switching theory calls this a three-stage Clos, because packets pass through an ingress leaf, a spine, and an egress leaf. Clos is the common name for a layered fabric in which every leaf links to every spine. The point of that wiring is that any leaf can reach any other leaf through a spine, and the number of spines you have sets how much of that traffic can run at once. If you miscalculate the port count on the spine switches, you hit a hard ceiling. Adding one more rack then means recabling into a five-stage fabric.
 
 With fixed 64-port 400 Gbps switches at one-to-one non-blocking oversubscription, each leaf gives 32 ports to servers and 32 to spines. Once the cluster reaches 64 leaf switches across eight rows, those leaves use every port on each 64-port spine. That radix limit caps a three-stage Clos of 64-port switches at 2,048 GPUs.
 
-Work through the spine count to see why. Each of the 64 leaves has 32 spine-facing ports, so the fabric needs 2,048 spine-facing ports in total. A 64-port spine provides 64 ports, so 32 spines cover them. Replacing those fixed spines with 256-port modular chassis spines cuts the spine count by fourfold. Upgrading to 144-port 800 Gbps switches takes a three-stage non-blocking Clos all the way to 9,216 GPUs across 16 Scalable Units.
+Work through the spine count to see why. Each of the 64 leaves has 32 spine-facing ports, so the fabric needs 2,048 spine-facing ports in total. Count the cables that way first, because the cable count is the one that you cannot change after the racks are cabled. A 64-port spine provides 64 ports, so 32 spines cover them. Replacing those fixed spines with 256-port modular chassis spines cuts the spine count by fourfold. Upgrading to 144-port 800 Gbps switches takes a three-stage non-blocking Clos all the way to 9,216 GPUs across 16 Scalable Units.
 
 The table lists each configuration, from one row up to the largest GB300 build.
 
@@ -226,17 +228,19 @@ The table lists each configuration, from one row up to the largest GB300 build.
 | **`8 x Row` (Chassis Spine `256x400G`)** | `64x400G` Leaf / `256x400G` Spine | `8` Rows | **`2,048`** | `2,048` | `2,048` | **`64`** | **`8` (Chassis)** |
 | **`GB300` `2 / 4 / 8 / 16` SUs (`Q3400-RD`)** | `144 x 800G` | `2..16` SUs | **`1,152..9,216`** | `1,152..9,216` | `1,152..9,216` | **`16 / 32 / 64 / 128`** | **`8 / 18 / 36 / 72`** |
 
-Read each row as one leaf radix and one spine count. The last row shows how 144-port switches push the same design to 9,216 GPUs.
+Read each row as one leaf radix and one spine count. The last row shows how 144-port switches push the same design to 9,216 GPUs. Notice that the spine count does not grow with the GPU count in a simple way. It grows with the number of leaves and the radix of the spine, so a bigger switch changes the whole table at once.
+
+To follow one row by hand, start from the leaves. Each leaf gives half of its ports to servers and half to spines, so the leaf count sets how many spine-facing ports exist in total. Then divide that total by the number of ports on one spine. The result is the spine count. The same two steps work for every row, and the chassis row differs only because one chassis replaces many fixed spines.
 
 ### 3.2 5-stage Clos: 1,024-GPU blocks and 1:1 to 7:1 super-spine oversubscription
 
-Suppose your target is 32K, 64K, or 128K GPUs. A three-stage Clos cannot hold that many leaves, so you need a five-stage Clos built from standardized blocks, which some vendors call bricks. Packets now pass through an ingress leaf, an ingress spine, a super-spine, an egress spine, and an egress leaf.
+Suppose your target is 32K, 64K, or 128K GPUs. A three-stage Clos cannot hold that many leaves, so you need a five-stage Clos built from standardized blocks, which some vendors call bricks. Packets now pass through an ingress leaf, an ingress spine, a super-spine, an egress spine, and an egress leaf. The extra tier is the super-spine, which joins the blocks together the way the spines join the leaves inside one block.
 
-A common mistake is to assume a five-stage block holds 2,048 GPUs, just like a three-stage pod. In a five-stage Clos, each 64-port spine must reserve half its ports for the Super-Spine tier. That leaves only 32 ports for leaves in its block. One block therefore holds four rows, which is 1,024 GPUs, thirty-two leaf switches, and thirty-two spine switches.
+A common mistake is to assume a five-stage block holds 2,048 GPUs, just like a three-stage pod. In a five-stage Clos, each 64-port spine must reserve half its ports for the Super-Spine tier. That leaves only 32 ports for leaves in its block. One block therefore holds four rows, which is 1,024 GPUs, thirty-two leaf switches, and thirty-two spine switches. The block is smaller than the pod because half of every spine's ports now face upward.
 
-The Super-Spine tier decides how many blocks you can join. With a fixed Super-Spine tier of thirty-two switches, which gives 2,048 ports, you can attach two blocks at one-to-one. You can scale up to fourteen blocks at a seven-to-one super-spine oversubscription ratio. That works when job placement and DCQCN bound the inter-block traffic.
+The Super-Spine tier decides how many blocks you can join. With a fixed Super-Spine tier of thirty-two switches, which gives 2,048 ports, you can attach two blocks at one-to-one. You can scale up to fourteen blocks at a seven-to-one super-spine oversubscription ratio. That works when job placement and DCQCN bound the inter-block traffic. DCQCN is the congestion control scheme that slows senders down when queues fill, and placement keeps most of a job's traffic inside one block.
 
-Work the block count with the numbers, one step at a time. Each block adds 1,024 GPUs. Thirty-two blocks give 32,768 GPUs, which is the 32K case. Keep that picture in mind when you read the table, because every row is just a different number of blocks.
+Work the block count with the numbers, one step at a time. Each block adds 1,024 GPUs. A planner can use this step to answer a simple question. How many blocks does the next purchase need, and does the super-spine tier still reach them at the ratio you chose? Thirty-two blocks give 32,768 GPUs, which is the 32K case. Keep that picture in mind when you read the table, because every row is just a different number of blocks.
 
 The block below holds the block and leaf math for hyperscale builds.
 
@@ -286,7 +290,9 @@ The table walks through each Super-Spine mode, from 1:1 to 7:1 and then the chas
 | **Chassis Super-Spine (`1:1`, `8K` Scale)** | `8` | `32` (`2xRow`/sub-pod) | **`8,192`** | `8,192` | `8,192` | **`8,192`** | `256` (`16`/unit) | `256` (`8`/unit) | **Chassis (`1:1`)** |
 | **Chassis Super-Spine (`1:1`, `16K` Scale)** | `16` | `64` | **`16,384`** | `16,384` | `16,384` | **`16,384`** | `512` (`64`/unit) | `512` (`32`/unit) | **Chassis (`1:1`)** |
 
-The fixed Super-Spine tier sets the ceiling. Choose the oversubscription ratio before you buy switches, because that ratio decides how many blocks you can attach.
+The fixed Super-Spine tier sets the ceiling. Choose the oversubscription ratio before you buy switches, because that ratio decides how many blocks you can attach. Once the switches are racked, changing the ratio means buying and cabling a new tier.
+
+Read the table from the top down, one ratio at a time. At 1:1, the super-spine ports are fully used by two blocks, so the cluster is non-blocking but small. Each step down the table adds two more blocks and the same fixed 2,048 super-spine ports, which means each block gets a thinner share of the upward capacity. That trade is the whole point of the table. You buy more GPUs per super-spine port, and you accept that a job which crosses blocks will run slower.
 
 ---
 
@@ -294,17 +300,17 @@ The fixed Super-Spine tier sets the ceiling. Choose the oversubscription ratio b
 
 ### 4.1 Scheduled Fabric: fixed-size cells and Virtual Output Queueing
 
-Picture two large RDMA flows that hash onto the same spine link. That link congests while its neighbors sit idle. Worse, when one destination port congests, packets waiting at the front of an ingress buffer block unrelated packets behind them. A Scheduled Fabric addresses both problems.
+Picture two large RDMA flows that hash onto the same spine link. That link congests while its neighbors sit idle. Worse, when one destination port congests, packets waiting at the front of an ingress buffer block unrelated packets behind them. This blocking at the front of a queue is called head-of-line blocking. A Scheduled Fabric addresses both problems.
 
-Cisco Silicon One and Broadcom's Jericho3-AI leaf silicon, paired with Ramon3 spine silicon, make a Scheduled Fabric possible. It extends the cell-switched backplane of a modular router chassis across the whole data center pod. Think of the leaves as linecards and the spines as the backplane.
+Cisco Silicon One and Broadcom's Jericho3-AI leaf silicon, paired with Ramon3 spine silicon, make a Scheduled Fabric possible. Silicon here means the switch chip itself. The design extends the cell-switched backplane of a modular router chassis across the whole data center pod. Think of the leaves as linecards and the spines as the backplane. A linecard is a module that holds the ports in a modular router, and the backplane is the internal fabric that joins those modules together.
 
-When an RDMA packet reaches an ingress leaf, the leaf slices it into uniform fixed-size cells. It sprays those cells evenly across every spine. The egress leaf reassembles them into the original packet, in exact order, before the packet reaches the destination server. Segmentation and reassembly happen only at the fabric edges. That keeps link utilization near 100 percent, without hash polarization on elephant flows.
+When an RDMA packet reaches an ingress leaf, the leaf slices it into uniform fixed-size cells. A cell is a small, fixed-length chunk that the fabric moves as one unit. It sprays those cells evenly across every spine. Spraying means sending the cells out over all available paths at once, instead of letting one flow pick one path. The egress leaf reassembles them into the original packet, in exact order, before the packet reaches the destination server. Segmentation and reassembly happen only at the fabric edges. That keeps link utilization near 100 percent, without hash polarization on elephant flows. Hash polarization is what happens when many flows hash onto the same path, and an elephant flow is one very large flow that fills a link for a long stretch.
 
-Virtual Output Queueing handles the blocking problem. Every ingress leaf keeps a separate virtual queue for each egress port in the fabric. A hardware scheduler grants transmission credits only when the target egress port has buffer space. This credit loop keeps congestion inside the flow that causes it. It also gives tighter control than the reactive rate cuts of DCQCN.
+Virtual Output Queueing handles the blocking problem. Every ingress leaf keeps a separate virtual queue for each egress port in the fabric. Think of it as a separate checkout line for each destination, so a crowded line never holds up a person heading elsewhere. A hardware scheduler grants transmission credits only when the target egress port has buffer space. This credit loop keeps congestion inside the flow that causes it. It also gives tighter control than the reactive rate cuts of DCQCN, which only slow senders down after the congestion has already started.
 
-The design has costs you need to weigh. Cell headers and padding add overhead. Each scheduled pod has a scaling boundary. Failures need specialized reconvergence. Heavy credit contention can add latency, and each block locks you to one silicon vendor.
+The design has costs you need to weigh. Cell headers and padding add overhead. Each scheduled pod has a scaling boundary. Failures need specialized reconvergence, which means the fabric has to rebuild its view of the paths after a failure, and that process is more specialized than in a standard Clos. Heavy credit contention can add latency, and each block locks you to one silicon vendor.
 
-Padding is the cost you can measure most easily. The block below works out the cell counts for a 1,500-byte packet and a 4,100-byte packet.
+Padding is the cost you can measure most easily. The last cell of a packet is usually only partly full, and the empty part still crosses the wire. The block below works out the cell counts for a 1,500-byte packet and a 4,100-byte packet.
 
 ```text
 Scheduled Fabric cell segmentation and VOQ arithmetic (ADC Ch. 3 Fig. 3-24):
@@ -315,21 +321,23 @@ Scheduled Fabric cell segmentation and VOQ arithmetic (ADC Ch. 3 Fig. 3-24):
 - Total VOQs per ingress leaf (1,024 egress endpoints x 8 traffic classes): 8,192 VOQs
 ```
 
-Take the 1,500-byte case step by step. The packet needs 12 cells of 128 bytes, which is 1,536 bytes on the wire. The extra 36 bytes are padding, and that works out to 2.40 percent overhead.
+Take the 1,500-byte case step by step. The packet needs 12 cells of 128 bytes, which is 1,536 bytes on the wire. The extra 36 bytes are padding, and that works out to 2.40 percent overhead. The ceiling function, written ceil, rounds up to the next whole cell, so a packet that is only a few bytes longer than one cell still needs the full extra cell. Work through the 4,100-byte case the same way, and then compare the two results.
 
-A Scheduled Fabric earns its place when your packet sizes keep the padding low and you accept one silicon vendor per pod.
+A Scheduled Fabric earns its place when your packet sizes keep the padding low and you accept one silicon vendor per pod. Before you commit, collect the packet-size mix from your own traffic, because the padding cost depends on it. A workload that sends mostly large, full cells pays little padding. A workload that sends many small packets pays much more.
 
 ### 4.2 Low-diameter alternatives: Dragonfly and Torus topologies
 
-Once a cluster reaches tens of thousands of GPUs, a five-stage or seven-stage Clos adds switch hops at every tier. Each hop brings more optical transceiver cost and more serialization latency. Two supercomputing topologies try to cut the hop count, or to remove the upper switch tiers altogether.
+Once a cluster reaches tens of thousands of GPUs, a five-stage or seven-stage Clos adds switch hops at every tier. Each hop brings more optical transceiver cost and more serialization latency. Serialization latency is the time it takes to push a packet onto the wire one bit at a time. Two supercomputing topologies try to cut the hop count, or to remove the upper switch tiers altogether. The diameter of a network is its longest shortest path, measured in hops, so a smaller diameter means fewer switches between the two farthest points.
 
-Dragonfly organizes switches into modular groups, and the groups link to each other through a direct global full mesh. Inside a group, you can choose one of two layouts. A full-graph mesh links every node directly to every other node in the group. A Clos or Butterfly+ bipartite layout is the other option, where spines form the global full mesh.
+Dragonfly organizes switches into modular groups, and the groups link to each other through a direct global full mesh. A full mesh means every group has a direct link to every other group. Inside a group, you can choose one of two layouts. A full-graph mesh links every node directly to every other node in the group. A Clos or Butterfly+ bipartite layout is the other option, where spines form the global full mesh.
 
-Dragonfly's main gain is a smaller diameter. Its worst case is three switch-to-switch hops, compared with four hops in a five-stage Clos. It also lowers the global fiber count. The weakness is that adversarial traffic can saturate the single direct link between two groups. Dragonfly therefore relies on Adaptive Routing to send overflow traffic through an intermediate group, which makes the path non-minimal.
+Dragonfly's main gain is a smaller diameter. Its worst case is three switch-to-switch hops, compared with four hops in a five-stage Clos. It also lowers the global fiber count. The weakness is that adversarial traffic can saturate the single direct link between two groups. An adversarial pattern is traffic that deliberately lands on one link, and a single direct link has no spare path to fall back on. Dragonfly therefore relies on Adaptive Routing to send overflow traffic through an intermediate group, which makes the path non-minimal. A non-minimal path is longer than the shortest one, so it spends more hops to avoid the congested link.
 
-Torus networks connect each node directly to its neighbors along a grid. Edge nodes wrap around to the opposite edge, which closes each ring. A one-dimensional ring uses two links per node. The eight rail leaves of a stripe can link directly this way, without a spine tier. A two-dimensional grid uses four links per node, and a three-dimensional cube uses six.
+Think about what the Dragonfly link count means for a real build. Each new group adds more direct links than the group before it, so the wiring grows quickly, even though the hop count stays low. That is the main trade you weigh when you choose between a low-diameter topology and a familiar Clos.
 
-Torus removes the spine and super-spine tiers, and it suits parallel jobs that map onto nearest-neighbor three-dimensional stencils or pipeline rings. The cost is higher average hop counts. Its deadlock-avoidance routing also gets complicated for arbitrary all-to-all traffic.
+Torus networks connect each node directly to its neighbors along a grid. Edge nodes wrap around to the opposite edge, which closes each ring. A one-dimensional ring uses two links per node. The eight rail leaves of a stripe can link directly this way, without a spine tier. A two-dimensional grid uses four links per node, and a three-dimensional cube uses six. Picture a set of people in a line, each one passing messages only to the person beside them, with the last person passing back to the first.
+
+Torus removes the spine and super-spine tiers, and it suits parallel jobs that map onto nearest-neighbor three-dimensional stencils or pipeline rings. A stencil is a computation where each point only needs its immediate neighbors, which is common in physics simulations. The cost is higher average hop counts. Its deadlock-avoidance routing also gets complicated for arbitrary all-to-all traffic. A deadlock is a standstill in which packets wait on each other in a loop, and avoiding one takes careful routing rules.
 
 The formulas below give the hop and link counts behind these claims.
 
@@ -342,21 +350,21 @@ Dragonfly and Torus graph formulas (ADC Ch. 3 Fig. 3-27..3-35):
 - 3D Torus (X, Y, Z Cube): 6 links/node (+X/-X, +Y/-Y, +Z/-Z + wrap-around; for an 8 x 8 x 8 = 512-node cube, max hops = 3 * (8 / 2) = 12 hops)
 ```
 
-The 512-node cube at the end of the block shows the cost of Torus. Its worst case is 12 hops, which is why the topology suits neighbor-only traffic.
+The 512-node cube at the end of the block shows the cost of Torus. Its worst case is 12 hops, which is why the topology suits neighbor-only traffic. Dragonfly's link count grows faster as groups are added, so the two topologies trade off differently. Read the formulas as a way to ask how far a packet travels and how many cables you must buy.
 
 ### 4.3 Multi-Planar Scale-Out architectures, shuffle cables, and LPO/LRO optics
 
-Above 100,000 GPUs, a single unified five-stage control plane and data plane creates a huge blast radius. One route-plane bug or one spine anomaly can disturb the entire fabric. Multi-Planar Scale-Out splits the fabric into two or four fully independent planes. Each plane has its own control plane and data plane.
+Above 100,000 GPUs, a single unified five-stage control plane and data plane creates a huge blast radius. The blast radius is how much of the cluster one failure can reach. One route-plane bug or one spine anomaly can disturb the entire fabric. Multi-Planar Scale-Out splits the fabric into two or four fully independent planes. Each plane has its own control plane and data plane. The control plane decides where traffic should go, and the data plane carries the traffic.
 
-Breakout is how each GPU reaches several planes. Instead of plugging an 800 Gbps NIC into one 800G leaf port, a breakout cable splits it into four 200 Gbps lanes, and each lane goes to a different plane. A 64-port 800 Gbps Top-of-Rack leaf then serves 128 server downlinks at 200 Gbps. The breakout doubles the GPUs attached to each leaf, and the remaining ports stay as spine uplinks.
+Breakout is how each GPU reaches several planes. Instead of plugging an 800 Gbps NIC into one 800G leaf port, a breakout cable splits it into four 200 Gbps lanes, and each lane goes to a different plane. A 64-port 800 Gbps Top-of-Rack leaf then serves 128 server downlinks at 200 Gbps. The breakout doubles the GPUs attached to each leaf, and the remaining ports stay as spine uplinks. A downlink faces the servers, and an uplink faces the spines.
 
-From the application's point of view, the NIC still presents one 800 Gbps queue pair, so PyTorch and NCCL see no change. The source NIC firmware sprays that single flow's packets across all four planes at once. The destination NIC reorders them in hardware before it posts completions. If a whole plane fails, the job keeps reachability to every GPU and continues on the surviving planes without interruption.
+From the application's point of view, the NIC still presents one 800 Gbps queue pair, so PyTorch and NCCL see no change. A queue pair is the send and receive pair of queues that an RDMA application uses to talk to a peer. The source NIC firmware sprays that single flow's packets across all four planes at once. The destination NIC reorders them in hardware before it posts completions. A completion is the signal that tells the application a transfer has finished. If a whole plane fails, the job keeps reachability to every GPU and continues on the surviving planes without interruption.
 
-Each plane can hold several rail groups, and several multi-planar domains can meet at a high-radix Super-Spine layer. Ethernet bridging loops are a risk across multi-homed server ports. To avoid them, multi-tenant AI clouds usually run a pure Layer 3 IP fabric underlay, and they add dynamic ACLs and RADIUS tenant profiles on top.
+Each plane can hold several rail groups, and several multi-planar domains can meet at a high-radix Super-Spine layer. Ethernet bridging loops are a risk across multi-homed server ports. A bridging loop is a cycle in Layer 2 traffic that can flood a network. To avoid them, multi-tenant AI clouds usually run a pure Layer 3 IP fabric underlay, and they add dynamic ACLs and RADIUS tenant profiles on top. An underlay is the physical routing network under the overlays that tenants see, and an ACL is an access control list that decides which traffic is allowed.
 
-Breakout multiplies the fiber. Splitting each 800G port into four 200G lanes quadruples the strand count. Architects handle that fan-out with shuffle cables, which cross-wire plane links inside a passive optical cassette. They pair the cables with Linear Pluggable Optics and Linear Receive Optics. Removing one or both onboard DSPs from the optical module cuts transceiver power and heat. Switch fans can then spin slower, which leaves more facility megawatts for the GPUs.
+Breakout multiplies the fiber. Splitting each 800G port into four 200G lanes quadruples the strand count. A strand is one fiber inside a cable, so a cable that carried one link now has to carry four, and the cable trays and patch panels all have to hold them. Architects handle that fan-out with shuffle cables, which cross-wire plane links inside a passive optical cassette. They pair the cables with Linear Pluggable Optics and Linear Receive Optics. Removing one or both onboard DSPs from the optical module cuts transceiver power and heat. A DSP is the digital signal processor inside a pluggable module that cleans up the signal. Switch fans can then spin slower, which leaves more facility megawatts for the GPUs.
 
-The block below gives the breakout ratios, the plane-failure math, and the optics power draw.
+Read the breakout as a fan-out. One physical port becomes several logical lanes, and each lane lands on a different plane. That fan-out is what makes the plane failure survivable, and it is also what makes the cabling heavier. The block below gives the breakout ratios, the plane-failure math, and the optics power draw.
 
 ```text
 Multi-Planar breakout and optics specifications (ADC Ch. 3 Fig. 3-36..3-39):
@@ -369,7 +377,7 @@ Multi-Planar breakout and optics specifications (ADC Ch. 3 Fig. 3-36..3-39):
 - Optical power reduction: Traditional pluggables use 2 DSPs (12 W to 15 W per module); LPO removes both DSPs, LRO removes 1 DSP
 ```
 
-Losing one plane of four still leaves 75.0 percent of capacity, or 600 Gbps. That is the resilience argument in one number. The cost is fiber, so count the strands before you commit to a multi-planar design.
+Losing one plane of four still leaves 75.0 percent of capacity, or 600 Gbps. That is the resilience argument in one number. Think of four lanes on a highway, where one lane closes and the traffic slows but keeps moving. The cost is fiber, so count the strands before you commit to a multi-planar design.
 
 ---
 
@@ -377,25 +385,25 @@ Losing one plane of four still leaves 75.0 percent of capacity, or 600 Gbps. Tha
 
 ### 5.1 Inference data center placement and fabric requirements
 
-Inference planning starts from a different question than training. Training asks how fast the cluster can synchronize gradients. Inference asks how large the model is and how many users query it at the same time. Those two answers decide where inference runs.
+Inference planning starts from a different question than training. The difference matters because the two workloads want different things from the network. A training job wants the lowest delay between its GPUs for the whole run. An inference service wants a steady reply time for each user, and it usually does not need its GPUs to talk to each other at all. Training asks how fast the cluster can synchronize gradients. Inference asks how large the model is and how many users query it at the same time. Those two answers decide where inference runs. A team that copies its training network design straight onto an inference service usually overbuilds it, and pays for speed the users never need.
 
-Inference can run in five kinds of places. A phone or laptop serves a single user locally. Edge sites, such as manufacturing plants, retail stores, or regional points of presence, serve local multi-user streams. Enterprise data centers run focused domain models on modest GPU pools. Cloud data centers serve high-query-rate public or multi-tenant APIs. Some facilities sit alongside training data centers, sharing checkpoint storage and lifecycle pipelines with the training pods.
+Inference can run in five kinds of places. A phone or laptop serves a single user locally. Edge sites, such as manufacturing plants, retail stores, or regional points of presence, serve local multi-user streams. A point of presence is a small facility that sits close to users. Enterprise data centers run focused domain models on modest GPU pools. Cloud data centers serve high-query-rate public or multi-tenant APIs. Some facilities sit alongside training data centers, sharing checkpoint storage and lifecycle pipelines with the training pods.
 
-Most inference models fit on one GPU or one eight-GPU server. Rail alignment is therefore usually unnecessary in an inference data center. Traffic typically rides standard TCP/IP, using gRPC and HTTP, rather than RDMA over a conventional collapsed three-stage or five-stage enterprise Clos. The picture changes when a frontier Mixture-of-Experts or long-context model needs multi-node disaggregated prefill. Decode inference then moves its east-west traffic to RDMA over a non-blocking Clos or rail-optimized pod.
+Most inference models fit on one GPU or one eight-GPU server. Rail alignment is therefore usually unnecessary in an inference data center. Traffic typically rides standard TCP/IP, using gRPC and HTTP, rather than RDMA over a conventional collapsed three-stage or five-stage enterprise Clos. The picture changes when a frontier Mixture-of-Experts or long-context model needs multi-node disaggregated prefill. Prefill is the step that reads the whole prompt, and decode is the step that writes the answer one token at a time. Splitting them across nodes is what forces the east-west traffic onto RDMA. Decode inference then moves its east-west traffic to RDMA over a non-blocking Clos or rail-optimized pod.
 
-Start with the model footprint and the query volume, because those two numbers set the placement. You can then put inference on the frontend fabric by default, and move it to RDMA only when the model forces the change.
+Start with the model footprint and the query volume, because those two numbers set the placement. A model that fits on one server does not need a fabric built for synchronized gradients, and a small query volume does not justify a dedicated RDMA pod. You can then put inference on the frontend fabric by default, and move it to RDMA only when the model forces the change. That order keeps the expensive fabric for the jobs that need it.
 
 ### 5.2 The 7-input production design gate, capacity cuts, and Slurm Topograph
 
-Teams often buy switches before they measure collective traffic. Then the expansion plan arrives, or a link fails, and the cluster stalls on oversubscribed uplinks. Sometimes it runs out of spine ports on the first expansion. A production architecture review should check seven measured inputs before anyone picks switch counts or oversubscription ratios. You can use the seven inputs as a checklist before you order any hardware.
+Teams often buy switches before they measure collective traffic. The purchase feels safe because the switches are a known quantity, but the switch count is only as good as the traffic assumptions behind it. Then the expansion plan arrives, or a link fails, and the cluster stalls on oversubscribed uplinks. Sometimes it runs out of spine ports on the first expansion. A production architecture review should check seven measured inputs before anyone picks switch counts or oversubscription ratios. You can use the seven inputs as a checklist before you order any hardware.
 
-The first two inputs cover the business and the workload. Start with service level agreements, multi-tenancy boundaries, and a funded three-year growth timeline. Then measure the workload's communication pattern. That means the collective fraction of step time, the AllReduce versus AllToAll mix, and the message sizes.
+The first two inputs cover the business and the workload. Start with service level agreements, multi-tenancy boundaries, and a funded three-year growth timeline. A service level agreement is the promise you make about uptime and performance, and a multi-tenancy boundary is the line between one customer's jobs and another's. Then measure the workload's communication pattern. That means the collective fraction of step time, the AllReduce versus AllToAll mix, and the message sizes. The collective fraction tells you how much of each step is spent waiting on the network, and it is the number that the rest of the design depends on.
 
-Next, look at scale and growth. Compare the GPU count on Day 1 with the count on Day 2, so expansion does not exhaust spine ports and force a disruptive recable. Set the performance target as a required scaling-efficiency curve and a tail latency ceiling.
+Next, look at scale and growth. Compare the GPU count on Day 1 with the count on Day 2, so expansion does not exhaust spine ports and force a disruptive recable. Set the performance target as a required scaling-efficiency curve and a tail latency ceiling. A scaling-efficiency curve shows how much speed you keep as you add GPUs, and a ceiling sets the worst acceptable tail.
 
-Reliability comes next. Confirm the surviving capacity after a degraded link or switch. Dual redundant OpenSM hosts should sit in separate power domains, with independent out-of-band management. Then ask about operations and skills, including how many in-house InfiniBand or RoCE fabric specialists you have and which telemetry tools they use. The last input is cost and facility constraints. Those include rack power and cooling limits, and the price gap between your budget and a non-blocking design.
+Reliability comes next. Confirm the surviving capacity after a degraded link or switch. Dual redundant OpenSM hosts should sit in separate power domains, with independent out-of-band management. OpenSM is the subnet manager that builds the routing for an InfiniBand fabric. Out-of-band management is a separate network used to reach switches when the main fabric is unhealthy. Then ask about operations and skills, including how many in-house InfiniBand or RoCE fabric specialists you have and which telemetry tools they use. The last input is cost and facility constraints. Those include rack power and cooling limits, and the price gap between your budget and a non-blocking design.
 
-Once the topology is built, verify the physical cut capacity, audit how evenly uplinks carry routes, and connect the fabric to the job scheduler. Even on a five-stage Clos with oversubscribed super-spines, a job runs at full non-blocking speed when its ranks stay inside one block. NVIDIA Base Command Manager Topograph discovers the physical switch tree. It then configures Slurm to pack communicating ranks inside the same 1,024-GPU block or 32-server rail leaf before they cross spines.
+Once the topology is built, verify the physical cut capacity, audit how evenly uplinks carry routes, and connect the fabric to the job scheduler. Even on a five-stage Clos with oversubscribed super-spines, a job runs at full non-blocking speed when its ranks stay inside one block. NVIDIA Base Command Manager Topograph discovers the physical switch tree. It then configures Slurm to pack communicating ranks inside the same 1,024-GPU block or 32-server rail leaf before they cross spines. Slurm is the scheduler that places jobs on nodes, and packing ranks means placing the GPUs that talk the most onto the same block.
 
 The block below holds the leaf radix math, the route balance evidence, and the Topograph settings.
 
@@ -423,19 +431,21 @@ Production leaf radix, uplink balance, and BCM Topograph parameters (V8 Ch. 6 & 
 
 Size the leaves from the Day 2 count, not the Day 1 count. Otherwise the first expansion forces a recable.
 
+A simple way to use the gate is to write the seven inputs on one page and fill each one with a measured value or a named owner. A blank line means the design is still a guess. Leave the switch order open until every line has an answer, because each blank is a place where the cluster can stall later. A recable is the costly job of pulling and re-running cables in a live hall, and it is the outcome this gate exists to prevent.
+
 ---
 
 ## 6. Thermal and power efficiency considerations for AI network fabrics
 
 ### 6.1 Global data center power split, PUE, DGX H100 PSUs, and switch + optics power
 
-Ignore the power and heat of switches and optical transceivers, and your rack PDUs can trip. High-speed optics can also throttle thermally above 70 degrees Celsius. Data centers use a substantial share of global electricity. Cooling is the second-largest consumer after the IT hardware itself. Cooling efficiency is measured with Power Usage Effectiveness, or PUE.
+Ignore the power and heat of switches and optical transceivers, and your rack PDUs can trip. The servers get all the attention on a planning sheet, while the switch and the optics quietly add a second load to the same rack. A PDU is the power distribution unit that feeds the rack, and a tripped PDU takes the whole rack down. High-speed optics can also throttle thermally above 70 degrees Celsius. Data centers use a substantial share of global electricity. Cooling is the second-largest consumer after the IT hardware itself. Cooling efficiency is measured with Power Usage Effectiveness, or PUE.
 
 $$\text{PUE} = \frac{\text{Total Data Center Facility Power}}{\text{IT Computing Equipment Power}}, \qquad \text{Ideal PUE} = \mathbf{1.0}$$
 
-PUE is the facility's total power divided by the power that goes to IT equipment. An ideal PUE of 1.0 means the facility adds no overhead beyond the IT load.
+PUE is the facility's total power divided by the power that goes to IT equipment. An ideal PUE of 1.0 means the facility adds no overhead beyond the IT load. A higher PUE means more of the power goes to cooling and distribution, not to computing. Read the formula as a bill. Every watt that goes to the computers comes with a share of the cooling and lighting bill on top.
 
-When you budget an AI rack, you should add the switch chassis and all 64 pluggable optical modules to the server power. Treat the optics as part of the rack load, not as a rounding error. Pluggable transceiver power has nearly quintupled from 100G to 800G modules. That adds almost a full kilowatt of heat to every 64-port switch.
+When you budget an AI rack, you should add the switch chassis and all 64 pluggable optical modules to the server power. Treat the optics as part of the rack load, not as a rounding error. Pluggable transceiver power has nearly quintupled from 100G to 800G modules. That adds almost a full kilowatt of heat to every 64-port switch. A transceiver is the small module that turns electrical signals into light for a fiber, and each switch port holds one.
 
 The block below works through the power for one switch and for three rack loads.
 
@@ -455,19 +465,19 @@ Data center, server, switch, and optics power breakdown (ADC Ch. 5):
   * 5 DGX H100 (5 x 13.2 = 66.0 kW) + 1 OSFP switch (3.96 kW) = 69.96 kW IT load
 ```
 
-Four DGX H100 servers and one OSFP switch give 56.76 kW of IT load. That sits inside the 48 kW to 60 kW envelope. At a PUE of 1.25, the facility draw reaches 70.95 kW.
+Four DGX H100 servers and one OSFP switch give 56.76 kW of IT load. That sits inside the 48 kW to 60 kW envelope. At a PUE of 1.25, the facility draw reaches 70.95 kW. The gap between 56.76 kW and 70.95 kW is the cooling and distribution overhead that the facility adds on top. Work the rack in the same order each time, starting with the servers, then the switch, then the facility overhead.
 
 ### 6.2 Switch fan airflow options and the five liquid cooling technologies
 
-Mount a switch with the wrong fan direction, and it blows hot power-supply exhaust across the temperature-sensitive front-panel optics. Heavy collective runs then cause link flaps. Likewise, trying to cool a 56 kW GPU rack with room air conditioning fails quickly. You need to match the switch airflow to the cooling method, so the two work together.
+Mount a switch with the wrong fan direction, and it blows hot power-supply exhaust across the temperature-sensitive front-panel optics. Think of a hair dryer pointed at the one component that cannot stand the heat. The fix costs nothing at the rack, but only if you check the direction before the switch goes in. Heavy collective runs then cause link flaps. A link flap is a link that drops and comes back up over and over, which stalls the collectives that depend on it. Likewise, trying to cool a 56 kW GPU rack with room air conditioning fails quickly. You need to match the switch airflow to the cooling method, so the two work together.
 
-Three fan airflow options are available. Each one moves air through the switch in a different order, and that order decides which parts get the coolest air.
+Three fan airflow options are available. Each one moves air through the switch in a different order, and that order decides which parts get the coolest air. The first part of the air path always gets the coldest air, and the last part gets whatever heat the earlier parts left behind.
 
-With Front-to-Back airflow, cool cold-aisle air enters the front port panel. It passes the front-panel optical transceivers first, then crosses the switch ASIC and exits at the rear. High-power optics are the most temperature-sensitive parts of a switch. That is why Front-to-Back is the preferred direction for AI clusters.
+With Front-to-Back airflow, cool cold-aisle air enters the front port panel. It passes the front-panel optical transceivers first, then crosses the switch ASIC and exits at the rear. The cold aisle is the side of the rack where cool air is delivered, and the ASIC is the main switch chip. High-power optics are the most temperature-sensitive parts of a switch. That is why Front-to-Back is the preferred direction for AI clusters.
 
-With Back-to-Front airflow, air enters at the back and cools the power supplies first. By the time it reaches the front-panel optics, it has already been heated by the PSU and the switch ASIC. Back-to-Front switches often need extra heat sinks on their optics. Every device in the rack must also share the same airflow direction.
+With Back-to-Front airflow, air enters at the back and cools the power supplies first. By the time it reaches the front-panel optics, it has already been heated by the PSU and the switch ASIC. Back-to-Front switches often need extra heat sinks on their optics. Every device in the rack must also share the same airflow direction. A single reversed switch in a rack of forward-flowing equipment creates a hot pocket that the rest of the rack cannot fix.
 
-Bidirectional fans reverse direction in real time, based on thermal sensors. You do not need to pick a fan SKU at procurement. The mechanical redesign makes them too expensive for most deployments.
+Bidirectional fans reverse direction in real time, based on thermal sensors. You do not need to pick a fan SKU at procurement. The mechanical redesign makes them too expensive for most deployments. In practice, the simpler choice is to pick one fixed direction for the whole rack and make every device match it.
 
 The diagram summarizes the airflow options and the five liquid cooling architectures.
 
@@ -488,7 +498,7 @@ flowchart TB
     Air --> Liquid
 ```
 
-Liquid cooling can reduce data center cooling power consumption by roughly 70 percent. The market for it is projected to surpass USD $3 billion by 2026. The table compares the five methods by how they move heat, what they require, and how far they scale.
+Liquid cooling can reduce data center cooling power consumption by roughly 70 percent. The market for it is projected to surpass USD $3 billion by 2026. Air is a poor carrier of heat compared with liquid, which is why the liquid options climb so fast in power density. The table compares the five methods by how they move heat, what they require, and how far they scale.
 
 | Liquid Cooling Technology | Heat Transfer Mechanism | Hardware & Facility Impact | Efficiency, Capacity & Hyperscaler Adoption |
 |---|---|---|---|
@@ -498,17 +508,17 @@ Liquid cooling can reduce data center cooling power consumption by roughly 70 pe
 | **4. Rear-Door Heat Exchanger (`RDHx` / `AALC`)** | A radiator coil door mounted on the back of a standard **Front-to-Back air-cooled rack** absorbs heat from exhaust air into chilled water loops connected to cooling towers. | **Simplest retrofit:** requires **zero modification to servers or switches** (Air-Assisted Liquid Cooling), only chilled-water plumbing to the rack door. | Cools up to **`20 kW` per rack** at standard chilled-water design temperatures; less efficient than immersion or cold plates; adopted alongside cold plates by **Meta**. |
 | **5. Sprayed Liquid Cooling** | Targeted nozzles installed inside modified chassis **spray dielectric coolant directly onto the surface of heating elements**, draining warm fluid to a heat exchanger. | Requires chassis modification to mount internal spray nozzles, but **uses significantly less coolant** than tank immersion. | Reduces total data center energy consumption by **`25.8%`** compared with air-cooled data centers. |
 
-If your hall runs at the 16 kW to 18 kW common in legacy halls, a 56.76 kW rack is far beyond what it can supply. A 56.76 kW rack is also far above the 20 kW that a rear-door exchanger can handle. For racks in that range, the cold plate or immersion options fit better. Choose Front-to-Back airflow for switches in AI racks, and match the cooling method to the rack's power tier.
+If your hall runs at the 16 kW to 18 kW common in legacy halls, a 56.76 kW rack is far beyond what it can supply. A 56.76 kW rack is also far above the 20 kW that a rear-door exchanger can handle. For racks in that range, the cold plate or immersion options fit better. Choose Front-to-Back airflow for switches in AI racks, and match the cooling method to the rack's power tier. Start from the rack's power, then pick the cooling, and only then pick the airflow that suits it.
 
 ---
 
 ## Commands and configurations that matter
 
-The commands below help you check the physical wiring and the bandwidth of a live fabric. Run them in order, starting with the rail layout inside the node.
+The commands below help you check the physical wiring and the bandwidth of a live fabric. Read the output with the sections above open next to you, because each number has a meaning you can check against the arithmetic. Run them only on a fabric you own or are allowed to inspect, and keep the counter commands read-only where the comment says so. Run them in order, starting with the rail layout inside the node. Each group answers one question about the fabric, so you can stop at the group that matches your problem.
 
 ### 1. Inspecting physical rail locality, InfiniBand port counters, and paired `ib_write_bw` cut bandwidth
 
-Start with the rail layout. Then read the uplink counters, and finish with a bandwidth test that separates a leaf-local path from a cross-rack path.
+Start with the rail layout. Then read the uplink counters, and finish with a bandwidth test that separates a leaf-local path from a cross-rack path. The first command confirms that each GPU sits on the NIC and leaf you expect. The counters then show whether the uplinks carry the load evenly. The bandwidth test shows whether the cross-rack path is the slow one.
 
 ```bash
 # 1. Verify 1:1 GPU-to-NIC-to-PIX rail alignment inside an 8-GPU node (untested here)
@@ -534,7 +544,7 @@ ib_write_bw -d mlx5_0 -s 2097152 -n 5000 --report_gbits 10.20.4.16
 
 ### 2. Configuring Multi-Planar ToR port breakouts and RoCEv2 QoS on NVIDIA Cumulus NVUE
 
-The next commands split the leaf ports into 200G server downlinks and 800G uplinks, then turn on RoCEv2 QoS. The audit lines at the end show whether the uplinks are marking congestion and dropping packets.
+The next commands split the leaf ports into 200G server downlinks and 800G uplinks, then turn on RoCEv2 QoS. The audit lines at the end show whether the uplinks are marking congestion and dropping packets. Run the audit after the change, not before, so you can see what the new settings did. QoS here means the rules that give RoCEv2 traffic its own priority on the switch.
 
 ```bash
 # Break out ports swp1..swp32 on a 64x800G ToR leaf into 128 x 200G server downlinks
@@ -551,7 +561,7 @@ nv show platform software wjh drop-reason
 
 ### 3. Configuring BCM 11 Topograph for block- and rail-aware Slurm scheduling
 
-The last group points Slurm at the Topograph service and checks that the service is answering. Once it runs, Slurm can place jobs by block and rail.
+The last group points Slurm at the Topograph service and checks that the service is answering. Once it runs, Slurm can place jobs by block and rail. The first command sets the topology source, the second shows the service settings, and the third asks the service for its metrics. If the metrics do not answer, check the service before you change any scheduler setting.
 
 ```bash
 # Configure Slurm topology/tree or topology/block via BCM 11 Topograph (bcm11-admin §7.5) (untested here)
@@ -567,7 +577,7 @@ curl -sk https://localhost:49021/metrics | head -n 30
 
 ## How it fails
 
-Use this table when a cluster scales slowly across racks, stalls during checkpoint writes, or shuts down optics. Start with the symptom you see, not the hardware you suspect. Find the row that matches it. You can confirm the cause with the telemetry column before you change the topology. If you see the same symptom again, check the telemetry evidence first. The root cause and the telemetry evidence show whether the problem is in the topology or in the facility.
+Use this table when a cluster scales slowly across racks, stalls during checkpoint writes, or shuts down optics. Each row is one way a real fabric has failed, and each one leaves a trace in the counters you can read. Start with the symptom you see, not the hardware you suspect. Find the row that matches it. You can confirm the cause with the telemetry column before you change the topology. If you see the same symptom again, check the telemetry evidence first. The root cause and the telemetry evidence show whether the problem is in the topology or in the facility. A symptom can look the same from far away, so the telemetry is what separates a wiring problem from a cooling problem.
 
 | Failure Mode | Symptom | Root Cause & Telemetry Evidence | Fix |
 |---|---|---|---|
@@ -578,15 +588,23 @@ Use this table when a cluster scales slowly across racks, stalls during checkpoi
 | **5. Multi-Planar NIC Out-of-Order (`OOO`) Reassembly Disabled (`ADC` Ch. 3 Fig. 3-36)** | After breaking out `800G` NICs into `4 x 200G` across `FP1..FP4`, RDMA throughput collapses with `PSN` sequence errors and retransmissions. | Packets sprayed across `4` independent fabric planes arrive out of order at the target NIC, but hardware `OOO` packet coalescing/reassembly is disabled in NIC firmware or `xCCL`. | Enable hardware `OOO` sequence reassembly on the ConnectX/BlueField SuperNIC so packets from `FP1..FP4` are reordered in hardware before RDMA application delivery. |
 | **6. Back-to-Front (`B2F`) Optics Thermal Throttling & Rack Cooling Overload (`ADC` Ch. 5)** | `400G`/`800G` `OSFP` (`15 W`) transceivers log high-temp alarms (`>70°C`) and link flaps in a `56.76 kW` ToR rack cooled by a `20 kW` `RDHx` door. | Switch uses **Back-to-Front (`B2F`)** fans (pushing preheated PSU/ASIC exhaust over front-panel `15 W` optics), and rack IT load (`56.76 kW`) exceeds the **`20 kW` `RDHx`** limit by `2.84x`. | Standardize on **Front-to-Back (`F2B`)** switch airflow (or `LPO`/`LRO` dsp-less optics), move switches to `MoR`/`EoR` racks if compute racks are power-capped, and deploy **Direct-to-Chip Cold Plate** or **Immersion** cooling for `48–60+ kW` racks. |
 
+Start with the first row when the symptom is slow multi-rack jobs. Most of the rows point back to a ratio or a path that the earlier sections already calculated. When a row's telemetry matches what you see, the fix in that row is the one to apply first.
+
 ---
 
 ## Hands-on lab
 
 Run the reference lab for this chapter. It lives in `code/part12/fabric_design_scale_lab.py` and runs 28 deterministic self-checks. The checks cover the rail designs, leaf placement, three-stage and five-stage Clos scaling, Scheduled Fabric cell overhead, Dragonfly and Torus hop math, Multi-Planar breakout resilience, oversubscription telemetry, thermal budgets, and BCM Topograph. Every check should print PASS, and the summary line should show zero failures. If you see a FAIL, compare that check with the section it cites before you change any code. The output below is what a clean run looks like.
 
+These steps were not run on a live cluster. The checks test the arithmetic in this chapter against the sources each line cites. They do not test the hardware in your hall, so a clean run tells you the chapter's numbers hang together, not that your rack will work.
+
+First, start the lab with the single command below. It runs in place and does not write bytecode files next to the source.
+
 ```bash
 python3 -B code/part12/fabric_design_scale_lab.py
 ```
+
+Next, compare the output with the expected block below. Each line names the source it checks, so you can jump to that section if a line fails. Finally, read the summary line at the bottom. It should report zero failures. A failing run is useful information, so write down which check failed before you rerun anything. If it does not, do not change the code yet. Find the failing check, read its section again, and decide whether the code or the reading is wrong.
 
 Expected output:
 
@@ -628,38 +646,63 @@ Summary: 28 passed, 0 failed
 
 ## Common first mistakes
 
-Most early fabric designs go wrong in the same few places. Each mistake below is easy to make when you count from the server side and forget the spine side. You are most likely to hit them on a whiteboard sketch, long before any hardware arrives. Read each item as a check you can run on your own design before you sign off on it.
+Most early fabric designs go wrong in the same few places. Each mistake below is easy to make when you count from the server side and forget the spine side. You are most likely to hit them on a whiteboard sketch, long before any hardware arrives. Read each item as a check you can run on your own design before you sign off on it. The first mistake is about counting, the second about naming, and the last three are about the physical plant.
 
-1. Sizing five-stage Clos blocks at 2,048 GPUs instead of 1,024 GPUs when you use 64-port spines. In a three-stage Clos, all 64 ports of a spine face leaves. In a five-stage Clos, each 64-port spine inside a block must reserve 32 ports for Super-Spine uplinks. That leaves only 32 ports for leaves, so a five-stage block holds four rows, which is 1,024 GPUs, 32 leaves, and 32 spines.
-2. Confusing Rail-Only Design with Rail-Unified Design. Rail-Only still wires each GPU to its matching rail leaf across eight leaves. It drops the cross-rail links from the fabric, though, and relies on the server's internal NVSwitch for cross-rail hops. Rail-Unified wires all eight NICs of a server into one or two local Top-of-Rack leaves. That design needs Deterministic Path Forwarding, and a single leaf failure can isolate the whole server.
-3. Assuming End-of-Row has shorter cable runs than Top-of-Rack in a Rail-Optimized stripe. Across an eight-rack compute stripe, Middle-of-Row has the shortest maximum cable span, at six racks. Top-of-Rack comes second at eight racks, and End-of-Row needs the longest cables, spanning ten racks.
-4. Ordering Back-to-Front switches for racks full of high-power pluggable optics. Back-to-Front airflow cools the rear power supplies first, then blows preheated exhaust across the front-panel optics. That exhaust triggers optical thermal alarms unless you fit extra heatsinks. Specify Front-to-Back airflow.
-5. Leaving optics power out of the rack budget. A 64-port switch with a 3.0 kW chassis draw adds nearly a full kilowatt of transceiver power once you fill it with 64 OSFP modules.
+A useful habit is to walk the design twice, once from a GPU outward and once from a spine inward. The server-side walk tells you what each GPU touches. The spine-side walk tells you how much capacity is left for the traffic that must cross. Most of the mistakes below only show up on the second walk.
+
+1. Sizing five-stage Clos blocks at 2,048 GPUs instead of 1,024 GPUs when you use 64-port spines. In a three-stage Clos, all 64 ports of a spine face leaves. In a five-stage Clos, each 64-port spine inside a block must reserve 32 ports for Super-Spine uplinks. That leaves only 32 ports for leaves, so a five-stage block holds four rows, which is 1,024 GPUs, 32 leaves, and 32 spines. The mistake is easy to make because the three-stage number is the one in your head.
+2. Confusing Rail-Only Design with Rail-Unified Design. Rail-Only still wires each GPU to its matching rail leaf across eight leaves. It drops the cross-rail links from the fabric, though, and relies on the server's internal NVSwitch for cross-rail hops. Rail-Unified wires all eight NICs of a server into one or two local Top-of-Rack leaves. That design needs Deterministic Path Forwarding, and a single leaf failure can isolate the whole server. Ask where the NICs land. If they all land on one leaf, you are looking at Rail-Unified Design.
+3. Assuming End-of-Row has shorter cable runs than Top-of-Rack in a Rail-Optimized stripe. Across an eight-rack compute stripe, Middle-of-Row has the shortest maximum cable span, at six racks. Top-of-Rack comes second at eight racks, and End-of-Row needs the longest cables, spanning ten racks. Intuition says that a switch at the end of the row is closer to the ends, but the far racks have the longest way to travel.
+4. Ordering Back-to-Front switches for racks full of high-power pluggable optics. Back-to-Front airflow cools the rear power supplies first, then blows preheated exhaust across the front-panel optics. That exhaust triggers optical thermal alarms unless you fit extra heatsinks. Specify Front-to-Back airflow. Check the airflow direction on the purchase order, not after the switch is racked.
+5. Leaving optics power out of the rack budget. A 64-port switch with a 3.0 kW chassis draw adds nearly a full kilowatt of transceiver power once you fill it with 64 OSFP modules. A rack budget that counts only the servers will look fine on paper and trip in production.
 
 ---
 
 ## Exercises
 
-Work these exercises with a pencil and the reference values at the end of the section. Each one asks you to derive a number yourself before you check it against the block.
+Work these exercises with a pencil and the reference values at the end of the section. Write each intermediate count on paper, because the checks at the end are easier to follow when you can see where a number came from. Each one asks you to derive a number yourself before you check it against the block. Take them in order, because later exercises reuse the counts from earlier ones.
 
 1. Rail architecture and leaf placement trade-offs.
-   - (a) Take a 32-server stripe of eight-GPU servers, each with an internal NVSwitch. Compare Rail-Optimized, Rail-Only, and Rail-Unified designs on GPU-to-leaf mapping and hop counts. Then compare single-leaf failure blast radius and the Deterministic Path Forwarding requirements.
-   - (b) Now install those 32 servers four per rack across eight racks. Rank Top-of-Rack, Middle-of-Row, and End-of-Row by maximum cable span. Compare the power and cooling load per compute rack, and say which placements suit copper DAC or AEC cables under Rail-Unified Design.
+   - Take a 32-server stripe of eight-GPU servers, each with an internal NVSwitch. Compare Rail-Optimized, Rail-Only, and Rail-Unified designs on GPU-to-leaf mapping and hop counts.
+   - Next, compare the single-leaf failure blast radius of the three designs.
+   - Then state what Deterministic Path Forwarding requires.
+   - Now install those 32 servers four per rack across eight racks. Rank Top-of-Rack, Middle-of-Row, and End-of-Row by maximum cable span.
+   - Compare the power and cooling load per compute rack.
+   - Finally, say which placements suit copper DAC or AEC cables under Rail-Unified Design.
 2. Three-stage Clos port and switch arithmetic.
-   - (a) Using 64-port 400 Gbps switches at one-to-one non-blocking oversubscription, calculate the server count, GPU count, port counts, leaf switches, and spine switches for one, two, four, and eight rows. Then state the spine count when you use 256-port modular chassis spines.
-   - (b) Compare that 64-port three-stage limit with an NVIDIA GB300 SuperPOD built from 144-port 800 Gbps `Q3400-RD` switches, across two, four, eight, and sixteen Scalable Units.
+   - Using 64-port 400 Gbps switches at one-to-one non-blocking oversubscription, calculate the server count, GPU count, port counts, leaf switches, and spine switches for one row.
+   - Repeat the calculation for two, four, and eight rows.
+   - Then state the spine count when you use 256-port modular chassis spines.
+   - Compare that 64-port three-stage limit with an NVIDIA GB300 SuperPOD built from 144-port 800 Gbps `Q3400-RD` switches.
+   - Run the comparison across two, four, eight, and sixteen Scalable Units.
 3. Five-stage Clos 1,024-GPU block design and Super-Spine oversubscription.
-   - (a) Explain why a five-stage Clos block built from 64-port switches contains exactly four rows. Then state how many blocks and leaf switches a hyperscale cluster needs.
-   - (b) Start with a fixed Super-Spine tier of 32 switches. Compute the blocks, rows, GPUs, leaf switches, and spine switches for every ratio from one-to-one through seven-to-one. Then contrast the results with a chassis-based super-spine.
+   - Explain why a five-stage Clos block built from 64-port switches contains exactly four rows.
+   - Then state how many blocks and leaf switches a hyperscale cluster needs.
+   - Start with a fixed Super-Spine tier of 32 switches.
+   - Compute the blocks, rows, GPUs, leaf switches, and spine switches for every ratio from one-to-one through seven-to-one.
+   - Then contrast the results with a chassis-based super-spine.
 4. Scheduled Fabrics, Dragonfly, Torus, and Multi-Planar breakouts.
-   - (a) In a Scheduled Fabric that uses fixed-size cells and Virtual Output Queueing, calculate the cell count, wire bytes, and padding overhead for a standard packet and a larger one. Then compute the total fabric VOQs across egress endpoints and traffic classes.
-   - (b) Compare worst-case switch-to-switch hops and per-node link degrees across five-stage Clos, Dragonfly, and Torus. Then calculate the port split and surviving bandwidth when one or two planes fail in a four-plane Multi-Planar architecture.
+   - In a Scheduled Fabric that uses fixed-size cells and Virtual Output Queueing, calculate the cell count, wire bytes, and padding overhead for a standard packet.
+   - Repeat the calculation for a larger packet.
+   - Then compute the total fabric VOQs across egress endpoints and traffic classes.
+   - Compare worst-case switch-to-switch hops across five-stage Clos, Dragonfly, and Torus.
+   - Compare per-node link degrees across the same three topologies.
+   - Then calculate the port split and surviving bandwidth when one plane fails in a four-plane Multi-Planar architecture.
+   - Repeat that for two failed planes.
 5. Production oversubscription, N-1 cut survival, uplink skew, and shared-VL interference.
-   - (a) Compute the oversubscription ratios, per-node cross-leaf bandwidth, and collective time for the single-rail and dual-rail rack configurations. Do this under normal and degraded spine or uplink states.
-   - (b) Given `perfquery` `PortXmitData` byte deltas, paired `ib_write_bw` results, and shared-versus-separated Virtual Lane inference tail latencies, diagnose each bottleneck. State the architectural fix for each one.
+   - Compute the oversubscription ratios for the single-rail rack configuration under normal and degraded spine states.
+   - Compute the per-node cross-leaf bandwidth and collective time for the same configuration.
+   - Repeat both calculations for the dual-rail rack configuration.
+   - Given `perfquery` `PortXmitData` byte deltas, diagnose the uplink skew.
+   - Given the paired `ib_write_bw` results, diagnose the cross-rack cut.
+   - Given the shared-versus-separated Virtual Lane inference tail latencies, diagnose the interference.
+   - State the architectural fix for each one.
 6. Data center power, optics thermal budget, airflow, and liquid cooling selection.
-   - (a) Calculate the total switch and optics power across all three transceiver generations. Then calculate the total IT and facility power for a Top-of-Rack deployment.
-   - (b) Explain why Front-to-Back airflow is preferred over Back-to-Front and Bidirectional fans. Then select the right cooling technology for each rack power tier.
+   - Calculate the total switch and optics power across all three transceiver generations.
+   - Then calculate the total IT and facility power for a Top-of-Rack deployment.
+   - Explain why Front-to-Back airflow is preferred over Back-to-Front fans.
+   - Explain why it is preferred over Bidirectional fans.
+   - Then select the right cooling technology for each rack power tier.
 
 The block below gives the reference values to check your answers against.
 
@@ -676,6 +719,8 @@ Exercise input parameters and expected reference values:
 ---
 
 ## Interview angles
+
+Interviewers use these prompts to see whether you can reason from the wiring up to the numbers. Practice saying each count in a full sentence, because a bare number gives the interviewer nothing to follow. A good answer does not need to be long. It needs a clear order, a count you can defend, and one failure you would watch for. Each answer below starts from the count you can check on paper, then adds the failure you would expect. Say the arithmetic out loud, because the interviewer usually cares about the path you took more than the final figure.
 
 1. **"You are given a blank check to design a 1,024-GPU DGX H100 training cluster using 64-port 400G NDR switches. Walk me through the exact port counts, switch counts, and why 2:1 spine oversubscription or shared storage routing will break it."**
    - *What they are testing:* Whether you can derive a two-tier Rail-Optimized fat-tree from first principles.
