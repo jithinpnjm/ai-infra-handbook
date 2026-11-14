@@ -23,47 +23,42 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A GPU that sits idle waiting on a data loader or a stalled checkpoint costs the same hourly rate. So does a GPU waiting on a broken collective. Still, storage is routinely sized by two numbers from a vendor datasheet: total usable terabytes and peak sequential bandwidth.
+Picture a GPU that sits idle because its data loader is still fetching the next batch. That GPU costs the same amount per hour as one that is busy. The same is true when a GPU waits on a broken collective operation, which is a step where every GPU must exchange data with the others before any of them can continue. Even so, storage is routinely sized from two numbers on a vendor datasheet: total usable terabytes and peak sequential bandwidth.
 
-Consider what happens when 128 or 1,024 GPU workers start a distributed training run. A storage array that passed a synthetic sequential benchmark can still collapse to 24 percent GPU utilization. During an epoch shuffle across eighteen million small files, metadata lookups starve the data loaders long before the network links saturate. An hour later, a thousand GPUs pause at once to flush a checkpoint of up to 2 TB. The synchronized write burst overwhelms the storage controller queues, and forward progress stops across the entire cluster.
+Now think about the first hour of a distributed training run with 128 or 1,024 GPU workers. A storage array that passed a synthetic sequential benchmark can still collapse to 24 percent GPU utilization. The cause is the shape of the work, not the size of the array. During an epoch shuffle across eighteen million small files, metadata lookups starve the data loaders long before the network links saturate. An epoch is one complete pass through the dataset. An hour later, a thousand GPUs pause at once to flush a checkpoint of up to 2 TB. A checkpoint is a saved snapshot of the model and its training state, so a crashed job can restart from it. The synchronized write burst overwhelms the storage controller queues, and forward progress stops across the entire cluster.
 
-**Think of AI storage as an end-to-end data path, not a single number.** A training sample or model shard must cross eight distinct hardware and software boundaries on its way to the accelerator. It starts on storage media and storage server controllers, then crosses the storage network fabric and the client filesystem driver. From there it enters the Linux kernel page cache, moves through host CPU DRAM across NUMA domains, crosses the PCIe switch fabric, and finally lands in GPU memory.
+**Think of AI storage as an end-to-end data path, not a single number.** Picture one training sample or model shard as a package on a long conveyor belt. Before it reaches the accelerator, it must cross eight distinct hardware and software boundaries. It starts on storage media and storage server controllers, then crosses the storage network fabric and the client filesystem driver. From there it enters the Linux kernel page cache, which is a memory area where the kernel keeps recently read file data. Next it moves through host CPU DRAM, the ordinary memory of the server, across NUMA domains. NUMA stands for non-uniform memory access, and it means each group of CPU cores sits closer to some memory than to other memory. Last, it crosses the PCIe switch fabric, which is the bus that connects cards such as GPUs and network adapters, and it lands in GPU memory.
 
-Every one of those eight boundaries has a per-operation latency and an aggregate bandwidth ceiling, so any of them can become the slow link. This chapter maps the five AI storage workload phases across the four-tier storage hierarchy. It contrasts the traditional POSIX CPU bounce-buffer path with GPUDirect Storage direct DMA. You will also work through the bandwidth scaling math from one GPU to a full rack, and learn which commands isolate a storage bottleneck.
+Every one of those eight boundaries has a per-operation latency, which is the wait for one small request, and an aggregate bandwidth ceiling, which is the most data per second the whole boundary can carry. Either limit can become the slow link, and the slowest link sets the speed for the whole job. This chapter maps the five AI storage workload phases across the four-tier storage hierarchy. It contrasts the traditional POSIX CPU bounce-buffer path with GPUDirect Storage direct DMA. POSIX is the standard file-access interface that Linux programs use. DMA, or direct memory access, lets a device move bytes without the CPU copying each one. Along the way we work through the bandwidth math from one GPU to a full rack, and we look at the commands that isolate a storage bottleneck.
 
 ## Prerequisites and outcomes
 
-Before you start, make sure the tools and ideas below are familiar. The rest of the chapter assumes you can read their output without help.
+Before you start, check that the tools and ideas below are familiar. Most of the chapter assumes you can read their output without help, so a short review now saves confusion later.
 
 **Prerequisites:**
 - Familiarity with Linux storage and memory inspection tools (`iostat`, `vmstat`, `lsblk`, `numactl`, and `strace`) from Part 3.
 - Understanding of PCIe generations, NUMA socket topology, and `nvidia-smi topo -m` distance codes from Part 2 and Part 6.
 - Basic knowledge of RoCEv2 and InfiniBand lossless fabrics from Part 7.
 
-**Outcomes:** After completing this chapter, you will be able to:
-1. Classify the five AI storage lifecycle phases by block size, read and write ratio, and metadata rate.
-2. Work out why a 38.4 GB per second Lustre filesystem delivers only 4.3 GB per second on 220 KB files. Then explain how repackaging into 10 MB shards restores 91 percent GPU utilization.
-3. Map the four-tier AI factory storage hierarchy and the eight-layer storage-to-GPU data path.
-4. Contrast the traditional POSIX CPU bounce-buffer read path with GPUDirect Storage peer-to-peer DMA. Then read the output of `gdscheck` and `gdsio` benchmarks.
-5. Size storage read bandwidth from one GPU up to a thousand-GPU cluster. Calculate the Lustre stripe count needed for a 60-second checkpoint write SLA, which is the time limit the team has agreed to for each checkpoint.
+Here is the path through the chapter. We begin with why AI storage fails in its own ways, and we classify the five AI storage lifecycle phases by block size, read and write ratio, and metadata rate. Next we work out why a 38.4 GB per second Lustre filesystem delivers only 4.3 GB per second on 220 KB files. Lustre is a parallel filesystem that spreads each file across many storage targets. We then see how repackaging the data into 10 MB shards restores 91 percent GPU utilization. After that we map the four-tier AI factory storage hierarchy and the eight-layer storage-to-GPU data path. We contrast the traditional POSIX CPU bounce-buffer read path with GPUDirect Storage peer-to-peer DMA, and we read the output of `gdscheck` and `gdsio` benchmarks. Last, we size storage read bandwidth from one GPU up to a thousand-GPU cluster. We also calculate the Lustre stripe count needed for a 60-second checkpoint write service level agreement (SLA), which is the time limit the team has agreed to for each checkpoint. Stripe count is simply the number of storage targets that one file is spread across.
 
 ---
 
 ## 1. Why AI storage is different: the five workload phases and the capacity illusion
 
-Traditional enterprise storage arrays are built for two predictable workloads. Some serve transactional databases with small 4 KB random I/O. Others serve media servers that stream large contiguous files to a few clients. An AI factory breaks both assumptions at once. Over one training and serving lifecycle, the storage system faces five conflicting access patterns, one after another.
+Think about the storage array your company already runs for its databases and file shares. Those arrays were built for two predictable jobs. Some serve transactional databases with small 4 KB random I/O, where I/O means input and output, and random means the reads land at scattered positions. Others serve media servers that stream large contiguous files to a few clients. An AI factory breaks both assumptions at once. Over one training and serving lifecycle, the storage system faces five conflicting access patterns, one after another, and it has to handle each of them well.
 
 ### 1.1 The three failure modes of standard IT storage in AI
 
-Picture a standard enterprise NAS, or an untuned storage array, attached to a GPU cluster. It tends to fail in three repeatable ways:
+Picture a standard enterprise NAS, or an untuned storage array, attached to a GPU cluster. A NAS, or network-attached storage, is a file server that clients mount over the network. A system like this tends to fail in three repeatable ways, and each one leaves a different trail.
 
-1. **The Metadata Problem:** Computer vision, audio, and multimodal datasets often start as ten million to eighteen million individual files, averaging 20 KB to 220 KB each. Before any payload crosses the network, the client must resolve the path and check permissions with `stat`. It then opens the file through an RPC to the Metadata Server, reads the tiny file, and closes it. The controller spends 85 to 95 percent of its time answering lookups. GPUs starve while the storage links sit 80 percent idle.
-2. **The Epoch Shuffle:** Shuffling keeps a neural network from memorizing the order of its samples. So `DistributedSampler` and data loaders shuffle the indices again every epoch. Hard disk drives cannot seek fast enough for that random access. Even NVMe arrays struggle, because random reads across unsharded files defeat the kernel read-ahead buffers. The same reads also thrash the Linux page cache once the dataset is larger than host RAM.
-3. **The Checkpoint Bomb:** Every few hours, hundreds or thousands of GPUs stop computing at the same moment. Each one flushes its model weights, gradients, and optimizer states to persistent storage. All ranks send at once, which creates a traffic jam called incast in both the network and the storage controllers. Every second spent waiting for write acknowledgments comes straight out of cluster goodput, which is the useful work the cluster completes.
+1. The metadata problem: Computer vision, audio, and multimodal datasets often start as ten million to eighteen million individual files, averaging 20 KB to 220 KB each. Think of a librarian who must fetch a catalog card for every book, even when every book is a pamphlet. Before any payload crosses the network, the client must resolve the path and check permissions with `stat`. Resolving the path means walking through each directory name until the file is found. The client then opens the file through an RPC to the Metadata Server. RPC, or remote procedure call, is a request the client sends to a server and waits on. The Metadata Server answers questions about files, such as where they are and who may read them. It does not hold the file contents. The client then reads the tiny file and closes it. The controller spends 85 to 95 percent of its time answering lookups. GPUs starve while the storage links sit 80 percent idle.
+2. The epoch shuffle: Shuffling keeps a neural network from memorizing the order of its samples. So `DistributedSampler` and data loaders shuffle the indices again every epoch. Hard disk drives cannot seek fast enough for that random access, because the read head must physically move to each track. Even NVMe arrays struggle. NVMe is a flash drive interface that connects straight to the PCIe bus. Random reads across unsharded files defeat the kernel read-ahead buffers. Read-ahead is the kernel habit of fetching the next bytes before anyone asks for them, and it only pays off when reads are sequential. The same reads also thrash the Linux page cache once the dataset is larger than host RAM. Thrashing means the cache throws out pages before anyone uses them again, so the work of caching buys nothing.
+3. The checkpoint bomb: Every few hours, hundreds or thousands of GPUs stop computing at the same moment. Each one flushes its model weights, gradients, and optimizer states to persistent storage. Weights are the learned numbers inside the model. Gradients are the corrections computed from each batch. Optimizer states are the running statistics the optimizer keeps between steps. All ranks send at once, which creates a traffic jam called incast in both the network and the storage controllers. A rank is one GPU process in a distributed job. Incast happens when many senders aim at one receiver at the same moment. Every second spent waiting for write acknowledgments comes straight out of cluster goodput, which is the useful work the cluster completes. A write acknowledgment is the storage system's reply that the data is safely stored.
 
 ### 1.2 The five AI storage workload phases
 
-If you are designing an AI storage pipeline, start by splitting the data lifecycle into five phases. Each phase has its own block size, read-to-write mix, metadata pressure, and failure blast radius, which is how much work one failure stops. The diagram shows how one dataset moves through them. The checkpoint burst feeds back into training.
+If you are designing an AI storage pipeline, start by splitting the data lifecycle into five phases. Imagine one dataset moving from the raw download all the way to a served model. Each phase has its own block size, its own read-to-write mix, its own metadata pressure, and its own failure blast radius. Blast radius is how much work one failure stops. Block size is how many bytes each request asks for at once. The diagram shows how one dataset moves through the phases. The checkpoint burst feeds back into training, which is why phase 4 has an arrow back to phase 3.
 
 ```mermaid
 flowchart LR
@@ -74,7 +69,7 @@ flowchart LR
     P4 --> P5["5. Inference, RAG & KV<br/>Weights + 64 KB KV/vector"]
 ```
 
-The table compares the phases by their I/O pattern and by what happens when each one is bottlenecked. Phase 3 and phase 4 both stall the GPUs, but in different ways.
+Read the table with the last column in mind, because that column tells you how the job feels when a phase slows down. Phase 3 and phase 4 both stall the GPUs, but in different ways. Phase 3 stalls them on every step, a small pause at a time. Phase 4 freezes all of them at once for the length of one burst.
 
 | Phase | Dominant I/O Pattern | Typical Block Size | Read / Write Split | Metadata Rate at Scale | Primary Storage Tier | Impact When Bottlenecked |
 |---|---|---|---|---|---|---|
@@ -86,11 +81,11 @@ The table compares the phases by their I/O pattern and by what happens when each
 
 ### 1.3 Capacity is not throughput: worked metadata bottleneck calculation
 
-Raw capacity and aggregate bandwidth ratings can hide the real limit. Consider a production deployment on a 7.2 PB Lustre filesystem. The array has 48 Object Storage Targets rated at 800 MB per second each, giving 38.4 GB per second of aggregate read bandwidth. Its Metadata Server is tuned for 50,000 metadata operations per second.
+Capacity and bandwidth ratings look good on a purchase order, and they can still hide the real limit. Consider a production deployment on a 7.2 PB Lustre filesystem. PB means petabytes. The array has 48 Object Storage Targets, which are the back-end servers that hold file data. Each one is rated at 800 MB per second, giving 38.4 GB per second of aggregate read bandwidth. Its Metadata Server is tuned for 50,000 metadata operations per second.
 
-A training job starts across 128 GPU workers, each needing 150 MB per second of training data. Multiply those figures and the expected aggregate read demand is 19.2 GB per second. That is only half of the array's 38.4 GB per second rating. Yet in production, delivered throughput collapses to 4.3 GB per second, and GPU utilization drops from 94 percent down to 24 percent.
+Now imagine a training job that starts across 128 GPU workers, each needing 150 MB per second of training data. Multiply those figures and the expected aggregate read demand is 19.2 GB per second. That is only half of the array's 38.4 GB per second rating, so on paper the array has plenty of room. Yet in production, delivered throughput collapses to 4.3 GB per second, and GPU utilization drops from 94 percent down to 24 percent.
 
-The array is not out of bandwidth. The real cause is the shape of the dataset: eighteen million individual files averaging 220 KB each. For every file, a worker must resolve the path on the Metadata Server, issue a serialized `open()` RPC, read the 220 KB payload, and close the file.
+The array is not out of bandwidth. The real cause is the shape of the dataset: eighteen million individual files averaging 220 KB each. Every file costs a fixed trip through the metadata path, no matter how small the file is. For each file, a worker must resolve the path on the Metadata Server, issue a serialized `open()` RPC, read the 220 KB payload, and close the file. The payload is the data you actually want. The round trips around it are overhead. For a large file, that overhead is a rounding error. For a 220 KB file, those round trips take a large share of each request.
 
 ```text
 7.2 PB Lustre Metadata Bottleneck Calculation (48 OSTs x 800 MB/s = 38,400 MB/s = 38.4 GB/s; MDS ceiling = 50,000 ops/s):
@@ -105,23 +100,25 @@ The array is not out of bandwidth. The real cause is the shape of the dataset: e
     Repackaged into 50 shards of 800 MB -> 8,000 ops/s, 1.42 GB/s delivered, 88% GPU utilization.
 ```
 
-If you were on call for this job, the open rate is the number you would check first. Each worker opens about 680 files per second. Across 128 workers, that is 87,040 opens per second. The Metadata Server therefore runs 75 percent over its limit before a single `stat` call is counted. Meanwhile, the 48 storage targets sit nearly idle.
+Suppose you are on call for this job. The open rate is the first number to check. Each worker opens about 680 files per second. Across 128 workers, that is 87,040 opens per second. The Metadata Server therefore runs 75 percent over its limit before a single `stat` call is counted. Meanwhile, the 48 storage targets sit nearly idle. That idle array is the key clue. A slow array that is busy points to a bandwidth problem. A slow array with spare capacity points to a request-count problem.
 
-Now repackage the same data, and watch what you gain. The team packs the eighteen million files into 750,000 contiguous 10 MB shards using WebDataset or TFRecord. Total opens drop to 1,920 per second, which is 3.8 percent of server capacity. Delivered bandwidth then jumps from 4.3 GB per second to 18.6 GB per second. GPU utilization climbs back to 91 percent.
+Now repackage the same data and watch what changes. The team packs the eighteen million files into 750,000 contiguous 10 MB shards using WebDataset or TFRecord. A shard is one large file that holds many samples, so the loader opens one file where it used to open dozens. WebDataset packs samples into tar archives, and TFRecord packs them into a TensorFlow record format. Total opens drop to 1,920 per second, which is 3.8 percent of server capacity. Delivered bandwidth then jumps from 4.3 GB per second to 18.6 GB per second. GPU utilization climbs back to 91 percent.
 
-A second incident shows the same trap at a smaller scale. A ten-node cluster with eighty A100 GPUs needed 1.5 GB per second in total, and network checks showed plenty of headroom. Yet week-one throughput reached only 280 MB per second. Fifteen million small files had triggered 95,000 opens per second. Packing that 40 GB dataset into fifty shards of 800 MB each cut metadata operations to 8,000 per second, and throughput recovered to 1.42 GB per second.
+A second incident shows the same trap at a smaller scale. A ten-node cluster with eighty A100 GPUs needed 1.5 GB per second in total, and network checks showed plenty of headroom. Yet week-one throughput reached only 280 MB per second. Fifteen million small files had triggered 95,000 opens per second. Packing that 40 GB dataset into fifty shards of 800 MB each cut metadata operations to 8,000 per second, and throughput recovered to 1.42 GB per second. The lesson matches the first incident. Plenty of link speed does not help when every read waits in line at the metadata server.
 
-Before you blame storage bandwidth for a slow training job, check the average file size and the metadata open rate.
+Put the three numbers in order before you decide what to change. First, look at the average file size. Second, look at the open rate. Third, look at the delivered throughput against what the array can supply. If the file size is small and the open rate is high, the fix belongs in the dataset layout. If the array is idle while the job waits, the fix belongs in the metadata path or the client.
+
+Keep that habit with every slow job. Before you blame storage bandwidth, check the average file size and the metadata open rate. Those two numbers usually tell you more than the datasheet does.
 
 ---
 
 ## 2. The AI storage hierarchy and the 8-layer data path
 
-No single storage medium can meet the cost, capacity, and latency needs of all five workload phases at once. So production AI factories split storage into four tiers. A single read or write can cross up to eight hardware and software layers, from the physical drives to the GPU cores.
+No single storage medium can meet the cost, capacity, and latency needs of all five workload phases at once. Think of a warehouse with one kind of shelf. A shelf near the loading dock is quick to reach but holds little, while a big rack at the back holds a lot but takes a long walk to reach. Production AI factories face the same trade-off, so they split storage into four tiers. A single read or write can cross up to eight hardware and software layers, from the physical drives to the GPU cores.
 
 ### 2.1 The four-tier AI factory storage hierarchy
 
-As you read the table, you will see that each tier trades capacity for speed. Tier 0 is the fastest and smallest, and Tier 3 is the largest and slowest. The table lists what each tier is built from and what it is used for.
+Use the table as a price list for speed. Each tier trades capacity for speed, so the fastest tier is also the smallest. Tier 0 is the fastest and smallest, and Tier 3 is the largest and slowest. The table lists what each tier is built from and what it is used for.
 
 | Tier | Name & Location | Representative Hardware / Software | Typical Capacity | Bandwidth Scale | Typical Access Latency | Primary Role in AI Pipeline |
 |---|---|---|---|---|---|---|
@@ -130,13 +127,13 @@ As you read the table, you will see that each tier trades capacity for speed. Ti
 | **Tier 2** | **Parallel File System (`PFS`)** (dedicated `RoCEv2` or `IB` storage fabric) | `Lustre` (`DDN EXAScaler`, `FSx`), `WEKA`, `BeeGFS`, `VAST`, `IBM Storage Scale`, `DeepSeek 3FS` | `1–50+ PB` cluster-wide | `100 GB/s` to `7.3 TB/s` aggregate | `300 ns` (`IB` switch) / `800 ns` (`Eth` switch) to `0.5–5 ms` | Shared active datasets, distributed checkpoint bursts, multi-node scratch |
 | **Tier 3** | **Object Store / Data Lake** (capacity tier on-prem or cloud) | `AWS S3`, `GCS`, `MinIO`, `Ceph`, `Pure FlashBlade`, `Scality` | `10–500+ PB` | `10–100+ GB/s` over HTTP/TLS (`s5cmd`) | `5–50 ms` | Durable raw data lake, cold checkpoint archive, model registry |
 
-Notice how the latency column climbs from nanoseconds at Tier 0 to milliseconds at Tier 3. Each step down buys capacity and pays for it in access time. When you plan a pipeline, you decide which tier each dataset lives on.
+Look at the latency column next. It climbs from nanoseconds at Tier 0 to milliseconds at Tier 3. A nanosecond is one billionth of a second, and a millisecond is one thousandth of a second. Each step down buys capacity and pays for it in access time. When you plan a pipeline, you decide which tier each dataset lives on, and you move the data up or down as the job changes.
 
-Newer AI filesystems are blurring the line between Tier 1 and Tier 2. They pool the NVMe drives in each node over RDMA. DeepSeek's open-source Fire-Flyer File System, or 3FS, is one example. It combines a cluster manager, a sharded metadata service, a storage service, and an RDMA client. Together, these parts bypass the OS page cache completely. It serves random training and KV-cache reads straight from NVMe drives over InfiniBand or RoCEv2. You can see the scale in one test. Across a 68-node cluster with ten 16 TB NVMe drives and dual 100 Gb/s NICs per node, 3FS sustained 6.6 TB per second of read throughput. It also served 1.4 TB per second of background traffic, and reached 7.3 TB per second on larger clusters.
+Newer AI filesystems are blurring the line between Tier 1 and Tier 2. They pool the NVMe drives in each node over RDMA, which stands for remote direct memory access. RDMA lets one machine read another machine's memory across the network without the remote CPU handling each transfer. DeepSeek's open-source Fire-Flyer File System, or 3FS, is one example. It combines a cluster manager, a sharded metadata service, a storage service, and an RDMA client. Sharded means the metadata is split across many servers instead of living on one. Together, these parts bypass the OS page cache completely, so the kernel never keeps a copy of the data. It serves random training and KV-cache reads straight from NVMe drives over InfiniBand or RoCEv2. A KV cache is the memory an inference server keeps for the text it has already processed, so it does not have to recompute that text for every new token. You can see the scale in one test. The test ran on a 68-node cluster with ten 16 TB NVMe drives and dual 100 Gb/s NICs per node. In that test, 3FS sustained 6.6 TB per second of read throughput. It also served 1.4 TB per second of background traffic, and it reached 7.3 TB per second on larger clusters.
 
 ### 2.2 The 8-layer data path from storage media to GPU HBM
 
-Picture a training job that reads a batch from shared storage without GPUDirect Storage. The payload must cross eight separate layers. Each layer has its own latency floor and its own queue or bandwidth limit.
+Picture a training job that reads a batch from shared storage without GPUDirect Storage. Think of that batch as a parcel that must travel through several depots before it reaches the GPU. The payload must cross eight separate layers. Each layer has its own latency floor, which is the fastest it can ever answer, and its own queue or bandwidth limit. A slow parcel can be slow at any depot, so you have to check them in order.
 
 ```mermaid
 flowchart TD
@@ -149,7 +146,9 @@ flowchart TD
     L7 --> L8["8. GPU HBM3/HBM3e<br/>1 - 10 ns, 3.35-8 TB/s | dmon"]
 ```
 
-The table below gives each layer's latency, its limit, the tool that measures it, and what healthy and saturated signals look like.
+Take one small read as an example. A training worker asks for a file that is not in the page cache. The request goes to the client driver, which checks with the Metadata Server, then sends the read over the network. The storage controller pulls the blocks from the drives, and the reply travels back along the same path. Each step has its own timer and its own queue, so a slow reply can come from any of them. The table gives you the signal for each step, so you can find the one that is slow.
+
+The table below gives each layer's latency, its limit, the tool that measures it, and what healthy and saturated signals look like. When you read a row, ask three questions. How long does this layer usually take? What is the most it can carry? Which command shows whether it is close to that limit?
 
 | Layer | Component | Typical Latency | Capacity / Bottleneck Limit | Primary Linux / GPU Measurement Tool | Healthy vs Saturated Signal |
 |---|---|---|---|---|---|
@@ -162,22 +161,22 @@ The table below gives each layer's latency, its limit, the tool that measures it
 | **7** | **PCIe Bus / Switch Fabric** (`Gen4` / `Gen5 x16`) | `1–10 us` (`~100 ns` local switch) | `PCIe Gen4 x16` = `32 GB/s`; `Gen5 x16` (`32 GT/s`) = `64 GB/s` (`~63 GB/s` net) | `lspci -vvv`, `nvidia-smi topo -m`, `nvidia-smi dmon -s t` | Healthy: `PIX`/`PXB`/`PHB` affinity, pinned `DMA` at `90%` copy util. Saturated: unpinned `60%` copy util or `SYS` hop |
 | **8** | **GPU HBM** (`HBM3` / `HBM3e`) | `1–10 ns` | `40–192 GB` capacity, `3.35–8.0 TB/s` bandwidth | `nvidia-smi dmon`, `nvidia-smi -q`, `Nsight Systems` | Healthy: `sm = 94–95%`, `mem = 40%`, `> 10%` free HBM. Starved: `sm` oscillating `24%–94%` on data wait |
 
-When a job stalls on I/O, you should not guess. Walk this table from the storage media up to the GPU, and check each layer's signal before moving on.
+Picture a training job that slows down in the middle of the night, with nobody sure why. Guessing is the slowest way to find the cause. Walk this table from the storage media up to the GPU, and check each layer's signal before moving on. Stop at the first layer whose signal is saturated. Layers above it cannot run faster than the layer below them, so that first saturated layer is the place to look.
 
 ---
 
 ## 3. Traditional bounce-buffer I/O vs GPUDirect Storage (`GDS`)
 
-The storage array can deliver 10 GB per second to the compute node's network card or local NVMe drive. Even so, the path inside the node often chokes. Redundant memory copies and unpinned buffers are the usual reason.
+Picture a storage array that can deliver 10 GB per second to the compute node's network card or local NVMe drive. The job can still crawl anyway. The path inside the node often chokes, and redundant memory copies and unpinned buffers are the usual reason. A bounce buffer is a temporary staging area in host memory that data passes through on its way somewhere else. Each extra stop costs time and memory bandwidth, so a fast disk can still deliver slow training.
 
 ### 3.1 Anatomy of the POSIX CPU bounce-buffer path (3 to 4 copies)
 
-Consider a standard POSIX read. Your code calls `read()`, builds a PyTorch tensor, and calls `.to('cuda')`. In that sequence, the data cannot move straight from the storage controller into GPU memory. Instead, it bounces through host CPU memory up to four times:
+Start with the most common case, a standard POSIX read. Your code calls `read()`, builds a PyTorch tensor, and calls `.to('cuda')`. A tensor is a multidimensional array of numbers, the basic data type in PyTorch. In that sequence, the data cannot move straight from the storage controller into GPU memory. Instead, it bounces through host CPU memory up to four times. Here is what each bounce looks like.
 
-1. **Copy 1, Hardware DMA to Kernel Page Cache:** The storage NIC or NVMe controller moves the file blocks over the PCIe bus into the Linux kernel's page cache, which lives in pageable host DRAM.
-2. **Copy 2, Kernel-to-User CPU Copy:** The host CPU takes an interrupt, switches context, and runs a CPU-driven memcpy from the kernel page cache into the application's user-space buffer in pageable DRAM.
-3. **Copy 3, Pageable-to-Pinned Host Staging Copy:** The GPU's DMA engine cannot safely read pageable memory, because the kernel could swap or move those pages mid-transfer. So calling `.to('cuda')` on an unpinned tensor makes the CUDA driver allocate a temporary page-locked staging buffer and run a second CPU copy in host DRAM. Setting `pin_memory=True` on the data loader avoids this step by landing batches in pinned memory up front.
-4. **Copy 4, Pinned Host DRAM to GPU HBM DMA:** Finally, the CUDA driver programs the GPU's copy engine to move the batch from pinned host DRAM across the PCIe bus into GPU memory.
+1. Copy 1, hardware DMA to the kernel page cache: The storage NIC or NVMe controller moves the file blocks over the PCIe bus into the Linux kernel's page cache, which lives in pageable host DRAM. Pageable means the operating system is allowed to move or write out those pages whenever it likes.
+2. Copy 2, kernel-to-user CPU copy: The host CPU takes an interrupt, which is a signal that wakes it up to handle the device. It switches context to the reading program. Then it runs a CPU-driven memcpy from the kernel page cache into the application's user-space buffer in pageable DRAM. A memcpy is a plain memory-to-memory copy, so every byte passes through a CPU core.
+3. Copy 3, pageable-to-pinned host staging copy: The GPU's DMA engine cannot safely read pageable memory, because the kernel could swap or move those pages mid-transfer. So calling `.to('cuda')` on an unpinned tensor makes the CUDA driver allocate a temporary page-locked staging buffer and run a second CPU copy in host DRAM. Setting `pin_memory=True` on the data loader avoids this step by landing batches in pinned memory up front. Pinned memory is page-locked, so the kernel keeps it in place for the whole transfer.
+4. Copy 4, pinned host DRAM to GPU HBM DMA: Finally, the CUDA driver programs the GPU's copy engine to move the batch from pinned host DRAM across the PCIe bus into GPU memory. HBM is the high-bandwidth memory packaged next to the GPU die.
 
 ```text
 Host DRAM Traffic & Copy Accounting per 10 GB Read:
@@ -187,11 +186,13 @@ Host DRAM Traffic & Copy Accounting per 10 GB Read:
   - Fix (pin_collate with .pin_memory()): loader dropped from 120 ms to 30 ms (4x faster), GPU util rose to 94%, throughput reached 58 GB/s.
 ```
 
-The numbers show what this costs you in practice. In a production training run, throughput stalled at 45 GB per second instead of 60 GB per second. GPUs sat idle for 22 percent of every step. Timing the data loader showed 120 ms per batch, and `nvidia-smi dmon` showed the PCIe copy engine capped at 60 percent utilization. The check `batch[0].is_pinned()` returned `False`. That result proved every `.to('cuda')` call was copying from pageable memory. Adding a custom collation function that pinned batches cut loader time from 120 ms down to 30 ms. GPU utilization climbed to 94 percent, and throughput reached 58 GB per second.
+The numbers show what this costs in a real run. In a production training run, throughput stalled at 45 GB per second instead of 60 GB per second. GPUs sat idle for 22 percent of every step. Timing the data loader showed 120 ms per batch, and `nvidia-smi dmon` showed the PCIe copy engine capped at 60 percent utilization. The check `batch[0].is_pinned()` returned `False`. That result showed that every `.to('cuda')` call was copying from pageable memory. Adding a custom collation function that pinned batches cut loader time from 120 ms down to 30 ms. Collation is the step that gathers individual samples into one batch. GPU utilization climbed to 94 percent, and throughput reached 58 GB per second. The lesson is that one small check can point at a stall that the aggregate numbers hide.
 
 ### 3.2 GPUDirect Storage (`GDS`) architecture: 1 direct P2P DMA copy
 
-**GPUDirect Storage** removes the host DRAM bounce buffer completely. It is part of the NVIDIA Magnum IO stack. It pairs the `nvidia-fs.ko` kernel driver with the user-space `libcufile.so` library. The application registers GPU memory buffers directly with `cuFileBufRegister`, then reads or writes through `cuFileRead` and `cuFileWrite`.
+Picture the same node after an engineer turns on GPUDirect Storage and expects the data path to get faster.
+
+The fix is to remove the host DRAM bounce buffer entirely. **GPUDirect Storage** is part of the NVIDIA Magnum IO stack, which is NVIDIA's set of libraries for moving data efficiently between machines and GPUs. It pairs the `nvidia-fs.ko` kernel driver with the user-space `libcufile.so` library. The application registers GPU memory buffers directly with `cuFileBufRegister`, then reads or writes through `cuFileRead` and `cuFileWrite`. Registering a buffer tells the driver where the GPU memory lives, so the storage device can place data into it directly.
 
 ```mermaid
 flowchart LR
@@ -208,7 +209,7 @@ flowchart LR
     end
 ```
 
-The table sets the three paths side by side, with a benchmark result for each. Notice that the direct path cuts the copies from four to one. It also removes the host DRAM payload traffic completely.
+The table puts the three paths side by side, with a benchmark result for each row. Read the first row first, because the copy count explains most of the other differences. The direct path cuts the copies from four to one. It also removes the host DRAM payload traffic completely. Payload here means the data itself, not the control messages that coordinate the transfer.
 
 | Metric / Path Attribute | Traditional Unpinned POSIX (`read` + `.to('cuda')`) | Traditional Pinned (`pin_memory=True`) | GPUDirect Storage (`cuFileRead` + `nvidia-fs`) |
 |---|---|---|---|
@@ -220,22 +221,24 @@ The table sets the three paths side by side, with a benchmark result for each. N
 | **`gdsio` average I/O latency** | `~1.90 ms` | `1.25 ms` (`gdsio -x 2`) | **`1.00 ms` (`gdsio -x 0`, `-20%` latency)** |
 | **VAST / Hopper H100 RDMA read uplift** | Baseline | Baseline | **`+20%` on `A100`, `+30%+` on `H100`** |
 
-Two practical rules govern GPUDirect Storage in production.
+It helps to see the copy count as a budget. Every copy costs memory bandwidth, and every copy also waits for the CPU or a DMA engine. A job that moves a batch four times pays for four waits, even when each wait looks small on its own. The direct path does not make the disk faster. It removes the stops in the middle, so the disk's speed reaches the GPU with less loss.
 
-1. **Kernel filesystem and `O_DIRECT` requirement:** GPUDirect Storage needs a kernel-level filesystem client integrated with `nvidia-fs`. Supported options include EXT4 or XFS over local NVMe, Lustre, WEKA, BeeGFS, VAST NFS-over-RDMA, and IBM Storage Scale. User-space FUSE filesystems cannot use it, because they bounce buffers through user space and lack kernel DMA hooks.
-2. **Compatibility mode trap:** In `/etc/cufile.json`, `allow_compat_mode: true` lets `libcufile` silently fall back to POSIX host-memory reads. That happens whenever `nvidia-fs` or the mount lacks direct DMA support. During cluster qualification, set `"allow_compat_mode": false` instead. Then confirm that the counters in `/proc/driver/nvidia-fs/stats` increment, while `__memcpy_avx2` disappears from `perf record`. Keep one difference in mind: `cuda-checkpoint`, used with CRIU for process migration, is separate from GPUDirect Storage. It copies device memory into host driver memory during suspend rather than using direct storage DMA.
+Two practical rules govern GPUDirect Storage in production. Both are easy to miss, so check them early, before you trust any benchmark.
 
-Before you assume GPUDirect Storage is speeding up your job, disable compatibility mode in `/etc/cufile.json` and check `/proc/driver/nvidia-fs/stats`.
+1. Kernel filesystem and `O_DIRECT` requirement: GPUDirect Storage needs a kernel-level filesystem client that is integrated with `nvidia-fs`. The kernel is the one place where the storage driver and the GPU driver can meet directly. Supported options include EXT4 or XFS over local NVMe, Lustre, WEKA, BeeGFS, VAST NFS-over-RDMA, and IBM Storage Scale. User-space FUSE filesystems cannot use it, because FUSE, or filesystem in user space, runs the filesystem logic in an ordinary program. The data therefore passes through that program on the way, and the kernel's DMA hooks are never used.
+2. Compatibility mode trap: In `/etc/cufile.json`, `allow_compat_mode: true` lets `libcufile` silently fall back to POSIX host-memory reads. That happens whenever `nvidia-fs` or the mount lacks direct DMA support. Your job still runs, only slower. During cluster qualification, which is the testing you do before you trust a node with real jobs, set `"allow_compat_mode": false` instead. Then confirm that the counters in `/proc/driver/nvidia-fs/stats` increment, while `__memcpy_avx2` disappears from `perf record`. Keep one difference in mind: `cuda-checkpoint`, used with checkpoint/restore in userspace (CRIU) for process migration, is separate from GPUDirect Storage. It copies device memory into host driver memory during suspend rather than using direct storage DMA.
+
+Before you assume GPUDirect Storage is speeding up your job, disable compatibility mode in `/etc/cufile.json` and check `/proc/driver/nvidia-fs/stats`. A job that runs fine in compatibility mode can look healthy while the direct path is never used at all.
 
 ---
 
 ## 4. Bandwidth math, NUMA/PCIe locality, and page cache pollution
 
-Suppose the array is sharded properly and GPUDirect Storage is enabled. Three sizing and placement questions still remain. How much steady read bandwidth and checkpoint write bandwidth do you need? Are your CPU workers on the right NUMA socket? And will large shuffled datasets thrash the Linux page cache?
+Suppose the array is sharded properly and GPUDirect Storage is enabled. The harder questions still come next. Three sizing and placement questions remain. How much steady read bandwidth and checkpoint write bandwidth do you need? Are your CPU workers on the right NUMA socket? Will large shuffled datasets thrash the Linux page cache? A socket is one physical CPU package on the motherboard. Answer these three questions before the first big job, not after it stalls.
 
 ### 4.1 Per-GPU, per-node, and per-rack bandwidth scaling
 
-How much sustained read bandwidth does a cluster actually need? A common baseline for multimodal and LLM training is **200 MB per second per GPU**. You get that figure by multiplying bytes per sample by samples per second on each GPU. Lighter text-only workloads may need 50 to 150 MB per second per GPU. Heavy video or uncompressed multimodal workloads can require 400 to 1,000 MB per second per GPU.
+Guessing is a poor way to size a cluster, so start with a per-GPU figure. How much sustained read bandwidth does a cluster actually need? A common baseline for multimodal and LLM training is **200 MB per second per GPU**. You get that figure by multiplying bytes per sample by samples per second on each GPU. Think of it as the appetite of one GPU. Lighter text-only workloads may need 50 to 150 MB per second per GPU. Heavy video or uncompressed multimodal workloads can require 400 to 1,000 MB per second per GPU. Once you have the per-GPU figure, multiply it by the GPUs in a node, a rack, or the whole cluster, as the block below does.
 
 ```text
 Cluster Storage Read & Synchronous Checkpoint Write Scaling Formulas:
@@ -250,15 +253,15 @@ Cluster Storage Read & Synchronous Checkpoint Write Scaling Formulas:
       Wide striping (lfs setstripe -c 32): 25 OSTs = 20.0 GB/s (25 s), 32 OSTs = 25.6 GB/s (20-25 s; < 2-5 s with Tier 1 NVMe stage).
 ```
 
-Checkpoint writes are a different problem. They come in short, intense bursts, and the whole cluster waits for them. Suppose a 500B-parameter model writes a 2 TB checkpoint across 256 nodes every two hours. The SLA says the pause must finish in under 60 seconds. Dividing 2,000 GB by 60 seconds gives 33.33 GB per second of sustained write throughput. Meeting that target takes at least 42 Lustre Object Storage Targets, each rated at 800 MB per second.
+Checkpoint writes are a different problem. They come in short, intense bursts, and the whole cluster waits for them. Picture a job where every GPU stops at once and waits for the save to finish. Suppose a 500B-parameter model writes a 2 TB checkpoint across 256 nodes every two hours. The SLA says the pause must finish in under 60 seconds. Dividing 2,000 GB by 60 seconds gives 33.33 GB per second of sustained write throughput. Meeting that target takes at least 42 Lustre Object Storage Targets, each rated at 800 MB per second. Notice that the SLA sets the number, not the average. A checkpoint that takes a long time is fine for a backup window, but it is terrible for a training pause.
 
-Here is a smaller case: a 500 GB checkpoint on a 40 GB per second Lustre cluster. The arithmetic says the write should take 12.5 seconds. In practice, it often stalls training for 45 seconds. The cause is striping. By default, a checkpoint directory may spread files across only four storage targets. Four targets at 800 MB per second each cap the write at 3.2 GB per second. Widen the stripe count to 25 or 32 targets with `lfs setstripe -c 32`, and write bandwidth rises above 20 GB per second, which cuts the pause in half. Staging the checkpoint to local NVMe first shrinks the stall even further, down to a few seconds.
+Here is a smaller case, and it shows why the stripe count matters. A 500 GB checkpoint on a 40 GB per second Lustre cluster should take 12.5 seconds in theory. Striping spreads one file across several storage targets, so the write can run in parallel. In practice, the write often stalls training for 45 seconds. The cause is striping. By default, a checkpoint directory may spread files across only four storage targets. Four targets at 800 MB per second each cap the write at 3.2 GB per second. Widen the stripe count to 25 or 32 targets with `lfs setstripe -c 32`, and write bandwidth rises above 20 GB per second, which cuts the pause in half. Staging the checkpoint to local NVMe first shrinks the stall even further, down to a few seconds. Staging means writing to fast local drives first, then copying to shared storage in the background.
 
 ### 4.2 NUMA and PCIe topology alignment (`PIX`/`PHB` vs `SYS`)
 
-Inside a dual-socket GPU server, each GPU, storage NIC, and NVMe drive hangs off one specific CPU socket. That socket's PCIe root complex is the path they use. A data loader thread on the wrong socket creates a problem. Every memory access and PCIe transfer must cross the inter-socket link.
+Picture a dual-socket GPU server, which has two CPU chips. Each chip has its own memory and its own PCIe root complex, the hub that hands out PCIe connections to devices. Each GPU, storage NIC, and NVMe drive hangs off one specific CPU socket, and that socket's root complex is the path they use. A data loader thread on the wrong socket creates a problem. Every memory access and PCIe transfer must then cross the inter-socket link, the wire that joins the two CPU chips.
 
-The `nvidia-smi topo -m` codes tell you how far apart a GPU and a device sit. The closer they are, the better the GDS path.
+The `nvidia-smi topo -m` codes tell you how far apart a GPU and a device sit. The closer they are, the better the GDS path. Read the codes from best to worst, starting with `PIX`, then `PXB`, `PHB`, `NODE`, and `SYS`. Each code names the hop that the traffic has to cross.
 
 | `nvidia-smi topo -m` Code | Meaning | P2P / GDS Path Quality | Typical Bandwidth Impact |
 |---|---|---|---|
@@ -268,34 +271,36 @@ The `nvidia-smi topo -m` codes tell you how far apart a GPU and a device sit. Th
 | **`NODE`** | Connection traversing `PCIe` and interconnect between NUMA nodes within a socket | Suboptimal | `~88%` retention (`~12%` penalty) |
 | **`SYS`** | Connection crossing the inter-socket interconnect (`Intel UPI` / `AMD Infinity Fabric`) | **Poor / GDS P2P often disabled or severely throttled** | `~55–72%` retention (`20–30%+` throughput loss; DRAM latency doubles from `50–55 ns` to `100–110 ns`) |
 
-Aim for `PIX`, `PXB`, or `PHB`, and treat `SYS` as a warning sign.
+Read the table as a ladder. The codes at the top keep the GPU and the NIC close together, and the codes near the bottom send the traffic over longer routes. When you see `SYS` in a matrix, it does not prove that a job is broken. It tells you that the placement is costing bandwidth, and that the placement is worth fixing before you blame storage.
 
-Here is a concrete case. `GPU0` and `NIC0` sit on the first NUMA node, but the Linux scheduler places the PyTorch data loader workers on the second. Now every memory access crosses the socket interconnect, and DRAM latency doubles. Pinning the process and its memory to the local socket with `numactl -N 0 -m 0` removes that cross-socket traffic. It recovers 20 to 30 percent of the lost throughput.
+Aim for `PIX`, `PXB`, or `PHB`, and treat `SYS` as a warning sign. A quick look at the topology output before a run catches most of these problems.
 
-On NVIDIA Grace Blackwell systems, the 72-core Grace CPU connects to the Blackwell GPU over NVLink-C2C, at up to 900 GB per second bidirectional bandwidth. These GPUs also include a hardware **Decompression Engine** for LZ4, Snappy, Deflate, and `nvJPEG`. Compressed batches can cross the bus and unpack on the GPU, so the CPU cores stay free.
+Here is a concrete case. `GPU0` and `NIC0` sit on the first NUMA node, but the Linux scheduler places the PyTorch data loader workers on the second. The scheduler has no idea where the GPU sits, so it can pick the far socket. Now every memory access crosses the socket interconnect, and DRAM latency doubles. Pinning the process and its memory to the local socket with `numactl -N 0 -m 0` removes that cross-socket traffic. It recovers 20 to 30 percent of the lost throughput.
+
+On NVIDIA Grace Blackwell systems, the 72-core Grace CPU connects to the Blackwell GPU over NVLink-C2C, a fast chip-to-chip link. Its bandwidth reaches up to 900 GB per second bidirectional, meaning in both directions at once. These GPUs also include a hardware **Decompression Engine** for LZ4, Snappy, Deflate, and `nvJPEG`. LZ4, Snappy, and Deflate are compression formats, and nvJPEG is a JPEG decoder. Compressed batches can cross the bus and unpack on the GPU, so the CPU cores stay free for other work.
 
 ### 4.3 Linux Page Cache pollution vs `O_DIRECT`
 
-The Linux kernel automatically caches recently read file blocks in free host DRAM. You can see that cache as `cache` in `vmstat` and as `Cached` in `/proc/meminfo`. Whether the cache helps or hurts depends on how the dataset working set compares with available host RAM:
+Picture the second epoch of a training run. The first epoch already read the whole dataset, so the second epoch should be fast, if the cache kept that data. The Linux kernel automatically caches recently read file blocks in free host DRAM. You can see that cache as `cache` in `vmstat` and as `Cached` in `/proc/meminfo`. Whether the cache helps or hurts depends on how the working set compares with available host RAM. The working set is the part of the dataset your job touches over and over:
 
-1. **Regime A, Working set fits in RAM:** When a 120 GB dataset runs on a node with 256 GB of free RAM, the working set stays inside the 85 percent safe memory ceiling. The first epoch fills the page cache from storage. Every later epoch reads straight from host DRAM at microsecond latency, with a 95 percent hit rate. Keep buffered I/O enabled, then raise `read_ahead_kb` from its 128 KB default up to 2,048 or 4,096 KB with `blockdev --setra`.
-2. **Regime B, Working set exceeds RAM:** When a shuffled 4 TB dataset runs on a node with 512 GB of RAM, every cached page gets evicted long before the next epoch needs it. The cache hit rate drops below 4 to 15 percent. Yet the kernel still burns CPU cycles allocating page frames and running `kswapd` memory reclaim, while I/O wait climbs to 15 percent. In this regime, bypass the OS page cache completely using **`O_DIRECT`**, GPUDirect Storage `cuFileRead`, or direct-I/O filesystems like 3FS.
+1. Regime A, working set fits in RAM: When a 120 GB dataset runs on a node with 256 GB of free RAM, the working set stays inside the 85 percent safe memory ceiling. The first epoch fills the page cache from storage. Every later epoch reads straight from host DRAM at microsecond latency, with a 95 percent hit rate. A hit rate is the share of reads served from the cache. Keep buffered I/O enabled, then raise `read_ahead_kb` from its 128 KB default up to 2,048 or 4,096 KB with `blockdev --setra`.
+2. Regime B, working set exceeds RAM: When a shuffled 4 TB dataset runs on a node with 512 GB of RAM, every cached page gets evicted long before the next epoch needs it. The cache hit rate drops below 4 to 15 percent. Yet the kernel still burns CPU cycles allocating page frames and running `kswapd` memory reclaim, while I/O wait climbs to 15 percent. Page frames are the chunks of memory the kernel hands out, and reclaim is the work of taking them back. In this regime, bypass the OS page cache completely using **`O_DIRECT`**, GPUDirect Storage `cuFileRead`, or direct-I/O filesystems like 3FS.
 
-Before you launch a multi-epoch job, compare the dataset shard size per node against free host RAM. That comparison tells you whether to use buffered read-ahead or `O_DIRECT`.
+Before you launch a multi-epoch job, which is a job that reads the dataset more than once, compare the dataset shard size per node against free host RAM. That comparison tells you whether to use buffered read-ahead or `O_DIRECT`. It is a quick check that can save a lot of wasted time.
 
 ---
 
 ## 5. Storage network fabrics and Kubernetes CSI integration
 
-Once storage moves outside the compute node, two infrastructure layers decide whether remote drives can still feed the GPUs at line rate. The first is the backend network fabric, which must carry NVMe commands without packet loss or excessive latency. The second is the Kubernetes container runtime, which must expose shared filesystems and shared memory cleanly to every worker pod.
+Picture a remote drive sitting in a storage rack two rows away from the GPU servers. Once storage moves outside the compute node, two infrastructure layers decide whether that drive can still feed the GPUs at line rate. Line rate means the link runs at its full rated speed. The first layer is the backend network fabric, which must carry NVMe commands without packet loss or excessive latency. The second is the Kubernetes container runtime, which must expose shared filesystems and shared memory cleanly to every worker pod. A pod is the smallest unit Kubernetes schedules, usually one container or a small group of them.
 
 ### 5.1 NVMe-oF (`TCP` vs `RDMA` over `RoCEv2` vs `InfiniBand`) and Fabric A/B design
 
-If you want a baseline, start with the local bus. A PCIe Gen5 link crosses its switch in about 100 nanoseconds and delivers 64 GB per second across 16 lanes. That is enough to drive a 400 Gbps storage NIC at line rate. Across a data center, AI clusters attach those NICs to dedicated backend storage networks.
+Start with the local bus, because it sets the baseline. A PCIe Gen5 link crosses its switch in about 100 nanoseconds and delivers 64 GB per second across 16 lanes. A lane is one serial wire pair in the PCIe link. That is enough to drive a 400 Gbps storage NIC at line rate. Across a data center, AI clusters attach those NICs to dedicated backend storage networks, so storage traffic can travel on its own wires.
 
-The storage fabric is not built like the compute fabric. The compute fabric used for collectives is non-blocking and rail-optimized. The storage fabric commonly uses a **1:3 oversubscribed** leaf-spine topology, with **Fabric A and Fabric B path diversity**. Distance changes the choice again. Over distances beyond 40 kilometers, maintaining lossless RoCEv2 becomes impractical. Operators instead switch to deep-buffer Ethernet switches running NVMe-oF/TCP, or S3 over HTTPS and IPsec.
+The storage fabric is not built like the compute fabric. The compute fabric used for collectives is non-blocking and rail-optimized, which means the switches have enough capacity that no traffic path is squeezed. The storage fabric commonly uses a 1:3 oversubscribed leaf-spine topology, with Fabric A and Fabric B path diversity. Oversubscribed means the ports facing the servers together can send more than the uplinks can carry. In a leaf-spine design, each leaf switch connects to every spine switch. Path diversity means two separate networks carry the traffic, so one failed fabric does not stop storage. Distance changes the choice again. Over distances beyond 40 kilometers, maintaining lossless RoCEv2 becomes impractical. Operators instead switch to deep-buffer Ethernet switches running NVMe-oF/TCP, or S3 over HTTPS and IPsec.
 
-Under the hood, **NVMe over Fabrics** preserves the native NVMe queue model. It wraps 64-byte Submission Queue Entries and Completion Queue Entries inside fabric capsules. The table compares the four main options.
+Under the hood, NVMe over Fabrics preserves the native NVMe queue model. Submission Queue Entries are the commands the host sends, and Completion Queue Entries are the replies the drive returns. NVMe over Fabrics wraps 64-byte Submission Queue Entries and Completion Queue Entries inside fabric capsules, so the network carries the same request and reply records the local drive would see. The table compares the four main options.
 
 | Storage Network Option | Transport Encapsulation & Ports | Typical Switch / Fabric Latency | Lossless Fabric Required? | Parallel Shared File Access | Primary AI Factory Use Case |
 |---|---|---|---|---|---|
@@ -304,28 +309,30 @@ Under the hood, **NVMe over Fabrics** preserves the native NVMe queue model. It 
 | **`InfiniBand` Storage (`NVMe-oF/IB` / `LNet`)** | Native `IB` (`LRH` with `16`-bit `S-LID`/`D-LID` up to `48,000` nodes, `GRH`, `BTH` `RDMA_PRTYPE 02`, `ICRC`/`VCRC`) | `~300 ns` port-to-port IB switch latency | **Yes** (hardware `CBFC` credit-based flow control across `16` Virtual Lanes `VLs`, `64 B`/credit) | Via `Lustre` (`LNet`), `BeeGFS`, `GPFS`, or `WEKA` | Ultra-low-latency HPC/AI training storage and direct `GDS` over `NDR`/`HDR` |
 | **Parallel FS / `pNFS` over `RDMA`** | `POSIX` client (`open`, `read`, `write`, `stat`, `mmap`) over `RoCEv2` or `IB` (`WEKA`, `Lustre`, `BeeGFS`, `VAST`, `3FS`) | `300–900 ns` switch hop + `50–500 us` client driver | Recommended for `RDMA` transport | **Yes** (`ReadWriteMany` across `1,000+` GPU nodes with distributed metadata) | Primary `Tier 2` AI training datasets and synchronized checkpoint bursts |
 
-The key trade-off is the lossless requirement. TCP runs without a lossless fabric, so it is easier to deploy. RDMA and InfiniBand both need one, and you pay for that in tuning.
+The key trade-off is the lossless requirement. Lossless means the network never drops packets under congestion. TCP runs without a lossless fabric, so it is easier to deploy. RDMA and InfiniBand both need one, and you pay for that in tuning. Choose the transport by asking how much tuning your team can own, and then check the latency that the job actually needs.
 
 ### 5.2 Kubernetes CSI (`ReadWriteMany`), `hostPath` NVMe, and PyTorch `DataLoader` pipelining
 
-Standard cloud block CSI drivers give you `ReadWriteOnce` volumes, which are built for single-pod databases. Distributed training across dozens or thousands of pods needs **`ReadWriteMany` parallel filesystem CSI provisioners** instead. Common choices include WEKA CSI, Lustre CSI, and Google Cloud Managed Lustre. Pair them with three essential pod settings:
+Think about a database pod that needs one volume to itself. A cloud block volume fits that picture. Standard cloud block CSI drivers give you `ReadWriteOnce` volumes, which are built for single-pod databases. CSI, the Container Storage Interface, is the plugin standard that Kubernetes uses to attach storage. Distributed training across dozens or thousands of pods needs **`ReadWriteMany` parallel filesystem CSI provisioners** instead. Common choices include WEKA CSI, Lustre CSI, and Google Cloud Managed Lustre. Pair them with three essential pod settings:
 
-1. **Memory-backed `/dev/shm` `emptyDir` (`sizeLimit: 400Gi`):** Multi-worker PyTorch data loaders pass collated tensor batches to the main training process through POSIX shared memory at `/dev/shm`. NCCL uses it too. Docker and Kubernetes default `/dev/shm` to just 64 MiB. At that size, multi-worker loaders crash at once with `Bus error (core dumped)`.
-2. **GPUDirect Storage config injection (`CUFILE_ENV_PATH_JSON`):** Mount the validated `/etc/cufile.json` ConfigMap into the container. Then run the pod under `runtimeClassName: nvidia`, so the `/dev/nvidia-fs*` device nodes are exposed.
-3. **Local NVMe scratch via `hostPath` (`/mnt/nvme_raid_0/ai_scratch`):** Mount the node's local RAID 0 directory directly. That skips CSI overhead when you cache shards or stage checkpoints.
+1. Memory-backed `/dev/shm` `emptyDir` (`sizeLimit: 400Gi`): Multi-worker PyTorch data loaders pass collated tensor batches to the main training process through POSIX shared memory at `/dev/shm`. NCCL uses it too. Docker and Kubernetes default `/dev/shm` to just 64 MiB. At that size, multi-worker loaders crash at once with `Bus error (core dumped)`.
+2. GPUDirect Storage config injection (`CUFILE_ENV_PATH_JSON`): Mount the validated `/etc/cufile.json` ConfigMap into the container. Then run the pod under `runtimeClassName: nvidia`, so the `/dev/nvidia-fs*` device nodes are exposed.
+3. Local NVMe scratch via `hostPath` (`/mnt/nvme_raid_0/ai_scratch`): Mount the node's local RAID 0 directory directly. That skips CSI overhead when you cache shards or stage checkpoints.
 
-On the software side, the PyTorch `DataLoader` must overlap CPU batch preparation with GPU kernel execution. Then the next batch transfers while the current one computes:
+On the software side, the PyTorch `DataLoader` must overlap CPU batch preparation with GPU kernel execution. Think of it as a kitchen that prepares the next orders while the chef is still cooking. Then the next batch transfers while the current one computes:
 - Set `num_workers=8`, or scale it to your CPU core count. Enable `pin_memory=True` and raise the host limit with `ulimit -l unlimited`. Set `persistent_workers=True` so workers do not respawn every epoch. Then set `prefetch_factor=4` to queue 32 batches ahead.
-- Call `batch.to(device, non_blocking=True)` on a dedicated CUDA copy stream. Then synchronize with `compute_stream.wait_stream(copy_stream)`.
-- Move heavy image or video decoding onto GPU hardware decoders, using **NVIDIA DALI** or `nvJPEG`. Pre-tokenize text offline with **NVIDIA NeMo Curator**, which writes memory-mappable `.bin` and `.idx` shards.
+- Call `batch.to(device, non_blocking=True)` on a dedicated CUDA copy stream. A stream is an ordered queue of GPU work, and non-blocking lets the CPU move on while the copy runs. Then synchronize with `compute_stream.wait_stream(copy_stream)`, so compute waits only for the copy it needs.
+- Move heavy image or video decoding onto GPU hardware decoders, using NVIDIA DALI or `nvJPEG`. Pre-tokenize text offline with NVIDIA NeMo Curator, which writes memory-mappable `.bin` and `.idx` shards.
 
-Before you deploy a multi-worker training pod, confirm that `/dev/shm` is backed by a large memory `emptyDir`, and that `persistent_workers=True` is set.
+These three settings belong together for a reason. A memory-backed `/dev/shm` gives the loader workers somewhere to hand off tensors. Local scratch gives you a fast place to stage shards and checkpoints. The GDS configuration lets the direct path exist in the first place. Missing any one of them can make a pod that starts fine fail later, under load, with an error that points somewhere else.
+
+Before you deploy a multi-worker training pod, confirm that `/dev/shm` is backed by a large memory `emptyDir`, and that `persistent_workers=True` is set. Those two checks prevent the most common startup failures in this section.
 
 ---
 
 ## Commands and configurations that matter
 
-The commands below were not run on live hardware. They target live Linux GPU nodes with Lustre, WEKA, NVMe hardware, and NVIDIA GDS drivers, so this repository could not run them. If you want something you can run today, the Hands-on lab covers the Python verification suite that this repository does execute.
+Picture a new GPU node that has just joined the pool and needs a storage check before anyone trusts it with a job. The commands below were not run on live hardware. They target live Linux GPU nodes with Lustre, WEKA, NVMe hardware, and NVIDIA GDS drivers, so this repository could not run them. Treat each block as a checklist for a node you own, and read the output against the failure table later in the chapter. If you want something you can run today, the Hands-on lab covers the Python verification suite that this repository does execute.
 
 ### 1. Layer-by-layer data path inspection (`Layers 1–8`) ``
 
@@ -368,6 +375,8 @@ nvidia-smi dmon -s t -c 10
 nvidia-smi -i 0 --query-gpu=memory.used,memory.total,memory.free --format=csv,nounits
 ```
 
+Read the layer 1 output from the top down. The `smartctl` lines tell you whether the drive itself is reporting errors. The `iostat` lines tell you whether the drive is busy and how long each read waits. A drive can pass the health check and still be the bottleneck, so the busy-queue view from `iostat` matters too. That is why the two commands are read together.
+
 ### 2. GPUDirect Storage (`GDS`) verification and `gdsio` benchmarking ``
 
 ```bash
@@ -384,6 +393,8 @@ cat /proc/driver/nvidia-fs/stats
 /usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 0
 ```
 
+The benchmark pair in the block above is the cleanest test of the GPUDirect Storage path. Run the same `gdsio` command twice, once with `-x 2` and once with `-x 0`, and change nothing else. If the second run is not faster, the direct path is not being used, and you should go back to the compatibility mode check in section 3.
+
 Use this `/etc/cufile.json` configuration when you qualify a cluster, with compatibility fallback disabled ``:
 
 ```json
@@ -399,6 +410,8 @@ Use this `/etc/cufile.json` configuration when you qualify a cluster, with compa
   }
 }
 ```
+
+Benchmarks answer a narrow question each. A sequential read test tells you what the array can stream. A checkpoint burst test tells you how the array handles synchronized writes. A metadata stress test tells you how the Metadata Server copes with many small operations. Run the test that matches the phase that hurts, rather than the one that is easiest to run.
 
 ### 3. Benchmarking sequential reads (`fio`), checkpoint bursts (`fio`), and MDS (`mdtest`) ``
 
@@ -418,6 +431,8 @@ fio --name=checkpoint_write_burst \
 # (untested here) 3. Stress-test Metadata Server (MDS) across 128 MPI ranks
 mpirun -np 128 mdtest -d /mnt/lustre/metadata_stress_test -i 5 -b 10 -z 3 -L -I 100000 -y -u -t
 ```
+
+A Kubernetes pod is where all of these settings finally meet the workload. The storage class decides how the volume is provisioned. The volume mounts decide which paths the training code sees. The memory-backed `/dev/shm` mount decides whether the data loader workers can share tensors. The sample manifest below puts those choices in one file, so you can read them together.
 
 ### 4. Kubernetes `RWX` CSI StorageClass and GDS-enabled training Pod ``
 
@@ -480,7 +495,7 @@ spec:
 
 ## How it fails
 
-When your AI storage path goes wrong, the symptom rarely names the cause. You see low GPU utilization or a hung job, and you have to work back to the layer that failed. The table lists six common failures, what each one looks like, its root cause, the command that confirms it, and the fix.
+When your AI storage path goes wrong, the symptom rarely names the cause. Picture a job with GPU utilization far below normal and no step logged for an hour. You see low GPU utilization or a hung job, and you have to work back to the layer that failed. The table lists six common failures, what each one looks like, its root cause, the command that confirms it, and the fix.
 
 | Failure Mode | Symptom | Root Cause | Diagnosis Commands | Architectural Fix |
 |---|---|---|---|---|
@@ -493,11 +508,13 @@ When your AI storage path goes wrong, the symptom rarely names the cause. You se
 
 ---
 
-Start with the symptom column, then run the diagnosis command before you change anything. A fix you cannot confirm is only a guess.
+Start with the symptom column, then run the diagnosis command before you change anything. Work through the table one row at a time. Do not apply the architectural fix until the diagnosis command has backed up that row's root cause. A fix you cannot confirm is only a guess.
 
 ---
 
 ## Hands-on lab
+
+Why does the lab use a local script first? The local script runs anywhere, so you can check the arithmetic before you spend time on a live node. The cluster steps need real hardware, real drivers, and real mounts. Doing the local check first makes sure the numbers you later compare on the cluster are the ones you expect.
 
 ### Venue and scope
 
@@ -506,7 +523,7 @@ Start with the symptom column, then run the diagnosis command before you change 
 
 ### Part A: Run the self-checking AI data path lab locally
 
-Start with the local script. It checks all five workload phases, the metadata saturation math, and the bounce-buffer copies against GPUDirect Storage. It also checks cluster bandwidth scaling, NUMA and PCIe locality penalties, and page cache thrashing against `O_DIRECT`. Run it like this:
+Start with the local script, because it needs only Python 3 and no cluster. It checks all five workload phases, the metadata saturation math, and the bounce-buffer copies against GPUDirect Storage. It also checks cluster bandwidth scaling, NUMA and PCIe locality penalties, and page cache thrashing against `O_DIRECT`. Run it like this:
 
 ```bash
 python3 -B code/part13/ai_data_path_lab.py
@@ -544,9 +561,11 @@ Expected output (verified):
 Summary: 26 passed, 0 failed (total 26)
 ```
 
+Treat the local run as a test of your own tools, not of the cluster. A pass means the math and the copy accounting are consistent. It does not mean your storage is fast. The live cluster checks, such as the `fio` and `lfs` commands in the earlier sections, are the ones that answer that question.
+
 ### Part B: Baseline a GPU node storage path on Linux / GKE ``
 
-When you onboard a new GPU node pool, capture a five-stage storage baseline before you launch distributed jobs. The script below records each stage to one file, so you can compare later runs against it.
+Picture a new GPU node pool that has just come online. Before any distributed job runs there, capture a five-stage storage baseline. A baseline is a snapshot of healthy numbers, so that a slow day later has something to compare against. The script below records each stage to one file, so you can compare later runs against it. Run it on one node first, then keep the output with that node's records.
 
 ```bash
 #!/bin/bash
@@ -579,32 +598,36 @@ cat /proc/meminfo | grep -E "Cached|Buffers|MemAvailable|MemFree" >> "$OUT"
 
 ---
 
-If the self-check reports anything other than 26 passed, stop and read the failing check name before you trust the numbers above it.
+If the self-check reports anything other than 26 passed, stop. Read the failing check name, because each name points at one part of the math. Only then should you trust the numbers above it.
 
 ---
+
+These mistakes share one pattern. Each one hides behind a number that looks fine on its own, such as a fast array, a full cache, or a loader that runs without errors. The fix is to check that number against the layer it describes, rather than trusting the headline figure.
 
 ## Common first mistakes
 
-Most storage surprises in AI jobs come from a handful of habits. Each mistake below looks harmless until the job slows down or fails.
+Most storage surprises in AI jobs come from a few habits that look harmless on the first day. Each mistake below looks harmless until the job slows down or fails. Each one also has a quick check you can run before the next launch.
 
-1. **Benchmarking AI storage with 4 KB random OLTP profiles or cached files smaller than host RAM.** Suppose you run `fio` with a 10 GB test file on a node with 256 to 2,000 GB of RAM, and you leave out `--direct=1`. The result measures DDR5 page cache bandwidth, which tops 50 GB per second. It does not measure storage throughput. Always set `--size` larger than host RAM, or pass `--direct=1` with 1 MB to 8 MB block sizes that match dataset reads and checkpoint writes.
-2. **Leaving `/dev/shm` at the 64 MiB container default.** Multi-worker PyTorch data loader pipelines with `num_workers=8` and `prefetch_factor=4` allocate tens of gigabytes of shared memory in `/dev/shm`. On eight-GPU nodes, mount a memory-backed `emptyDir` with `sizeLimit: 400Gi` at `/dev/shm`.
-3. **Assuming GPUDirect Storage is active without checking `/proc/driver/nvidia-fs/stats`.** The default in `/etc/cufile.json` is `"allow_compat_mode": true`. A misconfigured mount or an unsupported FUSE filesystem then falls back to CPU bounce-buffer copies without a warning. Your job keeps running, only slower, and nothing raises an error.
-4. **Treating local RAID 0 NVMe scratch as durable storage.** Node-local NVMe has no cross-node replication. If a compute node fails, any checkpoint staged only on local NVMe is lost until it is flushed to shared parallel storage or object storage.
-5. **Using `num_workers=0` in production or forgetting `persistent_workers=True`.** Setting `num_workers=0` is a useful temporary diagnostic, because it isolates pure Python transform time. In production, though, it serializes file reads with GPU execution. Forgetting `persistent_workers=True` makes worker processes respawn and re-initialize file handles at the start of every epoch.
+1. Benchmarking AI storage with 4 KB random OLTP profiles or cached files smaller than host RAM. OLTP means online transaction processing, the small random-access pattern of databases. Suppose you run `fio` with a 10 GB test file on a node with 256 to 2,000 GB of RAM, and you leave out `--direct=1`. The file fits in memory, so the result measures DDR5 page cache bandwidth, which tops 50 GB per second. It does not measure storage throughput. Always set `--size` larger than host RAM, or pass `--direct=1` with 1 MB to 8 MB block sizes that match dataset reads and checkpoint writes. A benchmark that reads cached data tells you about the cache, not the drives.
+2. Leaving `/dev/shm` at the 64 MiB container default. Multi-worker PyTorch data loader pipelines with `num_workers=8` and `prefetch_factor=4` allocate tens of gigabytes of shared memory in `/dev/shm`. On eight-GPU nodes, mount a memory-backed `emptyDir` with `sizeLimit: 400Gi` at `/dev/shm`. The small default makes the crash look like a random worker failure, which is why people often chase the wrong bug first.
+3. Assuming GPUDirect Storage is active without checking `/proc/driver/nvidia-fs/stats`. The default in `/etc/cufile.json` is `"allow_compat_mode": true`. A misconfigured mount or an unsupported FUSE filesystem then falls back to CPU bounce-buffer copies without a warning. Your job keeps running, only slower, and nothing raises an error. Check the stats counters once after a job starts, and the silent fallback becomes visible.
+4. Treating local RAID 0 NVMe scratch as durable storage. RAID 0 stripes data across drives for speed, with no redundancy. Node-local NVMe has no cross-node replication. If a compute node fails, any checkpoint staged only on local NVMe is lost until it is flushed to shared parallel storage or object storage. Keep a durable copy of every checkpoint that matters.
+5. Using `num_workers=0` in production or forgetting `persistent_workers=True`. Setting `num_workers=0` is a useful temporary diagnostic, because it isolates pure Python transform time. In production, though, it serializes file reads with GPU execution. Forgetting `persistent_workers=True` makes worker processes respawn and re-initialize file handles at the start of every epoch. Use `num_workers=0` only while you are diagnosing, then switch back.
 
 ---
 
+Every mistake above has a matching check in the sections you have just read. Use the check first, and only then change a setting. A setting you changed without a check is one you cannot explain to the next person on call.
+
 ## Exercises
 
-Work through these six exercises with a pencil and a calculator first. The reference block after the list holds every constant and the target answer, so you can check yourself.
+Try these six exercises with a pencil and a calculator before you look anywhere else. The reference block after the list holds every constant and the target answer, so you can check your work.
 
-1. **Metadata Server saturation and repackaging:** You are reviewing the Lustre cluster described in the reference block, with its Object Storage Targets and capacity. Its single Metadata Server handles 50,000 open operations per second. A 128-worker job needs 150 MB per second per worker. Work out the aggregate open rate when the workers read 220 KB files, and how far over its limit the Metadata Server runs. Then work out the open rate after the dataset is repackaged into 10 MB WebDataset shards. Finally, check whether the 48 storage targets can sustain the 19.2 GB per second demand.
-2. **Bounce buffer versus GPUDirect Storage copies:** A node reads a 10 GB shard from a storage NIC into `GPU0` memory. For an unpinned POSIX read, a pinned `pin_memory=True` read, and a GPUDirect Storage `cuFileRead` transfer, list the memory copies, the PCIe bus traversals, and the total host DRAM traffic. Then use the `gdsio` baselines for CPU mode and GPUDirect Storage mode to work out the percentage throughput uplift and the latency reduction.
-3. **Sizing a node, an NVL72 rack, and a 1,024-GPU cluster:** Assume each GPU needs 200 MB per second of sustained training read throughput. Work out the aggregate read bandwidth for a single node, a rack, and a full cluster, using the GPU counts in the reference block. Then assume the cluster saves a 2 TB synchronous checkpoint every two hours, and the write pause must finish in under 60 seconds. Find the minimum write bandwidth that requires, and how many 800 MB per second Lustre targets the checkpoint must be striped across.
-4. **Diagnosing the 45-second checkpoint stall:** A 500 GB checkpoint on a 40 GB per second storage array should finish in 12.5 seconds in theory. In production it takes 45 seconds. Work out the effective bandwidth cap when the checkpoint directory uses its default stripe count. Then compute the new theoretical write bandwidth when the checkpoint is striped across 25 targets, and again across 32.
-5. **NUMA and PCIe topology penalty:** On a dual-socket server, `GPU0` and `NIC0` sit on the first NUMA node, with the baseline rate given in the reference block. Compare three things. Run the data loader locally, then run it on the second socket across the inter-socket `SYS` link. Check the DRAM access latency, whether GPUDirect Storage P2P is eligible, and the delivered throughput.
-6. **Choosing between page cache and `O_DIRECT`:** Use `evaluate_page_cache_vs_odirect` from `code/part13/ai_data_path.py` to decide between buffered page cache and `O_DIRECT` for two workloads. The first is a dataset of 120 GB on a node with 256 GB of free RAM. The second is a randomly shuffled dataset of 4,000 GB on a node with 512 GB of free RAM, as the reference block lists both.
+1. Metadata Server saturation and repackaging: Imagine you are reviewing the Lustre cluster described in the reference block. Its single Metadata Server handles 50,000 open operations per second. A 128-worker job needs 150 MB per second per worker. What is the aggregate open rate when the workers read 220 KB files? By how much does that rate run over the Metadata Server limit? What is the open rate after the dataset is repackaged into 10 MB WebDataset shards? Can the 48 storage targets sustain the 19.2 GB per second demand?
+2. Bounce buffer versus GPUDirect Storage copies: A node reads a 10 GB shard from a storage NIC into `GPU0` memory. Consider three reads of that shard: an unpinned POSIX read, a pinned `pin_memory=True` read, and a GPUDirect Storage `cuFileRead` transfer. For each read, count the memory copies. For each read, count the PCIe bus traversals. For each read, total the host DRAM traffic. Using the `gdsio` baselines for CPU mode and GPUDirect Storage mode, what is the percentage throughput uplift? By what percentage does the latency drop?
+3. Sizing a node, an NVL72 rack, and a 1,024-GPU cluster: Assume each GPU needs 200 MB per second of sustained training read throughput. Use the GPU counts in the reference block. What is the aggregate read bandwidth for a single node? What is it for a rack? What is it for a full cluster? Next, assume the cluster saves a 2 TB synchronous checkpoint every two hours. The write pause must finish in under 60 seconds. What is the minimum write bandwidth that requires? How many 800 MB per second Lustre targets must the checkpoint be striped across?
+4. Diagnosing the 45-second checkpoint stall: A 500 GB checkpoint on a 40 GB per second storage array should finish in 12.5 seconds in theory. In production it takes 45 seconds. What is the effective bandwidth cap when the checkpoint directory uses its default stripe count? What is the new theoretical write bandwidth when the checkpoint is striped across 25 targets? What is it when the checkpoint is striped across 32 targets?
+5. NUMA and PCIe topology penalty: On a dual-socket server, `GPU0` and `NIC0` sit on the first NUMA node. Use the baseline rate given in the reference block. First, run the data loader locally on the first socket. Then run it on the second socket, across the inter-socket `SYS` link. For each run, what is the DRAM access latency? Is GPUDirect Storage P2P eligible? What throughput does the loader deliver?
+6. Choosing between page cache and `O_DIRECT`: Use `evaluate_page_cache_vs_odirect` from `code/part13/ai_data_path.py` to make both decisions. Your first workload is a dataset of 120 GB on a node with 256 GB of free RAM. Should it use buffered page cache or `O_DIRECT`? Your second workload is a randomly shuffled dataset of 4,000 GB on a node with 512 GB of free RAM. Which mode should that one use? The reference block lists both workloads.
 
 ```text
 Exercise Input Parameters & Expected Verification Targets (code/part13/ai_data_path_lab.py):
@@ -617,18 +640,20 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/ai_data_p
 ```
 
 
-Check your answers against the reference block before you move on.
+Check your answers against the reference block before you move on. If a number is off by more than rounding, reread the stripe, shard, or tier step that produced it.
 
 ---
+
+Interviewers rarely ask for a list of tools. They give you a symptom and listen for whether you isolate one layer at a time. The questions below are written that way. The answers show an order of checks that works on a real node, and you can adapt that order to the cluster in front of you.
 
 ## Interview angles
 
 1. **"Your GPUs are at 30 percent utilization, but the storage network links are 80 percent idle. How do you isolate whether the bottleneck is storage media, metadata, network, or CPU preprocessing?"**
-   Don't guess from the aggregate bandwidth. Walk the data path one layer at a time. Start with metadata: check the open and stat rates with `lctl get_param llite.*.stats` or `strace -c -p <loader_pid>`. If opens exceed 50,000 per second, or stat eats 85 percent of syscall time, you have the small-file problem, and sharding into WebDataset or TFRecord is the fix. Next, measure client-to-storage throughput with `iperf3 -c storage-server -R`, and check `lfs df -h` for fill imbalance across storage targets. Then isolate the Python loader by comparing `num_workers=0` against `num_workers=8`. Finally, check CPU saturation and NUMA affinity with `numactl --hardware` and `nvidia-smi topo -m`, and verify `batch.is_pinned()` so transfers use DMA, not pageable CPU copies.
+   Start by refusing to guess from the aggregate bandwidth number, because it hides the layer that is slow. Walk the data path one layer at a time, starting at the top with metadata. Check the open and stat rates with `lctl get_param llite.*.stats` or `strace -c -p <loader_pid>`. If opens exceed 50,000 per second, or stat eats 85 percent of syscall time, you have the small-file problem. Sharding into WebDataset or TFRecord is the fix. Next, measure client-to-storage throughput with `iperf3 -c storage-server -R`, and check `lfs df -h` for fill imbalance across storage targets. Then isolate the Python loader by comparing `num_workers=0` against `num_workers=8`. Finally, check CPU saturation and NUMA affinity with `numactl --hardware` and `nvidia-smi topo -m`. Verify `batch.is_pinned()` as well, so transfers use DMA rather than pageable CPU copies.
 2. **"When does GPUDirect Storage materially improve performance, and how do you prove it is actually active?"**
-   GPUDirect Storage pays off when you read or write large amounts of data sequentially, as in checkpoint writes. It cuts three or four copies down to one direct P2P DMA transfer across PCIe, which only helps when the topology is `PIX`, `PXB`, or `PHB`. It will not fix a job that opens millions of tiny files, and it cannot run over user-space FUSE mounts. To prove it is active, set `"allow_compat_mode": false` in `/etc/cufile.json` and run `gdscheck -p`. Then benchmark `gdsio -x 2` against `gdsio -x 0`. Finally, confirm that `/proc/driver/nvidia-fs/stats` increments during training, and that `__memcpy_avx2` disappears from `perf record`.
+   GPUDirect Storage pays off when you read or write large amounts of data sequentially, as in checkpoint writes. It cuts three or four copies down to one direct P2P DMA transfer across PCIe. That only helps when the topology is `PIX`, `PXB`, or `PHB`. It will not fix a job that opens millions of tiny files, and it cannot run over user-space FUSE mounts. To prove it is active, set `"allow_compat_mode": false` in `/etc/cufile.json` and run `gdscheck -p`. Then benchmark `gdsio -x 2` against `gdsio -x 0`. Finally, confirm that `/proc/driver/nvidia-fs/stats` increments during training, and that `__memcpy_avx2` disappears from `perf record`.
 3. **"A 64-node training job hangs and four nodes have hundreds of `python3` processes stuck in Linux state `D` that ignore `kill -9`. What happened and how do you prevent it?"**
-   State D means uninterruptible kernel sleep, where a process waits on hardware or network filesystem I/O. `kill -9` cannot end it. The `dmesg` output often shows `rpc_wait_bit_killable`. In this case, a failed optical transceiver with rising symbol errors, or a dead storage router, left a hard-mounted filesystem client waiting forever for an RPC reply. Recovery starts out of band with `ipmitool chassis power reset`, then cable replacement. To prevent it, use redundant Fabric A and Fabric B storage paths. Also set bounded timeouts on read-only dataset mounts, so a broken link raises an error rather than wedging the kernel.
+   State D means uninterruptible kernel sleep, which is a wait on hardware or network filesystem I/O that the kernel will not let a signal cut short. That is why `kill -9` cannot end it. Check `dmesg` next, because the output often shows `rpc_wait_bit_killable`. In this case, a failed optical transceiver with rising symbol errors, or a dead storage router, left a hard-mounted filesystem client waiting forever for an RPC reply. A hard mount keeps retrying instead of giving up. Recovery starts out of band with `ipmitool chassis power reset`, which power cycles the node through its management controller, and then the bad cable gets replaced. To prevent it, use redundant Fabric A and Fabric B storage paths. Also set bounded timeouts on read-only dataset mounts, so a broken link raises an error rather than wedging the kernel.
 
 ---
 
