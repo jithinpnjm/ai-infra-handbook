@@ -22,9 +22,9 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An engineer speeds up one GPU kernel by ten percent, and the training step does not get any faster. The time simply went somewhere else. A training step passes through Python, the data loader, host-to-device copies, compiled kernels, the memory allocator and the multi-GPU collectives. A fix at one point can also cost memory. A small compute gain can inflate reserved GPU memory and crash a multi-node job hours after launch.
+Picture an engineer who speeds up one GPU kernel by ten percent, then watches the training step stay exactly as slow as before. The time did not disappear. It simply went somewhere else. A training step passes through Python, the data loader, host-to-device copies, compiled kernels, the memory allocator and the multi-GPU collectives. Host-to-device copies are the transfers that move data from CPU memory into GPU memory. Any one of those stages can hide the slow part. A fix at one point can also cost memory. A small compute gain can inflate reserved GPU memory, and that can crash a multi-node job hours after launch, long after the change looked safe in a quick test.
 
-Chapter 10.20 introduced the profiling tools: DCGM, Nsight Systems, Nsight Compute and the PyTorch profiler. This chapter uses them to tune a real step. It first lines up the operator, timeline, Roofline and host CPU views of the same step. Next it compiles the model with `torch.compile` and removes launch overhead and allocator fragmentation. Then it overlaps data transfers with compute, scales the job across GPUs, and adds regression checks to continuous integration. **Profile the whole stack before you change a single training flag.**
+Chapter 10.20 introduced the profiling tools: DCGM, Nsight Systems, Nsight Compute and the PyTorch profiler. This chapter puts them to work on one real step. The walk runs in order. First you line up the operator, timeline, Roofline and host CPU views of the same step, so that each view describes the same event. Roofline is a chart that compares a kernel's speed with the hardware's compute and memory limits. Next you compile the model with `torch.compile`, which removes launch overhead and allocator fragmentation. Then you overlap data transfers with compute, scale the job across GPUs, and add regression checks to continuous integration, so the gains survive later code changes. **Profile the whole stack before you change a single training flag.**
 
 ```text
 End-to-End PyTorch Tuning Quantitative Highlights:
@@ -37,7 +37,7 @@ End-to-End PyTorch Tuning Quantitative Highlights:
   - PyTorch HUD CI regression gate:    fails the build on a >= 5% throughput regression sustained across 3 consecutive runs
 ```
 
-Before you change a training flag, collect one profile that covers the host, the compiler, memory and the network.
+Before you change a training flag, collect one profile that covers the host, the compiler, memory and the network. One profile that covers all four beats four partial guesses, because each layer can hide evidence from the others.
 
 ## Prerequisites and outcomes
 
@@ -45,11 +45,8 @@ Before you change a training flag, collect one profile that covers the host, the
 - Chapter 10.20 on Nsight Systems, Nsight Compute, and PyTorch profiler. Chapters 14.5 and 14.7 on DDP, ZeRO, FSDP2, and Tensor, Pipeline, and Expert Parallelism.
 - Familiarity with PyTorch `nn.Module` training loops, CUDA streams, and distributed collectives.
 
-**Outcomes — after completing this chapter, you will be able to:**
-1. Instrument a PyTorch training step with `torch.profiler` and NVTX ranges. Reconcile the 138.0 ms MoE operator breakdown against Nsight Systems, Nsight Compute Roofline metrics, and Linux `perf` on Grace-Blackwell.
-2. Select and debug `torch.compile` modes, apply `nested_compile_region()`, and persist TorchInductor Mega-Cache artifacts. Compose SDPA, FlexAttention, FlexDecoding, context parallelism, and `torchao`.
-3. Overlap host-to-device copies and MoE experts across CUDA streams and events. Capture static CUDA Graphs and shared-pool CUDA Graph Trees in decreasing batch order. Tune `PYTORCH_ALLOC_CONF` alongside SuperOffload, `MemPool`, UCX, and PyTorch Symmetric Memory.
-4. Scale `torch.compile` with DDP, block-wrapped FSDP, and TorchTitan primitives including AsyncTP, AutoParallel, and SimpleFSDP. Diagnose multi-GPU stragglers in HTA and Perfetto, and enforce TorchBench, PyTorch HUD, and MLPerf Logging CI gates.
+**Outcomes**
+Suppose a training run that used to finish overnight now runs long after a teammate adds a memory flag that looked harmless. You need to find the cause without guessing. The chapter follows that path. It begins by wrapping a step with `torch.profiler` and NVTX ranges, then reconciles the 138.0 ms MoE operator breakdown against Nsight Systems, Nsight Compute and Linux `perf` on Grace-Blackwell. It then covers the `torch.compile` modes, `nested_compile_region()` and the compile cache, and the attention and quantization options, including `torchao`. After that come CUDA streams, CUDA Graphs and the allocator knob `PYTORCH_ALLOC_CONF`, along with `MemPool`, UCX and Symmetric Memory. The last part scales `torch.compile` across GPUs and enforces the CI gates.
 
 ---
 
@@ -82,9 +79,9 @@ flowchart LR
 
 ### 1.1 The 9-Tool PyTorch Profiling Ecosystem and NVTX Correlation
 
-When a training step runs slowly, looking only at GPU kernel times leaves you blind to Python interpreter overhead, data loader stalls, and memory fragmentation. Conversely, looking only at a system timeline hides which PyTorch operator launched a slow kernel. Engineers waste days guessing at root causes when their profiling tools cannot talk to each other.
+Picture a training step that runs slowly while the GPU chart looks busy. That chart shows kernel times and nothing else. It is blind to Python interpreter overhead, data loader stalls and memory fragmentation. Looking only at a system timeline has the opposite problem, because it hides which PyTorch operator launched a slow kernel. Engineers lose days guessing at root causes when their profiling tools cannot talk to each other.
 
-NVIDIA Tools Extension (NVTX) markers give all nine profiling tools in the tools table of Section 1.1 the same time ranges. **NVTX ranges are the shared anchor that lets you line up the tools.** They link Python operators, C++ dispatchers, Linux kernel threads, and GPU hardware streams on one timeline. You can inject NVTX ranges automatically through `torch.profiler.record_function("train_step")` or explicitly with `torch.cuda.nvtx.range_push("forward")` and `range_pop()`.
+NVIDIA Tools Extension (NVTX) markers are named time ranges that you place in your code. Each tool reads them, so they give all nine profiling tools in the tools table of Section 1.1 the same time ranges. **NVTX ranges are the shared anchor that lets you line up the tools.** They link Python operators, C++ dispatchers, Linux kernel threads and GPU hardware streams on one timeline. You can inject NVTX ranges automatically through `torch.profiler.record_function("train_step")`, or place them by hand with `torch.cuda.nvtx.range_push("forward")` and `range_pop()`. A good habit is to name the phases you care about, such as forward, backward and optimizer step, so every later table can refer to the same names.
 
 | Tool | Scope | Key Features | Typical PyTorch Performance Use Case |
 |---|---|---|---|
@@ -100,9 +97,9 @@ NVIDIA Tools Extension (NVTX) markers give all nine profiling tools in the tools
 
 ### 1.2 Reconciling the `torch.profiler` Operator Table, the `nsys` Projection and the `ncu` Roofline
 
-If you profile the very first step of a training run, your trace captures one-time JIT compilation, cuBLAS initialization, and memory allocator page faults. Those startup tasks hide steady-state execution. Furthermore, because the CPU launches GPU kernels asynchronously, host timestamps do not match when the GPU actually executes the work.
+Imagine you profile the very first step of a fresh run and feel satisfied with the trace. That trace is misleading. It captures one-time JIT compilation, cuBLAS initialization and allocator page faults, and those startup tasks hide the steady-state behavior you actually care about. There is a second trap. The CPU launches GPU kernels asynchronously, so host timestamps do not line up with the moment the GPU runs the work.
 
-To capture a clean baseline, run five unprofiled warm-up iterations first so compiler and allocator caches settle. Then profile one steady-state step of the 64-expert Mixture-of-Experts causal language model. Sorting the Kineto operator table by total self CUDA time produces the first table below. Running `nsys stats --report=nvtx_gpu_proj_sum` projects asynchronous GPU execution intervals back onto the host NVTX ranges to produce the second table below.
+To capture a clean baseline, run five unprofiled warm-up iterations first, so the compiler and allocator caches settle. Then profile one steady-state step of the 64-expert Mixture-of-Experts causal language model. Sorting the Kineto operator table by total self CUDA time produces the first table below. Running `nsys stats --report=nvtx_gpu_proj_sum` projects the asynchronous GPU execution intervals back onto the host NVTX ranges, and that produces the second table.
 
 ```text
 64-Expert MoE Profiling Setup :
@@ -134,10 +131,10 @@ To capture a clean baseline, run five unprofiled warm-up iterations first so com
 | `backward` | `58.3 ms` | `58.3 ms` | `0.0 ms` | `130` | `42.25%` of step; `130` device activities mirrored in backward pass |
 | `optimizer_step` | `19.2 ms` | `19.2 ms` | `0.0 ms` | `1` | `13.91%` of step; `1` host NVTX push/pop brackets all `64` asynchronous `aten::add_` launches |
 
-Notice how the three profiling views fit together to guide optimization:
+The three profiling views fit together like this. Read them in order, because each one answers a narrower question than the one before.
 
-- Operator versus phase attribution. The operator table shows that matrix multiplications and token routing consume nearly four-fifths of the 138.0 ms step. The projection table uses CUPTI to project asynchronous GPU kernel timestamps onto the host NVTX intervals. It confirms the exact 138.0 ms total and groups all 64 per-expert `aten::add_` launches under a single optimizer step instance.
-- Kernel Roofline shift. Once the PyTorch profiler identifies `aten::matmul` as the top operator, we inspect it with Nsight Compute using `ncu --target-processes all --kernel-name-regex "matmul"`. Make sure `NVreg_RestrictProfilingToAdminUsers=0` is enabled on the host. The baseline kernel is memory-bound on HBM transfers. Even though some GPU kernels hide latency at 25 to 50 percent occupancy, warp stall reasons confirm memory dependency stalls here. Enable reduced precision via `torch.set_float32_matmul_precision('high')`, fuse prologue and epilogue operations, and raise arithmetic intensity. Those changes shift the kernel into the compute-bound Roofline regime.
+- Operator versus phase attribution. The operator table shows that matrix multiplications and token routing consume nearly four-fifths of the 138.0 ms step. The projection table uses CUPTI, the CUDA profiling interface, to project asynchronous GPU kernel timestamps onto the host NVTX intervals. It confirms the exact 138.0 ms total, and it groups all 64 per-expert `aten::add_` launches under a single optimizer step instance. The two tables describe the same step from two angles, and they agree.
+- Kernel Roofline shift. Once the PyTorch profiler identifies `aten::matmul` as the top operator, inspect it with Nsight Compute using `ncu --target-processes all --kernel-name-regex "matmul"`. Make sure `NVreg_RestrictProfilingToAdminUsers=0` is enabled on the host, or the counters will not be readable. The baseline kernel is memory-bound on HBM transfers. Some GPU kernels hide latency at 25 to 50 percent occupancy, but the warp stall reasons confirm memory dependency stalls here. Enable reduced precision with `torch.set_float32_matmul_precision('high')`, fuse the prologue and epilogue operations, and raise the arithmetic intensity, which is the amount of math done per byte moved. Those changes shift the kernel into the compute-bound Roofline regime.
 
 ```text
 Nsight Compute (ncu) Roofline shift for the expert matmul:
@@ -148,11 +145,13 @@ Nsight Compute (ncu) Roofline shift for the expert matmul:
   - Optimized matmul kernel (Roofline): 85% peak FLOPS, 40% peak HBM bandwidth, 80% achieved SM occupancy -> Compute bound
 ```
 
+Notice what the two tables do not show on their own. The operator table gives the cost of each operator, but not the order the work ran in, or whether the GPU sat idle between operators. The projection table gives the phases, but not the operator names. Put them side by side and you can answer two questions at once. Which operator is expensive, and which phase is it in? When the totals match, as they do here at 138.0 ms, you can trust that neither table is hiding a chunk of the step. When the totals disagree, the gap is your first clue that some work ran outside the labeled ranges, and the NVTX markers need another look.
+
 ### 1.3 Host CPU and NVLink-C2C Interconnect Profiling with Linux `perf`
 
-GPU profilers only show the symptom when the host CPU falls behind: empty idle gaps between GPU kernels on the timeline. They cannot tell you whether the CPU is stuck in Python frame evaluation, C++ operator dispatch, data loader workers, or file system reads.
+A GPU profiler shows the symptom when the host CPU falls behind, as empty idle gaps between kernels on the timeline. It cannot tell you why the CPU is late. The CPU might be stuck in Python frame evaluation, in C++ operator dispatch, in data loader workers, or in file system reads. Each of those needs a different fix, so you need a host-side view too.
 
-Run Linux `perf stat` and `perf record -F 2000 -g --call-graph dwarf` on an ARM Neoverse V2 Grace-Blackwell node. Those commands expose the exact host CPU and NVLink-C2C superchip interconnect counters alongside your PyTorch process.
+Run Linux `perf stat` and `perf record -F 2000 -g --call-graph dwarf` on an ARM Neoverse V2 Grace-Blackwell node. Those commands expose the host CPU counters and the NVLink-C2C superchip interconnect counters, which sit alongside your PyTorch process and show what the CPU is doing while the GPU waits.
 
 | `perf` Mode & Command | Measured Counter / Symbol | Value | Architectural Diagnosis & Mitigation Action |
 |---|---|---|---|
@@ -166,7 +165,9 @@ Run Linux `perf stat` and `perf record -F 2000 -g --call-graph dwarf` on an ARM 
 | `perf report` (`-F 2000` DWARF) | `read` (`libc.so.6`) | **`5.3%`** of CPU samples | **Host file I/O syscalls**: pack small files into contiguous WebDataset, Arrow, or Parquet shards, `pin_memory=True`, `prefetch_factor=4` or `8`, NVIDIA DALI / Magnum IO |
 | `perf stat -a -e nvidia_nvlink_c2c0_pmu_0/cycles/` | `nvidia_nvlink_c2c0_pmu_0/cycles` + host `cycles` / `cache-misses` | `3,567,890,123` C2C cycles, `45,678,901` CPU cycles, `7,890,123` misses (`2.345678901 s`) | Device-level link PMU under `/sys/bus/event_source/devices/nvidia_nvlink_c2c*` correlates coherent CPU-GPU traffic with host CPU activity; SM-level counters still require CUPTI or `ncu` |
 
-Use the PyTorch profiler and Nsight Systems to find which phase and operator dominate step time. Then run Nsight Compute and Linux `perf` to see whether the bottleneck lives on the GPU SMs or the host CPU.
+Instructions per cycle, or IPC, is a plain measure of how much work the CPU finishes on each clock tick. A high IPC means the core is busy with useful work. A low IPC means it is waiting, usually on memory or on branches it guessed wrong. The table reports an IPC of 1.58, far below the theoretical maximum of 8.0. That does not prove the CPU is the bottleneck by itself. It tells you the host has room to run faster, and the hotspot percentages show where that room is.
+
+Use the PyTorch profiler and Nsight Systems first, to find which phase and operator dominate the step time. Then run Nsight Compute and Linux `perf`, to see whether the bottleneck lives on the GPU Streaming Multiprocessors or on the host CPU. Working in that order keeps you from tuning a kernel when the real problem is the Python loop around it.
 
 ---
 
@@ -174,15 +175,15 @@ Use the PyTorch profiler and Nsight Systems to find which phase and operator dom
 
 ### 2.1 How the `torch.compile` Stack Cuts MoE Step Time by 30.24%
 
-The Linux `perf` profile showed that Python frame evaluation in `py::forward` and C++ dispatcher overhead across 128 expert GEMMs consume nearly two-thirds of host CPU cycles. Meanwhile, the GPU wastes high-bandwidth memory traffic writing and reading tiny intermediate tensors for layer normalization, softmax, and token routing between separate kernels.
+The Linux `perf` profile showed the problem. Python frame evaluation in `py::forward`, plus C++ dispatcher overhead across 128 expert GEMMs, consume nearly two-thirds of host CPU cycles. Meanwhile, the GPU wastes high-bandwidth memory traffic. It writes and reads tiny intermediate tensors for layer normalization, softmax and token routing, one separate kernel at a time. Both costs come from running the model eagerly, one Python call at a time.
 
-Switching from eager execution to `torch.compile(model)` removes both bottlenecks. The compiler works in three stages.
+Switching from eager execution to `torch.compile(model)` removes both bottlenecks. Think of the compiler as a planner that studies the whole model before it runs a single step. It works in three stages.
 
-1. TorchDynamo graph capture. TorchDynamo intercepts Python bytecode evaluation via PEP 523 and traces PyTorch operations into an FX graph. It inserts shape guards or graph breaks around unsupported Python control flow or collective boundaries.
-2. AOTAutograd ahead-of-time backward capture. AOTAutograd traces both the forward and backward computation graphs ahead of time so backward operators can be fused alongside forward operations.
-3. TorchInductor codegen and autotuning. TorchInductor lowers the joint graph into fused OpenAI Triton kernels and cuBLASLt or cuDNN calls. It applies prologue fusion before a GEMM and epilogue fusion to keep activations and residual adds inside registers and SRAM rather than round-tripping to HBM. It also uses warp specialization to separate memory-producer warps from compute-consumer warps.
+1. TorchDynamo graph capture. TorchDynamo intercepts Python bytecode evaluation through PEP 523, a CPython hook, and traces the PyTorch operations into an FX graph. An FX graph is a plain data structure that lists each operation and its inputs. Where the Python control flow or a collective boundary cannot be traced, TorchDynamo inserts shape guards or graph breaks around it.
+2. AOTAutograd ahead-of-time backward capture. AOTAutograd traces both the forward and backward computation graphs before the run starts. That lets the compiler fuse backward operators together with forward operations, instead of treating the backward pass as a separate afterthought.
+3. TorchInductor codegen and autotuning. TorchInductor lowers the joint graph into fused OpenAI Triton kernels and cuBLASLt or cuDNN calls. It applies prologue fusion before a GEMM, and epilogue fusion after it, so activations and residual adds stay inside registers and SRAM instead of making a round trip to HBM. It also uses warp specialization, which separates memory-producer warps from compute-consumer warps, so the two kinds of work overlap.
 
-When benchmarking compiled GPU code, never use Python's `time.time()` without synchronization, which only measures asynchronous host launch overhead. Also avoid calling it inside a loop where synchronization stalls the pipeline. **Measure steady-state GPU step times after warmup using `torch.cuda.Event(enable_timing=True)`.**
+When you benchmark compiled GPU code, do not use Python's `time.time()` without synchronization. Without it, the timer only measures the asynchronous host launch, which returns long before the GPU finishes. Avoid calling the timer inside a loop either, because the synchronization itself stalls the pipeline. **Measure steady-state GPU step times after warmup using `torch.cuda.Event(enable_timing=True)`.** An event records a timestamp on the GPU stream, so the number you read is the real GPU time.
 
 ```text
 MoE vs. Dense Step-Time Speedup Under torch.compile:
@@ -192,13 +193,13 @@ MoE vs. Dense Step-Time Speedup Under torch.compile:
   - Dense single-GEMM model speedup:      < 10%     (already Tensor-Core bound with minimal fusion opportunity)
 ```
 
-Why does the 64-expert MoE model speed up by 30.24 percent? A dense model dominated by one huge matrix multiplication improves by less than 10 percent. A single large GEMM already saturates Tensor Cores in cuBLASLt, leaving little room for fusion. The MoE step launches hundreds of medium GEMMs alongside custom dispatch, combine, scatter, gather, and layer normalization kernels. That gives TorchInductor massive opportunity to fuse routing and activation epilogues and remove Python launch overhead.
+Why does the 64-expert MoE model speed up by 30.24 percent, when a dense model improves by less than 10 percent? The answer is about the shape of the work. A dense model dominated by one huge matrix multiplication already keeps the Tensor Cores busy, and a single large GEMM leaves little for the compiler to fuse. The MoE step is different. It launches hundreds of medium GEMMs alongside custom dispatch, combine, scatter, gather and layer normalization kernels. Each small kernel has launch overhead and a memory round trip, and those are exactly what the compiler can remove. That gives TorchInductor a large opportunity to fuse the routing and the activation epilogues, and to strip out Python launch overhead.
 
 ### 2.2 Selecting `torch.compile` Modes (four modes), Regional Compilation, and Mega-Cache
 
-Different workloads need different trade-offs between compilation time, extra workspace memory, and steady-state speed. Turning on aggressive CUDA Graph capture on a model with dynamic token shapes can cause endless graph recaptures or out-of-memory crashes. Meanwhile, compiling an entire 60-layer Transformer from scratch can stall node startup for minutes.
+Picture a team that turns on the most aggressive mode for a model whose token shapes change every step. The job then recaptures graphs endlessly, or it runs out of memory. The trade-off is simple to state. Each mode spends compile time, extra workspace memory and steady-state speed differently. Aggressive CUDA Graph capture on a model with dynamic token shapes can cause endless graph recaptures or out-of-memory crashes. Meanwhile, compiling an entire 60-layer Transformer from scratch can stall node startup for minutes, which is a cost you pay on every restart.
 
-The table below summarizes the four primary `torch.compile` modes so you can match the compiler backend to your workload.
+The table below summarizes the four primary `torch.compile` modes, so you can match the compiler backend to your workload.
 
 | Mode (`torch.compile(model, mode=...)`) | Description & Target Workload | Compile Time | Extra Memory Overhead | CUDA Graphs Enabled? | Notable Compiler Features |
 |---|---|---|---|---|---|
@@ -207,22 +208,24 @@ The table below summarizes the four primary `torch.compile` modes so you can mat
 | **`"max-autotune"`** | Maximizes steady-state speed for long training runs or high-volume serving | **High**, taking minutes on large LLMs | Maybe, when graphs are captured | **Yes**, by default on GPU | Exhaustive Triton tile-size and cuBLASLt autotuning plus CUDA Graphs |
 | **`"max-autotune-no-cudagraphs"`** | Full kernel autotuning without CUDA Graph capture | High | No | **No** | Ideal for **dynamic token routing in MoE**, variable sequence lengths, or debugging issues masked by CUDA Graphs |
 
-Three workflows go with the compile mode you chose.
+Here is a simple way to pick a mode from the table. Start with the default mode while you are still debugging the model, because compile time matters more than peak speed at that stage. Move to reduce-overhead when the batches are small and the Python launch cost dominates the step. Choose max-autotune for a long run, where the slow compile is paid once and the faster steady state pays it back many times over. Pick the no-cudagraphs variant of max-autotune when the shapes change too often for graphs to stay valid, as they do in dynamic token routing.
 
-1. Regional compilation (`torch.compiler.nested_compile_region`). Decorating the repeated TransformerBlock or MoEBlock with `@torch.compiler.nested_compile_region` tells PyTorch to compile the layer structure once. It then reuses the compiled artifact across all identical layers. That cuts cold-start compile time by an order of magnitude while preserving steady-state speed. It also automatically recompiles if input shape, dtype, device, stride, or globals change.
-2. PyTorch Mega-Cache (`save_cache_artifacts` and `TORCHINDUCTOR_CACHE_DIR`). Set `export TORCHINDUCTOR_CACHE_DIR=/mnt/shared/inductor_cache` on a shared filesystem mounted at the exact same path across all nodes. You can also serialize artifacts programmatically with `torch.compiler.save_cache_artifacts()` and `torch.compiler.load_cache_artifacts(bytes_blob)`. Ensure identical CUDA, PyTorch, and Triton versions across all nodes sharing the cache.
-3. Debugging graph breaks (`explain()` and `TORCH_LOGS`). Run `torch._dynamo.explain(model)(sample_input)` to inspect every graph break count, break reason, and fallback subgraph. Use `TORCH_LOGS="+dynamo,+inductor"` for verbose compiler logs and call `torch._dynamo.mark_dynamic(tensor, dim)` to declare variable batch or sequence dimensions upfront. Finally, set `TORCHINDUCTOR_UNIQUE_KERNEL_NAMES=1` and `TORCHINDUCTOR_BENCHMARK_KERNEL=1` to emit unique kernel names in Nsight Systems and Nsight Compute traces.
+Three workflows go with the compile mode you chose. Each one solves a problem that shows up once the model is large or the team is busy.
+
+1. Regional compilation (`torch.compiler.nested_compile_region`). Picture a 60-layer model whose layers are identical. Decorating the repeated TransformerBlock or MoEBlock with `@torch.compiler.nested_compile_region` tells PyTorch to compile that layer structure once. It then reuses the compiled artifact across all the identical layers. That cuts cold-start compile time by an order of magnitude while keeping the steady-state speed. The compiler still recompiles automatically if the input shape, dtype, device, stride or globals change, so you do not get stale code.
+2. PyTorch Mega-Cache (`save_cache_artifacts` and `TORCHINDUCTOR_CACHE_DIR`). Picture a large cluster in which every node compiles the same kernels at startup. Set `export TORCHINDUCTOR_CACHE_DIR=/mnt/shared/inductor_cache` on a shared filesystem, mounted at the exact same path across all nodes, and the first node's work serves the rest. You can also serialize artifacts programmatically with `torch.compiler.save_cache_artifacts()` and `torch.compiler.load_cache_artifacts(bytes_blob)`. Make sure every node that shares the cache runs identical CUDA, PyTorch and Triton versions, because a cached kernel from another version will not match.
+3. Debugging graph breaks (`explain()` and `TORCH_LOGS`). When a run is slower than expected, first ask where the compiler gave up. Run `torch._dynamo.explain(model)(sample_input)` to see every graph break, the reason for each one and the fallback subgraph it left behind. Use `TORCH_LOGS="+dynamo,+inductor"` for verbose compiler logs. Call `torch._dynamo.mark_dynamic(tensor, dim)` to declare variable batch or sequence dimensions up front, so the compiler does not specialize on one size. Finally, set `TORCHINDUCTOR_UNIQUE_KERNEL_NAMES=1` and `TORCHINDUCTOR_BENCHMARK_KERNEL=1`, so each kernel has a unique name in the Nsight Systems and Nsight Compute traces.
 
 ### 2.3 Optimized Attention (`SDPA`, `FlexAttention`, `FlexDecoding`, `context_parallel`) and `torchao`
 
-General compiler fusion cannot rewrite the quadratic memory traffic of naive self-attention or automatically quantize weights to 8-bit and 4-bit formats with structured sparsity. To reach hardware Roofline limits on attention and low-precision GEMMs, compose `torch.compile` with four native PyTorch APIs:
+General compiler fusion cannot rewrite the quadratic memory traffic of naive self-attention. Quadratic means the cost grows with the square of the sequence length, so doubling the tokens quadruples the work. The compiler also cannot quantize weights to 8-bit and 4-bit formats with structured sparsity on its own. To reach the hardware Roofline limits on attention and low-precision GEMMs, you compose `torch.compile` with four native PyTorch APIs.
 
-- Scaled Dot-Product Attention (`torch.nn.functional.scaled_dot_product_attention`). SDPA automatically dispatches to FlashAttention-2, FlashAttention-3, Memory-Efficient Attention, or CuTe backends. It chooses the fastest kernel based on tensor dtype, head dimension, and masking.
-- FlexAttention and FlexDecoding (`torch.nn.attention.flex_attention`). Some models use sliding windows, prefix LM masks, document masking, ALiBi, or soft-capping that standard SDPA cannot fuse. FlexAttention compiles a short Python `score_mod` or `mask_mod` function into a fused Triton kernel. It runs at FlashAttention speed without materializing the quadratic score matrix. FlexDecoding optimizes autoregressive token decoding with dynamic KV-cache layouts.
-- Long-context sharding (`torch.distributed.tensor.experimental.context_parallel()`). For sequences of 128K to over 1 million tokens, context parallelism shards the sequence dimension across GPUs. It overlaps ring or all-gather communication with local SDPA compute.
-- PyTorch Architecture Optimization (`torchao`). Built natively on `torch.compile`, `torchao` unifies FX-graph post-training quantization, quantization-aware training, `QConfigMapping`, and FP8, INT8, and INT4 casting under `torchao.quantization`. It also provides 2:4 semi-structured and block sparsity under `torchao.sparsity` and `torchao.pruning`. TorchInductor fuses the quantization scales and 2:4 sparse Tensor Core instructions directly into the surrounding compiled kernels.
+- Scaled Dot-Product Attention (`torch.nn.functional.scaled_dot_product_attention`). SDPA is the standard attention call. It dispatches automatically to FlashAttention-2, FlashAttention-3, Memory-Efficient Attention or CuTe backends, and it picks the fastest kernel from the tensor dtype, the head dimension and the masking. You rarely need to choose the backend yourself.
+- FlexAttention and FlexDecoding (`torch.nn.attention.flex_attention`). Some models use sliding windows, prefix LM masks, document masking, ALiBi or soft-capping, and standard SDPA cannot fuse those patterns. FlexAttention compiles a short Python `score_mod` or `mask_mod` function into a fused Triton kernel. It runs at FlashAttention speed without materializing the quadratic score matrix. FlexDecoding optimizes autoregressive token decoding with dynamic KV-cache layouts, where the KV cache holds the keys and values of earlier tokens.
+- Long-context sharding (`torch.distributed.tensor.experimental.context_parallel()`). For sequences of 128K to over 1 million tokens, context parallelism shards the sequence dimension across GPUs. It overlaps ring or all-gather communication with the local SDPA compute, so the GPUs keep working while the chunks move.
+- PyTorch Architecture Optimization (`torchao`). Built natively on `torch.compile`, `torchao` unifies FX-graph post-training quantization, quantization-aware training, `QConfigMapping`, and FP8, INT8 and INT4 casting under `torchao.quantization`. It also provides 2:4 semi-structured and block sparsity under `torchao.sparsity` and `torchao.pruning`. In 2:4 sparsity, two of every four weights are zero. TorchInductor fuses the quantization scales and the 2:4 sparse Tensor Core instructions directly into the surrounding compiled kernels.
 
-Compile repeated blocks with regional compilation and persist the Inductor cache across nodes. Every job then gets fused Triton and FlashAttention speed without a multi-minute startup penalty.
+Put the pieces together. Compile the repeated blocks with regional compilation, and persist the Inductor cache across nodes. Every job then gets fused Triton and FlashAttention speed without a multi-minute startup penalty.
 
 ---
 
@@ -230,18 +233,20 @@ Compile repeated blocks with regional compilation and persist the Inductor cache
 
 ### 3.1 Overlapping H2D Transfers and MoE Experts with CUDA Streams and Events
 
-By default, PyTorch launches every operation onto the default CUDA stream. That forces host-to-device memory copies and independent MoE expert kernels to run one after another. Even though modern GPUs have dedicated DMA copy engines and abundant Streaming Multiprocessors, single-stream serialization leaves copy engines idle during compute and compute units idle during copies.
+By default, PyTorch launches every operation onto the default CUDA stream. A stream is an ordered queue of GPU work. Because there is only one queue, host-to-device memory copies and independent MoE expert kernels run one after another. Modern GPUs have dedicated DMA copy engines, which move data without using the compute cores, and they also have many Streaming Multiprocessors. Single-stream serialization leaves the copy engines idle during compute, and the compute units idle during copies. Both sit waiting for each other.
 
 Two multi-stream patterns allow concurrent execution.
 
-1. Dedicated transfer and compute streams with CUDA Events. Create a non-default `transfer_stream = torch.cuda.Stream()` and a lightweight event `transfer_done = torch.cuda.Event(enable_timing=False)` to avoid timestamp overhead. While the compute stream runs step `i`, the transfer stream copies batch `i + 1` from pinned host memory using `batch.to(device, non_blocking=True)`. It then records `transfer_done.record(stream=transfer_stream)`. Calling `compute_stream.wait_event(transfer_done)` or `compute_stream.wait_stream(transfer_stream)` makes only the compute stream wait on the GPU hardware scheduler. That avoids blocking the host CPU thread like `torch.cuda.synchronize()` would.
-2. Parallel MoE expert streams. Because tokens routed to different experts are independent, each expert can run on its own non-default CUDA stream and join via `wait_event()` before the combine step. Each expert must write strictly to its own disjoint slice of a preallocated output tensor. Validate multi-stream custom kernels with `compute-sanitizer --tool racecheck` and isolate ordering bugs with `CUDA_LAUNCH_BLOCKING=1`.
+1. Dedicated transfer and compute streams with CUDA Events. Create a non-default `transfer_stream = torch.cuda.Stream()`, and a lightweight event `transfer_done = torch.cuda.Event(enable_timing=False)` to avoid the timestamp overhead. While the compute stream runs step `i`, the transfer stream copies batch `i + 1` from pinned host memory, using `batch.to(device, non_blocking=True)`. Pinned memory is host memory that the GPU can copy from directly. The transfer stream then records `transfer_done.record(stream=transfer_stream)`. Calling `compute_stream.wait_event(transfer_done)` or `compute_stream.wait_stream(transfer_stream)` makes only the compute stream wait, on the GPU side. That avoids blocking the host CPU thread the way `torch.cuda.synchronize()` would.
+2. Parallel MoE expert streams. Tokens routed to different experts are independent of each other, so each expert can run on its own non-default CUDA stream. The streams then join through `wait_event()` before the combine step. Each expert must write strictly to its own disjoint slice of a preallocated output tensor, or two experts will overwrite each other. When a multi-stream custom kernel misbehaves, check it with `compute-sanitizer --tool racecheck`, and isolate ordering bugs with `CUDA_LAUNCH_BLOCKING=1`, which forces each launch to finish before the next one starts.
 
 ### 3.2 `CUDAGraph` Capture, CUDA Graph Trees, and the FireworksAI Shared Graph Pool
 
-When individual GPU kernels finish in a few microseconds, the 5 to 15 microsecond CPU driver launch cost per kernel leaves empty gaps on the GPU timeline. Capturing an entire iteration into a `torch.cuda.CUDAGraph` replays all kernels with a single CPU launch. However, naive graph capture across multiple batch sizes multiplies memory usage or crashes on dynamic allocations.
+Picture a decode loop where each step runs many tiny kernels. Each kernel finishes in a few microseconds, but the CPU needs 5 to 15 microseconds to launch each one. So the GPU spends more time waiting for the next launch than running math. That leaves empty gaps on the GPU timeline. Capturing an entire iteration into a `torch.cuda.CUDAGraph` records all of those kernels once, then replays them with a single CPU launch. The gaps close up. The catch is memory. Naive graph capture across multiple batch sizes multiplies memory usage, or it crashes on dynamic allocations.
 
-**Pass a shared memory pool handle and capture CUDA Graphs in strictly decreasing order of batch size from 8 down to 4, 2, and 1.** The largest batch allocates the high-water-mark buffers once, and smaller batch graphs reuse that exact memory with zero extra VRAM.
+**Pass a shared memory pool handle and capture CUDA Graphs in strictly decreasing order of batch size from 8 down to 4, 2, and 1.** The largest batch allocates the high-water-mark buffers once, which means the most memory the workload ever needs. The smaller batch graphs then reuse that exact memory, so they add no extra VRAM.
+
+Read the rules in the block below as a checklist that protects the graph. Capture freezes the memory addresses it touches, so every buffer must already exist at its worst-case size before capture starts. A replay then copies fresh data into the same static input buffer and runs the same kernels against it. Any attempt to allocate during capture fails loudly, which is the safe outcome. The dangerous failures are the silent ones, where a stale buffer keeps being read. That is why the rules ask you to synchronize before and after the capture, and why the failure table later in the chapter asks you to sync before you read the output.
 
 ```text
 CUDA Graph Capture Rules and FireworksAI Shared Pool Pattern:
@@ -267,9 +272,9 @@ CUDA Graph Capture Rules and FireworksAI Shared Pool Pattern:
 
 ### 3.3 Tuning the CUDA Caching Allocator (`PYTORCH_ALLOC_CONF`), SuperOffload, `MemPool`, and Symmetric Memory
 
-In Mixture-of-Experts and variable-length language models, the number of tokens routed to each expert changes on every step. Those fluctuating tensor sizes cause the PyTorch caching allocator to split large memory blocks into non-contiguous fragments. Reserved VRAM climbs steadily until the job crashes with an out-of-memory error even though total live tensor memory is constant.
+Picture a job that runs fine for hours and then crashes with an out-of-memory error, even though the model has not grown. In Mixture-of-Experts and variable-length language models, the number of tokens routed to each expert changes on every step. Those changing tensor sizes make the PyTorch caching allocator, which keeps freed GPU memory around for reuse, split large blocks into non-contiguous fragments. A fragment is too small for the next request, so the allocator asks for more. Reserved VRAM climbs steadily, even though the total live tensor memory stays constant.
 
-Preallocate fixed-size expert buffers at the maximum token capacity. Then tune `PYTORCH_ALLOC_CONF` with either power-of-two sub-bucket rounding or virtual-memory expandable segments.
+Preallocate fixed-size expert buffers at the maximum token capacity, so the sizes stop changing. Then tune `PYTORCH_ALLOC_CONF` with either power-of-two sub-bucket rounding or virtual-memory expandable segments. Each option attacks the fragmentation in a different way, and the two patterns below show both.
 
 ```bash
 # Pattern A: Power-of-two sub-bucket rounding + async allocator
@@ -295,12 +300,14 @@ PYTORCH_ALLOC_CONF Bucket Rounding vs. Expandable Segments Math:
        * max_split_size_mb:128 (or 256) prevents splitting contiguous blocks larger than that threshold.
 ```
 
+Read the two allocator patterns as two answers to the same question. Pattern A keeps the allocator's block sizes on a fixed ladder, so requests of similar size land on the same cached block. Pattern B drops the ladder and stitches physical pages into one contiguous virtual range, so a request needs only the bytes it asks for. Pattern A is the more predictable choice when your allocation sizes cluster together. Pattern B suits jobs whose sizes swing widely from step to step, such as MoE routing. Try one pattern at a time, and watch the reserved memory counter after several hours of training, not after a few minutes.
+
 Four more mechanisms relieve memory and fabric limits on modern clusters.
 
-- Selective Activation Checkpointing (`torch.utils.checkpoint`). Recomputes intermediate TransformerBlock and expert FFN activations during backpropagation instead of storing them during the forward pass. Meanwhile, it leaves lightweight LayerNorm and embedding layers uncheckpointed.
-- SuperOffload and GraceAdam on Grace-Blackwell superchips. DeepSpeed ZeRO-Infinity and GPUDirect Storage offload state over PCIe. Superchips like GH200, GB200, GB300, and Vera Rubin connect Grace ARM CPUs to Blackwell GPUs over coherent NVLink-C2C. SuperOffload uses Speculation-Then-Validation to run speculative CPU optimizer steps concurrently with GPU backpropagation. It also adds heterogeneous optimizer partitioning across CPU and GPU, superchip-aware dtype casts on the GPU, and GraceAdam vectorized for ARM Scalable Vector Extension registers.
-- Pluggable memory allocators (`CUDAPluggableAllocator` and `MemPool` with `ncclMemAlloc`). Binding NCCL's `backend.mem_allocator` (`ncclMemAlloc` and `ncclMemFree`) into a `torch.cuda.memory.MemPool` via `backend.register_mem_pool(nccl_pool)` aligns collective buffers for zero-copy reductions. That alignment supports NVSwitch, GPUDirect RDMA, and in-network NVIDIA SHARP reductions across Blackwell NVLink 5 links, freeing GPU SMs for compute.
-- Peer-to-peer DMA with UCX and PyTorch Symmetric Memory. Within an NVL72 rack, `torch.cuda.can_device_access_peer(i, j)` enables direct `cudaMemcpyPeerAsync` DMA, while cross-rack jobs set `NCCL_NET=UCX`, `NCCL_PLUGIN_P2P=ucx`, and `UCX_TLS=rc,self,gdr_copy,cuda_copy`. For latency-critical MoE AllToAll shuffles, PyTorch Symmetric Memory exposes a Partitioned Global Address Space across GPUs. Kernels issue one-sided `triton.nvshmem.put()` and `get()`, `all_to_all_v`, and `one_shot_all_reduce` directly on-device without CPU handshakes. That allows the entire MoE AllToAll to be captured inside a CUDA Graph.
+- Selective Activation Checkpointing (`torch.utils.checkpoint`). Activation checkpointing trades compute for memory. Instead of storing the intermediate TransformerBlock and expert FFN activations during the forward pass, it recomputes them during backpropagation. It leaves the lightweight LayerNorm and embedding layers uncheckpointed, because recomputing them would cost more time than the memory they save.
+- SuperOffload and GraceAdam on Grace-Blackwell superchips. DeepSpeed ZeRO-Infinity and GPUDirect Storage offload state over PCIe, which is the slower path between CPU and GPU. Superchips such as GH200, GB200, GB300 and Vera Rubin connect Grace ARM CPUs to Blackwell GPUs over coherent NVLink-C2C, a much faster link. SuperOffload uses Speculation-Then-Validation, which runs speculative CPU optimizer steps at the same time as the GPU backpropagation, and then checks the guesses. It also splits the optimizer work between CPU and GPU, casts dtypes on the GPU side where that is cheaper, and vectorizes GraceAdam for the ARM Scalable Vector Extension registers.
+- Pluggable memory allocators (`CUDAPluggableAllocator` and `MemPool` with `ncclMemAlloc`). Binding NCCL's `backend.mem_allocator` (`ncclMemAlloc` and `ncclMemFree`) into a `torch.cuda.memory.MemPool` through `backend.register_mem_pool(nccl_pool)` aligns the collective buffers for zero-copy reductions. A zero-copy reduction reads the data where it sits, rather than copying it first. That alignment supports NVSwitch, GPUDirect RDMA and in-network NVIDIA SHARP reductions across the Blackwell NVLink 5 links. It also frees GPU Streaming Multiprocessors for compute, because the reduction work moves elsewhere.
+- Peer-to-peer DMA with UCX and PyTorch Symmetric Memory. Within an NVL72 rack, `torch.cuda.can_device_access_peer(i, j)` checks whether a direct `cudaMemcpyPeerAsync` DMA is possible. Cross-rack jobs instead set `NCCL_NET=UCX`, `NCCL_PLUGIN_P2P=ucx` and `UCX_TLS=rc,self,gdr_copy,cuda_copy`, so NCCL carries its traffic over UCX. For latency-critical MoE AllToAll shuffles, PyTorch Symmetric Memory exposes a Partitioned Global Address Space across GPUs. That is one shared address space that every GPU can reach. Kernels issue one-sided `triton.nvshmem.put()` and `get()` calls, along with `all_to_all_v` and `one_shot_all_reduce`, directly on the device, without CPU handshakes. That allows the entire MoE AllToAll to be captured inside a CUDA Graph.
 
 ```text
 SuperOffload, GraceAdam, MemPool, and Blackwell NVLink 5 Specifications:
@@ -310,7 +317,7 @@ SuperOffload, GraceAdam, MemPool, and Blackwell NVLink 5 Specifications:
                                     exported via _dump_snapshot('memory_snapshot.pkl')
 ```
 
-Enable expandable segments in `PYTORCH_ALLOC_CONF` and preallocate fixed expert buffers before scaling dynamic MoE or long-context jobs.
+Before you scale a dynamic MoE or long-context job, do two things. Enable expandable segments in `PYTORCH_ALLOC_CONF`, and preallocate the fixed expert buffers. Together they stop the allocator from slowly filling VRAM with fragments, and they make the memory footprint predictable when the job grows.
 
 ---
 
@@ -318,12 +325,12 @@ Enable expandable segments in `PYTORCH_ALLOC_CONF` and preallocate fixed expert 
 
 ### 4.1 Composing `torch.compile` with DDP and Block-Wrapped FSDP
 
-Engineers often panic when they run `torch._dynamo.explain()` on a distributed DDP or FSDP model and see dozens of graph breaks around AllGather and ReduceScatter. If they try to remove those breaks by wrapping the entire model in a single root FSDP unit or a single giant DDP bucket, step times get dramatically worse.
+Picture an engineer who runs `torch._dynamo.explain()` on a distributed FSDP model and sees dozens of graph breaks around AllGather and ReduceScatter. The natural reaction is alarm, and the natural fix is to remove every break. That fix backfires. If the engineer wraps the entire model in a single root FSDP unit, or in one giant DDP bucket, the breaks disappear and the step times get dramatically worse. The breaks were doing useful work.
 
 **Graph breaks at distributed collective boundaries are intentional and essential for compute-communication overlap.**
 
-- DDP with `torch.compile`. DistributedDataParallel groups gradients into 25 MB buckets by default via `bucket_cap_mb=25`. TorchDynamo compiles each bucket's backward computation into a separate fused subgraph and breaks between buckets. That break lets the NCCL AllReduce for bucket `k` run asynchronously while the GPU computes bucket `k + 1`. Merging all gradients into one monolithic bucket forces one giant exposed AllReduce at the very end of the step.
-- FSDP with `torch.compile`. Always wrap at TransformerBlock granularity using `transformer_auto_wrap_policy` with `min_num_params=int(1e8)` (`100,000,000` parameters). Pass `use_orig_params=True` so the compiler sees unflattened per-module parameters, and enable `BackwardPrefetch.BACKWARD_PRE`. During execution, FSDP gathers only one block's weights at a time and runs that block's compiled subgraph. Meanwhile, it overlaps the next block's AllGather and ReduceScatter behind current compute.
+- DDP with `torch.compile`. DistributedDataParallel groups gradients into 25 MB buckets by default, via `bucket_cap_mb=25`. Think of a bucket as a box of gradients that gets sent together. TorchDynamo compiles each bucket's backward computation into a separate fused subgraph, and it breaks between buckets. That break lets the NCCL AllReduce for bucket `k` run asynchronously while the GPU computes bucket `k + 1`. Merging all gradients into one monolithic bucket forces one giant AllReduce at the very end of the step, and the GPU has nothing left to overlap it with.
+- FSDP with `torch.compile`. Always wrap at TransformerBlock granularity, using `transformer_auto_wrap_policy` with `min_num_params=int(1e8)` (`100,000,000` parameters). Pass `use_orig_params=True`, so the compiler sees the unflattened per-module parameters, and enable `BackwardPrefetch.BACKWARD_PRE`. During execution, FSDP gathers only one block's weights at a time and runs that block's compiled subgraph. While it does, it overlaps the next block's AllGather and ReduceScatter with the current compute, so the network work hides behind the math.
 
 | FSDP Sharding Strategy | Equivalent ZeRO Stage | Sharded State | Network vs Memory Trade-Off |
 |---|---|---|---|
@@ -331,13 +338,15 @@ Engineers often panic when they run `torch._dynamo.explain()` on a distributed D
 | `ShardingStrategy.HYBRID_SHARD` | **Hybrid ZeRO-3 intra-node + DDP inter-node** | Full shard within each node over NVLink, replicated across nodes | Higher throughput when inter-node bandwidth is slower than intra-node NVLink, at slightly higher per-node VRAM cost |
 | `ShardingStrategy.SHARD_GRAD_OP` | **ZeRO Stage-2** | Gradients and optimizer states only, while weights stay materialized | Lower collective volume with no forward all-gather when network is slow or model weights fit comfortably in HBM |
 
+Choosing a sharding strategy is a question of where your bottleneck sits. Start with the network. If the inter-node links are slow, a strategy that keeps the shards inside each node, such as the hybrid one, avoids most of the cross-node traffic at the cost of a little more memory per node. If the network is fast and memory is tight, the full shard gives the lowest footprint per GPU. If the weights already fit comfortably in HBM, the gradient-and-optimizer-only strategy skips the forward gather entirely. Read the table as a set of trades, and pick the row that matches the wall you actually hit.
+
 ### 4.2 TorchTitan, AsyncTP, AutoParallel, and SimpleFSDP
 
-Traditional eager wrappers like FSDP2 hide parameter sharding behind C++ hooks that the compiler cannot reorder. To let the compiler optimize across both compute and communication, PyTorch's TorchTitan reference architecture builds distributed parallelism directly on DTensor primitives:
+Traditional eager wrappers like FSDP2 hide parameter sharding behind C++ hooks that the compiler cannot reorder. The compiler sees a black box, so it cannot move communication around the compute. To let the compiler optimize across both compute and communication, PyTorch's TorchTitan reference architecture builds distributed parallelism directly on DTensor primitives. A DTensor is a tensor that knows how it is sharded across devices, so the compiler can see the sharding and plan around it.
 
-1. SimpleFSDP. SimpleFSDP expresses FSDP parameter sharding and selective activation checkpointing directly in a compiler-traceable DTensor graph. TorchInductor then buckets and reorders intermediate representation nodes to maximize overlap. Compared to eager FSDP2, SimpleFSDP cuts peak memory usage by up to 28 percent and boosts training throughput by up to 69 percent. These are the best-case figures the SimpleFSDP authors report on Llama 3 models, not numbers to expect on your own cluster.
-2. Asynchronous Tensor Parallelism (AsyncTP). Standard Tensor Parallelism places an AllGather or ReduceScatter directly on the critical path of every layer. AsyncTP uses `torch.compile` to decompose the GEMM and collective across dual CUDA streams with an SM-wave-aware schedule. It overlaps late-arriving AllGather chunks with the next SM wave's matrix multiplications.
-3. AutoParallel. Building on the DTensor operator-strategy cost model, AutoParallel automatically searches and applies hybrid FSDP, TP, and PP sharding plans across a model graph. It selects the optimal plan using cluster memory and interconnect bandwidth constraints.
+1. SimpleFSDP. SimpleFSDP expresses FSDP parameter sharding and selective activation checkpointing directly in a compiler-traceable DTensor graph. TorchInductor then buckets and reorders the intermediate representation nodes to maximize overlap. Compared with eager FSDP2, SimpleFSDP cuts peak memory usage by up to 28 percent and boosts training throughput by up to 69 percent. Those are the best-case figures the SimpleFSDP authors report on Llama 3 models, so treat them as a ceiling, not a promise for your own cluster.
+2. Asynchronous Tensor Parallelism (AsyncTP). Standard Tensor Parallelism places an AllGather or ReduceScatter directly on the critical path of every layer, so each layer waits for the network. AsyncTP uses `torch.compile` to split the GEMM and the collective across dual CUDA streams, with a schedule aware of the SM waves. An SM wave is one batch of thread blocks that fills the GPU's Streaming Multiprocessors. AsyncTP overlaps late-arriving AllGather chunks with the next wave's matrix multiplications.
+3. AutoParallel. Building on the DTensor operator-strategy cost model, AutoParallel searches for hybrid FSDP, TP and PP sharding plans across the model graph, and applies the one it picks. It chooses the plan using the cluster's memory and interconnect bandwidth limits, so you do not have to write the layout by hand.
 
 ```text
 TorchTitan SimpleFSDP and AsyncTP Quantitative Gains:
@@ -350,17 +359,19 @@ TorchTitan SimpleFSDP and AsyncTP Quantitative Gains:
      - Overlapped at 85% eff:     hides 0.85 x 4.0 ms = 3.4 ms -> 12.6 ms layer latency (21.25% step-time reduction)
 ```
 
+Read the SimpleFSDP numbers as a ceiling, not a forecast. The best-case gains came from one model on one cluster, so your own job may see less. The AsyncTP arithmetic that follows is simpler. It starts from a layer that spends 12.0 ms on compute and 4.0 ms on an all-gather, then asks how much of the gather hides behind the compute at 85 percent overlap efficiency. Overlap efficiency is the fraction of the communication that actually runs underneath the math. The sequential time adds the two parts, and the overlapped time keeps only the part that was not hidden.
+
 The AsyncTP figure is a worked example with an assumed 85 percent overlap efficiency, not a measured result.
 
 ### 4.3 Multi-GPU Profiling with HTA and Continuous Regression Gates (`PyTorch HUD` and `MLPerf` Step Breakdown)
 
-When a training job scales to dozens or thousands of GPUs, opening individual trace files by hand is impossible. Moreover, the legacy PyTorch TensorBoard profiler plugin is deprecated as of 2025. Without automated multi-rank trace alignment and continuous regression gates, a single straggler GPU or a bad pull request can silently burn thousands of GPU hours.
+Picture a job with hundreds of GPUs, where one slow rank quietly makes every other rank wait at each collective. Opening individual trace files by hand is impossible at that size. The legacy PyTorch TensorBoard profiler plugin is also deprecated as of 2025, so it is no longer the tool to build on. Without automated multi-rank trace alignment and continuous regression gates, a single straggler GPU or one bad pull request can silently burn thousands of GPU hours.
 
 Distributed observability and governance rest on three practices.
 
-1. Meta Holistic Trace Analysis and Perfetto. Each rank records a Kineto JSON trace over a few steps using `torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1)` into a shared folder. HTA ingests all rank traces at once and aligns NVTX ranges on a unified Perfetto timeline. It splits GPU time into compute, communication, and idle time, and highlights straggler ranks that force peers to wait at collective barriers.
-2. TorchBench CI and PyTorch HUD regression rules. Performance gains erode through software bit rot unless guarded in continuous integration. Run `torchbench run --model moe --iters 10 --batch-size 4 --json results.json` on dedicated hardware runners. That command checks throughput, peak allocated memory, data-loading latency, and `torch.allclose` numerical accuracy against `baseline.json`. Following the PyTorch HUD rule in `pytorch/test-infra`, fail the build only when throughput regresses by at least 5.0 percent across 3 consecutive runs. Always recalibrate baselines whenever migrating hardware such as B200 to GB300.
-3. Structured MLPerf Logging (`:::MLL`). Emit millisecond-timestamped `:::MLL` JSON lines that pair step timing with validation accuracy. As the step breakdown below shows, decomposing a 24.0 ms training step immediately reveals that gradient synchronization consumes one-sixth of total wall time while host overhead is only 2.1 percent.
+1. Meta Holistic Trace Analysis and Perfetto. Each rank records a Kineto JSON trace over a few steps, using `torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1)`, and writes it into a shared folder. HTA ingests all the rank traces at once and aligns the NVTX ranges on a unified Perfetto timeline. It splits GPU time into compute, communication and idle time, and it highlights the straggler ranks that force their peers to wait at collective barriers.
+2. TorchBench CI and PyTorch HUD regression rules. Performance gains erode through software bit rot unless continuous integration guards them. Run `torchbench run --model moe --iters 10 --batch-size 4 --json results.json` on dedicated hardware runners. That command checks throughput, peak allocated memory, data-loading latency, and `torch.allclose` numerical accuracy against `baseline.json`. That allclose check confirms that the outputs still match within a tolerance. Following the PyTorch HUD rule in `pytorch/test-infra`, fail the build only when throughput regresses by at least 5.0 percent across 3 consecutive runs. A single dip is noise, and a sustained dip is a regression. Always recalibrate the baselines when you migrate hardware, such as from B200 to GB300.
+3. Structured MLPerf Logging (`:::MLL`). Emit millisecond-timestamped `:::MLL` JSON lines that pair step timing with validation accuracy. The step breakdown below shows why this matters. Decomposing a 24.0 ms training step reveals that gradient synchronization consumes one-sixth of the total wall time, while host overhead is only 2.1 percent. That tells you where the next hour of work should go.
 
 ```text
 HTA 8-Rank Straggler Triage and PyTorch HUD CI Gate:
@@ -381,7 +392,9 @@ HTA 8-Rank Straggler Triage and PyTorch HUD CI Gate:
 | **Other overhead** (`other_ms`) | `0.5 ms` | `2.1%` | Host DataLoader (`num_workers`, `pin_memory=True`, `prefetch_factor`) and CUDA Graphs |
 | **Total step time** (`step_time_ms`) | **`24.0 ms`** | **`100.0%`** | End-to-end iteration latency monitored across multi-day training runs |
 
-Wrap distributed models at TransformerBlock boundaries so collectives overlap with compiled compute. Gate every production repository with a 3-run, 5-percent regression check.
+Read the MLPerf table from the top. The forward and backward rows together make up 81.3% of the step, and that is the compute you can speed up with compilers and better kernels. The all-reduce row is the one to watch, because it is the part that grows as you add GPUs. Host overhead is small, so tuning the data loader will not rescue this run. A step breakdown is most useful when it tells you which part not to touch.
+
+Wrap distributed models at TransformerBlock boundaries, so the collectives overlap with the compiled compute. Then gate every production repository with a 3-run, 5-percent regression check. The gate turns a slow drift in performance into a failed build that someone has to look at, which is far cheaper than finding the drift months later.
 
 ---
 
@@ -389,7 +402,7 @@ Wrap distributed models at TransformerBlock boundaries so collectives overlap wi
 
 ### 5.1 Multi-Level Profiling CLI (`nsys`, `ncu`, and Grace-Blackwell `perf`)
 
-Use the commands below to capture the Nsight Systems NVTX projection summary, the Nsight Compute Roofline metrics for matrix multiplication, and the Linux `perf` CPU and Grace-Blackwell NVLink-C2C hardware counters.
+The commands below cover three views of the same run. The first captures the Nsight Systems NVTX projection summary, which shows where the step time goes. The second captures the Nsight Compute Roofline metrics for matrix multiplication, which show whether the kernel is limited by compute or by memory. The third captures the Linux `perf` CPU counters and the Grace-Blackwell NVLink-C2C hardware counters, which show what the host is doing. Run them in that order, and keep each output file, so you can compare the same step later.
 
 ```bash
 # 1. Nsight Systems trace capture + NVTX GPU projection summary (138.0 ms step)
@@ -416,7 +429,7 @@ perf stat -a -e nvidia_nvlink_c2c0_pmu_0/cycles/ -e cycles,cache-misses python t
 
 ### 5.2 Compiler Diagnostics, Caching Allocator (`PYTORCH_ALLOC_CONF`), and `NCCL-UCX`
 
-Set these environment variables to inspect compiler graph breaks, share compiled Inductor caches across nodes, eliminate caching allocator fragmentation, and enable UCX RDMA transport.
+Set these environment variables when you need to inspect compiler graph breaks, share compiled Inductor caches across nodes, reduce caching allocator fragmentation, or enable the UCX RDMA transport. The first block turns on compiler logs and the shared cache. The second block holds two alternative allocator settings, so pick one per job rather than stacking them. The third block switches NCCL over to UCX for traffic that crosses racks.
 
 ```bash
 # Compiler graph-break debugging, kernel benchmarking, and shared Mega-Cache directory
@@ -439,7 +452,7 @@ export UCX_TLS=rc,self,gdr_copy,cuda_copy
 
 ### 5.3 End-to-End FSDP + `torch.compile` + Activation Checkpointing + NCCL `MemPool` Recipe
 
-The Python script below enables TF32 Tensor Core precision and registers the NCCL `ncclMemAlloc` zero-copy `MemPool`. It then combines `torch.compile` in reduce-overhead mode with selective activation checkpointing and block-wrapped hybrid-sharded FSDP.
+Picture the whole stack assembled into one training script. The Python script below does four jobs in order. It enables TF32 Tensor Core precision, which speeds up eligible FP32 matrix math. It registers the NCCL `ncclMemAlloc` zero-copy `MemPool`, so collectives reuse the same buffers. Then it combines `torch.compile` in reduce-overhead mode with selective activation checkpointing. Last, it wraps the model in block-wrapped hybrid-sharded FSDP.
 
 ```python
 import functools
@@ -511,7 +524,7 @@ fsdp_model = FSDP(
 
 ## How it fails
 
-Use the symptom table below to diagnose the five most common PyTorch compiler, CUDA Graph, memory allocator, and distributed scaling failures in production.
+Production runs fail in a handful of repeat ways. The symptom table below covers the five most common PyTorch compiler, CUDA Graph, memory allocator and distributed scaling failures. Start from the symptom you see, and read across to the root cause and the fix. Each row is written so you can match it against a trace or a monitoring graph.
 
 | Failure Mode | Observable Symptom | Root Cause Diagnosis | Concrete Remediation |
 |---|---|---|---|
@@ -523,11 +536,13 @@ Use the symptom table below to diagnose the five most common PyTorch compiler, C
 
 ---
 
+The table above is a map from symptoms to fixes. Most real failures show two or three symptoms at once, so start with the one you can measure most easily. A monolithic bucket shows up as a long exposed collective at the end of backward. A CUDA Graph fault shows up as a crash, or as silently wrong outputs. A fragmentation out-of-memory error grows slowly over hours. Matching the shape of the symptom to its row saves you from trying every fix in turn.
+
 ## Hands-on lab
 
 > **Verification status:** The companion Python lab (`code/part14/pytorch_performance_scaling_lab.py`) is **tested and verified locally** with 25 passed and 0 failed checks. The multi-GPU `nsys`, `ncu`, Grace-Blackwell `perf`, and FSDP snippets in Section 5 are **not run on live GPU hardware during handbook build**; run them on a Nebius H100, H200, or GB200 node when live hardware is attached.
 
-Run the self-checking lab to verify every table in this chapter, the 138.0 ms MoE step breakdown, and the `torch.compile` speedup. It also verifies `PYTORCH_ALLOC_CONF` rounding and expandable-segment savings, SimpleFSDP and AsyncTP scaling gains, HTA 8-rank straggler detection, and the PyTorch HUD CI gate.
+Run the self-checking lab to recompute the tables in this chapter. It checks the 138.0 ms MoE step breakdown and the `torch.compile` speedup. It also checks the `PYTORCH_ALLOC_CONF` rounding and the expandable-segment savings, the SimpleFSDP and AsyncTP scaling gains, the HTA 8-rank straggler detection and the PyTorch HUD CI gate. The printout below shows what a passing run looks like, so you know what to expect before you run it yourself.
 
 ```bash
 python3 -B code/part14/pytorch_performance_scaling_lab.py
@@ -569,41 +584,43 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Common first mistakes
 
-1. Profiling iteration 0 without warm-up steps. Capturing the PyTorch profiler or Nsight Systems on the first iteration records TorchInductor JIT compilation and cuBLAS handle initialization. It also captures initial caching allocator page faults rather than steady-state speed. Always run at least 5 unprofiled warm-up steps first.
-2. Calling `torch.cuda.empty_cache()` on every iteration. Treating `empty_cache()` as a per-step cleanup forces synchronous CUDA driver `cuMemFree` calls and destroys caching allocator reuse. Call `empty_cache()` only once immediately before capturing a CUDA Graph.
-3. Using `mode="max-autotune"` on dynamic-shape MoE routing without graph guards. When token counts per expert vary on every step, CUDA Graphs inside max-autotune or reduce-overhead trigger repeated graph recaptures or address errors. Start with `max-autotune-no-cudagraphs` or pad expert buffers to fixed capacities.
-4. Capturing shared-pool CUDA Graphs in increasing batch order. If smaller batch sizes are captured first into a shared memory pool, each larger batch size must allocate new memory segments on top of the smaller buffers. Always capture in decreasing batch order from 8 down to 4, 2, and 1. The largest batch then establishes the high-water mark and smaller graphs reuse it.
-5. Trying to inspect SM warp occupancy with Linux `perf` on Grace-Blackwell. Running `perf stat -e nvidia_nvlink_c2c0_pmu_0/cycles/` reads device-level interconnect counters exposed via `sysfs`. However, SM pipeline utilization, warp stall reasons, and HBM throughput require CUPTI and Nsight Compute.
+Most of these mistakes come from one habit. An engineer sees a number and changes a flag before checking the setup behind that number. The list below names the habits that cost the most time, starting with the one that shows up in almost every first profile.
+
+1. Profiling iteration 0 without warm-up steps. Capturing the PyTorch profiler or Nsight Systems on the first iteration records the TorchInductor JIT compilation and the cuBLAS handle initialization. It also captures the early caching allocator page faults, which tell you nothing about steady-state speed. Always run at least 5 unprofiled warm-up steps first.
+2. Calling `torch.cuda.empty_cache()` on every iteration. It is tempting to treat `empty_cache()` as a per-step cleanup. It forces synchronous CUDA driver `cuMemFree` calls, and it destroys the reuse that the caching allocator depends on. Call `empty_cache()` only once, immediately before you capture a CUDA Graph.
+3. Using `mode="max-autotune"` on dynamic-shape MoE routing without graph guards. When the token counts per expert change on every step, CUDA Graphs inside max-autotune or reduce-overhead trigger repeated graph recaptures or address errors. Start with `max-autotune-no-cudagraphs`, or pad the expert buffers to fixed capacities.
+4. Capturing shared-pool CUDA Graphs in increasing batch order. If the smaller batch sizes are captured first into a shared memory pool, each larger batch size has to allocate new memory segments on top of the smaller buffers. Always capture in decreasing batch order, from 8 down to 4, 2, and 1. The largest batch then sets the high-water mark, and the smaller graphs reuse it.
+5. Trying to inspect SM warp occupancy with Linux `perf` on Grace-Blackwell. Running `perf stat -e nvidia_nvlink_c2c0_pmu_0/cycles/` reads device-level interconnect counters exposed through `sysfs`, the kernel's device file system. SM pipeline utilization, warp stall reasons and HBM throughput need CUPTI and Nsight Compute instead.
 
 ---
 
 ## Exercises
 
-Each exercise is one situation with its own numbers.
+Each exercise is one situation with its own numbers. Work through them with a pencil, and check each answer against the numbers in the exercise.
 
-1. One training step of a 64-expert Mixture-of-Experts model takes 138.0 ms. The profiler shows matrix multiplication at 43.00 ms over 128 calls, linear layers at 35.50 ms over 64 calls, token dispatch at 18.70 ms over 2 calls, token combine at 12.10 ms over 2 calls, and the in-place add at 2.20 ms over 64 calls. Find how much of the step goes to GEMM work and how much to the custom routing kernels. Then explain why the matrix multiply runs 128 times while the in-place add runs 64 times.
-2. A baseline matrix-multiply kernel reaches 50 percent of peak FLOPS and 70 percent of peak memory bandwidth at 60 percent occupancy. After tuning it reaches 85 percent of FLOPS and 40 percent of bandwidth at 80 percent occupancy. Say why the baseline is memory-bound and show how the new numbers prove the shift to compute-bound.
-3. A Grace CPU shows an instructions-per-cycle value of 1.58 out of 8.0. The `perf report` hotspots are 45.0 percent Python forward, 20.5 percent matrix multiply, 10.2 percent dataloader, 8.7 percent NCCL all-reduce and 5.3 percent file reads. Name the fix for each hotspot.
-4. Compiling with `max-autotune` cuts a step from 248 ms to 173 ms. Compute the milliseconds saved, the percentage and the speedup factor. Then explain why a dense model dominated by one large GEMM gains under 10 percent.
-5. A 600 MB request is rounded up by the allocator to 768 MB when the settings are max_split_size_mb 256, roundup_power2_divisions 256:1, 512:2, 1024:4 and above that 8, with the cudaMallocAsync backend. Show why 600 MB becomes 768 MB. Then compute the memory saved when the settings change to expandable segments, max_split_size_mb 128 and garbage_collection_threshold 0.8, which serve the request at 600 MB.
-6. A server captures CUDA Graphs for batch sizes 8, 4, 2 and 1. Say why the capture order matters and which order the FireworksAI server uses.
-7. A 64.0 GB FSDP job reaches 10,000 tokens per second. SimpleFSDP is reported to cut memory by 28 percent and raise throughput by 69 percent. Compute the new memory and throughput. Then compute the sequential and the overlapped latency of one layer under AsyncTP, given 12.0 ms of compute, 4.0 ms of all-gather and 85 percent overlap efficiency.
-8. An 8-GPU trace of a 24.0 ms step shows ranks 0 to 6 with compute times of 18.0, 19.5, 19.5, 19.5, 19.5, 19.5 and 19.5 ms plus 4.0 ms of communication each, and rank 7 with 21.0 ms of compute plus 2.5 ms of communication. Name the straggler and the rank with the largest idle gap.
-9. A 24.0 ms MLPerf-style step is split into 10.5 ms forward, 9.0 ms backward, 4.0 ms all-reduce and 0.5 ms other. Compute the share of each part and say what the breakdown tells you to optimize.
-10. Two TorchBench sequences are compared with a baseline of 10,000 tokens per second. The gate fails a run that falls 5 percent or more below baseline on 3 runs. Sequence A is 9,400, 9,450 and 9,800 tokens per second. Sequence B is 9,400, 9,450 and 9,480. Decide which sequence fails the PyTorch HUD gate.
+1. One training step of a 64-expert Mixture-of-Experts model takes 138.0 ms. The profiler shows matrix multiplication at 43.00 ms over 128 calls. Linear layers take 35.50 ms over 64 calls. How much of the step goes to GEMM work? How much goes to the custom routing kernels, dispatch at 18.70 ms and combine at 12.10 ms? Why does the matrix multiply run 128 times while the in-place add runs 64 times?
+2. A baseline matrix-multiply kernel reaches 50 percent of peak FLOPS. It also reaches 70 percent of peak memory bandwidth, at 60 percent occupancy. Why is the baseline memory-bound? After tuning, the kernel reaches 85 percent of FLOPS and 40 percent of bandwidth, at 80 percent occupancy. How do those new numbers prove the shift to compute-bound?
+3. A Grace CPU shows an instructions-per-cycle value of 1.58 out of 8.0. The `perf report` hotspots are 45.0 percent Python forward, and 20.5 percent matrix multiply. The rest are 10.2 percent dataloader, 8.7 percent NCCL all-reduce and 5.3 percent file reads. What is the fix for each hotspot?
+4. Compiling with `max-autotune` cuts a step from 248 ms to 173 ms. How many milliseconds are saved? What is the percentage, and what is the speedup factor? Why does a dense model dominated by one large GEMM gain under 10 percent?
+5. The allocator rounds a 600 MB request up to 768 MB under the first settings. Those settings are max_split_size_mb 256, roundup_power2_divisions 256:1, 512:2, 1024:4 and 8 above that, with the cudaMallocAsync backend. Show why 600 MB becomes 768 MB. Then compute the memory saved under expandable segments, with max_split_size_mb 128 and garbage_collection_threshold 0.8, which serve the request at 600 MB.
+6. A server captures CUDA Graphs for batch sizes 8, 4, 2 and 1. Why does the capture order matter? Which order does the FireworksAI server use?
+7. A 64.0 GB FSDP job reaches 10,000 tokens per second. SimpleFSDP is reported to cut memory by 28 percent. It is also reported to raise throughput by 69 percent. What are the new memory and throughput figures? Then compute the sequential and the overlapped latency of one AsyncTP layer, with 12.0 ms of compute, 4.0 ms of all-gather and 85 percent overlap efficiency.
+8. An 8-GPU trace of a 24.0 ms step shows ranks 0 to 6 with compute times of 18.0, 19.5, 19.5, 19.5, 19.5, 19.5 and 19.5 ms, plus 4.0 ms of communication each. Rank 7 has 21.0 ms of compute and 2.5 ms of communication. Which rank is the straggler? Which rank shows the largest idle gap?
+9. A 24.0 ms MLPerf-style step is split into 10.5 ms forward, 9.0 ms backward, 4.0 ms all-reduce and 0.5 ms other. What is the share of each part? What does the breakdown tell you to optimize?
+10. Two TorchBench sequences are compared with a baseline of 10,000 tokens per second. The gate fails a run that falls 5 percent or more below baseline on 3 runs. Sequence A runs at 9,400, 9,450 and 9,800 tokens per second. Sequence B runs at 9,400, 9,450 and 9,480. Which sequence fails the PyTorch HUD gate?
 
 ---
 
 ## Interview angles
 
 1. A team turned on `torch.compile` with FSDP and `torch._dynamo.explain()` shows dozens of graph breaks at AllGather and ReduceScatter. How do they remove those graph breaks?
-   Do not wrap the entire model in a single root FSDP unit or force `fullgraph=True` across distributed collectives. You want graph breaks at DDP 25 MB buckets and FSDP TransformerBlock boundaries with `min_num_params=int(1e8)` and `use_orig_params=True`. TorchDynamo compiles each block's compute into a fused subgraph and breaks at the shard boundary so NCCL AllGather and ReduceScatter run asynchronously between subgraphs. To trace collectives inside the compiler without manual wrapper breaks, use DTensor-based SimpleFSDP in TorchTitan. It achieves up to 28 percent lower memory and 69 percent higher throughput than eager FSDP2.
+   Do not wrap the entire model in a single root FSDP unit, and do not force `fullgraph=True` across distributed collectives. Both remove the breaks that let communication overlap. The right place for breaks is at the DDP 25 MB buckets and at the FSDP TransformerBlock boundaries, configured with `min_num_params=int(1e8)` and `use_orig_params=True`. TorchDynamo compiles each block's compute into a fused subgraph and breaks at the shard boundary. The NCCL AllGather and ReduceScatter then run asynchronously between the subgraphs. If you want the collectives traced inside the compiler, without manual wrapper breaks, use DTensor-based SimpleFSDP in TorchTitan. It achieves up to 28 percent lower memory and 69 percent higher throughput than eager FSDP2, in the authors' best-case figures.
 2. Why did `torch.compile` speed up the 64-expert MoE training step by 30 percent, whereas the dense 70B layer benchmark only improved by 6 percent?
-   Dense layers are dominated by a few massive GEMMs that already saturate Tensor Cores via cuBLASLt, leaving under 10 percent room for fusion or dispatch removal. As the operator table and `perf report` show, a 64-expert MoE step runs 128 expert `aten::matmul` calls, 64 `aten::linear` calls, and custom dispatch and combine routing. It also runs scatter, gather, layer normalization, and 64 `aten::add_` updates while `py::forward` consumes 45.0 percent of CPU samples. TorchInductor fuses prologue and epilogue elementwise ops into adjacent kernels and removes Python interpreter and launch overhead.
+   A dense layer is dominated by a few massive GEMMs. Those already keep the Tensor Cores busy through cuBLASLt, so the compiler has under 10 percent of room to fuse or remove dispatch. The MoE step is a different shape of work. The operator table and the `perf report` show 128 expert `aten::matmul` calls, 64 `aten::linear` calls, and custom dispatch and combine routing. The step also runs scatter, gather, layer normalization and 64 `aten::add_` updates, while `py::forward` consumes 45.0 percent of CPU samples. TorchInductor fuses the prologue and epilogue elementwise ops into adjacent kernels, and it removes Python interpreter and launch overhead along the way.
 3. How do you serve or train multiple batch sizes with CUDA Graphs without multiplying GPU memory consumption across every bucket?
-   Share a single memory pool handle across all graph variants via `torch.cuda.graph_pool_handle()`, or use `torch.compile(mode="reduce-overhead")` CUDA Graph Trees. Capture the graphs in strictly decreasing batch-size order from 8 down to 4, 2, and 1 following the FireworksAI pattern. Capturing batch size 8 first allocates the high-water-mark buffers in the shared pool. Subsequent captures for 4, 2, and 1 reuse those exact addresses without allocating extra VRAM.
+   Share a single memory pool handle across all the graph variants, using `torch.cuda.graph_pool_handle()`. You can also use `torch.compile(mode="reduce-overhead")` with CUDA Graph Trees. Capture the graphs in strictly decreasing batch-size order, from 8 down to 4, 2 and 1, following the FireworksAI pattern. Capturing batch size 8 first allocates the high-water-mark buffers in the shared pool. The later captures for 4, 2 and 1 then reuse those exact addresses, so they need no extra VRAM.
 4. In an MLPerf or production distributed run, how do you prove whether scaling is bottlenecked by compute, gradient sync, or a single straggler GPU?
-   Emit structured `:::MLL` JSON logs as in the step breakdown to see the step split between forward and backward compute versus gradient AllReduce time. Then capture scheduled Kineto traces across all ranks and load them into Meta's Holistic Trace Analysis or Perfetto. Aligning NVTX markers across all GPUs immediately distinguishes a global AllReduce bandwidth ceiling from a single straggler rank that enters backpropagation late and forces peers to sit idle.
+   Start with structured `:::MLL` JSON logs, as in the step breakdown, to see how the step splits between forward and backward compute and gradient AllReduce time. Then capture scheduled Kineto traces across all ranks, and load them into Meta's Holistic Trace Analysis or Perfetto. Aligning the NVTX markers across all GPUs separates two cases. A global AllReduce bandwidth ceiling shows up on every rank at once. A single straggler rank shows up as one rank that enters backpropagation late and forces its peers to sit idle.
 
 ---
 
