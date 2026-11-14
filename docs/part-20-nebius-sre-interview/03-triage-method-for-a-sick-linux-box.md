@@ -12,15 +12,15 @@ lab_venue: "Linux VM"
 
 # 20.3 Triage method for a sick Linux box
 
-Honest status first. The first draft of this chapter was written on a Mac with no Docker daemon. It has since been run on Linux, with limits. The scripts ran in a throwaway container, `ubuntu:24.04`, image digest `sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852`, arm64, on the Docker VM kernel `6.18.37-0-virt` with 2 CPUs and no swap. **A container shares the VM's kernel and hides parts of it, so some output here differs from a real server.** Section "What the container run showed" lists the differences, and "Not verified" lists what still could not run.
+Honest status first. The first version of this chapter could not be run on the Mac it was written on, because that Mac had no Docker daemon. The scripts were run later on Linux, with limits. They ran in a throwaway container, `ubuntu:24.04`, image digest `sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852`, arm64, on the Docker VM kernel `6.18.37-0-virt` with 2 CPUs and no swap. **A container shares the VM's kernel and hides parts of it, so some output here differs from a real server.** Section "What the container run showed" lists the differences, and "Not verified" lists what still could not run. Keep that caveat in mind as you read every output sample below.
 
 ## What the interviewer is testing
 
-This chapter serves the first stage of the loop, the Linux console round. Nebius says the technical interviews include "practical tasks in the Linux console" and "coding, troubleshooting, debugging". The job posting asks for debugging "from kernel to application layer". The plan, section 1, also records Nebius's own advice for every round: say your reasoning aloud, ask for hints, offer alternatives.
+Suppose a console round that starts with a short, flat sentence from the interviewer: the box is slow, and you have a shell. This chapter serves the first stage of the loop, the Linux console round. Nebius says the technical interviews include "practical tasks in the Linux console" and "coding, troubleshooting, debugging". The job posting asks for debugging "from kernel to application layer". The plan, section 1, also records Nebius's own advice for every round: say your reasoning aloud, ask for hints, offer alternatives.
 
-One candidate reported that the Amsterdam SRE loop opens with an hour of Linux troubleshooting on the command line. That is one anecdote, a hint about format and not a promise. The same report mentioned file descriptors, syscalls and a file the service cannot access even though `chmod` does nothing. Chapter 20.4 covers those.
+One candidate reported that the Amsterdam SRE loop opens with an hour of Linux troubleshooting on the command line. That is one anecdote, a hint about format and not a promise. The same report mentioned file descriptors, syscalls and a file the service cannot access even though `chmod` does nothing. Chapter 20.4 covers those. Treat the anecdote as a reason to practise the console, not as a fact about the loop.
 
-This round mostly checks whether you have a method, read ordinary output correctly, and let the interviewer follow your thinking.
+This round mostly checks whether you have a method, read ordinary output correctly, and let the interviewer follow your thinking. Nobody expects you to know every flag by heart. They expect you to pick a sensible first command, say why you picked it, and know what to do with the answer.
 
 A realistic question in the interviewer's voice: "You have SSH access to a server. The team says it got slow about twenty minutes ago. Show me what you do, and tell me what you are thinking as you do it."
 
@@ -28,27 +28,27 @@ A realistic question in the interviewer's voice: "You have SSH access to a serve
 
 ### 1. Start with the problem statement, not a tool
 
-A page says "the box is slow". You have a prompt open and your hands want to type `top`. Stop for one minute and ask questions first.
+Think of the page arriving at night. It says "the box is slow", and you have a prompt open. Your hands want to type `top`, because that is what your hands have done for years. Stop for one minute and ask questions first. The questions cost you almost nothing, and they often reveal that the problem is not what the page says.
 
-Systems Performance, in its chapter on methodologies, calls this the problem statement method and says to use it first. The questions are short. What makes you think there is a problem? Has this system ever performed well? What changed recently, in software, hardware or load? Can the problem be expressed as latency or runtime? Does it affect other people or only you? What is the environment, with versions and configuration?
+Systems Performance, in its chapter on methodologies, calls this the problem statement method and says to use it first. The questions are short. What makes you think there is a problem? Has this system ever performed well? What changed recently, in software, hardware or load? Can the problem be expressed as latency or runtime? Does it affect other people or only you? What is the environment, with versions and configuration? Latency here means how long a request takes, and runtime means how long a job takes to finish.
 
-The book reports solving issues over the phone with these questions alone. In the interview, say the questions aloud and answer them from the system yourself. Two answers matter most. A start time lets you line up logs, deploys and graphs. A user-visible symptom matters because "slow" and "failing" lead to different checks. **Before you touch a tool, say what you know, what you do not know, and what changed.**
+The book reports solving issues over the phone with these questions alone. In the interview, say the questions aloud and answer them from the system yourself. Two answers matter most. A start time lets you line up logs, deploys and graphs. A user-visible symptom matters because "slow" and "failing" lead to different checks. A slow box still answers requests. A failing box refuses them, times out, or returns errors. **Before you touch a tool, say what you know, what you do not know, and what changed.**
 
 ### 2. A method beats a favourite tool
 
-Systems Performance names three anti-methods. The streetlight anti-method picks familiar tools, like looking for lost keys under the lamp because the light is better there. The random-change anti-method changes settings until the problem seems to go away. The blame-someone-else anti-method hands the issue to another team with no data behind the guess.
+Consider a senior colleague who always reaches for the same three commands, whatever the problem is. Sometimes those commands find the problem, and sometimes they only make the colleague feel busy. Systems Performance names three anti-methods. The streetlight anti-method picks familiar tools, like looking for lost keys under the lamp because the light is better there. The random-change anti-method changes settings until the problem seems to go away. The blame-someone-else anti-method hands the issue to another team with no data behind the guess.
 
-All three feel productive and all three lose points. The streetlight method may find an issue but not the issue. Random change can leave tuning nobody understands and can worsen peak load. Blame wastes other teams' time.
+All three feel productive and all three lose points. A quick self-check during a round is to ask which of the three you are doing right now. If the honest answer is "the command I know best", you have found the streetlight. The streetlight method may find an issue but not the issue. Random change can leave tuning nobody understands and can worsen peak load. Blame wastes other teams' time. In a console round, each of the three shows up as a visible habit, and the interviewer notices it quickly.
 
-An interviewer can always tell whether you are guessing. A sentence like "I will check every resource for errors, saturation and utilisation before I form a theory" shows you are not.
+An interviewer can always tell whether you are guessing. A sentence like "I will check every resource for errors, saturation and utilisation before I form a theory" shows you are not. It tells the interviewer that you have a plan that covers the whole machine, and that you will not stop at the first thing that looks odd.
 
-The book also lists the ad hoc checklist as a legitimate method. It gives value fastest and it ages. The 60-second checklist below is one, and the USE method stops it becoming a streetlight.
+The book also lists the ad hoc checklist as a legitimate method. It gives value fastest and it ages. The 60-second checklist below is one, and the USE method stops it becoming a streetlight. USE is a method that checks every resource for utilisation, saturation and errors, and it is covered later in this chapter.
 
 **Name your method before your first command, and name it again whenever you change direction.**
 
 ### 3. The first 60 seconds, command by command
 
-Systems Performance, in its introduction, gives a ten-command checklist that fits in the first minute of an investigation. It uses only tools found on most distributions. Table 20.3.1 restates it with what each line is really asking.
+Imagine the first minute of an investigation as a short list you run in order, without stopping to theorise. Systems Performance, in its introduction, gives a ten-command checklist that fits in the first minute of an investigation. It uses only tools found on most distributions. Table 20.3.1 restates it with what each line is really asking.
 
 | # | Command | The question it answers |
 |---|---|---|
@@ -65,11 +65,11 @@ Systems Performance, in its introduction, gives a ten-command checklist that fit
 
 Table 20.3.1: the 60-second checklist, from Systems Performance 2nd edition, section 1.10.1.
 
-Three habits make the list work. Use a one-second interval, because a graph averaged over a minute hides short bursts of saturation. Read the whole screen before you comment. And keep one line per command, even in your head, so you can finish with "CPU is saturated, disk is fine, memory is fine".
+Three habits make the list work. Use a one-second interval, because a graph averaged over a minute hides short bursts of saturation. Saturation means a resource has more work than it can serve, so the work waits in a queue. Read the whole screen before you comment. And keep one line per command, even in your head, so you can finish with "CPU is saturated, disk is fine, memory is fine". That closing sentence is the kind of summary an interviewer can follow without seeing your screen.
 
-The tools must be installed before the crisis. The book's chapter on observability tools lists the packages. The package `procps` gives `vmstat`, `uptime` and `top`. The package `util-linux` gives `dmesg`. The package `sysstat` gives `iostat`, `mpstat`, `pidstat` and `sar`. The package `iproute2` gives `ss` and `nstat`. A default install may only have the first two, and installing under load takes longer than usual.
+The tools must be installed before the crisis. The book's chapter on observability tools lists the packages. The package `procps` gives `vmstat`, `uptime` and `top`. The package `util-linux` gives `dmesg`. The package `sysstat` gives `iostat`, `mpstat`, `pidstat` and `sar`. The package `iproute2` gives `ss` and `nstat`. A default install may only have the first two, and installing under load takes longer than usual. Check which tools exist before you need them, because a missing tool in the middle of a crisis costs you time you cannot easily win back.
 
-The script `triage_first60.sh` runs the ten commands for a few samples each and writes one text file per command. It is read-only and it refuses to run on anything that is not Linux. A missing tool is recorded as a missing tool, which matters because the book calls unanswered questions "known-unknowns" and says that knowing about them is itself useful.
+The script `triage_first60.sh` runs the ten commands for a few samples each and writes one text file per command. It is read-only and it refuses to run on anything that is not Linux. A missing tool is recorded as a missing tool, which matters because the book calls unanswered questions "known-unknowns" and says that knowing about them is itself useful. A known-unknown is something you know you could not check, and naming it is better than pretending it was clear.
 
 ```bash
 # code/part20/triage_first60.sh
@@ -117,21 +117,21 @@ done
 echo "wrote $out"
 ```
 
-**Run the checklist top to bottom without stopping to theorise, then say what each line told you.**
+**Run the checklist top to bottom without stopping to theorise, then say what each line told you.** In the room, that sentence is your plan for the next minute, and it keeps you from jumping to the one command you like best.
 
 ### 4. Reading load, run queue and pressure correctly
 
-Load average is the number everyone reads first and half of them read wrongly. A senior answer needs three facts.
+Suppose a senior engineer glancing at a load average of 40 and saying that the box is fine, or that the box is on fire, with equal confidence. Load average is the number everyone reads first and half of them read wrongly. A senior answer needs three facts.
 
-First, the load average counts demand, not only CPU demand. Since 1993 Linux has included tasks in the uninterruptible state, shown as state D, so threads stuck on disk count too. The book says the load is current usage plus queued work. A load of 20 on a 64-CPU machine is headroom. A load of 128 on the same machine means one thread running and one waiting per CPU, on average, if the load is all CPU.
+First, the load average counts demand, not only CPU demand. Since 1993 Linux has included tasks in the uninterruptible state, shown as state D, so threads stuck on disk count too. An uninterruptible task is one that cannot be woken up by a signal, usually because it is waiting for a disk or a network mount to reply. The book says the load is current usage plus queued work. A load of 20 on a 64-CPU machine is headroom. A load of 128 on the same machine means one thread running and one waiting per CPU, on average, if the load is all CPU.
 
-Second, the three numbers are an exponentially damped average, and the damping is slow. In the book's experiment a single CPU-bound thread took about one minute for the 1-minute average to reach about 61 percent of the real load. A problem that started thirty seconds ago barely shows in load. The `r` column of `vmstat` shows it at once, because it counts runnable threads right now, both running and waiting.
+Second, the three numbers are an exponentially damped average, and the damping is slow. Damping here means each new sample has a smaller effect on the average than the one before. In the book's experiment a single CPU-bound thread took about one minute for the 1-minute average to reach about 61 percent of the real load. A problem that started thirty seconds ago barely shows in load. The `r` column of `vmstat` shows it at once, because it counts runnable threads right now, both running and waiting.
 
-Third, the trend carries meaning. If the 1-minute number is lower than the 15-minute number, load is falling and you may have missed the event. If it is higher, things may be getting worse.
+Third, the trend carries meaning. If the 1-minute number is lower than the 15-minute number, load is falling and you may have missed the event. If it is higher, things may be getting worse. A trend is often more useful than the single value, because it tells you which way to look next.
 
-Linux 4.20 added pressure stall information, called PSI. It gives a percentage of time that tasks were stalled on cpu, memory or io, averaged over 10, 60 and 300 seconds. The book's table shows the difference. With 2 CPUs and 3 busy threads, load is 3.0 and CPU pressure is 50.0. With 2 busy threads, load is 2.0 and pressure is 0.0.
+Linux 4.20 added pressure stall information, called PSI. It gives a percentage of time that tasks were stalled on cpu, memory or io, averaged over 10, 60 and 300 seconds. A stalled task is one that wants to run but is waiting for the resource. The book's table shows the difference. With 2 CPUs and 3 busy threads, load is 3.0 and CPU pressure is 50.0. With 2 busy threads, load is 2.0 and pressure is 0.0.
 
-You read PSI by comparing the windows. If the 10-second average is higher than the 300-second average, pressure is rising. The book's memory example has 2.84 against 0.32, and its I/O example has 63.11 against 8.62. The file for each resource has a `some` line and, for memory and I/O, a `full` line where all non-idle threads stalled.
+You read PSI by comparing the windows. If the 10-second average is higher than the 300-second average, pressure is rising. The book's memory example has 2.84 against 0.32, and its I/O example has 63.11 against 8.62. The file for each resource has a `some` line and, for memory and I/O, a `full` line where all non-idle threads stalled. Read the `some` line first, because it shows that at least one task was waiting, and the `full` line tells you when the whole machine was stuck.
 
 Table 20.3.2 compares the three. None of them says why.
 
@@ -143,17 +143,19 @@ Table 20.3.2 compares the three. None of them says why.
 
 Table 20.3.2: three ways to see CPU demand, from Systems Performance chapter 6.
 
-The book warns against spending more than five minutes on load averages. Read them, note the trend, move on.
+The book warns against spending more than five minutes on load averages. Read them, note the trend, move on. The load average is a starting point for a question, and the other two signals answer that question.
+
+When the three signals agree, the answer is easy. The disagreements are the interesting part. A high load with an idle run queue and no pressure points you toward disk waits, because uninterruptible tasks inflate the load without using the CPU. A high run queue with high pressure points you toward CPU. Write down all three before you choose a direction, so that the interviewer can see the reasoning and not only the conclusion.
 
 **Say "load is demand, not just CPU, so I will confirm with the run queue and pressure" before you call a CPU problem.**
 
 ### 5. Reading memory and disk output
 
-Memory output is where tired engineers misread. The `free -m` line has a column called `free` and a column called `available`. The book's example shows 163 MB free and 1187 MB available on a 1950 MB machine. The page cache holds most of the difference, and the kernel gives it back to applications on demand.
+Think of a tired engineer staring at `free -m` late at night, seeing a small free number, and panicking. Memory output is where tired engineers misread. The `free -m` line has a column called `free` and a column called `available`. The book's example shows 163 MB free and 1187 MB available on a 1950 MB machine. The page cache holds most of the difference, and the kernel gives it back to applications on demand. The page cache is memory the kernel uses to keep recently read file data, so a full cache is normal and healthy.
 
-The book says `available` is how much memory applications can use without swapping, and that tools differ in what they count. Check saturation in `vmstat` next. Swapping shows as non-zero `si` and `so`, and the OOM killer shows in `dmesg` as "Out of memory".
+The book says `available` is how much memory applications can use without swapping, and that tools differ in what they count. Swapping means moving memory pages out to disk, which is far slower than RAM. Check saturation in `vmstat` next. Swapping shows as non-zero `si` and `so`, and the OOM killer shows in `dmesg` as "Out of memory". OOM stands for out of memory, and the OOM killer is the kernel's last resort that terminates a process to free memory.
 
-The `vmstat` output has a trap in its first line. On the version the book uses, the first row is a summary since boot for some columns, and the memory columns are current. Always compare the later rows. In the book's `vmstat 1 3` example the first row has `so` of 4 and the next two have 0. If you read the first row you would call swapping that never happened.
+The `vmstat` output has a trap in its first line. On the version the book uses, the first row is a summary since boot for some columns, and the memory columns are current. Always compare the later rows. In the book's `vmstat 1 3` example the first row has `so` of 4 and the next two have 0. If you read the first row you would call swapping that never happened. That is a mistake an interviewer may be waiting for.
 
 Table 20.3.3 shows the columns you will actually say aloud.
 
@@ -167,23 +169,25 @@ Table 20.3.3 shows the columns you will actually say aloud.
 
 Table 20.3.3: the `vmstat` columns for the first minute.
 
-How Linux Works shows both pictures. On a quiet machine idle is around 99 and `si` and `so` stay zero, even if some swap is in use. When memory runs out, buffer and cache shrink, `so` turns non-zero, system time and disk traffic rise, and processes block waiting for pages. That is thrashing.
+How Linux Works shows both pictures. On a quiet machine idle is around 99 and `si` and `so` stay zero, even if some swap is in use. When memory runs out, buffer and cache shrink, `so` turns non-zero, system time and disk traffic rise, and processes block waiting for pages. That is thrashing, a state where the machine spends so much time moving pages that little real work gets done.
 
-For disks, the book calls `iostat` the first command for disk I/O problems. The extended view `iostat -sxz 1` shows `tps` as IOPS, `await` as average response time in milliseconds, `aqu-sz` as the average queue length, and `%util` as the percent of time the device was busy. The book says `await` is the most important metric for delivered performance.
+For disks, the book calls `iostat` the first command for disk I/O problems. The extended view `iostat -sxz 1` shows `tps` as IOPS, `await` as average response time in milliseconds, `aqu-sz` as the average queue length, and `%util` as the percent of time the device was busy. IOPS means input and output operations per second. The book says `await` is the most important metric for delivered performance.
+
+A useful way to picture disk numbers is a checkout queue at a supermarket. Utilisation tells you the till was open the whole time. Saturation tells you whether a line formed in front of it. Await tells you how long each customer waited. A till can be open all day and still serve everyone quickly, and a till that is only open half the time can still have a long line when it does open.
 
 Here is the interpretation that separates seniors from juniors. `%util` at 100 only says the device was never idle. The book says it may mean little for a virtual device backed by several disks. Its own example has an NVMe device at 100 percent utilisation with an `await` of 0.44 ms and a queue of 0.00. That is busy, not saturated. Saturation in the USE checklist is a queue above 1 or a high `await`.
 
-Also read the `avg-cpu` line above the device table. A high `%iowait` means CPUs were idle while threads waited on I/O. The USE appendix counts it as idle, so a CPU can look idle while the system is slow.
+Also read the `avg-cpu` line above the device table. A high `%iowait` means CPUs were idle while threads waited on I/O. The USE appendix counts it as idle, so a CPU can look idle while the system is slow. This is the case where a dashboard says the CPUs are fine and the users say the app is slow.
 
 **Always check saturation next to utilisation, and say "busy is not the same as saturated" whenever a device shows 100 percent.**
 
 ### 6. The USE method as a sweep
 
-The checklist finds what is obvious. The USE method finds what is missing. For every resource, check utilisation, saturation and errors.
+Consider a sweep across a row of machines, one resource at a time, so that nothing is left unchecked. The checklist finds what is obvious. The USE method finds what is missing. For every resource, check utilisation, saturation and errors.
 
-The book defines the three. Utilisation is the percent of time the resource was busy, or for memory the share of capacity used. Saturation is extra work the resource cannot service, usually waiting in a queue. Errors are counts of error events. The method iterates over resources, not tools. You write the full list of questions first and only then look for tools, and unanswered questions become known-unknowns.
+The book defines the three. Utilisation is the percent of time the resource was busy, or for memory the share of capacity used. Saturation is extra work the resource cannot service, usually waiting in a queue. Errors are counts of error events. The method iterates over resources, not tools. You write the full list of questions first and only then look for tools, and unanswered questions become known-unknowns. That order keeps you honest, because the tools are chosen to answer the questions and not the other way round.
 
-The order matters. The book says check errors first because they are objective and quick to interpret. Check saturation second because any non-zero saturation can be a problem. Check utilisation last. The book also says utilisation beyond about 60 percent can hide short bursts of 100 percent, so look at one-second numbers and not five-minute averages.
+The order matters. The book says check errors first because they are objective and quick to interpret. Check saturation second because any non-zero saturation can be a problem. Check utilisation last. The book also says utilisation beyond about 60 percent can hide short bursts of 100 percent, so look at one-second numbers and not five-minute averages. A five-minute average can look calm while a one-second burst is pinning the device.
 
 Table 20.3.4 condenses Appendix A of Systems Performance for the resources you can check in a console.
 
@@ -199,7 +203,9 @@ Table 20.3.4 condenses Appendix A of Systems Performance for the resources you c
 
 Table 20.3.4: the USE checklist for Linux, condensed from Systems Performance appendix A.
 
-Two lines are easy to forget. Software resources count, because running out of file descriptors or threads looks like application errors. Resource controls count too. The book says a tenant's memory saturation shows as limit-imposed allocation errors even when the host has memory to spare, so a container can be out of memory on a healthy host.
+Use the table as a checklist that you carry into the room, not as a list to memorise. Each row asks one question per resource, and the cell in each column tells you which command answers it. When you are stuck, the empty cells are the first things to fill.
+
+Two lines are easy to forget. Software resources count, because running out of file descriptors or threads looks like application errors. A file descriptor is a handle a program holds for an open file or socket, and each process has a limit on how many it may hold. Resource controls count too. The book says a tenant's memory saturation shows as limit-imposed allocation errors even when the host has memory to spare, so a container can be out of memory on a healthy host.
 
 The script `triage_use_sweep.sh` prints one line per resource in this table from `/proc` and `/sys`. It decides nothing. It makes the sweep fast and shows which cells you could not fill.
 
@@ -252,17 +258,17 @@ nstat -az TcpRetransSegs 2>/dev/null | sed 's/^/                /'
 echo "Known-unknowns: interconnects, per-disk errors, GPU. Use perf, smartctl, dcgmi."
 ```
 
-**Sweep every resource for errors, then saturation, then utilisation, and say out loud which cells you could not fill.**
+**Sweep every resource for errors, then saturation, then utilisation, and say out loud which cells you could not fill.** An empty cell said out loud is a better answer than a confident guess about a number you never saw.
 
 ### 7. RED and golden signals: from the box to the service
 
-A Linux box is not the product. A service on it is. Systems Performance puts it clearly: the USE method is for machine health and the RED method is for user health. They complement each other.
+Imagine a customer complaint that arrives before any alert fires. The customer says the chat is slow, and the box looks ordinary. A Linux box is not the product. A service on it is. Systems Performance puts it clearly: the USE method is for machine health and the RED method is for user health. They complement each other, so you need both to explain a slow service.
 
-RED means, for every service, check request rate, errors and duration. The book says to look at duration with percentiles and not only the average. The request rate is the early clue. If the rate has been steady but duration has risen, the problem is in the architecture, meaning the service itself. If both have risen, the cause may be load, and workload characterisation comes next.
+RED means, for every service, check request rate, errors and duration. Duration is how long each request takes. The book says to look at duration with percentiles and not only the average, because an average can hide a slow tail of requests. The request rate is the early clue. If the rate has been steady but duration has risen, the problem is in the architecture, meaning the service itself. If both have risen, the cause may be load, and workload characterisation comes next. Workload characterisation is the work of describing who sends the load, what they ask for and how that changes over time.
 
-Ask that before you log in. If traffic doubled, no tuning of this box fixes the real issue.
+Ask that before you log in. If traffic doubled, no tuning of this box fixes the real issue. The same question also protects you from a common interview trap, which is to start tuning a machine that is working correctly under more load than it was built for. In that case the right answer is capacity, and the box needs no tuning at all. Looking at the request rate first can save a great deal of work on the wrong machine.
 
-The handbook's chapter 17.1 shows how the golden signals combine the two. Latency, traffic and errors come from RED, and saturation comes from USE. The book's Netflix example bridges the two. For a microservice, utilisation is average CPU across instances, errors are request errors, and saturation is approximated by the gap between p99 latency and the average.
+The handbook's chapter 17.1 shows how the golden signals combine the two. The golden signals are latency, traffic, errors and saturation. Latency, traffic and errors come from RED, and saturation comes from USE. The book's Netflix example bridges the two. For a microservice, utilisation is average CPU across instances, errors are request errors, and saturation is approximated by the gap between p99 latency and the average. The gap is a rough signal that some requests are waiting much longer than the typical one.
 
 For Token Factory the customer-facing metrics Nebius lists are end-to-end latency percentiles, time to first token, token throughput, errors by status code and active replicas. Those are the service-side signals. Nebius has not published how its own on-call maps those to host checks. A reasonable design, and this is my reasoning, is to let the RED-style alert tell you which service is unhealthy and let the USE sweep on one of its nodes tell you why.
 
@@ -282,15 +288,17 @@ Figure 20.3.1: RED tells you whether to look at load or architecture, then USE l
 
 ### 8. Hypotheses out loud: the scientific method
 
-When the checklist shows something odd, you need a theory and a test. The book gives the steps: question, hypothesis, prediction, test, analysis. It also gives a faster loop, the diagnosis cycle, which is hypothesis, instrumentation, data, hypothesis again. The advice is to move from theory to data quickly so bad theories die early.
+Suppose the checklist finishing with one line that looks odd. There is a number that does not fit, and you feel the pull to act on it. When the checklist shows something odd, you need a theory and a test. A theory with no test is only an opinion, and a test with no theory tells you very little. The book gives the steps: question, hypothesis, prediction, test, analysis. It also gives a faster loop, the diagnosis cycle, which is hypothesis, instrumentation, data, hypothesis again. Instrumentation means adding the means to observe the system, such as a tracer or a counter. The advice is to move from theory to data quickly so bad theories die early.
 
 Spoken, it is five short sentences. "My question is why latency rose at ten past. My hypothesis is the CPUs are saturated. If that is true, `vmstat` should show a run queue above the CPU count and `mpstat` should show little idle. I am checking that now. It shows idle at 2 percent, so the hypothesis holds, and next I want to know who is using the CPU."
 
-The prediction is the important sentence. A hypothesis that predicts nothing cannot be tested, and a test without a prediction cannot be wrong. The book tests "noisy neighbours cause slow queries" by predicting that file system time dominates query time. Tracing showed under 5 percent, so the hypothesis died. The book counts ruling out a big component as progress.
+The prediction is the important sentence. A hypothesis that predicts nothing cannot be tested, and a test without a prediction cannot be wrong. The book tests "noisy neighbours cause slow queries" by predicting that file system time dominates query time. Tracing showed under 5 percent, so the hypothesis died. The book counts ruling out a big component as progress. A dead hypothesis is a useful result, because it removes a branch of the search.
 
-Experiments must be clean. If a change does not fix the problem, reverse it before the next hypothesis, because changing several things at once hides which one mattered. In a console round, say "I will not change anything yet, I only want to read".
+Experiments must be clean. If a change does not fix the problem, reverse it before the next hypothesis, because changing several things at once hides which one mattered. In a console round, say "I will not change anything yet, I only want to read". Reading is safe in a way that changing is not, and the interviewer can see that you know the difference.
 
-Prefer observational tests on a production machine. Reading `vmstat` costs nothing. Restarting might fix the symptom and destroy the evidence, so say what you would capture first.
+A dead hypothesis is worth saying out loud as well. Suppose you suspect a noisy neighbour, which is another tenant on the same host using shared resources. You predict that the slow requests spend most of their time in the file system. The trace then shows that almost none of their time is spent there. You say "that rules it out", and you move to the next branch without argument. Interviewers remember candidates who let go of a theory quickly.
+
+Prefer observational tests on a production machine. Reading `vmstat` costs nothing. Restarting might fix the symptom and destroy the evidence, so say what you would capture first. A process that is restarted loses its memory, its open connections and its logs in memory, and those are often the clues you needed.
 
 ```mermaid
 flowchart TD
@@ -308,25 +316,27 @@ Figure 20.3.2: the triage loop. Every arrow back to the hypothesis box is normal
 
 ### 9. Drill-down after the 60 seconds
 
-The 60 seconds are one stage of three. Systems Performance describes drill-down analysis as monitoring, identification and analysis. Monitoring records statistics and alerts. Identification narrows to a resource on one machine, and the 60-second tools belong here. Analysis traces or profiles to find the cause, with tools such as `strace`, `perf`, BCC tools and bpftrace.
+Think of a database team that is convinced the disks are slow, and an engineer who has to prove or disprove it before anyone changes hardware. The 60 seconds are one stage of three. Systems Performance describes drill-down analysis as monitoring, identification and analysis. Monitoring records statistics and alerts. Identification narrows to a resource on one machine, and the 60-second tools belong here. Analysis traces or profiles to find the cause, with tools such as `strace`, `perf`, BCC tools and bpftrace. BCC and bpftrace are tracing toolkits built on the kernel's eBPF facility, which lets small programs run safely inside the kernel to observe events.
 
-The book's slow-disks story shows the order. A database team says the disks are slow. Sumit, the book's administrator, asks the problem statement questions and learns the claim is a guess. The USE method shows disk utilisation near 80 percent in monitoring graphs. Then `iostat` at one second shows the device hitting 100 percent, with saturation. An off-CPU tracing tool proves the database is blocked on file system reads.
+The book's slow-disks story shows the order. A database team says the disks are slow. Sumit, the book's administrator, asks the problem statement questions and learns the claim is a guess. The USE method shows disk utilisation near 80 percent in monitoring graphs. Then `iostat` at one second shows the device hitting 100 percent, with saturation. An off-CPU tracing tool proves the database is blocked on file system reads. Off-CPU means the thread is not running, so the time is spent waiting for something.
 
-Then he asks why, and characterises the workload by IOPS, throughput and read-write ratio. The disks are fine and the load is high. A prototype application was growing in memory, shrinking the page cache, so more reads reached the disk. The cache hit ratio was 91 percent here and above 98 percent on similar machines.
+Each of those tools answers one narrow question, and the value comes from using them in order. `strace` shows the system calls a process makes, and a system call is the request a program sends to the kernel. `perf` samples where the CPU spends its time. The tracer you pick should follow from the question you have just answered, not from the one you know best.
 
-Notice the shape. Every step was a question that halved the search space. The book calls this latency analysis and compares it to a binary search. Is it on-CPU or off-CPU? If off-CPU, what is it waiting for? If disk, is it queueing or being serviced?
+Then he asks why, and characterises the workload by IOPS, throughput and read-write ratio. The disks are fine and the load is high. A prototype application was growing in memory, shrinking the page cache, so more reads reached the disk. The cache hit ratio was 91 percent here and above 98 percent on similar machines. A cache hit is a read served from memory, and a lower hit ratio means more reads reach the disk.
 
-Workload characterisation sits beside this. The book's four questions are who causes the load, why, what it looks like, and how it changes over time. The best wins come from removing unnecessary work.
+Notice the shape. Every step was a question that halved the search space. The book calls this latency analysis and compares it to a binary search. Is it on-CPU or off-CPU? If off-CPU, what is it waiting for? If disk, is it queueing or being serviced? Each question throws away half of the possible causes, and that is why the method finds the cause faster than a list of random checks.
+
+Workload characterisation sits beside this. The book's four questions are who causes the load, why, what it looks like, and how it changes over time. The best wins come from removing unnecessary work. A prototype that grows in memory and pushes the cache out is unnecessary work, and removing it helps more than tuning the disk.
 
 Chapters 20.4 to 20.6 take the three likely branches: files and syscalls, CPU, memory and disk, and the network.
 
-**Finish the identification stage with one named resource before you reach for a tracer.**
+**Finish the identification stage with one named resource before you reach for a tracer.** A named resource gives the tracer a target, and it gives the interviewer a checkpoint.
 
 ### 10. Narrating a one-hour console round
 
-Nebius says to say your reasoning aloud. In a console round that is a skill with a shape. The interviewer sees keystrokes, not reasons.
+Consider the interviewer watching your keystrokes and your screen, with no way to know what you are thinking. Nebius says to say your reasoning aloud. In a console round that is a skill with a shape. The interviewer sees keystrokes, not reasons, so your words have to carry the reasons.
 
-Use three beats for every command: why you run it, the run, then what it rules in or out. "I am checking `dmesg` for OOM kills because the service may have been killed. Nothing in the tail, so memory kills are unlikely." Short, plain, and each sentence carries a decision.
+Use three beats for every command: why you run it, the run, then what it rules in or out. "I am checking `dmesg` for OOM kills because the service may have been killed. Nothing in the tail, so memory kills are unlikely." Short, plain, and each sentence carries a decision. The first beat is the reason, the second is the action, and the third is the decision. A command with no decision after it is a command you should not have run.
 
 Nebius has not published a structure for the hour. This plan is my own default.
 
@@ -341,31 +351,33 @@ Nebius has not published a structure for the hour. This plan is my own default.
 
 Table 20.3.5: a time plan for a console round. This is an inference, not Nebius's format.
 
-Mitigation comes before root cause, as chapter 17.11 explains. Say it explicitly. "If users are failing now I would first remove the bad node from rotation, then keep investigating with the evidence still on it."
+Mitigation comes before root cause, as chapter 17.11 explains. Mitigation is the step that reduces harm to users, and root cause is the deeper reason the harm happened. Say it explicitly. "If users are failing now I would first remove the bad node from rotation, then keep investigating with the evidence still on it." The order is deliberate. A candidate who fixes the cause first and never stops the harm looks careless, even when the fix is correct. Removing the node from rotation stops it from receiving new traffic, but it does not destroy the state you need to study.
 
-Ask for hints as options. "I see two directions, the disk and the network. The disk looks normal, so I would go to the network unless you want me elsewhere." That follows the official advice to ask for hints and offer alternatives.
+Ask for hints as options. "I see two directions, the disk and the network. The disk looks normal, so I would go to the network unless you want me elsewhere." That follows the official advice to ask for hints and offer alternatives. The interviewer then has an easy way to steer you, and you have shown that you are not stuck.
 
-If you are stuck, go back to the method. "I have no hypothesis, so I return to USE and find the resources I have not checked." That beats silence.
+If you are stuck, go back to the method. "I have no hypothesis, so I return to USE and find the resources I have not checked." That beats silence. A method gives you something to do next, even when the cause is still unclear.
 
-**Narrate in three beats, why, run, meaning, and keep a running list of what is ruled out.**
+**Narrate in three beats, why, run, meaning, and keep a running list of what is ruled out.** A running list is also a good summary at the end of the hour, because it shows what you covered.
 
 ### 11. A sick box inside Kubernetes
 
-The role asks for Kubernetes experience, so the interviewer may mix the two. Public Token Factory material says a dedicated endpoint has a minimum and maximum number of replicas in a chosen region. Nebius has not published how its nodes are laid out, so what follows is how the books describe nodes and pods.
+Imagine a pod that keeps restarting, and a command prompt that lands you inside a container instead of on the machine you expected. The role asks for Kubernetes experience, so the interviewer may mix the two. Public Token Factory material says a dedicated endpoint has a minimum and maximum number of replicas in a chosen region. Nebius has not published how its nodes are laid out, so what follows is how the books describe nodes and pods. A node is a machine in the cluster, and a pod is a group of one or more containers scheduled onto a node.
 
-Know whether you are on the host or in a container. Systems Performance says that with only container access, analysis is much slower because observability sources and permissions are limited. It suggests a privileged debugging container with the tools installed and shared namespaces where needed.
+Know whether you are on the host or in a container. Systems Performance says that with only container access, analysis is much slower because observability sources and permissions are limited. It suggests a privileged debugging container with the tools installed and shared namespaces where needed. A namespace is a kernel feature that gives a process its own view of things such as processes, network or mounts. Sharing a namespace lets the debugging container see what the target container sees.
 
-Know that cgroups limit the pod and that you can read the limit. How Linux Works shows `memory.max` and `pids.current` in the cgroup file system, and Systems Performance says PSI is tracked per cgroup2. So `memory.max` might explain a kill that host-level `free` never showed.
+Know that cgroups limit the pod and that you can read the limit. A cgroup is a kernel group of processes that shares resource limits. How Linux Works shows `memory.max` and `pids.current` in the cgroup file system, and Systems Performance says PSI is tracked per cgroup2. So `memory.max` might explain a kill that host-level `free` never showed. The host can have plenty of memory while one container is at its own limit.
 
-Know that Kubernetes Events disappear. Production Kubernetes says Events are stored in etcd and, by default, retained for one hour. If the incident is older than that, `kubectl describe pod` will not show the story, and you need logs and metrics.
+Know that Kubernetes Events disappear. Production Kubernetes says Events are stored in etcd and, by default, retained for one hour. etcd is the key-value store that holds the cluster state. If the incident is older than that, `kubectl describe pod` will not show the story, and you need logs and metrics.
 
-**Say whether you are checking the host or the container, and check the limit as a resource.**
+**Say whether you are checking the host or the container, and check the limit as a resource.** A container without a visible limit is a question you should ask out loud.
 
 ## How to answer out loud
 
-These outlines are for rehearsal. Say each answer aloud in under two minutes.
+These outlines are for rehearsal. Say each answer aloud in under two minutes. Suppose yourself saying each one to a camera, then listening back to find the places where you hesitated. The hesitation is usually where the outline needs one more concrete word.
 
 **Question 1. "A server is slow. What do you do in the first minute?"**
+
+Imagine the interviewer has just said the word "slow" and is waiting for your first sentence. Start with the question, not the command.
 
 1. Ask the problem statement questions: what is slow, since when, what changed, who is affected.
 2. Say your method: the 60-second checklist, then USE.
@@ -374,6 +386,8 @@ These outlines are for rehearsal. Say each answer aloud in under two minutes.
 5. Follow-up: "What if all of that looks normal?" The box may be healthy, so check the service with RED and its dependencies.
 
 **Question 2. "Load average is 40 on a 16-core machine. Is that bad?"**
+
+Think of the number on the screen and the interviewer watching your face as you read it. Do not answer yes or no yet.
 
 1. Say load is demand, so 40 on 16 means about 2.5 per CPU, if it is CPU load.
 2. Say Linux also counts uninterruptible tasks, so it might be disk.
@@ -384,6 +398,8 @@ These outlines are for rehearsal. Say each answer aloud in under two minutes.
 
 **Question 3. "CPU is mostly idle but the app is slow. Why?"**
 
+Imagine the dashboard showing a calm CPU and a user complaining about every click. The contradiction is the question.
+
 1. Say idle CPU means the CPU is not the limit, so look at waiting.
 2. Check `%iowait` and `iostat` for disk, and `b` in `vmstat` for blocked threads.
 3. Check memory: swapping, page cache shrinkage, cgroup limits.
@@ -393,12 +409,16 @@ These outlines are for rehearsal. Say each answer aloud in under two minutes.
 
 **Question 4. "How do you know the disk is the bottleneck?"**
 
+Consider the interviewer pointing at a single busy disk and asking if that proves anything. It does not, and the answer shows how carefully you read.
+
 1. Say you need three things together: the device is busy, requests are queueing or slow, and the application is blocked on it.
 2. Show it: `iostat -sxz 1` for `%util`, `aqu-sz` and `await`, then a per-process view.
 3. State the trap: `%util` at 100 does not prove saturation, and the book's example shows 100 percent with 0.44 ms `await`.
 4. Follow-up: "What next?" Workload characterisation: who reads or writes, how much, what mix.
 
 **Question 5. "How do you decide whether the problem is the host or the service?"**
+
+Imagine the page says the service is failing, and the box looks fine. The interviewer wants to hear how you separate the two.
 
 1. Say you look at RED for the service and USE for the host.
 2. Request rate steady and duration up points to the service or its host, rate up as well points to load.
@@ -407,21 +427,21 @@ These outlines are for rehearsal. Say each answer aloud in under two minutes.
 
 ## Worked scenarios
 
-Each scenario uses output printed in a book, so the numbers are real and the interpretation is the point. The matching reproduction scripts are in `code/part20/`. On Linux you can create a milder version of each broken state with `triage_repro.py`.
+Each scenario uses output printed in a book, so the numbers are real and the interpretation is the point. The matching reproduction scripts are in `code/part20/`. On Linux you can create a milder version of each broken state with `triage_repro.py`. Read each scenario as a short case file: the symptom, the evidence, the reasoning and the sentence you would say.
 
 ### Scenario 1: load of 85 on a 48-CPU machine
 
-Two servers run the same service. The book's case study prints `uptime` on both. Server A shows load averages of 85.09, 89.25 and 91.26. Server B shows 17.94, 16.92 and 16.62. A first `mpstat 10` on A reports 48 CPUs and about 2 percent idle. On B it reports 64 CPUs and about 78 percent idle.
+Imagine two servers running the same service, one of them clearly slower to the users. The book's case study prints `uptime` on both. Server A shows load averages of 85.09, 89.25 and 91.26. Server B shows 17.94, 16.92 and 16.62. A first `mpstat 10` on A reports 48 CPUs and about 2 percent idle. On B it reports 64 CPUs and about 78 percent idle.
 
 Step 1 is the trend. On A the 1-minute number is lower than the 15-minute one, so the load is slightly falling. On B it is slightly rising. Neither is a sudden event.
 
 Step 2 is load per CPU. On A it is 85.09 divided by 48, about 1.77. On B it is 17.94 divided by 64, about 0.28. A has more demand than CPUs. B has plenty of room.
 
-Step 3 confirms it is CPU load. The book found `vmstat` run queues similar to the load averages, with little disk I/O in `iostat` and little network I/O in `sar`.
+Step 3 confirms it is CPU load. The book found `vmstat` run queues similar to the load averages, with little disk I/O in `iostat` and little network I/O in `sar`. When the run queue matches the load, the load is mostly threads that want the CPU and cannot get it.
 
 Step 4 is the book's estimate. With 85 on 48 CPUs the book says threads were waiting about 77 percent of the time, from 85 divided by 48 minus 1. It says removing the waiting should speed things up about four times. That is the book's rough arithmetic and not a measurement. The book says that magnitude corresponded to the observed three to four times latency difference.
 
-The answer to say aloud: server A is CPU saturated, so its latency is queueing time, and B is fast because it is not saturated. The next hypothesis is why A uses more CPU per request. The book went on to compare processor configuration and to suspect hyperthread contention above 50 percent utilisation. That is chapter 20.5 material.
+The answer to say aloud: server A is CPU saturated, so its latency is queueing time, and B is fast because it is not saturated. The next hypothesis is why A uses more CPU per request. The book went on to compare processor configuration and to suspect hyperthread contention above 50 percent utilisation. Hyperthreading lets one physical core run two threads, and the two threads can slow each other down. That is chapter 20.5 material.
 
 Run the findings on these numbers with the tests, which use the same text:
 
@@ -429,41 +449,41 @@ Run the findings on these numbers with the tests, which use the same text:
 python3 -m pytest -q code/part20/test_triage.py
 ```
 
-On Linux, `python3 triage_repro.py cpu` starts twice as many busy processes as CPUs. Expect the `vmstat` `r` column to climb above the CPU count within seconds, and the load average to climb slowly over a minute or more.
+On Linux, `python3 triage_repro.py cpu` starts twice as many busy processes as CPUs. Expect the `vmstat` `r` column to climb above the CPU count within seconds, and the load average to climb slowly over a minute or more. That slow climb is the damping from section 4, and it is worth watching with your own eyes.
 
 ### Scenario 2: the disk is 100 percent busy
 
-The book's `iostat -sxz 1` example prints, for `nvme0n1`, 1642 transactions per second, 9064 kB per second, an `await` of 0.44, an `aqu-sz` of 0.00, an `areq-sz` of 5.52 and a `%util` of 100.00. The `avg-cpu` line above it shows 31.63 percent `%iowait`, 40.31 percent idle and 1.53 percent `%steal`.
+Suppose the `iostat` line on screen with a red number in the utilisation column, and the whole team looking at you. The book's `iostat -sxz 1` example prints, for `nvme0n1`, 1642 transactions per second, 9064 kB per second, an `await` of 0.44, an `aqu-sz` of 0.00, an `areq-sz` of 5.52 and a `%util` of 100.00. The `avg-cpu` line above it shows 31.63 percent `%iowait`, 40.31 percent idle and 1.53 percent `%steal`. Steal is time a virtual CPU spends waiting because the hypervisor ran another guest.
 
 The tempting answer is "the disk is saturated". Apply the method instead.
 
-Utilisation is high, because the device was never idle in the interval. Saturation is not shown, because the queue length is zero and the wait is under half a millisecond. Errors are not in `iostat`, so check `/sys`, `smartctl` or the logs. The 5.52 kB request size suggests random I/O that could not be merged, as the book describes for `areq-sz`.
+Utilisation is high, because the device was never idle in the interval. Saturation is not shown, because the queue length is zero and the wait is under half a millisecond. Errors are not in `iostat`, so check `/sys`, `smartctl` or the logs. The 5.52 kB request size suggests random I/O that could not be merged, as the book describes for `areq-sz`. Merged means the kernel combined neighbouring requests into one larger request, which is cheaper for the device.
 
 The 31.63 percent `%iowait` says threads waited on I/O while CPUs were idle. That is worth a second look, because the USE appendix counts `%iowait` as idle time. The next step is per-process I/O, then workload characterisation.
 
 The answer to say aloud: the disk is busy and the work is small random I/O, but it is not queueing, so the device is not the limit by itself. I want to know which process issues those 1642 operations per second and whether the application is blocked on them.
 
-The test `test_iostat_busy_is_not_saturated` asserts a utilisation finding and no saturation finding for this text. On Linux, `python3 triage_repro.py disk` writes and syncs a temporary file in a loop and cleans up after itself.
+The test `test_iostat_busy_is_not_saturated` asserts a utilisation finding and no saturation finding for this text. On Linux, `python3 triage_repro.py disk` writes and syncs a temporary file in a loop and cleans up after itself. Watch it with `iostat` in a second window, and notice how the `%util` column rises while the `await` stays small.
 
 ### Scenario 3: swapping with a quiet run queue
 
-The book's memory exercise prints `vmstat 1` output with a nearly idle first line and then rows like `2 0 418036 68172 68 3808 0 4692 4520 4692 1060 1939 61 38 0 1 0`. Reading with the header, `swpd` is 418036, `free` is 68172, `buff` is 68, `cache` is 3808, `si` is 0, `so` is 4692, `bi` is 4520 and `bo` is 4692. Idle is 0. The run queue `r` is only 1 or 2.
+Think of a machine where the CPU graph is full, the run queue looks quiet and the memory is quietly moving to disk. The book's memory exercise prints `vmstat 1` output with a nearly idle first line and then rows like `2 0 418036 68172 68 3808 0 4692 4520 4692 1060 1939 61 38 0 1 0`. Reading with the header, `swpd` is 418036, `free` is 68172, `buff` is 68, `cache` is 3808, `si` is 0, `so` is 4692, `bi` is 4520 and `bo` is 4692. Idle is 0. The run queue `r` is only 1 or 2.
 
 Start with saturation, as the USE method says. The `so` column is non-zero in live rows, so memory is saturated. The buffer and cache are tiny, which suggests the kernel has little left to cache files with. The `bi` and `bo` columns show block traffic that matches the swap rate.
 
-Now the surprise. The CPU is fully used with `us` around 60 and `sy` around 40, but the run queue is small. The book does not say how many CPUs this machine has, so I cannot claim saturation from `r` alone. What I can say is that idle reached zero, and that high system time is consistent with kernel paging work. That is a hypothesis, and the prediction is that tracing or per-process page faults would show a process with a growing resident set.
+Now the surprise. The CPU is fully used with `us` around 60 and `sy` around 40, but the run queue is small. The book does not say how many CPUs this machine has, so I cannot claim saturation from `r` alone. What I can say is that idle reached zero, and that high system time is consistent with kernel paging work. That is a hypothesis, and the prediction is that tracing or per-process page faults would show a process with a growing resident set. The resident set is the part of a process's memory that is currently held in RAM.
 
-The next test is observational. Ask `ps -o pid,min_flt,maj_flt PID` for major faults, check `dmesg` for OOM kills, check `free` for `available`, and read `/proc/pressure/memory`.
+The next test is observational. Ask `ps -o pid,min_flt,maj_flt PID` for major faults, check `dmesg` for OOM kills, check `free` for `available`, and read `/proc/pressure/memory`. A major fault is one that needs a disk read to satisfy, which is the signature of swapping or paging in a file. Each check is a read, so none of them changes the machine.
 
-The answer to say aloud: memory is saturated and the machine is swapping, so the fix is to find the process that grew, stop it or limit it, and not to add CPU.
+The answer to say aloud: memory is saturated and the machine is swapping, so the fix is to find the process that grew, stop it or limit it, and not to add CPU. Adding CPU to a machine that is swapping gives the kernel more processors to spend on paging, and the problem stays.
 
 The first `vmstat` row is the trap. In the `vmstat 1 3` sample from the observability chapter it has `so` of 4 and later rows have none. The test `test_vmstat_first_row_is_marked_and_ignored` shows the findings code skips it. On Linux, `python3 triage_repro.py mem --mb 256` holds touched memory for a minute. It will not cause swapping on a machine with spare memory, so it practises reading `free` and does not reproduce the book's output.
 
 ## Hands-on lab
 
-The scripts and parser are in `code/part20/`. Every step below was run, steps 1 to 6 on Linux in the container described at the top of the chapter. Start the container with `docker run --rm -it -v $PWD/code/part20:/work:ro ubuntu:24.04 bash`, then run `apt-get update && apt-get install -y procps sysstat iproute2 python3 python3-pytest`.
+Consider a Linux container with a read-only copy of the scripts, a few minutes to spare and a terminal. The scripts and parser are in `code/part20/`. Every step below was run, steps 1 to 6 on Linux in the container described at the top of the chapter. Start the container with `docker run --rm -it -v $PWD/code/part20:/work:ro ubuntu:24.04 bash`, then run `apt-get update && apt-get install -y procps sysstat iproute2 python3 python3-pytest`. The mount is read-only, so the scripts cannot change your copy.
 
-1. **Run the unit tests.** Copy `/work` to `/tmp/w`, then run `python3 -m pytest -q test_triage.py test_triage_repro.py` there. Result: 16 passed. The fixtures are text copied from the books, named above each fixture.
+1. **Run the unit tests.** Copy `/work` to `/tmp/w`, then run `python3 -m pytest -q test_triage.py test_triage_repro.py` there. Result: 16 passed. The fixtures are text copied from the books, named above each fixture. Copying first keeps the test files out of the read-only mount.
 2. **Check the scripts.** Run `bash -n` on both scripts. Expected: no output. On a Mac each script prints that it needs Linux and exits with status 2. Both were run. An earlier run with a fake `uname` showed that a missing tool left text the parser could not read, and the report crashed. The fix and a test are in the code.
 3. **Baseline.** Run `bash triage_first60.sh /tmp/base`, then `python3 triage_report.py /tmp/base`. Real output, idle container:
 
@@ -508,7 +528,7 @@ FDS    U    system file-nr (allocated, unused, max): 761	0	604700
 
 ## What the container run showed
 
-Seven corrections came out of running this on Linux. Each one is fixed in the code or the text.
+Seven corrections came out of running this on Linux. The list matters more than it looks, because each item is a place where a confident reading of the book would have been wrong on a real machine. Each one is fixed in the code or the text, and each one is worth knowing before you rely on the scripts on a real host.
 
 - **`dmesg` is refused in the container.** The output is `dmesg: read kernel buffer failed: Operation not permitted`. The old sweep printed `dmesg lines with 'killed': 0`, which reads as "no OOM kills" and was wrong. The sweep now says `dmesg not readable here`, and `triage_report.py` reports a known-unknown. Test added. On a real host with `kernel.dmesg_restrict` set you need `sudo`.
 - **PSI is absent on this kernel.** `/proc/pressure` does not exist on `6.18.37-0-virt`, although the kernel is far newer than 4.20. PSI also needs to be compiled in and enabled. The sweep message now says so. Section 4's description of PSI is from the book and was not seen here.
@@ -586,6 +606,8 @@ Question, hypothesis, prediction, test, analysis. If an experimental change does
 
 ## Common mistakes and weak answers
 
+Imagine the interviewer's notes at the end of the console round. The weak answers leave the same few marks on the page, and each one can be fixed with a single sentence you practise in advance.
+
 - **Typing `top` and saying "CPU is high".** Say which method you are following and check saturation, not only percent used.
 - **Treating load average as CPU percent.** Say it counts uninterruptible tasks and lags, then confirm with `vmstat` `r` and PSI.
 - **Calling a disk saturated because `%util` is 100.** Say busy is not saturated, then show `aqu-sz` and `await`.
@@ -597,6 +619,8 @@ Question, hypothesis, prediction, test, analysis. If an experimental change does
 - **Pretending to know Nebius's setup.** Say it is unpublished and give your reasoning.
 
 ## Connections to the rest of the handbook
+
+The links below show where each part of this triage method is taught in more depth. Read them after you can run the 60-second checklist without thinking about the order.
 
 - [1.23 Performance methodology](../part-01-linux/23-performance-methodology-use-workload-characterisation-drill-down.md) holds the full USE, workload and drill-down method. This chapter turns it into a console routine.
 - [1.24 Observability tools](../part-01-linux/24-observability-tools-perf-ftrace-bpf-and-bpftrace.md) is where `perf`, Ftrace and BPF live, which you need after identification.

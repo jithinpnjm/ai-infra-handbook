@@ -14,19 +14,19 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-You open the posting the night before the recruiter call. You read it fast and everything sounds familiar. Then the recruiter asks, "Which of these have you done yourself?" and you realise you never separated the lines you can prove from the lines you can only talk about.
+Suppose yourself opening the posting the night before the recruiter call. You read it fast, and everything sounds familiar. You have used most of these words at work, so you feel ready. Then the recruiter asks, "Which of these have you done yourself?" and you realise you never separated the lines you can prove from the lines you can only talk about. That gap between familiar and proven is what this chapter is designed to close.
 
-This chapter serves the recruiter call, the first technical interview and every later stage, because the interviewers read the same posting. The skills it checks are the ones the posting lists. Evidence tags work as in chapter 20.1: [official] is a Nebius page, [vendor] is Nebius marketing, [report] is an anonymous candidate report, [gap] is not public. I label any statement of mine about daily work as [inference].
+This chapter serves the recruiter call, the first technical interview and every later stage, because the interviewers read the same posting. The skills it checks are the ones the posting lists, so each line of the posting is a possible question. Evidence tags work as in chapter 20.1: [official] is a Nebius page, [vendor] is Nebius marketing, [report] is an anonymous candidate report, [gap] is not public. I label any statement of mine about daily work as [inference].
 
-A realistic question in the interviewer's voice: "The posting says you would tune autoscalers for GPU efficiency. Have you done something like that, and how would you start here?"
+A realistic question in the interviewer's voice: "The posting says you would tune autoscalers for GPU efficiency. Have you done something like that, and how would you start here?" Notice that the question does not ask for a definition. It asks for your experience and then for your method, and both parts matter.
 
 ## The core ideas
 
 ### 1. The posting in one picture
 
-The posting I fetched is titled Senior Site Reliability Engineer, Token Factory (Inference Platform). It shows "Posted 27 Jul 2026", a location line "London" and a work location "Remote". This is a copy on a job aggregator, so ask your recruiter to confirm the role is open and where it sits. [official, via an aggregator copy]
+Think of the posting as a long paragraph with no headings, the way many job ads are written. You need to turn it into a list you can point at during the call. The posting I fetched is titled Senior Site Reliability Engineer, Token Factory (Inference Platform). It shows "Posted 27 Jul 2026", a location line "London" and a work location "Remote". This is a copy on a job aggregator, which means a site that collects postings from other places, so ask your recruiter to confirm the role is open and where it sits. [official, via an aggregator copy]
 
-It has no headings for duties and requirements. The responsibilities and requirements run as prose paragraphs. I split them into numbered lines so that we can refer to them. R is a responsibility and Q is a requirement or a preference. The lines fall into three families: seeing the system, scaling the system and responding when it breaks.
+It has no headings for duties and requirements. The responsibilities and requirements run as prose paragraphs. I split them into numbered lines so that we can refer to them. R is a responsibility and Q is a requirement or a preference. A requirement is something the posting asks for, and a preference is something it welcomes without making it a condition. The lines fall into three families: seeing the system, scaling the system and responding when it breaks. Those three families are a useful way to remember the whole posting, because every line fits into one of them.
 
 ```mermaid
 flowchart TB
@@ -41,7 +41,7 @@ flowchart TB
 
 ### 2. Responsibilities, line by line
 
-Each quote below is under 15 words and comes from the fetched posting on 2026-11-09. Where a quote is cut, the posting continues. The last two columns point to the chapters of this volume and the earlier handbook parts that cover the topic. Earlier parts are listed as part and chapter, for example 5.23 is Part 5, chapter 23.
+Think of each row below as a question the interviewer could ask you. Each quote is under 15 words and comes from the fetched posting on 2026-11-09. Where a quote is cut, the posting continues. The last two columns point to the chapters of this volume and the earlier handbook parts that cover the topic. Earlier parts are listed as part and chapter, for example 5.23 is Part 5, chapter 23.
 
 | ID | Posting wording | This volume | Earlier parts |
 | --- | --- | --- | --- |
@@ -54,25 +54,25 @@ Each quote below is under 15 words and comes from the fetched posting on 2026-11
 | R7 | "drive the post-mortem culture that prevents recurrence" | 20.27 | 17.11 |
 | R8 | "scaling the platform smoothly while hitting" targets | 20.12, 20.16 | 15.18, 17.12 |
 
-The posting continues R8 with cost and reliability targets. The summary I fetched said so, but I did not capture the exact words, so I quote only the start.
+The posting continues R8 with cost and reliability targets. The summary I fetched said so, but I did not capture the exact words, so I quote only the start. When you read the full posting yourself, you may find the targets are stated more precisely than my summary shows.
 
-Decide now which of these eight lines you can back with a real story from your own work. Those are your strongest openings.
+Decide now which of these eight lines you can back with a real story from your own work. Those are your strongest openings. A story is strongest when it has a start, a problem, a change you made and a result you can measure. If you cannot find one for a line, that line belongs in your gap list rather than in your answers.
 
 ### 3. What each responsibility likely means day to day
 
-Everything in this section is [inference], because Nebius has not published how the team works. I describe what such a job usually involves, using the posting's own verbs.
+Consider a new colleague on their first week, reading this posting and trying to guess what Monday will look like. That is roughly the position of anyone preparing for this role. Everything in this section is [inference], because Nebius has not published how the team works. I describe what such a job usually involves, using the posting's own verbs, so that you can test your picture against the questions in the room.
 
-R1 is the umbrella. Owning reliability of the stack means you are the person who is paged and also the person who changes the system so that the page does not come again. R2 is about the pipes that carry measurements. At very high volume, the work is deciding what not to collect, because every label and log line has a cost. Chapter 20.15 is built on that point.
+R1 is the umbrella. Owning reliability of the stack means you are the person who is paged and also the person who changes the system so that the page does not come again. Being paged means your phone rings at night because an alert fired. R2 is about the pipes that carry measurements. At very high volume, the work is deciding what not to collect, because every label and log line has a cost. A label is a tag on a metric, such as the name of a model or a region, and each new value of a label creates a new series to store. Chapter 20.15 is built on that point.
 
-R3 mixes two ideas that are often confused. Autoscaling decides how many replicas you run. GPU efficiency asks whether those replicas do useful work. For inference, the usual trap is scaling on a signal that looks fine when the system is drowning. Nebius has not published its autoscaling signals, so the interviewer will probe your reasoning and not your recall. [gap]
+R3 mixes two ideas that are often confused. Autoscaling decides how many replicas you run. A replica is one copy of a server process that can answer requests. GPU efficiency asks whether those replicas do useful work. For inference, the usual trap is scaling on a signal that looks fine when the system is drowning. Drowning here means the queue of waiting requests keeps growing while the GPUs still show as busy. Nebius has not published its autoscaling signals, so the interviewer will probe your reasoning and not your recall. [gap]
 
-R4 is about modules and the shape of failure. A resilient cluster module sets defaults such as spread across zones and safe upgrade settings, so every new cluster starts safe. R5 is about the path of a request. Retries hide a transient failure from a user, and the same retries can multiply load in a partial outage. The vendor case study in section 6 mentions exactly that problem. [vendor]
+R4 is about modules and the shape of failure. A module is a reusable block of infrastructure code. A resilient cluster module sets defaults such as spreading machines across zones and safe upgrade settings, so every new cluster starts safe. A zone is an isolated part of a data centre, so spreading across zones means one failing zone does not take everything down. R5 is about the path of a request. Retries hide a transient failure from a user, and the same retries can multiply load in a partial outage. A partial outage is one where some parts of the system still work, which is exactly when extra retries are most dangerous. The vendor case study in section 6 mentions exactly that problem. [vendor]
 
-R6 and R7 are about the rest of the incident life. Detection, isolation and remediation should be automated where possible, and runbooks cover the rest. Leading post-mortems means you write the document and also push the follow-up work to completion.
+R6 and R7 are about the rest of the incident life. Detection, isolation and remediation should be automated where possible, and runbooks cover the rest. A runbook is a written set of steps for a known problem, so that a tired person at night does not have to invent the fix. Leading post-mortems means you write the document and also push the follow-up work to completion. A post-mortem that ends in a document and no changes has not prevented anything.
 
 ### 4. Requirements, line by line
 
-The same rule applies: short quotes, then where to study.
+The same rule applies here. Each row gives short quotes, then where to study. Requirements tell you what the team expects on day one, and preferences tell you where you can grow. Read each row as a pair: the posting's words on one side and your own evidence on the other.
 
 | ID | Posting wording | This volume | Earlier parts |
 | --- | --- | --- | --- |
@@ -84,19 +84,21 @@ The same rule applies: short quotes, then where to study.
 | Q6 | "a background in MLOps or model-hosting platforms" | 20.14 | 16.1, 16.6, 16.7 |
 | Q7 | "building self-healing systems, thrive on debugging performance" | 20.3 to 20.6, 20.16 | 1.11, 1.23, 1.24, 2.30, 5.25, 10.21 |
 
-Q4 and Q7 also contain wording I took from the volume plan: "how distributed back-ends fail" and debugging "from kernel to application layer". The aggregator copy I fetched later gave the same lines in different words. Q5 and Q6 are described as desirable, not required. That matters for how you pitch yourself. If you have not run vLLM, you are not disqualified. You are expected to show how you would learn it.
+Q4 and Q7 also contain wording I took from the volume plan: "how distributed back-ends fail" and debugging "from kernel to application layer". The aggregator copy I fetched later gave the same lines in different words. Q5 and Q6 are described as desirable, not required. That matters for how you pitch yourself. If you have not run vLLM, you are not disqualified. You are expected to show how you would learn it. vLLM is an open-source server for running language models efficiently on GPUs, and Triton and Ray are two other serving and compute tools named in the same line.
 
-Three things stand out. Alert design and SLOs appear for "high-throughput APIs", which is why chapter 20.19 is a core chapter and not an extra. Kubernetes, Prometheus, Grafana and Terraform are named as a group, so expect at least one question on each. Python or Bash is a minimum, and the coding round tests more than scripts.
+Three things stand out. Alert design and SLOs appear for "high-throughput APIs", which is why chapter 20.19 is a core chapter and not an extra. An SLO, or service level objective, is a target for how well a service should behave over time, such as the share of requests that must succeed. Kubernetes, Prometheus, Grafana and Terraform are named as a group, so expect at least one question on each. Python or Bash is a minimum, and the coding round tests more than scripts. A script that works on your laptop is a start, but the round asks whether your code is correct, clear and testable.
 
-The posting does not mention security, fabrics or storage. Parts 12 and 18 of the handbook cover networking for AI and security. They are adjacent and may come up in design questions on multi-tenancy. That is my reasoning, not Nebius content.
+The posting does not mention security, fabrics or storage. Parts 12 and 18 of the handbook cover networking for AI and security. They are adjacent and may come up in design questions on multi-tenancy. Multi-tenancy means several customers share the same platform, so one customer's load or failure must not harm the others. That is my reasoning, not Nebius content.
 
-Pick your two weakest lines from this table and read their chapters first.
+Pick your two weakest lines from this table and read their chapters first. Weakest here means lowest evidence, not lowest interest. A line you find fascinating but cannot yet back with a story is still a weak line for this interview, and the study time belongs there.
+
+A good way to use the table during the call is to keep it open in a second window. When the interviewer names a line, you can find its ID in a glance and remember which story you planned for it. That small habit stops you from drifting into a long answer about the wrong topic.
 
 ### 5. The self-assessment template
 
-You need a table that is honest and that a script can read. The columns are the skill, the posting lines it maps to, your confidence from 1 to 5, your evidence, and the chapters to study. Confidence 5 means you could teach it and have run it in production. Confidence 1 means you have only read about it. Evidence means a real thing you did, such as "ran HPA on queue depth for six months". Leave confidence blank until you can write the evidence.
+Imagine a blank table on your screen, with a full column of skills waiting to be filled and nothing to show you what a good answer looks like. You need a table that is honest and that a script can read. The columns are the skill, the posting lines it maps to, your confidence from 1 to 5, your evidence, and the chapters to study. Confidence 5 means you could teach it and have run it in production. Confidence 1 means you have only read about it. Evidence means a real thing you did, such as "ran HPA on queue depth for six months". Leave confidence blank until you can write the evidence. A blank is honest, and a number without evidence is a guess.
 
-Copy the template below into a file, fill in confidence and evidence, and run the tracker in section 7. The template is also saved as `code/part20/c02_assessment_template.md`.
+Copy the template below into a file, fill in confidence and evidence, and run the tracker in section 7. The template is also saved as `code/part20/c02_assessment_template.md`. Keep your filled copy outside the repository if it contains personal details about your employer.
 
 ```markdown
 | Skill | Posting lines | Confidence (1-5) | Evidence | Chapter to study |
@@ -119,29 +121,31 @@ Copy the template below into a file, fill in confidence and evidence, and run th
 | Self-healing systems | R6, Q7 |  |  | 20.16, 20.23 |
 ```
 
-The posting-lines column is not decoration. It tells the tracker how much a skill matters. A skill that appears in three posting lines hurts you three times if it is weak.
+The posting-lines column is not decoration. It tells the tracker how much a skill matters. A skill that appears in three posting lines hurts you three times if it is weak. That is why a weak Kubernetes row matters more than a weak row for a single niche tool.
 
-Fill the table in one sitting, without looking things up. Your first honest answer is the best data.
+Fill the table in one sitting, without looking things up. Your first honest answer is the best data. If you spend an evening searching your memory and your old tickets, the numbers will drift toward what you wish were true.
 
 ### 6. What Token Factory is, from public sources only
 
-Token Factory is the inference platform within Nebius Cloud. The posting says it serves text, vision, audio and multimodal foundation models at large scale. [official] Beyond that, what follows is from Nebius marketing and documentation as recorded in the volume plan, and I did not re-fetch those pages today. [vendor]
+Imagine the moment an interviewer asks what you know about the product. You want to answer with facts and not with a guess about the internals. Token Factory is the inference platform within Nebius Cloud. Inference is the step where a trained model answers a request, as opposed to the training step where the model learns. The posting says it serves text, vision, audio and multimodal foundation models at large scale. [official] A foundation model is a large model trained on broad data that many tasks can build on, and multimodal means it handles more than one kind of input, such as text and images. Beyond that, what follows is from Nebius marketing and documentation as recorded in the volume plan, and I did not re-fetch those pages today. [vendor]
 
-It offers serverless endpoints and dedicated endpoints, with an OpenAI-compatible API and the full set of vLLM parameters. The control plane, which handles create, update, enable, disable and delete, is separate from a region-specific data plane. For a dedicated endpoint you choose the GPU type from L40, H100, H200 and B200, the number of GPUs per replica, the minimum and maximum replicas, and the region, either EU or US, which is a data-residency choice. There are two flavors, base and fast. Fast uses smaller batches and speculative decoding. The listed optimisations include KV cache, paged attention, flash attention, quantisation, continuous batching, context caching and speculative decoding. [vendor]
+It offers serverless endpoints and dedicated endpoints, with an OpenAI-compatible API and the full set of vLLM parameters. An endpoint is the address your application calls to reach a model. An OpenAI-compatible API accepts the same request shape as the OpenAI interface, so client code written for that interface can often be reused. The control plane, which handles create, update, enable, disable and delete, is separate from a region-specific data plane. The control plane is where you manage endpoints, and the data plane is where requests are served. For a dedicated endpoint you choose the GPU type from L40, H100, H200 and B200, the number of GPUs per replica, the minimum and maximum replicas, and the region, either EU or US, which is a data-residency choice. Data residency is the question of which country or region your data is stored and processed in. There are two flavors, base and fast. Fast uses smaller batches and speculative decoding. A batch is a group of requests processed together on the GPU, and speculative decoding is a technique where a small model proposes tokens that a larger model then checks. The listed optimisations include KV cache, paged attention, flash attention, quantisation, continuous batching, context caching and speculative decoding. [vendor]
 
-Customers see latency at p50, p90 and p99, time to first token, token throughput, active replicas and scaling, errors by status code, traffic by prompt size and region, and the link between KV-cache reuse and tail latency. [vendor] That list is useful to you, because it tells you what Nebius thinks a user should be able to see.
+Customers see latency at p50, p90 and p99, time to first token, token throughput, active replicas and scaling, errors by status code, traffic by prompt size and region, and the link between KV-cache reuse and tail latency. Percentile labels of this kind each name the latency that a fixed share of requests beat, so that the slowest requests can be seen next to the typical ones. Time to first token is how long a user waits before the first word appears, and tail latency is the slow end of that spread. [vendor] That list is useful to you, because it tells you what Nebius thinks a user should be able to see.
 
-A chat-application case study, published by Nebius, describes separate prefill and decode pools, cache-aware routing with the hit rate rising from about 5 percent to 30 percent and then 50 to 60 percent, and backpressure to stop decode queues from overrunning. It describes a change to retry logic to stop amplification in partial outages. It reports that aggressive liveness probes restarted healthy workers, and that restarted workers sometimes did not rejoin the pool, so capacity shrank silently. It describes X+1 redundancy, alerts on tail time to first token, cache drops, finish-reason drift and decode error bursts, and a 99.9 percent SLA on dedicated endpoints. It says latency must be "stable, not just fast". [vendor] Each of these is a failure story you can discuss, and chapters 20.18 and 20.21 teach them.
+A chat-application case study, published by Nebius, describes separate prefill and decode pools, cache-aware routing with the hit rate rising from about 5 percent to 30 percent and then 50 to 60 percent, and backpressure to stop decode queues from overrunning. Prefill is the step that reads the whole prompt, and decode is the step that writes the answer one token at a time, so separating them lets each pool be sized for its own work. Backpressure is a signal that tells the sender to slow down when the receiver is full. It describes a change to retry logic to stop amplification in partial outages. It reports that aggressive liveness probes restarted healthy workers, and that restarted workers sometimes did not rejoin the pool, so capacity shrank silently. A liveness probe is a regular health check that restarts a process when it fails, and an aggressive one can restart a process that was merely slow. It describes X+1 redundancy, alerts on tail time to first token, cache drops, finish-reason drift and decode error bursts, and a 99.9 percent SLA on dedicated endpoints. An SLA, or service level agreement, is the uptime promise made to a customer. It says latency must be "stable, not just fast". [vendor] Each of these is a failure story you can discuss, and chapters 20.18 and 20.21 teach them.
 
-Nebius states the current hardware as B200 and has announced Vera Rubin NVL72 and Groq 3 LPX. [vendor]
+Nebius states the current hardware as B200 and has announced Vera Rubin NVL72 and Groq 3 LPX. [vendor] You do not need to know the hardware specifications in the room. You do need to know that the hardware list changes, so check the current page before you quote it.
 
-What is not public: the autoscaling signals and thresholds, the router algorithm, the targets for time per output token and the probe settings. [gap] When asked about these, say: "Nebius has not published this. A reasonable design is ...", and then give your reasoning. Chapter 20.30 maps the public architecture further.
+What is not public: the autoscaling signals and thresholds, the router algorithm, the targets for time per output token and the probe settings. [gap] When asked about these, say: "Nebius has not published this. A reasonable design is ...", and then give your reasoning. Chapter 20.30 maps the public architecture further. Saying "not published" is not a weakness. It shows that you know where public knowledge stops and your own design begins.
 
 ### 7. The gap tracker: turning the table into a study order
 
-Reading all 30 chapters evenly is a poor plan. The tracker ranks skills by how much confidence you lack and by how many posting lines the skill touches. The priority of a skill is five minus confidence, multiplied by the number of posting lines. A skill rated 2 that maps to three lines scores 9. A skill rated 4 that maps to one line scores 1.
+Suppose a Friday afternoon with the filled table open and a long list of chapters in front of you. You cannot read thirty chapters evenly before the call, so you need an order. Reading all 30 chapters evenly is a poor plan. The tracker ranks skills by how much confidence you lack and by how many posting lines the skill touches. The priority of a skill is five minus confidence, multiplied by the number of posting lines. A skill rated 2 that maps to three lines scores 9. A skill rated 4 that maps to one line scores 1.
 
-The script reads the first markdown table that has Skill and Confidence columns. It ignores blank confidence cells and lists those skills as not rated. It raises an error for a confidence outside 1 to 5. It warns when you rate yourself 4 or 5 with no evidence. Ties go to the lower confidence and then to the name. The file uses only the standard library.
+The formula is simple on purpose. A skill with low confidence that touches many lines is the one that will hurt you most in the room, so it goes first. A skill you rate highly drops to the bottom, even if it is important, because your evidence already covers it.
+
+The script reads the first markdown table that has Skill and Confidence columns. It ignores blank confidence cells and lists those skills as not rated. It raises an error for a confidence outside 1 to 5. It warns when you rate yourself 4 or 5 with no evidence. Ties go to the lower confidence and then to the name. The file uses only the standard library, which means it needs no packages to install.
 
 ```python
 #!/usr/bin/env python3
@@ -392,15 +396,15 @@ def test_template_parses_and_is_unrated():
     assert study_order(rows) == []
 ```
 
-Run the tracker once a week. The order should change as your confidence changes. If it does not, you are reading and not practising.
+Run the tracker once a week. The order should change as your confidence changes. If it does not, you are reading and not practising. A tracker that never moves is a sign that the reading has replaced the work.
 
 ### 8. Sister Nebius SRE roles
 
-The volume plan lists three sister Nebius SRE postings: DevTools, Compute Node and NetSRE. I did not fetch them and I do not know their contents. From the names alone, and as [inference], DevTools suggests internal developer tooling, Compute Node suggests the host and virtualisation layer, and NetSRE suggests networking. If your recruiter mentions one of these, ask what the team owns before you prepare for it.
+Think of your recruiter mentioning a team name you have never seen, in the middle of a friendly call. You want to ask the right question without sounding lost. The volume plan lists three sister Nebius SRE postings: DevTools, Compute Node and NetSRE. I did not fetch them and I do not know their contents. From the names alone, and as [inference], DevTools suggests internal developer tooling, Compute Node suggests the host and virtualisation layer, and NetSRE suggests networking. The names are only a guess, so treat them as a starting question. If your recruiter mentions one of these, ask what the team owns before you prepare for it.
 
 ### 9. The honest gaps list
 
-These are the limits of what anyone can know before the interview. Read them so that you do not mistake a hole in the research for a hole in you.
+Consider a preparation plan that looks complete on paper, and then a question you could not have predicted. These are the limits of what anyone can know before the interview. Read them so that you do not mistake a hole in the research for a hole in you.
 
 - The scoring rubric, the order of rounds and the interview teams are not public. [gap]
 - Autoscaling signals, router algorithm, TPOT targets and probe settings are not public. [gap]
@@ -410,23 +414,25 @@ These are the limits of what anyone can know before the interview. Read them so 
 - The day-to-day descriptions in section 3 are my inference.
 - The Token Factory facts are from the plan, which recorded them from vendor pages. I did not re-check the vendor pages today.
 
-Prepare for these by reasoning aloud, and ask the recruiter for the rest.
+Prepare for these by reasoning aloud, and ask the recruiter for the rest. A gap you name calmly in the room counts for more than a claim you cannot back up.
 
 ## How to answer out loud
 
-**Question 1. "Which parts of this role have you done?"** Speak for two minutes. Pick the three posting lines where your evidence is strongest. For each, say what you ran, one number that describes its scale and one thing that went wrong and what you changed. Then name one line where you are newer and say what you are doing about it. The interviewer will follow up on the number, so use one you can defend.
+Imagine the first conversation again. The recruiter has your CV in front of them and asks what you have actually done. The answer you give should be specific, short and checkable. These outlines show the order of speaking, and the words are yours to change.
 
-**Question 2. "What do you know about Token Factory?"** Use only the public facts in section 6. Say it serves several model types, has serverless and dedicated endpoints with an OpenAI-compatible API, and separates a control plane from a regional data plane. Mention one public failure story, such as silent pool shrink after restarts. Then say what you do not know, for example the autoscaling signals, and offer how you would reason about them. Do not claim anything about Nebius internals.
+**Question 1. "Which parts of this role have you done?"** Imagine the recruiter pausing for your answer and writing a note as you speak. Speak for two minutes. Pick the three posting lines where your evidence is strongest. For each, say what you ran, one number that describes its scale and one thing that went wrong and what you changed. Then name one line where you are newer and say what you are doing about it. The interviewer will follow up on the number, so use one you can defend.
 
-**Question 3. "What would you do in your first 90 days?"** This is your reasoning. Give three phases. First, learn the system: read the dashboards, the alerts, the last ten incidents and the on-call load. Second, fix one small recurring problem end to end so that you learn the release and review process. Third, pick one larger reliability theme, such as retries or autoscaling signals, and propose a measured change. Say you would measure before and after.
+**Question 2. "What do you know about Token Factory?"** Picture yourself answering with the public facts only, because the interviewer knows you have no inside view. Use only the public facts in section 6. Say it serves several model types, has serverless and dedicated endpoints with an OpenAI-compatible API, and separates a control plane from a regional data plane. Mention one public failure story, such as silent pool shrink after restarts. Then say what you do not know, for example the autoscaling signals, and offer how you would reason about them. Do not claim anything about Nebius internals.
 
-**Question 4. "Where are you weakest against this posting?"** Name the lowest-confidence line from your table, say what evidence you do have that is nearest to it, and say what you did this month. Chapter 20.1 has the same question in the recruiter-call setting.
+**Question 3. "What would you do in your first 90 days?"** This is your reasoning. Give three phases. First, learn the system: read the dashboards, the alerts, the last ten incidents and the on-call load. Second, fix one small recurring problem end to end so that you learn the release and review process. Third, pick one larger reliability theme, such as retries or autoscaling signals, and propose a measured change. Say you would measure before and after. A plan that changes nothing until it has been measured is the kind of plan most interviewers trust.
+
+**Question 4. "Where are you weakest against this posting?"** Picture the question landing when you are already tired. Stay calm and name the lowest-confidence line from your table, say what evidence you do have that is nearest to it, and say what you did this month. Chapter 20.1 has the same question in the recruiter-call setting.
 
 ## Worked scenarios
 
 ### Scenario 1. Reading a filled table
 
-You fill the template and cut it to three skills for this example. The first has confidence 2 and evidence "ran it on one cluster". The second is SLOs at 4 with no evidence. The third is cost and capacity at 1. Running the tracker gave this real output, from the file `mini.md` I made for this chapter:
+Suppose a table that you have just filled in after a long evening. You fill the template and cut it to three skills for this example. The first has confidence 2 and evidence "ran it on one cluster". The second is SLOs at 4 with no evidence. The third is cost and capacity at 1. Running the tracker gave this real output, from the file `mini.md` I made for this chapter:
 
 ```text
  1. Kubernetes operations and GPU autoscaling | priority 9 (5-2)x3 | study: 20.20, 20.23
@@ -439,13 +445,15 @@ Read it in order. Kubernetes autoscaling comes first because it appears in three
 
 ### Scenario 2. A line you have never done
 
-The interviewer says: "You have not run vLLM in production. Why should we consider you?" Q5 is desirable, so you have room. Answer in three parts. State the truth: "I have not run it in production." Show the nearest evidence: "I have run GPU workloads on Kubernetes and I read its metrics on a test server." State the plan: "I read the metrics design and I know the three places a request waits, which are the waiting queue, the running batch and the KV cache." Chapter 20.18 teaches those three places. That answer uses a gap as proof of how you learn.
+Imagine the interviewer leaning back and saying: "You have not run vLLM in production. Why should we consider you?" Q5 is desirable, so you have room. Answer in three parts. State the truth: "I have not run it in production." Show the nearest evidence: "I have run GPU workloads on Kubernetes and I read its metrics on a test server." State the plan: "I read the metrics design and I know the three places a request waits, which are the waiting queue, the running batch and the KV cache." Chapter 20.18 teaches those three places. That answer uses a gap as proof of how you learn.
 
 ### Scenario 3. Explaining "tune autoscalers for GPU efficiency"
 
-The interviewer asks what that phrase means to you. Start with the problem: GPUs are expensive and idle capacity costs money, while too little capacity makes users wait. Say that scaling on GPU utilisation alone can mislead, because a drowning engine and a healthy one can both look busy. Say you would prefer signals such as queue depth and time spent waiting, and that you would add headroom because a new GPU replica takes minutes to be ready. State that Nebius has not published its signals, so this is your design. Chapter 20.20 gives the full argument and the sources.
+Think of the interviewer asking, with a slight smile, what that phrase means to you. Start with the problem: GPUs are expensive and idle capacity costs money, while too little capacity makes users wait. Say that scaling on GPU utilisation alone can mislead, because a drowning engine and a healthy one can both look busy. Say you would prefer signals such as queue depth and time spent waiting, and that you would add headroom because a new GPU replica takes minutes to be ready. State that Nebius has not published its signals, so this is your design. Chapter 20.20 gives the full argument and the sources.
 
 ## Hands-on lab
+
+Consider the quiet hour before a practice session. You have the repository open, a terminal and a blank file. These steps are for you to run in that order, and each one ends with something you can see. The first, third and fifth steps are the ones I tried on my own machine.
 
 1. Open a terminal in the handbook repository and run the tests. Expected result: 17 passed. I ran this step.
 
@@ -520,11 +528,15 @@ Say plainly that you have not done it. Give the nearest real evidence. Then stat
 
 ## Common mistakes and weak answers
 
-The first mistake is rating every skill 4 or 5. The tracker will then have nothing to rank and you will have no study plan. The second is quoting the posting back to the interviewer. Say what you did, not what the line says. The third is claiming knowledge of how Token Factory works inside. Public facts are fine and everything else is a reasoned design.
+Imagine the interviewer's face when a candidate recites the posting back word for word. The interviewer already has the posting. What they want is your story. The first mistake is rating every skill 4 or 5. The tracker will then have nothing to rank and you will have no study plan. Honest low numbers are more useful than flattering high ones, because they tell you where to spend the next week.
 
-The fourth is treating the desirable lines as requirements and panicking, or treating them as optional and skipping them. Learn the basics of vLLM metrics even if you never ran it. The fifth is forgetting that the posting is dated. It was posted on 27 Jul 2026 per the copy I fetched, so ask whether it is still open and whether the scope has changed.
+The second is quoting the posting back to the interviewer. Say what you did, not what the line says. The third is claiming knowledge of how Token Factory works inside. Public facts are fine and everything else is a reasoned design.
+
+The fourth is treating the desirable lines as requirements and panicking, or treating them as optional and skipping them. Learn the basics of vLLM metrics even if you never ran it. Reading the metric names, what each one counts and which one you would alert on is a concrete thing you can talk about in the room. The fifth is forgetting that the posting is dated. It was posted on 27 Jul 2026 per the copy I fetched, so ask whether it is still open and whether the scope has changed.
 
 ## Connections to the rest of the handbook
+
+If you finish this chapter with a filled table and a few weak rows, the links below show where each row leads.
 
 - [20.1 The Nebius loop and how to use this volume](01-the-nebius-loop-and-how-to-use-this-volume.md) gives the stages, the think-aloud script and the questions to ask the recruiter.
 - [20.18 How LLM serving fails](18-how-llm-serving-fails.md), [20.19 SLIs, SLOs and alerts for token APIs](19-slis-slos-and-alerts-for-token-apis.md), [20.20 Autoscaling GPU inference](20-autoscaling-gpu-inference.md) and [20.21 Request routing, retries and overload control](21-request-routing-retries-and-overload-control.md) cover R1, R3, R5, Q3 and Q4.

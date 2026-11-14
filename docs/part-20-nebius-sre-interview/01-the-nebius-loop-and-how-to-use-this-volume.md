@@ -14,25 +14,25 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-The recruiter email arrives and says only "we would like to talk". You have a job posting, a handful of anonymous reports and a volume of 30 chapters. You need to know which stage each chapter serves, so you do not spend a week on the wrong one.
+Imagine the moment the email lands. It is short and friendly, and it says only "we would like to talk". You have the job posting open, a handful of anonymous reports from people who sat a similar loop, and a volume of 30 chapters in front of you. The first practical question is this: which stage does each chapter serve, so that you do not spend a week preparing for the wrong one?
 
-This chapter serves every stage, because it is the map. It also serves the very first conversation. The recruiter call asks about your career, your skills and your interest. The official page tells you to have your resume and the job posting ready, so expect questions about both. Chapter 20.2 gives you that posting line by line.
+This chapter is the map, so it serves every stage, including the very first conversation. Think of it as the page you keep open while you study. The recruiter call asks about your career, your skills and your interest. The official page tells you to have your resume and the job posting ready, so expect questions about both. Chapter 20.2 takes that posting apart line by line, and it is the next thing to read.
 
-Evidence tags used in this volume are the same everywhere. [official] means a Nebius page. [report] means an anonymous candidate report. [vendor] means Nebius marketing. [gap] means Nebius has not published it. Every Nebius fact in this chapter was read from the official interview page or the job posting on 2026-11-09, or comes from the research notes in the volume plan.
+Evidence tags appear throughout this volume, and they mean the same thing in every chapter. They tell you what kind of source stands behind a statement. [official] means a Nebius page. [report] means an anonymous candidate report. [vendor] means Nebius marketing. [gap] means Nebius has not published it. Every Nebius fact in this chapter was read from the official interview page or the job posting on 2026-11-09, or comes from the research notes in the volume plan.
 
-A realistic question in the interviewer's voice, from the recruiter call: "Tell me about the systems you have run in production, and which part of inference reliability you would want to own first."
+A question like the one below can open the recruiter call, and it has no single right answer. It is open on purpose: "Tell me about the systems you have run in production, and which part of inference reliability you would want to own first."
 
 ## The core ideas
 
 ### 1. The process, stage by stage
 
-You start by sending a CV. The official page says you will hear back within three business days. Then comes a recruiter call with a talent specialist. After that come three technical interviews of 60 to 90 minutes each, run by interviewers from different teams. The last step is a final hour with a team leader. After that you discuss an offer with the recruiter and the team lead.
+Suppose you send your CV on a quiet morning and wait. The official page says you will hear back within three business days. That reply is the first gate, and the rest of the loop only opens if it goes well. You start by sending a CV. Then comes a recruiter call with a talent specialist, who is the person who checks that your background fits the role before engineers spend their time on you. After that come three technical interviews of 60 to 90 minutes each, run by interviewers from different teams. The last step is a final hour with a team leader. After that you discuss an offer with the recruiter and the team lead.
 
-The page says the interviews can be spread across several days. It also says that after each interview your recruiter contacts you within a week to talk about the meeting and the next steps. The page names Zoom for every video interview.
+The page says the interviews can be spread across several days. It also says that after each interview your recruiter contacts you within a week to talk about the meeting and the next steps. That follow-up matters, because it is how you learn where you stand between rounds. The page names Zoom for every video interview.
 
-The page describes the technical content as formats, not as a fixed order. The initial interview covers your experience with languages, operating systems, databases and other technologies. It includes questions on service management, Linux, Unix and networks, at least one coding or algorithms task, and practical tasks in the Linux console. The technical interview is a standardised session on coding, troubleshooting and debugging. The system design interview asks you to design all or part of a distributed system, estimate the compute it needs and discuss storage and processing trade-offs.
+The page describes the technical content as formats, not as a fixed order. The initial interview covers your experience with languages, operating systems, databases and other technologies. It includes questions on service management, Linux, Unix and networks, at least one coding or algorithms task, and practical tasks in the Linux console. The technical interview is a standardised session on coding, troubleshooting and debugging. The system design interview asks you to design all or part of a distributed system, estimate the compute it needs and discuss storage and processing trade-offs. A distributed system is one that runs on several machines that talk to each other, so a failure on one of them is a normal event to plan for.
 
-The final meeting is a conversation with a team leader about the team and its projects. You may get extra technical questions, and the page says you are told in advance.
+The final meeting is a conversation with a team leader about the team and its projects. You may get extra technical questions, and the page says you are told in advance. Being told in advance is useful, because it lets you change your preparation for that hour.
 
 ```mermaid
 flowchart LR
@@ -53,17 +53,23 @@ flowchart LR
 | System design | Design a distributed system, estimate resources, trade-offs | [official] | 20.12 to 20.17 |
 | Final hour | Team leader, projects, possible extra technical questions | [official] | 20.27, 20.28 |
 
-Decide now to treat this table as the only firm structure you have. Everything that follows about order and content is softer.
+Treat this table as the only firm structure you have. Everything after it about order and content is softer, and you should hold it loosely until your recruiter confirms the details.
 
 ### 2. What is known and what is not
 
-Nebius has published the stages, the formats, the tips, the setup checklist and a reading list. Nebius has not published a scoring rubric, the order of the three technical interviews, how many problems each includes, or what the interview teams are. The page lists areas that are assessed: Linux and networking, console tools, handling common service operation issues, writing working and testable code, system design, and algorithms and data structures. It gives no weights and no pass mark. [official] for the list, [gap] for everything else here.
+Imagine a friend asks you what the interview will cover, and you want to answer precisely. The honest answer is that Nebius has published more than many companies do, and less than you would like. Nebius has published the stages, the formats, the tips, the setup checklist and a reading list. Nebius has not published a scoring rubric, the order of the three technical interviews, how many problems each includes, or what the interview teams are. The page lists areas that are assessed: Linux and networking, console tools, handling common service operation issues, writing working and testable code, system design, and algorithms and data structures. It gives no weights and no pass mark. [official] for the list, [gap] for everything else here.
 
-Nebius also has not said whether a take-home task or a long project deep dive is part of the SRE loop. The page only says the final meeting may include extra technical tasks. One candidate report mentions a stage where you solve a production incident in 30 minutes. The official page does not name that stage. So the incident round in this volume is [report] only.
+The list is useful, but it is a list of topics and not a list of questions. A topic such as "handling common service operation issues" can mean a question about a restart loop, a slow dashboard or a full disk. You will only learn which one from your recruiter or from the room itself.
 
-The practical result is simple. **Prepare for the hardest plausible loop and learn the real one from your recruiter.** The questions in section 9 are how you do that.
+Nebius also has not said whether a take-home task or a long project deep dive is part of the SRE loop. A take-home task is a problem you solve on your own time and send back. The page only says the final meeting may include extra technical tasks. One candidate report mentions a stage where you solve a production incident in 30 minutes. The official page does not name that stage. So the incident round in this volume is [report] only.
+
+The practical result is simple. **Prepare for the hardest plausible loop and learn the real one from your recruiter.** The questions in section 9 are how you do that. Preparing for the hard version costs you little if the loop turns out to be easier, and preparing only for the easy version can leave you exposed if it is not.
+
+The gaps in this section are not a reason to wait. Read them as a to-do list. Each unanswered question is one that your recruiter can answer in a short email, and each answer narrows the preparation you need to do. A gap that you have named and tracked is far easier to work with than a gap you only sense in the middle of a round.
 
 ### 3. How the candidate reports differ, and what to make of it
+
+Imagine two people who sat interviews for similar SRE jobs and then compare notes. One says the whole process took about a week. The other says it dragged on for one to three months. Both are telling the truth about their own experience, and neither tells you what the next candidate will face. That is the situation with the reports in this section.
 
 You will find reports that disagree with each other. That is normal here, and you should read them as a range, not as promises. The research found only about four Nebius-specific reports, and none for this exact role. Several pages could not be fetched in full.
 
@@ -76,55 +82,63 @@ You will find reports that disagree with each other. That is normal here, and yo
 
 Two things stand out. The number of rounds ranges from about four to seven, while the official page says three technical interviews plus a final hour. The duration also differs. The page suggests days, and the reports say one to three months.
 
-Reasons are my reasoning, not facts: different teams may run different loops, the reports span years and offices, and anonymous reports skew toward bad experiences.
+Reasons are my reasoning, not facts. Different teams may run different loops. The reports span years and offices. Anonymous reports also skew toward bad experiences, because people who had a smooth process rarely write about it.
 
-What to do with it: prepare for the Amsterdam version, because it is the most detailed and the hardest. Expect some rounds to be easier than you prepared for. Do not read the easy reports as a reason to skip system design.
+What to do with it: prepare for the Amsterdam version, because it is the most detailed and the hardest. Expect some rounds to be easier than you prepared for. Do not read the easy reports as a reason to skip system design, because system design is the stage that the official page describes most clearly.
+
+A useful habit is to turn each report into a question for your recruiter. The Amsterdam report makes you ask whether there is an incident round. The Czech report makes you ask how long the process usually takes. The reports cannot answer those questions for you, but the recruiter can, and the answer replaces a guess with a fact that you can plan around.
 
 ### 4. How interviews are scored, in general
 
-This is the shortest section, because Nebius has said very little. The official page does not publish a rubric. It publishes advice on how to behave, in these words: "Articulate your thought process aloud." It also says not to hesitate to ask for a hint, to offer alternative solutions, to review your code for errors before submitting, and that "You can use any technology and any language." It adds that you should tell the interviewer if you find a better answer later and adjust gracefully if the problem's parameters change.
+Suppose the end of a technical round. The video call closes, and you wonder what the person on the other side of the screen wrote down. This is the shortest section, because Nebius has said very little. The official page does not publish a rubric. It publishes advice on how to behave, in these words: "Articulate your thought process aloud." It also says not to hesitate to ask for a hint, to offer alternative solutions, to review your code for errors before submitting, and that "You can use any technology and any language." It adds that you should tell the interviewer if you find a better answer later and adjust gracefully if the problem's parameters change.
 
 From that advice you can see what the interviewer is allowed to see. They see your reasoning, how you use a hint, whether you can compare options and whether you check your own work. Nebius has not said that these are scored, or how. My reading, labelled as inference, is that an interviewer writes notes on exactly these things. So behave as if every one of them goes into the notes.
 
-This reading also gives you a plan. A correct answer with no reasoning shows less than a partly correct answer with a clear chain of thought. A hint taken well can look better than a silent struggle. **Make your reasoning visible, because that is the only thing you control.**
+Think of the interviewer as a careful colleague who must explain your work to someone else later. That colleague needs enough detail to write a fair note, and a silent solution gives them very little to write.
+
+This reading also gives you a plan. A correct answer with no reasoning shows less than a partly correct answer with a clear chain of thought. A hint taken well can look better than a silent struggle. **Make your reasoning visible, because that is the only thing you control.** You cannot control whether the problem suits you on the day, but you can control how clearly you talk while you work on it.
 
 ### 5. The think-aloud protocol as a script
 
-You get a problem and your mind goes quiet. The interviewer cannot hear quiet. This script gives you words to say in a fixed order, so you speak even when you are not sure. It works for coding, console, design and incident rounds. I wrote it from the official advice above, so it is a technique, not Nebius policy.
+You get a problem and your mind goes quiet. The interviewer cannot hear quiet. Many good engineers have frozen at this point, not because they lack skill, but because speaking while thinking feels unnatural. This script gives you words to say in a fixed order, so you speak even when you are not sure. It works for coding, console, design and incident rounds. I wrote it from the official advice above, so it is a technique, not Nebius policy.
 
-1. Restate the problem in one sentence. Say: "So the input is ..., the output is ..., and the limit is ...".
-2. Ask two clarifying questions. Say: "Can the input be empty? What size should I plan for?"
-3. Say your plan before you act. Say: "My first approach is X. It costs about Y. I will start with that and improve it if there is time."
-4. Work in small steps and name each one. Say: "Now I am parsing the line. Next I will count."
-5. Check as you go. Say: "Let me test this on a small example."
-6. Review at the end. Say: "Let me read it once for off-by-one errors and empty input."
-7. Offer an alternative. Say: "A different way is Z, which trades memory for speed. I would pick it if ..."
+1. Restate the problem in one sentence. Say: "So the input is ..., the output is ..., and the limit is ...". This shows that you understood the task before you began to solve it.
+2. Ask two clarifying questions. Say: "Can the input be empty? What size should I plan for?" The answers change the solution, so asking is part of the work and not a delay.
+3. Say your plan before you act. Say: "My first approach is X. It costs about Y. I will start with that and improve it if there is time." The interviewer can then comment on the plan before you spend the time on it.
+4. Work in small steps and name each one. Say: "Now I am parsing the line. Next I will count." Each named step gives the interviewer a place to follow you.
+5. Check as you go. Say: "Let me test this on a small example." A small example catches most mistakes before they grow.
+6. Review at the end. Say: "Let me read it once for off-by-one errors and empty input." An off-by-one error is a mistake where a loop or index is one step too far, and it is one of the most common bugs in a finished solution.
+7. Offer an alternative. Say: "A different way is Z, which trades memory for speed. I would pick it if ..." Offering a second option shows that you know more than one way, even when you only build one.
 
 In a console round the same seven steps become: state the symptom, say what you will check first and why, run one command, say what the output means, and name your next hypothesis. In a design round step 3 is where you state your assumptions and numbers. In an incident round step 3 is where you say what you will do to protect users before you know the cause. Chapter 8 has the coding version with timing, and chapter 26 has the incident version.
 
-Say your numbers out loud with their units. Say "about 40 gigabytes of KV cache per replica", not just "40". The interviewer cannot check what they did not hear.
+Say your numbers out loud with their units. Say "about 40 gigabytes of KV cache per replica", not just "40". The interviewer cannot check what they did not hear. The KV cache is the memory that holds the attention data for tokens a model has already processed, so a number for it means little without the unit and the context.
 
-Practise this script until the sentences are boring. Then they are free when stress arrives.
+Practise this script until the sentences are boring. Then they are free when stress arrives. A script you have said a dozen times in your kitchen will come out of your mouth on the day, even when your head is busy.
+
+Rehearsal works best with a friend who plays the interviewer. Ask them to stay quiet while you speak, and to interrupt only when you go silent. After the practice, ask them one question: could they repeat your plan back to a colleague? If the answer is yes, your reasoning is visible enough. If the answer is no, the script needs more of the small named steps in the middle.
 
 ### 6. How to handle being stuck
 
-You will get stuck. Everyone does, and the page itself tells you that asking for a hint is fine. The mistake is not being stuck. The mistake is staying silent about it.
+Think of the middle of a coding problem. You have tried one idea, it fails, and the next idea does not come. You will get stuck. Everyone does, and the page itself tells you that asking for a hint is fine. The mistake is not being stuck. The mistake is staying silent about it.
 
-Use this order. First, say it plainly: "I am not sure how to get below this complexity." Second, shrink the problem. Solve a smaller case by hand and say what you see. Third, say what you do know: "I know the answer must visit every item once, so I need a way to find the partner quickly." Fourth, ask a specific question: "Would a hash map be the right direction here?" A specific question is a better hint request than "I give up". Fifth, offer the slow answer and improve it: "The brute force is quadratic. Let me write that first, then look for the speed-up."
+Use this order. First, say it plainly: "I am not sure how to get below this complexity." Second, shrink the problem. Solve a smaller case by hand and say what you see. Third, say what you do know: "I know the answer must visit every item once, so I need a way to find the partner quickly." Fourth, ask a specific question: "Would a hash map be the right direction here?" A specific question is a better hint request than "I give up". Fifth, offer the slow answer and improve it: "The brute force is quadratic. Let me write that first, then look for the speed-up." Quadratic means the work grows with the square of the input, so a larger input costs much more time than it first seems to.
 
-A rule I suggest, and label as my advice: do not stay silent for more than half a minute. If you need to think, say "I need a moment to think about X", and then do.
+A rule I suggest, and label as my advice: do not stay silent for more than half a minute. If you need to think, say "I need a moment to think about X", and then do. The interviewer can wait with you, but only if they know that you are still working.
 
 ### 7. Logistics: Zoom and the setup checklist
 
-The official page names Zoom for all video interviews and tells you to install it beforehand. Its checklist has four items: a stable internet connection, headphones to reduce background noise, a tested microphone and headphones, and a tidy background. [official] That is the whole list.
+Consider the evening before your first video call. The link has arrived, the laptop is charged and you want to know that nothing will fail in the middle of a sentence. The official page names Zoom for all video interviews and tells you to install it beforehand. Its checklist has four items: a stable internet connection, headphones to reduce background noise, a tested microphone and headphones, and a tidy background. [official] That is the whole list.
 
-My advice, not Nebius policy: join a Zoom test meeting the evening before, and keep a phone hotspot ready as a second connection.
+My advice, not Nebius policy: join a Zoom test meeting the evening before, and keep a phone hotspot ready as a second connection. A hotspot is a mobile phone that shares its data connection with your laptop, so a broken home network does not end the interview.
 
-Ask the recruiter what the shared editor or terminal will be. The page says any language is allowed and mentions Python and Go as examples. It also suggests practice on LeetCode or HackerRank. It does not say which editor is used, and Nebius has not published that. Chapter 8 teaches you to be fluent in a plain editor with no autocomplete, which is the safe choice.
+Ask the recruiter what the shared editor or terminal will be. The page says any language is allowed and mentions Python and Go as examples. It also suggests practice on LeetCode or HackerRank, which are websites with practice problems for coding interviews. It does not say which editor is used, and Nebius has not published that. Chapter 8 teaches you to be fluent in a plain editor with no autocomplete, which is the safe choice. If you can only write code when your editor finishes your sentences, the first unfamiliar setup will slow you down.
+
+Your background matters too. A tidy background means nothing that distracts the interviewer, such as an open laundry basket or a bright window behind you. Test it on the call itself, because what you see in the preview is what they see.
 
 ### 8. The official reading list, mapped to this volume and the library
 
-The page lists five books and a pointer to the Google SRE books at sre.google/books. You will not read all of them in the time you have. This table says what each covers, which chapters of this volume use the same ground, and whether the book is in the library I checked. "In the library" means the book corpus on the machine where this volume was written, checked on 2026-11-09.
+Imagine a shelf of books that the company recommends, with very little time left before the first call. The page lists five books and a pointer to the Google SRE books at sre.google/books. You will not read all of them in the time you have. This table says what each covers, which chapters of this volume use the same ground, and whether the book is in the library I checked. "In the library" means the book corpus on the machine where this volume was written, checked on 2026-11-09.
 
 | Official reading | In the library? | Chapters here that cover the same ground |
 | --- | --- | --- |
@@ -137,19 +151,25 @@ The page lists five books and a pointer to the Google SRE books at sre.google/bo
 
 For the books not in the library, this volume teaches the interview skill and links to handbook chapters on the same topics. The library holds books the chapters draw on heavily. Systems Performance chapter 2 on methodologies supports the triage, incident and project chapters. How Linux Works supports 20.3, 20.5 and 20.7. Production Kubernetes supports 20.15, 20.23 and 20.24 together with Terraform Up and Running. Distributed AI Systems chapter 9 on the production LLM serving stack supports 20.9, 20.18 and 20.21.
 
+If you can only open one book, open the one in the library. Each chapter in this volume tries to stand on its own, and the reading gives you the depth behind it when you have time to spare.
+
+When you read a book chapter, read it with a question in mind, such as how that reading would diagnose a service that has become slow. Write the answer in your own words, then compare it with the matching chapter of this volume. The gap between your answer and the chapter shows you what to practise next.
+
 Keep Systems Performance chapter 2 open all week.
 
 ### 9. Questions to ask the recruiter this week
 
-You have a recruiter who must reply to you. Use that. Five questions turn the gaps in section 2 into facts.
+Imagine the recruiter has just replied to your CV and asks if you have any questions. This is the moment to turn a vague plan into facts. You have a recruiter who must reply to you, so use that. Five questions turn the gaps in section 2 into facts.
 
-First, ask which technical interviews will take place and in what order, and how long each is. Say: "I am preparing for a console round, a coding round and a design round. Are those the right three?" Second, ask about languages and environment: "Which language may I use, and will it be a shared editor, a terminal or my own machine?" Third, ask about project work: "Is there a project deep dive or a take-home task, and if so for how long?" Fourth, ask which teams the interviewers come from, because the page says they come from different teams, and ask whether the role's day-to-day work is closer to the platform or the infrastructure side. Fifth, ask for the timeline and the status of the posting, because the posting I fetched is dated 27 Jul 2026 and shows "4 months ago" in the aggregator copy. Ask whether the role is still open.
+First, ask which technical interviews will take place and in what order, and how long each is. Say: "I am preparing for a console round, a coding round and a design round. Are those the right three?" Second, ask about languages and environment: "Which language may I use, and will it be a shared editor, a terminal or my own machine?" Third, ask about project work: "Is there a project deep dive or a take-home task, and if so for how long?" Fourth, ask which teams the interviewers come from, because the page says they come from different teams, and ask whether the role's day-to-day work is closer to the platform or the infrastructure side. Fifth, ask for the timeline and the status of the posting, because the posting I fetched is dated 27 Jul 2026 and shows "4 months ago" in the aggregator copy. Ask whether the role is still open. An old posting may be closed, or it may have been renamed, and the recruiter can say which.
 
-Ask for the format, not the questions themselves.
+Write the replies down as they come in, next to the chapter each one affects. A reply that the coding round is the hardest stage, for example, tells you to move Part C up your list. The answers are only useful if you connect them to what you study next.
+
+Ask for the format, not the questions themselves. A recruiter can tell you how long each round runs and what it covers, but they will not give you the actual prompt.
 
 ### 10. A reader's map: which chapter serves which stage
 
-This table maps each stage to chapters. Part B is the console round. Part C is coding. Part D is system design. Part E is inference knowledge that feeds design and the incident round. Part G is the incident round and the final hour.
+Suppose yourself a few weeks from the first call, with a long volume and a short calendar. You need to know which chapters come first, or you will read the wrong ones with great care. This table maps each stage to chapters. Part B is the console round. Part C is coding. Part D is system design. Part E is inference knowledge that feeds design and the incident round. Part G is the incident round and the final hour.
 
 | Stage or skill | Chapters | Tag for the stage |
 | --- | --- | --- |
@@ -164,21 +184,21 @@ This table maps each stage to chapters. Part B is the console round. Part C is c
 | Public architecture map | 20.30 to 20.33 | [vendor] and [official] |
 | Schedule | 20.29 | volume plan |
 
-Chapter [20.17 System design drill sheet](17-system-design-drill-sheet-twelve-prompts.md) holds twelve timed design prompts. Read 20.13 to 20.16 first for the depth, then use 20.17 as the timed practice.
+Chapter [20.17 System design drill sheet](17-system-design-drill-sheet-twelve-prompts.md) holds twelve timed design prompts. Read 20.13 to 20.16 first for the depth, then use 20.17 as the timed practice. The order matters here. A timed prompt without the depth behind it only shows you how fast you panic.
 
 If your interview is close, the plan in the volume's research notes gives a priority order. Start with the Linux console chapters in Part B and the system design chapters in Part D, because both appear in every report. Then read Part E and Part G. Take Part C and Part F after that. Chapter 20.29 turns this into an eight-week schedule.
 
 ## How to answer out loud
 
-These are the likely questions in the first conversation. The order of speaking matters more than the words.
+Think of the first conversation. The recruiter asks a question, you start to answer, and the first minute of what you say sets the tone for the rest of the call. These are the likely questions in the first conversation. The order of speaking matters more than the exact words, so the outlines below show the order.
 
-**Question 1. "Tell me about yourself and your background."** Speak for about two minutes. First, your current role in one sentence. Second, one system you ran in production, with one number such as traffic, cluster size or an uptime figure you can defend. Third, one incident you handled, and what you changed afterwards. Fourth, why this role: it is about reliability of GPU inference, and your next step is to move from general DevOps into that. Expect the follow-up "what was your part in that system?", so know the answer without hedging.
+**Question 1. "Tell me about yourself and your background."** Imagine you are a little way into your answer and the recruiter is still listening. Speak for about two minutes. First, give your current role in one sentence. Second, describe one system you ran in production, with one number such as traffic, cluster size or an uptime figure you can defend. Third, describe one incident you handled, and what you changed afterwards. Fourth, explain why this role: it is about reliability of GPU inference, and your next step is to move from general DevOps into that. Expect the follow-up "what was your part in that system?", so know the answer without hedging.
 
-**Question 2. "Why Nebius, and why this role?"** Use only what is public. The posting says the role owns reliability, performance and observability for the inference stack of Token Factory, and that the platform serves text, vision, audio and multimodal models. Say what attracts you in your own words, for example the combination of autoscaling, telemetry and incident work on GPUs. Do not claim knowledge of internal systems. If you are asked what you know about Token Factory, give the public points from chapter 20.2 and say you would like to learn the rest.
+**Question 2. "Why Nebius, and why this role?"** Picture yourself asked this with no notes in front of you. Use only what is public. The posting says the role owns reliability, performance and observability for the inference stack of Token Factory, and that the platform serves text, vision, audio and multimodal models. Say what attracts you in your own words, for example the combination of autoscaling, telemetry and incident work on GPUs. Do not claim knowledge of internal systems. If you are asked what you know about Token Factory, give the public points from chapter 20.2 and say you would like to learn the rest.
 
-**Question 3. "Which part of this job is your weakest?"** Name a real gap from your self-assessment in chapter 20.2, then say what you did about it this month. For example, you might say you have not run vLLM in production, so you ran it on a laptop and read its metrics. A specific gap with a specific action sounds stronger than a hidden gap.
+**Question 3. "Which part of this job is your weakest?"** This question tests honesty more than knowledge. Name a real gap from your self-assessment in chapter 20.2, then say what you did about it this month. For example, you might say you have not run vLLM in production, so you ran it on a laptop and read its metrics. A specific gap with a specific action sounds stronger than a hidden gap, and it is also the answer that is easiest to defend under a follow-up question.
 
-**Question 4. "Do you have questions for us?"** Ask two. One about how the team measures reliability for inference and what the on-call load looks like. One about what the first 90 days include.
+**Question 4. "Do you have questions for us?"** The interviewer has been waiting for your questions, and a blank answer suggests you have not thought about the role. Ask two. One about how the team measures reliability for inference and what the on-call load looks like. One about what the first 90 days include.
 
 ## Worked scenarios
 
@@ -186,17 +206,17 @@ These are the likely questions in the first conversation. The order of speaking 
 
 The interviewer gives you: "Given a log of request times, find the busiest one-minute window." You read it twice and nothing comes. Say so. "I want to be sure of the input first. Are timestamps sorted? Can there be millions of lines?" The answer is probably yes to both.
 
-Now shrink it. With five timestamps, you could count by hand. "For each timestamp I could count how many fall in the next 60 seconds. That is quadratic." Then ask the specific question: "Since they are sorted, could two pointers do this in one pass?" Even if the interviewer smiles, you have shown the full path from slow to fast. Write the slow version if the fast one does not come. Then test it on an empty log and a single line. Chapter 20.9 covers the sliding window pattern in depth.
+Now shrink it. With five timestamps, you could count by hand. "For each timestamp I could count how many fall in the next 60 seconds. That is quadratic." Then ask the specific question: "Since they are sorted, could two pointers do this in one pass?" Two pointers means two indexes that move through the sorted list together, so each timestamp is visited only a fixed number of times. Even if the interviewer smiles, you have shown the full path from slow to fast. Write the slow version if the fast one does not come. Then test it on an empty log and a single line. Chapter 20.9 covers the sliding window pattern in depth.
 
 ### Scenario 2. A console round with a silent terminal
 
 You get a shell and the sentence "the service is slow". Do not type yet. Say: "First I want to know what slow means. Since when, for whom, and what changed?" Then say what you will run and why: "I will start with load, memory and disk pressure, because they take a few seconds and rule things out." Run one command. Read the output aloud: "Load is high but CPU is idle, so the machine is waiting on something, probably disk or locks."
 
-Each step costs ten seconds of speech and gives the interviewer a reason to believe your method. Chapter 20.3 gives the first-minute order and chapter 20.4 the file and permission puzzles that one report mentions.
+Each step costs ten seconds of speech and gives the interviewer a reason to believe your method. Chapter 20.3 gives the first-minute order and chapter 20.4 the file and permission puzzles that one report mentions. If the terminal is silent for a moment while the command runs, say so. Silence while a command is working is fine, but silence while you think is not, and the interviewer cannot tell the two apart unless you speak.
 
 ## Hands-on lab
 
-This lab has no commands to run on a machine. Every step is a practice you do yourself. I did not run these steps, because they are your own preparation.
+Consider the evening before the first call. The laptop is open, the headphones are beside it, and you have a list of things to check before you sleep. This lab has no commands to run on a machine. Every step is a practice you do yourself. I did not run these steps, because they are your own preparation.
 
 1. Install Zoom and join a test meeting with your headphones. Expected result: you can hear yourself in a recording and see your background. Fix anything you see.
 2. Pick one easy problem from chapter 20.11. Set a 25-minute timer and record your screen and voice while you solve it using the seven steps from section 5. Expected result: a recording with your voice running throughout, and a working solution.
@@ -248,13 +268,17 @@ Which interviews and in what order. Which language and what environment. Whether
 
 ## Common mistakes and weak answers
 
-The first mistake is treating one report as the loop. Say "one candidate reported" in your own notes and keep preparing for all stages. The second is silence. An interviewer who cannot hear you cannot score your reasoning. Use the script.
+Imagine the interviewer's notepad at the end of a round. Most of the bad notes on it come from a few habits, and each one is easy to avoid once you know it. The first mistake is treating one report as the loop. Say "one candidate reported" in your own notes and keep preparing for all stages. The second is silence. An interviewer who cannot hear you cannot score your reasoning. Use the script.
 
 The third mistake is to answer "why Nebius" with claims about internals. You do not know them. Say what the posting and public pages say and ask about the rest. The fourth is hiding a gap. A named gap with an action beats a vague "I am good at everything".
 
 The fifth is leaving logistics to the last minute. The sixth is ignoring the recruiter as a source. Five short questions can replace a week of guessing.
 
+A quick test for all six habits is to ask yourself what the interviewer would write down about you in the first ten minutes. If the honest answer is "nothing, because they could not hear me", go back to the script. If the answer is "a clear method and a named gap", you are on track.
+
 ## Connections to the rest of the handbook
+
+When you finish this chapter and wonder what to open next, the list below tells you where each thread leads.
 
 - [20.2 The role in one page](02-the-role-in-one-page-the-job-posting-line-by-line.md) gives the posting line by line and the self-assessment table.
 - [20.3 Triage method for a sick Linux box](03-triage-method-for-a-sick-linux-box.md) and [20.8 The coding round](08-the-coding-round-what-to-expect-and-how-to-perform.md) apply the think-aloud script to a console task and a coding task.
@@ -263,11 +287,11 @@ The fifth is leaving logistics to the last minute. The sixth is ignoring the rec
 - [20.28 The project deep dive and the final round](28-the-project-deep-dive-and-the-final-round.md) covers the final hour.
 - [20.30 From AI factory to Token Factory](30-nebius-ai-factory-to-token-factory-architecture.md) maps the public architecture.
 - [17.11 Incident response and game days](../part-17-operations/11-incident-response-and-game-days.md) and [1.23 Performance methodology](../part-01-linux/23-performance-methodology-use-workload-characterisation-drill-down.md) are the earlier-part anchors for the method.
-- The eight-week plan is chapter 20.29 and was being written by another author when this chapter was drafted.
+- The eight-week plan is chapter 20.29. Check the volume plan for its current status before you rely on it.
 
 ### The Nebius architecture block, chapters 20.30 to 20.38
 
-These nine chapters answer one question: how does the platform you would operate actually work? They use only public Nebius documentation, source code and incident write-ups, and they mark what Nebius has not published. Read them in this order if you have little time.
+Suppose a hiring manager asks how the platform you would operate actually works, and you can answer only with guesses. These nine chapters are there to replace guesses with public facts. They answer one question: how does the platform you would operate actually work? They use only public Nebius documentation, source code and incident write-ups, and they mark what Nebius has not published. Read them in this order if you have little time.
 
 First read [20.38 Token Factory inference engineering](38-token-factory-inference-engineering-everything-nebius-has-published.md). It collects everything public about the inference platform and is the chapter closest to your role. Then read [20.30 the architecture map](30-nebius-ai-factory-to-token-factory-architecture.md), which shows where Token Factory sits on top of AI Cloud, and [20.32 model lifecycle, serving and economics](32-token-factory-model-lifecycle-serving-and-economics.md).
 
