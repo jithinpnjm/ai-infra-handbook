@@ -25,11 +25,14 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Training frameworks like PyTorch prioritize eager-mode flexibility. Researchers need to modify layers, inspect intermediate tensors, and track autograd graphs on the fly. In high-concurrency production serving, that flexibility becomes a heavy tax. Every separate operator launches a distinct CUDA kernel from the host CPU. Each kernel writes intermediate activations back out to High Bandwidth Memory, leaving Streaming Multiprocessors waiting on memory round-trips or Python dispatch overhead.
+Picture a training engineer who builds a model in PyTorch and sees it run beautifully on a laptop. Then the same model goes to a serving cluster, and the latency graph looks like a mountain range. The engineer did nothing wrong. The framework was built for flexibility, and flexibility has a cost when the same model must answer thousands of requests every second.
 
-Consider two real production bottlenecks from enterprise GPU deployments.
-- **High-throughput multimodal and vision pipelines.** A feature-extraction cluster serving 25,000 requests per second on H100 GPUs using standard ONNX Runtime suffered severe tail-latency spikes above 85 ms. Those spikes violated its strict 30 ms service-level objective. Whenever bursty traffic drove dynamic batch sizes from 1 to 64, uncalibrated intermediate activation buffers triggered GPU out-of-memory crashes.
-- **Distributed large language model serving.** A platform team served Llama-3-70B across eight H100 SXM5 GPUs using a naive PyTorch and Hugging Face pipeline. At 150 concurrent sessions, Inter-Token Latency averaged 115 ms per token, missing the 25 ms target by more than fourfold. GPU utilization swung wildly between 12 percent during decode and 98 percent during prefill. Meanwhile, static contiguous KV cache allocations crashed on long retrieval-augmented prompts exceeding 8,192 tokens.
+Training frameworks like PyTorch prioritize eager-mode flexibility. Eager mode runs each operation the moment Python reaches it. Researchers need to change layers, inspect intermediate tensors, and track autograd graphs on the fly. Autograd is the part of the framework that records how each number was computed, so gradients can flow backward during training. In high-concurrency production serving, that flexibility becomes a heavy tax. Every separate operator launches a distinct CUDA kernel from the host CPU, and each kernel writes its intermediate activations back out to High Bandwidth Memory (HBM). The Streaming Multiprocessors then wait on those memory round-trips or on Python dispatch overhead instead of doing math.
+
+Consider two real production bottlenecks from enterprise GPU deployments. Each one looks like a different problem at first, but both come from the same overhead.
+
+- **High-throughput multimodal and vision pipelines.** A feature-extraction cluster serving 25,000 requests per second on H100 GPUs using standard ONNX Runtime suffered severe tail-latency spikes above 85 ms. Those spikes violated its strict 30 ms service-level objective. Whenever bursty traffic drove dynamic batch sizes from 1 to 64, uncalibrated intermediate activation buffers triggered GPU out-of-memory crashes. Tail latency means the slowest requests, the ones that set how the service feels to its worst-served users.
+- Distributed large language model serving. A platform team served Llama-3-70B across eight H100 SXM5 GPUs using a naive PyTorch and Hugging Face pipeline. At 150 concurrent sessions, Inter-Token Latency averaged 115 ms per token, missing the 25 ms target by more than fourfold. GPU utilization swung wildly between 12 percent during decode and 98 percent during prefill. Meanwhile, static contiguous KV cache allocations crashed on long retrieval-augmented prompts exceeding 8,192 tokens. Inter-Token Latency is the pause between one generated token and the next, which is what a user feels as the text streaming in.
 
 ```text
 Production Baseline vs TensorRT and TensorRT-LLM (Volume 12, Chapters 4 & 5):
@@ -46,11 +49,13 @@ Production Baseline vs TensorRT and TensorRT-LLM (Volume 12, Chapters 4 & 5):
      ITL drops from 115.0 ms to 18.4 ms/token (6.25x faster), total system throughput doubles
 ```
 
-**TensorRT and TensorRT-LLM solve these bottlenecks through ahead-of-time hardware compilation**. TensorRT parses a trained network graph and fuses operators into register-resident kernels. It then benchmarks candidate CUDA tactics on the target GPU and serializes a binary plan. TensorRT-LLM extends this compiler with Megatron-LM style Tensor Parallelism and Pipeline Parallelism. It also adds FlashDecoding, XQA, ModelOpt quantization, paged KV caches, and a C++ runtime.
+TensorRT and TensorRT-LLM solve these bottlenecks through ahead-of-time hardware compilation. Ahead-of-time means the work happens once, before any user arrives, instead of on every request. TensorRT parses a trained network graph and fuses operators into kernels that keep their intermediate values in registers. It then benchmarks candidate CUDA tactics on the target GPU and serializes a binary plan. TensorRT-LLM extends this compiler with Megatron-LM style Tensor Parallelism and Pipeline Parallelism. It also adds FlashDecoding, XQA, ModelOpt quantization, paged KV caches, and a C++ runtime.
 
-Before deploying TensorRT or TensorRT-LLM, remember that ahead-of-time compilation trades flexibility for speed. It requires strict discipline around shape profiles, calibration datasets, and GPU architecture matching.
+Before you deploy TensorRT or TensorRT-LLM, remember that ahead-of-time compilation trades flexibility for speed. A compiled engine only works for the shapes and hardware it was built for, so the team has to stay disciplined about shape profiles, calibration datasets, and GPU architecture matching. Those three disciplines are where most projects either succeed or stall.
 
 ## Prerequisites and outcomes
+
+Suppose a new hire is asked to move a model onto TensorRT-LLM before the next release. Three earlier chapters give the vocabulary that conversation needs.
 
 ### Prerequisites
 - GPU memory hierarchy, Streaming Multiprocessor occupancy, and Roofline arithmetic intensity from Chapter 10.5.
@@ -58,27 +63,27 @@ Before deploying TensorRT or TensorRT-LLM, remember that ahead-of-time compilati
 - Prefill versus decode request anatomy, continuous batching, PagedAttention, and quantization fundamentals from Chapters 15.1 and 15.2.
 
 ### Outcomes
-After completing this chapter, you will be able to complete five core engineering tasks.
-1. Deconstruct the five-stage TensorRT compilation pipeline, including vertical BatchNorm folding, horizontal QKV projection fusion, empirical tactic auto-tuning, and workspace memory pool limits.
-2. Design bounded dynamic shape profiles using `IOptimizationProfile`, enforce hardware and driver portability across GPU architectures, and architect thread-safe serving pools with `ICudaEngine` and `IExecutionContext`.
-3. Compile and serve distributed large language models with TensorRT-LLM using `convert_checkpoint.py`, `trtllm-build`, and `trtllm-serve`, alongside Megatron-style Tensor Parallelism, Pipeline Parallelism, FlashDecoding, XQA, and paged KV caches.
-4. Quantize models to INT8, FP8, INT4 AWQ, SmoothQuant, and Blackwell NVFP4 using TensorRT entropy calibrators and NVIDIA ModelOpt while preventing accuracy collapse.
-5. Diagnose and remediate six production failure modes across builder workspace OOMs, calibration drift, multi-threaded context corruption, cross-node TP deadlocks, and KV cache fragmentation.
+A serving team usually meets TensorRT because a model is too slow or too large for its current stack. This chapter follows the path a team takes to fix that. It starts with the five-stage TensorRT compilation pipeline, including vertical BatchNorm folding, horizontal QKV projection fusion, empirical tactic auto-tuning, and the limits on the workspace memory pool. Next it covers dynamic shape profiles with `IOptimizationProfile`, hardware and driver portability, and how to share one `ICudaEngine` safely across threads with `IExecutionContext`. Then it moves to distributed LLM serving with TensorRT-LLM, using `convert_checkpoint.py`, `trtllm-build`, and `trtllm-serve`, along with Tensor Parallelism, Pipeline Parallelism, FlashDecoding, XQA, and paged KV caches. After that comes quantization to INT8, FP8, INT4 AWQ, SmoothQuant, and Blackwell NVFP4 with TensorRT calibrators and NVIDIA ModelOpt, without losing accuracy. The chapter ends with six production failure modes and how to diagnose each one.
 
 ---
 
 ## 1. TensorRT Graph Compilation, Layer Fusion, and Tactic Auto-Tuning
 
+Picture a model that spends most of its time moving numbers between memory and the GPU cores, while the cores themselves sit idle. Compilation is the process that cuts those trips. This section explains how TensorRT does it, one stage at a time.
+
 ### 1.1 The Five-Stage Compilation Lifecycle
 
-When a neural network runs in eager mode, the host framework dispatches one operator at a time. Each operator reads its inputs from GPU High Bandwidth Memory, computes a result inside Streaming Multiprocessor registers, and writes the output tensor back to High Bandwidth Memory before the next kernel launches. For both convolutional pipelines and transformer blocks, memory bandwidth saturation and kernel launch latency dominate execution time long before the Tensor Cores reach peak utilization.
+Picture a single small layer, such as a convolution followed by a normalization and an activation. In eager mode, the framework runs those three operations one after another. Each one reads its inputs from GPU High Bandwidth Memory, computes a result inside Streaming Multiprocessor registers, and writes the output tensor back to High Bandwidth Memory before the next kernel launches. The round-trip repeats for every layer. For both convolutional pipelines and transformer blocks, memory bandwidth saturation and kernel launch latency dominate execution time long before the Tensor Cores reach peak utilization.
 
-TensorRT eliminates those intermediate memory round-trips through a five-stage offline compilation pipeline.
-1. **Network parsing and definition.** The ONNX parser (`nvinfer1::IParser`) ingests an exported ONNX graph and constructs an internal network definition (`nvinfer1::INetworkDefinition`) with explicit batch dimensions and optional Quantize and Dequantize nodes.
-2. **Graph optimization and rewriting.** The compiler eliminates dead nodes, folds constants into weights, and performs vertical and horizontal layer fusion so intermediate tensors remain inside on-chip SRAM and registers.
-3. **Tactic selection and precision calibration.** The auto-tuner profiles dozens of candidate CUDA kernel implementations, known as tactics, directly on the target GPU's Streaming Multiprocessors. If implicit INT8 quantization is enabled, the entropy calibrator (`IInt8EntropyCalibrator2`) measures activation histograms to compute per-tensor or per-channel scaling factors.
-4. **Engine serialization.** The builder (`nvinfer1::IBuilder`) combines the winning kernel tactics, constant weights, and builder configuration rules (`nvinfer1::IBuilderConfig`) into an immutable engine (`nvinfer1::ICudaEngine`) and serializes it to a binary `.engine` or `.plan` file.
-5. **Runtime execution.** In production, the lightweight runtime (`nvinfer1::IRuntime`) deserializes the binary plan into a shared `ICudaEngine` and spawns per-stream `IExecutionContext` instances that enqueue asynchronous kernel launches via `enqueueV3()`.
+TensorRT removes those intermediate round-trips through a five-stage offline compilation pipeline. Think of it as an assembly line that takes a finished design and produces a tuned, sealed product that the factory floor can run without any further design work.
+
+1. Network parsing and definition: The ONNX parser (`nvinfer1::IParser`) ingests an exported ONNX graph and constructs an internal network definition (`nvinfer1::INetworkDefinition`) with explicit batch dimensions and optional Quantize and Dequantize nodes. ONNX is an open file format for trained models, and an explicit batch dimension means the batch size is written into the graph rather than assumed.
+2. Graph optimization and rewriting: The compiler eliminates dead nodes, folds constants into weights, and performs vertical and horizontal layer fusion so intermediate tensors remain inside on-chip SRAM and registers. A dead node is an operation whose output nothing uses, so removing it saves time for free.
+3. Tactic selection and precision calibration: The auto-tuner profiles dozens of candidate CUDA kernel implementations, known as tactics, directly on the target GPU's Streaming Multiprocessors. If implicit INT8 quantization is enabled, the entropy calibrator (`IInt8EntropyCalibrator2`) measures activation histograms to compute per-tensor or per-channel scaling factors. A histogram here counts how often each range of activation values appears.
+4. Engine serialization: The builder (`nvinfer1::IBuilder`) combines the winning kernel tactics, constant weights, and builder configuration rules (`nvinfer1::IBuilderConfig`) into an immutable engine (`nvinfer1::ICudaEngine`) and serializes it to a binary `.engine` or `.plan` file. Serializing means writing the finished engine to disk so it can be loaded later without rebuilding.
+5. Runtime execution: In production, the lightweight runtime (`nvinfer1::IRuntime`) deserializes the binary plan into a shared `ICudaEngine` and spawns per-stream `IExecutionContext` instances that enqueue asynchronous kernel launches via `enqueueV3()`. An asynchronous launch returns control to the host right away, and the GPU works through the queued kernels on its own.
+
+The diagram follows one model through all five stages. Read it from the top, and notice that stage 3 is the only place where the GPU is measured. Everything before it is a rewrite of the graph on paper, and everything after it is bookkeeping around the chosen kernels.
 
 ```mermaid
 flowchart TD
@@ -113,9 +118,11 @@ flowchart TD
 
 ### 1.2 Vertical and Horizontal Kernel Fusion Mechanics
 
-Graph fusion attacks the two primary sources of eager-mode overhead: redundant High Bandwidth Memory traffic and repeated CUDA kernel launch latency.
+Picture a request that has to pass through a convolution, a normalization step, and a ReLU activation before it leaves the GPU. Each separate step means one kernel launch and one trip through memory. Graph fusion attacks the two main sources of eager-mode overhead, which are redundant High Bandwidth Memory traffic and repeated CUDA kernel launch latency.
 
-**Vertical fusion** merges sequential operators into a single CUDA kernel so intermediate values never leave Streaming Multiprocessor registers. In convolutional and residual networks, a classic example is fusing a Convolution or Linear layer with Batch Normalization and an activation function such as ReLU or SiLU. During compilation, TensorRT mathematically folds the Batch Normalization running mean, variance, scale, and shift parameters directly into the preceding layer's weight matrix and bias vector.
+**Vertical fusion** merges sequential operators into a single CUDA kernel, so intermediate values never leave Streaming Multiprocessor registers. In convolutional and residual networks, a classic example is fusing a Convolution or Linear layer with Batch Normalization and an activation function such as ReLU or SiLU. During compilation, TensorRT mathematically folds the Batch Normalization running mean, variance, scale, and shift parameters directly into the preceding layer's weight matrix and bias vector. Once folded, the normalization step no longer exists as a separate operation, so it adds no kernel of its own at run time.
+
+The block below shows the folding formula and one worked example. Read the example as a check you can do by hand. It also matches the arithmetic the lab verifies.
 
 ```text
 Vertical Batch Normalization Folding (Compile-Time Constant Transformation):
@@ -132,7 +139,9 @@ Worked Example (verified by fold_batchnorm_into_weights() in code/part15/tensorr
              scale_1 = 2.0 / sqrt(1.00) = 2.0 -> W_hat[1] = [3.0, 6.0],  b_hat[1] = (2.0 - 1.0)*2.0 - 0.5 = 1.5
 ```
 
-**Horizontal fusion** identifies parallel branches that read the exact same input tensor and combines their weight matrices into a single wider General Matrix Multiplication. In every Transformer attention block, the Query, Key, and Value projections multiply the same input hidden state by three separate weight matrices. Executing them separately launches three small kernels and reads the input hidden state three times. TensorRT concatenates the three matrices horizontally at compile time into a single fused projection matrix.
+Notice what the arithmetic buys. The output of the fused kernel is the same as the output of the three separate steps, but only one kernel runs and nothing is written between steps. The savings grow with the number of layers, because each layer that is folded removes one more memory round-trip.
+
+**Horizontal fusion** identifies parallel branches that read the exact same input tensor and combines their weight matrices into a single wider General Matrix Multiplication (GEMM). In every Transformer attention block, the Query, Key, and Value projections multiply the same input hidden state by three separate weight matrices. Executing them separately launches three small kernels and reads the input hidden state three times. TensorRT concatenates the three matrices horizontally at compile time into a single fused projection matrix, so the input is read once and one larger kernel does the work.
 
 ```text
 Horizontal QKV Projection Fusion:
@@ -143,36 +152,42 @@ Horizontal QKV Projection Fusion:
 
 ### 1.3 Tactic Profiling, Auto-Tuning, and Workspace Memory Pools
 
-Even after graph fusion, a fused GEMM or attention node can be executed by dozens of distinct CUDA kernels. Those kernels differ in thread-block tile sizes, warp specializations, shared-memory staging layouts, and Tensor Core instructions. Rather than relying on static heuristics alone, the TensorRT builder compiles candidate kernels and times them empirically on the physical GPU during the build phase.
+Picture a fused attention node on a Monday morning, when the builder must pick which of several kernels will run it in production. Even after graph fusion, a fused GEMM or attention node can be executed by dozens of distinct CUDA kernels. Those kernels differ in thread-block tile sizes, warp specializations, shared-memory staging layouts, and Tensor Core instructions. A thread block is the group of GPU threads that cooperate on one tile of the output. Rather than relying on static heuristics alone, the TensorRT builder compiles candidate kernels and times them empirically on the physical GPU during the build phase. Measuring the real hardware is more reliable than guessing from a formula, because two kernels with the same arithmetic can run at very different speeds.
 
-High-performance tactics frequently require temporary device scratch space to stage intermediate tiles or perform parallel split-K reductions. In TensorRT, this scratch budget is controlled via `setMemoryPoolLimit` on `MemoryPoolType::kWORKSPACE`.
+High-performance tactics often need temporary device scratch space to stage intermediate tiles or to perform parallel split-K reductions. Split-K means splitting one long reduction across several parallel workers and then adding their partial results together. In TensorRT, this scratch budget is controlled via `setMemoryPoolLimit` on `MemoryPoolType::kWORKSPACE`. The workspace limit is a ceiling on the scratch memory the builder may use while it tries tactics.
 
 ```cpp
 // Cap builder scratch workspace to 2 GB (or 4 GB for large vision/LLM graphs)
 config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, 2ULL * 1024 * 1024 * 1024);
 ```
 
-If you set the workspace limit too low, the builder silently prunes fast split-K and shared-memory tactics that require scratch buffers. It then falls back to slower kernels. Conversely, if you leave the workspace unconstrained while specifying huge maximum tensor shapes, the tactic profiler can exhaust GPU memory during compilation.
+The workspace limit is a trade. If you set it too low, the builder silently prunes fast split-K and shared-memory tactics that need scratch buffers, and it falls back to slower kernels. The build still succeeds, so nothing warns you that the engine is slower than it could be. If you leave the workspace unconstrained while you specify huge maximum tensor shapes, the tactic profiler can exhaust GPU memory during compilation instead. Both mistakes are easy to make, and both are cheaper to avoid than to debug later.
 
-Always record a timing cache file (`--timingCacheFile`) during CI/CD builds so repeated compilations on identical GPU SKUs reuse profiled tactic timings instead of re-benchmarking every kernel from scratch.
+Always record a timing cache file (`--timingCacheFile`) during CI/CD builds, so repeated compilations on identical GPU SKUs reuse profiled tactic timings instead of re-benchmarking every kernel from scratch. A timing cache is a saved table of how long each tactic took on a given GPU. A SKU is a specific product model, so the cache is only valid for the same card.
 
 ---
 
 ## 2. Dynamic Shapes, Engine Lifecycle, and Hardware Portability Constraints
 
+Picture a Friday afternoon when the traffic spike arrives with image sizes that nobody tested. The engine was built for one shape, and now it receives another. This section explains how to declare the shapes an engine must handle, and what it costs to get them wrong.
+
 ### 2.1 Dynamic Shapes and `IOptimizationProfile` Boundaries
 
-Production inference traffic is rarely static. Batch sizes fluctuate with request arrival rates, image resolutions vary by client device, and prompt sequence lengths span tens to thousands of tokens. Because a compiled TensorRT engine pre-plans its memory layout and selects kernel tactics ahead of time, you must declare explicit three-point shape boundaries for every dynamic input tensor using `IOptimizationProfile`.
+Picture a serving fleet whose traffic swings through the day, with small batches at night and large ones at lunchtime. Production inference traffic is rarely static. Batch sizes fluctuate with request arrival rates, image resolutions vary by client device, and prompt sequence lengths span tens to thousands of tokens. Because a compiled TensorRT engine pre-plans its memory layout and selects kernel tactics ahead of time, you must declare explicit three-point shape boundaries for every dynamic input tensor using `IOptimizationProfile`. A profile is the agreement between the engine and the callers about which shapes are allowed, and which shape the engine should tune for.
 
-1. **Minimum shape (`kMIN`).** The smallest tensor dimensions the engine will accept at runtime.
-2. **Optimum shape (`kOPT`).** The exact dimensions where the builder empirically benchmarks candidate tactics and selects the fastest CUDA kernels.
-3. **Maximum shape (`kMAX`).** The hard upper bound used by TensorRT to allocate internal activation and workspace memory buffers.
+1. Minimum shape (`kMIN`): The smallest tensor dimensions the engine will accept at runtime. Anything below this is rejected before any work starts.
+2. Optimum shape (`kOPT`): The exact dimensions where the builder empirically benchmarks candidate tactics and selects the fastest CUDA kernels. Think of it as the shape the engine is tuned to feel at home with.
+3. Maximum shape (`kMAX`): The hard upper bound used by TensorRT to allocate internal activation and workspace memory buffers. The engine reserves memory for this shape up front, so a larger maximum costs memory even when the traffic is small.
+
+Each boundary has a different job, and mixing them up causes most of the trouble. The table below lists what each boundary does at compile time and what goes wrong at run time when it is set badly.
 
 | Profile Boundary | Builder Compile-Time Role | Runtime Consequence if Misconfigured |
 |---|---|---|
 | `kMIN` | Establishes lower dimension validity check | Requests smaller than `kMIN` fail input binding validation |
 | `kOPT` | Target shape for SM kernel tactic auto-tuning | Setting `kOPT` to batch 1 when production runs at batch 32 or 64 selects low-occupancy thread blocks (`40%` slower) |
 | `kMAX` | Sizes internal activation and scratch allocations | Setting `kMAX` to extreme theoretical bounds (`128 x 3 x 4096 x 4096` or `128 x 8192 x 8192`) causes `25.7 GB` to `34 GB` per-layer allocations and builder OOM |
+
+The worked memory math below shows why an unbounded maximum shape crashes the builder. Walk through the multiplication yourself before you read the remedy. The remedy keeps the same model but changes the three boundaries and caps the workspace.
 
 ```text
 Worked Memory Math: Why Unbounded kMAX Crashes the Builder (Volume 12, Chapter 4):
@@ -189,9 +204,13 @@ Worked Memory Math: Why Unbounded kMAX Crashes the Builder (Volume 12, Chapter 4
   Median production latency at B=8 (1024x1024) drops from 48.0 ms to 11.3 ms (4.25x speedup)
 ```
 
+The two cases share one lesson. The builder does not care how large the typical request is. It reserves memory for the largest shape you declare, so the maximum must reflect realistic peaks and not theoretical limits. A practical habit is to set the maximum from the rare largest requests in your production logs, set the optimum from the typical median request, and set the minimum from the smallest request you have actually seen.
+
 ### 2.2 Hardware/Driver Portability Constraints and Multi-Threaded Runtime Contexts
 
-Unlike an ONNX file or a PyTorch state dictionary, **a serialized TensorRT plan file is not a portable model checkpoint**. During compilation, TensorRT emits native Streaming Assembler machine instructions for the target GPU. It also tunes shared-memory tile sizes for that chip's Streaming Multiprocessor count, L2 cache, and Tensor Cores.
+Picture a CI pipeline that builds a perfect engine on an A100 test box, then a production pod lands on an H100 node and refuses to start. Nothing in the code changed, but the engine did not travel well. Unlike an ONNX file or a PyTorch state dictionary, **a serialized TensorRT plan file is not a portable model checkpoint**. During compilation, TensorRT emits native GPU machine instructions for the target chip. It also tunes shared-memory tile sizes for that chip's Streaming Multiprocessor count, L2 cache, and Tensor Cores. The result is tuned for that chip and is not meant to be moved.
+
+The table below lists the three dimensions that decide whether a plan file will load. Each row is a rule you can check before a deployment, not after an outage.
 
 | Portability Dimension | Constraint Rule | Operational Requirement |
 |---|---|---|
@@ -199,26 +218,31 @@ Unlike an ONNX file or a PyTorch state dictionary, **a serialized TensorRT plan 
 | **TensorRT & CUDA Version** | Major/minor TensorRT version and minimum CUDA driver branch must match | Pin container images (such as `nvcr.io/nvidia/tensorrt` or `tensorrt-llm/release`) across CI/CD builders and serving pods |
 | **Parallelism Topology (`TP`, `PP`)** | Rank count and sharding dimensions are baked into each `rank{i}.engine` file | Changing `TP=2` to `TP=4` requires re-running `convert_checkpoint.py` and `trtllm-build` |
 
-At runtime, high-throughput C++ and Python servers must also respect the thread-safety boundary between the immutable engine and the mutable execution context.
-- **Shared immutable engine (`ICudaEngine`).** Holds the compiled kernel binaries, constant weights, and static graph topology. Load exactly one instance per GPU rank and share it across all worker threads.
-- **Per-stream mutable context (`IExecutionContext`).** Stores per-request dynamic input shapes, input and output device pointer bindings (`setTensorAddress`), and per-stream scratch buffer offsets. If two host threads call `setTensorAddress()` and `enqueueV3()` concurrently on the same execution context, the second thread overwrites the first thread's device pointers mid-execution. That race triggers silent output corruption or an illegal memory access crash.
+Once an engine loads, the runtime adds a second question about safety. High-throughput C++ and Python servers must respect the thread-safety boundary between the immutable engine and the mutable execution context. Immutable means the engine never changes after it is loaded, so many threads can read it at once. Mutable means the context changes with every request, so each thread needs its own.
 
-To serve concurrent requests safely, allocate a pool of execution context instances—one per dedicated worker thread or CUDA stream—all backed by the same shared engine.
+- What lives in the shared engine? The engine (`ICudaEngine`) holds the compiled kernel binaries, constant weights, and static graph topology. Load exactly one instance per GPU rank and share it across all worker threads.
+- What lives in each context? The execution context (`IExecutionContext`) stores per-request dynamic input shapes, input and output device pointer bindings (`setTensorAddress`), and per-stream scratch buffer offsets. If two host threads call `setTensorAddress()` and `enqueueV3()` at the same moment on the same execution context, the second thread overwrites the first thread's device pointers mid-execution. That race can produce silent output corruption or an illegal memory access crash.
 
-Before deploying compiled TensorRT engines in Kubernetes, tag every engine artifact with its target SM architecture, TensorRT version, and world size. That metadata prevents a pod on an H100 node from loading an A100 plan file.
+To serve concurrent requests safely, allocate a pool of execution context instances, one per dedicated worker thread or CUDA stream, all backed by the same shared engine. The engine is expensive to load, so it is shared. The contexts are cheap to create, so each thread gets its own. That split is the whole design.
+
+Before you deploy compiled TensorRT engines in Kubernetes, tag every engine artifact with its target SM architecture, TensorRT version, and world size. World size means the number of GPU ranks the engine was built for. That metadata lets a pod on an H100 node refuse an A100 plan file instead of crashing on it.
 
 ---
-
 ## 3. TensorRT-LLM Architecture, Distributed Execution, and Custom Kernels
+
+Picture a team that tries to serve a 70-billion-parameter model with plain TensorRT and discovers that the model does not fit on one card. The problem is not the compiler alone. Language models change the shape of the work, and the design of TensorRT-LLM follows from that change.
 
 ### 3.1 Why Autoregressive LLMs Broke Standard TensorRT
 
-Standard TensorRT was designed for feed-forward vision, speech, and encoder networks where input tensors flow through a fixed graph in a single pass. Large language models broke that execution model in three ways.
-1. **Unbounded, dynamically growing KV caches.** Autoregressive decoding appends one new Key and Value vector per layer at every generation step. Pre-allocating contiguous maximum-length KV buffers for every slot wastes more than 60 percent of GPU memory and triggers out-of-memory crashes on long prompts.
-2. **Multi-GPU model sharding.** Frontier models like Llama-3-70B require 140 GB in 16-bit precision just to hold their weights, exceeding the 80 GB capacity of a single H100 GPU. Standard TensorRT lacked native multi-GPU Tensor Parallelism and Pipeline Parallelism primitives.
-3. **Two-phase execution asymmetry.** Prompt prefill is compute-bound across thousands of parallel input tokens. Conversely, autoregressive decode processes a single query token per sequence and is strictly memory-bandwidth-bound on High Bandwidth Memory weight and KV cache reads.
+Picture a long chat session whose answer keeps growing one token at a time. Standard TensorRT was designed for feed-forward vision, speech, and encoder networks, where input tensors flow through a fixed graph in a single pass. Large language models broke that execution model in three ways. Autoregressive means the model writes one token at a time, and each new token depends on all the tokens before it.
 
-**TensorRT-LLM** bridges this gap by wrapping the TensorRT compiler in an LLM-specific Python graph builder. It injects custom C++ and CUDA plugins for distributed communication and attention, manages device memory through a paged KV cache allocator, and drives iteration-level execution through a C++ runtime (`GptManager` and `Executor` API).
+1. Unbounded, dynamically growing KV caches: Autoregressive decoding appends one new Key and Value vector per layer at every generation step. Pre-allocating contiguous maximum-length KV buffers for every slot wastes more than 60 percent of GPU memory and triggers out-of-memory crashes on long prompts. The cache keeps growing for as long as the answer runs, so a fixed-size buffer is always either too small or mostly empty.
+2. Multi-GPU model sharding: Frontier models like Llama-3-70B require 140 GB in 16-bit precision just to hold their weights, exceeding the 80 GB capacity of a single H100 GPU. Standard TensorRT lacked native multi-GPU Tensor Parallelism and Pipeline Parallelism primitives, so the model had to be split by hand.
+3. Two-phase execution asymmetry: Prompt prefill is compute-bound across thousands of parallel input tokens. Conversely, autoregressive decode processes a single query token per sequence and is strictly memory-bandwidth-bound on High Bandwidth Memory weight and KV cache reads. The two phases stress different parts of the chip, so one static graph tuned for both does a poor job at either.
+
+**TensorRT-LLM** bridges this gap by wrapping the TensorRT compiler in an LLM-specific Python graph builder. It injects custom C++ and CUDA plugins for distributed communication and attention, manages device memory through a paged KV cache allocator, and drives iteration-level execution through a C++ runtime (`GptManager` and `Executor` API). A plugin here is a piece of hand-written GPU code that the compiler calls for one operation. Iteration-level means the scheduler makes decisions after every single token step rather than after a whole batch finishes.
+
+The diagram follows the three steps from a Hugging Face checkpoint to a running executor. Read it left to right, and notice that the checkpoint is split into rank-sharded files before any engine is built.
 
 ```mermaid
 flowchart TD
@@ -243,10 +267,12 @@ flowchart TD
 
 ### 3.2 Megatron-Style Tensor and Pipeline Parallelism in TensorRT-LLM
 
-To partition models across multiple GPUs without Python interpreter bottlenecks, TensorRT-LLM constructs distributed execution graphs using Megatron-LM style column-parallel and row-parallel linear layers.
+Picture a 70-billion-parameter model spread across eight GPUs in one server. Each GPU holds only a slice of every layer, so the slices have to talk to each other on every step. To partition models across multiple GPUs without Python interpreter bottlenecks, TensorRT-LLM constructs distributed execution graphs using Megatron-LM style column-parallel and row-parallel linear layers. A column-parallel layer splits its weight matrix by columns, so each GPU produces a different part of the output. A row-parallel layer splits by rows, so each GPU produces a partial sum that must be added to the others.
 
-- **Self-Attention sub-layer.** The fused QKV projection executes as a `ColumnParallelLinear` layer that splits attention heads across Tensor Parallelism ranks with **zero inter-GPU communication**. Each rank computes local attention over its assigned heads. Next, the output projection executes as a `RowParallelLinear` layer followed by an AllReduce-Sum across all Tensor Parallelism ranks.
-- **MLP sub-layer.** The SwiGLU Gate and Up projections execute as a `ColumnParallelLinear` layer with local activation and **zero communication**. The Down projection then executes as a `RowParallelLinear` layer followed by a **second AllReduce-Sum**.
+- How does the attention block split? The fused QKV projection executes as a `ColumnParallelLinear` layer that splits attention heads across Tensor Parallelism ranks with **zero inter-GPU communication**. Each rank computes local attention over its assigned heads, so no data needs to move yet. Next, the output projection executes as a `RowParallelLinear` layer followed by an AllReduce-Sum across all Tensor Parallelism ranks. An AllReduce-Sum adds the partial results from every GPU and gives each GPU the total.
+- How does the MLP block split? The SwiGLU Gate and Up projections execute as a `ColumnParallelLinear` layer with local activation and **zero communication**. The Down projection then executes as a `RowParallelLinear` layer followed by a second AllReduce-Sum. The MLP is the feed-forward part of each layer that follows attention, and SwiGLU is the gated activation it uses.
+
+The arithmetic below counts the traffic that follows from that design. Each AllReduce moves a known number of bytes, and the number of AllReduces per layer is fixed by the layout above. The worked decode step shows how those bytes add up for one token.
 
 ```text
 TensorRT-LLM Tensor Parallelism Communication Math (Volume 12, Chapter 5):
@@ -261,7 +287,7 @@ TensorRT-LLM Tensor Parallelism Communication Math (Volume 12, Chapter 5):
     At 900 GB/s NVLink 4: ideal wire time = 0.326 ms vs 50 GB/s InfiniBand: 5.872 ms (18.0x slower)
 ```
 
-Because Tensor Parallelism executes two synchronous AllReduce barriers inside every single layer, TensorRT-LLM injects custom fused collective plugins (`TwoShotAllReduce` and `KernelFusedAllReduce` via `set_nccl_plugin`). Those plugins fuse residual addition, RMSNorm, and NVLink reduction inside Streaming Multiprocessor registers. Tensor Parallelism must stay strictly inside a single node's NVLink domain, while Pipeline Parallelism handles cross-node scaling over InfiniBand.
+Because Tensor Parallelism executes two synchronous AllReduce barriers inside every single layer, TensorRT-LLM injects custom fused collective plugins (`TwoShotAllReduce` and `KernelFusedAllReduce` via `set_nccl_plugin`). A barrier is a point where every GPU must wait for the rest before any of them can continue. Those plugins fuse residual addition, RMSNorm, and NVLink reduction inside Streaming Multiprocessor registers, so the reduction and the follow-up math run in one pass. Tensor Parallelism must stay strictly inside a single node's NVLink domain, while Pipeline Parallelism handles cross-node scaling over InfiniBand. The table below compares the four strategies by what they target and what they cost.
 
 | Parallelism Strategy | Primary Target | Collective Primitive | Interconnect Requirement | Latency vs Throughput Impact |
 |---|---|---|---|---|
@@ -270,13 +296,17 @@ Because Tensor Parallelism executes two synchronous AllReduce barriers inside ev
 | **Context Parallelism (CP)** | Extreme prompt lengths (`> 32K` to `1M+` tokens) | `AllGather` / Ring-Attention | High-bandwidth NVLink or NDR InfiniBand | Shards sequence prefill and KV cache across GPUs to prevent prefill OOM |
 | **Data Parallelism (DP)** | Scaling overall cluster request concurrency | None during inference forward pass | Independent replicas over standard fabric | Zero latency penalty; linear QPS scaling with prefix-aware routing |
 
+Read the table as a menu of choices rather than a ranking. Tensor Parallelism helps most when one request needs to finish quickly. Pipeline Parallelism helps when the model simply does not fit on one node. Data Parallelism helps when you need more total requests per second, and it does not make any single request faster.
+
 ### 3.3 Custom Attention Plugins: `contextFMHA`, FlashDecoding, and XQA (`MHARunner`)
 
-Standard matrix-multiply kernels cannot efficiently execute Transformer self-attention across both prefill and decode because the arithmetic intensity flips between the two phases. TensorRT-LLM replaces generic attention subgraphs with specialized C++ plugins dispatched through its internal MHARunner engine.
+Picture an H100 running a single decode step for a handful of users. Most of the chip's compute units have nothing to do, while a few blocks crawl through a long history of tokens. Standard matrix-multiply kernels cannot efficiently execute Transformer self-attention across both prefill and decode, because the arithmetic intensity flips between the two phases. Arithmetic intensity is the amount of math done for each byte read from memory. TensorRT-LLM replaces generic attention subgraphs with specialized C++ plugins dispatched through its internal MHARunner engine, and each plugin targets one of the phases.
 
-1. **Prefill phase (`contextFMHA` and FlashAttention-2).** Standard attention materializes the full quadratic score matrix in High Bandwidth Memory. For a batch of 8 prompts at length 2,048 across 8 heads, unoptimized prefill workspace consumes 450 MB of temporary buffers. That allocation quickly triggers OOM at longer contexts. TensorRT-LLM's fused multi-head attention (`--use_paged_context_fmha enable`) tiles Query, Key, and Value blocks inside shared memory using online softmax. That tiling reduces memory traffic from quadratic to linear and reads directly from paged KV blocks.
-2. **Decode phase (FlashDecoding).** During single-token autoregressive decoding, standard FlashAttention-2 parallelizes only across batch size and local attention heads. On an H100 GPU with 132 Streaming Multiprocessors running Llama-3-70B at 8-way Tensor Parallelism and batch size 4, unsplit decode launches only 4 thread blocks. That leaves **96.97 percent of the GPU's 132 Streaming Multiprocessors completely idle** while each active block sequentially scans thousands of historical KV tokens. FlashDecoding splits the historical KV cache sequence into parallel 256-token chunks across all 132 Streaming Multiprocessors. It computes partial softmax statistics concurrently and merges them in a reduction kernel, delivering **up to 8x faster decode throughput** on long contexts.
-3. **Grouped-Query Attention decode (XQA).** Models like Llama-3-70B use Grouped-Query Attention with 64 query heads and 8 KV heads. During decode, TensorRT-LLM's XQA kernel packs all 8 query heads from the same KV group into a single Tensor Core tile. Instead of running memory-bound vector-matrix dot products one query head at a time, XQA loads each KV cache block once. It then reuses that block across all 8 grouped query heads inside registers and shared memory.
+1. Prefill phase (`contextFMHA` and FlashAttention-2): Standard attention materializes the full quadratic score matrix in High Bandwidth Memory. A quadratic score matrix grows with the square of the prompt length, so doubling the prompt quadruples the memory. For a batch of 8 prompts at length 2,048 across 8 heads, unoptimized prefill workspace consumes 450 MB of temporary buffers. That allocation quickly triggers OOM at longer contexts. TensorRT-LLM's fused multi-head attention (`--use_paged_context_fmha enable`) tiles Query, Key, and Value blocks inside shared memory using online softmax. Online softmax computes the normalization a piece at a time, so the full score matrix never has to exist at once. That tiling reduces memory traffic from quadratic to linear and reads directly from paged KV blocks.
+2. Decode phase (FlashDecoding): During single-token autoregressive decoding, standard FlashAttention-2 parallelizes only across batch size and local attention heads. On an H100 GPU with 132 Streaming Multiprocessors running Llama-3-70B at 8-way Tensor Parallelism and batch size 4, unsplit decode launches only 4 thread blocks. That leaves **96.97 percent of the GPU's 132 Streaming Multiprocessors completely idle** while each active block sequentially scans thousands of historical KV tokens. FlashDecoding splits the historical KV cache sequence into parallel 256-token chunks across all 132 Streaming Multiprocessors. It computes partial softmax statistics concurrently and merges them in a reduction kernel, delivering **up to 8x faster decode throughput** on long contexts.
+3. Grouped-Query Attention decode (XQA): Models like Llama-3-70B use Grouped-Query Attention with 64 query heads and 8 KV heads. During decode, TensorRT-LLM's XQA kernel packs all 8 query heads from the same KV group into a single Tensor Core tile. Instead of running memory-bound vector-matrix dot products one query head at a time, XQA loads each KV cache block once. It then reuses that block across all 8 grouped query heads inside registers and shared memory.
+
+The block below does the occupancy arithmetic for the decode case. Occupancy here means the share of the GPU's Streaming Multiprocessors that have work to do. Check the multiplication for the unsplit case first, since it explains why the split helps.
 
 ```text
 Decode SM Occupancy Comparison on H100 (132 SMs, Llama-3-70B GQA: H_q=64, H_kv=8, TP=8 -> 1 local KV head/rank):
@@ -290,11 +320,13 @@ Decode SM Occupancy Comparison on H100 (132 SMs, Llama-3-70B GQA: H_q=64, H_kv=8
 
 ### 3.4 In-Flight Batching and Paged KV Cache (`KVCacheManager` and `GptManager`)
 
-To eliminate both static batching stalls and contiguous memory fragmentation, TensorRT-LLM pairs its paged KV cache manager (`KVCacheManager`) with the C++ `GptManager` and `Executor` runtime.
+Picture a server where one long answer keeps a batch waiting for its slowest member, and the memory set aside for each user sits mostly empty. Both problems come from the same habit of treating the batch as a fixed block. To eliminate both static batching stalls and contiguous memory fragmentation, TensorRT-LLM pairs its paged KV cache manager (`KVCacheManager`) with the C++ `GptManager` and `Executor` runtime. Fragmentation is memory that is free but split into pieces too small to use.
 
-- **Paged KV cache mathematics.** Llama-3-70B uses 80 layers, 8 KV heads, and head dimension 128. Storing its KV cache in FP16 consumes 327,680 bytes per token, or 1.31 GB per 4,096-token sequence. Quantizing the KV cache to FP8 via `KvCacheQuantMode::FP8()` halves that footprint to 163,840 bytes per token, or 0.65 GB per 4,096-token sequence.
-- **Block size versus internal fragmentation.** The KV cache manager partitions the memory pool into non-contiguous physical blocks of 16, 32, or 64 tokens. Setting `tokens_per_block=128` causes severe internal fragmentation. A 129-token sequence claims 2 full 128-token blocks, leaving 127 of the 256 allocated slots unused for a 49.61 percent memory waste. Reducing `tokens_per_block` to 32 allocates 5 blocks with only 31 unused slots out of 160, cutting internal fragmentation to 19.38 percent. In production on a four-GPU A100 node, that change raised effective KV cache utilization from 52 percent to 91 percent and expanded concurrent session capacity from 64 to 210 sessions.
-- **Iteration-level In-Flight Batching.** At every single-token step, `GptManager` immediately evicts sequences that emit an end-of-sequence token. It returns their physical KV blocks to the free pool and slots newly arrived prompts into the active batch. With chunked context enabled (`--enable_chunked_context`), long incoming prompts are sliced into fixed token chunks. Those chunks run alongside ongoing decode tokens in the same step so prefill bursts never stall streaming latency.
+- How much memory does the cache need? Llama-3-70B uses 80 layers, 8 KV heads, and head dimension 128. Storing its KV cache in FP16 consumes 327,680 bytes per token, or 1.31 GB per 4,096-token sequence. Quantizing the KV cache to FP8 via `KvCacheQuantMode::FP8()` halves that footprint to 163,840 bytes per token, or 0.65 GB per 4,096-token sequence.
+- Why does block size matter? The KV cache manager partitions the memory pool into non-contiguous physical blocks of 16, 32, or 64 tokens. Setting `tokens_per_block=128` causes severe internal fragmentation. A 129-token sequence claims 2 full 128-token blocks, leaving 127 of the 256 allocated slots unused for a 49.61 percent memory waste. Reducing `tokens_per_block` to 32 allocates 5 blocks with only 31 unused slots out of 160, cutting internal fragmentation to 19.38 percent. In production on a four-GPU A100 node, that change raised effective KV cache utilization from 52 percent to 91 percent and expanded concurrent session capacity from 64 to 210 sessions. Internal fragmentation is the unused space inside the last block of a sequence, which is why a small block size wastes less.
+- What is iteration-level in-flight batching? At every single-token step, `GptManager` immediately evicts sequences that emit an end-of-sequence token. It returns their physical KV blocks to the free pool and slots newly arrived prompts into the active batch. With chunked context enabled (`--enable_chunked_context`), long incoming prompts are sliced into fixed token chunks. Those chunks run alongside ongoing decode tokens in the same step, so prefill bursts never stall streaming latency. An end-of-sequence token is the signal that the model has finished its answer.
+
+The sizing reference below shows the per-token formula and the two fragmentation cases. It also shows how the memory left after weights gets split between the KV pool and the activation scratch space.
 
 ```text
 Paged KV Cache Sizing & Fragmentation Reference (Llama-3-70B: L=80, H_kv=8, d_head=128, TP=4 on 4x 80 GB GPUs):
@@ -309,19 +341,26 @@ Paged KV Cache Sizing & Fragmentation Reference (Llama-3-70B: L=80, H_kv=8, d_he
   * free_gpu_mem_fraction = 0.85: 153.0 GB KV pool, 27.0 GB activation headroom (210 active sessions, 91% KV utilization)
 ```
 
-When configuring `trtllm-build` for production LLMs, enable paged context FMHA, set `tokens_per_block` to 32, and use FP8 KV caches. Cap `kv_cache_free_gpu_memory_fraction` at 0.85 to 0.90 so activation workspace buffers never collide with KV blocks.
+Here is one way to read that block in order. Start with the per-token formula, since it gives the size of one token's KV entry for every layer. Multiply that by the length of one sequence to get the footprint of a single user. Then compare the block size against the sequence length to see how many slots go to waste. Last, subtract the weights from total memory to find the space left for the pool and for the activations. Each step depends only on the one before it, so the calculation is short even though the numbers look large.
+
+When configuring `trtllm-build` for production LLMs, enable paged context FMHA, set `tokens_per_block` to 32, and use FP8 KV caches. Cap `kv_cache_free_gpu_memory_fraction` at 0.85 to 0.90 so activation workspace buffers never collide with KV blocks. Leave some headroom on purpose, because a KV pool that takes every free byte leaves nothing for the prefill step that needs scratch space.
 
 ---
 
 ## 4. Quantization with TensorRT and NVIDIA ModelOpt: INT8, FP8, INT4 AWQ, SmoothQuant, and NVFP4
 
+Picture a model that is accurate in its float format and wrong once it is squeezed into 8 bits. Quantization is the trade that makes a model smaller and faster, and it can also break it. This section explains the tools TensorRT gives you to make that trade safely.
+
 ### 4.1 TensorRT INT8 Entropy Calibration vs Explicit Q/DQ Precision
 
-Quantizing floating-point weights and activations reduces both memory bandwidth pressure and Tensor Core cycle counts. However, naive linear quantization that scales a tensor by its absolute maximum is brittle whenever activations contain extreme outliers. A single outlier spike stretches the scale factor across a wide range and squashes the dense core of normal activations into just a few integer buckets.
+Picture a speech model that scores well in a lab test and then fails on real customer audio. Quantizing floating-point weights and activations reduces both memory bandwidth pressure and Tensor Core cycle counts. Quantizing here means storing numbers as small integers with a shared scale factor. However, naive linear quantization that scales a tensor by its absolute maximum is brittle whenever activations contain extreme outliers. A single outlier spike stretches the scale factor across a wide range and squashes the dense core of normal activations into just a few integer buckets. The result is that most of the useful values collapse onto the same few numbers.
 
-TensorRT provides two distinct mechanisms for 8-bit integer quantization.
-1. **Implicit INT8 calibration (`IInt8EntropyCalibrator2`).** During compilation, TensorRT runs 500 to 1,000 representative samples through the FP32 network and records 2,048-bin activation histograms. For each candidate clipping threshold, it quantizes the distribution into 128 levels and computes the Kullback-Leibler divergence against the FP32 distribution. It then selects the threshold that minimizes information loss and divides by 127 to produce the scale factor.
-2. **Explicit precision mode.** Modern quantization tools insert explicit Quantize and Dequantize nodes directly into the ONNX or TensorRT-LLM graph during Post-Training Quantization or Quantization-Aware Training. During graph rewriting, TensorRT fuses adjacent Quantize, GEMM, and Dequantize nodes into single INT8 or FP8 Tensor Core kernels. That explicit graph structure gives engineers deterministic control over sensitive layers.
+TensorRT provides two distinct mechanisms for 8-bit integer quantization. The difference is who decides which layers become INT8.
+
+1. Implicit INT8 calibration (`IInt8EntropyCalibrator2`): During compilation, TensorRT runs 500 to 1,000 representative samples through the FP32 network and records 2,048-bin activation histograms. For each candidate clipping threshold, it quantizes the distribution into 128 levels and computes the Kullback-Leibler divergence against the FP32 distribution. Kullback-Leibler divergence is a score for how much information is lost when one distribution stands in for another. It then selects the threshold that minimizes information loss and divides by 127 to produce the scale factor. The calibrator makes the choice for you, which is convenient but less predictable.
+2. Explicit precision mode: Modern quantization tools insert explicit Quantize and Dequantize nodes directly into the ONNX or TensorRT-LLM graph during Post-Training Quantization or Quantization-Aware Training. Post-Training Quantization converts a finished model without retraining it. Quantization-Aware Training simulates the rounding during training so the model learns to tolerate it. During graph rewriting, TensorRT fuses adjacent Quantize, GEMM, and Dequantize nodes into single INT8 or FP8 Tensor Core kernels. That explicit graph structure gives engineers deterministic control over sensitive layers, because you can see and choose the precision of every node.
+
+The block below shows the formula and the lab's worked calibration example. The example compares the naive scale with the KL-optimal scale on the same histogram, so you can see why the second one keeps more detail.
 
 ```text
 INT8 KL-Divergence Calibration & Audio WER Recovery (Volume 12, Chapter 4; verified in code/part15/tensorrt_llm_engine.py):
@@ -336,14 +375,18 @@ INT8 KL-Divergence Calibration & Audio WER Recovery (Volume 12, Chapter 4; verif
     Re-calibrating with 1,000 production audio embeddings shifts residual scale factors by up to 3.4x and restores WER to 3.35% (3.1x speedup)
 ```
 
+The production incident in that block is the reason calibration data matters. A calibrator can only learn the distribution it was shown. If the sample audio is short and silent, the scale it learns describes silence, and real speech then saturates the narrow range. Re-running the calibration on representative production data fixed the problem without changing the model.
+
 ### 4.2 LLM Quantization with NVIDIA ModelOpt: FP8, SmoothQuant, INT4 AWQ, and Blackwell NVFP4
 
-Large language models exhibit systematic activation outliers in specific hidden channels that can reach 100 times the magnitude of neighboring channels. Those spikes break standard per-tensor INT8 quantization. In the TensorRT-LLM workflow, **NVIDIA TensorRT Model Optimizer (`nvidia-modelopt`)** calibrates and quantizes PyTorch or Hugging Face checkpoints before `trtllm-build` compiles the engine.
+Picture a 70-billion-parameter model that needs to fit on fewer GPUs without losing answer quality. Large language models exhibit systematic activation outliers in specific hidden channels that can reach 100 times the magnitude of neighboring channels. A hidden channel is one position in the vector of numbers that carries a token's state through a layer. Those spikes break standard per-tensor INT8 quantization. In the TensorRT-LLM workflow, **NVIDIA TensorRT Model Optimizer (`nvidia-modelopt`)** calibrates and quantizes PyTorch or Hugging Face checkpoints before `trtllm-build` compiles the engine. ModelOpt is the tool that decides the scales, and the builder then turns those scales into a fast engine.
 
-- **SmoothQuant (W8A8 INT8).** SmoothQuant migrates quantization difficulty from spiky activations into smooth weights. It divides each activation channel by a per-channel smoothing factor and multiplies the corresponding weight row by that same factor offline. Both smoothed tensors then execute in fast INT8 Tensor Core matrix multiplies, cutting weight memory traffic by 75 percent compared to FP32.
-- **Weight-only INT4 AWQ and GPTQ (W4A16).** Activation-Aware Weight Quantization (`int4_awq`) compresses weights to 4-bit integers at 0.5 bytes per parameter while keeping activations in FP16 or BF16. Adding one 2-byte FP16 scale factor per 128-weight group brings the effective storage to 0.515625 bytes per parameter. Custom TensorRT-LLM weight-only CUDA kernels load 4-bit weights from High Bandwidth Memory, dequantize them into 16-bit registers on the fly, and execute FP16 Tensor Core instructions. Because W4A16 halves weight memory traffic compared to FP8, it excels at **low-concurrency decode** up to batch size 16. At **high concurrency** of batch size 32 and above, compute-bound FP8 W8A8 overtakes W4A16 because FP8 avoids dequantization overhead and doubles Tensor Core throughput.
-- **Hopper and Blackwell native FP8.** Hopper and Blackwell Tensor Cores execute native 8-bit floating-point matrix multiplications at **2x to 3x the throughput of BF16 or FP16**. TensorRT-LLM uses the E4M3 format with 1 sign, 4 exponent, and 3 mantissa bits for weights and intermediate activations where numerical precision matters. Conversely, it uses E5M2 with 5 exponent bits or E4M3 with delayed scaling (`amax_history_len=1024`) for gradients and KV cache storage where dynamic range matters.
-- **Blackwell NVFP4.** On Blackwell GPUs, fifth-generation Tensor Cores (`tcgen05.mma`) backed by 256 KB of per-SM Tensor Memory and the Tensor Memory Accelerator natively execute NVFP4. To preserve model accuracy at 0.5 bytes per parameter, NVFP4 applies **two-level scaling**. It combines a fine-grained 1-byte FP8 scale factor for every 16-element microblock with a second-level per-tensor FP32 scale, yielding an effective footprint of 0.5625 bytes per parameter. On a Blackwell B200, NVFP4 delivers **10 PFLOPS** of dense Tensor Core compute compared to 80 TFLOPS of dense FP32. Blackwell Ultra B300 increases NVFP4 dense compute by 50 percent to **15 PFLOPS**.
+- What is SmoothQuant? SmoothQuant (W8A8 INT8) migrates quantization difficulty from spiky activations into smooth weights. W8A8 means 8-bit weights and 8-bit activations. It divides each activation channel by a per-channel smoothing factor and multiplies the corresponding weight row by that same factor offline. Both smoothed tensors then execute in fast INT8 Tensor Core matrix multiplies, cutting weight memory traffic by 75 percent compared to FP32.
+- What are INT4 AWQ and GPTQ? Weight-only INT4 AWQ and GPTQ (W4A16) keep activations in 16-bit precision. Activation-Aware Weight Quantization (`int4_awq`) compresses weights to 4-bit integers at 0.5 bytes per parameter while keeping activations in FP16 or BF16. Adding one 2-byte FP16 scale factor per 128-weight group brings the effective storage to 0.515625 bytes per parameter. Custom TensorRT-LLM weight-only CUDA kernels load 4-bit weights from High Bandwidth Memory, dequantize them into 16-bit registers on the fly, and execute FP16 Tensor Core instructions. Because W4A16 halves weight memory traffic compared to FP8, it excels at low-concurrency decode up to batch size 16. At high concurrency of batch size 32 and above, compute-bound FP8 W8A8 overtakes W4A16, because FP8 avoids dequantization overhead and doubles Tensor Core throughput.
+- What does Hopper add? Hopper and Blackwell Tensor Cores execute native 8-bit floating-point matrix multiplications at 2x to 3x the throughput of BF16 or FP16. TensorRT-LLM uses the E4M3 format with 1 sign, 4 exponent, and 3 mantissa bits for weights and intermediate activations where numerical precision matters. Conversely, it uses E5M2 with 5 exponent bits, or E4M3 with delayed scaling (`amax_history_len=1024`), for gradients and KV cache storage where dynamic range matters. Dynamic range is the span between the smallest and largest values a format can hold.
+- What does Blackwell add? On Blackwell GPUs, fifth-generation Tensor Cores (`tcgen05.mma`) backed by 256 KB of per-SM Tensor Memory and the Tensor Memory Accelerator natively execute NVFP4. To preserve model accuracy at 0.5 bytes per parameter, NVFP4 applies **two-level scaling**. It combines a fine-grained 1-byte FP8 scale factor for every 16-element microblock with a second-level per-tensor FP32 scale, yielding an effective footprint of 0.5625 bytes per parameter. On a Blackwell B200, NVFP4 delivers 10 PFLOPS of dense Tensor Core compute compared to 80 TFLOPS of dense FP32. Blackwell Ultra B300 increases NVFP4 dense compute by 50 percent to 15 PFLOPS.
+
+The table below puts the formats side by side for a 70-billion-parameter model. Use it to see how much weight memory each format saves, and what it costs in accuracy and hardware support.
 
 | Quantization Format | Bit Width (W / A) | Target GPU Architecture | Latency Speedup vs FP32 | 70B Weight Memory (Raw / With Scales) | Accuracy Loss vs FP16 | Calibration & Execution Path |
 |---|---|---|---|---|---|---|
@@ -354,6 +397,8 @@ Large language models exhibit systematic activation outliers in specific hidden 
 | **FP8 (E4M3 / E5M2)** | `8 / 8` | Ada (`L4`/`L40S`), Hopper (`H100`/`H200`), Blackwell | `4.0x – 8.0x` | `70.0 GB / 70.0 GB` (`25%`) | `< 0.2%` | ModelOpt PTQ / `DelayedScaling` (`amax_history_len=1024`) |
 | **INT4 AWQ / GPTQ** | `4 / 16` | Ampere, Hopper, Blackwell | `2.5x – 4.5x` (low-batch) | `35.0 GB / 36.09 GB` (`12.5%`) | `0.3% – 1.0%` | `group_size=128` FP16 scales; register dequant + FP16 MMA |
 | **NVFP4 (Blackwell)** | `4 / 4` | Blackwell (`B200`, `B300`, `GB200` `sm_100`) | `Up to 2.0x vs FP8` (`10–15 PFLOPS`) | `35.0 GB / 39.38 GB` (`12.5%`) | `< 0.5%` (with QAT/PTQ) | `16`-elem `FP8` microblock + `FP32` scale via `tcgen05.mma` & `256 KB` `TMEM` |
+
+The sizing reference below shows how the table's memory numbers were worked out. It also gives the SmoothQuant scale formula with a small example you can check by hand.
 
 ```text
 4-Bit & 8-Bit Model Sizing Reference (Volume 12 Ch. 5, HLS Ch. 6, ASP Ch. 8 & 9; verified in code/part15/tensorrt_llm_engine_lab.py):
@@ -370,15 +415,17 @@ Large language models exhibit systematic activation outliers in specific hidden 
   gpt-oss-20b  (21B params):  21B  * 0.5 bytes = 10.5 GB (< 16 GB edge GPU)
 ```
 
-Before choosing between INT4 AWQ and FP8, benchmark your target concurrency. Use INT4 AWQ when memory capacity or low-batch latency dominates, and use FP8 or NVFP4 when high-concurrency batching saturates Tensor Core compute.
+Before you choose between INT4 AWQ and FP8, benchmark your target concurrency. Use INT4 AWQ when memory capacity or low-batch latency dominates, and use FP8 or NVFP4 when high-concurrency batching saturates Tensor Core compute. The right format depends on the traffic your service sees, not on the format with the biggest headline number.
 
 ---
 
 ## 5. Commands and Configurations That Matter: Checkpoint Conversion, `trtllm-build`, `trtllm-serve`, and Triton
 
+Picture a platform engineer with a fresh model checkpoint on disk and a deadline for a staging environment. The three commands below take that checkpoint to a running endpoint, in the order you would run them.
+
 ### 5.1 End-to-End TensorRT-LLM CLI Workflow
 
-Building and deploying a production TensorRT-LLM model follows a three-stage workflow. First, quantize or convert the Hugging Face checkpoint into rank-sharded TensorRT-LLM weights. Second, compile hardware-specific `.engine` plans with `trtllm-build`. Third, serve the compiled engines via `trtllm-serve`, the Python `LLM` API, or Triton Inference Server's `tensorrtllm` C++ backend.
+Picture a release day when the CLI commands must run in order without a single typo. Building and deploying a production TensorRT-LLM model follows a three-stage workflow. First, quantize or convert the Hugging Face checkpoint into rank-sharded TensorRT-LLM weights. Second, compile hardware-specific `.engine` plans with `trtllm-build`. Third, serve the compiled engines via `trtllm-serve`, the Python `LLM` API, or Triton Inference Server's `tensorrtllm` C++ backend. A rank-sharded checkpoint has one file per GPU, so each GPU loads only its own slice.
 
 ```bash
 # 1a. Optional: Quantize Llama-3-70B to FP8 (or nvfp4 / int4_awq) with NVIDIA ModelOpt
@@ -427,7 +474,9 @@ trtllm-serve /models/trt-engines/llama-3-8b/engine \
   --kv_cache_free_gpu_memory_fraction 0.85
 ```
 
-For teams embedding TensorRT-LLM directly inside a Python microservice without manual CLI steps, TensorRT-LLM also exposes a high-level `LLM` class that invokes the builder and C++ Executor under the hood.
+The first block has two alternatives. Step 1a is optional and quantizes the model to FP8, while step 1b is the standard conversion. Pick one of them for a given engine, then compile in step 2 and serve in step 3a. The engine built in step 2 is tied to the TP and PP settings you chose at conversion time, so changing them later means running the earlier steps again.
+
+For teams embedding TensorRT-LLM directly inside a Python microservice without manual CLI steps, TensorRT-LLM also exposes a high-level `LLM` class. That class invokes the builder and the C++ Executor under the hood. The example below shows the pattern, and it runs the same engine path the CLI would.
 
 ```python
 from tensorrt_llm import LLM, SamplingParams
@@ -447,7 +496,7 @@ for output in llm.generate(prompts, sampling_params):
 
 ### 5.2 Production C++ Executor API and Triton `config.pbtxt` Integration
 
-In large-scale enterprise deployments, TensorRT-LLM engines are hosted either through the C++ `tensorrt_llm::executor::Executor` class or inside NVIDIA Triton Inference Server's `tensorrtllm` backend. Below is the C++ configuration pattern that eliminates KV block fragmentation and prevents prefill scratch OOMs.
+Picture a production service that must keep its memory steady under bursty traffic. Configuration decides that steadiness more than code does. In large-scale enterprise deployments, TensorRT-LLM engines are hosted either through the C++ `tensorrt_llm::executor::Executor` class or inside NVIDIA Triton Inference Server's `tensorrtllm` backend. Below is the C++ configuration pattern that eliminates KV block fragmentation and prevents prefill scratch OOMs.
 
 ```cpp
 #include "tensorrt_llm/executor/executor.h"
@@ -473,7 +522,7 @@ tllm::ExecutorConfig create_production_executor_config() {
 }
 ```
 
-When serving through Triton Inference Server (`model_repository/tensorrt_llm/config.pbtxt`), three settings are mandatory. You must set `backend: "tensorrtllm"`, enable `decoupled: True` so a single HTTP or gRPC request can stream multiple token responses asynchronously, and configure explicit paged KV cache and chunked context parameters.
+When serving through Triton Inference Server (`model_repository/tensorrt_llm/config.pbtxt`), three settings are mandatory. You must set `backend: "tensorrtllm"`, enable `decoupled: True` so a single HTTP or gRPC request can stream multiple token responses asynchronously, and configure explicit paged KV cache and chunked context parameters. Each setting covers one part of the pattern from the C++ block.
 
 ```protobuf
 # model_repository/tensorrt_llm/config.pbtxt
@@ -514,61 +563,79 @@ parameters: {
 }
 ```
 
-Always enable `--multiple_profiles enable` during `trtllm-build` and `enable_chunked_context: true` at runtime so CUDA Graphs and tactic profiles cover both small-batch decode steps and chunked prefill microbatches without shape-mismatch penalties.
+Because the C++ block and the Triton file describe the same memory and chunking choices, review them together in one change. That habit keeps the two from drifting apart over time.
+
+Always enable `--multiple_profiles enable` during `trtllm-build` and `enable_chunked_context: true` at runtime, so CUDA Graphs and tactic profiles cover both small-batch decode steps and chunked prefill microbatches without shape-mismatch penalties. A CUDA Graph is a recorded sequence of GPU work that can be replayed without the host launching each kernel again.
 
 ---
 
 ## 6. How It Fails: Six Production Failure Modes and Runbooks
 
+Picture the on-call phone ringing at an hour when nobody wants to read a log. Each of the six failure modes below starts with a symptom that someone will see first. Each entry follows the same order, so you can move from what you see to what to do without guessing.
+
 ### Failure Mode 1: Engine Builder Crashes with `std::bad_alloc` OOM During Tactic Profiling
-- **Symptom.** Running `trtexec` or `trtllm-build` crashes mid-compilation during the auto-tuner tactic search with an out-of-device-memory `std::bad_alloc` exception.
-- **Root cause.** The optimization profile maximum shape was set to extreme bounds requiring 25.7 GB to 34 GB per layer in FP32. In addition, the optimal shape was set equal to that maximum shape.
-- **Diagnosis.** Inspect builder allocation logs via `trtexec --onnx=model.onnx --optShapes=input:16x2048 --maxShapes=input:128x8192`.
-- **Fix.** Bound the maximum shape to realistic P99 dimensions and align the optimal shape with P50 median traffic. Enable FP16 or FP8 flags and cap builder scratch workspace at 4 GB via `set_memory_pool_limit`. In the vision segmentation incident, this reduced builder peak VRAM to 6.1 GB, finished compilation in 4.2 minutes, and cut runtime latency from 48.0 ms to 11.3 ms.
+Picture a build job that runs for most of an afternoon and then dies in the middle of the tactic search. The build machine shows no obvious problem, so the cause has to be found in the configuration.
+- Symptom: Running `trtexec` or `trtllm-build` crashes mid-compilation during the auto-tuner tactic search with an out-of-device-memory `std::bad_alloc` exception.
+- Root cause: The optimization profile maximum shape was set to extreme bounds requiring 25.7 GB to 34 GB per layer in FP32. In addition, the optimal shape was set equal to that maximum shape.
+- Diagnosis: Inspect builder allocation logs via `trtexec --onnx=model.onnx --optShapes=input:16x2048 --maxShapes=input:128x8192`.
+- Fix: Bound the maximum shape to realistic P99 dimensions and align the optimal shape with P50 median traffic. Enable FP16 or FP8 flags and cap builder scratch workspace at 4 GB via `set_memory_pool_limit`. In the vision segmentation incident, this reduced builder peak VRAM to 6.1 GB, finished compilation in 4.2 minutes, and cut runtime latency from 48.0 ms to 11.3 ms.
 
 ### Failure Mode 2: Severe INT8 or FP8 Accuracy Collapse from Non-Representative Calibration Data
-- **Symptom.** After quantizing a speech or language model to INT8 or FP8, synthetic unit tests pass, but production Word Error Rate jumps from 3.2 percent to 24.8 percent. Similarly, language model perplexity degrades by 40 percent, jumping from 8.2 to 11.5.
-- **Root cause.** The entropy calibrator or ModelOpt script was fed only 100 samples or unrepresentative 1.2-second silent studio clips instead of 8.5-second noisy user queries. That mismatch produced narrow clipping thresholds that saturated real activations.
-- **Diagnosis.** Inspect the generated calibration cache (`speech_int8.cache`) and run `lm_eval` across realistic long and noisy production slices.
-- **Fix.** Supply 500 to 1,000 stratified production telemetry samples spanning short, long, and high-variance inputs. Alternatively, switch to Explicit Precision Q/DQ nodes and keep outlier-sensitive layers in BF16. Re-calibrating the speech model on 1,000 production embeddings shifted residual scales by 3.4x and restored Word Error Rate to 3.35 percent while preserving a 3.1x speedup.
+Picture a quantized model that passes every test in the lab and then gets worse the first week in production. The engine works, but its answers have drifted away from the baseline.
+- Symptom: After quantizing a speech or language model to INT8 or FP8, synthetic unit tests pass, but production Word Error Rate jumps from 3.2 percent to 24.8 percent. Similarly, language model perplexity degrades by 40 percent, jumping from 8.2 to 11.5.
+- Root cause: The entropy calibrator or ModelOpt script was fed only 100 samples or unrepresentative 1.2-second silent studio clips instead of 8.5-second noisy user queries. That mismatch produced narrow clipping thresholds that saturated real activations.
+- Diagnosis: Inspect the generated calibration cache (`speech_int8.cache`) and run `lm_eval` across realistic long and noisy production slices.
+- Fix: Supply 500 to 1,000 stratified production telemetry samples spanning short, long, and high-variance inputs. Alternatively, switch to Explicit Precision Q/DQ nodes and keep outlier-sensitive layers in BF16. Re-calibrating the speech model on 1,000 production embeddings shifted residual scales by 3.4x and restored Word Error Rate to 3.35 percent while preserving a 3.1x speedup.
 
 ### Failure Mode 3: Silent Output Corruption or Illegal Memory Access Under Multi-Threaded Load
-- **Symptom.** A TensorRT C++ or Python server passes single-request smoke tests but throws an illegal memory access CUDA error or returns scrambled tensors under concurrent load.
-- **Root cause.** Multiple worker threads share a single `IExecutionContext` instance and concurrently call `setTensorAddress()` and `enqueueV3()`. Those concurrent calls overwrite each other's device pointers and scratch offsets mid-flight.
-- **Diagnosis.** Run under `cuda-gdb` or `compute-sanitizer --tool memcheck` and inspect concurrent `setTensorAddress` calls across host threads.
-- **Fix.** Share a single immutable `ICudaEngine` per GPU, but allocate a dedicated `IExecutionContext` per worker thread or CUDA stream using `thread_local` storage or a mutex-guarded context pool.
+Picture a server that answers every single-user test correctly and then returns garbage when a crowd arrives. Nothing is wrong with one request, so the problem only appears when threads overlap.
+- Symptom: A TensorRT C++ or Python server passes single-request smoke tests but throws an illegal memory access CUDA error or returns scrambled tensors under concurrent load.
+- Root cause: Multiple worker threads share a single `IExecutionContext` instance and concurrently call `setTensorAddress()` and `enqueueV3()`. Those concurrent calls overwrite each other's device pointers and scratch offsets mid-flight.
+- Diagnosis: Run under `cuda-gdb` or `compute-sanitizer --tool memcheck` and inspect concurrent `setTensorAddress` calls across host threads.
+- Fix: Share a single immutable `ICudaEngine` per GPU, but allocate a dedicated `IExecutionContext` per worker thread or CUDA stream using `thread_local` storage or a mutex-guarded context pool.
 
 ### Failure Mode 4: Multi-Node Tensor Parallelism NCCL Deadlock
-- **Symptom.** Deploying a 130B LLM across two 4-GPU nodes configured with 8-way Tensor Parallelism hangs during `GptManager` initialization and crashes after 300 seconds with a driver shutdown timeout.
-- **Root cause.** Eight-way Tensor Parallelism executes 2 synchronous AllReduce calls per layer. Crossing the node boundary routes AllReduce traffic over PCIe and InfiniBand at 50 GB/s instead of intra-node NVLink at 900 GB/s. That 18.0x bandwidth drop spikes collective latency by over 30x and deadlocks misordered MPI rank communicators.
-- **Diagnosis.** Check `nvidia-smi topo -m` and run `nsys profile --stats=true` or set `NCCL_DEBUG=INFO` to inspect inter-node collective durations.
-- **Fix.** Restrict Tensor Parallelism strictly to intra-node NVLink at 4-way TP and use 2-way Pipeline Parallelism across nodes. Rebuilding the 130B engine with TP=4 and PP=2 reduced server startup to under 14 seconds and cut InfiniBand traffic by 88 percent.
+Picture a model that starts on one node and then hangs for minutes when it is spread across two. Every process is alive, and none of them makes progress.
+- Symptom: Deploying a 130B LLM across two 4-GPU nodes configured with 8-way Tensor Parallelism hangs during `GptManager` initialization and crashes after 300 seconds with a driver shutdown timeout.
+- Root cause: Eight-way Tensor Parallelism executes 2 synchronous AllReduce calls per layer. Crossing the node boundary routes AllReduce traffic over PCIe and InfiniBand at 50 GB/s instead of intra-node NVLink at 900 GB/s. That 18.0x bandwidth drop spikes collective latency by over 30x and deadlocks misordered MPI rank communicators.
+- Diagnosis: Check `nvidia-smi topo -m` and run `nsys profile --stats=true` or set `NCCL_DEBUG=INFO` to inspect inter-node collective durations.
+- Fix: Restrict Tensor Parallelism strictly to intra-node NVLink at 4-way TP and use 2-way Pipeline Parallelism across nodes. Rebuilding the 130B engine with TP=4 and PP=2 reduced server startup to under 14 seconds and cut InfiniBand traffic by 88 percent.
 
 ### Failure Mode 5: KV Cache Block Allocation OOM at Moderate Concurrency
-- **Symptom.** A Llama-3-70B service on four A100 GPUs crashes with a KV cache block allocation out-of-memory error once active sessions exceed 64. It also crashes during 2,048-token prefill bursts despite free HBM.
-- **Root cause.** Two misconfigurations compound. First, setting `tokens_per_block=128` in FP16 wastes 49.61 percent of KV slots on unaligned 129-token sequences. Second, setting `kv_cache_free_gpu_memory_fraction=0.95` leaves only 9.0 GB across four GPUs for prefill activation workspace.
-- **Diagnosis.** Check `kv_cache_manager.print_fragmentation_report()` and build logs for prefill workspace size.
-- **Fix.** Set `tokens_per_block=32` to cut internal fragmentation to 19.38 percent, enable FP8 KV cache quantization, and lower `kv_cache_free_gpu_memory_fraction` to 0.85 to reserve 27.0 GB for scratch workspace. Those changes raised max concurrent sessions from 64 to 210 and KV utilization from 52 percent to 91 percent.
+Picture a service that handles a few dozen users with no trouble and then falls over as the crowd grows. The GPU still shows free memory, which makes the crash hard to explain at first.
+- Symptom: A Llama-3-70B service on four A100 GPUs crashes with a KV cache block allocation out-of-memory error once active sessions exceed 64. It also crashes during 2,048-token prefill bursts despite free HBM.
+- Root cause: Two misconfigurations compound. First, setting `tokens_per_block=128` in FP16 wastes 49.61 percent of KV slots on unaligned 129-token sequences. Second, setting `kv_cache_free_gpu_memory_fraction=0.95` leaves only 9.0 GB across four GPUs for prefill activation workspace.
+- Diagnosis: Check `kv_cache_manager.print_fragmentation_report()` and build logs for prefill workspace size.
+- Fix: Set `tokens_per_block=32` to cut internal fragmentation to 19.38 percent, enable FP8 KV cache quantization, and lower `kv_cache_free_gpu_memory_fraction` to 0.85 to reserve 27.0 GB for scratch workspace. Those changes raised max concurrent sessions from 64 to 210 and KV utilization from 52 percent to 91 percent.
 
 ### Failure Mode 6: Engine Deserialization Failure After Node Auto-Scaling or Driver Upgrade
-- **Symptom.** Newly scheduled Kubernetes pods crash at startup with a serialization magic-tag assertion error or incompatible compute capability failure.
-- **Root cause.** A cluster autoscaler placed the pod onto a mixed GPU node pool, such as scheduling an `sm_80` A100 engine onto an `sm_90a` H100 node. Alternatively, the serving container updated its TensorRT minor version without rebuilding the `.engine` artifact.
-- **Diagnosis.** Compare `nvidia-smi --query-gpu=name,compute_cap --format=csv` on the serving pod against the build runner metadata.
-- **Fix.** Enforce Kubernetes node-selector labels (`nvidia.com/gpu.product`) per engine deployment, or use NVIDIA NIM containers that automatically select the matching hardware profile at startup.
+Picture a rollout that worked yesterday and now fails on the pods the autoscaler just created. The image did not change, but the hardware under the pod did.
+- Symptom: Newly scheduled Kubernetes pods crash at startup with a serialization magic-tag assertion error or incompatible compute capability failure.
+- Root cause: A cluster autoscaler placed the pod onto a mixed GPU node pool, such as scheduling an `sm_80` A100 engine onto an `sm_90a` H100 node. Alternatively, the serving container updated its TensorRT minor version without rebuilding the `.engine` artifact.
+- Diagnosis: Compare `nvidia-smi --query-gpu=name,compute_cap --format=csv` on the serving pod against the build runner metadata.
+- Fix: Enforce Kubernetes node-selector labels (`nvidia.com/gpu.product`) per engine deployment, or use NVIDIA NIM containers that automatically select the matching hardware profile at startup.
 
 ---
 
 ## 7. Hands-On Lab: Deterministic TensorRT and TensorRT-LLM Engine Verification
 
+Picture a reviewer who wants proof before any GPU budget gets approved. This lab gives that proof on a laptop, with no GPU at all.
+
 ### Lab Venue and Objective
-- **Venue.** Local Python Verification Lab. It runs deterministically on any laptop or CI runner in under 1 second. Companion `trtllm-build` and `trtllm-serve` commands target GCP or GKE H100 and L4 nodes and are marked `untested here` on live GPU silicon.
-- **Objective.** Verify all mathematical models from this chapter using `code/part15/tensorrt_llm_engine.py` and run the 25 self-checks in `code/part15/tensorrt_llm_engine_lab.py`.
+
+Picture a team that wants the lab's checks to run inside its own CI pipeline. The lab runs deterministically on any laptop or CI runner in under 1 second. Companion `trtllm-build` and `trtllm-serve` commands target GCP or GKE H100 and L4 nodes, and they are `untested here` on live GPU silicon. Their purpose is to show the shape of the production commands, not to prove they run on your hardware.
+
+The objective is to verify all mathematical models from this chapter using `code/part15/tensorrt_llm_engine.py`, and to run the 25 self-checks in `code/part15/tensorrt_llm_engine_lab.py`. Each check prints PASS or FAIL against the number the chapter states.
 
 ### Running the Lab and Expected Output
+
+Picture a CI runner that starts with an empty shell and must print PASS lines to pass the gate. Run the lab script from the repository root. It needs only Python, and it writes nothing to the GPU.
 
 ```bash
 python3 -B code/part15/tensorrt_llm_engine_lab.py
 ```
+
+The output below is what a clean run prints.
 
 ```text
 === Chapter 15.5 Lab: TensorRT and TensorRT-LLM Engine Verification ===
@@ -600,26 +667,32 @@ python3 -B code/part15/tensorrt_llm_engine_lab.py
 Summary: 25 passed, 0 failed
 ```
 
+Notice that every line starts with the check number and a short description of the formula it verifies. If one line fails, find that check in the chapter, read the section it describes, and compare the formula with the code.
+
 ---
 
 ## Key takeaways
 
-- **Ahead-of-time compilation eliminates eager-mode dispatch and memory round-trips.** TensorRT folds BatchNorm constants into weights, fuses parallel QKV projections into one GEMM, and auto-tunes CUDA tactics on the target GPU.
-- **Optimization profiles require realistic optimal medians and bounded maximum limits.** TensorRT allocates internal buffers for the maximum shape while timing tactics at the optimal shape. Unbounded maximum shapes allocate 25.7 GB to 34 GB per layer and crash the builder with `std::bad_alloc`.
-- **Compiled `.engine` plans are locked to the exact GPU SM architecture and TensorRT version.** Never deploy an A100 engine onto an H100 node. At runtime, share one immutable `ICudaEngine` per GPU across a pool of per-stream `IExecutionContext` instances.
-- **TensorRT-LLM combines Megatron-style parallelism with custom attention plugins.** Column-parallel and row-parallel linear layers execute 2 AllReduce operations per layer over intra-node NVLink. Meanwhile, FlashDecoding and XQA split long KV caches across all Streaming Multiprocessors for up to 8x decode speedups.
-- **ModelOpt quantization and paged FP8 KV caches multiply serving capacity.** Quantizing weights with FP8, INT4 AWQ, or Blackwell NVFP4 alongside 32-token paged FP8 KV blocks cuts Llama-3-70B KV memory from 1.31 GB to 0.65 GB per 4K sequence. That optimization scales concurrency from 64 to 210 sessions.
+Picture a colleague who asks, in five lines, what TensorRT does that PyTorch eager mode does not. These takeaways are the answer.
+
+- Ahead-of-time compilation removes eager-mode dispatch and memory round-trips. TensorRT folds BatchNorm constants into weights, fuses parallel QKV projections into one GEMM, and auto-tunes CUDA tactics on the target GPU.
+- Optimization profiles need realistic optimal medians and bounded maximum limits. TensorRT allocates internal buffers for the maximum shape while timing tactics at the optimal shape. Unbounded maximum shapes allocate 25.7 GB to 34 GB per layer and crash the builder with `std::bad_alloc`.
+- Compiled `.engine` plans are locked to the exact GPU SM architecture and TensorRT version. Never deploy an A100 engine onto an H100 node. At runtime, share one immutable `ICudaEngine` per GPU across a pool of per-stream `IExecutionContext` instances.
+- TensorRT-LLM combines Megatron-style parallelism with custom attention plugins. Column-parallel and row-parallel linear layers execute 2 AllReduce operations per layer over intra-node NVLink. Meanwhile, FlashDecoding and XQA split long KV caches across all Streaming Multiprocessors for up to 8x decode speedups.
+- ModelOpt quantization and paged FP8 KV caches multiply serving capacity. Quantizing weights with FP8, INT4 AWQ, or Blackwell NVFP4 alongside 32-token paged FP8 KV blocks cuts Llama-3-70B KV memory from 1.31 GB to 0.65 GB per 4K sequence. That optimization scales concurrency from 64 to 210 sessions.
 
 ---
 
 ## Exercises
 
-1. **Vertical and Horizontal Fusion Math.** Using the two-channel BatchNorm parameters in `code/part15/tensorrt_llm_engine_lab.py`, compute the folded weight matrix and bias vector. Explain why concatenating the Query, Key, and Value projection matrices into a single matrix cuts kernel launches by 3.0x.
-2. **Optimization Profile Sizing.** Calculate the single-layer FP32 activation buffer size in bytes and decimal gigabytes for the two unbounded maximum shapes in Section 2.1. Show how the bounded FP16 profile with a 4 GB workspace limit prevents builder out-of-memory errors.
-3. **INT8 KL-Divergence and SmoothQuant Calibration.** For the 2,048-bin activation histogram in Section 4.1, compare the naive maximum scale against the KL-optimal scale at bin 512. Then compute the SmoothQuant per-channel scales at alpha equal to 0.5 for the three-channel example in Section 4.2.
-4. **ModelOpt Weight Sizing Across FP16, FP8, INT4 AWQ, and NVFP4.** Compute the raw and effective weight footprints for a 70B model across FP32, FP16, FP8, INT4 AWQ, and Blackwell NVFP4. Verify why the 117B parameter GPT-OSS model fits on a single 80 GB GPU in FP4.
-5. **Tensor Parallelism Collectives and FlashDecoding Occupancy.** For Llama-3-70B at 8-way Tensor Parallelism and batch size 64 in FP16, compute the per-AllReduce byte volume and 80-layer decode communication volume. Compare wire time on 50 GB/s InfiniBand versus 900 GB/s NVLink, and compare H100 SM occupancy at batch size 4 with and without 256-token FlashDecoding splits.
-6. **Paged KV Cache Fragmentation and Concurrency Tuning.** For Llama-3-70B, calculate per-token and 4,096-token KV cache footprints in FP16 versus FP8. For a 129-token sequence, compare wasted slots between block sizes of 128 and 32 tokens. Finally, compute the activation headroom gained on 180 GB of post-weight memory when lowering the free memory fraction from 0.95 to 0.85.
+Picture a teammate who says the fusion and sizing numbers in this chapter are too neat to be real. These six exercises let you check each one with your own pencil.
+
+1. Vertical and Horizontal Fusion Math. Using the two-channel BatchNorm parameters in `code/part15/tensorrt_llm_engine_lab.py`, compute the folded weight matrix and bias vector. Explain why concatenating the Query, Key, and Value projection matrices into a single matrix cuts kernel launches by 3.0x.
+2. Optimization Profile Sizing. Calculate the single-layer FP32 activation buffer size in bytes and decimal gigabytes for the two unbounded maximum shapes in Section 2.1. Show how the bounded FP16 profile with a 4 GB workspace limit prevents builder out-of-memory errors.
+3. INT8 KL-Divergence and SmoothQuant Calibration. For the 2,048-bin activation histogram in Section 4.1, compare the naive maximum scale against the KL-optimal scale at bin 512. Then compute the SmoothQuant per-channel scales at alpha equal to 0.5 for the three-channel example in Section 4.2.
+4. ModelOpt Weight Sizing Across FP16, FP8, INT4 AWQ, and NVFP4. Compute the raw and effective weight footprints for a 70B model across FP32, FP16, FP8, INT4 AWQ, and Blackwell NVFP4. Verify why the 117B parameter GPT-OSS model fits on a single 80 GB GPU in FP4.
+5. Tensor Parallelism Collectives and FlashDecoding Occupancy. For Llama-3-70B at 8-way Tensor Parallelism and batch size 64 in FP16, compute the per-AllReduce byte volume and 80-layer decode communication volume. Compare wire time on 50 GB/s InfiniBand versus 900 GB/s NVLink, and compare H100 SM occupancy at batch size 4 with and without 256-token FlashDecoding splits.
+6. Paged KV Cache Fragmentation and Concurrency Tuning. For Llama-3-70B, calculate per-token and 4,096-token KV cache footprints in FP16 versus FP8. For a 129-token sequence, compare wasted slots between block sizes of 128 and 32 tokens. Finally, compute the activation headroom gained on 180 GB of post-weight memory when lowering the free memory fraction from 0.95 to 0.85.
 
 ---
 
