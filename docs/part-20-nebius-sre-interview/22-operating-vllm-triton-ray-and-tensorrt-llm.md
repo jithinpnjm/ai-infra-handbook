@@ -14,21 +14,33 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-A new model arrives on Monday. The team says "just run it on vLLM" and hands you a command line with eleven flags. You must say which flags matter, which will hurt, and what you will watch after the first deploy. This chapter serves the system design round and the project deep dive, and it also feeds the incident round, because every engine flag is a trade you may be asked to defend.
+Picture a new model arriving on a Monday. The team says "just run it on vLLM" and hands you a command line with eleven flags. Your job is to say which flags matter, which ones will hurt you under load, and what you will watch after the first deploy.
 
-The job posting lists, as a nice-to-have, "GPU-heavy workloads with vLLM, Triton, Ray, or another accelerator stack". Chapter 20.18 already covers how serving fails. This chapter covers how you run the engines so that those failures are rarer and shorter.
+Think of each engine flag as a trade rather than a plain setting. A flag buys one thing and costs another, and an interviewer will ask you to defend that trade. That is why this chapter serves the system design round and the project deep dive. It also feeds the incident round, because a flag that someone set for a reason nobody wrote down is a common source of trouble when things break.
+
+Read the job posting again and you will find this phrase in the nice-to-have list: "GPU-heavy workloads with vLLM, Triton, Ray, or another accelerator stack". A nice-to-have is a skill that strengthens your case without being a hard requirement, so treat it as a hint about the team's daily work.
+
+Chapter 20.18 already covers how serving fails. This chapter moves the question from how things break to how you run the engines, so that failures are rarer and shorter when they do happen.
 
 A realistic question in the interviewer's voice: "We serve open models on vLLM today. A teammate wants to move the biggest customer to TensorRT-LLM behind Triton. What do you ask, and what changes for the people on call?"
 
+Notice that the question has two halves. The first half is a technical move. The second half is what changes for the people on call. A good answer covers both, and it does not stop at the performance number.
+
 Versions used here: vLLM v0.32.0 source and docs, Triton server release v2.74.0, TensorRT-LLM v1.2.1, Ray 2.60.0, and SGLang v0.5.23. All were the latest releases at fetch time, 2026-11-09. Nebius has not published which engines or versions Token Factory runs, so nothing here describes Nebius internals.
+
+Every number in the rest of the chapter belongs to one of these versions. When you check a flag on your own cluster, check the version first, because flags and defaults move between releases.
 
 ## The core ideas
 
 ### 1. Four tools, three layers: engine, server, orchestrator
 
-Before you compare anything, place each tool on its layer. An engine runs the model on the GPU: it batches requests, manages the KV cache and launches kernels. A server wraps engines or models in an API, a model repository and health and metrics endpoints. An orchestrator decides how many copies run, where, and how requests reach them.
+A colleague says the team wants to move the chat service to Triton, and asks whether that makes it faster. Before you compare anything, place each tool on its layer. An engine runs the model on the GPU. It batches requests, manages the KV cache (the memory that holds attention keys and values for each token, so they do not have to be computed again) and launches kernels, which are the small programs that run the math on the GPU.
 
-vLLM, TensorRT-LLM and SGLang are engines. The book Hands-On LLM Serving and Optimization, chapter 8, calls them a new class of LLM serving frameworks, built because older general servers assumed short inputs and fixed tensor shapes. Triton is the older general inference server. The same chapter lists it among the frameworks built before the LLM era, and the book says TensorRT-LLM integrates tightly with Triton and Dynamo. Ray Serve LLM is an orchestrator. Its documentation says it builds on Ray Serve and runs vLLM or SGLang as the engine.
+A server wraps engines or models in an API, a model repository, and health and metrics endpoints. An orchestrator decides how many copies run, where they run, and how requests reach them.
+
+Sort the four tools now. vLLM, TensorRT-LLM and SGLang are engines. The book Hands-On LLM Serving and Optimization, chapter 8, calls them a new class of LLM serving frameworks, built because older general servers assumed short inputs and fixed tensor shapes. A tensor shape is the list of its dimensions, and the older servers were built around requests that fit a fixed shape.
+
+Triton is the older general inference server. The same chapter lists it among the frameworks built before the LLM era, and the book says TensorRT-LLM integrates tightly with Triton and Dynamo. Ray Serve LLM is an orchestrator. Its documentation says it builds on Ray Serve and runs vLLM or SGLang as the engine.
 
 ```mermaid
 flowchart TB
@@ -39,39 +51,61 @@ flowchart TB
   O -.->|"autoscale, route"| S
 ```
 
-The layers matter because the tool you operate changes with them. With Ray Serve LLM you operate Ray and an engine. With Triton you operate a model repository and a backend. With `vllm serve` you operate one process tree. When an interviewer says "we use vLLM", ask which layer they mean.
+The layers matter because the tool you operate changes with them, and so does the person who gets paged. With Ray Serve LLM you operate Ray and an engine, so the on-call engineer reads a Ray view and an engine log. With Triton you operate a model repository and a backend, so the first place to look is the configuration of each model. With `vllm serve` you operate one process tree, which means one log stream and one set of flags.
+
+When an interviewer says "we use vLLM", ask which layer they mean. The answer tells you which runbook applies.
 
 **Decide first which layer a problem lives in, because the fix, the logs and the owner are different at each one.**
 
 ### 2. What each engine is for
 
-The book describes vLLM as the most broadly used open framework. Its strengths are paged KV caching with continuous batching, an easy path for open and self-fine-tuned models, and a large community. It serves one model per instance.
+Picture a team that runs many open models on one fleet and has to choose a default engine. The book describes vLLM as the most broadly used open framework. Its strengths are paged KV caching with continuous batching, an easy path for open and self-fine-tuned models, and a large community. It serves one model per instance.
 
-TensorRT-LLM is NVIDIA's library for NVIDIA GPUs. Its v1.2.1 overview says it is architected on PyTorch, with a Python LLM API and a `trtllm-serve` command that starts an OpenAI-compatible server. It lists in-flight batching, paged KV cache with block reuse, chunked prefill, speculative decoding, FP8 and FP4 quantisation, and disaggregated serving, which it marks Beta. The book says it suits teams that have standardised on NVIDIA hardware and want the best efficiency.
+In plain terms, paged KV caching splits the cache into small blocks that are handed out as needed, rather than one large reserved slab. Continuous batching lets new requests join the running batch between steps, instead of waiting for the whole batch to finish. One model per instance means you run one process for each model you want to serve.
 
-One conflict to know about. The book describes TensorRT-LLM as building tuned TensorRT engines from a checkpoint. The v1.2.1 docs describe a PyTorch-based architecture. The book LLMs in Production, chapter 6, makes the older point clearly: a compiled engine is hardware specific, so you compile on the hardware you will run. Whether your deployment still has a separate build step depends on the version and mode, so check before you promise a rollout plan.
+A team that has standardised on NVIDIA hardware asks what the fastest path is. TensorRT-LLM is NVIDIA's library for NVIDIA GPUs. Its v1.2.1 overview says it is architected on PyTorch, with a Python LLM API and a `trtllm-serve` command that starts an OpenAI-compatible server. An OpenAI-compatible server accepts the same request shape as the OpenAI API, so client code written for that API can point at it.
 
-SGLang is a peer to vLLM. The book lists RadixAttention for prefix reuse, structured output, speculative decoding and four parallelism modes, and says it targets a broader range of hardware than TensorRT-LLM. Its README describes it as optimised for agentic workloads and large-scale serving.
+It lists in-flight batching, paged KV cache with block reuse, chunked prefill, speculative decoding, FP8 and FP4 quantisation, and disaggregated serving, which it marks Beta. Prefill is the step that reads the whole prompt, and decode is the step that writes one new token at a time. Disaggregated serving runs those two steps on different workers. The book says TensorRT-LLM suits teams that have standardised on NVIDIA hardware and want the best efficiency.
 
-Triton is a server, not an engine. You give it a model repository, a directory of models each with a configuration file. For classic models, it batches with its dynamic batcher and runs several copies of a model through instance groups. For LLMs the book says it can host TensorRT-LLM. Its value is one serving surface, one metrics format and one health API across many model types.
+Here is a conflict you should be ready to explain. The book describes TensorRT-LLM as building tuned TensorRT engines from a checkpoint. A checkpoint is the saved set of trained weights. The v1.2.1 docs describe a PyTorch-based architecture instead.
 
-Ray Serve LLM gives you an OpenAI-compatible API, multi-model apps, autoscaling, prefix-aware routing and prefill-decode disaggregation, with vLLM or SGLang underneath. The book Generative AI on Kubernetes, chapter 1, adds that Ray brings its own orchestration layer with head and worker nodes, which does not come from Kubernetes.
+The book LLMs in Production, chapter 6, makes the older point clearly: a compiled engine is hardware specific, so you compile on the hardware you will run. Whether your deployment still has a separate build step depends on the version and mode. Check before you promise a rollout plan.
+
+SGLang is a peer to vLLM, which means it sits at the same layer and is a choice rather than a layer above or below. The book lists RadixAttention for prefix reuse, structured output, speculative decoding and four parallelism modes. Prefix reuse means a new request that starts with text the engine has already seen can skip recomputing that text. The book says SGLang targets a broader range of hardware than TensorRT-LLM.
+
+Its README describes it as optimised for agentic workloads and large-scale serving.
+
+Triton is a server, not an engine, and the difference matters when someone asks where the batching happens. You give Triton a model repository. That is a directory of models, and each model sits in its own folder with a configuration file.
+
+For classic models, Triton batches with its dynamic batcher and runs several copies of a model through instance groups, which set how many copies run and on which devices. For LLMs the book says it can host TensorRT-LLM. Its value is one serving surface, one metrics format and one health API across many model types, so a platform team that runs image models and text models can operate them the same way.
+
+Ray Serve LLM is the orchestrator in this comparison. It gives you an OpenAI-compatible API, multi-model apps, autoscaling, prefix-aware routing and prefill-decode disaggregation, with vLLM or SGLang underneath. Prefix-aware routing sends a request to the replica that already holds the matching prompt prefix in its cache.
+
+The book Generative AI on Kubernetes, chapter 1, adds that Ray brings its own orchestration layer with head and worker nodes, which does not come from Kubernetes. That point matters on call. A Ray cluster has its own head node and workers, so a Kubernetes view alone does not show you everything.
 
 **Pick the tool by the problem it was built for: engines for tokens per second, servers for many model types, orchestrators for fleets.**
 
 ### 3. The knobs that decide memory
 
-An alert fires: the new pod crash-loops with an out-of-memory error at start. You need to know which flags move GPU memory. Four do most of the work.
+An alert fires a few minutes after the rollout starts. The new pod crash-loops with an out-of-memory error at start, which means the process ran out of GPU memory before it could serve any request. You need to know which flags move GPU memory, and four of them do most of the work.
 
-`gpu_memory_utilization` is the fraction of GPU memory this instance may use. In the v0.32.0 config class the default is 0.92 and the range is above 0 up to 1. The docstring says it is a per-instance limit that ignores other processes, so two instances on one GPU need fractions that add up to less than one. Raising it gives more KV cache. It also removes headroom for activation spikes, which is the runtime out-of-memory form described in chapter 20.18.
+`gpu_memory_utilization` is the fraction of GPU memory this instance may use. Put simply, it is the share of the card that vLLM is allowed to claim. In the v0.32.0 config class the default is 0.92 and the range is above 0 up to 1. The docstring says it is a per-instance limit that ignores other processes, so two instances on one GPU need fractions that add up to less than one.
 
-`max_model_len` is the longest sequence the engine accepts, prompt plus output. The start-up log's "Maximum concurrency" line is computed from it. Setting it lower than the model's native maximum is the cheapest way to make the capacity numbers honest. The risk is rejecting a customer's long request, so set it from your traffic, not from the model card.
+Raising it gives more KV cache, because the cache is what memory is left after the weights. It also removes headroom for activation spikes, which is the runtime out-of-memory form described in chapter 20.18. Activations are the temporary tensors the model creates while it works on a batch, and a spike in them can need more memory than was left over.
 
-`max_num_seqs` caps how many requests run in one step. The class default is 128, but its docstring says real values are set when the engine config is created, so read the start-up log for the value in force. A high cap with a small cache means admitting work you cannot hold. The vLLM optimisation guide lists lowering it as one of the fixes for preemption.
+`max_model_len` is the longest sequence the engine accepts, prompt plus output. A sequence here means one request's prompt and its generated answer taken together. The start-up log's "Maximum concurrency" line is computed from it, so the number you see there depends on this flag.
 
-`kv_cache_memory_bytes`, passed as `--kv-cache-memory`, sets the cache size directly and ignores the utilisation fraction. The guide says it skips memory profiling and so shortens start-up. A low value caps concurrency and a high one fails at allocation. The value is valid only for the same GPU and the same free memory.
+Setting it lower than the model's native maximum is the cheapest way to make the capacity numbers honest. The risk is rejecting a customer's long request, so set it from your traffic, not from the model card.
 
-Here is the arithmetic for one H100 with 80 GB and Llama 3.1 8B. The model config gives 32 layers, 8 key-value heads and a head size of 128, in bfloat16. Chapter 20.12 explains the formula and the 80 GB figure.
+`max_num_seqs` caps how many requests run in one step. A step is one pass of the scheduler, in which the engine decides which requests get work on the GPU. The class default is 128, but its docstring says real values are set when the engine config is created, so read the start-up log for the value in force.
+
+A high cap with a small cache means admitting work you cannot hold. Preemption is what happens next: the engine removes a running request from memory to make room, and later recomputes its work. The vLLM optimisation guide lists lowering the cap as one of the fixes for preemption.
+
+`kv_cache_memory_bytes`, passed as `--kv-cache-memory`, sets the cache size directly and ignores the utilisation fraction. The guide says it skips memory profiling and so shortens start-up. Profiling here means the engine runs a test pass to measure how much memory the model and its work need before it sets the cache.
+
+A low value caps concurrency, and a high one fails at allocation. The value is valid only for the same GPU and the same free memory, so a value copied from one machine is not safe on another.
+
+Here is the arithmetic for one H100 with 80 GB and Llama 3.1 8B. Work through it once with a pencil, because the same steps let you check any model on any card. The model config gives 32 layers, 8 key-value heads and a head size of 128, in bfloat16. Bfloat16 is a compact number format, and the weights below are counted at the format's size per parameter. Chapter 20.12 explains the formula and the 80 GB figure.
 
 | Step | Calculation | Result |
 |---|---|---|
@@ -82,27 +116,37 @@ Here is the arithmetic for one H100 with 80 GB and Llama 3.1 8B. The model confi
 | Full-length requests at 16,384 tokens | 389,100 / 16,384 | about 23.7 |
 | Average length when 128 requests run | 389,100 / 128 | about 3,040 tokens |
 
-The weights are 8 billion parameters at 2 bytes. The 5 GB overhead is a planning assumption, not a measurement. Replace it with the figure in your start-up log.
+The rows build on each other. The KV bytes per token row gives the cost of one token. The usable memory row gives the budget. Subtract the weights and the overhead, then divide what is left by the per-token cost, and you have the number of tokens that fit. The last two rows divide that total by a request length and by a request count, which turns a raw token total into something you can say to a product manager.
 
-Read the last two rows together. With the cap at 128, the cache fills once the average request passes about 3,040 tokens. Past that point vLLM preempts and recomputes, and latency climbs. The reviewer in the code section flags exactly this gap as information.
+Start with the weights, because they are the biggest fixed cost. Eight billion parameters at 2 bytes each is the amount the table subtracts first. The 5 GB overhead is a planning assumption, not a measurement, and it stands in for the memory the engine uses beyond the weights and the cache. Replace it with the figure in your start-up log.
+
+Read the two rows about tokens together, because they answer different questions. The tokens-that-fit row says how many tokens fit in total. The average-length row says how long each request can be if 128 of them run at once, which is the cap you set.
+
+Put those together and you get the point where the cache fills. With the cap at 128, the cache fills once the average request passes about 3,040 tokens. Past that point vLLM preempts and recomputes, and latency climbs. The reviewer in the code section flags exactly this gap as information.
 
 **Size the cache first, then set the sequence cap and the length limit so that your real average request fits.**
 
 ### 4. The knobs that decide latency: token budget and chunked prefill
 
-Users complain that streaming stutters whenever someone pastes a long document. The cause is prefill work competing with decode work for the same step.
+Users complain that streaming stutters whenever someone pastes a long document. The cause is prefill work competing with decode work for the same step. Prefill is the step that reads the whole pasted prompt. Decode is the step that writes the next token for every user already streaming.
 
-The scheduler spends a token budget each step, set by `max_num_batched_tokens`. With chunked prefill, which is on by default in V1, the guide says decode requests are batched first. Pending prefills then fill the remaining budget, and a prefill that does not fit is cut into chunks. That protects inter-token latency.
+When a long prefill lands in the same step, the streams that are already running wait for it, and the stutter is what they feel.
 
-The budget is a dial. The guide says smaller values, for example 2048, give better inter-token latency. Larger values give better time to first token. For throughput it recommends more than 8192, especially for small models on large GPUs. If the budget equals `max_model_len` you get nearly the old scheduling policy, though decodes still go first.
+The scheduler spends a token budget each step, set by `max_num_batched_tokens`. Think of the budget as a fixed amount of work the GPU may take on in one step. With chunked prefill, which is on by default in V1, the guide says decode requests are batched first. Pending prefills then fill the remaining budget, and a prefill that does not fit is cut into chunks.
 
-There is one trap. If you turn chunked prefill off, the budget must be larger than `max_model_len`, or the server may crash at start-up. The v0.32.0 scheduler also forces chunked prefill off for encoder-decoder models. TensorRT-LLM has the same idea under the name chunked context. Its docs recommend a high `max_num_tokens` for throughput but not so high that time to first token and per-token latency miss the objective.
+Chunking means the long prompt is split across several steps, so each step keeps room for the decode tokens. That protects inter-token latency, which is the time between one streamed token and the next.
+
+The budget is a dial, and it has two ends. Turning it down helps the people already streaming, and turning it up helps the people waiting for a first token. The guide says smaller values, for example 2048, give better inter-token latency. Larger values give better time to first token. For throughput it recommends more than 8192, especially for small models on large GPUs. If the budget equals `max_model_len` you get nearly the old scheduling policy, though decodes still go first.
+
+There is one trap. If you turn chunked prefill off, the budget must be larger than `max_model_len`, or the server may crash at start-up. Turning chunked prefill off is a common move when someone wants simpler behaviour, so check the budget whenever you change it. The v0.32.0 scheduler also forces chunked prefill off for encoder-decoder models. TensorRT-LLM has the same idea under the name chunked context. Its docs recommend a high `max_num_tokens` for throughput, but not so high that time to first token and per-token latency miss the objective.
+
+A short way to remember the trap: with chunked prefill off, a prompt longer than the budget cannot be scheduled in one step, because nothing splits it. The start-up check catches that case, which is why the server may fail before it serves a single request.
 
 **Treat the token budget as a latency-versus-throughput dial that you set from your objectives and then confirm with a load test.**
 
 ### 5. Parallelism: tensor, pipeline, data and expert
 
-The model does not fit on one GPU, or it fits but leaves no room for cache. You must split it. Each split has a different cost, and the cost is mostly communication.
+Picture a model that is too large for one card. Its weights fill the GPU, and nothing is left for the KV cache, so the engine cannot hold a useful batch. Or the model fits on one GPU but leaves so little room for cache that throughput is poor. You must split it. Each split has a different cost, and the cost is mostly communication, which means the GPUs must pass data to each other on every step.
 
 | Kind | What it splits | Use it when | Cost and risk |
 |---|---|---|---|
@@ -111,33 +155,47 @@ The model does not fit on one GPU, or it fits but leaves no room for cache. You 
 | Data (DP) | Whole model replicated | You need more throughput, not more size | Costs full weights per copy. No latency gain for one request |
 | Expert (EP) | Experts of an MoE model | Mixture-of-experts models | Uses the TP degree. MoE layers shard over TP times DP |
 
-These rows come from the vLLM parallelism guide and the optimisation guide. The cost column for data parallel is my reasoning. One more fact helps with multi-node. By default the guide says Ray runs multi-node inference and Python multiprocessing runs single-node. You can use multiprocessing across nodes with `--nnodes`, `--node-rank`, `--master-addr` and `--headless` on workers. Multiprocessing mode on a host with fewer GPUs than tensor times pipeline raises an error, and Ray must be selected explicitly.
+Read the Cost column before you read the Kind column. Each row is a trade, and the words "Cost and risk" are the part an interviewer will press on. Tensor parallel buys room for a big model at the price of constant communication. Data parallel buys throughput at the price of memory, because every copy holds the full weights.
 
-TensorRT-LLM offers tensor, pipeline and expert parallelism as well, through its parallel-strategy docs. I did not read its trade-off text closely, so treat the table as vLLM's.
+These rows come from the vLLM parallelism guide and the optimisation guide. The cost column for data parallel is my reasoning. One more fact helps with multi-node. Multi-node means the model runs across more than one server, and Ray and Python multiprocessing are two ways to start the worker processes on those servers.
 
-Two operational risks deserve a sentence each. A tensor-parallel group is one failure domain: lose one GPU and the whole replica stops, so replicas are bigger and rarer. Cross-node tensor parallel moves per-layer traffic onto the network, which is why the guide wants InfiniBand and mentions GPUDirect RDMA.
+By default the guide says Ray runs multi-node inference and Python multiprocessing runs single-node. You can use multiprocessing across nodes with `--nnodes`, `--node-rank`, `--master-addr` and `--headless` on workers. Multiprocessing mode on a host with fewer GPUs than tensor times pipeline raises an error, and Ray must be selected explicitly.
+
+The same three ideas appear in TensorRT-LLM, which documents them in its parallel-strategy docs. I did not read its trade-off text closely, so treat the table above as a description of vLLM's behaviour, not a promise about TensorRT-LLM.
+
+Two operational risks come with the splits, and each deserves a sentence. The first is blast radius, meaning how much one failure takes down. A tensor-parallel group is one failure domain: lose one GPU and the whole replica stops, so replicas are bigger and rarer.
+
+The second risk is the network. Cross-node tensor parallel moves per-layer traffic onto the network, which is why the guide wants InfiniBand and mentions GPUDirect RDMA. GPUDirect RDMA lets a network card move data straight to GPU memory without going through the CPU.
 
 **Use the smallest parallelism that fits the model and leaves cache, then add replicas with data parallelism or more pods.**
 
 ### 6. Quantisation, prefix caching and speculative decoding
 
-Each of these three can raise throughput. Each can also change your answers or your latency tail. Treat them as changes with a canary.
+A teammate wants to switch on three features before Friday's release, because each one promises more tokens per second. Each of these three can raise throughput. Each can also change your answers or your latency tail, which is the slowest slice of requests. Treat them as changes with a canary, meaning a small slice of traffic gets the change first.
 
-Quantisation shrinks weights, and sometimes the KV cache. The book Hands-On LLM Serving and Optimization, chapter 9, ran Qwen3-14B and its 4-bit AWQ form on one GPU. Weights fell from 27.5 GiB to 9.36 GiB, and the KV cache grew from 11.00 GiB to 29.15 GiB. The cache then held 191,056 tokens instead of 72,064, and throughput rose from 474 to 1,280 tokens per second in that test. Those are the book's measurements on its hardware, not yours.
+Quantisation stores each number with fewer bits, which makes the weights smaller and sometimes the KV cache smaller too. The book Hands-On LLM Serving and Optimization, chapter 9, ran Qwen3-14B and its 4-bit AWQ form on one GPU. Weights fell from 27.5 GiB to 9.36 GiB, and the KV cache grew from 11.00 GiB to 29.15 GiB.
 
-The risk is quality and hardware support. The vLLM compatibility table says AWQ is not supported on Volta, and FP8 W8A8 through LLM Compressor is listed for Ada, Hopper and AMD GPUs only. Chapter 20.18 covers quality drift from quantisation as a failure mode.
+The cache then held 191,056 tokens instead of 72,064, and throughput rose from 474 to 1,280 tokens per second in that test. Those are the book's measurements on its hardware, not yours, so use them as a reason to measure, not as a forecast.
 
-Prefix caching reuses KV blocks for requests that share a prefix. In v0.32.0 it is on by default. The design page says vLLM hashes each block from its tokens and its prefix, caches only full blocks, and can add cache salts to isolate tenants. The default hash is `sha256`. The page warns that `xxhash` is not cryptographically secure and theoretically raises collision risk. It also says `sha256` hashes may not be reproducible across Python or vLLM versions, which matters if a shared cache or router depends on them.
+The risk is quality and hardware support. The vLLM compatibility table says AWQ is not supported on Volta. It also lists FP8 W8A8 through LLM Compressor for Ada, Hopper and AMD GPUs only. Chapter 20.18 covers quality drift from quantisation as a failure mode, which means the answers slowly get worse without any error in the logs.
 
-Speculative decoding drafts several tokens and verifies them in one pass. The vLLM guide says it reduces inter-token latency for medium to low QPS, memory-bound workloads. Model-based methods give the best reduction. N-gram and suffix methods give modest speedups without adding workload at peak. Draft-model methods need a separate draft model, and the gain is largest at low load. Enable it only after measuring at peak load.
+Prefix caching reuses KV blocks for requests that share a prefix. In v0.32.0 it is on by default. The design page says vLLM hashes each block from its tokens and its prefix, caches only full blocks, and can add cache salts to isolate tenants. A cache salt is an extra value mixed into the hash, so two tenants with the same prompt do not share cache entries.
+
+The default hash is `sha256`. The page warns that `xxhash` is not cryptographically secure and theoretically raises collision risk. A collision means two different inputs produce the same hash, so the cache could serve the wrong block. The page also says `sha256` hashes may not be reproducible across Python or vLLM versions, which matters if a shared cache or router depends on them.
+
+For a team, the practical meaning is simple. A cache hit saves prefill work, so repeated system prompts get cheaper and faster. The same cache also creates a privacy question, which is why the cache salt exists, and a reproducibility question, which is why the hash choice matters for any router that depends on it.
+
+Speculative decoding drafts several tokens and verifies them in one pass. A small guess is cheap to make, and checking a batch of guesses is cheaper than producing each token one at a time. The vLLM guide says it reduces inter-token latency for medium to low QPS, memory-bound workloads. QPS means queries per second, the request rate the service handles.
+
+Model-based methods give the best reduction. N-gram and suffix methods give modest speedups without adding workload at peak. Draft-model methods need a separate draft model, and the gain is largest at low load. Enable it only after measuring at peak load.
 
 **Roll out each of these three behind a canary with a quality check, and keep the flag in version control so you can undo it fast.**
 
 ### 7. Start-up: what takes the time
 
-A pod is `Running` but not ready for ten minutes, and the autoscaler's new replica never helps. You need to know what the engine does between `exec` and the first token.
+A pod is `Running` but not ready for ten minutes, and the autoscaler's new replica never helps. You need to know what the engine does between `exec` and the first token. Read the start-up as a sequence of phases, because each phase can be slow for a different reason.
 
-The book Generative AI on Kubernetes, chapter 4, splits start-up into six steps. The image is pulled. The model is fetched and mounted. The runtime starts, which it says takes a second or less. The weights are loaded into GPU memory. The engine warms up by allocating the KV pool, profiling and capturing CUDA graphs. Then the API opens.
+The book Generative AI on Kubernetes, chapter 4, splits start-up into six steps. The image is pulled. The model is fetched and mounted. The runtime starts, which the book says takes a second or less. The weights are loaded into GPU memory. The engine warms up by allocating the KV pool, profiling and capturing CUDA graphs. A CUDA graph is a recorded list of GPU work that the engine can replay quickly, which saves launch overhead on each step. Then the API opens.
 
 ```mermaid
 flowchart LR
@@ -148,51 +206,75 @@ flowchart LR
   E --> F["API opens:<br/>/health 200"]
 ```
 
-The book says most time goes to the model download and the weight load, and that the weight load is bounded by I/O into GPU memory. It says the vLLM image is under 5 GB. I checked the Docker Hub tag for v0.32.0 and found about 9.2 GB for the amd64 image, so the book's figure is out of date. Image pull is therefore a real cost on a fresh node.
+The arrows show order only. The boxes are not drawn to scale, so measure how long each phase takes on your own cluster before you decide where to spend effort.
 
-The remedies come from the book and the vLLM guide. Pin the image tag or digest and use `IfNotPresent`. Put weights on a PVC, an OCI image, or node-local NVMe instead of downloading from Hugging Face on every start. Use a faster loader such as Run:ai Model Streamer with `--load-format runai_streamer`, which needs no repackaging. Reuse the `torch.compile` cache under `VLLM_CACHE_ROOT`, and set `VLLM_FORCE_AOT_LOAD=1` to fail loudly on a cache miss. Pass `--kv-cache-memory` to skip profiling. The book says these together can cut scale-up from many minutes to tens of seconds, depending on model size.
+The book says most time goes to the model download and the weight load, and that the weight load is bounded by I/O into GPU memory. I/O here means reading bytes from storage and writing them to the GPU. The book says the vLLM image is under 5 GB. I checked the Docker Hub tag for v0.32.0 and found about 9.2 GB for the amd64 image, so the book's figure is out of date. Image pull is therefore a real cost on a fresh node, and you should plan for it.
 
-There are two quick-start switches, and both trade speed for risk. `--enforce-eager` skips compilation and graph capture, so boot is fast and decode is slower. `-O0` does something similar, with the lowest performance. Use them in development, not as a production fix for a slow start.
+The remedies come from the book and the vLLM guide, and each one attacks a different phase. Pin the image tag or digest and use `IfNotPresent`, so a node that already has the image does not pull it again. Put weights on a PVC, an OCI image, or node-local NVMe instead of downloading from Hugging Face on every start.
+
+Use a faster loader such as Run:ai Model Streamer with `--load-format runai_streamer`, which needs no repackaging. Reuse the `torch.compile` cache under `VLLM_CACHE_ROOT`, and set `VLLM_FORCE_AOT_LOAD=1` to fail loudly on a cache miss. Pass `--kv-cache-memory` to skip profiling. The book says these together can cut scale-up from many minutes to tens of seconds, depending on model size.
+
+There are two quick-start switches, and both trade speed for risk. `--enforce-eager` skips compilation and graph capture, so boot is fast and decode is slower. `-O0` does something similar, with the lowest performance. Use them in development, not as a production fix for a slow start, because a fast boot that runs slowly in production is a new problem, not a fix.
 
 **Measure each start-up phase once, write the numbers in the runbook, and size probes and autoscaling from them.**
 
 ### 8. Health endpoints: what they prove and what they do not
 
-A load balancer says the pod is healthy while users get timeouts. The question is what the endpoint actually checks.
+A load balancer says the pod is healthy while users get timeouts. Both facts can be true. The question is what the endpoint actually checks, because a check that passes is not the same as a service that answers well.
 
-In the v0.32.0 source, the `/health` handler calls the engine client's health check. It returns 200 if that passes and 503 if the engine is dead. Render-only servers with no engine always return 200. The vLLM Kubernetes guide uses `/health` for both liveness and readiness. The handler is a liveness-style check of the engine process. It does not prove the model produces good tokens, that the queue is short, or that the KV cache has room.
+In the v0.32.0 source, the `/health` handler calls the engine client's health check. It returns 200 if that passes and 503 if the engine is dead. Render-only servers with no engine always return 200. The vLLM Kubernetes guide uses `/health` for both liveness and readiness.
+
+The handler is a liveness-style check of the engine process. It does not prove the model produces good tokens, that the queue is short, or that the KV cache has room.
 
 Chapter 20.18 explains why that matters, including why a hung engine can still pass `/health`, which I confirmed in the source. Here is the operating rule. Use `/health` for the startup probe and a forgiving liveness probe. Put load and warm-up judgement in readiness through the router or a metric, not in a short-timeout liveness check that kills busy pods.
 
-Triton exposes more. Its HTTP API follows the KServe protocol: `v2/health/live`, `v2/health/ready` and `v2/models/<name>/ready`. The protocol text says server ready means all models are ready, and that it can implement a Kubernetes readiness probe. So Triton separates "the process is up" from "the model is loaded", which vLLM's single endpoint does not. I read this in the open inference protocol document. I did not verify every Triton flag around it.
+Triton exposes more. Its HTTP API follows the KServe protocol: `v2/health/live`, `v2/health/ready` and `v2/models/<name>/ready`. The protocol text says server ready means all models are ready, and that it can implement a Kubernetes readiness probe. So Triton separates "the process is up" from "the model is loaded", which vLLM's single endpoint does not.
 
-The other engines differ from vLLM, so do not assume they match. In TensorRT-LLM v1.2.1, `trtllm-serve` has `/health`, which returns 200 or 503 from the engine's own health check, and `/health_generate`, which runs a real one-token chat request. SGLang v0.5.23 is stricter. Its `/health` also sends a one-token generation by default, waits up to 20 seconds by default, and returns 503 while starting or shutting down. That is a deep check, but under load a slow answer can make a short-timeout probe fail. Ray Serve has two levels. The proxy answers `/-/healthz`, which is non-OK while it drains or has no route table. Each replica runs an optional `check_health` method, every 10 seconds with a 30 second timeout by default, and the controller restarts a replica whose check raises.
+I read this in the open inference protocol document. I did not verify every Triton flag around it.
+
+The other engines differ from vLLM, so do not assume they match. In TensorRT-LLM v1.2.1, `trtllm-serve` has `/health`, which returns 200 or 503 from the engine's own health check, and `/health_generate`, which runs a real one-token chat request. A one-token request asks the model for a single output token, which is a deeper check than asking whether the process is alive.
+
+SGLang v0.5.23 is stricter. Its `/health` also sends a one-token generation by default, waits up to 20 seconds by default, and returns 503 while starting or shutting down. That is a deep check, but under load a slow answer can make a short-timeout probe fail.
+
+Ray Serve has two levels. The proxy answers `/-/healthz`, which is non-OK while it drains or has no route table. Each replica runs an optional `check_health` method, every 10 seconds with a 30 second timeout by default, and the controller restarts a replica whose check raises.
 
 **Decide what each probe may kill, and make sure only a truly dead process can cause a restart.**
 
 ### 9. Upgrades and version skew
 
-A new vLLM release fixes a bug you hit. You deploy it, and p99 time to first token moves. Version changes are risky because many things depend on the version at once.
+A new vLLM release fixes a bug you hit. You deploy it, and p99 time to first token moves. Version changes are risky because many things depend on the version at once, and the first symptom you see may come from a part you did not change.
 
-The vLLM guide lists what invalidates the compile cache: any change to the model, config, relevant `VLLM_*` environment variables, the torch build, or the GPU model. So the first start after an upgrade is slow again. The prefix-caching page says `sha256` hashes may differ across Python or vLLM versions, so cache contents and any hash-based routing are not portable across versions. Defaults also move. The optimisation guide describes V1 defaults, such as chunked prefill on by default and recompute as the preemption mode, that older releases did not have.
+The vLLM guide lists what invalidates the compile cache: any change to the model, config, relevant `VLLM_*` environment variables, the torch build, or the GPU model. So the first start after an upgrade is slow again. The prefix-caching page says `sha256` hashes may differ across Python or vLLM versions, so cache contents and any hash-based routing are not portable across versions.
 
-Ray adds a second axis. Ray Serve LLM is installed with `pip install "ray[llm]"`, which pulls in vLLM. The Ray docs say most `engine_kwargs` that work with `vllm serve` also work there. So the vLLM version you run is chosen by the Ray release and your pin, not by a vLLM image tag alone. Record both.
+Defaults also move. The optimisation guide describes V1 defaults, such as chunked prefill on by default and recompute as the preemption mode, that older releases did not have.
 
-Chapter 20.18 section 12 covers router and engine version skew. The operating rule is a rollout plan with four parts. Pin by tag or digest. Pre-pull the image and warm the compile cache. Canary on a small slice and compare latency percentiles, preemptions and `finish_reason` shares. Keep the old version pods until the new ones pass.
+Ray adds a second axis. Ray Serve LLM is installed with `pip install "ray[llm]"`, which pulls in vLLM. The Ray docs say most `engine_kwargs` that work with `vllm serve` also work there. Engine kwargs are the engine's own options, passed through the orchestrator.
+
+So the vLLM version you run is chosen by the Ray release and your pin, not by a vLLM image tag alone. Record both, so that a later investigation can see which engine version was really running.
+
+Chapter 20.18 section 12 covers router and engine version skew, which is the case where the router and the engine are on different versions and disagree about the request format. The operating rule is a rollout plan with four parts. Pin by tag or digest. Pre-pull the image and warm the compile cache. Canary on a small slice and compare latency percentiles, preemptions and `finish_reason` shares. Keep the old version pods until the new ones pass.
 
 One cluster detail. My manifest sets `maxUnavailable: 0` and `maxSurge: 1`, which keeps all serving pods while the new one starts. That needs a spare GPU, or the surge pod stays Pending and the rollout stalls. With no spare GPU, use `maxUnavailable: 1` and `maxSurge: 0`, and accept lower capacity during the roll. That choice is my reasoning, not from a document.
+
+Think of the surge setting as a question about spare room. A surge pod is an extra pod that starts before an old one stops. If the cluster has no free GPU for it, the extra pod waits in Pending, and the roll stops until someone frees a card or changes the setting.
 
 **Never upgrade an engine without a canary and a way back, and budget for a slow first start.**
 
 ### 10. Reading each engine's metrics
 
-During an incident you have ten seconds to read the engine. Know which numbers answer "is the queue growing, is the cache full, is the engine alive".
+During an incident you have ten seconds to read the engine, and the page is already open in front of you. Know which numbers answer "is the queue growing, is the cache full, is the engine alive". Those three questions cover most of the first minute.
 
 For vLLM, chapter 20.18 section 1 has the names: waiting requests, running requests, KV cache usage, preemptions, time to first token and inter-token latency. Do not repeat them here. Add one operating habit. Set `disable_log_stats=False` if you want cumulative preemption counts in the log, as the optimisation guide says.
 
-Triton publishes Prometheus metrics on port 8002 by default, at `/metrics`. Useful ones from its metrics page are `nv_inference_pending_request_count`, which is the queue size per model, and `nv_inference_queue_duration_us`, the cumulative wait in the scheduler queue. The failure counter `nv_inference_request_failure` carries reasons such as REJECTED for scheduler timeouts and BACKEND for failures inside the model. The latency histograms appear only when `summary_latencies` is set to `simplified`. The default publishes counters only.
+A cumulative count only goes up, so a single reading tells you little. Watch how it moves over time.
 
-Ray Serve LLM provides service-level metrics, engine metrics such as time to first token and time per output token, and a Grafana dashboard. For TensorRT-LLM v1.2.1, `/metrics` returns runtime iteration statistics as JSON, and the docs say entries are removed once read, so poll it from one collector only. For the PyTorch backend it needs `enable_iter_perf_stats: true` and is marked beta in the docs. SGLang publishes Prometheus metrics with `--enable-metrics`, including `sglang:num_queue_reqs`, `sglang:token_usage`, `sglang:queue_time_seconds` and `sglang:time_to_first_token_seconds`.
+Triton publishes Prometheus metrics on port 8002 by default, at `/metrics`. Prometheus is the common metrics format that many dashboards read. Useful ones from its metrics page are `nv_inference_pending_request_count`, which is the queue size per model, and `nv_inference_queue_duration_us`, the cumulative wait in the scheduler queue. The failure counter `nv_inference_request_failure` carries reasons such as REJECTED for scheduler timeouts and BACKEND for failures inside the model.
+
+The latency histograms appear only when `summary_latencies` is set to `simplified`. The default publishes counters only, so a dashboard that expects latency percentiles will be empty until you change that setting.
+
+Ray Serve LLM provides service-level metrics, engine metrics such as time to first token and time per output token, and a Grafana dashboard. For TensorRT-LLM v1.2.1, `/metrics` returns runtime iteration statistics as JSON. The docs say entries are removed once read, so poll it from one collector only. If two collectors poll it, each one sees only part of the data.
+
+For the PyTorch backend it needs `enable_iter_perf_stats: true` and is marked beta in the docs. SGLang publishes Prometheus metrics with `--enable-metrics`, including `sglang:num_queue_reqs`, `sglang:token_usage`, `sglang:queue_time_seconds` and `sglang:time_to_first_token_seconds`.
 
 | Question | vLLM | Triton | Ray Serve LLM |
 |---|---|---|---|
@@ -201,9 +283,13 @@ Ray Serve LLM provides service-level metrics, engine metrics such as time to fir
 | Is the cache full? | KV usage gauge | Not on the core metrics page, backend-specific | vLLM engine metrics such as GPU cache utilization |
 | Is it failing? | 503 on `/health` when the engine is dead | `nv_inference_request_failure` by reason | `ray_serve_deployment_error_counter_total` by exception type |
 
+Use the table as a lookup, not as a script. Find the question you are asking, read across to the engine you run, and then open the page for that engine's metric name. Each row is one question an on-call engineer asks during an incident, and the columns are vLLM, Triton and Ray Serve LLM.
+
 **Build one dashboard row per question, not per engine, so that the on-call person reads the same four answers whichever engine is behind the endpoint.**
 
 ### 11. The one-page comparison
+
+Here is the question you will be asked in a chat thread: which engine, and what do the numbers tell you about it. The table below is the page you can paste back, one row per question.
 
 | Dimension | vLLM | TensorRT-LLM | Triton | Ray Serve LLM | SGLang |
 |---|---|---|---|---|---|
@@ -214,53 +300,71 @@ Ray Serve LLM provides service-level metrics, engine metrics such as time to fir
 | Health | `/health` 200 or 503 | `/health` 200 or 503, and `/health_generate` runs a one-token request | live, ready, model ready | Proxy `/-/healthz`, and a replica `check_health` method | `/health` and `/health_generate`, both a one-token generation by default |
 | Metrics | `/metrics` vLLM names | `/metrics` iteration stats, Prometheus at `/prometheus/metrics` only with perf metrics on | `/metrics` on 8002 | Ray metrics export, with `ray_serve_` and engine metrics | `/metrics` with `--enable-metrics`, `sglang:` names |
 
-Every cell above was read from the cited version. The cells that say "not on the page" mean I did not find the item, so check your version.
+Every cell above was read from the cited version. Honest note: the cells that say "not on the page" mean I did not find the item in the docs I read, so check the item against your version before you rely on it.
 
 **Memorise the layer and the one strength of each tool, and say plainly which cells you have not verified.**
 
 ## How to answer out loud
 
-**Question 1. "When would you pick vLLM over TensorRT-LLM or Triton?"** Start with the layer: Triton is a server and can host either engine, so the real choice is vLLM versus TensorRT-LLM. Pick vLLM when you serve many open models, change them often, want a large community, or run on mixed hardware. Pick TensorRT-LLM when you are all-NVIDIA, run a few stable models at high volume, and the efficiency gain repays tighter version and hardware coupling. Pick Triton when you also serve non-LLM models and want one health, metrics and repository surface. Close with your decision rule: benchmark both on your traffic with the same objective, and count the operating cost, not only tokens per second. Expect the follow-up "what did you measure", so name time to first token, inter-token latency and goodput.
+The panel has a few minutes left, and the interviewer leans back and asks a choice question. Answer it the way you would in a design review, with the rule first and the evidence second.
 
-**Question 2. "The pod OOMs at start. Walk me through it."** Ask whether it died at start or after traffic. At start, add up weights, activation peak and graph memory against the utilisation fraction. Lower `max_model_len` or the fraction, or free the GPU if another process holds memory. After traffic, lower the token budget and cap prompt length at the gateway. State the numbers from section 3 and say that the 5 GB overhead is an assumption.
+**Question 1. "When would you pick vLLM over TensorRT-LLM or Triton?"** Begin with the layer, because that is where the question is hiding. Triton is a server and can host either engine, so the real choice is vLLM versus TensorRT-LLM. Pick vLLM when you serve many open models, change them often, want a large community, or run on mixed hardware. Pick TensorRT-LLM when you are all-NVIDIA, run a few stable models at high volume, and the efficiency gain repays tighter version and hardware coupling. Pick Triton when you also serve non-LLM models and want one health, metrics and repository surface.
 
-**Question 3. "Which flags would you review in this command line?"** Say you would run a reviewer, then name the ones that bite: tensor times pipeline against GPUs, chunked prefill off with a small budget, an explicit KV size overriding the fraction, eager mode in production, and a sequence cap far above what the cache holds. Mention that each check ties to a documented behaviour, and that the tool also prints which document.
+Close with your decision rule. Benchmark both on your traffic with the same objective, and count the operating cost, not only tokens per second. Expect the follow-up "what did you measure", so name time to first token, inter-token latency and goodput, which is the useful throughput that still meets the latency target.
+
+**Question 2. "The pod OOMs at start. Walk me through it."** Start by asking whether it died at start or after traffic, because the two cases have different causes. At start, add up weights, activation peak and graph memory against the utilisation fraction. Lower `max_model_len` or the fraction, or free the GPU if another process holds memory. After traffic, lower the token budget and cap prompt length at the gateway. State the numbers from section 3 and say that the 5 GB overhead is an assumption.
+
+**Question 3. "Which flags would you review in this command line?"** Say you would run a reviewer first, so the interviewer hears a method before a list. Then name the ones that bite: tensor times pipeline against GPUs, chunked prefill off with a small budget, an explicit KV size overriding the fraction, eager mode in production, and a sequence cap far above what the cache holds. Mention that each check ties to a documented behaviour, and that the tool also prints which document it used.
 
 **Question 4. "How do you size liveness and readiness probes for a slow-starting engine?"** Measure start-up first, then add a startup probe with a threshold large enough for the slowest start. The vLLM Kubernetes guide says a low failure threshold gets the container killed with a log line "KeyboardInterrupt: terminated". Keep liveness forgiving and put load decisions in readiness. Mention that `/health` proves the engine is alive, not that it is fast.
 
-**Question 5. "How do you upgrade the engine safely?"** Pin by digest, pre-pull, warm caches, canary, compare p99 and preemptions, then roll with surge if you have a spare GPU. Name the cache invalidation and the hash non-portability across versions. Say the rollback is the old image plus the old flags in version control.
+**Question 5. "How do you upgrade the engine safely?"** Pin by digest, pre-pull, warm caches, canary, compare p99 and preemptions, then roll with surge if you have a spare GPU. Name the cache invalidation and the hash non-portability across versions. Say the rollback is the old image plus the old flags in version control, so the way back is written down before you need it.
 
 ## Worked scenarios
 
+Three short cases follow. Each one starts from a symptom you could see on call, and each one walks to a fix you could defend in the room.
+
 ### Scenario A. The command line that passes review and still preempts
 
-The command is `--max-model-len=16384 --max-num-seqs=128 --max-num-batched-tokens=8192 --gpu-memory-utilization=0.90` on one H100 serving Llama 3.1 8B. The reviewer reports no errors. Preemptions still rise every afternoon.
+Picture this. A team hands you a command that works, and the reviewer passes it without complaint. Yet the dashboards show preemptions climbing every afternoon. Your task is to explain why a clean review does not mean a healthy afternoon. The command is `--max-model-len=16384 --max-num-seqs=128 --max-num-batched-tokens=8192 --gpu-memory-utilization=0.90` on one H100 serving Llama 3.1 8B.
 
-Step 1. Read the start-up log for "GPU KV cache size". With the section 3 inputs, the cache holds about 389,100 tokens. Step 2. Divide by `max-num-seqs`. The average request can be only about 3,040 tokens before 128 running requests fill the cache. Step 3. Compare with traffic. If the afternoon average prompt plus output is 4,000 tokens, the cache cannot hold the batch, so vLLM preempts and recomputes.
+Step 1. Read the start-up log for "GPU KV cache size". With the section 3 inputs, the cache holds about 389,100 tokens.
 
-Answer. Lower `max-num-seqs` to what the cache holds at the real average length. Here 389,100 divided by 4,000 is about 97, so a cap near 90 leaves some margin. Or quantise to grow the cache. The reviewer prints this as information when you give it the log's token count, as the lab shows.
+Step 2. Divide by `max-num-seqs`. The average request can be only about 3,040 tokens before 128 running requests fill the cache.
+
+Step 3. Compare with traffic. If the afternoon average prompt plus output is 4,000 tokens, the cache cannot hold the batch, so vLLM preempts and recomputes.
+
+Answer. Lower `max-num-seqs` to what the cache holds at the real average length. Here 389,100 divided by 4,000 is about 97, so a cap near 90 leaves some margin for the requests that run longer than average. Or quantise to grow the cache. The reviewer prints this as information when you give it the log's token count, as the lab shows.
 
 ### Scenario B. Slow rollout, pods killed during start
 
-A rollout of eight replicas shows pods restarting and `kubectl get events` says "Container vllm failed startup probe, will be restarted". The log of the dying container ends with "KeyboardInterrupt: terminated".
+A rollout of eight replicas shows pods restarting, and `kubectl get events` says "Container vllm failed startup probe, will be restarted". The log of the dying container ends with "KeyboardInterrupt: terminated". The on-call engineer sees a healthy image and wonders whether the engine itself is broken.
 
-Step 1. This matches the troubleshooting section of the vLLM Kubernetes guide. The failure threshold is too low for the time to start. Step 2. Time a start without probes, as the guide suggests. Suppose it takes 400 seconds including a fresh image pull. Step 3. The manifest uses a 10 second period and a threshold of 90, which gives a 900 second budget. That figure is my choice, about twice the measured start.
+Step 1. This matches the troubleshooting section of the vLLM Kubernetes guide. The failure threshold is too low for the time to start.
 
-Answer. Raise the startup probe budget above the measured start, pre-pull the image so it drops, and stagger the roll so the weight loads do not all hit storage at once. Chapter 20.18 section 7 covers the thundering herd.
+Step 2. Time a start without probes, as the guide suggests. Suppose it takes 400 seconds including a fresh image pull.
+
+Step 3. The manifest uses a 10 second period and a threshold of 90, which gives a 900 second budget. That figure is my choice, about twice the measured start.
+
+Answer. Raise the startup probe budget above the measured start, pre-pull the image so it drops, and stagger the roll so the weight loads do not all hit storage at once. Chapter 20.18 section 7 covers the thundering herd, which is the name for many clients or pods hitting one resource at the same moment.
 
 ### Scenario C. Picking an engine for a new customer
 
-A customer needs a 70B model with a strict time to first token, on eight H100s, for a year. Another team serves forty small open models.
+Two requests land on your desk in the same week. A customer needs a 70B model with a strict time to first token, on eight H100s, for a year. Another team serves forty small open models.
 
-Step 1. For the 70B model, tensor parallel across the eight GPUs on one node is the documented default shape. Step 2. A year of one stable model is the case where TensorRT-LLM's tighter tuning may repay its coupling to GPU and version. That is a hypothesis, so benchmark both under the same load. Step 3. For the forty small models, vLLM's flexibility and one process per model fit better. Triton helps only if some models are not LLMs.
+Step 1. For the 70B model, tensor parallel across the eight GPUs on one node is the documented default shape.
 
-Answer. Say "benchmark both for the big one, vLLM by default for the many", and state what would change your mind: a measured gap on the SLO, a hardware change, or an engine version you cannot pin.
+Step 2. A year of one stable model is the case where TensorRT-LLM's tighter tuning may repay its coupling to GPU and version. That is a hypothesis, so benchmark both under the same load.
+
+Step 3. For the forty small models, vLLM's flexibility and one process per model fit better. Triton helps only if some models are not LLMs.
+
+Answer. Say "benchmark both for the big one, vLLM by default for the many", and state what would change your mind: a measured gap on the SLO, a hardware change, or an engine version you cannot pin. An SLO is the service level objective, the target the team has promised to hit.
 
 ## The code
 
 ### Engine config reviewer
 
-The reviewer turns a `vllm serve` command line into findings. Each finding names the rule, a severity and the document or source file that states the behaviour. Rules I could not tie to a document are marked as inference in the message. The file is standard library only.
+Think of the reviewer as a checklist that reads a command the way a careful colleague would. It turns a `vllm serve` command line into findings. Each finding names the rule, a severity and the document or source file that states the behaviour. Rules I could not tie to a document are marked as inference in the message. The file is standard library only, so it runs on a bare laptop.
 
 ```python
 #!/usr/bin/env python3
@@ -507,7 +611,7 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-The tests cover each rule with one passing and one failing input.
+Read the tests before you trust the code. Each test names one rule and feeds it one input that should pass and one that should fail, so you can see the edge of the rule.
 
 ```python
 import os
@@ -627,7 +731,7 @@ def test_cli_exit_code(capsys):
 
 ### Kubernetes Deployment for vLLM
 
-This manifest runs two replicas of one model with a pinned image, GPU and memory resources, a shared-memory volume, a model cache volume, and three probes. The comments in the file give the kubeconform command.
+Picture yourself as the reviewer for this file before it reaches the cluster. This manifest runs two replicas of one model with a pinned image, GPU and memory resources, a shared-memory volume, a model cache volume, and three probes. The comments in the file give the kubeconform command.
 
 ```yaml
 # vLLM v0.32.0 on Kubernetes: one GPU, one model, probes sized for a slow start.
@@ -730,13 +834,19 @@ spec:
       targetPort: http
 ```
 
-Design choices, all mine except where noted. The startup probe has a 900 second budget, so liveness and readiness do not begin until the engine is up. The vLLM guide's own example mounts `/dev/shm` as memory-backed storage for tensor parallel inference, and uses `/health` for liveness and readiness. Liveness here has a longer period, a longer timeout and six failures, so a busy engine is not killed. The memory limit is higher than the request to leave room for loading. The Secret and the PVC must exist before the pod can start. Kubeconform checks only the schema, not these references.
+Read the manifest from the top down. The image tag comes first because it sets the behaviour of everything below it, and the probes come next because they decide when a pod is killed or taken out of rotation.
+
+Design choices, all mine except where noted. The startup probe has a 900 second budget, so liveness and readiness do not begin until the engine is up. The vLLM guide's own example mounts `/dev/shm` as memory-backed storage for tensor parallel inference, and uses `/health` for liveness and readiness.
+
+Liveness here has a longer period, a longer timeout and six failures, so a busy engine is not killed. The memory limit is higher than the request to leave room for loading. The Secret and the PVC must exist before the pod can start. Kubeconform checks only the schema, not these references, so a missing Secret passes validation and fails at run time.
 
 ## Hands-on lab
 
+You have a laptop with Docker and a short block of time. The steps below let you see the reviewer catch a bad command before a GPU host is free.
+
 Steps 1 to 4 ran on this Mac. Step 5 needs a GPU host and was not run.
 
-1. Run the tests.
+1. Run the reviewer's test file first. A passing run tells you the tool works before you trust its verdicts.
 
 ```bash
 python3 -m pytest -q code/part20/test_c22_vllm_config_review.py
@@ -744,7 +854,7 @@ python3 -m pytest -q code/part20/test_c22_vllm_config_review.py
 
 Expected result, observed: 19 passed.
 
-2. Review the command line from Scenario A, supplying the cache size from the section 3 arithmetic.
+2. Review the Scenario A command line. Supply the cache size from the section 3 arithmetic.
 
 ```bash
 python3 code/part20/c22_vllm_config_review.py --gpus-per-node 1 --gpu-arch hopper --kv-cache-tokens 389100 -- vllm serve m --max-model-len=16384 --max-num-seqs=128 --max-num-batched-tokens=8192 --gpu-memory-utilization=0.90
@@ -752,7 +862,7 @@ python3 code/part20/c22_vllm_config_review.py --gpus-per-node 1 --gpu-arch hoppe
 
 Expected result, observed: one information finding, with the line "max-num-seqs=128 is above 23.75".
 
-3. Review a broken command line.
+3. Review a command line with several known faults. Read every finding, not only the first one.
 
 ```bash
 python3 code/part20/c22_vllm_config_review.py --gpus-per-node 8 --gpu-arch ampere -- vllm serve m --tensor-parallel-size 16 --no-enable-chunked-prefill --max-num-batched-tokens 4096 --max-model-len 32768 --quantization fp8 --prefix-caching-hash-algo xxhash
@@ -760,13 +870,13 @@ python3 code/part20/c22_vllm_config_review.py --gpus-per-node 8 --gpu-arch amper
 
 Expected result, observed: two errors, `chunked-prefill-budget` and `world-size-exceeds-gpus`, three warnings, and exit code 1.
 
-4. Validate the manifest, then break it on purpose.
+4. Validate the manifest with kubeconform. Then break it on purpose, so you can see the message a real mistake would produce.
 
 ```bash
 kubeconform -strict -summary -kubernetes-version 1.31.0 code/part20/c22_vllm_deployment.yaml
 ```
 
-Expected result, observed: "Valid: 2, Invalid: 0". Changing `failureThreshold: 90` to a string made kubeconform report "got string, want null or integer".
+Expected result, observed: "Valid: 2, Invalid: 0". Changing `failureThreshold: 90` to a string made kubeconform report "got string, want null or integer". That message is the schema check doing its job.
 
 5. On a GPU host with Docker and the NVIDIA runtime, start the pinned image and watch the start-up log. Not run.
 
@@ -775,6 +885,8 @@ docker run --rm --gpus all --ipc=host -p 8000:8000 vllm/vllm-openai:v0.32.0 --mo
 ```
 
 Expected shape of the output, from the docs and not observed: lines for weight loading time, "GPU KV cache size" and "Maximum concurrency", then "Application startup complete". Then `curl -i localhost:8000/health` returns 200. Feed the token count into step 2 and compare.
+
+Your logged token count will probably differ from the table's, because the table used the 5 GB overhead as an assumption. Use your own number, and then rerun step 2 with it.
 
 ## Drill questions
 
@@ -820,14 +932,18 @@ When you serve many open models that change often, run mixed hardware, or value 
 
 ## Common mistakes and weak answers
 
+Here are the mistakes that show up most often in weak answers on this topic. Each one is easy to avoid once you can name it.
+
 - Saying "vLLM versus Triton" as if they were the same kind of thing. Say that Triton is a server layer that can host an engine, then compare engines.
 - Quoting a default from memory. Say "the v0.32.0 class says 0.92, and I would read the start-up log for the value in force".
-- Treating `/health` as proof of service quality. Say what it checks and what you would add.
-- Turning on speculative decoding or a new quantisation for everyone at once. Say canary, quality check, and rollback.
-- Setting `max_num_seqs` without reading the cache size. Show the division from section 3.
+- Treating `/health` as proof of service quality. Say what it checks and what you would add on top.
+- Turning on speculative decoding or a new quantisation for everyone at once. Say canary, quality check, and rollback, in that order.
+- Setting `max_num_seqs` without reading the cache size. Show the division from section 3 out loud.
 - Claiming a number for Nebius. Say "Nebius has not published this, and a reasonable design is...".
 
 ## Connections to the rest of the handbook
+
+Suppose a colleague finishes this chapter and asks where the next topic lives. The links below point to the chapters that build on these engines, and to the chapters that cover the surrounding systems.
 
 - 20.12 Estimation toolkit (`c20-12`) gives the KV-per-token formula used in section 3.
 - 20.13 Design: multi-tenant LLM API (`c20-13`) places these engines behind a gateway.
