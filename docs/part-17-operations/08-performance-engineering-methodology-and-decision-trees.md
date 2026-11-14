@@ -29,7 +29,7 @@ Picture a training job that used to finish overnight and now runs past the morni
 
 The payoff is both speed and money. A team that finds the real bottleneck can often run the same work on fewer GPUs, with lower latency. A team that skips that step tends to pay for capacity its workload never uses.
 
-Busy time alone can mislead you. AI Systems Performance Engineering, chapter 20, points out that a GPU can look fully busy while it moves redundant data, and that this work is not productive. The book's advice is to measure goodput, the useful work actually delivered, and not only how busy the device is.
+Busy time alone can mislead you. AI Systems Performance Engineering, chapter 20, points out that a GPU can look fully busy while it moves redundant data, and that this work is not productive. The same source advises measuring goodput, the useful work actually delivered, and not only how busy the device is.
 
 The block below states the argument in short form. Its percentages and dollar amounts are illustrative, not measured, so check them against your own platform before you quote them.
 
@@ -65,13 +65,7 @@ Before you use the methods in this chapter, check that you know the material the
 
 ### Outcomes
 
-By the end of this chapter, you should be able to:
-
-1. Use the USE method to find the bottleneck, by checking utilisation, saturation and errors.
-2. Use the roofline model to estimate how fast a kernel can run.
-3. Follow the performance decision tree to the likely bottleneck.
-4. Compare the cost of more GPUs with the cost of more latency, in one explicit model.
-5. Run a capacity forecast and the performance stack on GKE as a repeatable routine.
+This chapter walks through four tools for slow or expensive workloads: the USE method, the roofline model, the performance decision tree and the cost-versus-latency trade-off. It then shows how to forecast capacity, and it ends with the GKE lab, where you run the whole stack as a routine you can repeat.
 
 ---
 
@@ -79,9 +73,11 @@ By the end of this chapter, you should be able to:
 
 ### 1.1 The USE method in detail
 
-Imagine you are paged with one line: the workload is slow. You do not yet know whether the GPU, the disk, the network or the code is at fault. The USE method gives you a fixed set of questions, so you check every resource in the same order each time. The handbook's source for the method is *Systems Performance*.
+Picture the page itself. It has one line in it: the workload is slow. You do not yet know whether the GPU, the disk, the network or the code is at fault, and the team is waiting for an answer. The USE method gives you a fixed set of questions, so you check every resource in the same order each time, instead of starting with whatever you happen to suspect. The handbook's source for the method is *Systems Performance*.
 
-For each resource, the method asks three questions. How busy is it? Is work waiting in a queue? Is it producing errors? The table is a checklist that names the metric to pull for each resource, so do not skip a row just because you do not suspect it.
+For each resource, the method asks three questions. How busy is it? Is work waiting in a queue? Is it producing errors? Busy means the resource is doing work. Waiting means requests are lining up behind it, and that is the sign of saturation. Errors are the faults the resource reports, such as a bad memory bit or a failed I/O. The table is a checklist that names the metric to pull for each resource, so do not skip a row just because you do not suspect it. The rows you skip are often the ones that hide the problem.
+
+A practical habit helps here. Write the three answers for each resource in a shared note before anyone names a cause. Teams that skip this step tend to argue from memory, and memory favours the resource that was broken last week.
 
 | Resource | Utilisation | Saturation | Errors |
 |---|---|---|---|
@@ -92,11 +88,15 @@ For each resource, the method asks three questions. How busy is it? Is work wait
 | **Network** | Bandwidth utilisation | Queue depth, dropped packets | CRC errors, link flaps |
 | **Storage** | Object store request rate | 5xx rate, latency p99 | Object lock failures, 4xx rate |
 
-The bottleneck is the resource that stands out on one or more of the three questions. Fix that resource, then measure again, because a fix often exposes the next limit.
+The bottleneck is the resource that stands out on one or more of the three questions. Fix that resource, then measure again, because a fix often exposes the next limit. A team that stops after the first fix may find the same symptom again, one layer further down the stack.
+
+Expect the bottleneck to move. A system that is limited by storage today may be limited by the network after the storage fix, and that is normal.
 
 ### 1.2 The USE method in action
 
-Here is the check applied to a slow workload. Each resource gets a short line with its three readings and a verdict. The lines are example data, so read them for the pattern, not the exact values.
+Picture the same page, now with the metrics open on the screen. The workload is slow, and each resource shows its three readings. Here is the check applied to a slow workload. Each resource gets a short line with its three readings and a verdict. The lines are example data, so read them for the pattern, not the exact values.
+
+Notice that the check goes resource by resource, and the reading for each one stays on the page while you decide. That habit makes the verdict easy to defend when someone asks why a resource was ruled out.
 
 ```text
 USE method application:
@@ -118,11 +118,15 @@ USE method application:
   - The storage is not the bottleneck
 ```
 
-The disk stands out. Its queue depth is 50, which means 50 requests are waiting at the same time, and that queue is the clue. The remedy is either faster storage or fewer, larger reads. The whole check took one pass over the metrics, before anyone opened a profiler.
+The disk stands out. Its queue depth is 50, which means 50 requests are waiting at the same time, and that queue is the clue. The utilisation alone looked moderate, so a glance at a single panel would have missed it. The remedy is either faster storage or fewer, larger reads. The whole check took one pass over the metrics, before anyone opened a profiler, and that order of work is the point of the method.
+
+The lesson is about order more than about disks. A team that starts with the GPU panel would have spent its time on the wrong resource, while the table pointed straight at the queue.
 
 ### 1.3 The USE method as a Grafana dashboard
 
-Checking these metrics by hand every time is slow, so put them on one screen. A Grafana dashboard with one panel per metric becomes the on-call engineer's first page. Give each resource its three panels, for utilisation, saturation and errors.
+Picture an on-call engineer who opens six different tools at midnight to collect the same readings they collected last week. Checking these metrics by hand every time is slow, so put them on one screen. A Grafana dashboard with one panel per metric becomes the on-call engineer's first page. Give each resource its three panels, for utilisation, saturation and errors. Grafana is the open-source dashboard tool, and it can read its data from Prometheus.
+
+The dashboard does not replace the table. It is the same table, drawn as panels, so the same checks happen in the same order.
 
 ```yaml
 # code/part17/use_method_dashboard.json
@@ -143,17 +147,23 @@ Checking these metrics by hand every time is slow, so put them on one screen. A 
 }
 ```
 
-Build this dashboard on a quiet day, not in the middle of an incident. Once it exists, the next on-call can start the USE method from the same page you used.
+Build this dashboard on a quiet day, not in the middle of an incident. Test each panel against a known workload, so you know the query returns a real number before anyone relies on it. Once it exists, the next on-call engineer can start the USE method from the same page you used.
+
+A dashboard built during an incident tends to have wrong queries, missing labels and panels nobody needed. Build it when nothing is on fire, then keep it ready for the next page.
 
 ## 2. The roofline model
 
 ### 2.1 The roofline model in detail
 
-Suppose a kernel runs well below what the GPU can deliver. You need to know whether the limit is the arithmetic units or the memory system, because the fixes are different. The roofline model answers that question with one number, the arithmetic intensity, which is how much math a kernel does for each byte it moves.
+Picture a kernel that runs far slower than the GPU's spec sheet promises. You need to know whether the limit is the arithmetic units or the memory system, because the fixes are different. Suppose a kernel runs well below what the GPU can deliver. The roofline model answers that question with one number, the arithmetic intensity, which is how much math a kernel does for each byte it moves. A kernel is a small program that runs on the GPU, and each one has its own intensity.
 
-The model caps performance with two lines. One is the compute peak. The other rises with intensity and is set by memory bandwidth. Where they meet is the ridge point. A kernel left of the ridge waits on memory, and a kernel right of it waits on arithmetic.
+The model caps performance with two lines, which is why it is called a roofline. One line is the compute peak, the most math per second the chips can do. The other line rises with intensity and is set by memory bandwidth, the most bytes per second the memory can move. Where the two lines meet is the ridge point. A kernel left of the ridge waits on memory, and a kernel right of it waits on arithmetic. Picture a roof with a slope on one side and a flat top on the other, and the kernel sits somewhere under it.
 
-AI Systems Performance Engineering, chapter 8, shows how to get this picture from a tool. Nsight Compute has a roofline section that plots each kernel's achieved performance against both roofs. It also reports the kernel's arithmetic intensity directly, so you do not have to count it by hand.
+A quick way to place a kernel is to ask whether it moves a lot of data for very little math. Simple element-wise operations, such as adding two tensors, usually do that, and they tend to sit left of the ridge. Large matrix multiplies do the opposite, and they tend to sit right of it.
+
+AI Systems Performance Engineering, chapter 8, shows how to get this picture from a tool. Nsight Compute has a roofline section that plots each kernel's achieved performance against both roofs. It also reports the kernel's arithmetic intensity directly, so you do not have to count it by hand. Nsight Compute is NVIDIA's kernel profiler, and it is the source of the measured numbers that the rest of this section relies on.
+
+Use the roofline as a guide for where to look, not as a promise about speed. The real run includes effects that a roofline leaves out.
 
 ```text
 Roofline model:
@@ -168,11 +178,13 @@ H100 roofline (FP16):
 - I_ridge: 295 FLOP/byte
 ```
 
-The ridge point is simply the compute peak divided by the bandwidth. For these H100 figures, that gives about 295 FLOP per byte. For each kernel, compute its intensity, compare it with the ridge, and decide which side it falls on. The fix depends on the answer.
+The ridge point is simply the compute peak divided by the bandwidth. For these H100 figures, that gives about 295 FLOP per byte. For each kernel, compute its intensity, compare it with the ridge, and decide which side it falls on. The fix depends on the answer. A memory-bound kernel needs better access patterns, while a compute-bound kernel needs more arithmetic throughput, so a wrong guess sends the team to the wrong part of the code.
+
+The ridge point is a property of the hardware, not of your code. Every kernel on the same GPU is judged against the same ridge, so you compute it once for each GPU type and keep it in the team notes.
 
 ### 2.2 The roofline model in action
 
-Take a transformer attention kernel as the example. Before you decide on a fix, you need its arithmetic intensity. The block below works through the counts for one set of sizes.
+Picture a team that wants to speed up the attention step of a transformer, the part of the model that lets each token look at the others. Before they decide on a fix, they need its arithmetic intensity. Take a transformer attention kernel as the example. The block below works through the counts for one set of sizes, so you can see each step.
 
 ```text
 Attention kernel arithmetic intensity:
@@ -188,11 +200,13 @@ Comparison to H100 ridge point (295 FLOP/byte):
 - The optimisation is to increase the compute peak (use FP8; use Tensor Cores)
 ```
 
-On these counts, the kernel looks compute-bound, so the chapter suggests lower precision or fuller use of Tensor Cores. Check the counts before you act on them. A wrong byte count changes the answer, and the roofline is only as good as the numbers you feed it.
+On these counts, the kernel looks compute-bound, so the chapter suggests lower precision or fuller use of Tensor Cores. Tensor Cores are the units inside the GPU that do matrix math very quickly. Check the counts before you act on them. A wrong byte count changes the answer, and the roofline is only as good as the numbers you feed it.
+
+Work through the same steps for each kernel on your shortlist. Keep the numbers in a short table with the bytes, the FLOPs, the intensity and the side of the ridge. A table like that turns a debate about one kernel into a comparison the whole team can check.
 
 ### 2.3 The roofline model as a profiling tool
 
-Once you have a roofline, use it as a yardstick for every kernel you profile. Measure what the kernel actually achieves and compare it with the roof. The distance between the two is the room you have to improve.
+Picture a profile full of kernels, and only one of them is slow. Once you have a roofline, use it as a yardstick for every kernel you profile. Measure what the kernel actually achieves and compare it with the roof. The distance between the two is the room you have to improve. A kernel that is already close to its roof has little left to gain, however much you rewrite it.
 
 ```text
 Roofline analysis:
@@ -210,15 +224,21 @@ Roofline analysis:
 - Optimisation opportunity: close the 55% gap; use vector loads; reduce memory accesses
 ```
 
-Be careful where the numbers come from. AI Systems Performance Engineering, chapter 8, notes that the PyTorch profiler's FLOP counts are formula-based estimates for a limited set of operators. They do not come from hardware counters. For measured numbers, run Nsight Compute on the kernel you care about.
+Be careful where the numbers come from. AI Systems Performance Engineering, chapter 8, notes that the PyTorch profiler's FLOP counts are formula-based estimates for a limited set of operators. They do not come from hardware counters. A formula can miss an operator entirely, and nothing in the printed output tells you that the intensity is off. For measured numbers, run Nsight Compute on the kernel you care about.
 
-Pick the one kernel that matters most to your service, and compute its roofline before you change anything.
+When in doubt, measure the kernel once and compare the measured number with the formula. A large gap tells you which numbers to distrust.
+
+Pick the one kernel that matters most to your service, and compute its roofline before you change anything. One careful measurement on the hot kernel is worth more than many guesses about the cold ones.
+
+Keep the roofline plot with the ticket for the change, so the next engineer can see the gap that justified the work.
 
 ## 3. The performance decision tree
 
 ### 3.1 The decision tree structure
 
-The USE table asks you to check every resource. When you are under pressure, you want a shorter route to the same answer. The decision tree is that route. Each question has a yes or no answer, and each answer moves you one step closer to a likely cause.
+Picture the on-call engineer at a slow hour, with one question to answer before the next page arrives. The USE table asks you to check every resource. When you are under pressure, you want a shorter route to the same answer. The decision tree is that route. Each question has a yes or no answer, and each answer moves you one step closer to a likely cause.
+
+Use the tree for speed and the table for completeness. The tree answers the question you are asked now, and the table makes sure you did not skip a resource that could be the real cause.
 
 ```mermaid
 flowchart TD
@@ -241,11 +261,15 @@ flowchart TD
     N -- no --> R[Profile kernel<br/>find bottleneck]
 ```
 
-The percentages in the diamonds, such as 90 percent, are example thresholds. Your team should choose its own values from its own workloads. One more point comes from AI Systems Performance Engineering, chapter 16. If GPU utilisation is lower than you expect, check GPU memory first. When memory is nearly full, the inference engine may be moving cache data to host memory or disk, and the GPUs sit idle while they wait. A rise in copy-engine activity while SM utilisation falls is a sign of that swapping.
+The percentages in the diamonds, such as 90 percent, are example thresholds. Your team should choose its own values from its own workloads. One more point comes from AI Systems Performance Engineering, chapter 16. If GPU utilisation is lower than you expect, check GPU memory first. When memory is nearly full, the inference engine may be moving cache data to host memory or disk, and the GPUs sit idle while they wait. A rise in copy-engine activity while SM utilisation falls is a sign of that swapping. The copy engine is the part of the GPU that moves data, and it runs alongside the compute units.
+
+Thresholds drift as the workload changes, so write the date next to each one. A threshold set during a quiet quarter can be wrong after a new model ships, and the date tells the next reviewer when to look again.
 
 ### 3.2 The decision tree in action
 
-Suppose the training job is slow and the on-call starts at the top of the tree. The walk below follows the steps the way the tree asks them. Each step records a reading and a decision.
+Suppose the training job is slow and the on-call starts at the top of the tree. The walk below follows the steps the way the tree asks them. Each step records a reading and a decision, so anyone who reads the log later can see why the team went where it did.
+
+Keep the walk short when you can. Each extra step is another reading to collect while the job is still slow, and that adds up under pressure.
 
 ```text
 Decision tree application:
@@ -257,11 +281,15 @@ Decision tree application:
 - Step 10: Network QoS applied -> training is faster
 ```
 
-The walk ends at the network. The fix was QoS, and the workload improved. The example ends in a network fix rather than a GPU change, which is the kind of result the tree is meant to reach.
+The walk ends at the network. The fix was QoS, which is a way of giving important traffic priority over the rest, and the workload improved. The example ends in a network fix rather than a GPU change, which is the kind of result the tree is meant to reach. Without the tree, the first instinct would have been to buy more GPUs.
+
+Notice what the example did not do. It did not add GPUs, and it did not change the model. The tree pointed at the cheapest branch that the readings supported, and that discipline is what keeps the cost down.
 
 ### 3.3 The decision tree as a Grafana dashboard
 
-The same questions can live on a Grafana dashboard, with one stat panel per question. Each panel shows the current answer, so the on-call does not have to type the queries again. The last panel is a text placeholder for the recommended fix, and someone has to write that logic for it.
+Picture a shift change, where the next on-call engineer has never seen the tree before. The same questions can live on a Grafana dashboard, with one stat panel per question. Each panel shows the current answer, so the on-call engineer does not have to type the queries again. The last panel is a text placeholder for the recommended fix, and someone has to write that logic for it.
+
+Name each panel with its question, not with its metric, so the on-call engineer reads the decision first.
 
 ```yaml
 # code/part17/decision_tree_dashboard.json
@@ -279,17 +307,25 @@ The same questions can live on a Grafana dashboard, with one stat panel per ques
 }
 ```
 
-Before you trust the tree, walk it once against last month's slow job. If it would have led you to the wrong resource, fix the branch before the next incident.
+Before you trust the tree, walk it once against last month's slow job. If it would have led you to the wrong resource, fix the branch before the next incident. A tree that has never been checked against a real incident is still a guess.
+
+When the tree and the team disagree, write down the reading that caused the disagreement. That reading is usually the thing that needs fixing, either a threshold or a missing branch.
 
 ## 4. The cost-vs-latency trade-off
 
 ### 4.1 The trade-off model
 
-Suppose users complain that responses are slow. More GPUs would help, but they cost money, and a faster kernel might help for free. The question is which change buys the most speed for the least spend.
+Picture a support queue full of complaints that responses are slow. More GPUs would help, but they cost money, and a faster kernel might help for free. Suppose users complain that responses are slow. The question is which change buys the most speed for the least spend, and that question needs numbers on both sides before anyone decides.
 
-The trade-off has two sides. You can ask how much latency a GPU purchase saves. You can also ask how much GPU spend a latency fix saves, if users accept slower responses. Write both sides down before anyone signs an order.
+Users rarely ask for a faster GPU. They ask for a faster answer, and the team has to translate that request into a choice among the fixes.
 
-The block below is a worked example with invented options. Copy its structure, not its numbers.
+The trade-off has two sides. You can ask how much latency a GPU purchase saves. You can also ask how much GPU spend a latency fix saves, if users accept slower responses. Write both sides down before anyone signs an order. Latency here means the time a user waits for an answer, and the p99 value is the wait that almost all requests beat.
+
+A useful way to frame the choice is to ask what the users would notice. A faster response is visible to them, while a lower GPU bill is visible only to finance. Both matter, but different people see them, so the write-up should say who gains from each option.
+
+The block below is a worked example with invented options. Copy its structure, not its numbers. The point is the habit of listing each option with its latency change and its cost change, so the comparison is explicit before anyone argues for a favourite.
+
+Read the numbers slowly the first time. Each option changes one thing, so you can see the effect of that one change on latency and cost.
 
 ```text
 Cost-vs-latency trade-off:
@@ -303,11 +339,15 @@ Cost-vs-latency trade-off:
 - Recommendation: Option B (best ROI)
 ```
 
-Compare the options on latency saved and extra cost, then pick the best return. AI Systems Performance Engineering, chapter 16, adds two cautions. A higher batching wait raises throughput, but setting it too high hurts tail latency, so tune it against your service level. The same chapter notes that newer GPUs can beat a larger fleet of older ones on cost.
+Compare the options on latency saved and extra cost, then pick the best return. AI Systems Performance Engineering, chapter 16, adds two cautions. A higher batching wait raises throughput, but setting it too high hurts tail latency, so tune it against your service level. The same chapter notes that newer GPUs can beat a larger fleet of older ones on cost. Return here means the most speed gained for each unit of extra spend.
+
+Write the recommendation in one sentence that names the option and its cost. A reader in a hurry needs only that sentence to act.
 
 ### 4.2 The trade-off as a Grafana dashboard
 
-Put the trade-off on a dashboard, so every team looks at the same numbers. The last panel depends on FinOps data that your team has to export, so the dashboard is only as good as that feed.
+Picture two teams arguing about the same service, each with its own numbers. Put the trade-off on a dashboard, so every team looks at the same numbers. The last panel depends on FinOps data that your team has to export. FinOps is the practice of tracking cloud and hardware spend against the work it buys, so the dashboard is only as good as that feed.
+
+A dashboard only helps when the numbers are trusted. Check the latency panel against a load test before the team uses it to argue for money.
 
 ```yaml
 # code/part17/cost_latency_dashboard.json
@@ -324,15 +364,19 @@ Put the trade-off on a dashboard, so every team looks at the same numbers. The l
 }
 ```
 
-Before you approve a GPU purchase, write the latency saved and the cost added in the same table as the cheaper fixes.
+Before you approve a GPU purchase, write the latency saved and the cost added in the same table as the cheaper fixes. A purchase that looks large on its own can lose to a kernel change once both sit side by side.
+
+Ask the team to show the numbers for each option, not only for the one it prefers.
 
 ## 5. Capacity planning
 
 ### 5.1 The capacity planning model
 
-Every quarter, someone asks how many GPUs to order. A guess based on today's count leaves you with idle hardware or a missed service level. The model turns current usage into a forecast, adds a margin for spikes, and produces an order size.
+Every quarter, someone asks how many GPUs to order. A guess based on today's count leaves you with idle hardware or a missed service level. The model turns current usage into a forecast, adds a margin for spikes, and produces an order size. The forecast is only a plan, so the model is most useful when you check it against what really happened.
 
-The numbers in the block below are example values. Take the growth rate and the spike buffer from your own history.
+The question also has a human side. Ordering hardware is a commitment that lasts for years, so explain the model in plain terms to the people who sign the order.
+
+The numbers in the block below are example values. Take the growth rate and the spike buffer from your own history, and read each line as a step you can check on its own.
 
 ```text
 Capacity planning model:
@@ -345,9 +389,13 @@ Capacity planning model:
 
 The model counts GPUs, not busy GPU hours, so the 80 percent utilisation in the current-usage line of the block does not change the result. If utilisation is low, the count alone will overstate the order. AI Systems Performance Engineering, chapter 16, suggests watching how latency rises as load rises. The load where tail latency climbs sharply shows the practical limit, which is a better basis for the order than the raw count.
 
+A common mistake is to add a buffer on top of a forecast that already includes one. Write down where each margin came from, so the final number has one clear buffer and not two stacked on each other.
+
 ### 5.2 The capacity planning dashboard
 
-Put the same arithmetic on a dashboard, so the forecast updates as the metrics change.
+Put the same arithmetic on a dashboard, so the forecast updates as the metrics change. A forecast that updates by itself is easier to check than one that lives in a spreadsheet nobody opens.
+
+Name the panels with the same labels as the model, so a reviewer can match each panel to its line in the block.
 
 ```yaml
 # code/part17/capacity_dashboard.json
@@ -365,15 +413,19 @@ Put the same arithmetic on a dashboard, so the forecast updates as the metrics c
 }
 ```
 
-The last panel uses an example rate of $4.00 per GPU hour, which matches the $32 per hour for 8 GPUs in Section 4.1. Replace it with the rate in your own contract before the number reaches finance.
+The last panel uses an example rate of $4.00 per GPU hour, which matches the $32 per hour for 8 GPUs in Section 4.1. Replace it with the rate in your own contract before the number reaches finance. A rate that is out of date makes a correct forecast look wrong.
 
-Before the next procurement cycle, compare last quarter's forecast with the actual GPU count and write down the error.
+Before the next procurement cycle, compare last quarter's forecast with the actual GPU count and write down the error. The written error is the most useful input for the next forecast, because it shows which part of the model drifted.
+
+Share the comparison with finance before the next cycle starts, so the forecast and the budget use the same assumptions.
 
 ## 6. Operating the performance engineering stack
 
 ### 6.1 The components
 
-Each piece of the stack runs somewhere, stores its data somewhere, and has a target for how fast it should answer. The targets in the table are example values, not measured service levels. Choose your own before you publish them to users.
+Each piece of the stack runs somewhere, stores its data somewhere, and has a target for how fast it should answer. The targets in the table are example values, not measured service levels. Choose your own before you publish them to users. A target nobody has measured is a promise the team cannot keep.
+
+Give each target an owner. A number without an owner tends to drift, while a number with a named owner gets reviewed.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -383,11 +435,13 @@ Each piece of the stack runs somewhere, stores its data somewhere, and has a tar
 | Cost-vs-latency trade-off dashboard | Grafana | Prometheus + Kubecost | Dashboard load p99 < 5 s |
 | Capacity planning dashboard | Grafana | Prometheus + Kubecost | Dashboard load p99 < 5 s |
 
-The roofline analysis is the only component with no backing store, because it runs offline against a profile file.
+The roofline analysis is the only component with no backing store, because it runs offline against a profile file. Its speed matters less than the others, so it is the only row with no service level.
+
+Offline analysis is slow to run but cheap to keep. A missing backing store is a design choice here, not a gap in the stack.
 
 ### 6.2 IAM and the performance methodology
 
-Not everyone who reads a dashboard should be able to change one. The pattern below gives three roles, so readers, exporters and the platform team each get only the rights they need.
+Picture a data scientist who accidentally edits the platform team's shared dashboard during a busy week. Read access to a shared dashboard is the default, and write access is granted on purpose. The pattern below gives three roles, so readers, exporters and the platform team each get only the rights they need.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -395,11 +449,15 @@ Not everyone who reads a dashboard should be able to change one. The pattern bel
 | `performance.writer` | The exporters | Write metrics to Prometheus |
 | `performance.admin` | The platform team | Manage the dashboards; manage the methodology |
 
-Documentation and training are part of the discipline. Update the method after every incident, so the next on-call inherits what the last one learned.
+Documentation and training are part of the discipline. Update the method after every incident, so the next on-call engineer inherits what the last one learned. A method that lives only in one person's head disappears when that person changes teams.
+
+A short written method, kept next to the dashboards, does more good than a long document that nobody opens.
 
 ### 6.3 Observability
 
-The stack needs its own alerts, because a broken dashboard during an incident is worse than no dashboard. The table lists four alerts. The thresholds are example values, so set them against what your on-call can tolerate.
+The stack needs its own alerts, because a broken dashboard during an incident is worse than no dashboard. A dashboard that silently shows stale numbers can send the team in the wrong direction with full confidence. The table lists four alerts. The thresholds are example values, so set them against what your on-call can tolerate.
+
+A broken alert is easy to miss because it fails quietly. Test each of the four alerts once by making its input go bad on purpose, then confirm that the page arrives.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -408,65 +466,69 @@ The stack needs its own alerts, because a broken dashboard during an incident is
 | Roofline analysis run duration | Offline analysis performance | > 1 hour |
 | Capacity planning dashboard accuracy | Procurement accuracy | Error > 20% |
 
-Of the four, the forecast accuracy alert matters most. A forecast that is too high wastes GPUs, and a forecast that is too low puts service levels at risk.
+Of the four, the forecast accuracy alert matters most. A forecast that is too high wastes GPUs, and a forecast that is too low puts service levels at risk. Both mistakes cost money, and only the accuracy alert tells you that the model has drifted.
+
+Set this alert to a loose value at first, and tighten it once the forecasts have a few quarters of history behind them.
 
 ## 7. How it fails
 
-Six failure modes come back again and again in performance reviews. Each one below gives the symptom you will recognise, the likely cause and the first fix to try. The numbers are illustrative, so they show the shape of each failure rather than a real measurement.
+Picture a performance review where the team asks why the last slow job took so long to fix. Six failure modes come back again and again in performance reviews. Each one below gives the symptom you will recognise, the likely cause and the first fix to try. The numbers are illustrative, so they show the shape of each failure rather than a real measurement.
 
 ### 7.1 "The team cannot find the bottleneck"
 
-Symptom: the workload is slow, the team runs the USE method, and no resource stands out.
+The workload is slow, and the team runs the USE method with care. No resource stands out, so the team has no clear next step.
 
-Diagnosis: the bottleneck may be a mix of resources, such as CPU and GPU together. It may sit below the alert threshold, as a CPU at 70 percent can hide an inefficient kernel. Or the limit may be the code itself, such as slow Python.
+The bottleneck may be a mix of resources, such as CPU and GPU together. It may sit below the alert threshold, as a CPU at 70 percent can hide an inefficient kernel. Or the limit may be the code itself, such as slow Python.
 
-Fix: add a check for combinations of resources to the method. Lower the thresholds for the resources you suspect, then profile the kernel and the Python code.
+Add a check for combinations of resources to the method. Lower the thresholds for the resources you suspect, then profile the kernel and the Python code.
 
 ### 7.2 "The roofline model is too theoretical"
 
-Symptom: the roofline predicts 989 TFLOPS for a kernel, but the measured run reaches 600 TFLOPS. That is a gap of 39 percent.
+The roofline predicts 989 TFLOPS for a kernel, but the measured run reaches 600 TFLOPS. The team reads that as a gap of 39 percent and wonders whether the roofline is wrong.
 
-Diagnosis: the roofline describes the kernel alone. The measured time also includes launch overhead, memory allocation and data transfer, and that extra time can account for the gap.
+The roofline describes the kernel alone. The measured time also includes launch overhead, memory allocation and data transfer, and that extra time can account for the gap. Nothing is wrong with the roofline, because it was never meant to include those costs.
 
-Fix: include launch overhead when you compare, time the data transfers separately, and account for the rest in your prediction.
+Include launch overhead when you compare, time the data transfers separately, and account for the rest in your prediction. A fair comparison measures the same work on both sides.
 
 ### 7.3 "The decision tree is too shallow"
 
-Symptom: the tree says GPU utilisation is high, so the on-call tunes the GPU, and the job is still slow.
+The tree says GPU utilisation is high, so the on-call tunes the GPU, and the job is still slow. The team spends a day on the wrong resource.
 
-Diagnosis: the tree may be missing a branch for network or storage. Its thresholds may be wrong for your workload. It may also miss a bottleneck that spans more than one resource.
+The tree may be missing a branch for network or storage. Its thresholds may be wrong for your workload. It may also miss a bottleneck that spans more than one resource.
 
-Fix: add the missing branches and tune the thresholds on your own data. Then replay the tree against past incidents to see whether it would have found the cause.
+Add the missing branches and tune the thresholds on your own data. Then replay the tree against past incidents to see whether it would have found the cause.
 
 ### 7.4 "The cost-vs-latency trade-off is not explicit"
 
-Symptom: the team buys GPUs without a trade-off analysis, and it tunes kernels without measuring what they cost.
+The team buys GPUs without a trade-off analysis, and it tunes kernels without measuring what they cost. The budget is spent before anyone knows what it bought.
 
-Diagnosis: the trade-off is not part of the buying or tuning workflow, so the decision rests on instinct.
+The trade-off is not part of the buying or tuning workflow, so the decision rests on instinct. Instinct is not wrong every time, but nobody can check it later.
 
-Fix: put the trade-off dashboard into the procurement review. Ask for the latency and cost comparison before any order is placed.
+Put the trade-off dashboard into the procurement review. Ask for the latency and cost comparison before any order is placed.
 
 ### 7.5 "The capacity planning forecast is wrong"
 
-Symptom: the forecast says 156 GPUs, but actual usage is 100 GPUs, so the team over-provisioned by 56.
+The forecast says 156 GPUs, but actual usage is 100 GPUs, so the team over-provisioned by 56. The purchase order is already signed.
 
-Diagnosis: the growth rate, the buffer or the history behind the forecast may be wrong.
+The growth rate, the buffer or the history behind the forecast may be wrong. Any one of them is enough to push the result far from the real count.
 
-Fix: check the history first. Add a confidence range to the forecast, and review it every quarter.
+Check the history first. Add a confidence range to the forecast, and review it every quarter.
 
 ### 7.6 "The performance methodology is not followed"
 
-Symptom: the team tunes ad hoc, and nobody uses the USE method, the roofline or the decision tree.
+The team tunes ad hoc, and nobody uses the USE method, the roofline or the decision tree. Each engineer has a different favourite fix.
 
-Diagnosis: the method is not part of the workflow, nobody has been trained on it, and nobody enforces it.
+The method is not part of the workflow, nobody has been trained on it, and nobody enforces it. A method that is optional tends to be skipped under pressure.
 
-Fix: train the team, add the method to the workflow, check it in code review, and automate the dashboards that support it.
+Train the team, add the method to the workflow, check it in code review, and automate the dashboards that support it.
 
-Pick the failure your team hit most recently. Check whether one of these fixes would have shortened that incident.
+Pick the failure your team hit most recently. Check whether one of these fixes would have shortened that incident. The answer tells you which of the six patterns to watch for first.
+
+Write the answer into the post-mortem, so the lesson stays with the team after the people who lived through the incident move on.
 
 ## 8. Hands-on lab
 
-This lab ties the chapter together. You build the USE dashboard, compute a roofline, walk the decision tree and produce a capacity forecast on GKE. The lab is untested in this repository, so treat each expected result as a hypothesis you still need to confirm.
+Picture a new cluster with no performance dashboards yet and a team that wants to learn the method by doing it. This lab ties the chapter together. You build the USE dashboard, compute a roofline, walk the decision tree and produce a capacity forecast on GKE. The lab is untested in this repository, so treat each expected result as a hypothesis you still need to confirm.
 
 ### 8.1 Prerequisites
 
@@ -476,7 +538,7 @@ This lab ties the chapter together. You build the USE dashboard, compute a roofl
 
 ### 8.2 Step 1: deploy the USE method dashboard
 
-Load the dashboard first, so the rest of the lab has something to read.
+Load the dashboard first, so the rest of the lab has something to read. The steps below create the dashboard in the monitoring namespace and import it into Grafana.
 
 ```bash
 kubectl -n monitoring create configmap use-method-dashboard \
@@ -490,7 +552,7 @@ curl -X POST http://admin:admin@localhost:3000/api/dashboards/import \
 
 ### 8.3 Step 2: run the USE method on a workload
 
-Next, put load on the service and see which panel moves. The load generator below sends 100 concurrent requests for 60 seconds.
+Next, put load on the service and see which panel moves. The load generator below sends 100 concurrent requests for 60 seconds. Watch the GPU panel while the load runs, because that is the panel you expect to move.
 
 ```bash
 # Apply a synthetic load to the cluster
@@ -502,11 +564,11 @@ hey -z 60s -c 100 -m POST -T "application/json" \
 # expected: the GPU utilisation panel is above 90%; the bottleneck is the GPU
 ```
 
-If the GPU panel stays low, the bottleneck is somewhere else, so go back to the USE table and work through the other rows.
+If the GPU panel stays low, the bottleneck is somewhere else, so go back to the USE table and work through the other rows. A flat GPU panel under load is a finding in its own right, not a failed step.
 
 ### 8.4 Step 3: compute the roofline for a sample kernel
 
-Next, compute the roofline for a small transformer. The script profiles ten forward passes, then estimates intensity from hand-counted FLOPs and bytes. Treat those counts as an estimate, not a measurement, for the reasons given in section 2.3.
+Next, compute the roofline for a small transformer. The script profiles ten forward passes, then estimates intensity from hand-counted FLOPs and bytes. Treat those counts as an estimate, not a measurement, for the reasons given in section 2.3. The script also prints the ridge point, so both numbers appear side by side.
 
 ```python
 # code/part17/snippets/roofline_analysis.py
@@ -536,11 +598,11 @@ print(f"H100 ridge point: {ridge:.0f} FLOP/byte")
 print(f"Bottleneck: {'compute' if intensity > ridge else 'memory'}")
 ```
 
-Compare the printed intensity with the ridge point. If the counts are right, the script shows which side of the ridge the model sits on.
+Compare the printed intensity with the ridge point. If the counts are right, the script shows which side of the ridge the model sits on. If the two numbers are close, check the counts before you choose a fix.
 
 ### 8.5 Step 4: follow the performance decision tree
 
-Open the decision tree dashboard and check that each panel shows a current value. The recommended-fix panel only shows placeholder text until someone writes its logic, so read the other panels to find the bottleneck.
+Open the decision tree dashboard and check that each panel shows a current value. The recommended-fix panel only shows placeholder text until someone writes its logic, so read the other panels to find the bottleneck. Walk the tree by hand from the top, using the same panels, so you see each decision for yourself.
 
 ```bash
 # Open Grafana and look at the performance decision tree dashboard
@@ -550,7 +612,7 @@ Open the decision tree dashboard and check that each panel shows a current value
 
 ### 8.6 Step 5: build the cost-vs-latency trade-off
 
-Query the current cost and the p99 latency from Prometheus. Record both numbers before you compare any options.
+Query the current cost and the p99 latency from Prometheus. Record both numbers before you compare any options, so the comparison starts from the same baseline for everyone on the team.
 
 ```bash
 # Compute the current cost and latency
@@ -561,7 +623,7 @@ curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=histogram_quantile
 
 ### 8.7 Step 6: produce the capacity planning forecast
 
-Last, query the GPU count and the forecast. The forecast command uses the example growth and buffer from section 5, so change those values to match your own history.
+Last, query the GPU count and the forecast. The forecast command uses the example growth and buffer from section 5, so change those values to match your own history. Write down the answer before you compare it with the real count later.
 
 ```bash
 # Query the current GPU pool utilisation
@@ -577,7 +639,7 @@ curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=count(DCGM_FI_DEV_
 
 ### 8.8 What to record
 
-After the lab, you should be able to answer five questions quickly. The chapter uses five seconds per answer as its target, and that is an example value, not a standard. Answers that take longer suggest the stack is not yet ready for on-call use.
+Five questions show whether the stack is ready for the page. Answer them from the dashboards you just built. The chapter treats five seconds per answer as its target, which is an example value and not a standard. Answers that take longer suggest the stack is not yet ready for on-call use.
 
 1. What is the current GPU utilisation per the USE method?
 2. What is the current roofline gap per the kernel profile?
@@ -585,7 +647,7 @@ After the lab, you should be able to answer five questions quickly. The chapter 
 4. What is the current cost-vs-latency trade-off per the dashboard?
 5. What is the current Q+1 GPU forecast per the capacity planning model?
 
-The lab has not yet been run against a live GKE cluster. Run it on a quiet day first, and record the answers so you can compare them later.
+Run it on a quiet day first, and record the answers so you can compare them later. A record from a quiet day is the baseline that makes a slow day easy to read.
 
 ## Exercises
 
@@ -596,7 +658,7 @@ The lab has not yet been run against a live GKE cluster. Run it on a quiet day f
 5. Add a capacity planning script. Build a Python script that reads the current pool utilisation and prints the next-quarter forecast. *Solution sketch:* the script reads the metrics, applies the forecast model and prints the GPU count and cost.
 6. Add a performance engineering playbook. Write a short playbook that covers the USE method, the roofline, the decision tree, the trade-off and capacity planning. *Solution sketch:* a Markdown document the team can follow during an incident.
 
-Start with exercise 3 if you have past incidents on hand. A decision tree that has never been tested against real incidents is still a guess, and you will not know its gaps until you try it. Pick one exercise you can finish this month.
+Start with exercise 3 if you have past incidents on hand. A decision tree that has never been tested against real incidents is still a guess, and you will not know its gaps until you try it. Pick one exercise you can finish this month, and write down what it taught you.
 
 ## Checkpoint questions
 

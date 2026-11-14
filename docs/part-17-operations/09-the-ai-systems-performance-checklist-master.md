@@ -26,6 +26,8 @@ lab_venue: "GCP / GKE"
 
 Picture a platform team that reviews the GPU fleet each quarter. Each layer has its own owner, so nobody sees the whole stack at once. The diagram gives every layer the same check.
 
+Think of the review as a walk through the building, one floor at a time. Each floor has a different owner, so the people on one floor rarely see what happens on the next. The checklist gives every floor the same questions, which makes the answers comparable when they arrive on one page.
+
 ```mermaid
 flowchart LR
     subgraph Layers["Ten layers"]
@@ -61,15 +63,17 @@ flowchart LR
     S --> R
 ```
 
-Read the diagram from left to right. Before a review, name an owner for each layer, since an unowned score rarely gets fixed.
+Read the diagram from left to right. The layers on the left feed the same verify step, so every item gets checked the same way. The scores then roll up into one report for the team. Before a review, name an owner for each layer, since an unowned score rarely gets fixed. A missing owner is usually the first thing to fix.
 
 ## Why this matters for AI infrastructure
 
-Suppose you are the on-call engineer. The cluster looks busy, but a training run is slower than it was last week. You need one list of questions to work through, not a new guess each time. This master checklist is that list. It ties together the components covered in Part 17 and in most of Parts 10, 11, 14, and 15.
+Suppose you are the on-call engineer. The cluster looks busy, but a training run is slower than it was last week. You need one list of questions to work through, not a new guess each time. This master checklist is that list. It ties together the components covered in Part 17 and in most of Parts 10, 11, 14, and 15. Working from a shared list also means the next engineer can pick up where you stopped, without re-deriving your reasoning.
 
 The checklist serves three readers in three ways. The platform team uses it as the reference for performance engineering. The on-call engineer uses it to ask whether the cluster is doing everything it should. The finance owner uses it to ask whether GPU spending is well used.
 
-The checklist covers ten categories: hardware, software, network, storage, model architecture, training, inference, operations, security, and observability. Each item is a yes or no question, and the tables in this chapter hold 207 items, more than the 175 used as a round number in the score example below. The appendix of *AI Systems Performance Engineering* carries a similar 175-plus title, but its text is written as tips rather than numbered questions. Treat the count as the size of your own list, not as proof that a team is mature.
+Each reader asks a different question of the same list. The platform team asks whether the stack is set up correctly. The on-call engineer asks what is wrong right now. The finance owner asks whether the GPUs are earning their cost. One list serves all three, as long as each reader knows which rows matter to them.
+
+The checklist covers ten categories: hardware, software, network, storage, model architecture, training, inference, operations, security, and observability. Each item is a yes or no question, and the tables in this chapter hold 207 items, more than the 175 used as a round number in the score example below. The appendix of *AI Systems Performance Engineering* carries a similar 175-plus title, but its text is written as tips rather than numbered questions. Treat the count as the size of your own list, not as proof that a team is mature. A team with a shorter list that it answers honestly is in better shape than a team with a long list it has never checked.
 
 ```text
 Why the master checklist is on the critical path (ASP appendix; V17 chXX):
@@ -85,11 +89,13 @@ Why the master checklist is on the critical path (ASP appendix; V17 chXX):
   knowledge.
 ```
 
-Three things make this a platform concern rather than a data science concern:
+Three things make this a platform concern rather than a data science concern. Each one is a reason the platform team, and not the individual model owner, has to carry the list.
 
-1. **The platform team owns the checklist.** The items span hardware, software, network, storage, model, training, inference, operations, security, and observability. Someone on the platform team has to own both the stack and the list.
-2. **Every item must be verifiable.** Each item needs a detection signal, which is a metric, a log, a trace, or a probe. The platform team owns those signals as well.
-3. **The checklist changes every quarter.** The team reviews it each quarter, adds items from vendor releases, and retires items that no longer apply.
+1. The platform team owns the checklist. The items span hardware, software, network, storage, model, training, inference, operations, security, and observability. Someone on the platform team has to own both the stack and the list.
+2. Every item must be verifiable. Each item needs a detection signal, which is a metric, a log, a trace, or a probe. The platform team owns those signals as well.
+3. The checklist changes every quarter. The team reviews it each quarter, adds items from vendor releases, and retires items that no longer apply.
+
+A list that nobody owns drifts out of date within a few releases. Naming one owner keeps the list honest, even when many teams contribute items.
 
 **Before you call your AI factory mature, answer every item in the checklist, and write down each item you cannot yet answer.**
 
@@ -97,17 +103,11 @@ Three things make this a platform concern rather than a data science concern:
 
 ### Prerequisites
 
-Read Chapter 1.23 and Chapter 17.8 first, since they cover performance methodology. Then review Chapter 10 on GPUs and CUDA, Chapter 11 on GPU Kubernetes, Chapter 14 on distributed training, and Chapter 15 on inference. The checklist assumes you already know what each row measures.
+Picture a new engineer who opens this checklist for the first time and sees a long list of rows with no context. Read Chapter 1.23 and Chapter 17.8 first, since they cover performance methodology. The context they give makes each row readable. Then review Chapter 10 on GPUs and CUDA, Chapter 11 on GPU Kubernetes, Chapter 14 on distributed training, and Chapter 15 on inference. The checklist assumes you already know what each row measures, and a row you cannot explain is a row you cannot answer.
 
 ### Outcomes
 
-After this chapter, you will be able to:
-
-1. Walk through every category of the master checklist, and find the items nobody has answered yet.
-2. Build the detection signals for those unanswered items.
-3. Update the checklist after each vendor release, incident, and regulatory change.
-4. Report the score to the platform team and the CFO.
-5. Use the checklist as the agenda for the platform team's quarterly review.
+This chapter walks through the checklist one category at a time. For each category it shows the rows, the detection signal behind each row, and the questions that tend to come up when a row is answered no. It ends with the lab, where you audit a real cluster and produce a score report that the platform team can review.
 
 ---
 
@@ -116,6 +116,8 @@ After this chapter, you will be able to:
 Suppose a training job slows down overnight, and nothing in the code has changed. Check the hardware first, because a throttling card or a failing disk can slow the whole job. The tables below name each check and the metric that shows it. Start with the GPUs, since one weak card holds back every other card in a distributed job.
 
 ### 1.1 GPU hardware
+
+Picture a training job where one card runs hot while the other cards in the node stay cool. The job slows to the pace of the hot card, and the average utilisation hides the problem. The GPU rows below catch that kind of problem one card at a time.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -137,9 +139,11 @@ Suppose a training job slows down overnight, and nothing in the code has changed
 
 > **dcgm-exporter 4.9.0 version note.** dcgm-exporter 4.9.0 (2026-11-06) renamed many default metrics and changed some units. For example `DCGM_FI_DEV_GPU_UTIL` (percent) became `DCGM_FI_DEV_GPU_UTIL_RATIO` (0 to 1), and `DCGM_FI_DEV_FB_USED` (MiB) became `DCGM_FI_DEV_FB_USED_BYTES`. The metric names in this chapter are the 4.8.x names. On a 4.9.0 exporter use the [full mapping in 17.4](04-dcgm-exporter-and-interpreting-gpu-metrics.md#14-what-dcgm-exporter-490-renamed), and change thresholds together with the unit.
 
-The limits in these tables are example values, not standards. Choose your own limits for your hardware, and write down why you chose them. The appendix of *AI Systems Performance Engineering* mentions 85°C as a thermal limit that GPUs can reach in some cases, so it is a reasonable place to start. The same appendix advises keeping ECC enabled on data center GPUs. ECC costs only a few percent of bandwidth and memory, and it catches memory errors that could otherwise corrupt results.
+The limits in these tables are example values, not standards. Choose your own limits for your hardware, and write down why you chose them. A limit with a written reason can be defended in a review, and a limit without one tends to be copied without thought. The appendix of *AI Systems Performance Engineering* mentions 85°C as a thermal limit that GPUs can reach in some cases, so it is a reasonable place to start. The same appendix advises keeping ECC enabled on data center GPUs. ECC costs only a few percent of bandwidth and memory, and it catches memory errors that could otherwise corrupt results.
 
 ### 1.2 CPU hardware
+
+Picture a node whose GPUs look healthy, while the CPU cores that feed them are pinned at full load. The data loaders wait for CPU time, and the GPUs wait for data. The CPU rows below show whether the host side is keeping up.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -156,6 +160,8 @@ The limits in these tables are example values, not standards. Choose your own li
 
 ### 1.3 Memory and storage hardware
 
+Picture a node that starts swapping at night because a background job grew past its memory budget. Swapping makes the host slow, and a slow host starves the GPUs. The rows below check memory, disks and their health before that happens.
+
 | # | Item | Detection signal |
 |---|---|---|
 | HW-026 | Memory utilisation per node is below 80% | node_memory_MemAvailable_bytes |
@@ -171,55 +177,61 @@ The limits in these tables are example values, not standards. Choose your own li
 
 ### 1.4 Planning for goodput and scale
 
-Hardware sets the ceiling for speed and cost. No software change can make a starved GPU run faster than the data and links that feed it. Plan for goodput, which means useful work per dollar and per watt, instead of raw peak math throughput.
+Picture a team that buys the newest GPUs and then watches them wait for data. Hardware sets the ceiling for speed and cost. No software change can make a starved GPU run faster than the data and links that feed it. Plan for goodput, which means useful work per dollar and per watt, instead of raw peak math throughput. Goodput is the number that finance and users both care about, because it counts only the work that was delivered.
 
-Match the accelerator to the job. Modern GPUs give better performance per watt and more memory than older ones. Newer generations also add native FP8 and FP4 precision and faster interconnects, and those features bring large speedups for many workloads.
+A simple way to think about the ceiling is to picture a pipeline with several stages. The slowest stage sets the rate for the whole line, however fast the others are. Hardware planning means finding that slowest stage before you buy anything.
 
-Interconnect matters as much as the GPU itself. For multi-GPU work, use systems with NVLink and NVSwitch, such as GB200 or GB300 NVL72 racks, instead of PCIe-only connections. NVLink 5 provides up to 1.8 TB/s of bidirectional bandwidth between GPUs. That is more than 14 times the bandwidth of PCIe Gen5.
+Match the accelerator to the job. Modern GPUs give better performance per watt and more memory than older ones. Newer generations also add native FP8 and FP4 precision and faster interconnects, and those features bring large speedups for many workloads. A workload that does not use those precisions gains less from the upgrade, so check the features your code uses before you pay for them.
 
-Keep CPU, memory, and storage in proportion to the GPUs. A useful starting point is about one fast CPU core per GPU for data loading and networking. Each GPU also needs system RAM and I/O that can supply data at hundreds of MB/s. Without that supply, the GPU waits and its utilization falls.
+Interconnect matters as much as the GPU itself. For multi-GPU work, use systems with NVLink and NVSwitch, such as GB200 or GB300 NVL72 racks, instead of PCIe-only connections. NVLink 5 provides up to 1.8 TB/s of bidirectional bandwidth between GPUs. That is more than 14 times the bandwidth of PCIe Gen5. A link that fast turns a slow collective into a short pause, while a slow link can turn the same collective into the main cost of the step.
 
-Keep tightly coupled work close together. A multi-node job should stay inside one NVLink domain when it can. Use NVLink within a node and a rack, and reserve InfiniBand for traffic between racks.
+Keep CPU, memory, and storage in proportion to the GPUs. A useful starting point is about one fast CPU core per GPU for data loading and networking. Each GPU also needs system RAM and I/O that can supply data at hundreds of MB/s. Without that supply, the GPU waits and its utilization falls. Proportion is easier to keep when you size the node from its GPU count, not from a fixed server template.
 
-Find the slowest link first. If GPU utilization is low because of I/O, invest in faster storage or caching before buying more GPUs. A design where every component is matched to the others avoids wasted GPU cycles.
+Keep tightly coupled work close together. A multi-node job should stay inside one NVLink domain when it can. Use NVLink within a node and a rack, and reserve InfiniBand for traffic between racks. Every hop out of the fast domain costs time that the GPUs spend waiting.
 
-Be careful about cluster size. Overheads grow as you add GPUs, so the speedup must justify the cost. Reaching about 95 percent utilization on N GPUs is usually a better step than scaling to 2N GPUs at lower utilization. Measure scaling efficiency on a few nodes before you buy more.
+Find the slowest link first. If GPU utilization is low because of I/O, invest in faster storage or caching before buying more GPUs. A design where every component is matched to the others avoids wasted GPU cycles. Buying GPUs for a starved pipeline only makes the waiting more expensive.
 
-Check that the data center can handle the power and cooling. Systems such as GB200 and GB300 have a very high thermal design power (TDP). They often need liquid cooling and careful power provisioning, so the GPUs can hold boost clocks without throttling.
+Be careful about cluster size. Overheads grow as you add GPUs, so the speedup must justify the cost. Reaching about 95 percent utilization on N GPUs is usually a better step than scaling to 2N GPUs at lower utilization. Measure scaling efficiency on a few nodes before you buy more. Scaling efficiency is the speedup you get divided by the speedup a perfect system would give, and it is the number that shows whether the next node is worth its price.
+
+Check that the data center can handle the power and cooling. Systems such as GB200 and GB300 have a very high thermal design power (TDP). They often need liquid cooling and careful power provisioning, so the GPUs can hold boost clocks without throttling. A rack that cannot be cooled will throttle no matter how well the software is tuned.
 
 ### 1.5 Superchip memory tiers
 
-Grace Blackwell superchips join CPU and GPU memory into one large pool. That lets you fit models that GPU memory alone cannot hold. The memory tiers differ in speed, so data placement decides whether the design performs well.
+Picture a team that wants to serve a model too large for the GPU memory alone. Grace Blackwell superchips join CPU and GPU memory into one large pool. That lets you fit models that GPU memory alone cannot hold. The memory tiers differ in speed, so data placement decides whether the design performs well. A pool that is large on paper can still be slow if the hot data sits in the wrong tier.
+
+Think of the two tiers as a small, fast desk and a large, slower storage room. The desk holds the papers you touch every minute, and the room holds everything else. A good design keeps the papers that matter on the desk and walks to the room only when it must.
 
 Each superchip pairs two Blackwell GPUs with one 72-core Grace CPU. All three see a single coherent memory pool. The NVLink-C2C link between them runs at 900 GB/s. The Grace CPU can add 480 GB of LPDDR5X memory as an extension for oversized models.
 
-Place data by how often it is used. Keep weights, activations, and other hot data in GPU HBM3e, which has much higher local bandwidth. Let overflow and infrequently used data sit in CPU RAM. This keeps the NVLink-C2C link from becoming the bottleneck for critical data.
+Place data by how often it is used. Keep weights, activations, and other hot data in GPU HBM3e, which has much higher local bandwidth. Let overflow and infrequently used data sit in CPU RAM. This keeps the NVLink-C2C link from becoming the bottleneck for critical data. NVLink-C2C is the chip-to-chip link that joins the Grace CPU and the GPU. A hot tensor that crosses that link on every step can slow the whole model.
 
-GPUs can read and write Grace LPDDR coherently over NVLink-C2C, without staging through host PCIe. Bandwidth and latency remain lower than HBM, though. Hot activations and the KV cache belong in HBM. CPU memory works better as a cache for colder data, but only when you prefetch that data explicitly.
+GPUs can read and write Grace LPDDR coherently over NVLink-C2C, without staging through host PCIe. Bandwidth and latency remain lower than HBM, though. Hot activations and the KV cache belong in HBM. CPU memory works better as a cache for colder data, but only when you prefetch that data explicitly. Prefetching means you request the data before the step needs it, so the wait happens in the background.
 
-Use the 72 Grace cores. Move data preprocessing, augmentation, and other CPU-friendly tasks to them. They can feed the GPUs quickly over NVLink-C2C, so they act as a fast I/O and compute partner for the GPU.
+Use the 72 Grace cores. Move data preprocessing, augmentation, and other CPU-friendly tasks to them. They can feed the GPUs quickly over NVLink-C2C, so they act as a fast I/O and compute partner for the GPU. Idle Grace cores are wasted money on the superchip, so give them real work.
 
-For trillion-parameter training, CPU memory can join the model's memory pool. Prefer the framework's caching allocator. In custom code, use `cudaMallocAsync` to limit fragmentation and enable graph capture. Use CUDA managed memory for overflow, and prefetch upcoming layers from CPU to GPU with `cudaMemPrefetchAsync`, so each transfer finishes before the layer needs it.
+For trillion-parameter training, CPU memory can join the model's memory pool. Prefer the framework's caching allocator. In custom code, use `cudaMallocAsync` to limit fragmentation and enable graph capture. Use CUDA managed memory for overflow, and prefetch upcoming layers from CPU to GPU with `cudaMemPrefetchAsync`, so each transfer finishes before the layer needs it. A transfer that finishes late stalls the layer, so the prefetch distance matters as much as the call itself.
 
-SuperOffload is an example of an algorithm set built for superchips such as Grace Hopper, Grace Blackwell, and Vera Rubin. It improves offload and tensor cast and copy steps. Its methods include speculation-then-validation, heterogeneous optimizer computation, and an ARM-based CPU optimizer. Compared with traditional offload, it raises token throughput and chip utilization.
+SuperOffload is an example of an algorithm set built for superchips such as Grace Hopper, Grace Blackwell, and Vera Rubin. It improves offload and tensor cast and copy steps. Its methods include speculation-then-validation, heterogeneous optimizer computation, and an ARM-based CPU optimizer. Compared with traditional offload, it raises token throughput and chip utilization. Read the claims as a reason to test the method on your own model, since the gain depends on the mix of work.
 
 ### 1.6 Clocks, power, and thermals
 
-Auto boost is the default, and it is usually the best setting. For run-to-run consistency, lock the clocks to a fixed high frequency with `nvidia-smi -lgc` for the GPU clock and `-lmc` for memory. Fixed clocks remove transient downclocking, which can quietly slow a long job.
+Picture a long training run that slows down by a few percent in the afternoon, when the room gets warm. Auto boost is the default, and it is usually the best setting. For run-to-run consistency, lock the clocks to a fixed high frequency with `nvidia-smi -lgc` for the GPU clock and `-lmc` for memory. Fixed clocks remove transient downclocking, which can quietly slow a long job. Locking is a trade. You give up the short bursts of extra speed in exchange for the same speed every run.
 
-Under a tight power budget, set a power limit with `nvidia-smi -pl`. A slightly lower limit keeps the GPU inside a stable thermal and power envelope. Test a few limits and compare throughput per watt. For some models, an 80 percent power limit gives nearly the same speed as 100 percent, with 20 percent less power.
+Under a tight power budget, set a power limit with `nvidia-smi -pl`. A slightly lower limit keeps the GPU inside a stable thermal and power envelope. Test a few limits and compare throughput per watt. For some models, an 80 percent power limit gives nearly the same speed as 100 percent, with 20 percent less power. Measure your own model, because the result depends on how much of the work is compute-bound.
 
-Monitor power draw with `nvidia-smi`, which shows instantaneous draw. Spikes often match workload phases. A dense layer draws heavy power, while an all-reduce draws less. Sequence jobs so the draw stays smooth on a constrained circuit, and avoid running several spiky jobs on one node at once.
+Monitor power draw with `nvidia-smi`, which shows instantaneous draw. Spikes often match workload phases. A dense layer draws heavy power, while an all-reduce draws less. Sequence jobs so the draw stays smooth on a constrained circuit, and avoid running several spiky jobs on one node at once. A smooth draw is kinder to the power supply and to the people who schedule the racks.
 
-Watch temperatures and clocks during long runs. As a GPU approaches its thermal limit, which is 85°C in some cases, it may throttle. Use `nvidia-smi dmon` to see whether clocks fall below their maximum. If they do, improve cooling or raise fan speed, or lower the power limit slightly.
+Watch temperatures and clocks during long runs. As a GPU approaches its thermal limit, which is 85°C in some cases, it may throttle. Use `nvidia-smi dmon` to see whether clocks fall below their maximum. If they do, improve cooling or raise fan speed, or lower the power limit slightly. A throttled clock is not an error, so it will not raise an alert unless you watch for it on purpose.
 
 ---
 
 ## 2. Software checklist
 
-A node can pass every hardware check and still fail because of its software. Kernel versions, driver branches, and cluster add-ons each need a check of their own. Start with the rows that match the software on your nodes, then work through the three groups below in order, and mark each row yes or no before you move on. Keep a note of the rows you checked and the date. If you cannot answer a row, write it down as a gap for the team.
+Picture a node that passed every hardware check on Monday and then fails a job on Tuesday after an unattended package update. A node can pass every hardware check and still fail because of its software. Kernel versions, driver branches, and cluster add-ons each need a check of their own. Start with the rows that match the software on your nodes, then work through the three groups below in order, and mark each row yes or no before you move on. Keep a note of the rows you checked and the date. If you cannot answer a row, write it down as a gap for the team.
 
 ### 2.1 Operating system
+
+Picture a node that boots with a kernel nobody tested against the GPU driver. The driver may load, but the first heavy job can fail in a way that looks random. The operating system rows check the kernel and its settings before any job lands on the node.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -241,6 +253,8 @@ A node can pass every hardware check and still fail because of its software. Ker
 
 ### 2.2 NVIDIA software
 
+Picture a cluster where one node runs an older driver than the rest. Its jobs run, but more slowly, and nobody notices for weeks. The NVIDIA rows check that each node runs the same tested stack.
+
 | # | Item | Detection signal |
 |---|---|---|
 | SW-016 | NVIDIA driver is the latest production version | nvidia-smi --query-gpu=driver_version |
@@ -255,6 +269,8 @@ A node can pass every hardware check and still fail because of its software. Ker
 | SW-025 | Container images are signed | cosign verify |
 
 ### 2.3 Cluster software
+
+Picture a scheduler that accepts a job, then leaves it pending because a device plugin on one node never started. The cluster rows check the components that place work on the GPUs.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -271,115 +287,117 @@ A node can pass every hardware check and still fail because of its software. Ker
 
 ### 2.4 Operating system tuning
 
-Run a lean, HPC-tuned Linux on GPU servers. Use a recent, stable kernel, and turn off background services that use CPU or I/O. Set the CPU governor to `performance`, not `on-demand` or `power-save`, so the cores that feed the GPUs stay at high clock speed.
+Picture a GPU server where a background job wakes up every few minutes and takes CPU time from the loaders that feed the GPUs. Run a lean, HPC-tuned Linux on GPU servers. Use a recent, stable kernel, and turn off background services that use CPU or I/O. Set the CPU governor to `performance`, not `on-demand` or `power-save`, so the cores that feed the GPUs stay at high clock speed. The governor is the Linux setting that decides how the CPU changes its clock speed under load.
 
-Disable swap on training servers, since paging can thrash a job. If swap has to stay on, lock critical buffers with `mlock` or `cudaHostAlloc` so they remain in RAM.
+Disable swap on training servers, since paging can thrash a job. Paging means the system moves memory to disk when RAM runs short, and a training job that pages will spend its time waiting. If swap has to stay on, lock critical buffers with `mlock` or `cudaHostAlloc` so they remain in RAM. Locking a buffer tells the system to keep it in memory, so it cannot be moved out to disk.
 
-Preallocate large, contiguous blocks for the tensors you use often. This cuts runtime allocation overhead and memory fragmentation during long runs.
+Preallocate large, contiguous blocks for the tensors you use often. This cuts runtime allocation overhead and memory fragmentation during long runs. Fragmentation is what happens when free memory is split into small pieces, so a large block cannot fit even though the total free space looks large.
 
-Tune the CPU library thread counts. `OMP_NUM_THREADS` and `MKL_NUM_THREADS` should match the hardware. The right values reduce thread contention and improve parallel efficiency for CPU-bound work.
+Tune the CPU library thread counts. `OMP_NUM_THREADS` and `MKL_NUM_THREADS` should match the hardware. The right values reduce thread contention and improve parallel efficiency for CPU-bound work. Too many threads can be slower than too few, because the threads fight over the same cores.
 
-On multi-NUMA servers, pin each GPU process to the CPU cores of the NUMA node nearest its GPU. Use `numactl` or `taskset`. Bind memory with `numactl --membind` so host buffers for DMA come from nearby RAM. Cross-NUMA traffic can halve effective PCIe or NVLink bandwidth.
+On multi-NUMA servers, pin each GPU process to the CPU cores of the NUMA node nearest its GPU. Use `numactl` or `taskset`. Bind memory with `numactl --membind` so host buffers for DMA come from nearby RAM. Cross-NUMA traffic can halve effective PCIe or NVLink bandwidth. NUMA stands for non-uniform memory access, which means a core reaches nearby memory faster than memory on the far side of the server.
 
-Bind NIC interrupts to cores on the NIC's own NUMA node. Pin GPU driver threads, including the `nvidia-persistence` daemon, to dedicated cores. This cuts cross-NUMA traffic under heavy load.
+Bind NIC interrupts to cores on the NIC's own NUMA node. Pin GPU driver threads, including the `nvidia-persistence` daemon, to dedicated cores. This cuts cross-NUMA traffic under heavy load. An interrupt is a signal that tells a core that data has arrived, so where it lands decides which memory the data travels through.
 
-Isolate system tasks. Dedicate one or a few cores on each server to interrupts and background daemons. Use CPU isolation or cgroup pinning, so the threads that feed the GPUs are not interrupted. Removing OS jitter gives steadier throughput.
+Isolate system tasks. Dedicate one or a few cores on each server to interrupts and background daemons. Use CPU isolation or cgroup pinning, so the threads that feed the GPUs are not interrupted. Removing OS jitter gives steadier throughput. Jitter is the small, random delay a busy operating system adds to a task that needed to run on time.
 
-Enable transparent hugepages (THP) in `always` or `madvise` mode. Large allocations then use 2 MB pages, which reduces TLB thrashing when a framework allocates tens or hundreds of GB of host memory. Check `/sys/kernel/mm/transparent_hugepage/enabled`. If a latency-critical service shows jitter, prefer `madvise`.
+Enable transparent hugepages (THP) in `always` or `madvise` mode. Large allocations then use 2 MB pages, which reduces TLB thrashing when a framework allocates tens or hundreds of GB of host memory. The TLB is the small cache the CPU uses to find memory pages, so fewer, larger pages mean fewer lookups. Check `/sys/kernel/mm/transparent_hugepage/enabled`. If a latency-critical service shows jitter, prefer `madvise`.
 
 ### 2.5 Drivers, memory limits, and containers
 
-Keep NVIDIA drivers and the CUDA runtime current within a tested, stable version. New drivers bring speedups and are required for new compute capabilities. Run the same driver and CUDA versions on every node, since a mismatch can break multi-node jobs.
+Picture a multi-node job that hangs because two nodes run different driver versions. Keep NVIDIA drivers and the CUDA runtime current within a tested, stable version. New drivers bring speedups and are required for new compute capabilities. Run the same driver and CUDA versions on every node, since a mismatch can break multi-node jobs. A driver is the kernel-level software that lets the operating system use the GPU, and the CUDA runtime is the library your code calls to run GPU work.
 
-Enable persistence mode at boot with `nvidia-smi -pm 1`. The driver stays loaded, so GPUs skip re-initialization delay. Persistence also matters for MIG, because without it the partitions reset with each job.
+Enable persistence mode at boot with `nvidia-smi -pm 1`. The driver stays loaded, so GPUs skip re-initialization delay. Persistence also matters for MIG, because without it the partitions reset with each job. Setting it once at boot is cheaper than paying the start-up delay on every job.
 
-Raise the max locked memory so pinned allocations succeed. Set `ulimit -l unlimited`, or a high value. Otherwise the data loaders cannot allocate pinned buffers, and transfers fall back to slower pageable memory.
+Raise the max locked memory so pinned allocations succeed. Set `ulimit -l unlimited`, or a high value. Otherwise the data loaders cannot allocate pinned buffers, and transfers fall back to slower pageable memory. A data loader that quietly falls back is hard to spot, because nothing fails. The job just runs more slowly.
 
-In containers, add `--ipc=host` for shared memory, and set `--ulimit memlock=-1` so memory locking is not capped by the container runtime. This keeps containerized processes from hitting limits the host does not impose.
+In containers, add `--ipc=host` for shared memory, and set `--ulimit memlock=-1` so memory locking is not capped by the container runtime. This keeps containerized processes from hitting limits the host does not impose. A container inherits the limits its runtime sets, and those can be lower than the host's limits without any warning.
 
-Keep BIOS, firmware, and NIC firmware current. Some BIOS updates improve PCIe bandwidth or fix IOMMU problems for GPUs. Minor firmware fixes can clear obscure bottlenecks or reliability issues, so schedule regular maintenance windows.
+Keep BIOS, firmware, and NIC firmware current. Some BIOS updates improve PCIe bandwidth or fix IOMMU problems for GPUs. Minor firmware fixes can clear obscure bottlenecks or reliability issues, so schedule regular maintenance windows. Firmware updates need a planned window, because a node that is updated in the middle of a job will lose that job.
 
 ### 2.6 Memory access on the GPU
 
-GPU memory forms a hierarchy. Each thread has registers, each block has shared memory and L1, the SMs share L2, and HBM serves as global memory. Keep reuse in the faster tiers. A good kernel serves most reads from registers or from coalesced, cached HBM loads.
+Picture a kernel that looks correct and runs at a fraction of the speed the hardware promises. GPU memory forms a hierarchy. Each thread has registers, each block has shared memory and L1, the SMs share L2, and HBM serves as global memory. Keep reuse in the faster tiers. A good kernel serves most reads from registers or from coalesced, cached HBM loads. HBM is the high-bandwidth memory that holds most of the GPU's data.
 
-Coalesce global loads. Threads in the same warp should touch contiguous addresses, so the hardware serves them in few transactions. Strided or scattered access multiplies transactions and wastes bandwidth. Change the data layout or index math so each warp load becomes one wide transaction.
+Coalesce global loads. Threads in the same warp should touch contiguous addresses, so the hardware serves them in few transactions. Strided or scattered access multiplies transactions and wastes bandwidth. Change the data layout or index math so each warp load becomes one wide transaction. A warp is a group of threads that the GPU runs together as one unit.
 
-Shared memory works like a manually managed cache with very high bandwidth. Load tiles of a matrix into it, and let threads reuse each tile several times before moving on. This tiling cuts global memory traffic. Watch for bank conflicts, and pad the data or reorder accesses so threads do not contend for one bank.
+Shared memory works like a manually managed cache with very high bandwidth. Load tiles of a matrix into it, and let threads reuse each tile several times before moving on. This tiling cuts global memory traffic. Watch for bank conflicts, and pad the data or reorder accesses so threads do not contend for one bank. A bank is one of the parallel slots that shared memory is split into.
 
-Align data structures to 128 bytes when possible, especially for bulk copies and vectorized loads. A misaligned pointer can force extra transactions even when access is coalesced. Vector types such as `float2` and `float4` load several values per instruction, but the pointer must match the vector size.
+Align data structures to 128 bytes when possible, especially for bulk copies and vectorized loads. A misaligned pointer can force extra transactions even when access is coalesced. Vector types such as `float2` and `float4` load several values per instruction, but the pointer must match the vector size. Alignment is cheap to get right when the data is allocated, and expensive to fix afterwards.
 
-Send data to the GPU only when it is needed, and in large chunks. Pack many small arrays into one buffer and send it once. Small, frequent `cudaMemcpy` calls can become a bottleneck. With Unified Memory, prefetch with `cudaMemPrefetchAsync` before a critical section, so the GPU avoids page faults mid-compute.
+Send data to the GPU only when it is needed, and in large chunks. Pack many small arrays into one buffer and send it once. Small, frequent `cudaMemcpy` calls can become a bottleneck. With Unified Memory, prefetch with `cudaMemPrefetchAsync` before a critical section, so the GPU avoids page faults mid-compute. Each copy has a fixed start-up cost, so many small copies pay that cost many times over.
 
-Frequent allocation and freeing hurt performance. Repeated `cudaMalloc` and `cudaFree` calls add overhead. Reuse buffers, or use the GPU caching allocator in frameworks such as PyTorch. In custom CUDA code, use `cudaMallocAsync` with a memory pool, or manage your own scratch pool.
+Frequent allocation and freeing hurt performance. Repeated `cudaMalloc` and `cudaFree` calls add overhead. Reuse buffers, or use the GPU caching allocator in frameworks such as PyTorch. In custom CUDA code, use `cudaMallocAsync` with a memory pool, or manage your own scratch pool. A caching allocator keeps freed blocks around for the next request instead of returning them to the driver.
 
-Overlap transfers with compute. Issue `cudaMemcpyAsync` on several CUDA streams to prefetch while kernels run. Use the Tensor Memory Accelerator for bulk moves into shared memory, and `cp.async` for fine-grained staged copies. These approaches hide global memory latency behind useful work.
+Overlap transfers with compute. Issue `cudaMemcpyAsync` on several CUDA streams to prefetch while kernels run. Use the Tensor Memory Accelerator for bulk moves into shared memory, and `cp.async` for fine-grained staged copies. These approaches hide global memory latency behind useful work. A stream is an ordered queue of GPU work, and work in different streams can overlap.
 
 When the access pattern is predictable, issue an L2 prefetch in PTX. The bulk tensor form comes in one- to five-dimensional variants, and a simpler `prefetch.global.L2` form also exists. Use TMA with `cp.async.bulk.tensor` to stage blocks into shared memory. Loading registers ahead of use also helps. These steps make data ready when the kernel needs it.
 
 ### 2.7 Warps, threads, and occupancy
 
-Threads in a warp should follow the same execution path. If half the warp takes one branch and half takes another, the warp can take twice as long. When a rare branch fires for some data, sort or group the data so each warp sees uniform cases. Ballot and shuffle primitives can replace some branches with branch-free code.
+Picture a kernel where a rare branch makes a whole group of threads wait for one unlucky thread. Threads in a warp should follow the same execution path. If half the warp takes one branch and half takes another, the warp can take twice as long. When a rare branch fires for some data, sort or group the data so each warp sees uniform cases. Ballot and shuffle primitives can replace some branches with branch-free code.
 
-Warp intrinsics let threads share values without shared memory. `__shfl_sync` broadcasts a value to every thread in a warp. Warp-level reductions sum register values across the warp. These avoid slower memory and block-wide syncs in reductions and scans.
+The reason is simple. A warp runs one instruction at a time for all its threads, so a branch that splits the warp forces both paths to run in turn. Grouping like work together keeps each warp on a single path.
 
-Cooperative groups synchronize only the threads that need coordination, not the whole block. This cuts waiting when a subset of threads shares data.
+Warp intrinsics let threads share values without shared memory. `__shfl_sync` broadcasts a value to every thread in a warp. Warp-level reductions sum register values across the warp. These avoid slower memory and block-wide syncs in reductions and scans. A reduction combines many values into one, such as a sum, and a scan produces running totals.
 
-Occupancy is a balance. More threads hide memory latency, but too many registers or too much shared memory per thread cuts occupancy. In kernels with high instruction-level parallelism, using fewer registers to chase occupancy can hurt speed. If occupancy falls below 25 percent in Nsight Compute, raise the threads per block, then check for register spilling.
+Cooperative groups synchronize only the threads that need coordination, not the whole block. This cuts waiting when a subset of threads shares data. A block-wide barrier makes every thread wait, even when only a few of them need to meet.
 
-Thread block clusters keep data close and cut relaunch overhead. On Blackwell, up to 16 thread blocks can form a cluster, after you raise the non-portable limit. Use cluster-aware synchronization and shared-memory residency for persistent designs. Profile the trade-off between occupancy and residency before you adopt them.
+Occupancy is a balance. More threads hide memory latency, but too many registers or too much shared memory per thread cuts occupancy. In kernels with high instruction-level parallelism, using fewer registers to chase occupancy can hurt speed. If occupancy falls below 25 percent in Nsight Compute, raise the threads per block, then check for register spilling. Occupancy is the share of the GPU's thread slots that are in use, and spilling means registers overflow into slower memory.
 
-Use Tensor Cores for matrix math in custom kernels when you can. CUTLASS templates can make this simpler. Tensor Cores and TMA together can approach peak FLOPS for GEMM and convolution. Keep data in FP16, BF16, or TF32, and align tiles to multiples of 8 or 16.
+Thread block clusters keep data close and cut relaunch overhead. On Blackwell, up to 16 thread blocks can form a cluster, after you raise the non-portable limit. Use cluster-aware synchronization and shared-memory residency for persistent designs. Profile the trade-off between occupancy and residency before you adopt them. Residency here means data that stays in shared memory across several units of work.
 
-Mark constants and lookup tables as read-only. In CUDA C++, `const __restrict__` pointers tell the compiler the data is immutable, so loads can use the cached read-only path. Keep static weights and lookup tables on the device and treat them as constant. This cuts global memory traffic for those values.
+Use Tensor Cores for matrix math in custom kernels when you can. CUTLASS templates can make this simpler. Tensor Cores and TMA together can approach peak FLOPS for GEMM and convolution. Keep data in FP16, BF16, or TF32, and align tiles to multiples of 8 or 16. CUTLASS is NVIDIA's library of templates for fast matrix kernels, and GEMM is the general matrix multiply at the heart of most deep learning layers.
 
-Check scalability as well. A kernel that looks fast on a small input may thrash L2 on a large one. Use roofline analysis to compare achieved FLOPS and bandwidth with the hardware limits, so no performance is left unused.
+Mark constants and lookup tables as read-only. In CUDA C++, `const __restrict__` pointers tell the compiler the data is immutable, so loads can use the cached read-only path. Keep static weights and lookup tables on the device and treat them as constant. This cuts global memory traffic for those values. The compiler can only use a fast path when it knows the data will not change.
 
-Inspect PTX and SASS for critical custom kernels only. Nsight Compute shows the generated code. This can reveal memory bank conflicts or redundant work, which guide low-level changes. Skip this step for ordinary kernels, since it takes time.
+Check scalability as well. A kernel that looks fast on a small input may thrash L2 on a large one. Use roofline analysis to compare achieved FLOPS and bandwidth with the hardware limits, so no performance is left unused. L2 is the shared cache that sits between the compute units and HBM. The roofline model is covered in chapter 17.8, so use it as a checkpoint for each large change.
+
+Inspect PTX and SASS for critical custom kernels only. Nsight Compute shows the generated code. This can reveal memory bank conflicts or redundant work, which guide low-level changes. Skip this step for ordinary kernels, since it takes time. PTX is NVIDIA's intermediate assembly, and SASS is the machine code that actually runs on the GPU.
 
 ### 2.8 Kernel launch and scheduling
 
-Idle gaps crush throughput. Excessive `cudaDeviceSynchronize()` calls and blocking copies stop both the CPU and the GPU from doing useful work. Synchronize only when you need final results or are debugging. Let asynchronous work queue up, so the GPU stays busy.
+Picture a GPU profile with a saw-tooth pattern, busy for a moment and then idle until the CPU catches up. Idle gaps crush throughput. Excessive `cudaDeviceSynchronize()` calls and blocking copies stop both the CPU and the GPU from doing useful work. Synchronize only when you need final results or are debugging. Let asynchronous work queue up, so the GPU stays busy. Every forced wait is a gap the profiler will show you.
 
-Each kernel launch costs tens of microseconds. If you launch many tiny kernels back to back, fuse them. Options include manual CUDA fusion, XLA fusion, and CUTLASS or Triton for custom operations. Try `torch.compile(mode="reduce-overhead")` first. It fuses operation chains and wraps steady regions in CUDA Graphs.
+Each kernel launch costs tens of microseconds. If you launch many tiny kernels back to back, fuse them. Options include manual CUDA fusion, XLA fusion, and CUTLASS or Triton for custom operations. Try `torch.compile(mode="reduce-overhead")` first. It fuses operation chains and wraps steady regions in CUDA Graphs. Fusing means combining several small steps into one kernel, so the launch cost is paid once.
 
-Use persistent kernels for repeated workloads, such as a queue of identical batches. A persistent kernel launches once, stays alive, and loops over work units. This trades a more complex kernel for much lower scheduling overhead. Many distributed training and inference systems use this pattern.
+Use persistent kernels for repeated workloads, such as a queue of identical batches. A persistent kernel launches once, stays alive, and loops over work units. This trades a more complex kernel for much lower scheduling overhead. Many distributed training and inference systems use this pattern. The kernel does its own bookkeeping, so the CPU no longer has to launch each unit.
 
-GPU dynamic parallelism lets a kernel launch child kernels without going back to the CPU. It suits iterative work that spawns tasks from intermediate results. It adds overhead of its own, so use it judiciously.
+GPU dynamic parallelism lets a kernel launch child kernels without going back to the CPU. It suits iterative work that spawns tasks from intermediate results. It adds overhead of its own, so use it judiciously. Use it when the work really depends on the results of the step before, and skip it when a plain loop would do.
 
-For a static loop that runs thousands of times, capture its operations as a CUDA Graph and launch the graph. This cuts CPU launch overhead on each iteration. The benefit grows in multi-GPU runs, where many kernel and memcpy launches load the CPU.
+For a static loop that runs thousands of times, capture its operations as a CUDA Graph and launch the graph. This cuts CPU launch overhead on each iteration. The benefit grows in multi-GPU runs, where many kernel and memcpy launches load the CPU. A CUDA Graph records a sequence of GPU work once, then replays it with a single launch.
 
-Use CUDA streams for concurrency. Launch independent kernels in different streams so they overlap when resources are free. For example, one stream can compute part of a model while another runs a preprocessing kernel. Use CUDA events to order work when dependencies exist.
+Use CUDA streams for concurrency. Launch independent kernels in different streams so they overlap when resources are free. For example, one stream can compute part of a model while another runs a preprocessing kernel. Use CUDA events to order work when dependencies exist. An event is a marker that one stream can wait on before it continues.
 
 ### 2.9 Libraries, compilers, and autotuning
 
-Prefer NVIDIA's optimized libraries for core math and collectives. cuBLAS, cuDNN, Thrust, and NCCL track each GPU architecture closely. For point-to-point GPU transfers in distributed inference, use NIXL where it is available. Use NVSHMEM when you need fine-grained, GPU-initiated transfers. Choose cuBLAS GEMM over a custom kernel unless your pattern is unusual.
+Picture a team that writes its own matrix multiply to save a few days, then loses to the vendor library in the next release. Prefer NVIDIA's optimized libraries for core math and collectives. cuBLAS, cuDNN, Thrust, and NCCL track each GPU architecture closely. For point-to-point GPU transfers in distributed inference, use NIXL where it is available. Use NVSHMEM when you need fine-grained, GPU-initiated transfers. Choose cuBLAS GEMM over a custom kernel unless your pattern is unusual. Libraries get tuned for each new architecture, and a custom kernel must be tuned again by your own team.
 
-PyTorch's compiler fuses Python-level operations into kernels through TorchInductor. It can also use CUDA Graphs to reduce launch overhead. Typical gains are 10 to 40 percent once warm-up ends. Some models gain 20 to 50 percent. Always test compiled mode for correctness before you deploy it.
+PyTorch's compiler fuses Python-level operations into kernels through TorchInductor. It can also use CUDA Graphs to reduce launch overhead. Typical gains are 10 to 40 percent once warm-up ends. Some models gain 20 to 50 percent. Always test compiled mode for correctness before you deploy it. A faster output that is wrong is a regression, not a gain.
 
-Plan for dynamic shapes. Use `torch._dynamo.mark_dynamic()` to mark changing dimensions, or export shape-polymorphic graphs with `torch.export()` and compile them. In testing and CI, set `torch.compiler.set_stance()` to "fail_on_recompile" and enable `torch._dynamo.error_on_graph_break()`. These surface shape churn early. Use static shapes wherever possible, so CUDA Graphs can run.
+Plan for dynamic shapes. Use `torch._dynamo.mark_dynamic()` to mark changing dimensions, or export shape-polymorphic graphs with `torch.export()` and compile them. In testing and CI, set `torch.compiler.set_stance()` to "fail_on_recompile" and enable `torch._dynamo.error_on_graph_break()`. These surface shape churn early. Use static shapes wherever possible, so CUDA Graphs can run. Shape churn means the input sizes keep changing, which forces the compiler to rebuild its graph again and again.
 
-When PyTorch fuses an operation poorly, write a Triton kernel and register it with `torch.library.triton_op`. Triton exposes knobs such as `num_warps` and `num_stages`. You can also turn on automatic warp specialization and try asynchronous TMA layouts.
+When PyTorch fuses an operation poorly, write a Triton kernel and register it with `torch.library.triton_op`. Triton exposes knobs such as `num_warps` and `num_stages`. You can also turn on automatic warp specialization and try asynchronous TMA layouts. Triton is a Python-based language for writing GPU kernels, so most of the work stays in familiar code.
 
-Autotune custom kernels for the target GPU. Block size, tile size, and unroll factors all change speed, and the best values differ between Ampere, Hopper, and Blackwell. Use Triton autotuning or a brute-force search during preprocessing. Tuned settings can gain 20 to 30 percent over static defaults.
+Autotune custom kernels for the target GPU. Block size, tile size, and unroll factors all change speed, and the best values differ between Ampere, Hopper, and Blackwell. Use Triton autotuning or a brute-force search during preprocessing. Tuned settings can gain 20 to 30 percent over static defaults. A tuned setting is only valid for the GPU it was tuned on, so keep the results with the hardware they came from.
 
 Set `torch.backends.cudnn.benchmark=True` when input sizes are fixed. cuDNN then tries several convolution algorithms and keeps the fastest. The one-time cost pays off in training and inference. If exact reproducibility is not required, turn off `torch.backends.cudnn.deterministic` to allow faster algorithms.
 
 ### 2.10 GPU sharing and scheduling
 
-Enable NVIDIA MPS when several processes share one GPU. MPS lets kernels from different processes run concurrently, instead of time-slicing. It helps when each job alone cannot fill the GPU. For example, four training tasks on one GPU can overlap their work and raise total throughput.
+Picture four small training tasks that each use a fraction of one GPU and then sit idle between bursts. Enable NVIDIA MPS when several processes share one GPU. MPS lets kernels from different processes run concurrently, instead of time-slicing. It helps when each job alone cannot fill the GPU. For example, four training tasks on one GPU can overlap their work and raise total throughput. Time-slicing would run them one after another, with the GPU switching between them.
 
-Use MIG to split a high-end GPU into up to seven smaller instances. Each slice gives a light job, such as a small-model inference service or a batch of experiments, guaranteed resources. Do not use MIG for tightly coupled parallel jobs, since they need the full GPU. Use it for isolation when jobs are smaller than one GPU.
+Use MIG to split a high-end GPU into up to seven smaller instances. MIG stands for Multi-Instance GPU, which gives each slice its own memory and compute path. Each slice gives a light job, such as a small-model inference service or a batch of experiments, guaranteed resources. Do not use MIG for tightly coupled parallel jobs, since they need the full GPU. Use it for isolation when jobs are smaller than one GPU.
 
-Keep persistence mode on so MIG partitions survive between jobs. Changing the MIG layout on the fly resets the GPU, which can disrupt running work. Configure MIG at cluster boot, and plan maintenance windows for changes. The GPU does not keep partitions across reboots, so NVIDIA's MIG Manager can recreate the layout at boot.
+Keep persistence mode on so MIG partitions survive between jobs. Changing the MIG layout on the fly resets the GPU, which can disrupt running work. Configure MIG at cluster boot, and plan maintenance windows for changes. The GPU does not keep partitions across reboots, so NVIDIA's MIG Manager can recreate the layout at boot. A layout that exists only in one session is a layout that will be lost.
 
-Make the scheduler aware of topology. Kubernetes and SLURM should place containers on nodes that respect NUMA and NVLink boundaries. Use Kubernetes device plugins or SLURM Gres to hand out MIG slices for smaller jobs. A GPU-aware scheduler stops one job from spanning distant GPUs.
+Make the scheduler aware of topology. Kubernetes and SLURM should place containers on nodes that respect NUMA and NVLink boundaries. Use Kubernetes device plugins or SLURM Gres to hand out MIG slices for smaller jobs. A GPU-aware scheduler stops one job from spanning distant GPUs. SLURM is the workload manager that many HPC clusters use to queue and place jobs.
 
-Count the CPU needs of each GPU task, including data loader threads. Do not pack more GPU jobs on a node than its CPUs can feed. An idle GPU costs less than a node full of underfed GPUs. Monitor CPU use per GPU job to guide placement.
+Count the CPU needs of each GPU task, including data loader threads. Do not pack more GPU jobs on a node than its CPUs can feed. An idle GPU costs less than a node full of underfed GPUs. Monitor CPU use per GPU job to guide placement. A job that looks light on the GPU can still be heavy on the CPU.
 
-On NVSwitch systems such as GB200 and GB300 NVL72, NVIDIA Fabric Manager manages the NVSwitch topology and routing. Without it, multi-GPU communication may be suboptimal or fail for large jobs. The service usually runs by default, but confirm it is running after each driver update.
+On NVSwitch systems such as GB200 and GB300 NVL72, NVIDIA Fabric Manager manages the NVSwitch topology and routing. Without it, multi-GPU communication may be suboptimal or fail for large jobs. The service usually runs by default, but confirm it is running after each driver update. An update can leave the service stopped without any obvious sign on the GPUs.
 
-Pack jobs deliberately. On a 4-GPU node, two 2-GPU jobs that use little CPU can share the node. If both sit on GPUs that share an NVLink connection, they can use NVLink for communication. Avoid placing jobs together when they exceed the node's memory or I/O capacity. The goal is high utilization without contention.
+Pack jobs deliberately. On a 4-GPU node, two 2-GPU jobs that use little CPU can share the node. If both sit on GPUs that share an NVLink connection, they can use NVLink for communication. Avoid placing jobs together when they exceed the node's memory or I/O capacity. The goal is high utilization without contention. Packing well is a planning exercise, and it is easy to undo with one careless placement.
 
 ---
 
@@ -387,7 +405,11 @@ Pack jobs deliberately. On a 4-GPU node, two 2-GPU jobs that use little CPU can 
 
 A distributed job is only as fast as its slowest network hop. The appendix of *AI Systems Performance Engineering* notes that 100 Gbps equals 12.5 GB/s, so a fully used 100 Gbps link should show about that rate. It also describes NVLink 5 as giving up to 1.8 TB/s of bidirectional GPU-to-GPU bandwidth. Use those figures as a reference, and measure your own fabric with the tools named in the table. The latency and bandwidth limits below are example values that you should set for yourself. If you measure less than expected, check the NCCL settings in the table first.
 
+Picture a training job whose step time doubles on the day a second rack joins the run. Nothing in the code changed, but the traffic between racks now takes the longest path. A distributed job is only as fast as its slowest network hop, and every collective waits for the slowest link it crosses.
+
 ### 3.1 Network hardware
+
+Picture a new switch that the team installed last month, and a job that still runs slower than the old cluster did. The rows below check the switches, the topology and the link settings, so the speed you paid for actually reaches the GPUs.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -406,6 +428,8 @@ A distributed job is only as fast as its slowest network hop. The appendix of *A
 
 ### 3.2 Network software
 
+Picture a job that runs on the right hardware but uses the wrong network interface, so its traffic goes out over the slow management link. The software rows check the NCCL settings that choose the interface, the HCA and the timeouts.
+
 | # | Item | Detection signal |
 |---|---|---|
 | NET-013 | NCCL is the latest production version | nccl-tests |
@@ -421,15 +445,25 @@ A distributed job is only as fast as its slowest network hop. The appendix of *A
 
 ### 3.3 Multi-GPU scaling and NVLink topology
 
-Scaling pays off only when communication is fast and topology-aware. Otherwise, added GPUs spend their time waiting on one another. Use NVLink and NVSwitch domains, such as NVL72, to approach linear scaling. Choose the parallelism strategy that fits the fabric.
+Picture a team that adds GPUs to a job and sees almost no speedup in return. Scaling pays off only when communication is fast and topology-aware. Otherwise, added GPUs spend their time waiting on one another. Use NVLink and NVSwitch domains, such as NVL72, to approach linear scaling. Choose the parallelism strategy that fits the fabric. Linear scaling means that doubling the GPUs roughly doubles the speed, and it is the goal that the fabric makes possible.
+
+Consider the choice in plain terms. A faster fabric lets you spread the model over more GPUs without the extra GPUs idling. A slower fabric means the same extra GPUs spend most of each step waiting, and the bill goes up without the speed to match.
 
 NVL72 connects 72 GPUs with full all-to-all bandwidth. Any GPU can reach any other at full NVLink 5 speed. The NVLink Switch domain is nonblocking at the fabric level. Real throughput still depends on concurrent traffic and path scheduling, so check DCGM NVLink counters and Nsight Systems traces before you assume per-pair saturation.
 
+All-to-all bandwidth means that any GPU can exchange data with any other at full speed. That property matters when the model is split across many GPUs, because each part needs data from many others on every step.
+
 That topology makes data, tensor, and pipeline parallelism practical. Strategies that would choke on slower links become reasonable. Still, colocate every multi-GPU job inside one NVLink Switch domain when you can. Mixing GPUs across domains or onto standard networks adds bottlenecks to tightly coupled work.
+
+Data parallelism copies the model and splits the batches. Tensor parallelism splits each layer across GPUs. Pipeline parallelism splits the layers into stages. Each strategy sends different traffic over the fabric, so the fabric decides which one is affordable.
 
 NVLink 5 gives 900 GB/s per GPU in each direction, double the previous generation. An NVL72 rack offers about 130 TB/s of aggregate intra-rack bandwidth. At 1.8 TB/s, even tens of gigabytes of gradients can all-reduce in a few milliseconds. Design gradient synchronization and parameter sharding to use that budget.
 
+Think of NVLink as a set of private roads between GPUs inside the rack. The roads are fast enough that moving gradients is no longer the main cost of a step, which changes which parallelism strategy makes sense.
+
 Use the latest NCCL, and enable the parallel aggregated tree (PAT) algorithm. PAT was introduced for NVLink Switch topologies. It cuts synchronization time by doing reductions more efficiently than standard tree or ring algorithms on the NVL72 layout.
+
+Check the NCCL version before you tune anything else. An older NCCL can miss the newer algorithms, so the setting you enable may do nothing at all on that version.
 
 Fine-grained model parallelism becomes practical with full all-to-all links. Layer-wise or tensor parallelism across many GPUs can be efficient, because each GPU reaches every other at high bandwidth. Earlier designs avoided that split to save network capacity.
 
@@ -437,19 +471,27 @@ Watch link utilization in profiles. If extreme all-to-all traffic saturates the 
 
 Beyond one rack, NVLink Switch can span up to 576 GPUs in one domain, using second-level switches. At that scale, run collectives inside each NVL72 rack first. Use inter-rack InfiniBand only when the job needs it. This keeps most traffic on the fastest links.
 
+A rack is the natural unit for fast traffic. Beyond the rack, the traffic has to climb to a slower layer, so keep the heavy exchanges inside each rack and send only the summaries across racks.
+
 ### 3.4 Distributed training network
 
-At cluster scale, the network becomes the limit. A slow network breaks linear scaling and inflates cost. Protect bandwidth with RDMA, jumbo frames, hierarchical collectives, NIC affinity, and compression.
+Picture a large cluster where each step spends more time in all-reduce than in the math. At cluster scale, the network becomes the limit. A slow network breaks linear scaling and inflates cost. Protect bandwidth with RDMA, jumbo frames, hierarchical collectives, NIC affinity, and compression. Each of these protects a different part of the path, so a fix in one place does not help if another place is still slow.
 
 Equip multi-node clusters with InfiniBand or RoCE. Make sure NCCL and MPI use RDMA. NCCL autodetects InfiniBand and uses GPUDirect RDMA when it is available. RDMA bypasses the kernel networking stack, which lowers latency compared with TCP. If you only have Ethernet, enable RoCE on RDMA-capable NICs.
+
+RDMA, or remote direct memory access, lets one machine write into another machine's memory without the operating system copying the data on each side. RoCE is RDMA carried over Ethernet, and InfiniBand is a separate fabric built for the same job.
 
 On NVLink domain systems, keep collectives on the fabric when possible. Reserve host networking for links between islands. Align NCCL topology hints with the NVLink and NVSwitch domains.
 
 For TCP-based clusters, increase the maximum buffer sizes in `/proc/sys/net/core/{r,w}mem_max`, and widen the TCP autotuning ranges set by `net.ipv4.tcp_{r,w}mem`. Larger buffers help saturate 10, 40, or 100 GbE links. Enable jumbo frames with MTU 9000 on all nodes and switches. This cuts per-packet overhead and CPU use. For congested or wide-area links, consider BBR congestion control.
 
+Buffers that are too small leave a fast link idle, because the sender stops to wait for acknowledgements. Check the buffer settings on the actual links you measure, not on the spec sheet.
+
 Pin network interrupts and threads to cores on the same NUMA node as the NIC. This avoids cross-NUMA penalties and keeps the stack's memory accesses local. Check `/proc/interrupts`, and use `irqaffinity` settings so a NIC on NUMA node 0 is served by a core on node 0.
 
 Tune NCCL for large multi-node jobs. Increase `NCCL_NTHREADS` from the default of 4 to 8 or 16, for more bandwidth at the cost of CPU use. Raise `NCCL_BUFFSIZE` from the default 1 MB to 4 MB or more, for large messages. These changes help only when reductions are large and the network can carry them.
+
+Tune one setting at a time, and measure each change against the same job. A change that helps a large message may slow down a small one, so the test should include both kinds of traffic.
 
 With SHARP-capable switches, install the NCCL SHARP plugin and set `NCCL_COLLNET_ENABLE=1`. Then configure the plugin's SHARP settings, following its documentation. One setting to check is `SHARP_COLL_LOCK_ON_COMM_INIT=1`. Another is `SHARP_COLL_NUM_COLL_GROUP_RESOURCE_ALLOC_THRESHOLD=0`. Expect gains only when the fabric supports SHARP offload.
 
@@ -459,9 +501,15 @@ NCCL chooses ring or tree algorithms automatically. On mixed links, such as NVLi
 
 Avoid oversubscribing the NIC. Eight GPUs can generate more than 200 Gbps of traffic during all-reduce, so one 100 Gbps NIC becomes the limit. Use several NICs per node, and 200 or 400 Gbps InfiniBand at scale. Watch PCIe limits too, since NICs and GPUs that share a root complex compete for bandwidth.
 
+Oversubscribing means that more traffic is offered to a link than the link can carry. The extra traffic queues, and the queue shows up as slow steps. Count the traffic per node before you choose the number of NICs.
+
 Compress communication when the network is the slowest part. Options include 16-bit or 8-bit gradient compression, quantized activations for pipeline transfers, and sketching methods. NCCL does not compress natively, so add compression in the framework. Horovod gradient compression and custom PyTorch all-reduce hooks are common routes.
 
+Compression trades a little GPU work for fewer bytes on the wire. It helps only when the network is the limit, and it can hurt accuracy, so test it on a short run first.
+
 Monitor for silent network faults. Packet loss shows up as retries or timeouts. On InfiniBand, read the resend counters. On Ethernet, check TCP retransmits. Even small loss can slow throughput, since congestion control backs off. Run iPerf or NCCL tests to confirm that bandwidth and latency match expectations.
+
+A silent fault does not raise an error, so it only shows up as a slow step or a retry count. Check the counters on a schedule, and treat a rising count as a warning even when the job still finishes.
 
 ---
 
@@ -469,7 +517,11 @@ Monitor for silent network faults. Packet loss shows up as retries or timeouts. 
 
 Storage problems often look like GPU problems. The GPUs sit idle waiting for data, and utilization drops without a clear error. Check object storage, the shared filesystem, and local disks separately, because your workloads may use all three, because each one fails in its own way. The appendix advises measuring data pipeline throughput whenever GPUs fall short of full utilization. The bandwidth, latency, and error limits below are example values, so replace them with targets you measure yourself. If the GPUs wait on storage, you can test the rows one at a time.
 
+Start the check at the GPUs. If they wait, follow the data back toward its source, one stage at a time. The rows below are grouped by storage type, so you can work from the nearest store to the farthest one.
+
 ### 4.1 Object storage
+
+Picture a bucket that holds the whole training set, and a job that reads from it on every epoch. The object storage rows check the bucket's settings, its error rate and its latency, since each of those can slow every read.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -486,6 +538,8 @@ Storage problems often look like GPU problems. The GPUs sit idle waiting for dat
 
 ### 4.2 Distributed filesystem
 
+Picture a shared filesystem that many nodes mount at once, all reading during the same minute. The rows below check its speed, its metadata servers and its quotas, because those are the parts that fail under load.
+
 | # | Item | Detection signal |
 |---|---|---|
 | STO-011 | Distributed filesystem is Lustre, Weka, BeeGFS, or VAST | df -h |
@@ -501,6 +555,8 @@ Storage problems often look like GPU problems. The GPUs sit idle waiting for dat
 
 ### 4.3 Local storage
 
+Picture a local NVMe disk on every node that holds a cache of the dataset. The rows here check the mount options, the trim setting and the health of each disk.
+
 | # | Item | Detection signal |
 |---|---|---|
 | STO-021 | Local NVMe is mounted with noatime | mount |
@@ -511,33 +567,55 @@ Storage problems often look like GPU problems. The GPUs sit idle waiting for dat
 
 ### 4.4 Feeding the GPUs
 
-Data that arrives late leaves GPUs idle. The cheapest speedup often comes from fixing the input, not from faster math. Parallel loaders, pinned memory, asynchronous transfers, and fast storage keep the model supplied with data.
+Picture a GPU dashboard where utilisation sits low through every epoch, with no error anywhere. Data that arrives late leaves GPUs idle. The cheapest speedup often comes from fixing the input, not from faster math. Parallel loaders, pinned memory, asynchronous transfers, and fast storage keep the model supplied with data.
 
 Start with the loader workers. The default of one or two may be too few for a busy GPU. Raise `DataLoader(num_workers=N)` in PyTorch, and profile until input stops being the bottleneck. High core-count CPUs exist to feed GPUs, so use them.
 
+Each loader worker reads and prepares batches while the GPU works on the batch before. If there are too few workers, the GPU waits between batches, and the gap repeats on every step.
+
 Pin host memory for transfer buffers with `pin_memory=True`. The GPU can then copy directly from those buffers, which speeds host-to-device copies. Combine pinned memory with asynchronous transfers, so loading overlaps computation.
+
+Pinned memory is host memory that the operating system promises not to move. The GPU can copy from it directly, which is why pinning speeds up each transfer.
 
 Overlap the next batch with the current one. While the GPU computes batch N, prepare batch N+1 on the CPU and copy it in the background with CUDA streams and `cudaMemcpyAsync`. In PyTorch, `non_blocking=True` does the same job. This double buffering hides most of the transfer latency.
 
+Think of a relay race. While one runner carries the baton, the next runner is already moving into position, so the handoff costs almost nothing. The same idea applies to batches, where the next one is copied while the GPU works.
+
 Store training data on local NVMe SSDs or a high-performance parallel filesystem. Spinning disks cap throughput far below what GPUs consume. Where available, enable GPUDirect Storage, so GPUs stream data without passing through the CPU. That lowers both I/O latency and CPU load.
+
+A local disk is fast because it sits next to the GPU. The trade-off is that each node must hold its own copy of the data, which costs space and needs a refresh process.
 
 Avoid single-file bottlenecks. If every worker reads one large file, stripe it across storage targets or split it into chunks. Let each loader worker read a different file at the same time. This raises aggregate bandwidth from the storage system.
 
+When every worker waits for the same file, the storage server serves them one after another, and that line sets the pace for the whole job. Splitting the data across many files lets the requests run side by side.
+
 Millions of small files overwhelm the metadata server. Pack them into `tar` or RecordIO files, use data ingestion libraries that batch reads, or enable metadata caching on clients. This cuts per-file overhead and shortens epoch startup.
+
+Each small file needs its own lookup, and a lookup costs time even when the file itself is tiny. Packing many files into one archive turns thousands of lookups into one, which is why the pack step pays off.
 
 Use every caching layer you have. For NFS, increase the client cache size and duration. For distributed filesystems, run a caching daemon, or copy part of the dataset to local disk. A local cache removes repeated reads when each node processes the same files.
 
+A cache keeps a copy of the data close to the reader. The first read is still slow, but each later read of the same data is fast, so a cache helps most when the same files are read again and again.
+
 Measure end-to-end throughput. If GPUs are not near 100 percent utilization, check how many MB/s you read and how busy the loader cores are. `dstat` or DCGM shows whether GPUs wait on data. Tune prefetch buffers, network buffers, and disk RAID settings until input keeps pace. These fixes often lift utilization from about 70 percent to over 95 percent on the same hardware.
+
+Measure before and after each change. A change that looks right on paper can leave utilization unchanged, and only the measurement shows that.
 
 Scale I/O with the cluster. Eight GPUs each consuming 200 MB/s need 1.6 GB/s per node. A hundred such nodes need 160 GB/s, which few central filesystems can sustain. Shard data across storage servers, add per-node caches, or preload data onto local disks. Extra copies of data are often worth the space.
 
+Multiply the rate per GPU by the number of GPUs to see the total demand on storage. A plan that looks fine for one node can fail at a hundred nodes, so do the multiplication before the storage order is placed.
+
 ### 4.5 Data formats and processing pipelines
 
-The format, layout, and location of data decide how smoothly a pipeline runs at scale. Packing data into binary files, sharding it, caching it, and giving threads priority turn slow I/O into a steady stream.
+Picture a loader that opens a separate file for every sample in every epoch. The format, layout, and location of data decide how smoothly a pipeline runs at scale. Packing data into binary files, sharding it, caching it, and giving threads priority turn slow I/O into a steady stream.
 
 Switch to a binary layout such as TFRecords, LMDB, or memory-mapped arrays. That removes the cost of opening millions of small files and speeds up ingestion.
 
+Opening a file costs time no matter how small the file is. A binary layout keeps many samples in one file, so the loader opens far fewer files.
+
 Mount data filesystems with `noatime`, and raise read-ahead for streaming reads. Spread data across several storage nodes so one server does not carry all the I/O. For NVMe SSDs, set the scheduler to `mq-deadline` or `noop` to reduce latency variation.
+
+Reads are the common case for training data. Turning off the access-time update means the system does not write a timestamp each time a file is read, which saves I/O on read-heavy data.
 
 For CPU-bound pipelines, disabling hyperthreading can reduce resource contention and make timings steadier. The benefit is largest where single-thread speed matters. Test the change on your own workload before you keep it.
 
@@ -545,9 +623,15 @@ Raise the scheduling priority of loader and preprocessing threads with `chrt` or
 
 Keep frequently used data in memory. The OS page cache or a RAM disk works well. This is especially useful in NLP, where certain tokens and phrases repeat. Caching cuts both redundant processing and I/O.
 
+Repeated reads of the same data are the cheapest reads, because the answer is already in RAM. A small dataset that fits in memory can skip the disk after the first epoch.
+
 Load data before the iteration that needs it. Background loader threads or processes help, such as PyTorch's DataLoader with `prefetch_factor`. In distributed training, use `DistributedSampler` so each process gets unique data and avoids duplicate reads.
 
+Prefetching is the habit of loading the next batch while the current one is in use. It hides the read time behind the compute time, as long as the read is not slower than the compute.
+
 If CPU preprocessing is heavy, spread it across workers. Image augmentation and text tokenization are typical examples. Profile to confirm that the CPU is not the bottleneck while GPUs wait. If it is, add workers, or move transforms to the GPU with NVIDIA DALI, which runs image operations asynchronously.
+
+A short profile tells you which stage is the real limit before you spend money on the wrong fix. The CPU and the storage can each be the wall, and they need different remedies.
 
 Simple augmentation on large data can run on the GPU instead. Adding noise or normalizing the data are good examples. A small CUDA kernel can do the work right after loading. Use streams so the augmentation of batch N+1 overlaps training on batch N, and avoid serializing the pipeline.
 
@@ -557,15 +641,21 @@ Give each node its own subset of the data, so the whole dataset is not read from
 
 Batch size also affects I/O. A larger batch puts more work on each GPU and reduces I/O frequency. That helps only up to the point where convergence suffers. If GPUs wait on data often and you cannot speed up I/O, a smaller batch shortens idle time. Gradient accumulation over small batches keeps reads steady. Aim for GPUs that are almost always busy.
 
+Think of each batch as a trip to the store. Bigger trips mean fewer trips, but each trip carries more, so the total work depends on how the trips are sized.
+
 Speeding up the model does not help if the pipeline halves throughput. Profile end to end with Nsight Systems and Nsight Compute, or with the PyTorch profiler. Compare iteration time on synthetic data with iteration time on real data. Aim for less than 10 percent overhead from the ideal. If the gap is larger, fix the pipeline first, since that often gives large free speedups.
+
+A faster model that waits on a slow pipeline gains nothing, which is why the pipeline comes first. Fix the input path, then measure the model again.
 
 Compress the dataset when I/O is the bottleneck. Use lightweight compression such as LZ4 or Zstd fast mode. Compression trades some CPU for less I/O. If decompression becomes the bottleneck, use multithreaded decompression or move it to an accelerator. Read and decompress on separate threads so the two overlap. With GPUDirect Storage and the `cuFile` stack, GPUs can decompress data on the fly.
 
 ### 4.6 Checkpoints and logging overhead
 
-Checkpoints can stall training if they write to slow storage. Write them asynchronously, or write to local disk first and copy to network storage later. Compress checkpoints or use sparse formats to shrink them.
+Picture a training job that pauses for minutes each time it saves a checkpoint, while every GPU sits idle. Checkpoints can stall training if they write to slow storage. Write them asynchronously, or write to local disk first and copy to network storage later. Compress checkpoints or use sparse formats to shrink them. A stalled save is still a stalled job, even when the save is safe.
 
 Logging costs I/O on every step. Aggregate the iteration statistics, and log only every Nth iteration instead of each one. This removes most of the logging overhead.
+
+A log line per step looks cheap by itself. Across thousands of steps and many ranks it becomes a steady stream of writes, and that stream competes with the data reads.
 
 Use `cuda-checkpoint` with Checkpoint/Restore in Userspace (CRIU) to suspend a running GPU process and persist its process image. When the job resumes, the CUDA driver restores device memory and CUDA state. It can restore onto other GPUs of the same device type. Treat this as a complement to state-dict or sharded checkpoints, not a replacement.
 
@@ -573,7 +663,7 @@ Use `cuda-checkpoint` with Checkpoint/Restore in Userspace (CRIU) to suspend a r
 
 ## 5. Model architecture checklist
 
-Model choices set limits that no later tuning can remove. Ask these questions while the model is being designed, not after it reaches production. The parameter limit and the context length in the table are example values. Your hardware and your product should decide the real numbers.
+Picture a team that picks a model architecture in a planning meeting, then finds that the serving GPUs cannot hold it. Model choices set limits that no later tuning can remove. Ask these questions while the model is being designed, not after it reaches production. The parameter limit and the context length in the table are example values. Your hardware and your product should decide the real numbers.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -597,15 +687,21 @@ Model choices set limits that no later tuning can remove. Ask these questions wh
 
 FlashAttention is the standard choice for transformer attention. It computes attention in a tiled, streaming way and never builds the large intermediate matrices. That cuts memory use and speeds up long sequences. The same memory savings let you run larger batches or longer contexts on the same hardware.
 
+Attention normally builds a large table of scores between every pair of tokens. Tiling means the GPU works on small blocks that fit in fast memory, so the big table never has to sit in slow memory.
+
 Fused kernels cut launch overhead and memory round trips. Turn on fused optimizers, which merge the weight update and momentum steps into one pass. Fused multi-head attention and fused normalization kernels do the same for model layers. Transformer Engine and FasterTransformer offer fused patterns, such as a LayerNorm with dropout.
 
+A round trip means data goes out to slow memory and comes back for the next step. A fused kernel keeps the data in fast memory for several steps, so fewer trips happen.
+
 Check the framework's flags before you write custom kernels. Most common fused paths already exist in the libraries. Use them first.
+
+Writing a custom kernel is the last step, not the first. The library often already has the fused path, and a custom kernel adds maintenance work every time the framework changes.
 
 ---
 
 ## 6. Training checklist
 
-Training speed depends on settings you choose before a long run starts. The appendix calls mixed precision and data prefetching low-hanging fruit, and says they might give about 2x. It also says harder custom kernels usually give smaller gains, so start with the easy changes. The 80 percent utilization target in the table is an example value. Set your own target after you measure a baseline.
+Picture a long run that is already well underway when someone notices a setting that should have changed at the start. Training speed depends on settings you choose before a long run starts. The appendix calls mixed precision and data prefetching low-hanging fruit, and says they might give about 2x. It also says harder custom kernels usually give smaller gains, so start with the easy changes. The 80 percent utilization target in the table is an example value. Set your own target after you measure a baseline.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -627,45 +723,65 @@ Training speed depends on settings you choose before a long run starts. The appe
 
 ### 6.1 Mixed precision and low-precision math
 
-Mixed precision runs bulk math in FP16 or BF16 and keeps a copy of the weights, or the final accumulation, in FP32. Tensor Cores make half-precision matrix work much faster. Depending on the kernel mix, the speedup is about 1.5 to 3.5 times, with larger gains on matmul-heavy models. Automatic mixed precision (AMP) makes this standard in most frameworks.
+Picture a model that trains more slowly than the benchmark promised, with every layer still running in FP32. Mixed precision runs bulk math in FP16 or BF16 and keeps a copy of the weights, or the final accumulation, in FP32. FP16 and BF16 are 16-bit number formats, and FP32 is the full-precision format that most code uses by default. Tensor Cores make half-precision matrix work much faster. Depending on the kernel mix, the speedup is about 1.5 to 3.5 times, with larger gains on matmul-heavy models. Automatic mixed precision (AMP) makes this standard in most frameworks.
+
+The reason for keeping an FP32 copy is accuracy. Small weight updates can vanish in 16-bit numbers, so the master copy stays in full precision while the fast math runs in half precision.
 
 Prefer BF16 on newer hardware. BF16 has a larger exponent range, so it avoids most overflow and underflow problems without loss scaling. Newer GPUs run BF16 Tensor Cores as fast as FP16.
 
 For FP32 matrix multiplies, set `torch.set_float32_matmul_precision("high")`. This enables TF32, a fast FP32 format, for operations that stay numerically safe. The setting "highest" keeps full FP32, which costs speed. Understand that cost before you choose it.
 
+TF32 keeps the range of FP32 but uses fewer bits in the multiply, which lets it run on Tensor Cores. It is a middle path between full FP32 speed and reduced precision.
+
 FP8 Tensor Cores give roughly double the math throughput of FP16 or BF16 on compute-bound kernels. They also reduce activation and weight bandwidth. For training, use FP8 through NVIDIA Transformer Engine, and keep FP16 or FP32 accumulators when needed. FP4 (NVFP4) doubles FP8 throughput again for inference, with micro tensor scaling to protect accuracy.
+
+FP8 is an 8-bit number format. It needs careful scaling so the values fit, and the Transformer Engine handles most of that scaling for you in common training code.
 
 Hybrid FP8 uses E4M3 for forward activations and weights, and E5M2 for gradients. A delayed scaling window of 256 to 1024 steps often works well. For inference, test FP8 first, and adopt NVFP4 only after calibration shows acceptable quality. The end-to-end speedup depends on the kernel mix and calibration, so measure it on your own model.
 
 Reduce precision where it is safe. Gradient all-reduce can run in FP16 or BF16. Storing activations for checkpointing in 16-bit instead of FP32 saves memory. Research on FP8 and FP4 optimizers and quantized gradients continues. In bandwidth-limited settings, gradient compression can be a game changer, as DeepSeek showed when training on constrained GPUs.
 
+Lower precision saves memory and bandwidth. Each step down removes some accuracy, so test the change on a validation set before it reaches a long run.
+
 Gradient accumulation raises the effective batch size without extra memory. Activation checkpointing trades compute for memory in very deep networks. Both matter when a model nears the memory limit. Checkpointing adds compute, though, so it can slow a job that is not memory bound. Test it before you enable it.
+
+Accumulation adds up gradients over several small batches and then applies one update, as if the batch had been large. The memory cost stays at the small batch size, which is why it helps when the model nearly fills the GPU.
 
 Modern NVIDIA GPUs support 2:4 structured sparsity in matrix multiply. The pattern zeroes 50 percent of the weights, and the hardware doubles throughput for those layers. Prune the model to that pattern, and use NVIDIA's libraries to reach the sparse Tensor Core path. The model often needs retraining with a sparsity regularizer.
 
+In the 2:4 pattern, every group of four weights holds two zeros. The hardware skips the zeros, and that is where the speed comes from. The model usually needs a short retraining run to recover any accuracy lost in the pruning.
+
 ### 6.2 Overlap, pipelines, and sharding
 
-In distributed training, overlap communication with computation. Launch each layer's gradient all-reduce as soon as its gradients are ready, while the next layer still runs its backward pass. PyTorch's Distributed Data Parallel (DDP) does this out of the box. It can hide all-reduce latency when it is done right.
+Picture eight GPUs that spend half of every step waiting for gradients to arrive. In distributed training, overlap communication with computation. Launch each layer's gradient all-reduce as soon as its gradients are ready, while the next layer still runs its backward pass. PyTorch's Distributed Data Parallel (DDP) does this out of the box. It can hide all-reduce latency when it is done right. The backward pass is the step that computes gradients, working from the last layer back to the first.
 
 Pipeline parallelism needs enough microbatches to keep every stage busy. An interleaved schedule shrinks the pipeline bubbles, and some frameworks automate it. NVLink and NVSwitch move activations quickly between stages. On NVL72, even communication-heavy stages exchange data at multi-terabyte speeds.
 
+Pipeline parallelism splits the layers across GPUs and passes activations along the chain. Without enough microbatches, the early stages finish their work and then sit idle while the later stages catch up. That idle time is called the bubble.
+
 Zero Redundancy Optimizer (ZeRO) shards optimizer states and gradients across GPUs instead of replicating them. This makes very large models possible. It reduces per-GPU memory pressure, avoids swapping to CPU, and can cut communication volume when done in chunks. DeepSpeed and Megatron-LM provide this kind of sharding.
 
+ZeRO removes the copies of optimizer state that every GPU would otherwise hold. Each GPU keeps only its share and fetches the rest when it needs them.
+
 Asynchronous updates can raise throughput. Stale stochastic gradient descent (SGD) lets workers skip waiting for one another. Convergence needs careful tuning, so start with a small experiment before you scale up.
+
+Asynchronous updates let fast workers move on without waiting for the slow ones. The price is that some updates are computed from weights that are already a little old, so the training behaviour needs checking.
 
 Prune during training to add sparsity, then exploit it at inference. A smaller model runs faster and uses less memory, even if training stayed dense. Explore the lottery ticket hypothesis, distillation, and structured pruning to keep accuracy while trimming size.
 
 ### 6.3 Hyperparameters for throughput
 
-Some hyperparameters can be tuned for speed without hurting accuracy. Batch size, sequence length, and the number of active experts in a mixture-of-experts model are examples. Larger batches give better throughput, but they may need a retuned learning-rate schedule to keep accuracy. Adjust the schedule whenever you change these values.
+Picture a team that doubles the batch size to finish sooner, and then sees the loss curve behave differently. Some hyperparameters can be tuned for speed without hurting accuracy. Batch size, sequence length, and the number of active experts in a mixture-of-experts model are examples. Larger batches give better throughput, but they may need a retuned learning-rate schedule to keep accuracy. Adjust the schedule whenever you change these values. A hyperparameter is a setting you choose before training, rather than one the training learns.
 
 Procedure changes help too. Activation checkpointing, or extra steps of compute, can keep the same effective batch. Tune the learning-rate schedule to compensate for those changes.
+
+Procedure changes are edits to how the training loop runs, not to the model itself. Each one needs its own check of the learning-rate schedule, because the schedule was tuned for the old procedure.
 
 ---
 
 ## 7. Inference checklist
 
-Inference users notice slow responses first, and the slowest responses hurt most. The appendix points out that both the average latency and the 99th percentile tail matter for real-time services. This table checks the serving engine and the endpoints around it. Each row is a yes or no question you can answer from the engine configuration or the cluster. If you see slow tail latency, start with the rows about batching and queues.
+Picture a chat service where most replies arrive quickly, but a few users wait much longer for theirs. Inference users notice slow responses first, and the slowest responses hurt most. The appendix points out that both the average latency and the 99th percentile tail matter for real-time services. This table checks the serving engine and the endpoints around it. Each row is a yes or no question you can answer from the engine configuration or the cluster. If you see slow tail latency, start with the rows about batching and queues.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -687,15 +803,23 @@ Inference users notice slow responses first, and the slowest responses hurt most
 
 ### 7.1 Batching and concurrency
 
-Dynamic batching groups incoming requests and processes them together. Continuous batching goes further. It merges and splits token sequences across requests in real time. In vLLM, a sequence joins the next batch as soon as it is ready for its next token. This keeps the GPU at high occupancy and reduces idle time.
+Picture a request queue at lunchtime, when many short prompts arrive at once. Dynamic batching groups incoming requests and processes them together. Continuous batching goes further. It merges and splits token sequences across requests in real time. In vLLM, a sequence joins the next batch as soon as it is ready for its next token. This keeps the GPU at high occupancy and reduces idle time.
+
+Without batching, each request would take its own trip through the GPU, and most of that trip would be overhead. Grouping the requests means the GPU does one large job instead of many small ones.
 
 Continuous batching raises token throughput and steadies latency. It helps most when many users send requests of different lengths. Favor dynamic or continuous batching for inference, and test a batch size that keeps the GPU busy without adding too much latency.
 
+Continuous batching helps most when many users send requests of different lengths. A short reply does not have to wait for a long one to finish, because a finished sequence leaves the batch and a waiting one takes its place.
+
 Larger batches raise throughput but can add latency. If one inference stream does not use all of the GPU, run two concurrent batches. Together they can fill both the SMs and the Tensor Cores.
+
+Batching trades wait time for throughput. A short wait fills the batch quickly, while a long wait fills it fully but holds early requests back.
 
 ### 7.2 Serving runtimes and KV cache
 
-Use optimized inference systems for large models. vLLM, SGLang, NVIDIA Dynamo, and TensorRT-LLM provide quantization, fused kernels, optimized attention, and tensor, pipeline, and expert parallelism. They also support speculative decoding, chunked prefill, disaggregated prefill and decode, and dynamic batching.
+Picture a model that is too large for one GPU, and a team trying to serve it on the same machine with hand-written code. Use optimized inference systems for large models. vLLM, SGLang, NVIDIA Dynamo, and TensorRT-LLM provide quantization, fused kernels, optimized attention, and tensor, pipeline, and expert parallelism. They also support speculative decoding, chunked prefill, disaggregated prefill and decode, and dynamic batching. Hand-written serving code usually misses several of these at once.
+
+Speculative decoding lets a small model draft several tokens and the large model check them in one pass. Chunked prefill breaks a long prompt into pieces so it does not block short requests.
 
 Separate prefill from decode. Prefill processes the whole prompt through every layer. Decode generates output tokens one at a time. Give each phase its own resources, so each can scale on its own. This avoids head-of-line blocking, where one long generation stalls the requests behind it.
 
@@ -703,23 +827,31 @@ Shard models that do not fit on one GPU. Tensor parallelism splits each layer ac
 
 NIXL streams the KV cache from a prefill GPU to a decode GPU over RDMA. It uses GPUDirect RDMA and the best available path, and the CPU stays out of the transfer. This cuts tail latency in disaggregated serving across nodes.
 
+In disaggregated serving, the prefill GPU builds the KV cache, and the decode GPU needs it to keep generating. Sending that cache directly, without the CPU in the middle, keeps the handoff short.
+
 If the KV cache grows past GPU memory, offload the less-used pages. NVIDIA Dynamo's Distributed KV Cache Manager moves them to CPU memory, SSD, or networked storage. TensorRT-LLM and vLLM support paged and quantized caches as well. Offloaded misses add I/O latency, so measure the end-to-end impact. Offloading to disk still beats failing the request.
+
+Offloaded pages are slower to reach, so each miss adds a short wait. Offloading to disk still beats failing the request, because a slow answer is better than an error. Measure the end-to-end impact before you rely on it.
 
 Move rarely used weights or old KV entries to CPU RAM or NVMe when GPU memory gets tight. Frameworks can bring tensors back on demand. Each miss adds latency, but the alternative is an out-of-memory error. Plan for this with very long prompts and long chats.
 
 Orchestrate for demand. Kubernetes can scale on custom performance metrics that reflect live usage and throughput targets. Serverless and microservice designs handle bursty traffic well, and they scale down when demand is low.
 
+Scaling on live usage and throughput targets lets the fleet follow the traffic. Serverless and microservice designs handle bursty traffic well, and they scale down when demand is low, which saves money during quiet hours.
+
 ### 7.3 Quantization for serving
 
-For deployment, use INT8 wherever possible. INT8 inference is fast and memory efficient on GPUs. Quantize and calibrate the model with TensorRT or NVIDIA's quantization tools. Many transformers lose very little accuracy in INT8. The speedup can reach 2 to 4 times over FP16.
+Picture a model that fits in memory only after the team shrinks its numbers, and then asks whether the answers are still good. For deployment, use INT8 wherever possible. INT8 inference is fast and memory efficient on GPUs. Quantize and calibrate the model with TensorRT or NVIDIA's quantization tools. Many transformers lose very little accuracy in INT8. The speedup can reach 2 to 4 times over FP16. Calibration means running sample data through the model to pick the scale for each tensor, so the small integers keep the values that matter.
 
 On the newest GPUs, evaluate FP8 or INT4 for some models, since they can raise throughput further. Check accuracy on your own task before you adopt them.
+
+Each lower precision trades a little accuracy for speed and memory. Check the accuracy on your own task before you adopt the lower precision, because a benchmark score on someone else's task does not prove the result for yours.
 
 With low precision, fuse the scaling and the compute into one pass. Separate passes can lose precision. Blackwell's FP4 microscaling keeps one scale per group of values. Most of this is handled by existing libraries, so use them instead of writing it yourself.
 
 ### 7.4 Tail latency, warm-up, and isolation
 
-Real-time services care about the average latency and the long tail, meaning the 99th percentile. Profile the latency distribution, not only the mean. If the tail is high, look for unexpected CPU work, garbage-collection pauses, and excessive context switches.
+Picture a service whose average answer time looks fine while a few users wait many seconds for theirs. Real-time services care about the average latency and the long tail, meaning the 99th percentile. Profile the latency distribution, not only the mean. If the tail is high, look for unexpected CPU work, garbage-collection pauses, and excessive context switches. A mean hides the slow requests, and the slow requests are the ones users remember.
 
 Pin the inference server process to specific cores, and isolate it from noisy neighbors. Use real-time scheduling if the tail still shows jitter. These steps give more consistent response times.
 
@@ -755,7 +887,9 @@ A cluster can be technically healthy and still leave the on-call engineer guessi
 
 ### 8.1 Performance tuning mindset
 
-A pragmatic loop turns engineering time into measurable return. Start with quick wins, then move to deeper work. Target the biggest runtime and cost drivers first, and profile before and after each change.
+Picture a team with a few weeks to spare and a long list of possible speedups. A pragmatic loop turns engineering time into measurable return. Start with quick wins, then move to deeper work. Target the biggest runtime and cost drivers first, and profile before and after each change.
+
+Write down the expected gain before each change, then compare it with the measured gain afterwards. Over several rounds, that habit shows which kinds of work pay off for your team.
 
 Use the 80/20 rule. If most of the time sits in a few kernels or a communication phase, optimize those deeply. Microtuning a step that takes 1 percent of runtime rarely pays. For example, a training run that spends 40 percent on data loading, 50 percent on GPU compute, and 10 percent on communication should fix data loading first. That fix may halve its overhead.
 
@@ -773,11 +907,13 @@ Track utilization on dashboards. DCGM exporter and Prometheus can chart GPU util
 
 Document each optimization and its measured impact, in code or in a shared wiki. Many tips are reusable, such as overlap patterns and cluster environment variables. This history saves time on new projects and helps onboard new engineers.
 
+A note that says what changed, what it saved and how it was measured saves the next engineer from repeating a failed experiment. Keep the note next to the code, so it is updated when the code changes.
+
 Machine learning can also help. Models trained on historical telemetry can predict bottlenecks and adjust parameters in real time. That allocates resources and raises throughput without manual retuning.
 
 ### 8.2 Reproducibility and regression control
 
-Performance wins fade unless they can be reproduced. Keep configurations, framework and driver versions, OS settings, optimization scripts, and benchmarks in Git, and tag each release. Then experiments can be repeated exactly, and a regression can be traced to the change that caused it.
+Picture a speedup that was real last spring and is gone after a driver upgrade. Performance wins fade unless they can be reproduced. Keep configurations, framework and driver versions, OS settings, optimization scripts, and benchmarks in Git, and tag each release. Then experiments can be repeated exactly, and a regression can be traced to the change that caused it.
 
 Put performance checks into CI/CD. Each change, from code to configuration, should run benchmarks against agreed metrics. That catches regressions early. Industry benchmarks such as MLPerf give a reliable baseline for tracking improvements over time.
 
@@ -787,13 +923,15 @@ Tune across the whole pipeline. Data ingestion, preprocessing, training, and inf
 
 Collect metrics across the hardware, network, and application layers. Feed them to Prometheus and Grafana dashboards. Set alerts for sudden drops in GPU utilization or spikes in network latency, so anomalies get caught fast.
 
+A problem often starts in one layer and shows up in another. Joining the metrics on one time axis shows which layer changed first.
+
 Build fault tolerance into the design. Distributed checkpointing, redundant hardware, and dynamic job rescheduling reduce downtime. They also keep performance steady through hardware and network failures.
 
 Compiler and build settings matter too. Use aggressive compiler flags and profile-guided optimization in the build. Re-tune the build configuration when things change, and benchmark each change before you accept it.
 
 ### 8.3 Vendor codesign and adaptive tuning
 
-Stay close to hardware vendors and the performance community. Codesign lets your software use the newest architectural features. Read vendor documentation, join forums, and test beta drivers and frameworks. These steps often reveal new optimizations, and driver or library updates can bring large gains.
+Picture a new GPU generation arriving in the data center next quarter. Stay close to hardware vendors and the performance community. Codesign lets your software use the newest architectural features. Read vendor documentation, join forums, and test beta drivers and frameworks. These steps often reveal new optimizations, and driver or library updates can bring large gains.
 
 Adaptive autotuning uses real-time performance feedback. Reinforcement learning or Bayesian optimization can adjust system parameters as workloads and conditions change. The system then fine-tunes itself instead of waiting for a manual retune.
 
@@ -803,7 +941,7 @@ Plan for future hardware. Build modular architectures that can absorb new accele
 
 ### 8.4 Energy-aware operations
 
-Power efficiency counts as much as speed. Throttling from heat or power limits can cancel every tuning gain, and it wears hardware faster. Caps, sensible packing, and early cooling keep clocks steady while lowering the energy bill.
+Picture a rack where every GPU runs hot and the fans roar through the night. Power efficiency counts as much as speed. Throttling from heat or power limits can cancel every tuning gain, and it wears hardware faster. Caps, sensible packing, and early cooling keep clocks steady while lowering the energy bill.
 
 Track energy use alongside speed. Monitor energy metrics, and consider dynamic power capping. Shifting flexible workloads toward periods of renewable availability can lower operating cost and carbon footprint.
 
@@ -821,7 +959,7 @@ Protect hardware life on long runs. Running at the full power and thermal limit 
 
 ## 9. Security checklist
 
-Security controls are easy to skip when a cluster is busy. This group lists the controls that protect images, secrets, access, and audit records. Each row names the signal that shows the control is working, and you can check it in your own monitoring. Check the audit records and admission logs, not only the policy documents. You should be able to show the evidence for every row.
+Security controls are easy to skip when a cluster is busy. This group lists the controls that protect images, secrets, access, and audit records. Each row names the signal that shows the control is working, and you can check it in your own monitoring. Check the audit records and admission logs, not only the policy documents. Keep the evidence for every row ready to show, because a control that leaves no trace in the logs is hard to prove during an audit.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -843,13 +981,13 @@ Security controls are easy to skip when a cluster is busy. This group lists the 
 
 ### 9.1 Performance and security together
 
-Build security and performance together from the start. Audit configurations often, enforce access controls, and keep the usual safeguards in place. These include encryption, protected data channels, zero-trust networking, key storage in hardware security modules (HSMs), and secure enclaves. Tuning must never weaken security. Security must not add needless overhead either. Measure the cost of encryption and enclaves in the same benchmark runs you use for speed.
+Picture a team that turns off encryption to win a benchmark and forgets to turn it back on. Build security and performance together from the start. Audit configurations often, enforce access controls, and keep the usual safeguards in place. These include encryption, protected data channels, zero-trust networking, key storage in hardware security modules (HSMs), and secure enclaves. Tuning must never weaken security. Security must not add needless overhead either. Measure the cost of encryption and enclaves in the same benchmark runs you use for speed.
 
 ---
 
 ## 10. Observability checklist
 
-You cannot check a row you cannot see. This group confirms that the monitoring stack collects data from every part of the platform. Start with the scrape targets, because a missing exporter hides a whole class of failures. Keep the cardinality budget in view, since every new series adds load to Prometheus.
+Picture a dashboard that is green while a whole rack has stopped reporting. You cannot check a row you cannot see. This group confirms that the monitoring stack collects data from every part of the platform. Start with the scrape targets, because a missing exporter hides a whole class of failures. Keep the cardinality budget in view, since every new series adds load to Prometheus. Cardinality is the number of distinct time series that a metric creates, and each one costs memory and storage.
 
 | # | Item | Detection signal |
 |---|---|---|
@@ -871,27 +1009,37 @@ You cannot check a row you cannot see. This group confirms that the monitoring s
 
 ### 10.1 Profiling to find bottlenecks
 
-You cannot optimize what you do not measure. Profiling shows whether a job is compute bound, memory bound, I/O bound, or network bound. That tells you which fix to try. Run profilers on training and inference jobs regularly.
+Picture a slow job and a team with no timeline to show where the time goes. You cannot optimize what you do not measure. Profiling shows whether a job is compute bound, memory bound, I/O bound, or network bound. That tells you which fix to try. Run profilers on training and inference jobs regularly.
 
 Nsight Systems gives a timeline of CPU and GPU activity. Nsight Compute and the PyTorch profiler drill into kernel efficiency. Check whether the job waits on I/O or communication. If it is memory bound, cut memory traffic, because compute tricks will not help much.
+
+A timeline shows gaps, and gaps are where the time goes. Look for the places where the GPU is idle while the CPU or the network is busy, because those are the places to fix first.
 
 Label phases with NVTX ranges or framework APIs. Labels for data loading, the forward pass, and the backward pass show up in Nsight Systems or Perfetto timelines. They reveal where GPU idle time comes from. For PyTorch, `torch.profiler.record_function()` adds these labels.
 
 For critical kernels, use Nsight Compute to check occupancy, memory throughput, and instruction throughput. Memory throughput near the hardware maximum points to a memory-bound kernel. The profiler's Issues section often states the cause. If global load efficiency is low, improve memory coalescing.
 
+Each kernel gets its own report, so you can compare the kernel you changed with the one you started from. Measure before and after, using the same input size.
+
 Check branch efficiency and divergent branch metrics to find warp divergence. If divergence is significant, restructure conditionals or data assignments so each warp does uniform work.
+
+Warp divergence is the cost of threads in one warp taking different branches. The metric shows how much of the warp's time is lost to that split, so a low number is a sign to restructure the code.
 
 Profile scripts for Python overhead. Excessive loops and logging can keep the CPU busy while the GPUs wait. Replace them with vectorized operations or optimized library calls, so the CPU does not become a hidden bottleneck.
 
 In multi-GPU jobs, profile every rank. Rank 0 often does extra work, such as gathering stats, and becomes the slowest GPU. Move that work to the other ranks, such as sharing I/O and logging duties. Equal work stops the slowest rank from dragging the rest.
 
+Profiling only rank 0 hides the problem, because the slowest rank is the one that sets the pace. Compare the ranks side by side to find the one that does extra work.
+
 Enable GDS tracing when you use GPUDirect Storage. It correlates `cuFile` activity with kernel gaps, which shows whether storage causes the stalls.
+
+GPUDirect Storage lets the GPU read data straight from storage. Its tracing shows whether storage causes the stalls, so you can separate a storage wait from a compute wait.
 
 ### 10.2 Utilization, memory, network, and alerts
 
-Watch GPU utilization, SM efficiency, and memory bandwidth continuously. A utilization drop at regular intervals usually has a cause. A dip every five minutes may match checkpoint saves. Stagger the checkpoints and use asynchronous flushes to fix it. Log these metrics over time with DCGM or `nvidia-smi` in daemon mode.
+Picture a utilization graph with a dip that repeats at regular intervals, like a heartbeat. Watch GPU utilization, SM efficiency, and memory bandwidth continuously. A utilization drop at regular intervals usually has a cause. A dip every five minutes may match checkpoint saves. Stagger the checkpoints and use asynchronous flushes to fix it. Log these metrics over time with DCGM or `nvidia-smi` in daemon mode. A regular pattern is the easiest kind of problem to find, once someone has logged it.
 
-Track GPU memory over time. Stay away from out-of-memory conditions, since the framework may silently move tensors to host memory and slow everything down. Steady growth from one iteration to the next points to a leak. Use `torch.cuda.memory_summary()` and the GPU memory trace in Nsight Systems to find it.
+Stay away from out-of-memory conditions, since the framework may silently move tensors to host memory and slow everything down. Steady growth from one iteration to the next points to a leak. Use `torch.cuda.memory_summary()` and the GPU memory trace in Nsight Systems to find it.
 
 On the CPU side, watch for paging. Resident memory should not exceed physical RAM by much. If paging appears, reduce the dataset preload or add RAM.
 
@@ -905,7 +1053,7 @@ In production, alert on GPU errors such as ECC errors and overheating. DCGM can 
 
 ### 11.1 The checklist score
 
-Your score is the number of items you can answer yes, divided by the total. The formula below makes that calculation explicit, so every team counts the same way.
+Picture a quarterly meeting where the score is quoted without anyone knowing how it was counted. Your score is the number of items you can answer yes, divided by the total. The formula below makes that calculation explicit, so every team counts the same way.
 
 ```text
 Checklist score formula:
@@ -915,11 +1063,11 @@ Checklist score formula:
 - Score: X / 175 * 100%
 ```
 
-The tables in this chapter hold 207 items, but the formula above uses the 175 total from the chapter's title. Replace 175 with the real count before you report a score. The 90 percent target in the platform team's pattern is an example value, not a published standard. Keep the items you answer no in a backlog, and review that backlog every quarter.
+The tables in this chapter hold 207 items, but the formula above uses the 175 total from the chapter's title. Replace 175 with the real count before you report a score. A score built on the wrong total looks better or worse than it is. The 90 percent target in the platform team's pattern is an example value, not a published standard. Keep the items you answer no in a backlog, and review that backlog every quarter.
 
 ### 11.2 The checklist update
 
-The checklist changes after each vendor release, incident, or regulatory change. Each update adds new items, retires items that no longer apply, and refreshes the detection signals. The example below shows the update script with an item ID, a name, a signal, and a category.
+Picture a vendor release that renames a metric the checklist uses, so a row that used to work now returns nothing. The checklist changes after each vendor release, incident, or regulatory change. Each update adds new items, retires items that no longer apply, and refreshes the detection signals. The example below shows the update script with an item ID, a name, a signal, and a category.
 
 ```bash
 # Add a new item to the checklist
@@ -930,11 +1078,11 @@ python code/part17/checklist_update.py \
   --category "hardware"
 ```
 
-Keep the checklist in Git. The update script writes its output as a commit, and a pull request reviews that commit before it merges.
+Keep the checklist in Git. The update script writes its output as a commit, and a pull request reviews that commit before it merges. The review is where a team agrees that a new row is worth keeping, and the history shows who agreed and why.
 
 ### 11.3 The checklist review
 
-Review the checklist every quarter. The review looks for three kinds of problems: items nobody has verified in the last 90 days, items that were added but never built, and items that have been retired. The 90-day window is an example value, so pick the window that fits how often your platform changes.
+Picture a checklist row that has not been verified in a year, though the system behind it has changed twice. Review the checklist every quarter. The review looks for three kinds of problems: items nobody has verified in the last 90 days, items that were added but never built, and items that have been retired. The 90-day window is an example value, so pick the window that fits how often your platform changes.
 
 ```bash
 # Review the master checklist
@@ -945,73 +1093,75 @@ python code/part17/checklist_review.py \
 
 Run the review before each quarterly planning meeting, so the gaps reach the backlog in time.
 
+A review that runs after the planning meeting arrives too late to change the plan. Put the output in front of the people who set priorities, so each gap gets a decision.
+
 ### 11.4 Work through the categories in order
 
-Use this chapter as a playbook. Go through each category and its items in turn. Confirm the OS is tuned, GPU kernels are efficient, libraries are used correctly, the data pipeline is monitored, the training loop is optimized, the inference strategy is tuned, and scale-out is graceful. Mark each item yes or no, and write down any gap.
+Picture a new platform engineer on the first morning of a rotation, with the checklist open and no idea where to begin. Use this chapter as a playbook. Go through each category and its items in turn. Confirm the OS is tuned, GPU kernels are efficient, libraries are used correctly, the data pipeline is monitored, the training loop is optimized, the inference strategy is tuned, and scale-out is graceful. Mark each item yes or no, and write down any gap.
 
 Profile on a small number of nodes before you scale up. If an all-reduce already takes 20 percent of an iteration on 8 GPUs, it will get worse at larger scale. The cost of communication grows when a job crosses a node boundary or a rack boundary. This applies to systems such as GB200 and GB300 NVL72, and to Vera Rubin VR200 and VR300 NVL systems.
 
-The rule to finish with is simple. Profile first, tune the right bottleneck at the right layer, and verify each gain before you scale out. Applying these practices from the OS and kernels up to distributed communication and serving keeps the system fast, cost efficient, and reliable at any size.
+The rule to finish with is simple. Profile first, tune the right bottleneck at the right layer, and verify each gain before you scale out. Applying these practices from the OS and kernels up to distributed communication and serving keeps the system fast, cost efficient, and reliable at any size. When a gain cannot be measured, treat it as a guess until it can.
 
 ---
 
 ## 12. How it fails
 
-Six failure modes show up again and again. Each one has a symptom you can see, a cause you can check, and a fix you can apply. Learn the pattern, so you can spot the failure early.
+Picture a checklist that is printed on a wall, signed each quarter, and never opened during an incident. Six failure modes show up again and again. Each one has a symptom you can see, a cause you can check, and a fix you can apply. Learn the pattern, so you can spot the failure early.
 
 ### 12.1 "The checklist is not used"
 
-**Symptom:** Nobody on the team knows what the items are, what the score is, or what to improve first.
+Nobody on the team knows what the items are, what the score is, or what to improve first. The checklist sits unused, and the quarterly review becomes a status report nobody acts on.
 
-**Diagnosis:** The checklist exists, but nobody enforces it. It is not part of the team's daily workflow.
+The checklist exists, but nobody enforces it. It is not part of the team's daily workflow, so it fades from view.
 
-**Fix:** Train the team on the checklist during onboarding. Enforce it in code review, and bring it into every quarterly review.
+Train the team on the checklist during onboarding. Enforce it in code review, and bring it into every quarterly review.
 
 ### 12.2 "The checklist is stale"
 
-**Symptom:** The checklist names vendor products that have changed, metrics that no longer exist, and runbooks that have been removed.
+The checklist names vendor products that have changed, metrics that no longer exist, and runbooks that have been removed. An engineer who follows a row finds nothing where the row says something should be.
 
-**Diagnosis:** Nobody updated the checklist after the last vendor release, or the quarterly review was skipped.
+Nobody updated the checklist after the last vendor release, or the quarterly review was skipped. Either way, the list no longer matches the stack.
 
-**Fix:** Update the checklist after every vendor release. Review it every quarter, and automate a freshness check so stale items get flagged.
+Update the checklist after every vendor release. Review it every quarter, and automate a freshness check so stale items get flagged.
 
 ### 12.3 "The checklist score is not tracked"
 
-**Symptom:** The team does not know the current score, the trend, or what to celebrate.
+The team does not know the current score, the trend, or what to celebrate. Progress is real, but nobody can point to it.
 
-**Diagnosis:** The score is missing from the team dashboard and from the quarterly review.
+The score is missing from the team dashboard and from the quarterly review. Without a place to see it, the score drops out of everyone's attention.
 
-**Fix:** Put the score on the team dashboard and in the quarterly review. Celebrate improvements when they happen, so people see the value of the work.
+Put the score on the team dashboard and in the quarterly review. Celebrate improvements when they happen, so people see the value of the work.
 
 ### 12.4 "The checklist items are too generic"
 
-**Symptom:** The team cannot answer the items, because they are too abstract to act on.
+The team cannot answer the items, because they are too abstract to act on. Each row becomes a debate instead of a check.
 
-**Diagnosis:** The platform team wrote the items without asking the teams that use them, so the items sit too high to be useful.
+The platform team wrote the items without asking the teams that use them, so the items sit too high to be useful. The authors knew the intent, but the readers did not.
 
-**Fix:** Rewrite the items with the consuming teams. Make each item actionable, and test it against real production traffic.
+Rewrite the items with the consuming teams. Make each item actionable, and test it against real production traffic.
 
 ### 12.5 "The checklist items are too specific"
 
-**Symptom:** The items are so detailed that nobody can remember them, and nobody knows what to do with them.
+The items are so detailed that nobody can remember them, and nobody knows what to do with them. The list feels like homework, and people stop reading it.
 
-**Diagnosis:** The items were written for one team, at a level too low for the rest of the organization.
+The items were written for one team, at a level too low for the rest of the organization. A detail that matters to one team is noise to the others.
 
-**Fix:** Group the items into categories, keep the most important ones, and raise the rest to a higher level.
+Group the items into categories, keep the most important ones, and raise the rest to a higher level.
 
 ### 12.6 "The checklist score is 100% but the cluster is broken"
 
-**Symptom:** Every item says yes, yet the cluster is broken and customers complain.
+Every item says yes, yet the cluster is broken and customers complain. The score looks perfect, and the incident still happens.
 
-**Diagnosis:** The checklist does not measure what matters. It is missing critical items, or it measures the wrong things.
+The checklist does not measure what matters. It is missing critical items, or it measures the wrong things.
 
-**Fix:** Add the missing items and remove the ones that do not matter. Review the list each quarter, and update it after every incident.
+Add the missing items and remove the ones that do not matter. Review the list each quarter, and update it after every incident.
 
 When the score looks perfect but customers still complain, check the checklist before you check the cluster.
 
 ## 13. Hands-on lab
 
-This lab walks you through the master checklist. You will find the items nobody has answered, and you will produce a score report. The lab is **untested** in this repository, so treat each command as a starting point.
+Picture a team that has never audited its whole stack at once. This lab walks you through the master checklist. You will find the items nobody has answered, and you will produce a score report. The lab is **untested** in this repository, so treat each command as a starting point.
 
 ### 13.1 Prerequisites
 
@@ -1020,7 +1170,7 @@ This lab walks you through the master checklist. You will find the items nobody 
 
 ### 13.2 Step 1: deploy the checklist as a code
 
-Put the checklist in a repository, so every change is visible and reviewed. The clone address below is a placeholder, so replace it with your own repository before you run it. Then add your team's items to the file before you audit anything.
+Picture a team that edits its checklist in a spreadsheet and loses track of the last change. Put the checklist in a repository, so every change is visible and reviewed. The clone address below is a placeholder, so replace it with your own repository before you run it. Then add your team's items to the file before you audit anything.
 
 ```bash
 # Clone the checklist repository
@@ -1033,7 +1183,7 @@ vim checklist.yaml
 
 ### 13.3 Step 2: walk through every item
 
-Run the audit against your cluster. The expected output is a list of yes and no answers, plus a score report.
+Run the audit against your cluster. The expected output is a list of yes and no answers, plus a score report. Each yes or no should point to the detection signal from its row, so the answer is backed by evidence.
 
 ```bash
 # Run the checklist audit
@@ -1044,7 +1194,7 @@ python code/part17/checklist_audit.py \
 
 ### 13.4 Step 3: produce the score report
 
-The score report is markdown, so anyone on the team can read it in an editor or a wiki. It shows the score for each category and lists the items marked no.
+The score report is markdown, so anyone on the team can read it in an editor or a wiki. It shows the score for each category and lists the items marked no. A report in a shared format is easier to pass around than a screenshot.
 
 ```bash
 # Generate the score report
@@ -1056,7 +1206,7 @@ python code/part17/checklist_score.py \
 
 ### 13.5 Step 4: review the score with the platform team
 
-Open the report with the platform team, and walk through the items marked no. Agree on the recommended actions before the meeting ends.
+Open the report with the platform team, and walk through the items marked no. Agree on the recommended actions before the meeting ends. An action without an owner and a date tends to stay open.
 
 ```bash
 # Open the score report
@@ -1066,7 +1216,7 @@ cat score_report.md
 
 ### 13.6 Step 5: update the checklist after the review
 
-Turn the review findings into a new version of the checklist, and then commit it. The commit message below is an example.
+Turn the review findings into a new version of the checklist, and then commit it. The commit message below is an example. The new version keeps the old one in history, so a reviewer can see exactly what changed.
 
 ```bash
 # Update the checklist based on the review
@@ -1081,7 +1231,7 @@ git commit -m "Update master checklist with Q1 review findings"
 
 ### 13.7 What to record
 
-After the lab, you should be able to answer five questions quickly:
+Five questions show whether the checklist is ready for the team. Answer them from the report you just produced:
 
 1. What is the current master checklist score?
 2. What is the current score per category?
@@ -1089,20 +1239,20 @@ After the lab, you should be able to answer five questions quickly:
 4. What is the most recent checklist update?
 5. What is the next scheduled checklist review?
 
-The five-second and thirty-second limits are example targets that you can change. If any question takes more than 30 seconds to answer, the master checklist is not yet a production service. The lab is **untested** against a live GKE cluster.
+The five-second and thirty-second limits are example targets that you can change. If any question takes more than 30 seconds to answer, the master checklist is not yet a production service. Treat the slow answers as a list of work for the next review.
 
 ---
 
 ## Exercises
 
-Try these on your own cluster, or on a lab cluster if you do not have one yet.
+Picture a lab cluster that is still empty. Try these on your own cluster, or on a lab cluster if you do not have one yet.
 
-1. **Walk through every item in the master checklist.** For each item, check the detection signal and the runbook URL, then update the score. *Solution sketch:* the audit script from Section 13.3, and the items in Sections 1-10.
-2. **Add a new category.** Add a category for MLOps integration with fifteen items that cover the MLOps stack from Part 16. *Solution sketch:* the YAML schema in Section 1, the new items, and the audit script.
-3. **Add a checklist review process.** Schedule a quarterly review that produces a report, and add that report to the team's quarterly OKRs. *Solution sketch:* a calendar event, the review script from Section 11.3, and the report template.
-4. **Add a checklist score dashboard.** Build a Grafana dashboard that shows the score for each category, so the whole team can see it. *Solution sketch:* a Grafana dashboard, the score per category, and the trend over time.
-5. **Add a checklist freshness check.** Configure a CI step that fails when an item has not been verified in 90 days. *Solution sketch:* the freshness check from Section 11.3, the CI step, and the alert.
-6. **Add a checklist incident integration.** Connect the checklist to your incident system, so each incident updates the related items. *Solution sketch:* the incident webhook, the checklist update script, and the audit trail.
+1. **Walk through every item in the master checklist.** Start with the first category and work down. For each item, check the detection signal and the runbook URL, then update the score. *Solution sketch:* the audit script from Section 13.3, and the items in Sections 1-10.
+2. **Add a new category.** Picture an MLOps team whose tools are missing from the list. Add a category for MLOps integration with fifteen items that cover the MLOps stack from Part 16. *Solution sketch:* the YAML schema in Section 1, the new items, and the audit script.
+3. **Add a checklist review process.** Your quarterly review needs a written output. Schedule a quarterly review that produces a report, and add that report to the team's quarterly OKRs. *Solution sketch:* a calendar event, the review script from Section 11.3, and the report template.
+4. **Add a checklist score dashboard.** Picture a team that hears the score only in meetings. Build a Grafana dashboard that shows the score for each category, so the whole team can see it. *Solution sketch:* a Grafana dashboard, the score per category, and the trend over time.
+5. **Add a checklist freshness check.** An item can go unverified for a long time without anyone noticing. Configure a CI step that fails when an item has not been verified in 90 days. *Solution sketch:* the freshness check from Section 11.3, the CI step, and the alert.
+6. **Add a checklist incident integration.** Each incident teaches the team something that a checklist row could capture. Connect the checklist to your incident system, so each incident updates the related items. *Solution sketch:* the incident webhook, the checklist update script, and the audit trail.
 
 ---
 
