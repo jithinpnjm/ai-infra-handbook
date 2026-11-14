@@ -23,15 +23,15 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Fabric generations often shrink to a single speed label on a purchase order. High Data Rate is sold as two hundred gigabits per second, and Next Data Rate as four hundred. Extended Data Rate doubles that again, and Giga Data Rate reaches the terabit range. Treating those headline ratings as the throughput your application will actually get is a mistake that keeps happening.
+Picture the purchase order for a new cluster. Someone writes one line for each switch, and that line carries a single speed label. Fabric generations often shrink to that kind of label. High Data Rate is sold as two hundred gigabits per second, and Next Data Rate as four hundred. Extended Data Rate doubles that again, and Giga Data Rate reaches the terabit range. The label describes how fast the link signals. It does not promise the throughput your application will see. Treating those headline ratings as the throughput your application will actually get is a mistake that keeps happening, and the rest of this chapter shows where the difference hides.
 
-Imagine you are on the team for a production upgrade. An infrastructure team swaps HDR Host Channel Adapters and switches for NDR hardware. Every port reports an Active logical state and a LinkUp physical state, yet distributed training gets only modestly faster across the cluster. A systematic audit of the hosts and switches turns up three independent bottlenecks, stacked in series.
+Imagine you are on the team for a production upgrade. An infrastructure team swaps HDR Host Channel Adapters and switches for NDR hardware. Every port reports an Active logical state and a LinkUp physical state, yet distributed training gets only modestly faster across the cluster. Nothing on the dashboard is red, which is what makes this kind of problem hard to catch. A systematic audit of the hosts and switches turns up three independent bottlenecks, stacked in series.
 
-The first is the slot. Several NDR adapters went into older PCIe risers instead of gen-five sixteen-lane slots. Host-to-fabric injection was capped before packets ever reached the wire. The second is lane loss. After recabling, several links negotiated two active lanes instead of four, because two optical fibers failed qualification. That silently cut usable link bandwidth in half. The third is the spine. The collective workload stayed limited by an unupgraded spine cut, which halved cross-rack bisection bandwidth.
+Think of the path like a garden hose with three narrow sections. You can buy a wider nozzle, but the water still moves at the speed of the narrowest section. The first bottleneck is the slot. Several NDR adapters went into older PCIe risers instead of gen-five sixteen-lane slots. Host-to-fabric injection was capped before packets ever reached the wire. The second is lane loss. After recabling, several links negotiated two active lanes instead of four, because two optical fibers failed qualification. That silently cut usable link bandwidth in half. The third is the spine. The collective workload stayed limited by an unupgraded spine cut, which halved cross-rack bisection bandwidth. Bisection bandwidth is the capacity across the middle of the fabric, the number that matters when half the racks talk to the other half.
 
-A second incident looked just as healthy on paper. On a multi-rack GPU cluster, every node reported Active in `ibstat`. Basic pairwise bandwidth checks between neighboring servers passed without errors. Even so, distributed training step times varied by more than twenty percent across racks. Three subtler defects were interacting. A subset of links down-shifted in lane width after a cable swap. Adaptive Routing was misconfigured for the job. And several GPU ranks crossed a remote NUMA socket to reach their adapter.
+A second incident looked just as healthy on paper. On a multi-rack GPU cluster, every node reported Active in `ibstat`. Basic pairwise bandwidth checks between neighboring servers passed without errors. Even so, distributed training step times varied by more than twenty percent across racks. The lesson is that a healthy-looking port tells you very little about the job. Three subtler defects were interacting. A subset of links down-shifted in lane width after a cable swap. Adaptive Routing was misconfigured for the job. And several GPU ranks crossed a remote NUMA socket to reach their adapter. NUMA, short for non-uniform memory access, means a CPU socket reaches its own memory faster than the memory on another socket, so a rank that crosses sockets to reach its adapter pays an extra trip.
 
-Optics are no longer passive plumbing at modern link speeds. They make up a large share of cluster capital spending, a large share of switch heat, and many of the physical link failures. On a dense switch, the pluggable optics alone can draw over a kilowatt. Inside each module, the onboard Digital Signal Processor consumes roughly half of that optical power budget. When you plan a cluster, count the optics as part of the power budget, not as an afterthought.
+Optics are no longer passive plumbing at modern link speeds. They make up a large share of cluster capital spending, a large share of switch heat, and many of the physical link failures. On a dense switch, the pluggable optics alone can draw over a kilowatt. Inside each module, the onboard Digital Signal Processor consumes roughly half of that optical power budget. The Digital Signal Processor, or DSP, is a small chip that cleans up the signal before it leaves the module, and that cleanup costs power. When you plan a cluster, count the optics as part of the power budget, not as an afterthought.
 
 ```text
 Production Upgrade Bottlenecks and Optical Power Reality (V8 Ch. 8, V8 Index, ADC Ch. 4):
@@ -43,30 +43,25 @@ Production Upgrade Bottlenecks and Optical Power Reality (V8 Ch. 8, V8 Index, AD
   - 64-Port 800G Switch Optics:    64 ports x 16 W/module = 1,024 W optical power (DSP consumes ~50% of power and 20% to 40% of module BOM cost)
 ```
 
-This chapter follows InfiniBand and AI Ethernet link generations from SDR through GDR. It covers the SerDes multiplexing and PAM4 DSP physics behind those speeds. Next come multi-mode and single-mode optical fiber, transceiver reach classes and MPO breakout cabling. The chapter ends with the NVIDIA SuperPOD cable length rule, the QSFP-DD versus OSFP form factors, and linear or co-packaged optics.
+The chapter follows InfiniBand and AI Ethernet link generations from SDR through GDR. Think of it as a tour from the copper wire on the back of a server to the glass fiber that leaves the building. It covers the SerDes multiplexing and PAM4 DSP physics that make those speeds possible, because the physics explains why the speeds stop where they do. Next come multi-mode and single-mode optical fiber, transceiver reach classes and MPO breakout cabling. The chapter ends with the NVIDIA SuperPOD cable length rule, the QSFP-DD versus OSFP form factors, and linear or co-packaged optics.
 
 ## Prerequisites and outcomes
 
 Start with a few earlier chapters. Chapter 12.2 covers RDMA Queue Pairs, Memory Regions and PCIe DMA. Chapter 12.6 covers InfiniBand link layers, LIDs, GIDs and `ibstat`. You also need Subnet Manager routing from Chapter 12.7 and fabric diagnostics from Chapter 12.9.
 
-By the end of this chapter, you will be able to do the following.
-- Calculate per-lane baud rate, raw bit rate, line coding efficiency and multi-lane bandwidth across SDR through GDR. You will also diagnose rate down-negotiation, lane-width collapse and PCIe injection limits.
-- Trace a packet through the switch Packet Forwarding Engine, its SerDes lanes, the multiplexer gearboxes and the optical DSP stages. You will understand PAM4 modulation, equalization, Clock Data Recovery and Forward Error Correction.
-- Choose the right fiber grade and transceiver reach class for Top-of-Rack, Middle-of-Row, End-of-Row and Data Center Interconnect fabrics.
-- Design and validate LC duplex and MPO parallel or breakout cabling across copper and optical media. You will enforce the SuperPOD cable distance rule and remove patch panels from InfiniBand links.
-- Compare QSFP28, QSFP56, QSFP-DD, OSFP and CFP form factors across port density and thermal design. You will also weigh the power, cost and serviceability trade-offs of pluggable optics, LRO, LPO and CPO.
+Along the way you calculate per-lane baud rate, raw bit rate, line coding efficiency and multi-lane bandwidth across SDR through GDR. You learn to spot rate down-negotiation, lane-width collapse and PCIe injection limits. You trace a packet through the switch Packet Forwarding Engine, its SerDes lanes, the multiplexer gearboxes and the optical DSP stages. The DSP stages include PAM4 modulation, equalization, Clock Data Recovery and Forward Error Correction. You then choose a fiber grade and transceiver reach class for Top-of-Rack, Middle-of-Row, End-of-Row and Data Center Interconnect fabrics. You design and check LC duplex and MPO parallel or breakout cabling across copper and optical media, and you apply the SuperPOD cable distance rule. Finally you compare QSFP28, QSFP56, QSFP-DD, OSFP and CFP form factors and weigh the power, cost and serviceability trade-offs of pluggable optics, LRO, LPO and CPO.
 
 ---
 
 ## 1. InfiniBand link generations, lane width, and scaling optics for AI clusters
 
-When you size an AI cluster, you balance two networks that grow at different speeds. Inside the server, GPUs exchange activation tensors and partial gradients over fast local links. Across the data hall, network cards and leaf-spine switches tie hundreds of racks into one scale-out fabric. If the scale-out optics fall behind the GPU bandwidth inside a server, every multi-node collective stalls the whole training job. For example, if your scale-out ports run slower than the local links, the GPUs finish their local work and then wait on the network.
+When you size an AI cluster, you balance two networks that grow at different speeds. Picture a relay team. The runners inside one stadium pass the baton very quickly, and the handoff between stadiums is slower. Inside the server, GPUs exchange activation tensors and partial gradients over fast local links. Across the data hall, network cards and leaf-spine switches tie hundreds of racks into one scale-out fabric. If the scale-out optics fall behind the GPU bandwidth inside a server, every multi-node collective stalls the whole training job. For example, if your scale-out ports run slower than the local links, the GPUs finish their local work and then wait on the network. The slowest handoff sets the pace for the whole team.
 
 ### 1.1 Scaling intra-server NVLink and inter-server scale-out bandwidth
 
-Modern AI servers split their communication in two. Scale-up traffic stays inside the server, and scale-out traffic leaves it. Inside an eight-GPU node, the GPUs talk to each other through an internal NVSwitch fabric over NVLink. Each GPU also pairs one-to-one with a dedicated scale-out Network Interface Card. That adapter connects to external leaf switches, next to the storage and management links.
+Suppose a training job slows down the moment it spans two servers, even though it ran fine on one. That symptom usually means the traffic left the fast internal path and reached a slower external one. Modern AI servers split their communication in two. Scale-up traffic stays inside the server, and scale-out traffic leaves it. Inside an eight-GPU node, the GPUs talk to each other through an internal NVSwitch fabric over NVLink. NVLink is NVIDIA's high-speed link between GPUs, and NVSwitch is the chip that connects many of those links together. Each GPU also pairs one-to-one with a dedicated scale-out Network Interface Card. That adapter connects to external leaf switches, next to the storage and management links.
 
-Per-GPU NVLink bandwidth doubled repeatedly across four GPU generations: Volta, Ampere, Hopper and Blackwell. Take the rack-scale NVIDIA DGX GB300 NVL72 system as an example. Eighteen compute trays and nine switch trays join all the GPUs into one NVLink domain. Rear blind-mate cable cartridges carry that traffic inside the rack, so no front-panel fibers are needed. On the cold-aisle front panel, each compute tray pairs two GB300 Superchips with four ConnectX-8 XDR compute ports and one BlueField-3 card. Other accelerator platforms use similar intra-node fabrics, including AMD Infinity Fabric, CXL, UCIe and PCIe switch hierarchies.
+Per-GPU NVLink bandwidth doubled repeatedly across four GPU generations: Volta, Ampere, Hopper and Blackwell. Each generation gave every GPU a wider pipe to its neighbors, so the local exchange kept pace with faster compute. Take the rack-scale NVIDIA DGX GB300 NVL72 system as an example. Eighteen compute trays and nine switch trays join all the GPUs into one NVLink domain. A domain is a group of GPUs that can talk to each other over NVLink without touching the external network. Rear blind-mate cable cartridges carry that traffic inside the rack, so no front-panel fibers are needed. The word blind-mate means the connectors snap together as the tray slides in, without anyone seeing or aligning them by eye. On the cold-aisle front panel, each compute tray pairs two GB300 Superchips with four ConnectX-8 XDR compute ports and one BlueField-3 card. Other accelerator platforms use similar intra-node fabrics, including AMD Infinity Fabric, CXL, UCIe and PCIe switch hierarchies.
 
 ```text
 Scale-Up Interconnect Progression and DGX GB300 NVL72 Architecture (ADC Ch. 4, superpod-gb300-ra):
@@ -80,7 +75,7 @@ Scale-Up Interconnect Progression and DGX GB300 NVL72 Architecture (ADC Ch. 4, s
                                    + 1 x BlueField-3 BF3240 (dual-port 2x400 Gbps: 400 Gbps RoCEv2 storage + 200 Gbps in-band management)
 ```
 
-Scale-out optics had to speed up to keep pace with that density. The table below shows how the optical transceiver mix shifted over the years. It covers both Dell'Oro forecast cohorts, so you can read across a row to see which speed led that year.
+Scale-out optics had to speed up to keep pace with that density. A transceiver is the small plug-in module that turns electrical signals into light and back again, and the mix of transceiver speeds in the market tells you what the typical AI cluster is being built with. The table below shows how that mix shifted over the years. It covers both Dell'Oro forecast cohorts, so you can read across a row to see which speed led that year. Dell'Oro is a market research firm, and a forecast cohort is one set of yearly estimates from one study. The two cohorts do not always agree on the later years, and the 2027 rows are a good example. Read each row on its own terms, and check the label in the first column before you quote a figure.
 
 | Year / Forecast Cohort | `<= 100 Gbps` Share | `200 Gbps` Share | `400 Gbps` Share | `800 Gbps` Share | `1,600 Gbps` (`1.6T`) Share | `>= 3,200 Gbps` (`3.2T`) Share | Dominant AI Cluster Generation |
 |---|---|---|---|---|---|---|---|
@@ -96,15 +91,15 @@ Scale-out optics had to speed up to keep pace with that density. The table below
 | **`2027e` (`2025` update)** | `1%` | `2%` | `4%` | `43%` | `50%` | `0%` | `1.6T` at `50%`, `800G` at `43%` |
 | **`2029e` (`2025` update)** | `1%` | `1%` | `2%` | `16%` | `50%` | `30%` | `1.6T` (`50%`) + `>= 3.2T` (`30%`) |
 
-Notice that 800G carries the largest share in the 2025 rows. In the later rows, 1.6T takes over as the main speed.
+Notice that 800G carries the largest share in the 2025 rows. In the later rows, 1.6T takes over as the main speed. When you plan a purchase, this shift matters. A switch bought for today's transceiver mix may face a different optics mix within a few years, so ask the vendor which speeds the platform supports before you commit.
 
 ### 1.2 InfiniBand link generations from SDR to GDR: raw speed, line coding, and lane width
 
-A link speed label hides three separate variables. They are the per-lane symbol rate, the physical coding overhead and the number of parallel lanes. When you read `Rate: 56` on an older FDR port, or `Rate: 400` on an NDR port, you need to translate those raw serial bits into usable payload.
+A link speed label hides three separate variables. They are the per-lane symbol rate, the physical coding overhead and the number of parallel lanes. When you read `Rate: 56` on an older FDR port, or `Rate: 400` on an NDR port, you need to translate those raw serial bits into usable payload. Think of the label as the total weight on a truck. To know how much cargo fits, you also need the number of axles and how much of each load is packing material.
 
-An InfiniBand port bundles several bidirectional serial lanes that run in parallel. Standard cables between adapters and switches bundle four lanes. Dense trunk links and internal switch buses bundle twelve. Before user data reaches the wire, the physical coding sublayer scrambles the payload and encodes it in blocks. That encoding guarantees the clock-recovery transitions the receiver needs, and it pairs with Reed-Solomon Forward Error Correction on PAM4 links. Early SDR through QDR links used 8b/10b encoding. FDR through HDR used 64b/66b. NDR through GDR use 256b/257b.
+An InfiniBand port bundles several bidirectional serial lanes that run in parallel. Each lane is one serial path that carries bits in one direction at a time, and bidirectional means it carries traffic both ways. Standard cables between adapters and switches bundle four lanes. Dense trunk links and internal switch buses bundle twelve. Before user data reaches the wire, the physical coding sublayer scrambles the payload and encodes it in blocks. Coding is the packing material. It adds extra bits so the receiver can keep its clock in step with the signal, and those extra bits are the coding overhead. The encoding guarantees the clock-recovery transitions the receiver needs, and it pairs with Reed-Solomon Forward Error Correction on PAM4 links. Early SDR through QDR links used 8b/10b encoding. FDR through HDR used 64b/66b. NDR through GDR use 256b/257b. A lower overhead ratio means more of each lane carries your data.
 
-The table below puts every generation side by side, so you can see what each step changed. Notice that the modulation, the symbol rate and the coding do not all change at the same point.
+The table below puts every generation side by side, so you can see what each step changed. Notice that the modulation, the symbol rate and the coding do not all change at the same point. A generation can keep one signaling method and change only the speed, or it can change the method and the speed together. Reading the columns one at a time keeps you from mixing those two changes up.
 
 | InfiniBand Generation | Raw Per-Lane Rate (`Gbps`) | Modulation & Symbol Rate (`GBd`) | Line Coding Method | Coding Efficiency | Effective `4x` Link Bandwidth (`Gbps`) | Effective `12x` Link Bandwidth (`Gbps`) | Typical Switch / HCA Era |
 |---|---|---|---|---|---|---|---|
@@ -120,13 +115,13 @@ The table below puts every generation side by side, so you can see what each ste
 
 ### 1.3 Link rate, active lane width, and the four-ceiling performance model
 
-Upgrading transceivers and switches does not speed up training if another layer clamps throughput first. **The payload your application receives is set by the lowest of four independent ceilings.** Those ceilings are the negotiated per-lane rate, the active lane width, the host PCIe and NUMA injection capacity, and the cross-rack topology cut.
+Upgrading transceivers and switches does not speed up training if another layer clamps throughput first. Picture a row of water pipes, each with a different diameter. The water that gets through is limited by the narrowest pipe, no matter how big the others are. Your traffic behaves the same way. **The payload your application receives is set by the lowest of four independent ceilings.** Those ceilings are the negotiated per-lane rate, the active lane width, the host PCIe and NUMA injection capacity, and the cross-rack topology cut. The formula below writes that idea in symbols. The word min in it means the smallest of the three terms inside the brackets.
 
 $$
 B_{\text{payload}} \approx \min\Big(\underbrace{R_{\text{lane}} \times N_{\text{active\_lanes}} \times \eta_{\text{coding}} \times \eta_{\text{protocol}}}_{\text{Negotiated Physical & Transport Link Ceiling}},\; \underbrace{B_{\text{PCIe\_host}}}_{\text{Host Injection Ceiling}},\; \underbrace{B_{\text{cut}}}_{\text{Topology Cut Ceiling}}\Big)
 $$
 
-Read the formula as a chain. A single degraded lane or an undersized PCIe slot throttles the whole link, no matter how fast the switch port is rated.
+Read the formula as a chain. A single degraded lane or an undersized PCIe slot throttles the whole link, no matter how fast the switch port is rated. The first term covers the wire itself. The second covers the path from the GPU's memory into the adapter. The third covers how much traffic the fabric can carry across its middle. Your job is to find the term that is smallest in your cluster, because that is the term to fix first.
 
 ```mermaid
 flowchart LR
@@ -141,7 +136,7 @@ flowchart LR
     Q3 -->|Yes| A4["Link healthy: check<br/>topology cut or app comm%"]
 ```
 
-Use the flowchart as a checklist. Start at the upgraded generation and work through each gate in order. The table gives the healthy baseline for every gate, so you can compare what you measure against it.
+Use the flowchart as a checklist. Start at the upgraded generation and work through each gate in order. A gate is one question with a yes or no answer, and it stops you from chasing the wrong cause. If the rate is wrong, you fix the cable or firmware before you look at the host. The table gives the healthy baseline for every gate, so you can compare what you measure against it. Each row also shows what a degraded reading looks like and how much throughput it costs you.
 
 | Diagnostic Gate | Tool & Field Inspected | Healthy `400G NDR` Baseline | Degraded Observation | Quantitative Throughput / Latency Impact |
 |---|---|---|---|---|
@@ -150,24 +145,26 @@ Use the flowchart as a checklist. Start at the upgraded generation and work thro
 | **3. Host PCIe & NUMA Injection** | `lspci -vv`, `numactl --hardware`, `ib_write_bw` | `PCIe Gen5 x16` (`32 GT/s x 16 x 128/130 = 504.12 Gbps`) on local NUMA node | `400G` HCA in `PCIe Gen4 x8` slot (`16 GT/s x 8 x 128/130 = 126.03 Gbps`) or `800G` HCA in single `Gen5 x16` (`504.12 Gbps` vs `968.0 Gbps` `Gen6 x16`) | Caps `400G` HCA at **`126.03 Gbps`** regardless of a `4X 400 Gbps` fabric negotiation |
 | **4. Topology Cut & Radix** | `ibroute`, `perfquery` `PortXmitData` / `PortXmitWait` | `1:1` nonblocking leaf (`16 x 400G = 6,400 Gbps` down, `16 x 400G = 6,400 Gbps` up = `32`-port minimum radix for `512` GPUs) | `2:1` oversubscribed leaf (`16 x 400G` down, `8 x 400G = 3,200 Gbps` up) | Cross-rack `ib_write_bw` drops from `397.62 Gbps` to **`201.18 Gbps`** (`200.0 Gbps`/node); `2 GB` `AllReduce` doubles from `40.0 ms` to `80.0 ms` |
 
-Before you sign off on a cluster build or a link upgrade, confirm both the negotiated rate and the active four-lane width. Check the host PCIe slot speed and the spine uplink ratio as well.
+A useful way to remember the four ceilings is to ask one question at each layer. Is the wire running at its design rate? Are all the lanes alive? Can the host push data into the adapter fast enough? Can the spine carry the traffic that crosses the middle of the fabric? A no at any layer is the place to start.
+
+Before you sign off on a cluster build or a link upgrade, confirm both the negotiated rate and the active four-lane width. Those two checks are the first place to look for a down-negotiated link. Check the host PCIe slot speed and the spine uplink ratio as well, because a perfect link can still sit behind a narrow slot or a narrow spine. A short checklist written before the build is cheaper than a week of hunting after it.
 
 ---
 
 ## 2. Packet flow, SerDes mux/demux, and DSP physics
 
-Switch silicon keeps getting denser as transistors shrink. Copper traces and optical fibers do not scale as easily. As port speeds climb into the multi-hundred-gigabit and terabit range, the signal hits severe physical limits. Ignore what happens inside the optical cage, and high-frequency signal loss, heat and forward error correction delay can destabilize an otherwise healthy fabric.
+Switch silicon keeps getting denser as transistors shrink. Copper traces and optical fibers do not scale as easily. As port speeds climb into the multi-hundred-gigabit and terabit range, the signal hits severe physical limits. Think of a phone call in a noisy train station. You can speak louder, but the crowd noise rises with you. High-speed signals face the same trouble. Ignore what happens inside the optical cage, and high-frequency signal loss, heat and forward error correction delay can destabilize an otherwise healthy fabric. Forward error correction is extra redundancy the receiver uses to repair bit errors, and it adds a small delay each time it runs.
 
 ### 2.1 Four core challenges in high-speed optical innovation
 
-Four physical limits compound one another at modern AI data center rates.
+Suppose a new 800G link passes its first test on the bench but starts to drop packets once the rack heats up. That story usually points to one of four physical limits. The four limits compound one another at modern AI data center rates, so a weakness in one makes the others worse.
 
-1. Higher baud rates lose more signal on high-frequency traces, and optical dispersion and crosstalk add noise on top. The fix is multi-level modulation and strong Forward Error Correction.
-2. The waveform arrives badly distorted at the photodiode and at the switch pins. Dedicated Digital Signal Processors must run continuous analog and digital equalization to restore it.
-3. Pluggable transceivers pour heat out of the switch faceplate. Cooling them takes finned heat sinks, high-airflow fans, or liquid-cooled switch trays.
-4. Optical sub-assemblies and DSP chips make up a large share of network cost and lead time. Open multi-vendor standards from IEEE, OIF and ITU-T help you avoid lock-in.
+1. Why does a faster lane lose more signal? Higher baud rates lose more signal on high-frequency traces, and optical dispersion and crosstalk add noise on top. Crosstalk is the leakage of one wire's signal into its neighbor. The fix is multi-level modulation and strong Forward Error Correction, which together let a weaker signal still deliver clean bits.
+2. Why does the waveform need repair? The waveform arrives badly distorted at the photodiode and at the switch pins. A photodiode is the light sensor at the receiving end. Dedicated Digital Signal Processors must run continuous analog and digital equalization to restore it. Equalization boosts the frequencies the wire has weakened, so the shape of each symbol comes back.
+3. Why does heat become a design problem? Pluggable transceivers pour heat out of the switch faceplate. Cooling them takes finned heat sinks, high-airflow fans, or liquid-cooled switch trays. A switch that is cool on the bench can run hot once a full row of modules is lit, so plan the airflow for the whole faceplate.
+4. Why do the parts cost so much? Optical sub-assemblies and DSP chips make up a large share of network cost and lead time. Lead time is how long you wait between ordering a part and receiving it. Open multi-vendor standards from IEEE, OIF and ITU-T help you avoid lock-in, which is the situation where one supplier can set the price because nobody else can replace its parts.
 
-The thermal budget changes sharply from one port generation to the next, as the figures below show.
+The thermal budget changes sharply from one port generation to the next, as the figures below show. The thermal budget is the amount of heat a port can shed before the module overheats. Each jump in speed usually costs more heat, which is why a faster switch can need a different cooling design even when its rack and power feed look the same.
 
 ```text
 Optical Transceiver Thermal Budgets by Port Generation (ADC Ch. 4):
@@ -178,7 +175,7 @@ Optical Transceiver Thermal Budgets by Port Generation (ADC Ch. 4):
 
 ### 2.2 Packet flow, demultiplexers and multiplexers, and PFE ASIC SerDes
 
-When a packet enters or leaves a switch port, its signal must bridge a speed gap. The switch ASIC pins run at one rate, and the optical fiber lanes run at another. Three hardware stages sit between the cable and the Packet Forwarding Engine ASIC: the multiplexer or demultiplexer gearbox, the optical Digital Signal Processor, and the PFE ASIC SerDes lanes.
+When a packet enters or leaves a switch port, its signal must bridge a speed gap. The switch ASIC pins run at one rate, and the optical fiber lanes run at another. An ASIC is a custom chip built for one job, here forwarding packets. The Packet Forwarding Engine, or PFE, is the part of that chip that decides where each packet goes next. A SerDes is the serializer and deserializer pair that turns parallel bits into one fast serial stream and back. Three hardware stages sit between the cable and the Packet Forwarding Engine ASIC: the multiplexer or demultiplexer gearbox, the optical Digital Signal Processor, and the PFE ASIC SerDes lanes. Think of the three stages as a freight yard. One crew splits the trains, another re-checks each car, and a third loads the cars onto the chip's tracks.
 
 ```mermaid
 flowchart LR
@@ -187,26 +184,28 @@ flowchart LR
     DSP <-->|"8x50G, 4x100G, 8x100G,<br/>or 8x200G Electrical"| SERDES["PFE ASIC SerDes<br/>(Serial <-> Parallel)"]
 ```
 
+The diagram above shows the same path as a loop of signals, with the cable at one end and the switch chip at the other. The arrows run both ways, because every link carries traffic in both directions at once. The table after it breaks each stage into what it does on the way in and on the way out, with the lane counts for each speed.
+
 | Hardware Stage | Ingress Function (Cable -> PFE ASIC) | Egress Function (PFE ASIC -> Cable) | Concrete `400G` / `800G` / `1.6T` Lane Mappings |
 |---|---|---|---|
 | **Demultiplexer / Multiplexer (`Demux` / `Mux`)** | Splits (`1:N`) incoming multi-wavelength or multi-lane signals into parallel streams | Combines (`N:1`) parallel electrical streams into the outgoing optical or copper lanes | Maps `8 x 50 Gbps` (`53.125 Gbps` PAM4) to `4 x 100 Gbps` (`2:1` gearbox) or `1:1` pass-through (`8 x 100G -> 800G`) |
 | **Digital Signal Processor (`DSP`)** | Demodulates optical carrier (`PAM-4`), performs Clock Data Recovery (`CDR`), applies `FFE`/`DFE` equalization, and decodes `LDPC`/`BCH` `FEC` | Encodes `FEC` parity bits, shapes waveform via `FFE`, and modulates electrical/optical amplitude (`PAM-4`) | Consumes **`~50%` of transceiver power** (`8 W` of a `16 W` `800G` module) and **`20%–40%` of module BOM cost** |
 | **PFE ASIC `SerDes`** | Serializes/deserializes parallel transceiver lanes into serial packet streams for the PFE pipeline | Parallelizes processed packets across `N` high-speed `SerDes` lanes toward the transceiver | `~50G` SerDes: `8 x 50G = 400G`; `~100G` SerDes: `4 x 100G = 400G` or `8 x 100G = 800G`; `~200G` SerDes: `8 x 200G = 1.6 Tbps` |
 
-If you trace one packet, you pass through the stages in the order the table lists them. Read the table from the left for ingress and from the right for egress. The DSP row is the costly stage. It draws about 50% of transceiver power, and it accounts for 20% to 40% of the module's bill-of-materials cost.
+If you trace one packet, you pass through the stages in the order the table lists them. Read the table from the left for ingress and from the right for egress. Ingress is the path into the switch, and egress is the path out. The DSP row is the costly stage. It draws about 50% of transceiver power, and it accounts for 20% to 40% of the module's bill-of-materials cost. A bill of materials is the list of every part that goes into a product, so the cost share tells you how much of the price the DSP chip represents. If you are negotiating a price for a module, the DSP is the line that deserves the closest look.
 
 ### 2.3 Inside the DSP: NRZ versus PAM4, FEC, CDR, and FFE/DFE equalization
 
-Above twenty-five gigabaud, doubling the symbol rate of two-level Non-Return-to-Zero signaling causes severe high-frequency loss across copper PCB traces. Modern high-speed lanes avoid that by switching to four-level Pulse Amplitude Modulation, known as PAM4. PAM4 doubles the data rate without doubling the baud rate.
+Picture a radio station that wants to send more songs per minute without buying more airwaves. One option is to speak faster, and that stops working once the words blur together. The other option is to use more distinct tones for each moment of sound. Above twenty-five gigabaud, doubling the symbol rate of two-level Non-Return-to-Zero signaling causes severe high-frequency loss across copper PCB traces. The baud rate is how many symbols per second the wire carries, and a symbol is one signal level change. Modern high-speed lanes avoid that by switching to four-level Pulse Amplitude Modulation, known as PAM4. PAM4 doubles the data rate without doubling the baud rate.
 
-NRZ uses two amplitude levels, so each symbol carries one bit. PAM4 uses four levels, so each symbol carries two bits. Squeezing four levels into the same voltage swing splits the vertical opening into three stacked eyes. Each PAM4 eye is only one-third the height of an NRZ eye. **Switching from NRZ to PAM4 doubles the bit rate per baud, but it costs a 9.54 dB signal-to-noise penalty that the DSP must recover.**
+NRZ uses two amplitude levels, so each symbol carries one bit. PAM4 uses four levels, so each symbol carries two bits. Squeezing four levels into the same voltage swing splits the vertical opening into three stacked eyes. An eye is the open window on an oscilloscope where the receiver can read a symbol cleanly. Each PAM4 eye is only one-third the height of an NRZ eye, so the receiver has less room for error. **Switching from NRZ to PAM4 doubles the bit rate per baud, but it costs a 9.54 dB signal-to-noise penalty that the DSP must recover.** The DSP, or Digital Signal Processor, is the chip that does that recovery work.
 
-The transceiver DSP runs four core functions to overcome that penalty. Each one handles a different part of the problem.
+The transceiver DSP runs four core functions to overcome that penalty. Each one handles a different part of the problem, and they run together on every symbol.
 
-1. Modulation and demodulation convert between bit streams and multi-level analog waveforms. That covers NRZ, PAM4, PAM8, or coherent QAM for long-haul DWDM links.
-2. Forward Error Correction fixes raw pre-FEC bit errors in hardware. It uses BCH, Reed-Solomon or LDPC codes, so no transport retransmission is needed.
-3. Clock Data Recovery pulls symbol timing straight from the transitions in the incoming bit stream. That lock makes the receiver sample the exact center of each narrow PAM4 eye.
-4. Feed-Forward Equalization and Decision-Feedback Equalization remove inter-symbol interference caused by high-frequency channel loss, without amplifying receiver noise.
+1. Modulation and demodulation convert between bit streams and multi-level analog waveforms. Which waveform is in use? That covers NRZ, PAM4, PAM8, or coherent QAM for long-haul DWDM links. Modulation is the sending side, and demodulation is the receiving side that turns the wave back into bits.
+2. Forward Error Correction fixes raw pre-FEC bit errors in hardware. What happens when a bit flips? It uses BCH, Reed-Solomon or LDPC codes, so no transport retransmission is needed. Retransmission would cost a round trip, so fixing the bit in the chip is much faster.
+3. Clock Data Recovery pulls symbol timing straight from the transitions in the incoming bit stream. Why does the receiver need a clock? That lock makes the receiver sample the exact center of each narrow PAM4 eye. Sampling at the center gives the widest margin against noise.
+4. Feed-Forward Equalization and Decision-Feedback Equalization remove inter-symbol interference caused by high-frequency channel loss, without amplifying receiver noise. Inter-symbol interference is the blur where one symbol spills into the next. The two equalizers work in different directions, one looking ahead at incoming symbols and one looking back at decisions already made.
 
 ```text
 DSP Modulation, Equalization, and FEC Reference (ADC Ch. 4):
@@ -220,15 +219,15 @@ DSP Modulation, Equalization, and FEC Reference (ADC Ch. 4):
   - CDR & Equalization:  CDR RX/TX: ON,ON,ON,ON in mlxlink -m; linear FFE (TX/RX) + nonlinear DFE (RX) cancel Inter-Symbol Interference (ISI)
 ```
 
-When a marginal optical link misbehaves, check the pre-FEC bit error rates and the per-lane CDR lock in `mlxlink` first. Only then should you blame higher-layer transport timeouts.
+When a marginal optical link misbehaves, check the pre-FEC bit error rates and the per-lane CDR lock in `mlxlink` first. Only then should you blame higher-layer transport timeouts. The reason is the order of the chain. The DSP repairs the signal before any packet reaches the transport layer, so a transport timeout is often the symptom of a bad lane below it, not the cause.
 
 ---
 
 ## 3. Transmission modes: Multi-Mode Fiber, Single-Mode Fiber, and DWDM
 
-Passive copper cables carry high-speed signals only a few meters inside one rack. To reach GPU servers across rows or buildings, you have to choose between multi-mode and single-mode fiber. Pick the wrong fiber plant, and your links fall short of the hall span, or your transceivers cost far more across thousands of ports. Suppose a cable run in your hall is 350 meters. Short-reach multi-mode reaches only 100 meters at 400G on OM4, so that run needs single-mode fiber.
+Passive copper cables carry high-speed signals only a few meters inside one rack. Passive means the cable has no electronics in it, which keeps it cheap and light but limits how far the signal can travel. To reach GPU servers across rows or buildings, you have to choose between multi-mode and single-mode fiber. Pick the wrong fiber plant, and your links fall short of the hall span, or your transceivers cost far more across thousands of ports. Suppose a cable run in your hall is 350 meters. Short-reach multi-mode reaches only 100 meters at 400G on OM4, so that run needs single-mode fiber. Check the run length against the reach column before you order anything, because a link that is even a few meters too long will fail.
 
-Optical fiber sends light down a glass core, surrounded by glass cladding with a lower refractive index. That index step traps the light inside the core through total internal reflection. Light inside fiber is immune to electromagnetic interference, and fiber spans from tens of meters up to dozens of kilometers.
+Optical fiber sends light down a glass core, surrounded by glass cladding with a lower refractive index. Think of the core as a water slide with very slick walls. The cladding is the lower-index layer that keeps the light bouncing back into the core. That index step traps the light inside the core through total internal reflection, the same effect that makes a fish tank wall look like a mirror from underwater. Light inside fiber is immune to electromagnetic interference, so a motor or a power cable nearby does not corrupt the signal, and fiber spans from tens of meters up to dozens of kilometers.
 
 | Fiber Grade / Type | Fiber Mode | Core Diameter (`µm`) | Wavelengths (`nm`) | Light Source | `1 Gbps` Max Reach | `10 Gbps` Max Reach | `40 Gbps` Max Reach | `100 Gbps – 400 Gbps` Max Reach | Primary Data Center Role |
 |---|---|---|---|---|---|---|---|---|---|
@@ -239,26 +238,26 @@ Optical fiber sends light down a glass core, surrounded by glass cladding with a
 | **`OM5`** | `MMF` | `50.0 µm` | **`850 nm` + `953 nm`** | `SWDM VCSEL` | `1,000 m` | `400 m` | `400 m` | **`150 m`** (`4` Tx/Rx pairs w/ `WDM`) | Wideband MMF (`400G` over `4` fiber pairs) |
 | **`SMF` (`OS2`)** | `SMF` | **`8.0 – 10.0 µm`** | **`1310 nm`, `1550 nm`** | Solid-state Laser | `10 km+` | `10 km+` | `10 km+` | **`500 m` (`DR`) to `80–120 km` (`ZR`)** | AI cluster `DR` (`500 m`), spine/border `FR`/`LR`, `DWDM` DCI |
 
-The table reads one fiber grade per row. Multi-mode reach drops quickly as speed climbs, while single-mode keeps long reach across the speeds shown.
+The table reads one fiber grade per row. A quick habit helps here. Before you read the cells, find the speed you need at the top, then find the grade whose cell for that speed still holds your run length. If no grade in that column holds your run, you have to move to a longer reach class. Multi-mode reach drops quickly as speed climbs, while single-mode keeps long reach across the speeds shown. Read across one row to see how far that grade will carry each speed. Read down one column to compare the grades at the same speed. Both views help when you pick a fiber for a specific run.
 
-Three transmission modes cover the distance tiers in an AI data center.
+Three transmission modes cover the distance tiers in an AI data center. Each mode trades reach against cost in a different way, so the right choice depends on the run you have.
 
-1. Multi-mode fiber has a wide glass core. Many rays of light, driven by low-cost VCSEL or LED sources, travel down it at once. Modal dispersion, the spreading of those rays, limits high-speed reach to short runs inside a row.
-2. OM5 is wideband multi-mode fiber. It adds Short-Wavelength Division Multiplexing across several wavelengths. That lets high-speed transmission run over four transmit and four receive fibers instead of eight pairs.
-3. Single-mode fiber narrows the core so that only one ray of solid-state laser light can travel. Without modal dispersion, single-mode links run from five hundred meters across a data hall to long-haul metro distances.
-4. Dense Wavelength Division Multiplexing packs several wavelengths onto one pair of single-mode strands. Pluggable coherent ZR modules can then carry traffic between regional data centers, with no external transponder shelves.
+1. Multi-mode fiber has a wide glass core. Many rays of light, driven by low-cost VCSEL or LED sources, travel down it at once. A VCSEL is a vertical-cavity surface-emitting laser, a cheap light source that works well on short runs. Modal dispersion, the spreading of those rays, limits high-speed reach to short runs inside a row. Picture many runners taking the same track at once. The ones on the outside take a longer path, and they arrive late.
+2. OM5 is wideband multi-mode fiber. It adds Short-Wavelength Division Multiplexing across several wavelengths. Wavelength division multiplexing sends several colors of light down one fiber, and each color carries its own stream. That lets high-speed transmission run over four transmit and four receive fibers instead of eight pairs. Fewer fibers means fewer connectors to clean and fewer chances for a dirty ferrule to fail.
+3. Single-mode fiber narrows the core so that only one ray of solid-state laser light can travel. With only one path for the light, the rays cannot arrive out of step, so the modal dispersion problem disappears. Without modal dispersion, single-mode links run from five hundred meters across a data hall to long-haul metro distances.
+4. Dense Wavelength Division Multiplexing packs several wavelengths onto one pair of single-mode strands. Pluggable coherent ZR modules can then carry traffic between regional data centers, with no external transponder shelves. A transponder is the box that converts client signals into the wavelength the long-haul link uses, and a coherent module does that work inside the transceiver itself.
 
-**If your cable runs in a multi-row AI training hall exceed the short-reach multi-mode limits, standardize on single-mode fiber with DR4 or 2xDR4 parallel optics.**
+**If your cable runs in a multi-row AI training hall exceed the short-reach multi-mode limits, standardize on single-mode fiber with DR4 or 2xDR4 parallel optics.** Standardizing means one fiber type and one module family across the hall, so spares and cleaning procedures stay simple. A spares drawer with one module family is easier to manage at night than one with five. Mixing fiber types in one hall also means mixing cleaning kits and labels, and each mix-up is a chance for a wrong cable to end up in a live port.
 
 ---
 
 ## 4. AI server connectivity, transceiver reach classes, connectors, and the 90 percent cable rule
 
-Even with the right switch silicon and fiber grade, cabling mistakes can delay a cluster's bring-up by weeks. If you plan the layout, measure the full routed path, not the straight line between two racks. Cables ordered to the straight-line distance between two racks come up meters short once vertical drops and overhead trays are added. Patch panels create a second trap. An optical patch panel in an InfiniBand run adds reflection loss, which makes PAM4 links flap under load.
+Even with the right switch silicon and fiber grade, cabling mistakes can delay a cluster's bring-up by weeks. Picture a crew that orders cables from a floor plan drawn as the crow flies. The straight line looks short on paper, but the real cable has to climb down a rack, cross a tray and wind around a corner. If you plan the layout, measure the full routed path, not the straight line between two racks. Cables ordered to the straight-line distance between two racks come up meters short once vertical drops and overhead trays are added. Patch panels create a second trap. An optical patch panel in an InfiniBand run adds reflection loss, which makes PAM4 links flap under load. A flap is a link that drops and returns over and over, and it usually shows up only when the job is heavy.
 
 ### 4.1 AI server connectivity topologies and ToR versus MoR/EoR layouts
 
-How a GPU server connects to its leaf switches sets both the transceiver you buy and the cable lengths across the hall. In a rail-optimized design, a DGX A100 server offers eight scale-out ports, and each one connects to its own rail leaf switch. A DGX H100 server has four twin-port OSFP cages on its tray. You can wire those cages straight to four 800 Gbps switches, or fan them out with breakout cables to eight rail leaf switches.
+How a GPU server connects to its leaf switches sets both the transceiver you buy and the cable lengths across the hall. A leaf switch is the switch that each server plugs into directly, and the spine switches sit above the leaves. In a rail-optimized design, a DGX A100 server offers eight scale-out ports, and each one connects to its own rail leaf switch. A rail is one lane of the design, with the same GPU index on every server feeding the same leaf switch. A DGX H100 server has four twin-port OSFP cages on its tray. A cage is the metal housing that holds one or two transceivers. You can wire those cages straight to four 800 Gbps switches, or fan them out with breakout cables to eight rail leaf switches. A breakout cable splits one high-speed port into several lower-speed ones, the way a power strip splits one outlet into several.
 
 The placement of the switches then sets the cable length profile across the row.
 
@@ -277,9 +276,9 @@ AI Server Scale-Out Connectivity and Rack Layout Profiles (ADC Ch. 4 Figs 4-10 t
 
 ### 4.2 Transceiver reach classes and fabric tier mapping
 
-A transceiver part number packs the data rate, the reach code and the optical lane count into one label. Take 400G-SR8. It is a 400 Gbps short-reach multi-mode module with eight parallel optical lanes. 400G-DR4, by contrast, is a data center reach single-mode module with four parallel single-mode lanes.
+Purchase orders for optics look like a string of letters and digits, and it is easy to order the wrong one. A transceiver part number packs the data rate, the reach code and the optical lane count into one label. Read it from left to right, the way you would read a shipping code. Take 400G-SR8. It is a 400 Gbps short-reach multi-mode module with eight parallel optical lanes. 400G-DR4, by contrast, is a data center reach single-mode module with four parallel single-mode lanes. The two parts share a speed but differ in fiber type, reach and lane count, so they cannot be swapped on a whim.
 
-The table lists each reach code, the distance it covers and the fabric role it fits.
+The table lists each reach code, the distance it covers and the fabric role it fits. Read the reach column first. A code only helps you if the distance on your floor plan fits inside its limit, and the role columns then tell you where in the fabric that module belongs.
 
 | Transceiver Code | Full Form | Standard Max Reach | Fiber / Media Mode | Typical Connector | `100 Gbps` Fabric Role (`Rail-Opt` / `Inference`) | `400 Gbps` / `800 Gbps` Fabric Role (`Rail-Opt` / `Inference`) |
 |---|---|---|---|---|---|---|
@@ -291,16 +290,16 @@ The table lists each reach code, the distance it covers and the fabric role it f
 | **`LR`** | Long reach | **`10 km`** (`10,000 m`) | `SMF` (`1310/1550 nm` WDM) | Dual `LC` (Duplex `2`-fiber) | `Spine <-> Border` & `Border <-> External` (`LR4`) | `Border Gateway <-> External / Campus` (`LR4`) |
 | **`ZR`** | Extended reach | **`> 80 km`** (`80,000 m+`) | `DWDM` (`SMF` Coherent) | Dual `LC` (Coherent) | `Border <-> Metro DCI` (`ER4` / `DCO` / `ACO`) | `Border Gateway <-> Metro / Regional DCI` (`400G/800G ZR`) |
 
-Notice how reach grows from VR to ZR, while the media moves from copper to coherent DWDM.
+Notice how reach grows from VR to ZR, while the media moves from copper to coherent DWDM. Each step up the list buys distance and costs more power, cost or fiber handling. The short codes stay inside the rack and the row, and the long codes connect buildings and regions.
 
 ### 4.3 Connectors, copper and optical cable assemblies, and the 90 percent SuperPOD derating rule
 
-The connector and cable you pick decide two things: how the ports break out, and how often the field fails.
+The connector and cable you pick decide two things: how the ports break out, and how often the field fails. A ferrule is the small tip inside a connector that holds the fiber, and it is the part that gets dirty. Most field failures start there, so the connector choice is also a cleaning and handling choice.
 
-1. Lucent Connectors are compact two-fiber duplex plugs. They appear on single-mode WDM modules such as FR4 and LR4. Inside those modules, an internal optical multiplexer combines four lanes onto one fiber pair.
-2. Multi-fiber push-on connectors pack a parallel fiber array into one ferrule. They suit parallel optics and breakout harnesses. Single-mode DR4 links use an angled polish to prevent back-reflection, while multi-mode SR8 links use a flat polish.
-3. Passive direct attach copper cables carry signals over shielded twinaxial wire, with no electronics and very little power draw. Active electrical cables add retimer chips inside the connector shells, which reach across wider in-rack spans.
-4. Active optical cables bond multi-mode or single-mode fiber permanently to transceivers at both ends. They have a thinner jacket and a smaller bend radius than copper, which suits runs inside the hall.
+1. Lucent Connectors are compact two-fiber duplex plugs. Duplex means one fiber carries traffic one way and the other fiber carries it back. They appear on single-mode WDM modules such as FR4 and LR4. Inside those modules, an internal optical multiplexer combines four lanes onto one fiber pair. The multiplexer does the packing, so the cable only needs two fibers.
+2. Multi-fiber push-on connectors pack a parallel fiber array into one ferrule. They suit parallel optics and breakout harnesses. Single-mode DR4 links use an angled polish to prevent back-reflection, which means the light that bounces off the end face is aimed away from the laser. Multi-mode SR8 links use a flat polish. The polish is the shape of the fiber end, and the wrong polish can send reflected light back into the transmitter.
+3. Passive direct attach copper cables carry signals over shielded twinaxial wire, with no electronics and very little power draw. Twinaxial means two inner conductors wrapped in one shield. Active electrical cables add retimer chips inside the connector shells, which reach across wider in-rack spans. A retimer rebuilds the signal so it can travel farther.
+4. Active optical cables bond multi-mode or single-mode fiber permanently to transceivers at both ends. Because the transceivers are sealed into the cable, you cannot clean or swap the optics separately. They have a thinner jacket and a smaller bend radius than copper, which suits runs inside the hall. A bend radius is the tightest curve the cable can take without damage.
 
 ```text
 Optical Connector Pinouts, Breakout Fan-Outs, and SuperPOD Cabling Rules (ADC Ch. 4, superpod-b200-dc, superpod-gb300-ra):
@@ -329,24 +328,24 @@ Optical Connector Pinouts, Breakout Fan-Outs, and SuperPOD Cabling Rules (ADC Ch
                                      and 100 GBd (XDR) PAM-4 BER budgets; all InfiniBand cables must run point-to-point with color-coded labels and spares
 ```
 
-Work the derating rule with a real cable. A 30 m AOC is rated at 30 m, and 90 percent of that is 27 m. So the routed run, including vertical drops and bend slack, must stay under 27.0 m.
+Work the derating rule with a real cable. A 30 m AOC is rated at 30 m, and 90 percent of that is 27 m. So the routed run, including vertical drops and bend slack, must stay under 27.0 m. The rule leaves room for the extra length you add when you route the cable through a rack, down a drop and around a tray. Measure that routed path on the floor plan, then compare it with the derated limit, not with the rated length on the box.
 
-**Keep every routed cable under 90 percent of its media rating, and run every InfiniBand link point-to-point with no optical patch panels.**
+**Keep every routed cable under 90 percent of its media rating, and run every InfiniBand link point-to-point with no optical patch panels.** Point-to-point means one cable runs straight from one port to the other, with nothing in the middle to add loss or reflection.
 
 ---
 
 ## 5. Standards, high-bandwidth form factors, and LPO, LRO, and CPO
 
-As port speeds doubled from one generation to the next, the old four-lane cages ran out of electrical pins and thermal room. Hardware teams need to know the physical differences between QSFP-DD and OSFP cages. Without that, you can order incompatible modules, or put flat-top server transceivers into an air-cooled switch faceplate.
+As port speeds doubled from one generation to the next, the old four-lane cages ran out of electrical pins and thermal room. Think of a cage as the socket on the switch that holds the module. A bigger module needs more pins and more room for its heat to escape, so the socket itself has to change. Hardware teams need to know the physical differences between QSFP-DD and OSFP cages. Without that, you can order incompatible modules, or put flat-top server transceivers into an air-cooled switch faceplate. A faceplate is the front panel of the switch where the modules plug in.
 
 ### 5.1 Optical standards and QSFP28, QSFP56, QSFP-DD, and OSFP form factors
 
-Proprietary modules, such as the legacy Cisco CPAK, locked customers to one vendor. To avoid that, AI data centers standardize on pluggable cages defined by IEEE, OIF and ITU-T. Early telecom gear used large ITU-T G.959.1 CFP modules, which fit only sixteen ports per rack unit. Modern switches use compact cages that fit thirty-six ports per rack unit. Four main form factors make that possible.
+Proprietary modules, such as the legacy Cisco CPAK, locked customers to one vendor. A proprietary module works only with its maker's switch, which leaves you with one supplier and one price. To avoid that, AI data centers standardize on pluggable cages defined by IEEE, OIF and ITU-T. Those are standards bodies, and a standard means modules from different makers can fit the same cage. Early telecom gear used large ITU-T G.959.1 CFP modules, which fit only sixteen ports per rack unit. A rack unit is one slot of vertical space in a rack, and port density is the number of ports you can fit into each one. Modern switches use compact cages that fit thirty-six ports per rack unit. Four main form factors make that possible.
 
-1. IEEE 802.3bm QSFP28 and IEEE 802.3cd QSFP56 give you four electrical channels in a compact cage. QSFP28 uses NRZ signaling for 100 Gbps links. QSFP56 moves to PAM4 for 200 Gbps HDR and Ethernet links.
-2. IEEE 802.3bs QSFP-DD adds a second row of four electrical contact pads behind the legacy QSFP row, for eight channels in total. Its front profile matches QSFP28, so a QSFP-DD switch cage stays backward compatible with legacy QSFP plugs.
-3. QSFP-DD defines four mechanical module profiles to handle rising DSP heat. Type 1 uses a flush length. Type 2 extends the housing. Type 2A adds an external heatsink, and Type 2B uses a taller heatsink.
-4. OIF-OSFP-01.0 Octal Small Form-factor Pluggable uses a slightly wider eight-lane body. It takes a finned-top heatsink on air-cooled switches, or a flat-top housing on liquid-cooled compute trays.
+1. IEEE 802.3bm QSFP28 and IEEE 802.3cd QSFP56 give you four electrical channels in a compact cage. QSFP28 uses NRZ signaling for 100 Gbps links. QSFP56 moves to PAM4 for 200 Gbps HDR and Ethernet links. The four channels are four separate electrical paths between the module and the switch.
+2. IEEE 802.3bs QSFP-DD adds a second row of four electrical contact pads behind the legacy QSFP row, for eight channels in total. Its front profile matches QSFP28, so a QSFP-DD switch cage stays backward compatible with legacy QSFP plugs. Backward compatible means the older plug still fits and works, though it runs at its own older speed.
+3. QSFP-DD defines four mechanical module profiles to handle rising DSP heat. Type 1 uses a flush length. Type 2 extends the housing. Type 2A adds an external heatsink, and Type 2B uses a taller heatsink. A heatsink is a block of metal fins that pulls heat away from the chip, and a taller one can pull away more.
+4. OIF-OSFP-01.0 Octal Small Form-factor Pluggable uses a slightly wider eight-lane body. It takes a finned-top heatsink on air-cooled switches, or a flat-top housing on liquid-cooled compute trays. Octal refers to the eight lanes, and the fins on top are what the air moves across.
 
 | Feature / Specification | `QSFP28` (`IEEE 802.3bm`) | `QSFP56` (`IEEE 802.3cd`) | `QSFP-DD` (`IEEE 802.3bs`) | `OSFP` (`OIF-OSFP-01.0`) |
 |---|---|---|---|---|
@@ -359,9 +358,9 @@ Proprietary modules, such as the legacy Cisco CPAK, locked customers to one vend
 | **Size & Thermal Design** | Compact (`3–4 W`) | Compact (`~5–7 W`) | Compact; riding cage heat sink (`Type 1/2/2A/2B`) | Larger; integrated finned-top or flat-top heat sink (`15–30 W+` thermal headroom) |
 | **Max Switch Density (`1U`)** | `36` ports / `RU` | `36` ports / `RU` | `36` ports / `RU` (vs `16`/RU on `CFP8`) | `36` ports / `RU` (twin-port supports `2x400G` or `2x800G` per cage) |
 
-The table shows the main split. QSFP28 and QSFP56 use four lanes, while QSFP-DD and OSFP use eight. Both eight-lane cages fit 36 ports per rack unit.
+The table shows the main split. QSFP28 and QSFP56 use four lanes, while QSFP-DD and OSFP use eight. Both eight-lane cages fit 36 ports per rack unit. When you compare two rows, look for the electrical channel count and the per-channel data rate first, because those two numbers explain most of the speed difference. The bottom row shows the density gain, and it matters for a rack that is already full.
 
-The legacy CFP family shows how much density the newer cages gained.
+The legacy CFP family shows how much density the newer cages gained. Each CFP variant is a smaller step in that story, and the lines below show how far the family moved.
 
 ```text
 Legacy CFP Family vs Modern QSFP-DD / OSFP Density (ADC Ch. 4 Tables 4-2 & 4-3):
@@ -372,7 +371,7 @@ Legacy CFP Family vs Modern QSFP-DD / OSFP Density (ADC Ch. 4 Tables 4-2 & 4-3):
 
 ### 5.2 Further innovations in optics: Pluggable versus LRO, LPO, and CPO
 
-In a conventional pluggable transceiver, the internal Digital Signal Processor takes a large share of the module's bill-of-materials cost. It also consumes roughly half of the module's electrical power. On a fully populated 800 Gbps switch, pluggable optics draw over a kilowatt in total, and half of that energy is spent inside the transceiver DSP chips. To bend this curve, optical engineers built three alternatives: Linear Receive Optics, Linear-drive Pluggable Optics, and Co-Packaged Optics.
+In a conventional pluggable transceiver, the internal Digital Signal Processor takes a large share of the module's bill-of-materials cost. It also consumes roughly half of the module's electrical power. Think of the DSP as a translator standing between the switch and the fiber. Every word passes through the translator, and the translator is both the most expensive and the hungriest part of the room. On a fully populated 800 Gbps switch, pluggable optics draw over a kilowatt in total, and half of that energy is spent inside the transceiver DSP chips. To bend this curve, optical engineers built three alternatives: Linear Receive Optics, Linear-drive Pluggable Optics, and Co-Packaged Optics. Each alternative moves the translator somewhere else or removes it, and each move costs something in interoperability.
 
 ```mermaid
 flowchart LR
@@ -388,30 +387,32 @@ flowchart LR
 | **3. Linear-drive Pluggable (`LPO`)** | **Removed** | **Removed** | Yes | **`8.0 W`** (`0.0 W` DSP + `8.0 W` linear driver/TIA) | **`512.0 W`** | **`50.0%`** (`-512.0 W`) | **`0%`** (No module DSP) | Smaller/cooler module; `PFE ASIC` performs all equalization/DSP (cooled by ASIC heatsink) and reduces latency, but tighter electrical loss budget increases multi-vendor interoperability risk and qualification `opex` |
 | **4. Co-Packaged Optics (`CPO`)** | **Removed** (Integrated) | **Removed** (Integrated) | **No** (On `ASIC` substrate) | **`5.0 W`** (Ultra-short substrate trace) | **`320.0 W`** | **`68.75%`** (`-704.0 W`) | **`0%`** (Integrated) | Co-locates optical engines and `PFE ASIC` on the **same package substrate**, maximizing port density and cutting power by `~69%`; higher initial switch cost and an optics failure requires servicing the switch assembly |
 
-Read the table as a ladder. Each rung removes more DSP, and power falls at every step. The trade-offs column shows what you give up in return.
+Read the table as a ladder. Each rung removes more DSP, and power falls at every step. The diagram above shows the same four rungs in order, with the power per port written on each one. The trade-offs column shows what you give up in return. Notice that the first two rungs keep the module field-pluggable, so a technician can still swap a failed part in the rack. The last rung does not, because the optics are fixed to the switch board.
 
 **Removing the transceiver DSP through LRO or LPO cuts pluggable optical power by a quarter to a half. Co-packaged optics cuts it by nearly seventy percent.**
 
-If you are choosing an architecture, weigh the power savings against how much interoperability and field serviceability you can afford to lose.
+If you are choosing an architecture, weigh the power savings against how much interoperability and field serviceability you can afford to lose. A cluster with one vendor and a strong spares stock may accept more risk than a mixed fleet with a small team. The right answer depends on who will repair the link at three in the morning.
 
 ---
 
 ## 6. Mixed-generation fabrics, upgrade planning, and operational verification
 
-Production AI clusters rarely replace every switch, adapter and cable in a single maintenance window. Storage clusters and older compute racks running HDR often connect to newer NDR or XDR spine-leaf fabrics. When two endpoints of different generations are cabled together, auto-negotiation settles on the highest rate and lane width both support. That creates quiet bottlenecks, especially when operators read an Active port state as proof of full performance. For example, an HDR storage cluster on an NDR spine negotiates down to the HDR rate. If you treat an Active port as proof of speed, you will miss that bottleneck.
+Production AI clusters rarely replace every switch, adapter and cable in a single maintenance window. Storage clusters and older compute racks running HDR often connect to newer NDR or XDR spine-leaf fabrics. Mixed generations are the normal state of a fleet that is growing, not a rare accident. When two endpoints of different generations are cabled together, auto-negotiation settles on the highest rate and lane width both support. Auto-negotiation is the handshake the two ends perform when the link comes up, and it always picks the best setting they share. That creates quiet bottlenecks, especially when operators read an Active port state as proof of full performance. For example, an HDR storage cluster on an NDR spine negotiates down to the HDR rate. Nothing crashes, and the dashboard stays green, so the slowdown can hide for months. If you treat an Active port as proof of speed, you will miss that bottleneck.
 
 ### 6.1 Mixed-generation interoperability and the 10-step upgrade plan
 
-A mixed-generation fabric brings six recurring hazards.
+A mixed-generation fabric brings six recurring hazards. Each one is a way for a link to look healthy while it underperforms. Read them as a checklist you run through before you sign off on a mixed build.
 
-1. A link silently down-negotiates to an older speed because a legacy cable, transceiver or firmware image stayed in the path.
-2. A link runs the target per-lane speed on only two lanes, or on one, and still prints Active in `ibstat`.
-3. Host PCIe slot generations or NUMA layouts differ between older and newer racks, which skews when collective barriers arrive.
-4. Mismatched adapter and switch firmware fail link training, or make the error recovery counters oscillate.
-5. Static or adaptive routing spreads collective traffic evenly across fast and down-negotiated uplinks. That creates an immediate congestion tree behind the slow link.
-6. Operators lack an explicit expected negotiated state for each link class, so they mistake `State: Active` for a healthy upgrade.
+1. A link silently down-negotiates to an older speed because a legacy cable, transceiver or firmware image stayed in the path. The fix is usually a cable or firmware check, not a fabric change.
+2. A link runs the target per-lane speed on only two lanes, or on one, and still prints Active in `ibstat`. The state says the link is up, but the width says it is only partly up.
+3. Host PCIe slot generations or NUMA layouts differ between older and newer racks, which skews when collective barriers arrive. A barrier is the point where every rank must wait for the others, so a slow rank delays the whole group.
+4. Mismatched adapter and switch firmware fail link training, or make the error recovery counters oscillate. Link training is the step where the two ends agree on speed and lanes, and a counter that keeps climbing and falling is a warning sign.
+5. Static or adaptive routing spreads collective traffic evenly across fast and down-negotiated uplinks. That creates an immediate congestion tree behind the slow link. A congestion tree is a jam that spreads backward from the slow link to the traffic queued behind it.
+6. Operators lack an explicit expected negotiated state for each link class, so they mistake `State: Active` for a healthy upgrade. The remedy is to write the expected rate and width down, then compare every port against that written table.
 
 A faster link can easily deliver only half of its expected speedup. The ten-step plan below guards against that.
+
+Think of the plan as a sequence of gates. You do not move to step five until steps one through four have passed, and you do not roll out to the whole cluster until the pilot in step four has run cleanly. Each gate catches a different kind of mistake, so skipping a gate means that mistake will surface later, in front of the whole training team. It starts with a baseline, moves through a pilot, and ends with a phased rollout, so each stage catches a different kind of problem before it reaches the whole cluster.
 
 ```text
 10-Step Production Fabric Upgrade Plan (V8 Ch. 8):
@@ -433,13 +434,13 @@ A faster link can easily deliver only half of its expected speedup. The ten-step
 
 ## Commands and configurations that matter
 
-Every command in this section is read-only. Each one carries an `(untested here)` marker, because the local build container has no physical InfiniBand switches or ConnectX adapters attached.
+Every command in this section is read-only, so running one cannot change the fabric. Each one carries an `(untested here)` marker, which means these commands were not run on live hardware. The local build container has no physical InfiniBand switches or ConnectX adapters attached, so the outputs shown below are reference samples. Use them to learn what the fields look like, then run the same commands on your own hardware.
 
 ### 1. Inspecting optical transceiver DDM telemetry, per-lane BER, and CDR lock with `mlxlink` `(untested here)`
 
-The `ibstat` and `perfquery` commands show link state and packet counters. `mlxlink` goes deeper. It reads the transceiver's internal Digital Diagnostic Monitoring EEPROM, and it queries the SerDes physical layer directly.
+Picture a car dashboard. The `ibstat` and `perfquery` commands show the speedometer and the trip counter, which tell you the link is up and how much traffic moved. `mlxlink` opens the hood. It reads the transceiver's internal Digital Diagnostic Monitoring EEPROM, which is a small memory chip that reports the module's temperature, voltage and light levels. It also queries the SerDes physical layer directly, so you can see what each lane is doing.
 
-Start with the physical counters. This command reports the physical bit error rate and the per-lane error counts.
+Start with the physical counters. This command reports the physical bit error rate and the per-lane error counts. A bit error rate is the share of bits that arrive wrong, so a tiny number like the ones below means almost nothing is being corrupted.
 
 ```bash
 # (untested here) Query physical BER and per-lane error counters on mlx5_1
@@ -513,15 +514,15 @@ Rx Power Current [dBm]          : 0,0,0,0 [-14..6]
 Tx Power Current [dBm]          : 0,0,0,0 [-12..6]
 ```
 
-When you triage with this output, check three groups of fields.
+When you triage with this output, check three groups of fields. Start with the group that tells you about errors, then move to the lock status, and finish with the environment. That order follows the question you are asking at each step.
 
-1. Zero `Raw Physical Errors Per Lane` and a floor `Effective Physical BER` mean all four SerDes lanes are clean. Dust on one MPO fiber shows up as a single lane spiking with errors. That same contamination also pushes that lane's `Rx Power Current` below the lower threshold.
-2. `CDR RX` and `CDR TX` showing `ON,ON,ON,ON` confirm that Clock Data Recovery is locked on all four receive and transmit lanes.
-3. `Temperature` and `Voltage` readings inside their bracketed limits confirm that the module's cooling and power rails are healthy.
+1. Zero `Raw Physical Errors Per Lane` and a floor `Effective Physical BER` mean all four SerDes lanes are clean. Dust on one MPO fiber shows up as a single lane spiking with errors. That same contamination also pushes that lane's `Rx Power Current` below the lower threshold. Look for the one lane that differs from the others, because dust usually hits one fiber first.
+2. `CDR RX` and `CDR TX` showing `ON,ON,ON,ON` confirm that Clock Data Recovery is locked on all four receive and transmit lanes. A lane that is not locked cannot read the symbol timing, so its data is lost before any error counter can count it.
+3. `Temperature` and `Voltage` readings inside their bracketed limits confirm that the module's cooling and power rails are healthy. Each bracket is the allowed range for that reading, so a value near the edge is a warning even if it has not yet crossed it.
 
 ### 2. Auditing negotiated link rate, lane width, and HCA/PCIe topology `(untested here)`
 
-This command set builds a complete Lab 01 inventory of the host and the fabric.
+Before you trust any single port, you want the whole picture. This command set builds a complete Lab 01 inventory of the host and the fabric. It saves each report to a folder, so you can compare the same host next month against today's record.
 
 ```bash
 # (untested here) Build a complete Lab 01 host + fabric link-rate/width inventory
@@ -535,7 +536,7 @@ numactl --hardware | tee volume08-lab01/host/numa.txt
 iblinkinfo | tee volume08-lab01/fabric/iblinkinfo.txt
 ```
 
-This output is illustrative. It comes from an NDR ConnectX-7 host, and it shows what `ibv_devinfo -v` and `ibstat` report.
+This output is illustrative. It comes from an NDR ConnectX-7 host, and it shows what `ibv_devinfo -v` and `ibstat` report. Read the Rate line and the State line together. A port can say Active while its rate is lower than the design, and that is the exact case this chapter is about.
 
 ```text
 hca_id: mlx5_0
@@ -563,7 +564,7 @@ CA 'mlx5_0'
         Link layer: InfiniBand
 ```
 
-Next, compare two ports on the same switch. The `iblinkinfo` output below puts a healthy four-lane port beside a two-lane port.
+Next, compare two ports on the same switch. This is the fastest way to spot a lane-width problem, because the two ports sit side by side and differ in one visible place. The `iblinkinfo` output below puts a healthy four-lane port beside a two-lane port.
 
 ```text
 $ iblinkinfo -S 0x506b4b0300a1c210
@@ -572,11 +573,11 @@ $ iblinkinfo -S 0x506b4b0300a1c210
        4    1[  ] ==( 2X   400 Gbps Active/  LinkUp)==>       15    1[  ] "node-b hca" ( )
 ```
 
-Port 3 runs at 4X and delivers the full 400 Gbps. Port 4 shows the same rate label, but it runs at 2X, which halves its usable capacity.
+Port 3 runs at 4X and delivers the full 400 Gbps. Port 4 shows the same rate label, but it runs at 2X, which halves its usable capacity. The label is the trap. If you only scanned for the word 400, both ports would look identical.
 
 ### 3. Validating delivered payload bandwidth and latency `(untested here)`
 
-Use this sequence to prove what a link delivers, not what it advertises. You read the counters before and after the benchmark, so you can see whether the test itself added errors. Each process is pinned to the NUMA node that holds its adapter.
+Use this sequence to prove what a link delivers, not what it advertises. A benchmark is a controlled test that pushes known traffic down a path and measures what comes out. You read the counters before and after the benchmark, so you can see whether the test itself added errors. Each process is pinned to the NUMA node that holds its adapter. Pinning means you tell the operating system which CPU socket a process must run on, so the process does not wander across the socket boundary and add a hop.
 
 ```bash
 # (untested here) Lab 02 & Lab 03: NUMA-pinned RDMA bandwidth/latency + counter delta verification
@@ -588,13 +589,13 @@ numactl --cpunodebind=0 --membind=0 ib_write_bw -d mlx5_0 -i 1 --report_gbits <s
 ibqueryerrors | tee counters-after.txt
 ```
 
-Compare `counters-before.txt` with `counters-after.txt`. Any new error that appears between them came from the benchmark run.
+Compare `counters-before.txt` with `counters-after.txt`. Any new error that appears between them came from the benchmark run. If the counts did not move, the link carried the test cleanly, and the bandwidth number can be trusted.
 
 ---
 
 ## How it fails
 
-This section lists five failure modes. Each row gives the symptom you see first, the cause, the evidence to collect, and the fix. Match the symptom first, then check the evidence column before you change any hardware. For example, a 2 MiB RDMA write that takes 83.89 µs instead of 41.94 µs points you to the first row.
+Every link problem in an AI fabric leaves a trail, and the trail usually starts as a slowdown rather than a crash. This section lists five failure modes. Each row gives the symptom you see first, the cause, the evidence to collect, and the fix. Match the symptom first, then check the evidence column before you change any hardware. For example, a 2 MiB RDMA write that takes 83.89 µs instead of 41.94 µs points you to the first row. A 2 MiB RDMA write is a single two-mebibyte transfer from one server's memory to another's, and timing it gives you a clean number to compare against the design.
 
 | Failure Mode | Observable Symptom | Root Cause | Diagnostic Evidence (`ibstat`, `iblinkinfo`, `mlxlink`, `ib_write_bw`) | Remediation |
 |---|---|---|---|---|
@@ -604,21 +605,23 @@ This section lists five failure modes. Each row gives the symptom you see first,
 | **4. Exceeding the `< 90%` Cable Distance Rule or Using Patch Panels** | Intermittent `SymbolErrorCounter` acceleration, `LinkErrorRecoveryCounter` increments, `CDR` lock loss, or `LinkDownedCounter` flaps under thermal load | Routed cable length exceeds `90%` of media max (`> 27 m` on `30 m AOC`, `> 45 m` on `50 m AOC`, `> 2.7 m` on `3 m 400G DAC`) or passes through an optical patch panel | `mlxlink -c` shows elevated `Raw Physical BER`, `Effective Physical Errors > 0`, and reduced `Rx Power Current [dBm]` across all lanes | Reroute point-to-point without patch panels, account for intra-rack vertical routing and bend radius, and step up from `DAC` -> `AOC`/`VR` -> `SR` -> `DR` `SMF` when run exceeds `90%` |
 | **5. Optical Transceiver Over-Temperature (`> 70–80 °C`)** | Links flap after several hours of heavy collective load; laser bias current climbs and post-FEC errors appear | Wrong `QSFP-DD`/`OSFP` thermal variant (`flat-top` module inserted into an air-cooled switch expecting `finned-top` / `Type 2A`/`2B`), blocked switch intake, or failed fan | `mlxlink -m` shows `Temperature [C]: 83 [-10..80]` exceeding the `80 °C` upper alarm threshold | Use finned-top `OSFP` / `QSFP-DD Type 2A/2B` modules in air-cooled switches, flat-top `OSFP` in conduction/liquid-cooled trays, and verify rack airflow (`2,145 CFM` per DGX B200 rack at `18–27 °C`) |
 
+Read the five rows in order of how often you will meet them. The first two, rate down-negotiation and lane-width collapse, hide behind an Active port and waste capacity quietly. The third is the host, which often gets blamed for a fabric problem and vice versa. The fourth and fifth show up under load, after the job has already been running for a while. In each case the remedy is a physical or configuration fix, and the evidence column tells you which fix to try first.
+
 ---
 
 ## Hands-on lab: verifying link generations, SerDes/PAM4 DSP math, transceiver reach, MPO breakouts, and 90 percent cable rules
 
-In this lab you run a check suite that uses only the Python standard library. The suite lives in `code/part12/optics_cabling_hdr_ndr_xdr.py` and `code/part12/optics_cabling_hdr_ndr_xdr_lab.py`. Every check is deterministic, so you get the same result on a workstation or a Nebius GPU instance. You do not need any optical transceivers to run it.
+Picture a new team member who has read every chapter about optics but has never touched a switch. Before that person orders cables, they should be able to check the arithmetic on paper. This lab gives you that check. It runs a suite that uses only the Python standard library, so there is nothing to install beyond Python itself. The suite lives in `code/part12/optics_cabling_hdr_ndr_xdr.py` and `code/part12/optics_cabling_hdr_ndr_xdr_lab.py`. Every check is deterministic, which means the same inputs always give the same answer, so you get the same result on a workstation or a Nebius GPU instance. You do not need any optical transceivers to run it. These steps were not run on a live cluster, so treat the suite as a check of the math and the rules, not a test of your hardware.
 
 ### Step 1: Run the 32-check optics and link-evolution verification suite
 
-Run the lab script from the chapter's repository root.
+Run the lab script from the chapter's repository root. The `-B` flag tells Python not to write cache files into the repository, so the folder stays clean after the run.
 
 ```bash
 python3 -B code/part12/optics_cabling_hdr_ndr_xdr_lab.py
 ```
 
-This is the expected output, as verified during the build.
+This is the output the script is expected to print. Each line starts with PASS or FAIL, followed by the rule it checks.
 
 ```text
 Running Chapter 12.10 HDR, NDR, XDR, Optics & Cabling Lab Checks...
@@ -659,30 +662,32 @@ Running Chapter 12.10 HDR, NDR, XDR, Optics & Cabling Lab Checks...
 Summary: 32 passed, 0 failed out of 32 checks.
 ```
 
-Each line names the table or rule it tests. A failure therefore points straight at the fact in question.
+Each line names the table or rule it tests. A failure therefore points straight at the fact in question. Notice that the suite checks the chapter's own tables, so a passing run confirms the arithmetic and the rules you have read, but it says nothing about the optics sitting in your rack. If a line fails, read its name, find the matching table in this chapter, and check which number moved. That habit turns a red line into a small, specific question.
 
 ---
 
 ## Common first mistakes
 
+Most people who get these wrong are not careless. They read a green signal and stop, which is a reasonable habit on most systems and an expensive one in an optics fabric. The five mistakes below are the ones that come back again and again.
+
 1. Stopping at `State: Active` and `Rate: 400`. You also need to check the negotiated lane width in `iblinkinfo`. A two-lane port has lost half its physical lanes, so it delivers half the throughput even with a full rate string.
-2. If you order active optical cables to the straight-line floor distance, you will come up short. Allow for vertical rack routing, overhead tray drops and the SuperPOD cable derating rule.
-3. Routing NDR or XDR InfiniBand links through optical patch panels. The mated connectors add insertion loss and return-loss reflections, which blur the PAM4 eye openings.
-4. Mixing angled APC single-mode MPO patch cords with flat UPC multi-mode MPO patch cords. Plugging multi-mode transceivers into a single-mode fiber plant also causes immediate signal loss.
-5. Upgrading from HDR to NDR or XDR without checking the host PCIe slot generation, the lane width and the local NUMA locality.
+2. If you order active optical cables to the straight-line floor distance, you will come up short. Allow for vertical rack routing, overhead tray drops and the SuperPOD cable derating rule. The cable has to reach the port through the real path, not the path on the drawing.
+3. Routing NDR or XDR InfiniBand links through optical patch panels. The mated connectors add insertion loss and return-loss reflections, which blur the PAM4 eye openings. A blurred eye is harder for the DSP to read, so the errors climb under load.
+4. Mixing angled APC single-mode MPO patch cords with flat UPC multi-mode MPO patch cords. Plugging multi-mode transceivers into a single-mode fiber plant also causes immediate signal loss. The two polishes look alike to the eye, so check the connector label before you plug anything in.
+5. Upgrading from HDR to NDR or XDR without checking the host PCIe slot generation, the lane width and the local NUMA locality. A new adapter in an old slot is the most common way to buy a faster switch and get the same speed.
 
 ---
 
 ## Exercises
 
-Work these by hand first, and check your answers against the lab output afterwards.
+Work these by hand first, and check your answers against the lab output afterwards. Each exercise starts from a situation, and then asks a few short questions. Answer one question at a time, and write the number down before you move to the next.
 
-1. Work out the InfiniBand generation math. Use the link generation table to state the per-lane raw bit rate, symbol rate, modulation, line coding efficiency and multi-lane bandwidths for FDR, HDR, NDR, XDR and GDR. Then compute the effective bandwidth and transfer time for the three switch ports in the reference block below.
-2. Check the host PCIe ceilings against the link rate. Calculate the maximum PCIe payload bandwidth for Gen4, Gen5 and Gen6 slots. Identify which ceiling limits an NDR adapter in Gen4 and in Gen5, and which slot you need to sustain full XDR line rate.
-3. Trace the SerDes mux and demux, and compare the DSP physics. Determine how many PFE ASIC SerDes lanes you need for 400 Gbps, 800 Gbps and 1.6 Tbps ports. Include the gearbox ratio between an eight-lane ASIC interface and a four-lane DR4 optical module. Then compare NRZ, PAM4 and PAM8 by voltage levels, bits per symbol, eye openings and SNR penalties, alongside the four compensating DSP functions.
-4. Pick the fiber and the transceiver. Contrast core diameter, operating wavelengths, light source and high-speed reach across OM1 through OM5 and SMF. Then select the transceiver code, media mode, standard reach and connector type for the seven point-to-point distances in the reference block below.
-5. Work out the MPO breakouts and the cable derating rule. Determine the transmit, receive and dark fiber counts for QSFP-DD-DR4, QSFP-DD-SR8 and OSFP-1600G-DR16. Calculate the per-endpoint speed and lane count when an OSFP port breaks out two ways or four ways. Compute the longest compliant routed length under the SuperPOD derating rule for each cable type, and explain why patch panels are rejected.
-6. Compare the power budgets, then triage an `mlxlink` reading. Compute per-port power, switch total optical power and percentage savings across the Pluggable, LRO, LPO and CPO architectures. Then contrast the healthy `mlxlink` baseline with the degraded module scenario in the reference block below.
+1. A colleague hands you a list of three switch ports and asks whether the upgrade pays off. Start with the generation math. What is the per-lane raw bit rate for FDR, HDR, NDR, XDR and GDR? What are the symbol rate, the modulation and the line coding efficiency for each of them? What effective bandwidth does each of the three switch ports in the reference block below deliver? How long does each port take to transfer the same payload?
+2. A host has a new NDR adapter and an old server board, so you need to check the PCIe ceilings. What is the maximum PCIe payload bandwidth for a Gen4 slot? What is it for a Gen5 slot? What is it for a Gen6 slot? Which ceiling limits an NDR adapter in a Gen4 slot? Which ceiling limits it in a Gen5 slot? Which slot do you need to sustain full XDR line rate?
+3. A design review asks how many lanes the switch needs for each port speed. How many PFE ASIC SerDes lanes does a 400 Gbps port need? How many does an 800 Gbps port need? How many does a 1.6 Tbps port need? What gearbox ratio joins an eight-lane ASIC interface to a four-lane DR4 optical module? Next, compare NRZ, PAM4 and PAM8 on voltage levels. Then compare them on bits per symbol, eye openings and SNR penalties. Which four DSP functions compensate for the penalties?
+4. A customer has six fiber grades to choose from and seven distances to cover. Which core diameter, wavelengths, light source and high-speed reach does each grade offer across OM1 through OM5 and SMF? For each of the seven point-to-point distances in the reference block below, which transceiver code fits? Which media mode, standard reach and connector type go with that code?
+5. You are preparing a bill of materials for three breakout-capable modules. How many transmit, receive and dark fibers does QSFP-DD-DR4 use? How many does QSFP-DD-SR8 use? How many does OSFP-1600G-DR16 use? When an OSFP port breaks out two ways, what speed and lane count does each endpoint get? What happens when it breaks out four ways? What is the longest compliant routed length under the SuperPOD derating rule for each cable type? Why are patch panels rejected?
+6. A switch is drawing more power than the plan allowed, and you need to choose an optics architecture. You also need to triage an `mlxlink` reading from a port that flapped last night. How much power does each port draw under the Pluggable, LRO, LPO and CPO architectures? What is the total optical power for a 64-port switch under each one? What percentage does each architecture save? Then compare the healthy `mlxlink` baseline with the degraded module scenario in the reference block below. Which fields differ, and which one points to the failing lane?
 
 ```text
 Exercise Function Names and Numeric Parameters Reference (code/part12/optics_cabling_hdr_ndr_xdr.py):
@@ -700,12 +705,14 @@ Exercise Function Names and Numeric Parameters Reference (code/part12/optics_cab
 
 ## Interview angles
 
+Interviewers use these questions to see whether you can reason down the stack, one layer at a time. A good answer names the layers in order and says what each check rules in or out. The answers below show that pattern.
+
 1. **"We upgraded our cluster from 200G HDR to 400G NDR, every port shows State: Active, and yet distributed training throughput barely improved. Walk me through every layer that could be capping the upgrade."**
    - *Strong answer:* An Active port state only proves that the physical link trained and the Subnet Manager assigned a LID. It does not prove the negotiated speed, the active lane width, the host PCIe bandwidth or the spine bisection capacity. Say you start with `ibstat` and look for rate down-negotiation. An HDR-rated cable or a firmware mismatch can force `Rate: 200`, which doubles the RDMA write transfer time. Next, check `iblinkinfo` for lane-width collapse, where two failed fibers leave a port at two lanes and halve its usable capacity. Then run `lspci -vv` and a `numactl`-pinned `ib_write_bw` to confirm the adapter sits in a PCIe Gen5 x16 slot, not a Gen4 riser. Last, confirm the leaf-to-spine uplinks are not oversubscribed under multi-rack AllReduce traffic.
 2. **"Why did the industry move from NRZ to PAM4 at 50G, 100G, and 200G per lane, what physical penalty did that introduce, and how do LPO, LRO, and CPO address the resulting power problem?"**
    - *Strong answer:* Above twenty-five gigabaud, doubling the symbol rate of two-level NRZ causes severe high-frequency loss in copper and optical links. PAM4 packs two bits into each symbol across four amplitude levels, so the bit rate doubles at the same baud rate. The cost is three stacked eyes, each one-third the height, and a 9.54 dB SNR penalty. An onboard DSP has to recover that penalty with equalization, clock recovery and FEC, and it consumes roughly half the module's power. Linear-drive Pluggable Optics removes both the transmit and receive DSPs, which cuts module power in half. Linear Receive Optics removes only the receive DSP, cutting power by a quarter while keeping the transmit eye compliant with IEEE templates. Co-Packaged Optics mounts the optical engines on the switch ASIC substrate and cuts power by nearly seventy percent.
 3. **"How do you choose between DAC, AEC, AOC, VR/SR MMF, and DR/FR/LR/ZR SMF when designing a multi-rack AI cluster, and what cabling rules prevent physical-layer failures during bring-up?"**
-   - *Strong answer:* Match the media to the physical reach and the rack layout. Inside a rack, use passive copper DAC for short three-meter runs, or active retimed copper AEC up to seven meters. Across adjacent racks, use bonded AOC cables, or VR and SR transceivers over multi-mode fiber. For a multi-row AI hall with runs up to 500 meters, standardize on DR4 or 2xDR4 parallel single-mode optics with angled MPO connectors. Use duplex LC FR4, LR4 or coherent DWDM ZR modules for campus and metro links. During layout, keep every routed cable under 90 percent of its media maximum, and never route InfiniBand links through optical patch panels.
+   - *Strong answer:* Start from the run length, not from the product catalog. Match the media to the physical reach and the rack layout. Inside a rack, use passive copper DAC for short three-meter runs, or active retimed copper AEC up to seven meters. Across adjacent racks, use bonded AOC cables, or VR and SR transceivers over multi-mode fiber. For a multi-row AI hall with runs up to 500 meters, standardize on DR4 or 2xDR4 parallel single-mode optics with angled MPO connectors. Use duplex LC FR4, LR4 or coherent DWDM ZR modules for campus and metro links. During layout, keep every routed cable under 90 percent of its media maximum, and never route InfiniBand links through optical patch panels.
 
 ---
 

@@ -25,11 +25,11 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-An engineering team can build an Ethernet fabric that passes every link test and saturates an isolated benchmark. The same fabric can still freeze a multi-node training job the moment a second workload starts. The opposite mistake costs just as much. A team proposes an expensive InfiniBand fabric for a small cluster without checking the payback period. At sixty-four GPUs, the upfront hardware premium takes ten years of compute savings to recover. When the interconnect does not match the cluster scale and workload pattern, either training jobs stall or capital is wasted.
+An engineering team can build an Ethernet fabric that passes every link test and saturates an isolated benchmark. The same fabric can still freeze a multi-node training job the moment a second workload starts. An isolated benchmark is one pair of servers talking alone, and it tells you nothing about what happens when a second job shares the same spine. The opposite mistake costs just as much. A team proposes an expensive InfiniBand fabric for a small cluster without checking the payback period. At sixty-four GPUs, the upfront hardware premium takes ten years of compute savings to recover. Payback period is the time it takes the savings to cover the extra cost. When the interconnect does not match the cluster scale and workload pattern, either training jobs stall or capital is wasted.
 
-Choosing between InfiniBand, Standard RoCEv2, NVIDIA Spectrum-X, and the Ultra Ethernet Consortium specification is one of the foundational decisions in an AI Factory. A slogan about port speeds will not give you the answer. You get it by running a systems engineering calculation. That calculation weighs six concrete factors: workload synchronization, flow control physics, adapter capabilities, storage isolation, operational maturity, and three-year Total Cost of Ownership.
+Choosing between InfiniBand, Standard RoCEv2, NVIDIA Spectrum-X, and the Ultra Ethernet Consortium specification is one of the foundational decisions in an AI Factory. An AI Factory is the name NVIDIA uses for a whole data center built to produce AI output. A slogan about port speeds will not give you the answer. You get it by running a systems engineering calculation. Think of it like buying a truck. The engine size matters, but so do the load you haul, the roads you drive and what the fuel costs over five years. That calculation weighs six concrete factors: workload synchronization, flow control physics, adapter capabilities, storage isolation, operational maturity, and three-year Total Cost of Ownership.
 
-The chapter's motivating numbers come from a benchmark and a cost comparison, and they set the scale for everything that follows.
+The chapter's motivating numbers come from a benchmark and a cost comparison, and they set the scale for everything that follows. Each number in the block below is a starting point for a calculation, not a verdict. Keep track of which ones came from a measurement and which ones came from a price list, because the two age differently.
 
 ```text
 Motivating benchmark and cost comparison baselines:
@@ -39,7 +39,7 @@ Motivating benchmark and cost comparison baselines:
 - Four fabric architectures: Quantum-2 NDR 400 Gbps / Quantum-X800 XDR 800 Gbps, Standard RoCEv2, Spectrum-X, UEC v1.0 / UET
 ```
 
-The break-even figure is the one to remember. At 24 runs a year, the InfiniBand premium needs about ten years to pay for itself. Start with the cluster scale and the payback math, because the rest of the decision depends on them.
+The break-even figure is the one to remember. At 24 runs a year, the InfiniBand premium needs about ten years to pay for itself. Start with the cluster scale and the payback math, because the rest of the decision depends on them. If the payback is longer than the life of the hardware, the premium needs a different justification, such as a workload that cannot run on Ethernet at all.
 
 ## Prerequisites and outcomes
 
@@ -47,12 +47,7 @@ You should arrive with the earlier networking chapters behind you. This chapter 
 
 **Prerequisites:** Review Chapters 12.1 through 12.5 for AI traffic collectives, RDMA verbs, RoCEv2 transport, PFC, ECN, DCQCN, and Data Center Bridging QoS. Also review Chapters 12.6 through 12.11 for InfiniBand fundamentals, OpenSM and UFM routing, CBFC, Adaptive Routing, SHIELD, optics, and NVIDIA Spectrum-X.
 
-**Outcomes:** After completing this chapter, you will be able to:
-1. Contrast the workload and network requirements of AI training data centers against AI inference data centers. You will also explain why synchronized collectives turn microsecond queue spikes into cluster-wide stalls.
-2. Compare InfiniBand, Standard RoCEv2, NVIDIA Spectrum-X, and Ultra Ethernet across transport headers, flow control, routing schemes, and in-network collectives.
-3. Configure and audit ConnectX Virtual Protocol Interconnect personality switching via `mlxconfig` and NVIDIA Base Command Manager `cmsh`. You will also verify PCIe locality and BlueField-3 operating modes.
-4. Execute the sixty-four-GPU and one-hundred-twenty-eight-GPU H100 TCO and break-even math. You will separate upfront capital deltas from per-run collective overhead and nonlinear scale risks.
-5. Apply the seven-stage AI fabric validation and troubleshooting ladder to commission or debug production clusters.
+**Outcomes:** The chapter walks through five decisions in order. It starts by contrasting the workload and network needs of AI training data centers with those of AI inference data centers, and it explains why synchronized collectives turn microsecond queue spikes into cluster-wide stalls. It then compares InfiniBand, Standard RoCEv2, NVIDIA Spectrum-X and Ultra Ethernet across transport headers, flow control, routing schemes and in-network collectives. Next it covers ConnectX Virtual Protocol Interconnect personality switching through `mlxconfig` and NVIDIA Base Command Manager `cmsh`, along with PCIe locality and BlueField-3 operating modes. After that comes the sixty-four-GPU and one-hundred-twenty-eight-GPU H100 TCO and break-even math, which separates upfront capital deltas from per-run collective overhead and nonlinear scale risks. The chapter closes with the seven-stage AI fabric validation and troubleshooting ladder, which you can apply when you commission or debug a production cluster.
 
 ---
 
@@ -60,22 +55,24 @@ You should arrive with the earlier networking chapters behind you. This chapter 
 
 ### 1.1 Why synchronized collectives expose the fabric on the critical path
 
-Think about an ordinary enterprise data center. Thousands of independent web flows start and finish at random times. A brief queue spike delays one user request while the rest of the fleet runs normally. Distributed AI training does not work that way. It behaves like a synchronized military convoy, where every participating GPU reaches a collective barrier at the same moment. No rank can start the next step until the slowest rank finishes, so tail latency governs Job Completion Time.
+Think about an ordinary enterprise data center. Thousands of independent web flows start and finish at random times. A brief queue spike delays one user request while the rest of the fleet runs normally. Distributed AI training does not work that way. It behaves like a synchronized military convoy, where every participating GPU reaches a collective barrier at the same moment. No rank can start the next step until the slowest rank finishes, so tail latency governs Job Completion Time. Tail latency means the slowest few percent of the waits, and Job Completion Time is how long the whole job takes to finish. One straggler sets the pace for thousands of GPUs.
 
-The table below shows what one slow collective does to a single training step on 64 GPUs running Llama-70B. Compute stays at 1,500 ms in both rows. Only the exposed AllReduce time changes.
+The table below shows what one slow collective does to a single training step on 64 GPUs running Llama-70B. Compute stays at 1,500 ms in both rows. Only the exposed AllReduce time changes. Exposed AllReduce time is the part of the collective that the GPUs cannot hide behind useful compute, so it is the part that costs you. Read the two rows side by side, and the overhead column tells the story on its own. The compute column stays fixed on purpose, so the only thing that changes is the time the GPUs spend waiting. That is the lesson of the table. The fabric does not make the GPUs faster. It decides how often they sit idle while the others catch up.
+
+When you present a table like this to a non-network audience, start with the wait, not the bandwidth. A manager can picture an idle GPU far more easily than a number of gigabits per second.
 
 | Training Step Scenario (64-GPU Llama-70B) | Compute Baseline | Exposed AllReduce Time | Total Step Time | Communication Overhead |
 |---|---|---|---|---|
 | **Fast interconnect baseline** | `500 ms` forward + `1,000 ms` backward = `1,500 ms` | `5 ms` | `1,505 ms` | `0.3%` |
 | **Congested interconnect tail** | `500 ms` forward + `1,000 ms` backward = `1,500 ms` | `200 ms` | `1,700 ms` | `13%` |
 
-Consider what happens when the exposed AllReduce time grows from 5 ms to 200 ms. That single change raises the overhead from 0.3% to 13%. Barrier synchronization also creates five challenges, and each one breaks an assumption that conventional Ethernet switching makes.
+Consider what happens when the exposed AllReduce time grows from 5 ms to 200 ms. That single change raises the overhead from 0.3% to 13%. One slow collective, repeated on every step, adds up to a large share of the run. Barrier synchronization also creates five challenges, and each one breaks an assumption that conventional Ethernet switching makes. Entropy here means how much variety the packet headers show. Low entropy means the headers look almost the same, so a switch cannot spread them out easily.
 
-1. **Low entropy at the network layer:** In rail-aligned pod communication, source and destination IP address pairs are sparse and repetitive.
-2. **Low entropy at the transport layer:** Every RoCEv2 packet carries the fixed UDP destination port 4791, which tells the switch that an InfiniBand Base Transport Header follows. Even when the UDP source port comes from a Queue Pair, static five-tuple ECMP hashing often collides. Several heavy GPU flows can land on the same spine uplink while the links next to it sit idle.
-3. **Simultaneous and sequential low-entropy flowlets:** Two transfers between the same GPU pair can differ only inside the Base Transport Header. Two back-to-back jobs can also reuse the exact same pair. A shallow-parsing switch sees both cases as a single flow unless the traffic is rebalanced across flowlet gaps.
-4. **Line-rate elephant flows:** GPUDirect RDMA and GPUDirect Storage let each server drive its network adapters at full line rate during every collective phase.
-5. **Synchronized microbursts and incast:** Gradient synchronization and checkpointing create sharp east-west spikes. Many senders aim at one egress queue at the same moment. A five-minute average smooths those bursts away completely. That is why a port can look lightly loaded on a dashboard while its egress queue overflows or keeps emitting pause frames.
+1. **Low entropy at the network layer:** In rail-aligned pod communication, source and destination IP address pairs are sparse and repetitive. The same few pairs carry nearly all the traffic, so a hash has very little to work with.
+2. **Low entropy at the transport layer:** Every RoCEv2 packet carries the fixed UDP destination port 4791, which tells the switch that an InfiniBand Base Transport Header follows. Even when the UDP source port comes from a Queue Pair, static five-tuple ECMP hashing often collides. Several heavy GPU flows can land on the same spine uplink while the links next to it sit idle. A Queue Pair is the send and receive endpoint pair that an RDMA connection uses.
+3. **Simultaneous and sequential low-entropy flowlets:** Two transfers between the same GPU pair can differ only inside the Base Transport Header. Two back-to-back jobs can also reuse the exact same pair. A shallow-parsing switch sees both cases as a single flow unless the traffic is rebalanced across flowlet gaps. A shallow parser reads only the outer headers, so it misses the detail that would tell the two transfers apart.
+4. **Line-rate elephant flows:** GPUDirect RDMA and GPUDirect Storage let each server drive its network adapters at full line rate during every collective phase. GPUDirect RDMA moves data from a GPU to the network card without a detour through host memory, and GPUDirect Storage does the same for storage. Line rate means the link is running as fast as it can, which is good for the job and bad for any traffic that shares the link.
+5. **Synchronized microbursts and incast:** Gradient synchronization and checkpointing create sharp east-west spikes. Many senders aim at one egress queue at the same moment. A five-minute average smooths those bursts away completely. That is why a port can look lightly loaded on a dashboard while its egress queue overflows or keeps emitting pause frames. A pause frame is the signal a receiver sends to ask the sender to stop for a moment.
 
 ```text
 Microburst vs dashboard averaging telemetry (V9 Ch. 1):
@@ -84,11 +81,11 @@ Microburst vs dashboard averaging telemetry (V9 Ch. 1):
 - Switch counter evidence over 90 s: rx_pfc_prio3 jumps from 0 to 118,344 while rx_ecn_marked_prio3 jumps from 412 to 198,220
 ```
 
-Read the counters rather than the average. Over 90 seconds, the priority-3 pause counter went from 0 to 118,344. Plan your monitoring around short windows, because a five-minute average hides the bursts that stall training.
+Read the counters rather than the average. Over 90 seconds, the priority-3 pause counter went from 0 to 118,344. Plan your monitoring around short windows, because a five-minute average hides the bursts that stall training. A good habit is to sample the same counters twice, a short interval apart, and look at the difference. A counter that keeps climbing tells you something is still happening, even if the average looks calm.
 
 ### 1.2 AI training data centers versus AI inference data centers
 
-Picture a budget meeting where every AI workload gets the same network design. Some teams buy expensive lossless fabrics for simple query serving. Others deploy oversubscribed leaf switches for synchronous foundation model training. Both mistakes come from treating two different kinds of AI data center as one. Separating them clarifies which network properties actually belong on the critical path.
+Picture a budget meeting where every AI workload gets the same network design. Some teams buy expensive lossless fabrics for simple query serving. Others deploy oversubscribed leaf switches for synchronous foundation model training. Both mistakes come from treating two different kinds of AI data center as one. Separating them clarifies which network properties actually belong on the critical path. Training is a long, synchronized job where every GPU waits on the others. Inference is a stream of short requests where each user waits on one answer.
 
 The diagram shows both data centers from input to goal.
 
@@ -119,7 +116,7 @@ The table compares the two designs one dimension at a time.
 | **Topology & oversubscription** | `1:1` non-blocking **Rail-Optimized Design (`ROD`)** or **Rail-Unified Design (`RUD`)** (or slight leaf-to-spine undersubscription in shallow-buffer packet-spraying fabrics). | Standard 3-stage IP Clos, collapsed 2-switch spine for edge sites, or hybrid cloud with `EVPN-VXLAN` multi-tenancy and edge security/firewalls. |
 | **Natural fabric fit** | **InfiniBand (`NDR`/`XDR`)**, **NVIDIA Spectrum-X**, or finely tuned **lossless `RoCEv2` / `UET`** backend compute fabric. | **Standard Ethernet (`TCP/IP` + `EVPN-VXLAN`)** for frontend/edge/RAG, plus **`RoCEv2`/`Spectrum-X`/`IB`** inside disaggregated multi-node inference pods. |
 
-Notice that training optimizes for job completion time, while inference optimizes for response latency. That difference drives almost every row. Decide which side of the table your cluster sits on before you choose a fabric.
+Notice that training optimizes for job completion time, while inference optimizes for response latency. A training job is judged by the day it finishes, and an inference service is judged by the response a user sees in the next second. The two timelines are so different that they rarely share a good fabric design, even when they share a building. That difference drives almost every row. Decide which side of the table your cluster sits on before you choose a fabric. A cluster that mixes both, such as a training fleet that also serves a chatbot, needs two fabric decisions and a clear boundary between them. Do not assume one network can serve both goals equally well.
 
 ### 1.3 Core advantages of InfiniBand versus Ethernet in AI training clusters
 
@@ -149,7 +146,7 @@ InfiniBand vs Ethernet structural constants (ADC Ch. 2 & Ch. 9):
 - Ethernet scale & multi-tenancy: EVPN-VXLAN Route Type 5 IP VRFs and MAC-VRFs, scaling to 100,000+ and 1,000,000+ GPUs
 ```
 
-InfiniBand wins on latency and credit-based losslessness, while Ethernet wins on scale and ecosystem. Decide early whether your cluster needs the first set of properties or whether openness and reach matter more.
+InfiniBand wins on latency and credit-based losslessness, while Ethernet wins on scale and ecosystem. Decide early whether your cluster needs the first set of properties or whether openness and reach matter more. A lossless fabric never drops packets on purpose, and it gets that by making the sender wait for permission. Ethernet can do the same, but it has to bolt the feature on, which is part of why the two families feel so different to operate. Ask yourself which failure you would rather explain to your management: a fabric that is slightly slower and easy to scale, or one that is fast and needs a specialist to run.
 
 ---
 
@@ -157,7 +154,9 @@ InfiniBand wins on latency and credit-based losslessness, while Ethernet wins on
 
 ### 2.1 End-to-end protocol stack and congestion-control comparison
 
-If you compare fabrics by their marketing labels alone, you will miss the hardware mechanisms that decide what happens during an incast burst. AI networking is converging. InfiniBand's deterministic transport loops are meeting Ethernet's scale-out IP routing. Put the four stacks side by side and you can see how each one handles encapsulation, flow control, multipathing, and collective offload.
+If you compare fabrics by their marketing labels alone, you will miss the hardware mechanisms that decide what happens during an incast burst. AI networking is converging. InfiniBand's deterministic transport loops are meeting Ethernet's scale-out IP routing. Put the four stacks side by side and you can see how each one handles encapsulation, flow control, multipathing, and collective offload. Encapsulation is the set of headers wrapped around your payload, and each stack wraps it differently. Think of four shipping companies using four different boxes, tape patterns and label formats for the same parcel.
+
+The diagram shows each stack from the top layer down. Read each subgraph as one column of a comparison table. The top box is how the packet is wrapped, the middle box is how the link holds traffic back when it is busy, and the bottom box is how the fabric chooses a path and reacts to congestion.
 
 ```mermaid
 flowchart TB
@@ -179,7 +178,7 @@ flowchart TB
     end
 ```
 
-The table below sets the four architectures against each other, one dimension per row. Read it by row, because each row answers a question an operator will ask, such as how packets are wrapped or how load spreads across links.
+The table below sets the four architectures against each other, one dimension per row. Read it by row, because each row answers a question an operator will ask, such as how packets are wrapped or how load spreads across links. Start with the first two rows, because they tell you what the switch must be able to read. Then read the flow-control row, which tells you how the fabric avoids drops. The last rows cover the features that vary most between vendors, such as collectives in the network and transport security. A row that reads like a list of acronyms is still answering one of those three questions, so read it slowly.
 
 | Architectural Dimension | 1. InfiniBand (`Quantum-2` / `Quantum-X800`) | 2. Standard `RoCEv2` (`IEEE 802.1Qbb` + `DCQCN`) | 3. NVIDIA `Spectrum-X` (`Spectrum-4` + `BlueField-3`) | 4. Ultra Ethernet (`UEC Spec v1.0` / `UET`) |
 |---|---|---|---|---|
@@ -196,9 +195,9 @@ The table below sets the four architectures against each other, one dimension pe
 
 ### 2.2 Why Standard RoCEv2 requires coordinated proactive and reactive control loops
 
-Picture a collective step where a single frame is dropped. In Standard RoCEv2, the InfiniBand transport header rides inside UDP, so packets can cross any Layer 3 Ethernet fabric. The catch is that standard Ethernet has no link-layer credit loop. On a traditional reliable connection, one dropped frame forces the sender to retransmit the entire in-flight window, and that retransmission stalls the collective step. Pause frames do not solve everything either, and you should not rely on them alone. Doing so makes upstream switches freeze one after another in a cascading pause tree.
+Picture a collective step where a single frame is dropped. In Standard RoCEv2, the InfiniBand transport header rides inside UDP, so packets can cross any Layer 3 Ethernet fabric. A Layer 3 fabric routes by IP address, which means it can span many switches and subnets. The catch is that standard Ethernet has no link-layer credit loop. A credit loop means the sender only transmits when the receiver has announced room for it. On a traditional reliable connection, one dropped frame forces the sender to retransmit the entire in-flight window, and that retransmission stalls the collective step. Pause frames do not solve everything either, and you should not rely on them alone. Doing so makes upstream switches freeze one after another in a cascading pause tree. The fix is to combine several smaller tools, each covering a gap the others leave.
 
-If you want to prevent both packet drops and pause deadlocks, you need an AI Ethernet fabric that combines proactive load balancing with reactive congestion control:
+If you want to prevent both packet drops and pause deadlocks, you need an AI Ethernet fabric that combines proactive load balancing with reactive congestion control. Proactive means the fabric spreads traffic before a queue builds. Reactive means it slows senders after a queue starts to fill. Each side needs the other.
 
 1. **Proactive Load Balancing Pyramid:**
    - **Static load balancing** hashes the standard five-tuple header. It keeps packets in order for each flow, but it cannot see link utilization, and it polarizes when GPU flows have low entropy.
@@ -211,6 +210,8 @@ If you want to prevent both packet drops and pause deadlocks, you need an AI Eth
    - **Step 3, rate cut and recovery:** The source NIC hardware throttles the flow's injection rate. It restores speed gradually once notification packets stop arriving.
    - **Step 4, PFC as the last-resort backstop:** Sometimes an incast burst fills the receive buffer faster than the round-trip ECN loop can slow the sender. Only then does the switch emit an IEEE 802.1Qbb pause frame upstream, reserving headroom for in-flight frames until the queue drains.
 
+The four steps are a ladder, and each rung is cheaper than the one above it. ECN handles most congestion with a single mark and a rate cut. Pause is slower and blunter, because it stops a whole priority on a link, so it should be rare. When you see pause counters climbing steadily, that is a sign the earlier rungs are not doing their job. Check the marking threshold and the sender's rate response before you look at anything else.
+
 ```text
 RoCEv2 DCQCN and PFC buffer contract (ADC Ch. 2 Fig. 2-3..2-5 & V9 Ch. 4-5):
 - SLB 5-tuple: Src IP, Dst IP, Src Port, Dst Port 4791, Protocol 17
@@ -221,11 +222,11 @@ RoCEv2 DCQCN and PFC buffer contract (ADC Ch. 2 Fig. 2-3..2-5 & V9 Ch. 4-5):
 - Xon threshold: 32,768 bytes (50.0%) -> provides a 16,384-byte (25.0%) hysteresis band
 ```
 
-As you read these buffer numbers, notice the design at work. Consider the pause threshold: pause fires at 49,152 bytes, which leaves 16,384 bytes of headroom for frames already on the wire. The fabric needs that headroom to avoid drops while the sender slows down.
+As you read these buffer numbers, notice the design at work. Consider the pause threshold: pause fires at 49,152 bytes, which leaves 16,384 bytes of headroom for frames already on the wire. The fabric needs that headroom to avoid drops while the sender slows down. Think of the buffer as a bathtub. ECN is the early warning when the water rises, pause is the call to turn the tap off, and the headroom is the space above the water line that catches the splash from the tap that is still running. The Xon threshold is the level at which the tap can safely turn back on. Keeping a gap between the two stops the sender from switching on and off every few microseconds.
 
 ### 2.3 How Ultra Ethernet redesigns the Ethernet stack for one million GPUs
 
-Standard RoCEv2 works well when you engineer it carefully. At hyperscale, manual threshold tuning and go-back-to-N retransmission become fragile. The Ultra Ethernet Specification tackles that problem. More than seventy vendors released it under the Linux Foundation, and it redesigns the RDMA transport layer. It keeps standard IP Clos switches in the underlay while adding modern endpoint delivery semantics:
+Standard RoCEv2 works well when you engineer it carefully. At hyperscale, manual threshold tuning and go-back-to-N retransmission become fragile. Fragile here means small changes in load or cabling cause large changes in behavior, and an operator has to retune by hand. The Ultra Ethernet Specification tackles that problem. More than seventy vendors released it under the Linux Foundation, and it redesigns the RDMA transport layer. The Linux Foundation is the open-source body that hosts the project. It keeps standard IP Clos switches in the underlay while adding modern endpoint delivery semantics. The underlay is the physical switching network, and the endpoint semantics are the rules the two ends of a connection follow:
 
 1. **Libfabric API, Semantic Sublayer, and Packet Delivery Sublayer:**
    - Applications express memory registration and collective operations through Libfabric. Three service profiles are available: AI Base, AI Full, and HPC.
@@ -255,7 +256,9 @@ Ultra Ethernet v1.0 specification details (ADC Ch. 12, Fig. 12-3 & Tables 12-1..
 - Congestion & link loops: NSCC (ACK_CC / NACK), RCCC (req_cc_state -> 256 B credits in 24-bit ACK_CC), 32-VC CBFC (64B/66B PCS CtlOS CP_Update CC/CF), LLR MAC preamble sequence replay
 ```
 
-The delivery mode is negotiated rather than fixed, so one fabric can carry several modes at once. When you plan a fabric, choose the mode that matches each traffic class, and do not assume one setting covers the whole fabric.
+Ultra Ethernet also changes the rules for who must wait. In the older designs, the switch and the NIC were tightly coupled, and a tuning change on one side often needed a matching change on the other. The UEC design moves more of the decisions to the endpoints and gives each endpoint a clear signal to act on. That is a large shift in operations, so teams adopting it should expect new runbooks and new counters to learn.
+
+The delivery mode is negotiated rather than fixed, so one fabric can carry several modes at once. When you plan a fabric, choose the mode that matches each traffic class, and do not assume one setting covers the whole fabric. A practical way to choose is to ask what the application can tolerate. Bulk gradient data can arrive out of order if the adapter can place it, while a control message usually needs to arrive in order. Telemetry can even tolerate loss, because the next sample will replace it.
 
 ---
 
@@ -263,7 +266,7 @@ The delivery mode is negotiated rather than fixed, so one fabric can carry sever
 
 ### 3.1 ConnectX VPI personality switching and BCM precedence
 
-Picture a cluster where half the nodes boot into Ethernet mode, while the other half wait for an InfiniBand Subnet Manager. The fix starts with knowing which personality each port is set to. NVIDIA ConnectX-6, ConnectX-7, and ConnectX-8 Virtual Protocol Interconnect adapters can speak either native InfiniBand or Ethernet RoCEv2. They use the same physical ASIC and optical cage for both. The port personality lives in non-volatile firmware configuration, and you control it per port with `mlxconfig`:
+Picture a cluster where half the nodes boot into Ethernet mode, while the other half wait for an InfiniBand Subnet Manager. The Subnet Manager is the software that hands out addresses on an InfiniBand network, so nodes stuck in the wrong personality never get one. The fix starts with knowing which personality each port is set to. A personality is the protocol a port speaks, and it is chosen at the firmware level rather than in the operating system. Think of it like a phone that can be switched between two SIM cards, where the choice must be made before the phone connects to a network. NVIDIA ConnectX-6, ConnectX-7, and ConnectX-8 Virtual Protocol Interconnect adapters can speak either native InfiniBand or Ethernet RoCEv2. They use the same physical ASIC and optical cage for both. The port personality lives in non-volatile firmware configuration, and you control it per port with `mlxconfig`:
 
 - **InfiniBand personality (`LINK_TYPE_P1=1`):** Port 1 becomes a native InfiniBand Host Channel Adapter. The port waits for OpenSM or UFM on Virtual Lane 15 to assign a Local Identifier. It then exposes `ib0` and uses hardware 64-byte flow control credits.
 - **Ethernet personality (`LINK_TYPE_P1=2`):** Port 1 becomes an Ethernet NIC, such as `ens1f0np0` or `eth0`. The link comes up on its own through Ethernet auto-negotiation, with no Subnet Manager needed. The port fills its RoCEv2 GID entries from the host IP interfaces, and it relies on DSCP classification, DCQCN, and PFC.
@@ -279,11 +282,15 @@ ConnectX VPI and BCM 11 configuration rules (bcm11-admin §3.6.2):
 - Verification command: cmsh -c "device; mlxconfig node001 --desired"
 ```
 
-These rules describe what healthy looks like. An InfiniBand port reaches Active only after the VL15 handshake. An Ethernet port brings its GID table up on its own, so you can check it without a Subnet Manager.
+These rules describe what healthy looks like. An InfiniBand port reaches Active only after the VL15 handshake. VL15 is the management virtual lane that carries Subnet Manager traffic, so the handshake is the port asking for an address. An Ethernet port brings its GID table up on its own, so you can check it without a Subnet Manager. A GID is the global identifier that RoCEv2 uses in place of a LID, and the table lists the GIDs your host can use.
+
+When you change a personality, expect a reboot or a firmware reset before the new setting takes effect. Write the change down with the port's serial number, so the next engineer can see what was set and why. A short note in the change log is enough, as long as it names the port, the old personality, the new personality and the date. Keep the note with the serial number of the adapter, because a card can move to a different node after a repair, and the port name then points to the wrong machine. Without that note, the next person to see a half-configured node will spend an hour rediscovering the same facts.
+
+The precedence rules in the BCM block matter for the same reason. When two places set the same parameter, the one closest to the port wins. That rule is simple to state and easy to forget, so write it next to the config, where the next person will read it.
 
 ### 3.2 PCIe link negotiation, NUMA locality, and multi-rail binding
 
-Suppose every switch port is lossless and congestion-free. A server can still run at a fraction of line rate, because the bottleneck sits inside its own chassis. The internal path does not care which mode the port runs in. Data travels from GPU HBM memory, through the PCIe switch, to the NIC DMA engine, and every hop on that path has to keep up with the wire speed:
+Suppose every switch port is lossless and congestion-free. A server can still run at a fraction of line rate, because the bottleneck sits inside its own chassis. The internal path does not care which mode the port runs in. Data travels from GPU HBM memory, through the PCIe switch, to the NIC DMA engine, and every hop on that path has to keep up with the wire speed. HBM is the high-bandwidth memory on the GPU, and DMA is the direct copy engine that moves data without the CPU touching each byte. Think of the path as a chain of doorways. The narrowest doorway sets the crowd flow, however wide the hallway beyond it is.
 
 1. **PCIe generation and lane width:** A `PCIe Gen5 x16` slot is needed to saturate a 400 Gbps ConnectX-7 port at full line rate. A riser card fault or a BIOS bifurcation setting can downgrade that slot to `PCIe Gen4 x8`. The adapter is then capped well below wire speed before a single packet reaches the switch.
 2. **GPU-to-NIC topology affinity:** On a multi-socket server, a GPU and a NIC that share a local PCIe switch report `PIX` affinity with zero CPU traversal. A GPU that talks to a NIC on the second socket reports `SYS` affinity, which crosses the inter-socket interconnect. If you assign rails by Linux interface name order instead of `PIX` locality, you silently throttle GPUDirect RDMA.
@@ -298,11 +305,15 @@ Host PCIe and multi-rail diagnostic signatures (V9 Ch. 8):
   * ens1f1 rx_bytes_phy: +412,992 bytes (~0 GB) because both ranks selected [0]mlx5_0:1/RoCE ; OOB ens1f0
 ```
 
-Read these signatures as a checklist. A link running at 16GT/s on a Gen5 slot means the slot has been downgraded. A rail whose byte counter barely moves, like `ens1f1` in the 60-second sample, is idle.
+Think of these signatures as the measurements a mechanic takes before saying a car is fit for a long drive. Each reading covers one part, and a healthy engine with a flat tire still gets you nowhere. A host can have a perfect slot and still send all its traffic down one rail, and a host with two good rails can still sit in a downgraded slot. You need both readings before you can say the host is ready.
+
+Read these signatures as a checklist. A link running at 16GT/s on a Gen5 slot means the slot has been downgraded. A rail whose byte counter barely moves, like `ens1f1` in the 60-second sample, is idle. Check the PCIe line first, because a downgraded slot caps the rail no matter what the switch says. Then check the byte counters, because they show whether the job actually uses both rails. The two checks together tell you whether the problem is the slot, the binding or the fabric.
 
 ### 3.3 BlueField-3 DPUs versus SuperNICs: host-edge trust and failure domains
 
 Picture an outage where the switch port shows a healthy link, yet the host cannot send a single packet. That happens when a DPU is treated like a simple NIC. In Ethernet AI Factories and multi-tenant clouds, that mistake produces baffling outages. Architects must tell apart the two BlueField-3 operating models:
+
+The two modes differ in who owns the network path inside the card. Read the two bullets below as two answers to one question: when a packet enters the card, who decides what happens to it? In DPU mode the Arm subsystem answers, and in SuperNIC mode the host answers. That single difference changes what you check during boot, what you check during an incident, and which team gets paged.
 
 - **BlueField DPU Mode (`ECPF`):** The embedded Arm cores and the DOCA operating system own the NIC resources and the internal embedded switch, `eSwitch`. Host traffic passes through representors on the Arm cores, which program hardware offload rules into the fast path. That creates a three-layer administrative boundary: the host interface, the DPU Arm control plane, and the external switch uplink. If a DPU image rollout fails to load its virtual switch policy at boot, the leaf switch keeps its uplink up while the host interface stays dark.
 - **BlueField SuperNIC Mode (`NIC`):** The adapter works as a dedicated high-rate RoCEv2 endpoint, paired one-to-one with each GPU on the compute rail. It handles Direct Data Placement packet reordering in hardware, along with Spectrum-X congestion control. No Arm virtual-switch control plane sits in between.
@@ -315,7 +326,9 @@ BlueField-3 DPU vs SuperNIC operational split (V9 Ch. 9 & V21 Ch. 2):
 - DGX / HGX H100 node adapter layout: 8x ConnectX-7 (400 Gbps) East-West compute rails + 2x BlueField-3 DPUs North-South storage/management + 1x OOB BMC port
 ```
 
-The three layers in that boundary are where you look first. If the uplink is up and the host interface is down, start at the DPU Arm service rather than the switch.
+A useful way to remember the DPU boundary is to think of a building with a security desk in the lobby. The switch uplink is the street door, the Arm subsystem is the security desk that checks each visitor, and the host interface is the office upstairs. A visitor can reach the lobby and still never reach the office if the desk is closed. The three layers in that boundary are where you look first. If the uplink is up and the host interface is down, start at the DPU Arm service rather than the switch. That order saves a lot of time, because the switch counters will look healthy in exactly the case where the host is cut off. A host that reads dark on a healthy uplink is a classic sign that the layer in the middle failed.
+
+Think of the mode as a job title rather than a setting. A card in DPU mode is hired to run a small operating system that manages the network for the host, and a card in SuperNIC mode is hired to move packets and nothing more. Hiring the wrong one for the job creates friction on every shift. Choose the mode before you buy the card, not after. A SuperNIC in a slot meant for a DPU, or a DPU in a slot planned for a NIC, can change the whole boot and operations plan. Write down which mode each card runs, and keep that record with the rest of the node inventory.
 
 ---
 
@@ -323,9 +336,9 @@ The three layers in that boundary are where you look first. If the uplink is up 
 
 ### 4.1 AI storage network transport: InfiniBand vs NVMe-o-RDMA vs NVMe-o-TCP
 
-Suppose your GPUs wait on slow dataset reads, or they stall for minutes while writing multi-terabyte model checkpoints. The fastest compute fabric in the world still sits idle. A training cluster therefore needs a high-bandwidth storage fabric next to its compute fabric. You have four options: local NVMe drives, InfiniBand RDMA storage, Ethernet RoCEv2 RDMA storage, and Ethernet TCP storage. Choose among them by latency, lossless requirements, and replication distance.
+Suppose your GPUs wait on slow dataset reads, or they stall for minutes while writing multi-terabyte model checkpoints. The fastest compute fabric in the world still sits idle. A training cluster therefore needs a high-bandwidth storage fabric next to its compute fabric. You have four options: local NVMe drives, InfiniBand RDMA storage, Ethernet RoCEv2 RDMA storage, and Ethernet TCP storage. Choose among them by latency, lossless requirements, and replication distance. NVMe-o is NVMe over a network, meaning the SSD protocol is carried across the wire, and RDMA or TCP is the transport underneath it. Think of the four options as four ways to reach the same warehouse, each with a different road, toll and distance.
 
-The table compares the four options on latency, lossless needs, GPUDirect support, and redundancy.
+The table compares the four options on latency, lossless needs, GPUDirect support, and redundancy. Read the rows in the order the choice forces on you. Latency comes first, then whether the network must be lossless, then whether GPUDirect Storage is available, and last the redundancy design.
 
 | Storage Metric / Capability | Local `PCIe Gen5` NVMe SSD | `InfiniBand` Storage (`NVMe-o-RDMA` / `GDS`) | Ethernet `NVMe-o-RDMA` (`RoCEv2` / `GDS`) | Ethernet `NVMe-o-TCP` / `(P)NFS` |
 |---|---|---|---|---|
@@ -335,7 +348,9 @@ The table compares the four options on latency, lossless needs, GPUDirect suppor
 | **`GPUDirect Storage` (`GDS`) support** | **Yes** (`cudaMalloc` + `cuFileBufRegister` pins GPU memory directly to NVMe) | **Yes** (zero-copy DMA between GPU HBM and remote SSD, bypassing host CPU and system RAM) | **Yes** (supported natively by `WekaFS` over `RoCEv2`, `VAST` `NFS-over-RDMA`, `Lustre`, `GPFS`, `BeeGFS`) | **No** (`GPUDirect Storage` requires RDMA transport—either native `InfiniBand` or `RoCEv2`) |
 | **Redundancy & multi-tenancy (`ADC` Fig. 9-5..9-8)** | Server-local only (not scalable across cluster) | Physical **Fab A / Fab B** dual-fabric separation (logical virtualization limited; `<= 10 km` spec optics) | Physical **Fab A / Fab B** or Logical **EVPN-VXLAN** (`Route Type 5` / `MAC-VRF`) with `1:3` leaf-spine oversubscription | Logical IP Clos, `2`-switch collapsed edge, or hybrid cloud tiering (`WekaFS` Tier 1 RDMA + Tier 2 `S3` over `HTTPS`/`IPsec` firewall) |
 
-Notice that only the NVMe-o-TCP option runs without a lossless fabric. That makes it the choice for long-distance replication, while the RDMA options need a lossless network to deliver GPUDirect Storage. In practice, you pick the storage path first and then size the network around it.
+Notice that only the NVMe-o-TCP option runs without a lossless fabric. That makes it the choice for long-distance replication, while the RDMA options need a lossless network to deliver GPUDirect Storage. In practice, you pick the storage path first and then size the network around it. A storage team that asks for the fastest path often needs GPUDirect Storage, which means an RDMA transport and a lossless network. A storage team that asks for distance first may accept TCP, and the network can then stay simpler. The two answers lead to two different fabrics, so settle the question before you draw the diagram.
+
+The redundancy row matters just as much as speed. A dual-fabric design doubles the cabling and the switches, but it keeps one failure from taking the whole storage path down. A single logical fabric with EVPN-VXLAN is cheaper, but a bad configuration can reach across both halves. Pick the level of separation that matches how much you fear a shared mistake.
 
 ### 4.2 The 128-GPU and 64-GPU H100 TCO and break-even calculation
 
@@ -343,7 +358,9 @@ When finance questions an interconnect budget, a senior architect does not answe
 
 $$\text{3-Year TCO} = \$5.26\text{M} + (3 \times \$644\text{K}) \approx \$7.19\text{M}, \qquad \text{Cost per GPU-Hour} = \frac{\$7.19\text{M}}{128\text{ GPU} \times 8,760\text{ hr} \times 3\text{ yr}} \approx \mathbf{\$2.14/\text{GPU-hour}}$$
 
-Read the result as a price tag for each GPU-hour. The supporting figures for the baseline and the comparison sit in the block below.
+Read the result as a price tag for each GPU-hour. The supporting figures for the baseline and the comparison sit in the block below. The formula divides the three-year cost by the number of GPU-hours the cluster can deliver in that time, so every idle hour raises the real price. Keep that in mind when a fabric upgrade promises more throughput. A faster network only lowers the price per useful hour if the GPUs spend more of their time computing.
+
+Two other points help when you read the block. The first is that the CapEx line includes both the nodes and the fabric, so the fabric choice shows up directly in the total. The second is that the OpEx line is a per-year figure, so a three-year total multiplies it by three. Check both before you compare your own quote with this one.
 
 ```text
 3-Year TCO and 64-GPU interconnect break-even derivation (V21 Ch. 2 Part 3.2, Part 6 & Ch. 12):
@@ -365,13 +382,17 @@ Read the result as a price tag for each GPU-hour. The supporting figures for the
    - Break-even threshold: $448,000 / $1,835 = 244.14 runs (10.17 years at 24 runs/year)
 ```
 
-Walk through the comparison in three steps. First, the price gap adds up to $448,000 in upfront savings. Second, slower collectives cost a throughput share, and an 8% loss stretches a seven-day run by about 13.4 hours. Third, at $2.14 per GPU-hour, that lost time costs about $1,835 per run.
+Walk through the comparison in three steps. First, the price gap adds up to $448,000 in upfront savings. Second, slower collectives cost a throughput share, and an 8% loss stretches a seven-day run by about 13.4 hours. Third, at $2.14 per GPU-hour, that lost time costs about $1,835 per run. Each step uses the output of the one before it, so an error early in the chain carries through to the verdict. Check the first step against the price list before you trust the rest.
 
 Divide the upfront saving by the cost of one run, and you get the break-even point. That is the moment the slower runs have used up the saving, so you can check the arithmetic step by step. $448,000 divided by $1,835 is 244.14 runs. At 24 runs a year, that takes 10.17 years to recover.
 
 The arithmetic gives a clear verdict. Over three years, the extra compute time from slower Ethernet collectives stays well below the upfront Ethernet hardware savings. If the cluster will permanently stay at or below 64 GPUs, a single `QM9700` switch is enough. A single leaf-only 400GbE pod works too. Either way, 400GbE RoCEv2 is economically sound. If the cluster will grow to 128 or 256 GPUs within 18 months, buy InfiniBand NDR/XDR or Spectrum-X on Day 1. Multi-rack RoCEv2 congestion, pause trees, debugging outages, and a mid-life fabric retrofit rapidly cost more than the initial savings.
 
-The number to pin down before you buy is your GPU count 18 months from now, because it decides which side of the 128-GPU line you land on.
+A common planning mistake is to size the fabric for the first phase only. A cluster that starts at 64 GPUs and grows to 256 needs cabling, spines and optics planned for the larger number from the start, even if only the smaller part is bought on day one. Ask the procurement team which parts can be added later without a redesign. The answer tells you how much of the decision is really reversible.
+
+The number to pin down before you buy is your GPU count 18 months from now, because it decides which side of the 128-GPU line you land on. A useful check is to recompute the break-even with your own price quotes and your own run count, because both numbers move from one vendor and one year to the next. If the payback still lands beyond the life of the hardware, the cheaper fabric is the right call. If it lands well inside that life, the premium is paying for itself.
+
+Notice what the calculation does not include. It leaves out the cost of an outage during a critical training run, the cost of an engineer who learns a new fabric, and the cost of a mid-life retrofit. Those costs are real, and the deeper sections of this chapter describe how they show up. Treat the break-even number as the floor of the decision, not the whole answer.
 
 ---
 
@@ -391,6 +412,8 @@ flowchart TD
     Scale -->|"Multi-Tenant Cloud or\n100K-1M+ GPU IP Clos"| CloudEth["NVIDIA Spectrum-X (BF-3 SuperNIC)\nor UEC v1.0 / UET Fabric"]
 ```
 
+The decision tree starts with one question, which is whether the workload is synchronous training or latency-sensitive inference. Once that is answered, the scale decides the branch, and the scale branch decides the fabric family. Follow the arrows from the top, and each box names the fabric you would evaluate next.
+
 The table turns that decision tree into five deployment scenarios. Each row names the compute fabric, the storage transport, the adapter mode, and the reason for the choice.
 
 | Deployment Scenario | Primary Compute Fabric | Storage Network Transport | Host-Edge Adapter & Mode | Architectural Justification |
@@ -401,7 +424,7 @@ The table turns that decision tree into five deployment scenarios. Each row name
 | **4. Next-Gen Hyperscale IP Clos (`100,000` to `1,000,000+` GPUs)** | **Ultra Ethernet (`UEC` `v1.0` / `UET`)** over `800G`/`1.6T` 5-stage IP Clos or Dragonfly+ | `UET` storage profile / `NVMe-o-RDMA` + cloud `S3` tiering | `UEC`-compliant `400G`/`800G` FEPs supporting `Libfabric` (`ROD`/`RUD`/`RUDI`), `NSCC`/`RCCC`, and `TSS` | Scales past InfiniBand's `49,151`-port (`~48,000`-node) single-subnet `16`-bit `LID` ceiling with `256 B` `RCCC` receiver credits, packet trimming, `32`-VC `CBFC`, and `UEC INC`. |
 | **5. Multi-Region Inference, Edge & Long-Haul DR (`>= 40 km` WAN)** | `100G`/`200G`/`400G` **Ethernet IP Clos** or `2`-switch collapsed spine (`EVPN-VXLAN`) | **`NVMe-o-TCP`** (`TCP 8009`, `9,000 B` MTU, deep-buffer switches) + `S3` over `HTTPS`/`IPsec` firewall | `L40S` (`$8K) or H100 PCIe ($20K`) + `100G`/`200G` Ethernet NICs / `BlueField-3 DPU` | `DCQCN`/`PFC` cannot maintain lossless backpressure across `>= 40 km` WAN links (and IB optics spec stops at `10 km`); `NVMe-o-TCP` adapts gracefully on lossy IP cores. |
 
-Use the scenario column as a starting point, then check the justification column against your own numbers. The scenario only holds while your scale and tenancy stay where the table assumes they will.
+Use the scenario column as a starting point, then check the justification column against your own numbers. The scenario only holds while your scale and tenancy stay where the table assumes they will. Read the table from the top down, because each row moves further from the small pod. The compute fabric changes first, then the storage path, then the adapter mode. A design that jumps straight to row four for a 64-GPU lab has skipped the reasoning that makes the choice safe.
 
 ### 5.2 Capacity planning at the bottleneck cut and the 7-stage validation ladder
 
@@ -415,7 +438,7 @@ Bottleneck-cut arithmetic and degraded-state impact (V9 Ch. 2 & Ch. 10):
 - 2-spine ECMP drain impact (nexthop-group 40, V9 Ch. 2 Scenario 2): active members drop 2 -> 1, driving tx_ecn_marked_prio3 up ~6x from ~15,000 to 88,120 per window
 ```
 
-Losing one uplink is enough to move the oversubscription from 4.00:1 to 4.57:1. That is why the degraded state belongs in your sizing, not only the normal one. Work through the seven stages below in order, since each stage assumes the one beneath it is healthy.
+Losing one uplink is enough to move the oversubscription from 4.00:1 to 4.57:1. That is why the degraded state belongs in your sizing, not only the normal one. Work through the seven stages below in order, since each stage assumes the one beneath it is healthy. Stage 1 proves the wire, Stage 2 proves the addresses, and Stage 3 proves the priority settings. Only after those three pass does it make sense to measure RDMA throughput, because a throughput number built on a broken wire tells you nothing.
 
 | Validation Stage | Layer Under Test | Verification Tools & Target Criteria |
 |---|---|---|
@@ -427,11 +450,15 @@ Losing one uplink is enough to move the oversubscription from 4.00:1 to 4.57:1. 
 | **Stage 6: Multi-Node Collective Matrix** | All-rail ring/tree collectives & rail balance | Run `all_reduce_perf` and `alltoall_perf` across message sizes while checking equal byte growth on `ethtool -S ens1f0` vs `ens1f1`. |
 | **Stage 7: Contention & N-1 Cut Drill** | Overlapping jobs & single-uplink/spine maintenance | Run two or more jobs while draining one uplink or spine; audit `rx_ecn_marked_prio3`, `rx_pfc_prio3`, `np_cnp_handled`, and `show what-just-happened drop-reason all`. |
 
-Do not count an isolated benchmark as a pass. A collective that succeeds alone tells you nothing about contention or a drained uplink, and those are exactly what Stage 7 exists to test.
+Stages 4 through 6 build on each other in a simple way. A single RDMA pair (Stage 4) proves one path can carry the traffic. Local GPU placement (Stage 5) proves the path starts at the right place. A multi-node collective (Stage 6) proves many paths can carry traffic at once without one of them starving. Stage 7 then adds the stress of a second job and a drained uplink. Each stage asks a harder question than the one before it, so a failure at any stage tells you which kind of problem to fix.
+
+Do not count an isolated benchmark as a pass. A collective that succeeds alone tells you nothing about contention or a drained uplink, and those are exactly what Stage 7 exists to test. Keep the results of every stage in one place, with the date and the cable serials, so that the next incident can be compared with a known good run.
 
 ---
 
 ## Commands and configurations that matter
+
+The commands in this section cover four jobs that come up on every new fabric. The first sets the personality of each adapter port. The second checks host locality, which tells you whether the adapter sits next to the GPU it serves. The third sets the QoS and priority state on the host and the switch. The fourth checks the BlueField-3 path from the uplink to the host. Every block is written to be read before it is run. Each one carries an `(untested here)` marker, which means these commands were not run on live hardware in this build. Confirm the exact flags against your firmware and switch release before you use them.
 
 ### 1. Switching ConnectX VPI personality via `mlxconfig` and BCM `cmsh`
 
@@ -455,6 +482,8 @@ cmsh -c "device; mlxconfig node001 --desired"
 
 ### 2. Host locality, RDMA GID table, and PCIe negotiation audit
 
+Run these checks on each host before the first job lands on it. Start with the PCIe link, because a downgraded slot is the cheapest problem to confirm and the most common one to miss. Then check the topology, so each GPU is paired with the adapter on its own PCIe switch. Last, confirm that the RDMA stack sees the device and that the GID table lists the address you expect.
+
 ```bash
 # (untested here) — 1. Verify PCIe Gen5 x16 (32 GT/s, x16) vs downgraded Gen4 x8 (16 GT/s, x8):
 lspci -s 41:00.0 -vv | egrep "LnkCap|LnkSta"
@@ -475,6 +504,8 @@ ethtool ens1f0 | egrep "Speed|Duplex|Link"
 ```
 
 ### 3. QoS classification, PFC headroom, DCQCN, and Spectrum WJH telemetry
+
+These checks follow the packet from the sender's marking to the switch's queue. Confirm the marking first, because a packet that arrives with the wrong priority is headed for the wrong queue no matter how well the rest is tuned. Then confirm the trust setting and the pause domain. Last, sample the counters over a short window, so you can see whether the congestion loop is healthy or stressed.
 
 ```bash
 # (untested here) — 1. Verify wire DSCP marking (tos 0xb8 -> 0xb8 >> 2 = DSCP 46) on UDP port 4791:
@@ -507,7 +538,7 @@ ip -br link show dev enp1s0f0np0
 
 ## How it fails
 
-Picture a distributed training run that slows down or aborts on an Ethernet or VPI fabric. If you start guessing at switch thresholds, you can lose hours. Work up the seven-stage diagnostic ladder instead, from the physical cable to the collective bottleneck cut. That order isolates the exact failure domain:
+Picture a distributed training run that slows down or aborts on an Ethernet or VPI fabric. The on-call engineer sees a stalled job, a few red graphs and a Slack thread full of guesses. In that moment the urge is to change a threshold and hope. Resist it, because a threshold change can hide the evidence you need. If you start guessing at switch thresholds, you can lose hours. Work up the seven-stage diagnostic ladder instead, from the physical cable to the collective bottleneck cut. That order isolates the exact failure domain:
 
 | Failure mode | Exact CLI symptom & counter signature | Root cause | Production resolution & verification |
 |---|---|---|---|
@@ -519,7 +550,9 @@ Picture a distributed training run that slows down or aborts on an Ethernet or V
 | **6. Concurrent-Job Bottleneck Cut, Pause Trees & `WJH` Tail Drops (`V9` Ch. 1, 5, 7, 10)** | Pairwise `ib_write_bw` hits `392.11 Gbps`, but starting Job `2` causes `rx_pfc_prio3` to jump `0 -> 118,344` (`rx_ecn_marked_prio3: 412 -> 198,220`), or `rx_ecn_marked_prio3: 412,880` with `np_cnp_handled: 409,500` stays at `rp_current_rate: 98Gbps`, or `WJH` logs **`Tail drop (queue full)`** (`18,402` / `52,100` / `38,210`), or `rx_pfc_prio3` propagates `leaf03 (210,500) -> leaf07 (198,200) -> leaf12 (41,100)`. | Multiple jobs converge on a `4:1` (`4.57:1` `N-1`) oversubscribed leaf uplink cut or a `1`-spine drained ECMP group (`tx_ecn_marked_prio3: 88,120`). Tracing highest `rx_pfc_prio3` downstream isolates `leaf03` as the root bottleneck. | Fix job placement, ECMP/adaptive load balancing, or uplink cut capacity first; verify `WJH` tail drops return to `0` and `rx_pfc_prio3` flattens while `rx_ecn_marked_prio3` handles bursts proactively. |
 | **7. BlueField-3 DPU `Arm` Boot Race / Image Drift (`V9` Ch. 9 Scenarios 1–2)** | Switch port `swp14` is `up` (`100G`), yet host interface `enp1s0f0np0` is `DOWN` (`DORMANT`) after reboot; or `node09` runs stale `dpu-image-24.07-prod-1` (vs `24.10-prod-3` on `node07/08`) after `dpu-agent` abandoned `5` image-pull retries. | In `ECPF` (`DPU`) mode, `openvswitch-policy-load.service` on the BlueField `Arm` subsystem failed (`status=1`), leaving the embedded switch without forwarding rules despite a healthy physical uplink. | Gate node readiness on all `3` layers (`swp14 up`, `Arm` policy service active, and host `enp1s0f0np0 UP`), and reconcile drifted DPU images via immutable canary rollouts with out-of-band BMC recovery. |
 
-Each row pairs a symptom with its counter signature, a root cause, and a fix. Match what you see against the symptom column before you change any setting, so you fix the cause rather than the symptom.
+Each row pairs a symptom with its counter signature, a root cause, and a fix. A useful habit is to write the counter values down in the incident notes before anyone changes a setting, so the before and after can be compared later. Match what you see against the symptom column before you change any setting, so you fix the cause rather than the symptom. The first three rows are about the physical and addressing layers, and they should be cleared before anyone touches QoS. Rows four and five are about priority settings, which are easy to change and easy to get wrong. Rows six and seven are about the fabric shape and the DPU boot path, and they look healthy from the switch side in exactly the cases that hurt most.
+
+A common thread runs through all seven rows. Each symptom looks like a network problem, but the evidence points to one specific layer. Read the counter column before the symptom column, because the counter tells you which layer to open first.
 
 ---
 
@@ -529,7 +562,7 @@ This chapter ships a deterministic, self-checking Python simulation in `code/par
 
 ### Run the lab (tested here)
 
-Run the script from the repository root. It prints one PASS or FAIL line per check, followed by a summary.
+Run the script from the repository root. It prints one PASS or FAIL line per check, followed by a summary. The `-B` flag stops Python from writing cache files into the repository. The output below shows the lines you should expect, and each line names the chapter rule it checks, so a failure points you back to the right section.
 
 ```bash
 python3 -B code/part12/ethernet_vs_infiniband_lab.py
@@ -572,7 +605,7 @@ Summary: 29 passed, 0 failed (total 29)
 
 ### Live cluster workflow on a Nebius GPU or RoCEv2 testbed
 
-The four Volume 09 operational labs run on a live GPU cluster. Stay inside the read-only and nonproduction safety gates summarized below, because these steps touch real hardware.
+The four operational labs in this chapter's series run on a live GPU cluster, and they are the step after the local simulation. These steps were not run on a live cluster in this build, so the output blocks show what the lab notes record, not a fresh run. Stay inside the read-only and nonproduction safety gates summarized below, because these steps touch real hardware. Lab 01 is read-only, and it establishes the baseline the later labs compare against. Lab 02 and Lab 03 add traffic, so run them only in a window your team has agreed on. Lab 04 is the one where you may be tempted to change a switch setting, and that is the moment to stop and restore the original device choice first.
 
 ```text
 Volume 09 Labs 01-04 operational workflow (untested here):
@@ -595,44 +628,40 @@ Volume 09 Labs 01-04 operational workflow (untested here):
    - Recovery: restore -d mlx5_0 without touching switch PFC/ECN settings
 ```
 
+Notice the order of the Lab 04 story. The healthy run comes first, then the broken run on the other device, and only then the recovery. The recovery step names the one thing to restore and the one thing to leave alone. A recovery that changes the switch settings as well would hide what actually fixed the problem, so keep the change as small as the evidence allows.
+
+When you run these four labs on your own cluster, record the time, the job name and the cable serials next to each counter snapshot. A later incident will then have a known good baseline to compare against, and the comparison is often the fastest way to find the one counter that moved.
+
 ---
 
 ## Common first mistakes
 
-1. **Calling RoCEv2 InfiniBand over Ethernet, or trusting `ping` as proof of readiness.** RoCEv2 carries RDMA verbs over routed UDP/IP. A working `ping` does not prove the path is ready. You have to engineer and verify routing, jumbo MTU, GID selection, DSCP trust boundaries, DCQCN, and PFC headroom, hop by hop.
-2. **Enabling PFC on all eight priorities just in case.** PFC pauses a whole priority lane on a link, not one flow. If you enable it on priority 6 alongside priority 3, or map SSH traffic into a paused class, a GPU microburst can turn into a control-plane outage.
-3. **Treating VLAN segmentation as queue isolation.** A VLAN separates Layer 2 forwarding domains, and nothing more. Unless DSCP or PCP classification maps packets into separate internal priorities and egress queues, the VLANs still contend inside the same best-effort switch buffer.
-4. **Using Linux host NIC bonding (`bond0`) across multi-rail GPU compute ports.** Standard bonding spreads flows across NIC ports without knowing whether a GPU and NIC share a PCIe switch (`PIX`) or cross sockets (`SYS`). It also hides the rail-aligned leaf switches from NCCL.
+Each mistake below has cost a team real time, and each one comes from a sensible-sounding shortcut. Read them as a short list of shortcuts to avoid.
+
+1. **Calling RoCEv2 InfiniBand over Ethernet, or trusting `ping` as proof of readiness.** RoCEv2 carries RDMA verbs over routed UDP/IP. A working `ping` does not prove the path is ready. Ping uses ordinary packets, and RDMA needs the lossless class, the right MTU and a valid GID to work. You have to engineer and verify routing, jumbo MTU, GID selection, DSCP trust boundaries, DCQCN, and PFC headroom, hop by hop.
+2. **Enabling PFC on all eight priorities just in case.** PFC pauses a whole priority lane on a link, not one flow. If you enable it on priority 6 alongside priority 3, or map SSH traffic into a paused class, a GPU microburst can turn into a control-plane outage. Enable only the priority your RDMA traffic uses, and leave the rest alone.
+3. **Treating VLAN segmentation as queue isolation.** A VLAN separates Layer 2 forwarding domains, and nothing more. Unless DSCP or PCP classification maps packets into separate internal priorities and egress queues, the VLANs still contend inside the same best-effort switch buffer. Two networks on one set of queues are still one traffic jam.
+4. **Using Linux host NIC bonding (`bond0`) across multi-rail GPU compute ports.** Standard bonding spreads flows across NIC ports without knowing whether a GPU and NIC share a PCIe switch (`PIX`) or cross sockets (`SYS`). It also hides the rail-aligned leaf switches from NCCL. A rail that NCCL cannot see is a rail that NCCL cannot use on purpose.
 5. **Forcing a sixty-four-GPU collective calculation to justify InfiniBand CapEx on compute hours alone.** At sixty-four GPUs, the three-year extra compute cost on Ethernet stays well below the upfront InfiniBand premium. Claiming otherwise damages your credibility with finance. The real justification is predictable scaling past 128 GPUs and avoiding mid-life fabric swaps.
-6. **Trusting a green DPU uplink.** On a BlueField DPU in `ECPF` mode, the external uplink, the Arm control plane service, and the host representor are three independent failure domains. Check each layer on its own. Only then call the host network healthy.
+6. **Trusting a green DPU uplink.** On a BlueField DPU in `ECPF` mode, the external uplink, the Arm control plane service, and the host representor are three independent failure domains. Check each layer on its own. Only then call the host network healthy. A green uplink is one of three lights, and the other two can still be red.
 
 ---
 
 ## Exercises
 
-Work through these six exercises in order, and check each answer against the numbers in the block at the end. If you get stuck on a number, look it up in that block first.
+Work through these six exercises in order, and check each answer against the numbers in the block at the end. The exercises move from the architecture, to the host, to the money, to the switch buffers, to the storage path, and finally to the incident. That order mirrors how a real design review runs, so the habits carry over to the job. If you get stuck on a number, look it up in that block first. Each exercise begins with a situation, and then asks a short series of questions. Write down each answer before you move on, because the order of the questions is the order you would use on the job.
 
-1. **Compare the four fabrics, then do the credit math.** Start with the `build_fabric_comparison_matrix` function.
-   - (a) Set InfiniBand, Standard RoCEv2, NVIDIA Spectrum-X, and Ultra Ethernet side by side on target scale, switch latency, wire encapsulation, switch parse depth, and in-network collectives.
-   - (b) Then explain how each fabric controls flow, both at the link level and end to end. Cover Virtual Lanes, buffer credit sizes, PFC priorities, DCQCN markings, and the Ultra Ethernet congestion mechanisms.
+1. **Compare the four fabrics, then do the credit math.** A review board wants one table that compares the four fabrics. Start with the `build_fabric_comparison_matrix` function. Set InfiniBand, Standard RoCEv2, NVIDIA Spectrum-X and Ultra Ethernet side by side. Which target scale does each one serve? What switch latency does each one show? How is each one wrapped on the wire? How deep does each switch parse? Which in-network collectives does each support? Next, explain how each fabric controls flow at the link level. Which Virtual Lanes or priorities does it use? How large are its credits or buffers? Finally, explain how each one controls congestion end to end, including the Ultra Ethernet mechanisms.
 
-2. **Work through ConnectX personality, BCM precedence, and host locality (Volume 9, Chapter 8, and the BCM 11 admin guide, section 3.6.2).** Use the `evaluate_connectx_vpi_and_locality` function for this one.
-   - (a) Name the exact `mlxconfig` values you would set to select native InfiniBand and Ethernet for `LINK_TYPE_P1`. Then work out which setting wins in `cmsh` when the category, node, and interface extra values disagree.
-   - (b) Adapter `0000:41:00.0` fails three readiness checks. Its PCIe link has downgraded, its topology affinity shows `SYS`, and its byte counter delta is skewed onto `ens1f0`. Explain why each of those signals matters.
+2. **Work through ConnectX personality, BCM precedence, and host locality.** A node boots with the wrong personality on one port, and the cluster manager disagrees with the node about the setting. Use the `evaluate_connectx_vpi_and_locality` function for this one. Which exact `mlxconfig` values select native InfiniBand and Ethernet for `LINK_TYPE_P1`? When the category, node and interface extra values disagree, which setting wins in `cmsh`? Adapter `0000:41:00.0` fails three readiness checks. Why does a downgraded PCIe link matter? Why does a topology affinity of `SYS` matter? Why does a byte counter that is skewed onto `ens1f0` matter?
 
-3. **Run the 128-GPU and 64-GPU H100 TCO and break-even numbers (Volume 21, Chapter 2, Parts 3.2 and 6).** Use the `calculate_64gpu_ib_vs_roce_tco` function.
-   - (a) Start from the sixteen-node DGX H100 SXM5 reference. Verify the amortized cost per GPU-hour and the cost per TFLOP-year. Then compare the SXM5 node configuration with the PCIe node configuration.
-   - (b) Take a sixty-four-GPU H100 cluster that you might buy, one that compares InfiniBand NDR with 400GbE over a seven-day Llama-70B run. Compute the upfront CapEx savings and the per-run cost. Then add the one-year and three-year extra compute cost, the sensitivity for two larger-model runs, and the break-even run count.
+3. **Run the 128-GPU and 64-GPU H100 TCO and break-even numbers.** Finance wants the cost of a GPU-hour before it approves the budget. Use the `calculate_64gpu_ib_vs_roce_tco` function. Start from the sixteen-node DGX H100 SXM5 reference, and verify the amortized cost per GPU-hour. Then verify the cost per TFLOP-year. How does the SXM5 node configuration differ from the PCIe node configuration? Next, take the sixty-four-GPU cluster that compares InfiniBand NDR with 400GbE over a seven-day Llama-70B run. What are the upfront CapEx savings? What is the per-run cost? What are the one-year and three-year extra compute costs? What is the sensitivity for two larger-model runs? What is the break-even run count?
 
-4. **Size a rack's bottleneck cut and its PFC buffer (Volume 9, Chapters 4 and 10).** Use the `compute_rack_cut_and_pfc_buffer` function.
-   - (a) For a sixteen-node dual-rail rack, work out the downlink demand, the normal uplink capacity, and the normal oversubscription ratio. Then drain one uplink and find the degraded uplink capacity and the degraded oversubscription ratio.
-   - (b) Take the priority 3 buffer parameters from `mlnx_qos -i swp12`. Compute the pause threshold percentage, the resume threshold percentage, the in-flight headroom, and the hysteresis gap. Then explain what happens if the hysteresis gap is too narrow.
+4. **Size a rack's bottleneck cut and its PFC buffer.** A sixteen-node dual-rail rack is about to go into service, and someone asks how much headroom it has. Use the `compute_rack_cut_and_pfc_buffer` function. For that rack, what is the downlink demand? What is the normal uplink capacity? What is the normal oversubscription ratio? If you drain one uplink, what is the degraded uplink capacity? What is the degraded oversubscription ratio? Next, take the priority 3 buffer parameters from `mlnx_qos -i swp12`. What pause threshold percentage do they give? What resume threshold percentage do they give? How much in-flight headroom is left? How wide is the hysteresis gap? What happens if that gap is too narrow?
 
-5. **Compare the storage transports, then trace their state machines.**
-   - (a) Compare local PCIe Gen5 SSDs, InfiniBand storage, Ethernet NVMe-o-RDMA, and NVMe-o-TCP on GPUDirect Storage support, fabric oversubscription, and wide-area replication distance.
-   - (b) Trace how an NVMe-o-RDMA session over RoCEv2 starts up and moves data. Then set that sequence against NVMe-o-TCP capsules and memory descriptors.
+5. **Compare the storage transports, then trace their state machines.** A storage team asks which transport to choose for a new checkpoint store. Compare local PCIe Gen5 SSDs, InfiniBand storage, Ethernet NVMe-o-RDMA and NVMe-o-TCP. Which of them support GPUDirect Storage? How much fabric oversubscription can each one tolerate? How far can each one replicate across a wide-area link? Next, trace how an NVMe-o-RDMA session over RoCEv2 starts up and moves data. Then set that sequence against the NVMe-o-TCP capsules and memory descriptors, and ask where the two sequences differ.
 
-6. **Triage four production incidents with the 7-stage ladder.** Use `diagnose_v9_ethernet_incident` so you can find the failing validation gate, the root cause, and the exact fix for each of the four production telemetry scenarios in `code/part12/ethernet_vs_infiniband_lab.py`.
+6. **Triage four production incidents with the 7-stage ladder.** Four telemetry snapshots arrive from an on-call shift, and each one needs a gate, a cause and a fix. Use `diagnose_v9_ethernet_incident` to work through the four production telemetry scenarios in `code/part12/ethernet_vs_infiniband_lab.py`. For each scenario, which validation gate fails? What is the root cause? What is the exact fix?
 
 ```text
 Exercise input parameters and expected reference values:
@@ -648,11 +677,13 @@ Exercise input parameters and expected reference values:
 
 ## Interview angles
 
+These questions come up when a decision is about to be signed, so the answers need numbers and a clear recommendation. Each strong answer below shows the calculation first and the architecture second. That order keeps the discussion anchored to money and risk rather than to brand preference.
+
 1. **"Finance wants to save $448,000 on our new 64-GPU H100 cluster by buying 400GbE instead of InfiniBand NDR. How do you advise the VP of Infrastructure?"**
-   - *Strong answer:* Start with the three-year TCO math. On a seven-day Llama-70B run, an eight percent collective overhead on Ethernet adds 13.4 hours per run. At twenty-four runs per year, that is $1,835 per run, or $132,120 over three years. Be candid that the raw collective compute cost does not repay the $448,000 upfront premium at sixty-four GPUs. Then move to the real architectural question. If your cluster stays capped at sixty-four GPUs, 400GbE is defensible. If it will grow to 128 or 256 GPUs within eighteen months, buy InfiniBand or Spectrum-X now. That avoids nonlinear congestion stalls and a mid-life fabric swap.
+   - *Strong answer:* Start with the three-year TCO math, and show the steps out loud so the VP can check each one. On a seven-day Llama-70B run, an eight percent collective overhead on Ethernet adds 13.4 hours per run. At twenty-four runs per year, that is $1,835 per run, or $132,120 over three years. Be candid that the raw collective compute cost does not repay the $448,000 upfront premium at sixty-four GPUs. Then move to the real architectural question. If your cluster stays capped at sixty-four GPUs, 400GbE is defensible. If it will grow to 128 or 256 GPUs within eighteen months, buy InfiniBand or Spectrum-X now. That avoids nonlinear congestion stalls and a mid-life fabric swap. A good closing line for the VP is that the decision depends on the GPU count eighteen months out, not on today's price list.
 2. **"Why does an AI Ethernet fabric with low average link utilization, zero link errors, and full-speed pairwise `ib_write_bw` still stall when a second training job starts?"**
-   - *Strong answer:* Pairwise `ib_write_bw` tests one flow. Five-minute utilization graphs smooth out sub-millisecond collective incast bursts completely. When two synchronized jobs share an oversubscribed leaf uplink cut, or collide through low-entropy UDP 4791 ECMP hashing, the egress queues fill in microseconds. You can prove it by sampling per-priority queue counters every two seconds with `ethtool -S`. Healthy proactive control shows rising ECN marks, zero PFC pauses, and matching sender CNPs handled. A stressed cut shows climbing PFC pauses alongside hardware tail drops.
-3. **"How do InfiniBand, Standard RoCEv2, and Ultra Ethernet prevent buffer overflow, and why did Ultra Ethernet introduce new transport and credit loops?"**
+   - *Strong answer:* Pairwise `ib_write_bw` tests one flow. Five-minute utilization graphs smooth out sub-millisecond collective incast bursts completely. When two synchronized jobs share an oversubscribed leaf uplink cut, or collide through low-entropy UDP 4791 ECMP hashing, the egress queues fill in microseconds. You can prove it by sampling per-priority queue counters every two seconds with `ethtool -S`. Healthy proactive control shows rising ECN marks, zero PFC pauses, and matching sender CNPs handled. A stressed cut shows climbing PFC pauses alongside hardware tail drops. In your answer, name the two signals you would check first and say why each one matters, so the interviewer hears a method rather than a list of counters.
+3. **"How do InfiniBand, Standard RoCEv2, and Ultra Ethernet prevent buffer overflow, and why did Ultra Ethernet introduce new transport and credit loops?"** This question tests whether you can explain the mechanism, not just list the features. Start from the simplest one, which is credits, and then show what each later design added and why.
    - *Strong answer:* InfiniBand uses 64-byte link-layer credits. Those credits span sixteen Virtual Lanes, so senders never overflow a downstream buffer. Standard RoCEv2 retrofits lossless behavior onto UDP 4791 with reactive IEEE 802.1Qbb PFC across eight priorities, plus DCQCN. That design suffers from go-back-to-N retransmission stalls, low-entropy ECMP hashing, and pause trees. Ultra Ethernet tackles these with selective retry, out-of-order Direct Data Placement modes, and dynamic source-port mutation on congestion feedback. It also adds sender-side NSCC, receiver-side 256-byte RCCC credits, switch packet trimming, and optional thirty-two-channel link-layer CBFC and Link Layer Retry.
 
 ---
