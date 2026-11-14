@@ -14,25 +14,25 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-The interviewer says "design a system for me" and starts a clock. This chapter serves the system design round. Nebius states that the round covers designing "a whole or partial distributed system" to meet load and availability targets, preferably with specific technologies, estimating performance and compute, and discussing storage and processing trade-offs [official, careers/interviews/sre]. It also says any language and any technology is allowed, and that you should think aloud and ask for hints.
+The interviewer says "design a system for me" and starts a clock, and from that moment every minute is visible to them. This chapter serves the system design round. Nebius states that the round covers designing "a whole or partial distributed system" to meet load and availability targets, preferably with specific technologies, estimating performance and compute, and discussing storage and processing trade-offs [official, careers/interviews/sre]. It also says any language and any technology is allowed, and that you should think aloud and ask for hints. Thinking aloud is not decoration. It is how the interviewer grades the reasoning behind each choice.
 
-Reports disagree on whether you will get this round. One candidate reported a one-hour design exercise. Another, for a Senior SRE loop in London, reported no proper system design round [report]. Prepare for the hard version.
+Reports disagree on whether you will get this round, and that disagreement is useful to know. One candidate reported a one-hour design exercise. Another, for a Senior SRE loop in London, reported no proper system design round [report]. Prepare for the hard version, because a short round is easier to survive than a long one you did not rehearse.
 
-A secondary source lists five prompts: GPU job scheduling, model inference serving, training data storage for thousands of GPUs, detecting a failing GPU before the customer does, and an SRE variant [report]. Prompts 1 to 5 below are those five. Prompts 6 to 12 are my own additions, chosen because they fit the Token Factory SRE posting. Nebius has not published its internal designs. Everything under "Graders look for" is my reasoning about what a strong answer contains.
+A secondary source lists five prompts: GPU job scheduling, model inference serving, training data storage for thousands of GPUs, detecting a failing GPU before the customer does, and an SRE variant [report]. Prompts 1 to 5 below are those five. Prompts 6 to 12 are my own additions, chosen because they fit the Token Factory SRE posting. Nebius has not published its internal designs. Everything under "Graders look for" is my reasoning about what a strong answer contains. Read each prompt as a practice card, not as a fact about how Nebius builds the system.
 
-This sheet is a timer and a checklist. The full designs live in chapters 20.12 to 20.16, 20.20, 20.21, 20.22 and 20.24. Each prompt links to them.
+This sheet is a timer and a checklist, not a full design. Think of it as the outline you carry into the room. The full designs live in chapters 20.12 to 20.16, 20.20, 20.21, 20.22 and 20.24. Each prompt links to them, so you can go deeper after the drill rather than during the round.
 
-A realistic question: "You have 40 minutes. Design the system that decides where a customer's training job runs. Start wherever you like."
+A realistic question: "You have 40 minutes. Design the system that decides where a customer's training job runs. Start wherever you like." Most candidates start by drawing boxes. The strong start is a question about the job, because the answer decides which boxes you need.
 
 ## The core ideas
 
 ### 0. How to use the twelve prompts
 
-Pick one prompt. Set a 40-minute timer. Speak aloud to a wall or a recorder. Use only the "Ask first" list, the timings and the checklist. Afterwards open the estimate table and compare your arithmetic.
+Imagine a free hour on a weekend, with a blank wall in front of you and nobody to impress. Pick one prompt. Set a 40-minute timer. Speak aloud to a wall or a recorder. Use only the "Ask first" list, the timings and the checklist, so that you practise the order rather than the answer you already know. Afterwards open the estimate table and compare your arithmetic line by line.
 
-Every estimate below is computed by `c17_estimates.py` at the end of this chapter, and a test checks each figure. **Every input is an assumption I chose, not a measurement and not a Nebius figure.** In the interview say "I will assume X, and here is what changes if it is 2X."
+Every estimate below is computed by `c17_estimates.py` at the end of this chapter, and a test checks each figure. This matters because a figure you cannot reproduce is a figure you cannot defend. **Every input is an assumption I chose, not a measurement and not a Nebius figure.** In the interview say "I will assume X, and here is what changes if it is 2X." That sentence shows the interviewer that you know which numbers are soft.
 
-The 40-minute outline always has the same spine: 5 minutes of requirements and questions, 5 of estimates, 5 of API and data, 15 of architecture and scaling, 7 of failure and security, 3 of operations and wrap-up. Each prompt tweaks the weights.
+Halfway through a round, the clock says that 15 minutes are gone and nothing is on the board yet. The outline below exists to stop that from happening. The 40-minute outline always has the same spine: 5 minutes of requirements and questions, 5 of estimates, 5 of API and data, 15 of architecture and scaling, 7 of failure and security, 3 of operations and wrap-up. Each prompt tweaks the weights, so keep the spine and move the time.
 
 ```mermaid
 flowchart LR
@@ -45,9 +45,11 @@ flowchart LR
 
 ### 1. GPU job scheduling [report]
 
+The room is quiet, the marker is in your hand, and the scheduling prompt is still on the board. You have to decide where to start before the interviewer repeats it.
+
 > **Interviewer:** "Design a scheduler that places GPU jobs for several teams on a cluster of thousands of GPUs. Machines fail. Teams complain about fairness."
 
-**Ask first, with assumed answers.** Training or inference jobs? Assume training, gang-scheduled, 8 to 512 GPUs. How many GPUs? Assume 4,096 in 8-GPU nodes. Who shares it? Assume three teams with a 50, 30, 20 split. Slurm or Kubernetes? Assume either is allowed. Nebius open-sourced Soperator, which runs Slurm on Kubernetes [plan section 1], so say you know both worlds. Is checkpointing available? Assume yes.
+**Ask first, with assumed answers.** Start by asking whether the jobs are training or inference, and say that you assume training, gang-scheduled, 8 to 512 GPUs. A gang-scheduled job starts only when all its GPUs are free, because a training run missing a few workers cannot make progress. Ask how many GPUs the cluster has, and assume 4,096 in 8-GPU nodes. Ask who shares it, and assume three teams with a 50, 30, 20 split. Ask whether the scheduler is Slurm or Kubernetes, and assume either is allowed. Nebius open-sourced Soperator, which runs Slurm on Kubernetes [plan section 1], so say you know both worlds. Finally ask whether checkpointing is available, and assume yes. A checkpoint is a saved copy of the model state, and it turns a crash into a restart rather than a start from zero.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -62,7 +64,9 @@ flowchart LR
 
 Young's rule comes from J. W. Young, Communications of the ACM 17(9), 1974. I confirmed its form in Aupy, Benoit, Herault, Robert and Dongarra, "Optimal Checkpointing Period: Time vs. Energy", fetched 2026-11-09. There the period is the square root of 2 x C x mu, plus C, where C is the checkpoint write time and mu is the mean time between failures of the whole platform. The 153 minutes above is the square-root part, the compute between checkpoints. The paper calls this a first-order approximation, valid only while C is small against mu. Here 120 seconds against 351,563 seconds is small. The shape is the point: checkpoint more often when failures are frequent or writes are cheap.
 
-**40 minutes.** 0-5 ask and numbers. 5-10 job model: gang size, priority, preemptible or not. 10-25 scheduler: queue, fair-share by usage decay, topology-aware placement, backfill. 25-33 failures: node health, requeue from checkpoint. 33-40 observability and what you would measure.
+The reason to memorise the shape rather than the number is that the interviewer will change an input. If the cluster doubles, the interval should shrink, because failures arrive faster. If the checkpoint write gets slower, the interval should grow, because each write now costs more time. Being able to say which way the answer moves, and why, matters more than the exact minute count.
+
+**40 minutes.** 0-5 ask and numbers. 5-10 job model: gang size, priority, preemptible or not. 10-25 scheduler: queue, fair-share by usage decay, topology-aware placement, backfill. 25-33 failures: node health, requeue from checkpoint. 33-40 observability and what you would measure. Notice that the scheduler gets the longest slot, because it is the part the prompt is really about.
 
 ```mermaid
 flowchart LR
@@ -74,9 +78,9 @@ flowchart LR
   C --> Q
 ```
 
-**Graders look for.** (1) Gang scheduling with topology, since a job needs all its nodes in one fabric block, and the cost is fragmentation. (2) Fair share against utilisation: strict quotas leave GPUs idle, borrowing with preemption fills them but kills someone's work. (3) Checkpoint frequency against write cost.
+**Graders look for.** (1) Gang scheduling with topology, since a job needs all its nodes in one fabric block, and the cost is fragmentation. Fragmentation means free GPUs exist but are scattered in pieces too small for the next job. (2) Fair share against utilisation: strict quotas leave GPUs idle, borrowing with preemption fills them but kills someone's work. Preemption means stopping a running job to make room for another, and a grader wants to hear you name both sides of that trade. (3) Checkpoint frequency against write cost. A grader wants the number behind the choice, not only the word checkpoint.
 
-**Failure story.** A node dies at hour 90 of a 97-hour mean interval. The job loses half an interval. The scheduler must drain the node, requeue, and place the job on a spare block, not on the same bad node.
+**Failure story.** A node dies at hour 90 of a 97-hour mean interval. The job loses half an interval. The scheduler must drain the node, requeue, and place the job on a spare block, not on the same bad node. Tell this story in order: the failure, the lost work, the requeue, and the placement. The placement is the part graders check, because a requeue onto the same bad node repeats the failure.
 
 **Curveballs.** A team submits 4,000 one-GPU jobs. Two jobs each wait for the other's nodes. A node is slow, not dead, and drags the whole job.
 
@@ -86,9 +90,11 @@ Decide: lead with topology and fairness, then show failure cost with numbers.
 
 ### 2. Model inference serving [report]
 
+The interviewer has just described a bursty product, and you can see the worry on their face. Traffic will not arrive evenly, and one customer's spike must not spoil someone else's day.
+
 > **Interviewer:** "Design a service that serves one LLM to many customers. Traffic is bursty. One customer must not hurt another."
 
-**Ask first.** Streaming? Assume yes. Peak? Assume 300 requests per second, 300 output tokens each. Latency target? Assume TTFT p99 under 1 s. Model? Assume an 8-billion model on H100 80 GB, the worked case from [20.12](./12-estimation-toolkit-for-inference-capacity.md). Burst size? Assume 3x for 5 minutes.
+**Ask first.** Streaming? Assume yes, because a chat customer reads tokens as they arrive. Peak? Assume 300 requests per second, 300 output tokens each. Those two inputs give the demand, and everything after them is division. Latency target? Assume TTFT p99 under 1 s. TTFT is time to first token, and p99 means the target applies to the slow tail of requests, not to the average. Model? Assume an 8-billion model on H100 80 GB, the worked case from [20.12](./12-estimation-toolkit-for-inference-capacity.md). Burst size? Assume 3x for 5 minutes, so that you can show what happens when traffic jumps above the average.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -99,7 +105,7 @@ Decide: lead with topology and fairness, then show failure cost with numbers.
 | With one spare (N+1) | 28 + 1 | 29 |
 | GPUs for a 3x burst | 270,000 / 3,217 | 84 |
 
-The burst figure is the point. You cannot buy 55 more GPUs in five minutes, so the design must queue, shed and prioritise. See [20.20](./20-autoscaling-gpu-inference.md) for cold-start cost.
+The burst figure is the point. You cannot buy 55 more GPUs in five minutes, so the design must queue, shed and prioritise. Queueing holds requests for a short bounded time, shedding turns some away on purpose, and prioritising decides which traffic is served first. Say that choice out loud, because the interviewer is listening for whether you can name the trade. See [20.20](./20-autoscaling-gpu-inference.md) for cold-start cost, which is the wait before a new GPU can serve traffic.
 
 **40 minutes.** 0-5 questions. 5-10 the table above. 10-15 API: OpenAI-compatible streaming. 15-30 gateway, router, engine pool, batching, per-tenant limits. 30-37 overload and failure. 37-40 metrics.
 
@@ -113,9 +119,9 @@ flowchart LR
   E2 --> M
 ```
 
-**Graders look for.** (1) Continuous batching raises throughput and raises tail latency, so choose a batch cap from the TTFT target. (2) Headroom against cost: 30 percent idle GPUs is the price of surviving bursts. (3) Isolation by token limits and fair queues, not by request counts.
+**Graders look for.** (1) Continuous batching raises throughput and raises tail latency, so choose a batch cap from the TTFT target. Continuous batching means adding new requests to a running batch as slots free up, and the tail is the slowest requests that wait the longest. (2) Headroom against cost: 30 percent idle GPUs is the price of surviving bursts. A grader will ask whether you can justify paying for idle capacity, and the honest answer is that the idle share buys survival. (3) Isolation by token limits and fair queues, not by request counts. Counting requests treats a short question and a long document as equal, and that is the mistake this point catches.
 
-**Failure story.** Half the replicas restart, clients retry, and the survivors collapse. This is the retry loop in [20.18](./18-how-llm-serving-fails.md) and [20.21](./21-request-routing-retries-and-overload-control.md).
+**Failure story.** Half the replicas restart, clients retry, and the survivors collapse. This is the retry loop in [20.18](./18-how-llm-serving-fails.md) and [20.21](./21-request-routing-retries-and-overload-control.md). Walk through it in order: the restart removes capacity, the retries add load, and the load lands on the replicas that are still up. Each step makes the next one worse, which is why the story is easy to tell and hard to stop.
 
 **Curveballs.** Prompt lengths double. A new model must roll out without downtime. One tenant sends 100,000-token prompts.
 
@@ -125,9 +131,11 @@ Decide: say the 3x burst number aloud and choose shed or buy.
 
 ### 3. Training data storage for thousands of GPUs [report]
 
+Somebody asks you to think about the storage that feeds a large training run. The interviewer wants to hear about throughput, checkpoints and cost, in that order.
+
 > **Interviewer:** "Design storage for a training cluster of thousands of GPUs. Think about throughput, checkpoints and cost."
 
-**Ask first.** Dataset size? Assume 2 PB. Model? Assume 70 billion parameters. Checkpoint contents? Assume weights plus optimiser state at 14 bytes per parameter. The ZeRO paper (Rajbhandari et al., arXiv 1910.02054, section 3.1, fetched 2026-11-09) counts mixed-precision Adam as 2 bytes for fp16 parameters, 2 for fp16 gradients and 12 for the fp32 copy, momentum and variance, 16 in total for training memory. Dropping the gradients gives 2 + 12 = 14, which is what this prompt assumes a checkpoint holds. Other setups save 16 bytes per parameter or only weights, so say which you assume. Checkpoint cadence? Assume every 30 minutes, kept five deep.
+**Ask first.** Dataset size? Assume 2 PB, and say that PB means petabytes, the very large unit used for storage. Model? Assume 70 billion parameters, where a parameter is one learned number inside the model. Checkpoint contents? Assume weights plus optimiser state at 14 bytes per parameter. The ZeRO paper (Rajbhandari et al., arXiv 1910.02054, section 3.1, fetched 2026-11-09) counts mixed-precision Adam as 2 bytes for fp16 parameters, 2 for fp16 gradients and 12 for the fp32 copy, momentum and variance, 16 in total for training memory. Dropping the gradients gives 2 + 12 = 14, which is what this prompt assumes a checkpoint holds. Other setups save 16 bytes per parameter or only weights, so say which you assume. Checkpoint cadence? Assume every 30 minutes, kept five deep. Keeping five old checkpoints is a fallback, so that one corrupt copy does not leave the run with nothing to restore.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -139,9 +147,9 @@ Decide: say the 3x burst number aloud and choose shed or buy.
 | Dataset, all hot (assume $0.10 per GB-month) | 2,000,000 x 0.10 | $200,000 |
 | Tiered, 10 percent hot, rest at assumed $0.02 | 200,000 x 0.1 + 1,800,000 x 0.02 | $56,000 |
 
-The lesson is the burst. Average write is tiny but the write must finish fast, or the GPUs stall. Prices are placeholders, so substitute real ones.
+The lesson is the burst. Average write is tiny but the write must finish fast, or the GPUs stall. A stall means the expensive hardware waits idle while the disk catches up. Prices are placeholders, so substitute real ones before you quote any cost out loud.
 
-**40 minutes.** 0-5 questions. 5-12 numbers. 12-20 tiers: object store, parallel file system, node-local NVMe. 20-30 data loading: sharding, prefetch, caching. 30-37 checkpoint path and restore. 37-40 cost.
+**40 minutes.** 0-5 questions. 5-12 numbers. 12-20 tiers: object store, parallel file system, node-local NVMe. 20-30 data loading: sharding, prefetch, caching. 30-37 checkpoint path and restore. 37-40 cost. Keep the numbers section short, because the tiers are where the design decisions live.
 
 ```mermaid
 flowchart LR
@@ -153,9 +161,9 @@ flowchart LR
   F --> O
 ```
 
-**Graders look for.** (1) Throughput and capacity are separate axes, and a tier per axis is the answer. (2) Asynchronous checkpoints: copy to host memory, then write in the background, trading stall time for a window of exposure. (3) Cost per tier, and what you delete.
+**Graders look for.** (1) Throughput and capacity are separate axes, and a tier per axis is the answer. A fast tier is expensive per byte, and a big tier is slow, so one store rarely does both jobs. (2) Asynchronous checkpoints: copy to host memory, then write in the background, trading stall time for a window of exposure. The exposure is the time when the newest state exists only in memory and could still be lost. (3) Cost per tier, and what you delete. A grader wants to hear the retention policy, not only the storage choice.
 
-**Failure story.** The parallel file system slows during a restore, every job restarts at once, and the herd drags it down further. Compare the herd in [20.18](./18-how-llm-serving-fails.md).
+**Failure story.** The parallel file system slows during a restore, every job restarts at once, and the herd drags it down further. Compare the herd in [20.18](./18-how-llm-serving-fails.md). The lesson is that restore traffic is a traffic spike too, and it arrives all at once, so the storage must be sized for the restore as well as for the steady state.
 
 **Curveballs.** A corrupted checkpoint. Restoring onto a different GPU count. Data residency for a customer's dataset.
 
@@ -165,9 +173,11 @@ Decide: separate bandwidth from capacity, and size the checkpoint burst.
 
 ### 4. Detecting a failing GPU before the customer does [report]
 
+The interviewer asks one short question and then goes quiet. The short prompt is a test of how you start, not of how much you know.
+
 > **Interviewer:** "How would you find a failing GPU before a customer notices?"
 
-**Ask first.** Fleet size? Assume 2,000 nodes of 8 GPUs. Failure rate? Assume 5 percent of GPUs per year. Is the GPU idle or serving? Both. What does the customer notice? Assume errors or slow tokens after about 15 minutes.
+**Ask first.** Fleet size? Assume 2,000 nodes of 8 GPUs. Failure rate? Assume 5 percent of GPUs per year. Is the GPU idle or serving? Both. What does the customer notice? Assume errors or slow tokens after about 15 minutes. The last question matters most, because the detection time has to beat the moment the customer notices. If the customer notices first, the design is already late.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -188,9 +198,9 @@ flowchart LR
   Q --> R["Replace from spare pool"]
 ```
 
-**Graders look for.** (1) Passive against active checks: passive is free but late, active costs GPU time. (2) A blast-radius cap, so a bad rule cannot drain the fleet. (3) Detecting gray failure through the serving path, not only hardware counters.
+**Graders look for.** (1) Passive against active checks: passive is free but late, active costs GPU time. Passive checks read what the hardware already reports, and active checks ask the GPU to prove itself, which takes the node out of service for a while. (2) A blast-radius cap, so a bad rule cannot drain the fleet. Blast radius is the size of the damage one wrong decision can cause. (3) Detecting gray failure through the serving path, not only hardware counters. A gray failure is a GPU that works but works slowly, and only the serving numbers show it.
 
-**Failure story.** A bad driver update emits a false Xid on every node, and automation starts draining the fleet. A cap of a few percent drained at once stops it.
+**Failure story.** A bad driver update emits a false Xid on every node, and automation starts draining the fleet. A cap of a few percent drained at once stops it. The story is a reminder that the detector can be the failure, so the design must limit what any one signal is allowed to do.
 
 **Curveballs.** An error that appears only under load. A GPU that is slow but reports healthy. The spare pool is empty.
 
@@ -200,9 +210,11 @@ Decide: name the three signal sources, then the blast-radius cap.
 
 ### 5. The SRE variant: incidents, capacity and rollout safety [report]
 
+The interviewer changes the role. You are now the person on call for the whole inference platform, and the questions are about how you work, not only about what you build.
+
 > **Interviewer:** "You run reliability for an inference platform. Walk me through how you handle incidents, plan capacity and make rollouts safe."
 
-**Ask first.** SLO? Assume 99.9 percent over 30 days. Fleet? Assume 400 GPUs, 320 in use, demand growing 8 percent a month. GPU lead time? Assume 3 months. Headroom policy? Assume 20 percent.
+**Ask first.** SLO? Assume 99.9 percent over 30 days. Fleet? Assume 400 GPUs, 320 in use, demand growing 8 percent a month. GPU lead time? Assume 3 months. Lead time is the wait between ordering a GPU and having it running, and it sets how far ahead you must plan. Headroom policy? Assume 20 percent, which is spare capacity kept above the forecast.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -214,9 +226,9 @@ Decide: name the three signal sources, then the blast-radius cap.
 | GPUs needed with headroom | 403.1 x 1.2, rounded up | 484 |
 | Order today | 484 - 400 | 84 |
 
-The burn-rate pairs are explained and sourced in [20.19](./19-slis-slos-and-alerts-for-token-apis.md). Here only the arithmetic matters.
+The burn-rate pairs are explained and sourced in [20.19](./19-slis-slos-and-alerts-for-token-apis.md). Here only the arithmetic matters. Read each row as a question about how fast the budget disappears. A fast burn for a short time and a slow burn for a long time can use up the same share of the budget, and that is why the table has three rows.
 
-**40 minutes.** 0-4 SLOs. 4-14 incidents: detect, page, mitigate before root cause, post-mortem. 14-24 capacity: forecast, lead time, headroom. 24-34 rollout: canary, gates, auto-rollback. 34-40 toil and automation.
+**40 minutes.** 0-4 SLOs. 4-14 incidents: detect, page, mitigate before root cause, post-mortem. 14-24 capacity: forecast, lead time, headroom. 24-34 rollout: canary, gates, auto-rollback. 34-40 toil and automation. The incident block is the place to say the most, because the interviewer usually asks about it next.
 
 ```mermaid
 flowchart LR
@@ -228,9 +240,9 @@ flowchart LR
   ROL["Canary rollout"] --> SLO
 ```
 
-**Graders look for.** (1) Error budget as the control knob for rollout speed. (2) Capacity planned against lead time, not today's load. (3) Mitigation first, cause second.
+**Graders look for.** (1) Error budget as the control knob for rollout speed. When budget is left, a rollout can move faster, and when it is spent, the rollout slows or stops. (2) Capacity planned against lead time, not today's load. Today's load tells you what is busy now, while lead time tells you what you must order now. (3) Mitigation first, cause second. Stopping the bleeding comes before the root cause is known, and that order is what a good on-call engineer does.
 
-**Failure story.** A canary passes latency checks but output quality drops. See quality signals in [20.18](./18-how-llm-serving-fails.md) and [20.14](./14-design-dedicated-endpoints-and-safe-model-rollout.md).
+**Failure story.** A canary passes latency checks but output quality drops. See quality signals in [20.18](./18-how-llm-serving-fails.md) and [20.14](./14-design-dedicated-endpoints-and-safe-model-rollout.md). The point of the story is that a fast answer can still be a wrong answer, so the canary needs a quality gate as well as a latency gate.
 
 **Curveballs.** The budget is already spent. The vendor delays 200 GPUs. Two incidents at once.
 
@@ -240,11 +252,13 @@ Decide: tie rollout speed to remaining budget, and order GPUs against the lead t
 
 ### 6. Multi-region failover for dedicated endpoints [my addition]
 
+A customer calls with a worry. Their endpoint sits in one region, that region is short of capacity, and they want to know what happens next. The interviewer asks you to design for it.
+
 > **Interviewer:** "A customer's dedicated endpoint lives in one region. That region has a capacity problem. Design for failover."
 
-**The public constraint.** A dedicated endpoint is created in a chosen region, EU or US, which carries data-residency meaning [plan section 1]. Chapter [20.30](./30-nebius-ai-factory-to-token-factory-architecture.md) cites the legal guide as saying there is no automatic multi-region routing or overflow. So failover is the customer's design, not a platform feature. Do not claim Nebius does it for them.
+**The public constraint.** A dedicated endpoint is created in a chosen region, EU or US, which carries data-residency meaning [plan section 1]. Data residency means the rule that data must stay in a particular place. Chapter [20.30](./30-nebius-ai-factory-to-token-factory-architecture.md) cites the legal guide as saying there is no automatic multi-region routing or overflow. So failover is the customer's design, not a platform feature. Do not claim Nebius does it for them. Saying this first shows that you read the constraint before you drew the diagram.
 
-**Ask first.** May data cross regions? Assume yes, within one residency zone, and say you would check the contract. RTO and RPO? Assume 10 minutes. Inference is stateless, so RPO is about config only. Size? Assume 8 replicas of 2 GPUs. Price? Assume $3 per GPU-hour, a placeholder.
+**Ask first.** May data cross regions? Assume yes, within one residency zone, and say you would check the contract. RTO and RPO? Assume 10 minutes. RTO is the recovery time objective, how long an outage may last, and RPO is the recovery point objective, how much data may be lost. Inference is stateless, so RPO is about config only. Size? Assume 8 replicas of 2 GPUs. Price? Assume $3 per GPU-hour, a placeholder.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -268,7 +282,7 @@ flowchart LR
 
 **Graders look for.** (1) Cost against RTO, shown as the table. (2) Who decides to fail over: a human with a runbook is safer than a flapping automatic switch. (3) Residency limits who the standby may be.
 
-**Failure story.** Region A is half-sick, the probe flaps, and traffic ping-pongs. Add hysteresis and a manual lock.
+**Failure story.** Region A is half-sick, the probe flaps, and traffic ping-pongs. Add hysteresis and a manual lock. Hysteresis means the switch needs a clear signal before it moves back, so a noisy probe cannot bounce traffic back and forth. A manual lock lets a person stop the bouncing while they look.
 
 **Curveballs.** Standby region has no GPU capacity. Failback while requests stream. A rate limit is per region.
 
@@ -278,9 +292,11 @@ Decide: state that failover is customer-built, then price warm against cold.
 
 ### 7. Usage metering and billing correctness [my addition]
 
+A finance colleague asks for the design of billing. The interviewer adds that customers will check the invoice line by line, which changes the whole approach.
+
 > **Interviewer:** "Design the system that counts tokens and produces the invoice. Customers will check it."
 
-**Ask first.** Scale? Assume 1,000 requests per second average. Tokens? Assume 800 in, 300 out. Price? Assume $0.10 and $0.40 per million, placeholders. Tolerance? Assume under 0.1 percent error. Streaming cancels count the tokens already sent.
+**Ask first.** Scale? Assume 1,000 requests per second average. Tokens? Assume 800 in, 300 out. Price? Assume $0.10 and $0.40 per million, placeholders. Tolerance? Assume under 0.1 percent error. Streaming cancels count the tokens already sent, so a cancelled stream is still billable for the part the customer received. Tolerance is the error the business accepts, and it decides how strict the pipeline must be.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -291,7 +307,7 @@ Decide: state that failover is customer-built, then price warm against cold.
 | Loss at 0.1 percent | 17,280 x 0.001 | $17.28 per day |
 | Overbilling if 2 percent of events duplicate | 17,280 x 0.02 | $345.60 per day |
 
-Duplicates are 20 times worse than the tolerated loss, so dedupe is the key design point.
+Duplicates are 20 times worse than the tolerated loss, so dedupe is the key design point. Losing a small share of events is an error the business can absorb, but charging a customer twice is an error that breaks trust, and customers will notice it. That is why the design leans toward never double counting, even if that means a tiny undercount.
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-18 event: written by the engine side at request end with a unique request id. 18-28 pipeline: durable log, idempotent consumer, aggregation. 28-35 reconciliation against gateway counts. 35-40 invoice and disputes.
 
@@ -305,9 +321,9 @@ flowchart LR
   A --> R
 ```
 
-**Graders look for.** (1) At-least-once delivery plus idempotent consumption equals effectively once. (2) Metering is separate from monitoring, as [20.15](./15-design-an-observability-pipeline-for-very-high-volume.md) argues: monitoring may drop samples, billing may not. (3) Reconciliation and an audit trail.
+**Graders look for.** (1) At-least-once delivery plus idempotent consumption equals effectively once. At-least-once means a message may arrive twice. Idempotent consumption means handling it twice has the same effect as handling it once. (2) Metering is separate from monitoring, as [20.15](./15-design-an-observability-pipeline-for-very-high-volume.md) argues: monitoring may drop samples, billing may not. (3) Reconciliation and an audit trail. A grader wants to see how you prove the invoice is right, not only how you produce it.
 
-**Failure story.** The consumer replays a day after a bug fix. Without dedupe, customers are billed twice.
+**Failure story.** The consumer replays a day after a bug fix. Without dedupe, customers are billed twice. Replays are normal after a fix, so the design should expect them rather than treat them as rare accidents.
 
 **Curveballs.** Late events after the invoice closes. A cancelled stream. A price change mid-month.
 
@@ -317,11 +333,13 @@ Decide: pick idempotency keys first, then say what you reconcile against.
 
 ### 8. A prompt-cache or KV-cache tier [my addition]
 
+The interviewer points out that many requests start with the same long system prompt, which is the instruction block that sets the model's behaviour. Then they ask whether you could save GPU time on that repetition.
+
 > **Interviewer:** "Many requests share long system prompts. Design a cache that saves GPU time."
 
-Nebius reports cache-aware routing lifted hit rate from about 5 percent to 30 percent to 50-60 percent in one case study [vendor]. Nebius has not published the cache design, so this is a reasonable design and nothing more.
+Nebius reports cache-aware routing lifted hit rate from about 5 percent to 30 percent to 50-60 percent in one case study [vendor]. A cache hit rate is the share of requests whose prefix is already stored. Nebius has not published the cache design, so this is a reasonable design and nothing more. The KV cache holds the attention keys and values for tokens already processed, so a repeated prefix can skip part of the work. Treat the case-study figures as a vendor claim to name, not as a number to build on.
 
-**Ask first.** Prefix reuse? Assume 5,000 distinct prefixes of 2,000 tokens. Isolation? Assume per tenant, never shared across tenants. Model? The 8-billion model with 147,456 bytes of KV per token.
+**Ask first.** Prefix reuse? Assume 5,000 distinct prefixes of 2,000 tokens. Isolation? Assume per tenant, never shared across tenants. Model? The 8-billion model with 147,456 bytes of KV per token. Isolation matters because a cache that is shared across customers can leak timing information, which is a privacy problem as well as a speed trick.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -334,7 +352,7 @@ Nebius reports cache-aware routing lifted hit rate from about 5 percent to 30 pe
 | Load from RAM (128 GB/s at 50 percent) | 0.295 / 64 | 4.6 ms |
 | Load from NVMe (7 GB/s, top of the 5 to 7 range) | 0.295 / 7 | 42 ms |
 
-The 400 TFLOPS is my utilisation assumption of about 40 percent against 989 TFLOPS. That peak is half of the 1,979 BF16 figure the NVIDIA H100 page gives for SXM with sparsity, fetched 2026-11-09. The halving is the usual dense-versus-sparse convention, derived and not quoted. Distributed AI Systems, chapter 5, gives 5 to 7 GB/s sequential read for a PCIe Gen4 NVMe drive, and the 128 GB/s host link is the PCIe Gen5 figure on the same NVIDIA page. NVMe is only about twice as fast as recomputing, so the slow tier barely pays. RAM clearly pays.
+The 400 TFLOPS is my utilisation assumption of about 40 percent against 989 TFLOPS. TFLOPS means trillions of floating-point operations per second, the unit for how fast a GPU computes. That peak is half of the 1,979 BF16 figure the NVIDIA H100 page gives for SXM with sparsity, fetched 2026-11-09. The halving is the usual dense-versus-sparse convention, derived and not quoted. Distributed AI Systems, chapter 5, gives 5 to 7 GB/s sequential read for a PCIe Gen4 NVMe drive, and the 128 GB/s host link is the PCIe Gen5 figure on the same NVIDIA page. NVMe is only about twice as fast as recomputing, so the slow tier barely pays. RAM clearly pays. Read those words as the conclusion of the table, not as a separate claim.
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-22 tiers, eviction, and keys by prefix hash. 22-30 routing: send a request to the replica that holds its prefix. 30-37 failure and privacy. 37-40 metrics.
 
@@ -347,9 +365,9 @@ flowchart LR
   M --> N["NVMe: cold"]
 ```
 
-**Graders look for.** (1) Compare load time with recompute time, and show the crossover. (2) Cache-aware routing against load balance: sticky routing makes hot replicas. (3) Tenant isolation, since a shared cache can leak timing information.
+**Graders look for.** (1) Compare load time with recompute time, and show the crossover. The crossover is the prefix length or tier speed at which loading stops beating recomputing. (2) Cache-aware routing against load balance: sticky routing makes hot replicas. Sticky routing sends the same prefix to the same replica, which saves work and also overloads that replica. (3) Tenant isolation, since a shared cache can leak timing information.
 
-**Failure story.** A cache node restarts, every hit becomes a miss, prefill load jumps, and TTFT breaks. Cold-cache load must be a tested capacity case.
+**Failure story.** A cache node restarts, every hit becomes a miss, prefill load jumps, and TTFT breaks. Cold-cache load must be a tested capacity case. A cold cache is an empty one, and the story is a reminder that the cache is part of capacity, not an optional speedup.
 
 **Curveballs.** A model version change invalidates all entries. Memory pressure evicts hot prefixes. A customer asks whether their prompts are stored.
 
@@ -359,9 +377,11 @@ Decide: justify each tier with a load-versus-recompute number.
 
 ### 9. A model weights distribution system for cold start [my addition]
 
+The interviewer describes a rollout problem. A new model version has to reach a hundred nodes, and the transfer must be fast enough that the rollout does not wait on it.
+
 > **Interviewer:** "A new model version must reach a hundred nodes fast. Design how weights get there."
 
-**Ask first.** Size? Assume 70 GB. Layout? Assume 100 nodes in 10 racks. Origin bandwidth? Assume 10 GB/s from an object store. Node network? Assume 3 GB/s effective. Integrity? Required.
+**Ask first.** Size? Assume 70 GB. Layout? Assume 100 nodes in 10 racks. Origin bandwidth? Assume 10 GB/s from an object store. An object store is a storage service that holds large files as objects, and origin means the place the copies start. Node network? Assume 3 GB/s effective. Integrity? Required, which means each chunk must be checked before it is served. Those five answers fix the whole transfer.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -372,7 +392,7 @@ Decide: justify each tier with a load-versus-recompute number.
 | Tree total | 70 + 93 | 163 s |
 | Local disk to GPU at 7 GB/s (top of the sourced range) | 70 / 7 | 10 s |
 
-The rack stage is a conservative sum. In practice it overlaps with seeding.
+The rack stage is a conservative sum. In practice it overlaps with seeding, so the real total is likely less than the sum, and you should say that aloud. Saying it shows you know the sum is an upper bound, which is safer than presenting it as the exact time.
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-22 design: content-addressed chunks, per-rack seeders, checksums. 22-30 node cache and pre-staging before the rollout. 30-37 failure. 37-40 observability.
 
@@ -385,9 +405,9 @@ flowchart LR
   N1 --> GPU["GPU load"]
 ```
 
-**Graders look for.** (1) Origin bandwidth is the bottleneck, so fan out inside the fabric. (2) Pre-stage weights before traffic shifts, so cold start is only GPU load. (3) Verify checksums and keep versions immutable.
+**Graders look for.** (1) Origin bandwidth is the bottleneck, so fan out inside the fabric. The fabric is the fast network between nodes, and copying between nodes uses it instead of the slow origin link. (2) Pre-stage weights before traffic shifts, so cold start is only GPU load. (3) Verify checksums and keep versions immutable. A checksum is a fingerprint of the bytes, and an immutable version never changes after it is published.
 
-**Failure story.** A corrupt chunk spreads from a seeder to a whole rack. Verify each chunk before serving it onward.
+**Failure story.** A corrupt chunk spreads from a seeder to a whole rack. Verify each chunk before serving it onward. The lesson is that one copy spreads fast in a tree, so a bad copy spreads just as fast, and the check has to happen at every hop.
 
 **Curveballs.** Origin is down mid-rollout. A node joins late. Weights are 10 times larger.
 
@@ -397,9 +417,11 @@ Decide: pre-stage, fan out inside the fabric, and verify.
 
 ### 10. An inference gateway rate limiter [my addition]
 
+A product manager has asked for limits that count tokens instead of requests, and the interviewer asks you to design the limiter that enforces them.
+
 > **Interviewer:** "Design the rate limiter in front of an LLM API. Limits are in tokens per minute."
 
-**Ask first.** Limit? Assume 100,000 tokens per minute per tenant per model. The output length is unknown at admission, so what is charged up front? Assume the prompt plus `max_tokens`, with a refund after. Scale? Assume 2,000 requests per second, 20 gateway instances, 5,000 tenants, 50 models.
+**Ask first.** Limit? Assume 100,000 tokens per minute per tenant per model. The output length is unknown at admission, so what is charged up front? Assume the prompt plus `max_tokens`, with a refund after. Admission means the moment the gateway decides to accept a request. Scale? Assume 2,000 requests per second, 20 gateway instances, 5,000 tenants, 50 models. Each of those numbers changes where the state must live.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -425,9 +447,9 @@ flowchart LR
   G --> L["429 + Retry-After"]
 ```
 
-**Graders look for.** (1) Limit tokens, not requests. (2) Central accuracy against local speed: leases bound the error to the lease size times the gateway count. (3) Fail open or closed when the store dies, with a reason.
+**Graders look for.** (1) Limit tokens, not requests. A request count treats two very different calls as the same cost. (2) Central accuracy against local speed: leases bound the error to the lease size times the gateway count. A lease is a small block of allowance that a gateway holds locally, so it does not call the central store on every request. (3) Fail open or closed when the store dies, with a reason. Fail open means let traffic through when the limiter is down, and fail closed means block it.
 
-**Failure story.** The store has a partition and the limiter fails closed. All tenants get 429. Fail open with a local safety limit is usually right for a paid API, but state it as a choice.
+**Failure story.** The store has a partition and the limiter fails closed. All tenants get 429. Fail open with a local safety limit is usually right for a paid API, but state it as a choice. A partition is a network split, and the choice you make during a split is the one customers feel most.
 
 **Curveballs.** A burst allowance. Per-key and per-organisation limits together. Limit changes taking effect.
 
@@ -437,9 +459,11 @@ Decide: reserve then refund, and state the fail-open choice.
 
 ### 11. Multi-tenant noisy-neighbour control [my addition]
 
+The support team forwards a complaint. One customer's requests seem to slow everyone else down, and the interviewer asks you to design the control that stops it.
+
 > **Interviewer:** "One customer's requests slow everyone down. Design the control."
 
-**Ask first.** What is shared? Assume replicas of one model. What is the damage? Assume KV memory and prefill time. Sizes? Assume 30,000-token requests from one tenant, 2,500-token requests from the others.
+**Ask first.** What is shared? Assume replicas of one model. What is the damage? Assume KV memory and prefill time. Prefill is the step that reads the whole prompt before the first token appears, and it is heavy for long prompts. Sizes? Assume 30,000-token requests from one tenant, 2,500-token requests from the others. A long request holds more memory for longer, and that is where the noisy neighbour comes from.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -450,7 +474,7 @@ Decide: reserve then refund, and state the fail-open choice.
 | Left for others when 11 are running | 50.6 - 48.7 | 1.94 GB, so 5 requests |
 | Long requests allowed at a 25 percent cap | 12.65 / 4.42 | 2 |
 
-Eleven long requests take capacity from 137 down to 5 for everyone else.
+Eleven long requests take capacity from 137 down to 5 for everyone else. That single sentence is the case for charging by cost, and it is the sentence to say in the room.
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-20 admission by cost, which is tokens times context. 20-30 fair queueing and a per-tenant KV cap. 30-36 isolation tiers: shared pool, long-context pool, dedicated endpoint. 36-40 detection.
 
@@ -463,9 +487,9 @@ flowchart LR
   K --> P2["Long-context pool"]
 ```
 
-**Graders look for.** (1) Charge by resource cost, not request count. (2) Hard caps against borrowing: caps protect, borrowing raises utilisation. (3) Isolation tiers priced to match, ending at a dedicated endpoint.
+**Graders look for.** (1) Charge by resource cost, not request count. A long request uses far more memory than a short one. (2) Hard caps against borrowing: caps protect, borrowing raises utilisation. The two goals pull against each other, and a grader wants you to choose a point between them out loud. (3) Isolation tiers priced to match, ending at a dedicated endpoint.
 
-**Failure story.** The cap is per replica, but the router sends all of the tenant's long requests to one replica. The cap must hold across the pool.
+**Failure story.** The cap is per replica, but the router sends all of the tenant's long requests to one replica. The cap must hold across the pool. A cap that only holds for one copy of the service is a cap that protects nothing.
 
 **Curveballs.** A tenant splits traffic across ten API keys. A premium tenant needs priority. Detecting the noisy tenant without a high-cardinality label, per the warning in [20.18](./18-how-llm-serving-fails.md) section 10.
 
@@ -475,9 +499,11 @@ Decide: charge by cost, cap the share, offer a pool.
 
 ### 12. An SLO and alerting platform for 1,000 endpoints [my addition]
 
+The platform team asks you to scale SLOs and alerts to every endpoint, and the interviewer adds the number of endpoints so you feel the scale.
+
 > **Interviewer:** "Design the platform that gives every endpoint SLOs and alerts. There are a thousand endpoints."
 
-**Ask first.** Self-service? Assume teams declare SLOs in a file. SLIs? Assume four per endpoint: availability, TTFT, inter-token latency, quality. Replicas? Assume 6 per endpoint. Alert policy? Assume three burn-rate pairs.
+**Ask first.** Self-service? Assume teams declare SLOs in a file. SLIs? Assume four per endpoint: availability, TTFT, inter-token latency, quality. Replicas? Assume 6 per endpoint. Alert policy? Assume three burn-rate pairs. Each answer changes how many series and rules the platform must hold, so ask about them before you size anything.
 
 | Quantity | Arithmetic | Result |
 |---|---|---|
@@ -499,9 +525,9 @@ flowchart LR
   M["Metrics store"] --> REC
 ```
 
-**Graders look for.** (1) Rules are generated from a spec, never hand-written 12,000 times. (2) Page on symptoms and burn rate, ticket on slow burn. (3) Watch the watcher: if the metrics store dies, alerts on missing data must fire.
+**Graders look for.** (1) Rules are generated from a spec, never hand-written 12,000 times. A generated rule is one that a program writes from the spec, so a change to the spec changes every rule consistently. (2) Page on symptoms and burn rate, ticket on slow burn. (3) Watch the watcher: if the metrics store dies, alerts on missing data must fire. A silent monitor is the worst kind of failure, because nothing tells you it stopped.
 
-**Failure story.** A generator bug ships a wrong threshold to every endpoint at once. Roll out rule changes in stages, with a diff against current alert volume.
+**Failure story.** A generator bug ships a wrong threshold to every endpoint at once. Roll out rule changes in stages, with a diff against current alert volume. The diff is the quick check that shows whether a change would page far more often than before.
 
 **Curveballs.** A new endpoint with no history. Per-tenant SLOs. The metrics store loses an hour.
 
@@ -512,6 +538,8 @@ Decide: generate from a spec, page on burn, and monitor the monitor.
 ## Scoring rubric
 
 Score yourself 0 to 4 on each row. This is my rubric, not a Nebius one.
+
+The scorecard works best when you read it one row at a time after each drill. Notice which row drops first, because it usually points to the same habit across prompts. For example, a low Estimation score often means the arithmetic was never written down.
 
 | Dimension | A 4 looks like |
 |---|---|
@@ -541,6 +569,8 @@ Pause for the answer after each line. Silence from the interviewer usually means
 
 ## How to answer out loud
 
+The follow-up questions below come up in almost every round, and each has a short shape you can follow while you think. Start with the shape, then fill in the numbers from your own table.
+
 **1. "Design X" with no detail.** Use the script above. Then run the spine in section 0. Name the checklist row you are on.
 
 **2. "What would you change if the load were ten times bigger?"** Redo the one number that scales, say which component breaks first, and say what you would change. For example in prompt 2, ten times the burst is 840 GPUs, so you shed or prioritise instead.
@@ -553,17 +583,19 @@ Pause for the answer after each line. Silence from the interviewer usually means
 
 ## Worked scenarios
 
+Two situations come up often in a real round, and both are worth rehearsing before the day. One is a prompt you never drilled, and the other is a number the interviewer changes halfway through.
+
 ### Scenario 1: A prompt you have not drilled
 
-The interviewer asks for a system to run batch embedding jobs for customers. Use the checklist. Requirements: assume 1 billion documents a day, 500 tokens each. Estimate: 500 billion tokens a day, which is 5.8 million tokens per second. State a per-GPU rate as an assumption and divide. API: submit job, poll, fetch results. Data: object store in, object store out. Scaling: partition by document ranges. Failure: retry per partition, idempotent writes. Security: per-tenant buckets. Operations: queue age and completion rate. You designed it without recall because the checklist supplied the order.
+The interviewer asks for a system to run batch embedding jobs for customers. Use the checklist. Requirements: assume 1 billion documents a day, 500 tokens each. Estimate: 500 billion tokens a day, which is 5.8 million tokens per second. State a per-GPU rate as an assumption and divide. API: submit job, poll, fetch results. Data: object store in, object store out. Scaling: partition by document ranges. Failure: retry per partition, idempotent writes. Security: per-tenant buckets. Operations: queue age and completion rate. You designed it without recall because the checklist supplied the order. The point of the scenario is that the order is the thing you can always fall back on, even when the topic is new to you.
 
 ### Scenario 2: The interviewer changes a number
 
-In prompt 2 the interviewer says "the model is now 70 billion parameters." Do not restart. Recompute weights at 2 bytes: 140 GB, which no longer fits one 80 GB GPU. Say tensor parallelism across at least 2 GPUs, with less KV room per GPU. Then re-derive requests per GPU with the formulas of [20.12](./12-estimation-toolkit-for-inference-capacity.md). Show that only the inputs changed and the method did not.
+In prompt 2 the interviewer says "the model is now 70 billion parameters." Do not restart. Recompute weights at 2 bytes: 140 GB, which no longer fits one 80 GB GPU. Say tensor parallelism across at least 2 GPUs, with less KV room per GPU. Then re-derive requests per GPU with the formulas of [20.12](./12-estimation-toolkit-for-inference-capacity.md). Show that only the inputs changed and the method did not. Saying that out loud tells the interviewer you can keep your structure when the facts move under you.
 
 ## Hands-on lab
 
-I ran steps 1 and 3. Step 2 is your own work.
+You have the calculator open and a list of twelve prompts, and you want to check one number before you trust it. I ran steps 1 and 3. Step 2 is your own work.
 
 1. Print every table above.
 
@@ -573,7 +605,7 @@ python3 code/part20/c17_estimates.py
 
 Expected result: twelve blocks. Block `p02_serving` shows `gpus: 28` and `burst_gpus: 84`.
 
-2. Pick a prompt, change one assumption in its `A*` dictionary, rerun, and write the sentence "if X doubles, Y changes to Z" aloud.
+2. Choose one prompt. Change one assumption in its `A*` dictionary. Rerun the script. Then say the sentence "if X doubles, Y changes to Z" aloud, because the spoken version is the one you will use in the room.
 
 3. Run the tests.
 
@@ -787,6 +819,8 @@ if __name__ == "__main__":
 
 ## The one-page decision checklist
 
+Keep this table in front of you during a real round. Each row is a question you can ask yourself when the clock is running, and each row has a sentence you can say aloud, so the interviewer hears the structure instead of a pause.
+
 | Step | Ask yourself | Say |
 |---|---|---|
 | Requirements | Who, what load, what target? | "Here is what I will build and what I will leave out." |
@@ -799,6 +833,8 @@ if __name__ == "__main__":
 | Operations | How is it deployed, watched and rolled back? | "SLO, alert, canary, rollback trigger." |
 
 ## Drill questions
+
+These drill questions are the checks a colleague would ask you on a quiet afternoon. Each answer should hold up against the tables above, so when you disagree with one, go back to the arithmetic first.
 
 <details><summary>1. Why is the 3x burst answer not "buy 84 GPUs"?</summary>
 Peak is 28 GPUs and a 3x burst needs 84. You cannot add 55 GPUs in minutes, since cold start and provisioning take minutes. So you queue within a bound, shed by priority, and keep spare capacity sized for the burst you can afford.
@@ -842,6 +878,8 @@ Output tokens are uncharged, so a tenant can exceed the limit. Reserve the promp
 
 ## Common mistakes and weak answers
 
+Picture the debrief after a round that went badly. The same few mistakes come up again and again, and most of them are about order rather than knowledge.
+
 - Drawing boxes for 25 minutes before any number. Estimate by minute 10.
 - Giving a figure with no label. Say "assumption" every time.
 - Claiming Nebius does something. Say "a reasonable design is" unless the plan or a fetched page says so.
@@ -851,6 +889,8 @@ Output tokens are uncharged, so a tenant can exceed the limit. Reserve the promp
 - Forgetting operations: metrics, alerts, rollback.
 
 ## Connections to the rest of the handbook
+
+You finish a drill and want to go deeper on one prompt. The links below are where each design gets its full treatment, so use them after the timed run, not during it.
 
 - [20.12](./12-estimation-toolkit-for-inference-capacity.md) estimation, [20.13](./13-design-a-multi-tenant-llm-inference-api.md) multi-tenant API, [20.14](./14-design-dedicated-endpoints-and-safe-model-rollout.md) rollout, [20.15](./15-design-an-observability-pipeline-for-very-high-volume.md) observability, [20.16](./16-design-gpu-fleet-health-and-capacity.md) fleet health.
 - [20.18](./18-how-llm-serving-fails.md) failures, [20.19](./19-slis-slos-and-alerts-for-token-apis.md) SLOs, [20.20](./20-autoscaling-gpu-inference.md) autoscaling, [20.21](./21-request-routing-retries-and-overload-control.md) routing, [20.22](./22-operating-vllm-triton-ray-and-tensorrt-llm.md) engines, [20.24](./24-terraform-for-resilient-gpu-clusters.md) Terraform.
