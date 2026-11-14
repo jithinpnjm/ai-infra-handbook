@@ -24,7 +24,7 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Every chapter in this part so far has been about collecting signal. This chapter is about acting on that signal. Alerting turns metrics and traces into pages for the on-call engineer. SLOs turn the same metrics into commitments the business can read. Health checks let Kubernetes decide whether a workload is alive and able to serve traffic.
+Picture the phone on your nightstand lighting up at four in the morning because a token API has started returning errors. The first question is whether this is a real outage or a blip that will clear by itself. The earlier chapters in this part collected the signals that answer that question. This chapter is about acting on them. Alerting turns metrics and traces into pages for the on-call engineer. SLOs turn the same metrics into commitments the business can read. Health checks let Kubernetes decide whether a workload is alive and able to serve traffic.
 
 Imagine each piece is missing. Without alerting, the on-call learns about an outage from a customer. Without SLOs, nobody can say which alerts the business cares about most. Without health checks, Kubernetes keeps sending requests to a pod that cannot answer them.
 
@@ -50,14 +50,7 @@ Read these chapters first. The rest of this chapter assumes their tools are runn
 
 ### Outcomes
 
-After this chapter, you will be able to do the following. Each outcome maps to one of the sections below.
-
-1. Specify the SLOs for an AI factory: availability, latency, throughput, and model quality.
-2. Configure Alertmanager routing: severity-based routing, on-call rotation, and escalation policy.
-3. Implement Kubernetes health checks for AI workloads: readiness, liveness, and startup probes.
-4. Define the error budget, and explain how alerts burn against it.
-5. Build an on-call runbook that says what to do when each alert fires.
-6. Operate the alerting and SLO stack on GKE with reliable alerting, sensible escalation, and a runbook.
+Think of this chapter as the path from a number on a dashboard to a page that helps someone. It specifies the SLOs for an AI factory, covering availability, latency, throughput and model quality. It configures Alertmanager routing, with severity-based routes, an on-call rotation and an escalation policy. It then implements Kubernetes health checks for AI workloads, using readiness, liveness and startup probes, and it defines the error budget and shows how alerts burn against it. The last sections build an on-call runbook that says what to do when each alert fires, and run the whole alerting and SLO stack on GKE. Each part maps to one of the sections below.
 
 ---
 
@@ -65,7 +58,9 @@ After this chapter, you will be able to do the following. Each outcome maps to o
 
 ### 1.1 What an SLO is
 
-Picture a customer who asks, "Is your service reliable?" If the team has no shared definition, every engineer answers differently. A Service Level Objective (SLO) gives that answer a measurable form. An SLO has three parts: a Service Level Indicator (SLI), a target, and a time window.
+Picture a customer who asks, "Is your service reliable?" If the team has no shared definition, every engineer answers differently. One engineer thinks about the server, another thinks about the average response, and a third thinks about the worst requests of the day. A Service Level Objective (SLO) gives that answer a measurable form. An SLO has three parts: a Service Level Indicator (SLI), a target, and a time window. The SLI is the measurement itself, the target is the line it must stay on, and the window is the period over which the team checks.
+
+A good SLI is close to what the customer experiences. A count of requests that returned a success code is a fair choice for availability, because a customer who gets an error feels it directly. A CPU reading on a server is a poor SLI for the same promise, because a server can run hot and still answer every request quickly, or run cool and still drop them. Pick the measurement first, then pick the target, so the target always means something a customer would notice.
 
 | Component | Example |
 |---|---|
@@ -76,9 +71,9 @@ Picture a customer who asks, "Is your service reliable?" If the team has no shar
 
 ### 1.2 The SLOs for an AI factory
 
-An AI factory makes promises at three layers. The cluster team promises that the infrastructure stays up. The team that runs a model promises latency and availability for its endpoint. The customer feels only the end-to-end result, and that is the layer the business cares about most.
+Picture a product manager asking whether the chatbot is up. The cluster team hears "is the GPU pool running", the model team hears "is the endpoint answering", and the customer means "does my answer arrive quickly". All three are reasonable, and they produce three different answers. An AI factory makes promises at three layers. The cluster team promises that the infrastructure stays up. The team that runs a model promises latency and availability for its endpoint. The customer feels only the end-to-end result, and that is the layer the business cares about most.
 
-Every target in the table below is an example starting point for your team to choose, not a figure from a source.
+Every target in the table below is an example starting point for your team to choose, not a figure from a source. Read each row as a promise with one layer, one measurement and one window.
 
 | Layer | SLO | SLI | Target | Window |
 |---|---|---|---|---|
@@ -91,13 +86,13 @@ Every target in the table below is an example starting point for your team to ch
 | **Customer** | End-to-end latency p99 | p99 latency from request to response | < 500 ms | Monthly |
 | **Customer** | End-to-end availability | Uptime of the customer-facing service | 99.9% | Monthly |
 
-A chain of services can never be more reliable than its weakest link. When a customer request passes through several services, the combined availability ends up below any single target. Check the dependencies before you promise a customer-facing number.
+A chain of services can never be more reliable than its weakest link. When a customer request passes through several services, the combined availability ends up below any single target. Check the dependencies before you promise a customer-facing number. If the customer path passes through three services that each promise 99.9%, the customer cannot be promised the same 99.9%, because any one of those services can fail the request.
 
 ### 1.3 The error budget
 
-Suppose your SLO promises 99.9% availability for the month. That promise leaves a small amount of allowed downtime, and the allowance is the error budget. Teams spend it on work that carries risk, such as canary releases, chaos experiments, and rolling upgrades.
+Suppose your SLO promises 99.9% availability for the month. That promise leaves a small amount of allowed downtime, and the allowance is the error budget. Think of it as a bank account for failure. Every minute of downtime is a withdrawal, and the account refills at the start of the next window. Teams spend it on work that carries risk, such as canary releases, chaos experiments, and rolling upgrades. A canary release sends a small share of traffic to a new version first, so a bad change costs less.
 
-When the budget runs out, a common policy is to pause new deployments until the next window begins. That policy is a team choice, not something an SLO imposes on you.
+When the budget runs out, a common policy is to pause new deployments until the next window begins. That policy is a team choice, not something an SLO imposes on you. The SLO only states the target. What the team does when the target is at risk is a separate decision that should be written down before the bad month arrives.
 
 ```text
 Error budget at 99.9% monthly availability:
@@ -107,15 +102,17 @@ Error budget at 99.9% monthly availability:
 - Burn rate 10 spends it in 3 days: 14.4 minutes per day
 ```
 
+Read the block as a chain of small facts. The month has 43,200 minutes, a tenth of a percent of that is 43.2 minutes, and spreading those minutes evenly over 30 days gives 1.44 minutes a day. A burn rate of 10 means you are spending the budget ten times faster than that even pace, which empties it in 3 days.
+
 The arithmetic assumes a 30-day month. If your window is different, recalculate the 43.2 minutes before you publish the number. Section 1.4 turns burn rate into alert rules.
 
-Before you publish an SLO, do the budget arithmetic for its window, so the team knows how much room it really has.
+Before you publish an SLO, do the budget arithmetic for its window, so the team knows how much room it really has. A team that discovers its budget is 43 minutes on the day of an outage will make different choices than a team that knew the number in advance.
 
 ### 1.4 Burn-rate alerting for a token API
 
-A token API is an HTTP service that streams model output. Chapter 20.19 owns what to measure for it: time to first token, inter-token latency, and per-tenant slices. This section owns the alerting method, shown with the simplest SLI, availability.
+Picture a token API, which is an HTTP service that streams model output one token at a time. Its owners want to know the moment it starts failing, but not every bad minute deserves a page. Chapter 20.19 owns what to measure for it: time to first token, inter-token latency, and per-tenant slices. This section owns the alerting method, shown with the simplest SLI, availability.
 
-The method works on a ratio. The burn rate is the observed error ratio divided by the error budget ratio. With a 99.9 percent SLO the budget ratio is 0.001, so an error ratio of 0.02 is a burn rate of 20. A burn rate of 1 uses exactly the whole budget by the end of the window.
+The method works on a ratio. The burn rate is the observed error ratio divided by the error budget ratio. With a 99.9 percent SLO the budget ratio is 0.001, so an error ratio of 0.02 is a burn rate of 20. A burn rate of 1 uses exactly the whole budget by the end of the window. Think of the burn rate as a speedometer for the budget. It tells you how fast the account is emptying right now, which is more useful than a count of how much has already gone.
 
 Start with the traffic. Say the API serves 100 requests per second. In a 30-day month that is 259,200,000 requests, and the budget allows 259,200 failures. At a 2 percent error ratio the API fails 7,200 requests per hour, and the budget lasts 36 hours.
 
@@ -127,7 +124,7 @@ A single threshold such as "error ratio above 0.1 percent for 5 minutes" fails i
 | Page | 6 hours | 30 minutes | 6 | 0.006 | 5% |
 | Ticket | 3 days | 6 hours | 1 | 0.001 | 10% |
 
-Check the first row by hand. A burn rate of 14.4 for one hour spends 14.4 times 1 divided by 720 hours, which is 2 percent of the budget. At 100 requests per second that is 5,184 failed requests, and 5,184 divided by 259,200 is 0.02. The second row gives 6 times 6 over 720, which is 5 percent. The third gives 1 times 72 over 720, which is 10 percent.
+Check the first row by hand. A burn rate of 14.4 for one hour spends 14.4 times 1 divided by 720 hours, which is 2 percent of the budget. At 100 requests per second that is 5,184 failed requests, and 5,184 divided by 259,200 is 0.02. The second row gives 6 times 6 over 720, which is 5 percent. The third gives 1 times 72 over 720, which is 10 percent. Doing this arithmetic once by hand is the best way to trust the table, because then you know where each number came from.
 
 How fast do the rules fire? If the API goes fully dark after a clean hour, the one-hour ratio reaches 0.0144 after 0.0144 hours, about 52 seconds. At a steady 2 percent error ratio the first row fires after 0.0144 divided by 0.02 hours, about 43 minutes. At 1 percent errors the first row never fires, because 1 percent is below 1.44 percent, and the second row fires after 3.6 hours. At 0.5 percent only the ticket rule fires, after about 14 hours. Slower leaks cost less per hour, so a slower alert is acceptable.
 
@@ -148,7 +145,7 @@ The tested rule files for this method are `code/part20/slo_burn_alerts_availabil
 
 ### 2.1 The Alertmanager architecture
 
-A single network fault can make many alerts fire in the same minute, and the on-call should not receive them one by one. Alertmanager is the router that stands between Prometheus and the on-call. It receives the alerts, removes duplicates, groups related ones, and sends each group to the right receiver.
+Picture a network switch failing in the middle of the night. Within a short time, dozens of alerts fire across the cluster, all with the same root cause. The on-call should receive one page, not dozens. A single network fault can make many alerts fire in the same minute, and the on-call should not receive them one by one. Alertmanager is the router that stands between Prometheus and the on-call. It receives the alerts, removes duplicates, groups related ones, and sends each group to the right receiver.
 
 ```mermaid
 flowchart LR
@@ -164,9 +161,11 @@ flowchart LR
     A -->|info| EM
 ```
 
+Read the diagram as one-way traffic. Prometheus evaluates the rules and sends the firing alerts to Alertmanager, and Alertmanager decides where each one goes based on its severity. Prometheus never talks to PagerDuty or Slack directly, which keeps the routing decisions in one place.
+
 ### 2.2 The alert routing
 
-Routing lives in one YAML file. It names which alerts go to which receiver, and how often each one repeats. When you read the file, start with the critical route, since that is the one that wakes someone up.
+Picture the first week on a new rotation, when someone asks which alerts go to the pager and which go to chat. The answer lives in one routing file. Routing lives in one YAML file. It names which alerts go to which receiver, and how often each one repeats. A route is a rule that matches alerts by their labels, such as a severity, and sends the matches to a named receiver. A receiver is the destination itself, such as a PagerDuty service or a Slack channel. Routes are checked in order, so a narrow route placed early can catch alerts before a broader one sees them. When you read the file, start with the critical route, since that is the one that wakes someone up.
 
 ```yaml
 # code/part17/alertmanager.yaml
@@ -210,11 +209,11 @@ receivers:
         smarthost: 'smtp.example.com:587'
 ```
 
-In this config, critical alerts go to PagerDuty and repeat every hour. Warnings go to Slack and repeat every 12 hours, and info alerts go to email and repeat daily. The repeat interval keeps one unchanged alert from re-notifying too often, and the group interval keeps related alerts together. Production Kubernetes, chapter 9, warns that excessive critical alerts burn out on-call engineers and bury the real ones, so tune each route until a page means someone must act now.
+In this config, critical alerts go to PagerDuty and repeat every hour. Warnings go to Slack and repeat every 12 hours, and info alerts go to email and repeat daily. The repeat interval keeps one unchanged alert from re-notifying too often, and the group interval keeps related alerts together. The group wait is the short pause Alertmanager takes before it sends the first notification, so that a burst of related alerts can be combined. Production Kubernetes, chapter 9, warns that excessive critical alerts burn out on-call engineers and bury the real ones, so tune each route until a page means someone must act now.
 
 ### 2.3 The alert inhibition
 
-Inhibition tackles a different kind of noise. When a whole cluster is down, its many lower-severity alerts add little new information. An inhibit rule can mute them, so the on-call sees the root cause first.
+Picture a cluster that has gone down entirely. Every workload on it raises its own alert, and the on-call sees a wall of red that hides the one fact that matters. Inhibition tackles a different kind of noise. When a whole cluster is down, its many lower-severity alerts add little new information. An inhibit rule can mute them, so the on-call sees the root cause first.
 
 ```yaml
 # code/part17/inhibit_rules.yaml
@@ -231,7 +230,7 @@ inhibit_rules:
     equal: ['gpu', 'node']
 ```
 
-The first rule mutes any alert below critical severity that shares a cluster label with a firing ClusterDown alert. The second rule mutes the tier 2 and tier 3 Xid alerts from chapter 17.4 that share the gpu and node labels with a firing GPUNodeDown alert. Both rules cut noise, so the on-call sees the most important alert first. Before you rely on them, check that your exporters really set the labels the rules match on.
+The first rule mutes any alert below critical severity that shares a cluster label with a firing ClusterDown alert. The second rule mutes the tier 2 and tier 3 Xid alerts from chapter 17.4 that share the gpu and node labels with a firing GPUNodeDown alert. Both rules cut noise, so the on-call sees the most important alert first. Before you rely on them, check that your exporters really set the labels the rules match on. A rule that matches nothing fails quietly, and you only find out during the next outage.
 
 ---
 
@@ -239,7 +238,9 @@ The first rule mutes any alert below critical severity that shares a cluster lab
 
 ### 3.1 The Kubernetes health check primitives
 
-A running pod can still fail to serve a single request. Kubernetes uses three probes to tell those states apart: the readiness probe, the liveness probe, and the startup probe.
+Picture a pod that is running in the cluster but answers every request with an error. Kubernetes sees a running process and does nothing. A running pod can still fail to serve a single request. Kubernetes uses three probes to tell those states apart: the readiness probe, the liveness probe, and the startup probe. A probe is a check that Kubernetes runs on a schedule, and its result decides what Kubernetes does with the pod. The three probes run at different times in a pod's life. The startup probe runs first, while the pod is starting. Once it passes, the liveness and readiness probes take over, and they keep running for as long as the pod exists.
+
+It helps to read each probe as a different kind of question. A readiness failure is a question about traffic, and the answer is "not right now". A liveness failure is a question about survival, and the answer is "this process is stuck, so replace it". Mixing those two questions is where most probe trouble begins.
 
 | Probe | What it does | When it fires |
 |---|---|---|
@@ -249,7 +250,7 @@ A running pod can still fail to serve a single request. Kubernetes uses three pr
 
 ### 3.2 Health checks for AI workloads
 
-A process can be alive and still useless. Picture a model server that is running but still loading weights from disk. A check that only asks whether the process exists would send it traffic too early, so the check has to ask whether the workload can serve.
+Picture a model server that starts, opens its port and begins answering the health endpoint, while it is still reading tens of gigabytes of weights from disk. A process can be alive and still useless. A check that only asks whether the process exists would send it traffic too early, so the check has to ask whether the workload can serve. Model weights are the learned numbers that make up the model, and loading them takes time that a simple check cannot see.
 
 ```yaml
 # code/part17/health_checks.yaml
@@ -285,11 +286,11 @@ lifecycle:
       command: ["/bin/sh", "-c", "sleep 10"]
 ```
 
-Each probe asks a different question. The liveness probe asks whether the process is alive, the readiness probe asks whether the model is loaded and the inference engine is ready, and the startup probe asks whether the model is still loading. Keep the liveness check local. Kubernetes restarts a pod when liveness fails, so a liveness check that calls a database would restart healthy pods during a database outage. Production Kubernetes, chapter 14, makes the same point and suggests failing the readiness probe instead. The preStop hook gives in-flight requests time to finish before Kubernetes sends SIGTERM. That sleep counts against the pod's graceful shutdown period, which defaults to 30 seconds and can be tuned with terminationGracePeriodSeconds. The timing values in the manifest are examples, so set them from how long your model takes to load and drain.
+Each probe asks a different question. The liveness probe asks whether the process is alive, the readiness probe asks whether the model is loaded and the inference engine is ready, and the startup probe asks whether the model is still loading. Keep the liveness check local. Kubernetes restarts a pod when liveness fails, so a liveness check that calls a database would restart healthy pods during a database outage. Production Kubernetes, chapter 14, makes the same point and suggests failing the readiness probe instead. The preStop hook gives in-flight requests time to finish before Kubernetes sends SIGTERM, which is the signal that asks a process to shut down. That sleep counts against the pod's graceful shutdown period, which defaults to 30 seconds and can be tuned with terminationGracePeriodSeconds. The timing values in the manifest are examples, so set them from how long your model takes to load and drain.
 
 ### 3.3 Health checks for GPU nodes
 
-A probe inside a pod cannot see a broken GPU stack on the host. The script below checks the node itself. It asks whether the DCGM service and the DCGM exporter are active, and whether nvidia-smi returns utilization output.
+Picture a pod whose probe passes while the GPU on its node has quietly stopped responding. The probe lives inside the pod, and it cannot see the driver or the DCGM service on the host. A probe inside a pod cannot see a broken GPU stack on the host. The script below checks the node itself. It asks whether the DCGM service and the DCGM exporter are active, and whether nvidia-smi returns utilization output.
 
 ```bash
 # Health check script for a GPU node
@@ -303,7 +304,7 @@ systemctl is-active dcgm-exporter || exit 1
 exit 0
 ```
 
-Be careful with the third check. The grep only tests that the word GPU appears in the output. It does not read a utilization value, so treat it as a weak signal and add a real query if you need certainty.
+Be careful with the third check. The grep only tests that the word GPU appears in the output. It does not read a utilization value, so treat it as a weak signal and add a real query if you need certainty. A script that looks thorough but checks only a word can pass on a broken node, and that false comfort is worse than no check at all.
 
 ---
 
@@ -311,7 +312,9 @@ Be careful with the third check. The grep only tests that the word GPU appears i
 
 ### 4.1 What the runbook contains
 
-At night, an on-call engineer needs one question answered fast: what do I do now? A runbook answers that question for each alert. Every runbook has six sections, and each section answers one question, from what the alert means to what to write in the post-mortem.
+Picture an on-call engineer, half awake, reading an alert on a phone with a cluster that is misbehaving. At night, an on-call engineer needs one question answered fast: what do I do now? A runbook answers that question for each alert. Every runbook has six sections, and each section answers one question, from what the alert means to what to write in the post-mortem. A post-mortem is the written review that follows an incident, and it turns the outage into a fix. The sections are in the order the engineer needs them. The first two sections explain whether the alert is real. The next two say what to type. The last two say who to call and what to write down afterwards.
+
+A runbook that skips any of those sections leaves a gap at the worst possible time. A runbook with no escalation path leaves the engineer alone once the first mitigation fails, and a runbook with no post-mortem template means the lesson from the outage is lost.
 
 | Section | What it contains |
 |---|---|
@@ -324,7 +327,7 @@ At night, an on-call engineer needs one question answered fast: what do I do now
 
 ### 4.2 The runbook template
 
-The template below is a complete example for one alert. The escalation conditions are example values. Set them from your own incident history and your team's response time. The Xid tiers come from chapter 10.21, and chapter 17.4 holds the alert.
+Picture a new engineer taking their first on-call shift, with a single alert and no context. The template below is what they can follow without asking anyone. It is a complete example for one alert. The escalation conditions are example values. Set them from your own incident history and your team's response time. The Xid tiers come from chapter 10.21, and chapter 17.4 holds the alert.
 
 ```markdown
 # Alert: GPUXidTier3
@@ -360,7 +363,7 @@ If the diagnostic fails or the Xid repeats after reset, open an RMA with the har
 
 ### 4.3 The runbook integration with Alertmanager
 
-The runbook is integrated with Alertmanager via the `runbook_url` annotation.
+Picture the page arriving with a link in it, and the link opening the exact steps for that alert. The runbook is integrated with Alertmanager via the `runbook_url` annotation. An annotation is a note attached to an alert, and it travels with the alert into the page.
 
 ```yaml
 - alert: GPUXidTier3
@@ -372,7 +375,7 @@ The runbook is integrated with Alertmanager via the `runbook_url` annotation.
     runbook_url: "https://wiki.example.com/runbooks/gpu-xid-tier3"
 ```
 
-The expression here is a one-code excerpt using the 4.9.0 name. The full rule, with every tier 3 code and the 4.8.x names, is in `code/part17/gpu_alerts.yaml`, and chapter 17.4 explains the renames. Every alert should carry a `runbook_url` annotation, so the page links straight to its steps. Alert annotations should give enough context to act on, including a link to the runbook.
+The expression here is a one-code excerpt using the 4.9.0 name. The full rule, with every tier 3 code and the 4.8.x names, is in `code/part17/gpu_alerts.yaml`, and chapter 17.4 explains the renames. Every alert should carry a `runbook_url` annotation, so the page links straight to its steps. Alert annotations should give enough context to act on, including a link to the runbook. A page with no link forces the on-call to search a wiki at the worst moment, and that search is where minutes go missing.
 
 ---
 
@@ -380,7 +383,7 @@ The expression here is a one-code excerpt using the 4.9.0 name. The full rule, w
 
 ### 5.1 The components
 
-The alerting stack is a production service in its own right. If Alertmanager stops, pages stop with it, and nobody notices until a customer does. Each component below therefore needs its own target and its own owner.
+Picture the alerting stack going quiet on a Sunday because a single pod was evicted and nobody was watching it. The alerting stack is a production service in its own right. If Alertmanager stops, pages stop with it, and nobody notices until a customer does. Each component below therefore needs its own target and its own owner.
 
 | Component | Where it runs | Backing store | SLO |
 |---|---|---|---|
@@ -389,11 +392,11 @@ The alerting stack is a production service in its own right. If Alertmanager sto
 | PagerDuty integration | Managed service | (PagerDuty) | Page latency p99 < 30 s |
 | Runbook repository | Git repo | Git history | Runbook freshness p99 < 1 day |
 
-The targets in the table above are example values. Measure your own stack before you commit to any of them.
+The targets in the table above are example values. Measure your own stack before you commit to any of them. A target you have never measured is a guess, and a guess does not help you during an incident.
 
 ### 5.2 IAM and the alert routing
 
-Give the alerting stack its own permissions, so each group can do only its job. The role names below are illustrative. Check them against your identity system before you copy them.
+Picture a junior engineer who accidentally changes the routing and silences the critical route for an afternoon. Give the alerting stack its own permissions, so each group can do only its job. IAM, short for identity and access management, is the system that decides who can change what. The role names below are illustrative. Check them against your identity system before you copy them.
 
 | Role | Who | What they can do |
 |---|---|---|
@@ -401,9 +404,13 @@ Give the alerting stack its own permissions, so each group can do only its job. 
 | `alertmanager.writer` | Prometheus | Fire alerts to Alertmanager |
 | `alertmanager.admin` | The platform team | Manage the alert routing; manage the inhibit rules |
 
-Routing is the platform team's job. Each alert needs a severity, each severity needs a route, and each route needs a named on-call owner.
+Routing is the platform team's job. Each alert needs a severity, each severity needs a route, and each route needs a named on-call owner. When a route has no owner, the alerts on it belong to nobody, and they tend to be the ones that go unanswered.
+
+The table also shows why roles matter for alerting. The people who respond to pages need to read the alerts and the runbooks, but only the platform team should change where the alerts go. If an on-call engineer can edit the routing during an incident, a quick fix can silence the very route that was meant to wake them.
 
 ### 5.3 Observability
+
+Picture the team's review of the alerting stack once a month. The review asks whether the alerts are firing too often, whether pages arrive on time, and whether the runbooks are still true. The table gives one metric for each of those questions, with its starting alert.
 
 | Metric | Why it matters | Alert |
 |---|---|---|
@@ -419,9 +426,11 @@ The thresholds in this table are example values, so tune them to your alert volu
 
 ## 6. How it fails
 
-Most alerting and health-check problems fall into six patterns. When something misbehaves, you can match the symptom to one of these patterns and go straight to its fix. Each pattern has a telltale symptom, and each one points to a different fix.
+Picture the same week going wrong in six different ways. Each failure below shows up in a different place, so the first job is to match the symptom to a pattern. Most alerting and health-check problems fall into six patterns. When something misbehaves, you can match the symptom to one of these patterns and go straight to its fix. Each pattern has a telltale symptom, and each one points to a different fix.
 
 ### 6.1 "The on-call is paged for every alert"
+
+The on-call wakes up to a phone full of pages from one night. Most of them were ignored by morning, and the one that mattered is somewhere in the pile.
 
 **Symptom:** The on-call receives 200 pages a day, which is an example volume, and cannot respond to all of them. Soon the pages are ignored.
 
@@ -431,6 +440,8 @@ Most alerting and health-check problems fall into six patterns. When something m
 
 ### 6.2 "The critical alert is not paged"
 
+A customer emails to say the service is down. The on-call has no alert, no page and no idea that anything happened. The team checks the logs and finds the critical alert did fire in Prometheus, so the failure sits somewhere between the rule and the phone. That gap is the one to close first, because every minute spent there is a minute the customer waits.
+
 **Symptom:** The cluster is down, but the on-call does not know. The customer reports the outage first.
 
 **Diagnosis:** The critical alert may be misconfigured, inhibited by another alert, sent to the wrong route, or blocked by a broken PagerDuty integration.
@@ -438,6 +449,8 @@ Most alerting and health-check problems fall into six patterns. When something m
 **Fix:** Simulate a cluster failure and confirm that you see the critical alert fire and reach PagerDuty. Then add an integration test, so the path is checked again after every change.
 
 ### 6.3 "The SLO is breached but the alert does not fire"
+
+A manager points at the dashboard, where the SLO line is red, and asks why nobody was paged. Nobody can say, because the alert never fired.
 
 **Symptom:** The dashboard shows the SLO breach, but no alert fires. If you see this, the alert rule is the first thing to check.
 
@@ -447,6 +460,8 @@ Most alerting and health-check problems fall into six patterns. When something m
 
 ### 6.4 "The liveness probe fails and Kubernetes restarts the pod in a loop"
 
+A model pod restarts every few minutes, and its logs show it never reaches the point of serving. The restarts look like a crash, but the process is actually healthy and only slow.
+
 **Symptom:** The liveness probe fails again and again, so Kubernetes restarts the pod. The workload never finishes starting and never serves traffic. A failing readiness probe alone would not cause this. It only keeps the pod out of the load balancer.
 
 **Diagnosis:** The liveness probe may be too aggressive, check a dependency that is not ready yet, or use a timeout that is too short.
@@ -455,6 +470,8 @@ Most alerting and health-check problems fall into six patterns. When something m
 
 ### 6.5 "The error budget is exhausted but the team does not know"
 
+The team ships a release on a Friday afternoon, and the month's budget was already gone on Wednesday. Nobody had looked at the number since the start of the month.
+
 **Symptom:** The budget is spent, but the team keeps deploying. Customers feel an outage the team did not expect.
 
 **Diagnosis:** No budget alert exists, nobody tracks the budget on a dashboard, and nothing pauses releases when the budget runs out.
@@ -462,6 +479,8 @@ Most alerting and health-check problems fall into six patterns. When something m
 **Fix:** Add a budget alert that fires early, before the budget is gone. An early trigger such as 75 percent spent is an example value. Show the remaining budget on the team dashboard, and pause new deployments when it runs out.
 
 ### 6.6 "The runbook is out of date"
+
+The on-call follows the runbook step by step, and the first command fails because a flag was renamed months ago. The incident grows while the engineer searches for the new way to do it.
 
 **Symptom:** The on-call follows the runbook, but the mitigation no longer works, so the incident grows.
 
@@ -473,15 +492,19 @@ Most alerting and health-check problems fall into six patterns. When something m
 
 ## 7. Hands-on lab
 
-Reading about alert routing is not the same as running it. This lab installs Alertmanager on GKE, configures the routing, and checks the runbook integration. The commands were not run on hardware for this book, so check flags against your versions.
+Picture a fresh GKE cluster with Prometheus already running and an empty alerting setup. Reading about alert routing is not the same as running it. This lab installs Alertmanager on GKE, configures the routing, and checks the runbook integration. The commands were not run on hardware for this book, so check flags against your versions before you trust the output.
 
 ### 7.1 Prerequisites
+
+Before you begin, the cluster and the metrics stack should already be in place. Without Prometheus there is nothing for Alertmanager to receive, so check that first.
 
 - A GKE Autopilot or Standard cluster (1.27+).
 - Helm 3 for installing Alertmanager.
 - Prometheus installed (Chapter 17.2).
 
 ### 7.2 Step 1: install Alertmanager
+
+Start by installing Alertmanager into the monitoring namespace with Helm. The one setting here controls how long an alert stays marked as firing after its source stops reporting it.
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -492,6 +515,8 @@ helm install alertmanager prometheus-community/alertmanager \
 ```
 
 ### 7.3 Step 2: configure the alert routing
+
+Next, load the routing and the inhibit rules into the cluster. The routing file goes in as a secret because it holds receiver keys. The inhibit rules go in as a config map. Then restart the deployment so Alertmanager reads the new files.
 
 ```bash
 kubectl -n monitoring create secret generic alertmanager-config \
@@ -507,6 +532,8 @@ kubectl -n monitoring rollout restart deployment alertmanager
 
 ### 7.4 Step 3: configure the runbook URLs
 
+Now load the alert rules that carry the runbook links. The rules go into a config map, and Prometheus is told to reread its configuration. After the reload, each alert holds its runbook URL.
+
 ```bash
 # Add the runbook URL to the alert rule
 kubectl -n monitoring create configmap alert-rules \
@@ -519,6 +546,8 @@ curl -X POST http://prometheus.monitoring:9090/-/reload
 
 ### 7.5 Step 4: simulate a critical alert
 
+Next, send a fake critical alert straight to Alertmanager. This tests the path from alert to route without waiting for a real failure. The alert is labeled critical, so it should follow the critical route.
+
 ```bash
 # Inject a synthetic critical alert
 curl -X POST http://alertmanager.monitoring:9093/api/v2/alerts \
@@ -529,6 +558,8 @@ curl -X POST http://alertmanager.monitoring:9093/api/v2/alerts \
 
 ### 7.6 Step 5: verify the alert routing
 
+Now check that the fake alert arrived and went to the right place. You open a tunnel to Alertmanager and list the alerts it holds. The receiver name tells you which route the alert took.
+
 ```bash
 # Query Alertmanager
 kubectl -n monitoring port-forward svc/alertmanager-operated 9093:9093 &
@@ -538,6 +569,8 @@ curl -s http://localhost:9093/api/v2/alerts | jq .
 
 ### 7.7 Step 6: verify the error budget
 
+Last, check that the error budget metric exists and holds a value. A budget you cannot query cannot drive a dashboard or an alert. The query asks Prometheus for the remaining budget for the current month.
+
 ```bash
 # Query the error budget
 curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=cluster_availability_budget_remaining' | jq .
@@ -546,7 +579,7 @@ curl -s 'http://prometheus.monitoring:9090/api/v1/query?query=cluster_availabili
 
 ### 7.8 What to record
 
-After the lab, you should be able to answer five questions quickly. The five-second bar is an example, so set your own:
+After the lab, answer these five questions quickly. Each answer is a number or a name you can read from the stack, and a team that can answer them in seconds has a stack it can operate. Write the answers into the team notes with the date, so the next review has something to compare against. The five-second bar is an example, so set your own.
 
 1. What is the current Alertmanager latency p99?
 2. What is the current alert firing rate?
@@ -560,7 +593,7 @@ The 30-second limit is also an example value. If an answer takes longer than you
 
 ## Exercises
 
-Work through these on a lab cluster, not on production. Try to explain each result to a teammate before you move on. If you get stuck, reread the runbook section first.
+Picture a lab cluster where the alerting stack is running but has never been tested by a real incident. The exercises below push it in the directions a real team would need, one piece at a time. Work through these on a lab cluster, not on production. The lab cluster lets you break things on purpose, and that is the whole point of the exercises. Try to explain each result to a teammate before you move on. If you get stuck, reread the runbook section first.
 
 1. **Add a runbook for a tier 2 Xid alert.** Configure the alert, add the runbook URL, and verify that the alert fires. *Solution sketch:* start from the Xid rules in chapter 17.4, add a runbook URL annotation, and test with `promtool test rules`.
 2. **Add an inhibit rule for cluster down.** Add an inhibit rule that mutes per-workload alerts while the cluster is down. *Solution sketch:* an Alertmanager inhibit rule whose source matches ClusterDown and whose targets are the per-workload alerts.
@@ -683,4 +716,3 @@ The alerting and SLO operational patterns draw on Volume 16 chapter 9 and Volume
 
 - The lab in Section 7 is **untested** against a live GKE cluster in this repository.
 - The Alertmanager and Prometheus versions assumed in the lab should be pinned against the current releases before production use.
-- The PagerDuty and Slack integrations in the lab require production credentials that are not provided in the lab.
