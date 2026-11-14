@@ -14,23 +14,23 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-The last interviewer says, "Pick one project you are proud of and take me through it." You have rehearsed Linux, code and system design. Nothing in those rounds trained you for this one. It tests whether the work on your CV is really yours, and whether you can defend a decision under questions.
+Imagine the end of a long day of interviews. The final interviewer leans back and says, "Pick one project you are proud of and take me through it." You have already rehearsed Linux, code and system design, and none of those rounds prepared you for this moment. The question tests two things at once. It checks whether the work on your CV is really yours, and it checks whether you can defend a decision when someone keeps asking why.
 
-Nebius describes the final stage on its SRE interview page as one hour with a team leader. The conversation covers the team, its projects and its services. The page says extra technical questions may come, and that you are told about them in advance. That is the official part.
+The official part comes first. Nebius describes the final stage on its SRE interview page as one hour with a team leader. The conversation covers the team, its projects and its services. The page says extra technical questions may come, and that you are told about them in advance. Keep that sentence about advance notice in mind, because it is the only firm statement you have about what the hour will contain.
 
-A secondary source says some candidates face a 90-minute technical deep dive on one significant project. It also says the hiring manager asks about past projects, the reasons behind key decisions and teamwork. Treat both as unverified. Ask your recruiter which one you are getting and what to prepare.
+A secondary source, which is a candidate report and not a Nebius page, says some candidates face a 90-minute technical deep dive on one significant project. It also says the hiring manager asks about past projects, the reasons behind key decisions and teamwork. You cannot check either claim from the official page, so treat both as unverified. Ask your recruiter which one you are getting and what to prepare.
 
-Prepare for the harder shape. If the hour turns out to be a friendly talk, you lose nothing.
+Prepare for the harder shape, because over-preparing costs you very little. If the hour turns out to be a friendly talk, you lose nothing except a few evenings of notes.
 
 A realistic question in the interviewer's voice: "You said you moved the alerting to a new design. What did you consider and reject, what broke afterwards, and what would you do differently?"
 
-This chapter gives you a fill-in framework, not a script. Every figure that belongs to you appears as a marker such as [YOUR NUMBER]. You must bring real numbers from your own work.
+Read this chapter as a framework you fill in, not a script you memorise. Every figure that belongs to you appears as a marker such as [YOUR NUMBER]. Those markers are blanks for your own work. Bring real numbers from that work, and leave a blank empty if you do not have the number yet, because an empty blank is more honest than a borrowed figure.
 
 ## The core ideas
 
 ### 1. The round has two shapes and one skill
 
-The skill under every shape is the same. You explain a real system, you give reasons for choices, and you admit what went wrong without flinching.
+Consider the same question arriving in three different rooms. A team leader asks it in a friendly talk, a hiring manager asks it in a conversation about your career, and an engineer asks it in a formal deep dive. The skill underneath all three is the same. You explain a real system, you give reasons for your choices, and you admit what went wrong without flinching.
 
 | Shape | What the source says | Evidence | What to prepare |
 |---|---|---|---|
@@ -38,19 +38,21 @@ The skill under every shape is the same. You explain a real system, you give rea
 | Project deep dive of up to 90 minutes | A technical defence of one significant project | One secondary source, unverified | The full dossier, five levels of "why", and a whiteboard sketch |
 | Hiring-manager conversation | Past projects, reasons for key decisions, teamwork | Same secondary source, unverified | Decision stories with alternatives, and one teamwork story |
 
-The interviewer is often your future manager. They are asking whether they would trust you with a pager and a production fleet.
+Keep in mind who is usually in the chair. The interviewer is often your future manager, and underneath every follow-up they are asking a plain question. Would they trust you with a pager and a production fleet?
 
 **Prepare one project deeply rather than five projects thinly.** A deep dive punishes breadth, because the second "why" on any claim exposes whether you were there.
 
+Think about what a deep dive does to a thin story. The interviewer asks why you chose the cache, then why not the other cache, then what the cache did to memory under load. A project you know only from the release notes runs out of answers at the second question. A project you ran for a long stretch keeps going, because you remember the late-night decisions and the numbers you checked at the time.
+
 ### 2. Picking the one project
 
-The wrong way to pick is to choose the project with the most impressive name. The right way is to choose the one where you can survive five levels of questions. Each level asks about the thing you just said.
+Imagine two candidate projects on your list. One has the most impressive name, and the other is the one you spent a long night fixing during an outage. The wrong way to pick is to choose the impressive name. The right way is to choose the project where you can survive five levels of questions. Each level asks about the thing you just said, so a project you only watched falls apart early.
 
-Score your candidates on six tests. You need an honest yes on at least five. First, you made or shaped the key decisions, not just carried them out. Second, it ran in production or under real load, so something could actually break. Third, you can state at least five numbers about it. Fourth, something went wrong and you know the root cause. Fifth, it touches what this job does, such as Kubernetes, observability, automation or reliability. Sixth, you can name a decision you would now make differently.
+Score each candidate on six tests, and write yes or no against each one. You need an honest yes on at least five. The first test asks whether you made or shaped the key decisions, not just carried them out. The second asks whether it ran in production or under real load, so that something could actually break. The third asks whether you can state at least five numbers about it. The fourth asks whether something went wrong and you know the root cause. The fifth asks whether it touches what this job does, such as Kubernetes, observability, automation or reliability. The sixth asks whether you can name a decision you would now make differently. Be strict with yourself here. A test you pass only because you were in the room is not the same as a test you pass because you made the call.
 
-Your own background gives you candidates, and the markers below are only labels. [YOUR GKE PLATFORM PROJECT] has scale, Terraform and an upgrade story. [YOUR ALERT-ROUTER PROJECT] has a decision about where an AI component sits in an alert path and what happens when it is wrong. [YOUR TRADING-BOT RELIABILITY INCIDENT] has real consequences, which makes a failure story vivid. A lab from this handbook is the weakest choice, because nothing in it ran under real users. Use a lab as a second story that shows how you learn, and say plainly that it is a lab.
+Your own background should give you the candidates, and the markers below are only labels for them. Think of [YOUR GKE PLATFORM PROJECT] as the one with scale, Terraform and an upgrade story. [YOUR ALERT-ROUTER PROJECT] has a decision about where an AI component sits in an alert path and what happens when it is wrong. [YOUR TRADING-BOT RELIABILITY INCIDENT] has real consequences, which makes a failure story vivid. A lab from this handbook is the weakest choice, because nothing in it ran under real users. Use a lab as a second story that shows how you learn, and say plainly that it is a lab.
 
-For a Token Factory role, the best project is the one closest to reliability, performance and observability. A service that real people depended on fits better than a toolchain.
+Match the choice to the role. For a Token Factory role, the best project is the one closest to reliability, performance and observability. A service that real people depended on fits that role better than a toolchain, even a clever one. Ask yourself which story would make the team leader lean forward.
 
 ```mermaid
 flowchart TD
@@ -65,17 +67,19 @@ flowchart TD
 
 **Choose the project where you know the numbers and the mistakes, not the one that sounds biggest.**
 
+A quick test is to ask yourself which question you could answer in your sleep. If the answer is the question about the design, you know the shape of the project. If the answer is the question about what broke, you know the project itself. Both belong in your story, and the second is usually the one that persuades a senior interviewer that you were there.
+
 ### 3. The one-page dossier
 
-Writing the project down is how you find out what you do not know. The dossier has nine parts. Context, role and team, constraints, numbers, architecture, decisions, failures, what you would change, and metrics of success. Each part answers a question an interviewer will ask, and the order is the order a good story is told.
+Imagine a blank page on your desk and a deadline to fill it. Writing the project down is how you find out what you do not know, because the gaps show up quickly on paper. The dossier has nine parts. Context, role and team, constraints, numbers, architecture, decisions, failures, what you would change, and metrics of success. Each part answers a question an interviewer will ask. The order is also the order a good story is told, from why the project existed to how you would know it worked.
 
-The two parts that win or lose the round are decisions and failures. A decision entry names what you chose, at least two alternatives you considered, why you chose it, and the cost you accepted. That last field matters. Anyone can list benefits. Defending a trade-off means naming what the choice cost.
+Two parts decide how the round goes, decisions and failures. A decision entry names what you chose, at least two alternatives you considered, why you chose it, and the cost you accepted. Pay the most attention to the last field. Anyone can list benefits, because benefits are the reason the choice was made in the first place. Defending a trade-off means naming what the choice cost you, and that is the sentence an interviewer listens for.
 
-Production Kubernetes, chapter 1, shows the shape. It weighs a service mesh by listing what it removes from application teams and what it adds, then says the platform need not solve every application concern. It treats the decision as case by case, driven by your own priorities. Copy that shape. State the gain, state the cost, and say what requirement tipped the balance.
+Production Kubernetes, chapter 1, shows the shape well. It weighs a service mesh by listing what it removes from application teams and what it adds. Then it says the platform need not solve every application concern. The book treats the decision as case by case, driven by your own priorities, and that is the habit to copy. Put the same shape in your own dossier. State the gain, state the cost, and say which requirement tipped the balance.
 
-The failures part needs more than a list. For each failure write what broke, how you detected it and how fast, the root cause, what changed afterwards and what you got wrong. The last field is the one most people skip. It is also the one that builds trust.
+Consider the failure section as the part of the interview where the interviewer stops nodding and starts taking notes. The failures part needs more than a list. For each failure, write what broke, how you detected it and how fast, the root cause, what changed afterwards and what you got wrong. The last field is the one most people skip. It is also the one that builds trust, because it shows you have looked at your own part in the failure.
 
-The template is below. It is the file `code/part20/c28_dossier_template.md`. Every `[YOUR ...]` marker is a blank to fill with your own fact.
+Use the template as your working copy. It is the file `code/part20/c28_dossier_template.md`. Every `[YOUR ...]` marker is a blank to fill with your own fact. Keep the headings as they are, because the checker in the lab looks for them. The template follows.
 
 ```markdown
 # Project dossier: [YOUR PROJECT NAME]
@@ -184,59 +188,67 @@ The template is below. It is the file `code/part20/c28_dossier_template.md`. Eve
 - What did not improve: [YOUR HONEST GAP]
 ```
 
-The checker in the lab reads your filled copy and shows where it would not survive questioning. It checks structure, not truth.
+The checker in the lab reads your filled copy and shows where it would not survive questioning. Think of it as a sharp colleague who reads the document before the interview and marks each weak line. It checks structure, not truth. A clean report means the dossier is complete. It does not mean the facts in it are right.
 
 **Write the dossier before you rehearse, because a gap on paper is a stumble out loud.**
 
+Writing first also protects you from a common trap, which is rehearsing a story that sounds fine in your head but has no numbers under it. When the dossier is on paper, the blank cells are visible. Fill them, then speak. Rehearsing before writing tends to hide the gaps behind smooth sentences, and the gaps are exactly what the follow-up questions find.
+
 ### 4. What the interviewer asks at each part, and the shape of a good answer
 
-The best preparation is knowing the probe that follows each section. Below, each part has the question that tends to come, and the answer shape. These are my reasoning about how technical interviewers probe, not a record of Nebius questions.
+Imagine the interviewer with your dossier open, pointing at one line and asking the next question. The best preparation is knowing the probe that follows each section. Below, each part has the question that tends to come, and the answer shape that holds up under it. These are my reasoning about how technical interviewers probe, not a record of Nebius questions.
 
-On context, the probe is "Why did this need doing at all?" A good answer states the pain in one sentence a non-engineer would follow, then the number that showed it was real. Systems Performance, chapter 2, lists the opening questions of any investigation. Why do you think there is a problem, did it ever work well, what changed recently, who is affected, and what is the environment. Those questions make a short, disciplined opening for your own context.
+On context, the probe is "Why did this need doing at all?" A good answer states the pain in one sentence a non-engineer would follow, then the number that showed it was real. Systems Performance, chapter 2, lists the opening questions of any investigation. Those questions ask why you think there is a problem, whether it ever worked well, what changed recently, who is affected and what the environment is. They make a short and disciplined opening for your own context.
 
-On numbers, the probe is "How big was this?" A good answer gives scale, normal load, peak load and cost, with units, and says where each figure came from. If you do not know one, say so and say how you would find out. "I did not measure that, and here is how I would" beats a guess every time.
+On numbers, the probe is "How big was this?" A good answer gives scale, normal load, peak load and cost, with units, and says where each figure came from. Imagine the interviewer writing your figures down, because they will ask about the source of each one. If you do not know a figure, say so and say how you would find out. "I did not measure that, and here is how I would" beats a guess every time, since a guess that gets questioned falls apart.
 
-On architecture, the probe is "Draw it." A good answer follows one request or one deploy from start to end, then names the three components that mattered and why. Start with the boxes the user touches. Add the parts that fail last.
+On architecture, the probe is "Draw it." The interviewer wants something they can point to, so start there. A good answer follows one request or one deploy from start to end, then names the three components that mattered and why. Start with the boxes the user touches, because the user is the first thing your design has to serve. Add the parts that fail last, since those are the parts you will be pushed on under pressure.
 
-On decisions, the probe is the ladder: "Why that? What else did you consider? What would make you switch? What did it cost?" A good answer has a short chosen option, two or more alternatives with one reason each for rejecting them, and the cost you accepted. The chapter on how LLM serving fails (`c20-18`) uses the same habit. It states symptom, confirmation, mitigation and fix.
+On decisions, the probe is the ladder: "Why that? What else did you consider? What would make you switch? What did it cost?" Each rung asks more of you than the one before. A good answer has a short chosen option, two or more alternatives with one reason each for rejecting them, and the cost you accepted. The chapter on how LLM serving fails (`c20-18`) uses the same habit. It states symptom, confirmation, mitigation and fix, so your decision story and your failure story can share one shape.
 
-On failures, the probe is "What broke, and what did you do first?" A good answer shows protect-then-diagnose. You reduce user harm first and dig for the cause second. The stress round in `c20-26` practises exactly that order, so the story you tell here should match the habit you show there.
+On failures, the probe is "What broke, and what did you do first?" A good answer shows protect-then-diagnose. You reduce user harm first and dig for the cause second. Consider a dashboard that is red and a customer who cannot log in. Stopping the harm comes before the investigation. The stress round in `c20-26` practises exactly that order, so the story you tell here should match the habit you show there.
 
-On what you would change, the probe is "Knowing what you know now?" A good answer names one change, the evidence for it and what you would measure before starting. It also names what you would leave alone, which shows judgment.
+On what you would change, the probe is "Knowing what you know now?" Here the interviewer checks for humility and judgment together. A good answer names one change, the evidence for it and what you would measure before starting. It also names what you would leave alone, which shows judgment. An answer that wants to rewrite everything sounds like someone who has not yet paid for a change.
 
-On teamwork, the probe is "Tell me about a disagreement." A good answer describes the other person's position fairly, the evidence that settled it and how the relationship ended up. Do not make yourself the only wise person in the story.
+On teamwork, the probe is "Tell me about a disagreement." The interviewer is listening for how you treat someone who disagreed with you. A good answer describes the other person's position fairly, the evidence that settled it and how the relationship ended up. Do not make yourself the only wise person in the story, because that version sounds rehearsed and a little unkind.
 
 **For every claim in your dossier, know the next question and have one number or one fact ready for it.**
 
+Practise the follow-up as its own exercise. Take one claim from your dossier and ask yourself how you would know it is true, what you would measure to check it, and what you would say if the number turned out to be wrong. This takes a few minutes per claim, and it is the rehearsal that most closely matches a real deep dive.
+
 ### 5. Talking about trade-offs and mistakes honestly
 
-An interviewer who has run production systems has made expensive mistakes. They are listening for whether you have too. A project with no flaws sounds like a project you only watched.
+Think of the interviewer as someone who has been paged at a bad hour and still remembers it. An interviewer who has run production systems has made expensive mistakes of their own, and they are listening for whether you have made some too. A project with no flaws sounds like a project you only watched from the side.
 
-The trade-off sentence has four parts. Given this constraint, I chose A over B, accepting this cost, and I would revisit if this condition changed. For example, "Given a two-week deadline, I chose [YOUR CHOICE] over [YOUR ALTERNATIVE], accepting [YOUR COST], and I would revisit when load passes [YOUR NUMBER]." The sentence is short, it shows you saw alternatives, and it shows you know when the decision expires.
+Practise the trade-off sentence until it comes out without thought. It has four parts. Given this constraint, I chose A over B, accepting this cost, and I would revisit if this condition changed. For example, "Given a two-week deadline, I chose [YOUR CHOICE] over [YOUR ALTERNATIVE], accepting [YOUR COST], and I would revisit when load passes [YOUR NUMBER]." The sentence is short, it shows you saw alternatives, and it shows you know when the decision expires.
 
-The mistake story has five parts. What you did, what it caused with a number, how you found out, what you changed, and what you now do differently. Keep blame out of it. Systems Performance, chapter 2, names a blame-someone-else anti-method. You pick a component you do not own, say the problem is there and hand it off. An interviewer who hears "it was the network team's problem" will hear that anti-method.
+Imagine the moment you describe a mistake and feel tempted to point at another team. The mistake story has five parts. What you did, what it caused with a number, how you found out, what you changed, and what you now do differently. Keep blame out of it. Systems Performance, chapter 2, names a blame-someone-else anti-method. You pick a component you do not own, say the problem is there and hand it off. An interviewer who hears "it was the network team's problem" will hear that anti-method, and will start wondering what you did yourself.
 
-Two other traps matter. One is false certainty. If you do not know why something worked, say "I do not know why it worked, my best explanation is this, and here is how I would test it." The scientific method, a question then a hypothesis then a prediction then a test, gives you the vocabulary. The second is the streetlight habit. Systems Performance describes it as picking whichever tool is familiar and hoping something obvious shows up. If your failure story is "I tried a few things and it fixed itself", admit it is weak and say what method you would use now.
+Two other traps matter. The first is false certainty. If you do not know why something worked, say "I do not know why it worked, my best explanation is this, and here is how I would test it." The scientific method, a question then a hypothesis then a prediction then a test, gives you the vocabulary for that sentence. The second trap is the streetlight habit. Systems Performance describes it as picking whichever tool is familiar and hoping something obvious shows up. If your failure story is "I tried a few things and it fixed itself", admit it is weak and say what method you would use now.
 
-Say "we" for what the team did and "I" for what you did. Interviewers listen for that boundary.
+Use "we" for what the team did and "I" for what you did. Interviewers listen closely for that boundary, because it tells them how much of the work you can claim without flinching.
 
 **State the cost of every decision and the cause of every failure, and own your share of both.**
 
+A useful habit is to keep a short list of the costs you accepted, one per decision, in your own words. In the room you will be asked about cost sooner than you expect. With the list written down, you can answer in a sentence and move on to the next point.
+
 ### 6. Why Nebius, why SRE, why inference
 
-These three questions are easy to answer badly. A weak answer is generic praise. A strong answer links a fact about the company or the role to something true about you. You supply the true part.
+Consider the interviewer asking "Why Nebius?" with a pen ready. These three questions are easy to answer badly. A weak answer is generic praise, the kind you could give to any company. A strong answer links a fact about the company or the role to something true about you. The fact can come from Nebius's public material, but the true part has to come from your own work, so you supply that part yourself.
 
-For why Nebius, use public facts only. Token Factory offers serverless and dedicated endpoints behind an OpenAI-compatible API, with a control plane kept separate from a region-specific data plane. Dedicated endpoints let a customer choose GPU type, replicas and region. A Nebius case study, tagged vendor in the plan, describes lessons such as stopping retry amplification and fixing aggressive liveness probes that restarted healthy workers. Pick one and say why it interests you. For example: "The case study about probes restarting healthy workers is a failure I recognise from [YOUR EXPERIENCE]." Do not claim to know how Nebius runs its internals. Nebius has not published them.
+For why Nebius, use public facts only. Token Factory offers serverless and dedicated endpoints behind an OpenAI-compatible API, with a control plane kept separate from a region-specific data plane. In plain words, the control plane is where you manage settings, and the data plane is where your users' requests travel. Dedicated endpoints let a customer choose GPU type, replicas and region. A Nebius case study, tagged vendor in the plan, describes lessons such as stopping retry amplification and fixing aggressive liveness probes that restarted healthy workers. Retry amplification means a small slowdown makes clients retry, and the retries add load that makes the slowdown worse. Pick one lesson and say why it interests you. For example: "The case study about probes restarting healthy workers is a failure I recognise from [YOUR EXPERIENCE]." Do not claim to know how Nebius runs its internals. Nebius has not published them.
 
-For why SRE, the honest shape is a story about what you like. You like owning the number that says whether users are happy, and you like turning a repeated page into automation. The job posting asks for incident detection, isolation and remediation with automation and runbooks, and for post-mortems. Link one of those to a thing you have done: [YOUR AUTOMATION EXAMPLE].
+For why SRE, the honest answer is a story about what you enjoy. Site reliability engineering (SRE) means owning whether a service works for its users, and building the tools that keep it working. You might like owning the number that says whether users are happy, or you might like turning a repeated page into automation. The job posting asks for incident detection, isolation and remediation with automation and runbooks, and for post-mortems. Link one of those to a thing you have done: [YOUR AUTOMATION EXAMPLE].
 
-For why inference, say what is different. Inference traffic is bursty, latency has two parts, time to first token and the gap between tokens, and the scarce resource is GPU memory held by the KV cache. The posting names autoscaling tuned for GPU efficiency and request routing with retry logic. Say what draws you, and be truthful about the gap. If you have not run a GPU fleet, say so and say how you have been closing it, for instance through this handbook's labs. Naming the gap yourself is stronger than hoping nobody notices.
+For why inference, say what is different about it. Inference means running a trained model to answer requests, and its traffic is bursty, which means it arrives in sudden waves. Latency has two parts, time to first token and the gap between tokens. The scarce resource is GPU memory held by the KV cache, the memory a model fills with attention keys and values as it reads a prompt and writes an answer. The posting names autoscaling tuned for GPU efficiency and request routing with retry logic. Say what draws you, and be truthful about the gap. If you have not run a GPU fleet, say so and say how you have been closing it, for instance through this handbook's labs. Naming the gap yourself is stronger than hoping nobody notices.
 
 **Tie each answer to one public fact and one true fact about you, and never invent either.**
 
+Before the call, write your answer on one card. The first part is the public fact, with the page you read it from. The second part is your true experience. Keep the card short. If you cannot fill the first part from a page you have actually read, drop that part rather than guess at it.
+
 ### 7. Questions to ask the team leader
 
-An hour with a team leader is also your chance to interview them. Good questions show you think about operations, not perks. Ask five or six real ones. Do not ask anything the posting or website answers.
+Imagine the last few minutes of the hour, when the team leader asks whether you have any questions. An hour with a team leader is also your chance to interview them. Good questions show you think about operations, not perks. Ask five or six real ones. Do not ask anything the posting or website already answers, because that signals you did not read either.
 
 | Topic | A question to ask | What you learn |
 |---|---|---|
@@ -247,67 +259,73 @@ An hour with a team leader is also your chance to interview them. Good questions
 | Roadmap | What is the biggest reliability risk on the roadmap for the next two quarters? | Where you would spend your time |
 | Team split | How is work split between Token Factory and the cloud platform, and who owns what at the boundary? | Ownership and handoffs |
 
-I picked those from the job posting, which asks for SLOs, post-mortems, automation and GPU-efficient autoscaling. The answers are for you to judge. A leader who cannot say how many pages a week the team gets, or who answers with a defensive tone about incidents, is telling you something.
+I picked those from the job posting, which asks for SLOs, post-mortems, automation and GPU-efficient autoscaling. The answers are for you to judge. A leader who cannot say how many pages a week the team gets, or who answers with a defensive tone about incidents, is telling you something useful. Listen to how they answer as much as to what they say.
 
-Keep one in reserve. Ask what would make someone fail in this role in the first six months.
+Keep one question in reserve for the end. Ask what would make someone fail in this role in the first six months. It is a blunt question, and the way the leader answers it is useful evidence in its own right.
 
 **Bring six questions on paper and ask the ones the conversation has not already answered.**
 
+Write the questions in full sentences before the call, so that you do not stumble over them when you read them out. Then listen to the answers and decide which follow-up to ask. The questions are a starting point. The listening is where you learn about the team.
+
 ### 8. Salary, notice and logistics, kept general
 
-These topics can feel awkward. Keep them short and factual. Generally, the recruiter handles pay and the team leader hour is not the place to negotiate. If the team leader raises it, defer politely to the recruiter.
+Consider the moment the team leader brings up money earlier than you expected. These topics can feel awkward. Keep them short and factual. Generally, the recruiter handles pay, and the team leader hour is not the place to negotiate. If the team leader raises it, defer politely to the recruiter and move the conversation back to the work.
 
-On salary, do your own market research before the call, from public salary data for the role, country and level. Give a range rather than one number when asked, and say it depends on the full package. Do not quote a figure you have not researched. Do not invent a competing offer. This is general advice and not specific to Nebius, which has not published pay bands that I could find.
+On salary, do your own market research before the call, from public salary data for the role, country and level. Give a range rather than one number when asked, and say it depends on the full package. Do not quote a figure you have not researched. Do not invent a competing offer, because a made-up offer is easy to detect and hard to recover from. This is general advice and not specific to Nebius, which has not published pay bands that I could find.
 
-On notice, state your contractual notice period exactly, from your own contract: [YOUR NOTICE PERIOD]. If you could shorten it, say what that depends on. Do not promise a start date you cannot keep.
+On notice, state your contractual notice period exactly, as it is written in your own contract: [YOUR NOTICE PERIOD]. Read the contract rather than trusting memory. If you could shorten the period, say what that depends on, such as an agreement with your current employer. Do not promise a start date you cannot keep.
 
-On logistics, the posting lists remote Europe and several city locations. Confirm with the recruiter where you can work from, what work-authorisation or contract type applies in your country and whether travel is expected. Also confirm the posting is still open, since the plan notes it was about four months old.
+On logistics, the posting lists remote Europe and several city locations. Confirm with the recruiter where you can work from, what work-authorisation or contract type applies in your country and whether travel is expected. Also confirm the posting is still open, since the plan notes it was about four months old when it was checked. Each of these questions is cheap to ask now and expensive to discover later.
 
 **Be factual and brief on money and dates, and let the recruiter carry the negotiation.**
 
+Keep notes of the factual details you gave, such as the notice period and your availability. If the recruiter asks again later, the same answer will sound careful and consistent, and that matters more than any single figure you mentioned.
+
 ### 9. The first-90-days answer
 
-"What would you do in your first 90 days?" tests judgment. The wrong answer is a list of grand changes. The right answer shows that you learn first and change second.
+Imagine a hiring manager with a notepad asking, "What would you do in your first 90 days?" The question tests judgment. The wrong answer is a list of grand changes. The right answer shows that you learn first and change second. A new engineer who rewrites the alerts in the first few days has not yet learned why the old ones exist.
 
-A good shape has three stages. In the first month, you listen and map. You shadow on-call, read recent post-mortems, learn the SLOs and the alerts that page, and draw the request path for a token API from edge to GPU. You fix nothing big yet.
+A good shape has three stages. In the first month, you listen and map. You shadow on-call, read recent post-mortems, learn the SLOs and the alerts that page, and draw the request path for a token API from edge to GPU. You fix nothing big yet. The point of the first month is to build a picture the team recognises, so that your later changes fit into it.
 
-In the second month, you ship small safe improvements. For instance, you fix a noisy alert, tighten one runbook or add a missing dashboard panel. Each has a number, such as pages per week before and after. This builds trust and teaches you the review process.
+In the second month, you ship small safe improvements. For instance, you fix a noisy alert, tighten one runbook or add a missing dashboard panel. Each has a number, such as pages per week before and after. The number matters because it turns a tidy change into evidence. Small wins like these build trust and teach you the review process, which you will need for the bigger change.
 
-In the third month, you own one reliability improvement with a measurable target. Pick from what the posting lists, such as telemetry pipelines, GPU-efficient autoscaling, Terraform modules for resilient clusters or retry logic. Say you would choose it with the team, based on the biggest source of toil or risk. Name the metric and the review date.
+In the third month, you own one reliability improvement with a measurable target. Pick from what the posting lists, such as telemetry pipelines, GPU-efficient autoscaling, Terraform modules for resilient clusters or retry logic. Say you would choose it with the team, based on the biggest source of toil or risk. Toil means repetitive manual work that does not improve the service. Name the metric and the review date, so the interviewer can see how you would know it worked.
 
-Say what you would not do, such as rewriting alerting in week two or changing production outside the team's process.
+Say what you would not do, such as rewriting alerting in week two or changing production outside the team's process. Naming those limits shows the interviewer that you understand how much a new person can safely change.
 
 **Answer with learn, then small wins, then one owned improvement with a number.**
 
+If the interviewer pushes for a bigger first move, you can say that you would bring the idea to the team early and let the team decide when it fits. That answer keeps your ambition and respects the process the team already has.
+
 ## How to answer out loud
 
-Rehearse these five. Time each one with a phone. The numbers in brackets are yours to fill.
+Rehearse these five answers out loud, and time each one with a phone. The numbers in brackets are yours to fill. Speaking is a different skill from reading, so the timer is what turns a sound answer into one you can give under pressure.
 
 ### "Walk me through the project in two minutes"
 
-Speak in this order. One sentence on why it existed. One on your role and the team size. The shape of the system in three components. The two biggest decisions. The result with one before-and-after number. Finish with "the part I would like to go deeper on is" and name the most interesting decision. Expect a follow-up on whichever part you mention last, so end on your strongest. State [YOUR NUMBER] for scale and [YOUR NUMBER] for the result.
+Consider the first question of the round, asked by someone who has not read your CV yet. Speak in this order. Start with one sentence on why the project existed. Then give one on your role and the team size. Describe the shape of the system in three components. Name the two biggest decisions. Give the result, with one before-and-after number. Close with "the part I would like to go deeper on is" and name the most interesting decision. Expect a follow-up on whichever part you mention last, so end on your strongest point. State [YOUR NUMBER] for scale and [YOUR NUMBER] for the result.
 
 ### "Why did you choose X over Y?"
 
-Give the constraint first. Then name the choice, two alternatives with one reason each for rejecting them, and the cost you accepted. End with the condition that would change your mind. Expect "what would that condition look like in numbers" and "did you test the alternative." If you did not test it, say so and say why not.
+Imagine a reviewer who has just heard your choice and wants to know why it beat the others. Give the constraint first. Then name the choice, two alternatives with one reason each for rejecting them, and the cost you accepted. End with the condition that would change your mind. Expect "what would that condition look like in numbers" and "did you test the alternative." If you did not test it, say so and say why not.
 
 ### "Tell me about something that went wrong"
 
-Pick the failure with the clearest root cause. Say what broke and the user effect with a number. Say how you detected it and how long that took. State what you did first, which should protect users, then the cause, then the permanent fix. Finish with what you got wrong. Expect "why was detection slow" and "what stops a repeat."
+Think of the failure you can explain in the calmest voice. Pick the failure with the clearest root cause, because a clear cause is easier to tell in order. Say what broke and the user effect with a number. Say how you detected it and how long that took. State what you did first, which should protect users, then the cause, then the permanent fix. Finish with what you got wrong. Expect "why was detection slow" and "what stops a repeat."
 
 ### "What would you do differently?"
 
-Name one change and the evidence for it. Say what you would measure before starting. Add one thing you would keep. Avoid "nothing" and avoid ten regrets.
+Name one change and the evidence for it. Say what you would measure before starting. Add one thing you would keep, so the answer does not sound like a blank cheque. Avoid "nothing", which sounds as if you learned nothing, and avoid ten regrets, which sounds as if you learned far too much at once.
 
 ### "Why Nebius, why SRE, why inference?"
 
-Answer in three short parts, each tied to one public fact and one true fact about you. Keep the whole answer under 90 seconds. Expect a follow-up like "what do you know about our product" or "what worries you about this role." Say the gap honestly and say how you are closing it.
+Consider the interviewer asking the most common opening question of all. Answer in three short parts, each tied to one public fact and one true fact about you. Keep the whole answer under 90 seconds. Expect a follow-up like "what do you know about our product" or "what worries you about this role." Say the gap honestly and say how you are closing it.
 
 ## Worked scenarios
 
 ### Scenario 1: choosing among three projects
 
-You have three candidates. They are [YOUR GKE PLATFORM PROJECT], [YOUR ALERT-ROUTER PROJECT] and [YOUR TRADING-BOT RELIABILITY INCIDENT]. Score each from the six tests in section 2 as yes or no. The table shows the method with sample marks. The marks are an illustration of the method only, not a judgment about your projects.
+Imagine sitting down with a list of three projects and an evening to spare. You have three candidates. They are [YOUR GKE PLATFORM PROJECT], [YOUR ALERT-ROUTER PROJECT] and [YOUR TRADING-BOT RELIABILITY INCIDENT]. Score each from the six tests in section 2 as yes or no. The table shows the method with sample marks. The marks are an illustration of the method only, not a judgment about your projects.
 
 | Test | Platform | Alert router | Trading bot |
 |---|---|---|---|
@@ -319,33 +337,35 @@ You have three candidates. They are [YOUR GKE PLATFORM PROJECT], [YOUR ALERT-ROU
 | Decision I would change | yes | yes | yes |
 | Total | 5 | 5 | 5 |
 
-Three ties mean the scores do not decide. Break the tie by the cheapest gap to close. If a project failed the numbers test, spend an evening collecting figures from dashboards and commit history. If the data is gone, drop that project.
+Look at the table and notice the tie. Three ties mean the scores do not decide. Break the tie by the cheapest gap to close. If a project failed the numbers test, spend an evening collecting figures from dashboards and commit history, because those figures are often still there. If the data is gone, drop that project from the shortlist.
 
 ### Scenario 2: rewriting a weak decision
 
-An interviewer asks why you picked a tool. A weak answer, as an illustration only: "We chose it because it was the standard, and it made things a lot faster." It has no alternative, no cost and no number.
+Imagine an interviewer who asks why you picked a tool. A weak answer, as an illustration only, sounds like this: "We chose it because it was the standard, and it made things a lot faster." It has no alternative, no cost and no number.
 
 Rewrite it using the four-part trade-off sentence. "Given a [YOUR DEADLINE] deadline and a team of [YOUR NUMBER], I chose [YOUR TOOL] over [YOUR ALTERNATIVE ONE] and [YOUR ALTERNATIVE TWO]. It cut [YOUR METRIC] from [YOUR NUMBER] to [YOUR NUMBER]. We accepted [YOUR COST]. I would revisit if [YOUR CONDITION]."
 
-Now run the checker. In the lab you will see that it flags the weak version. A claim like "much faster" with no digit is reported as unquantified. A decision with one alternative is reported as needing two. These are the same flags a sharp interviewer raises in their head.
+Now run the checker. In the lab you will see that it flags the weak version. A claim like "much faster" with no digit is reported as unquantified. A decision with one alternative is reported as needing two. These are the same flags a sharp interviewer raises in their head, so it is better to meet them in a file first.
+
+Running the checker on your own draft is a useful habit even when the draft feels finished. The flags it raises are often the same ones a sharp reader raises, and the check costs you a minute.
 
 ### Scenario 3: a five-level ladder on one decision
 
-Interviewers dig on a single point. Prepare this ladder for your best decision.
+Consider an interviewer who keeps asking one more question about the same decision. Interviewers dig on a single point until they reach the bottom of it. Prepare this ladder for your best decision.
 
-Level one: "Why did you pick [YOUR CHOICE]?" You give the constraint and the option. Level two: "What else did you consider?" You name two alternatives. Level three: "How did you know it would work?" You describe a test, a benchmark or a pilot with [YOUR NUMBER]. Level four: "What went wrong with it?" You tell the failure story. Level five: "Would you pick it again?" You say yes or no and name the condition.
+Level one is "Why did you pick [YOUR CHOICE]?" You give the constraint and the option. Level two is "What else did you consider?" You name two alternatives. Level three is "How did you know it would work?" You describe a test, a benchmark or a pilot with [YOUR NUMBER]. Level four is "What went wrong with it?" You tell the failure story. Level five is "Would you pick it again?" You say yes or no and name the condition.
 
-If you cannot answer level three, that is the gap to close. Many real decisions rest on judgment, not a test. The honest answer is "I did not test it, I decided on [YOUR REASON], and the risk was [YOUR RISK]." That is acceptable. A made-up benchmark is not.
+If you cannot answer level three, that is the gap to close. Many real decisions rest on judgment, not a test. The honest answer is "I did not test it, I decided on [YOUR REASON], and the risk was [YOUR RISK]." That is acceptable. A made-up benchmark is not. Interviewers can usually hear the difference, and a made-up figure falls apart at the next question.
 
 ### Scenario 4: the logistics questions
 
-The team leader asks, "What are your expectations, and when could you start?" Answer in two sentences. "I would like to discuss the package with the recruiter once we agree on the level. My contract has a [YOUR NOTICE PERIOD] notice period, and I will confirm whether it can be shortened." This is honest, short and does not trap you. If pressed for a number, give a researched range and say it depends on the full package.
+Imagine the team leader asking, "What are your expectations, and when could you start?" Answer in two sentences. "I would like to discuss the package with the recruiter once we agree on the level. My contract has a [YOUR NOTICE PERIOD] notice period, and I will confirm whether it can be shortened." This is honest, short and does not trap you. If pressed for a number, give a researched range and say it depends on the full package.
 
 ## Hands-on lab
 
-This lab runs on a laptop with Python 3 and pytest. Steps 1 to 4 were run on a Mac with Python 3.12.7 and pytest 8.3.5. Steps 5 and 6 are practice you do yourself.
+Consider a laptop with Python 3 and pytest installed, and a blank dossier file beside it. This lab runs on a laptop. Steps 1 to 4 were run on a Mac with Python 3.12.7 and pytest 8.3.5. Steps 5 and 6 are practice you do yourself, and they were not run here.
 
-1. Copy the template. Run `cp code/part20/c28_dossier_template.md dossier.md`. Expected result: a new file with `[YOUR ...]` markers in it.
+1. Copy the template to a working file. Run `cp code/part20/c28_dossier_template.md dossier.md`. Expected result: a new file with `[YOUR ...]` markers in it.
 
 2. Run the checker on the blank copy. Run `python3 -I code/part20/c28_dossier_check.py dossier.md`. Expected result: many `placeholder` lines, several `empty_section` and `entry_incomplete` lines, and a summary that ends with counts such as `placeholder: 58`. The exit code is 1.
 
@@ -355,9 +375,9 @@ This lab runs on a laptop with Python 3 and pytest. Steps 1 to 4 were run on a M
 
 5. Fill your real dossier until the checker prints `summary: clean`. Use `--json` if you want to count findings. Expected result: exit code 0. A clean checker means the structure is complete. It does not mean the answers are good, so go on to step 6.
 
-6. Rehearse out loud with a timer: two minutes for the walk-through, ten minutes for decisions and failures, then a friend reads you the ladder from scenario 3. Expected result: you can answer every level with a number or an honest "I did not measure that."
+6. Rehearse out loud with a timer. Give the walk-through in two minutes, then the decisions and failures in ten minutes. After that, a friend reads you the ladder from scenario 3. Expected result: you can answer every level with a number or an honest "I did not measure that."
 
-The checker itself is below. It is the file `code/part20/c28_dossier_check.py`. It reads the dossier, strips HTML comments while keeping line numbers, splits it into sections and blocks, and applies the rules. The unfilled-marker pattern, the claim-word pattern and the minimum counts sit at the top so you can adjust them.
+Read the checker below before you trust it. It is the file `code/part20/c28_dossier_check.py`. It reads the dossier, strips HTML comments while keeping line numbers, splits the text into sections and blocks, and then applies the rules. The unfilled-marker pattern, the claim-word pattern and the minimum counts sit at the top, so you can adjust them to your own standard.
 
 ```python
 #!/usr/bin/env python3
@@ -571,9 +591,11 @@ if __name__ == "__main__":
     sys.exit(main(sys.argv))
 ```
 
-The tests are in `code/part20/test_c28_dossier_check.py`. They cover clean and blank dossiers, missing sections, alternatives, unquantified claims, too few numbers, incomplete failures, comments and exit codes.
+The tests are in `code/part20/test_c28_dossier_check.py`, and they show the checker's behaviour on concrete cases. They cover clean and blank dossiers, missing sections, alternatives, unquantified claims, too few numbers, incomplete failures, comments and exit codes. Reading one test is a fast way to learn what a rule is meant to catch.
 
 ## Drill questions
+
+Imagine a friend reading these questions to you from a card, with no notes in front of you. Answer each one aloud first, then open the answer.
 
 1. Name the two shapes the final round may take, and which one has an official source.
 
@@ -657,6 +679,8 @@ Find the second real alternative you considered, even a do-nothing option, and w
 
 ## Common mistakes and weak answers
 
+Consider the interviewer's notes at the end of a round. The weak answers in the table below leave the same marks on those notes, and each one has a fix you can rehearse in advance.
+
 | Weak answer | What it loses | Say instead |
 |---|---|---|
 | "We did a lot of things." | Your own part is invisible | "I did X. The team did Y." |
@@ -668,9 +692,11 @@ Find the second real alternative you considered, even a do-nothing option, and w
 | Claiming to know how Nebius works | Looks like bluffing | "I only know what is published" |
 | Salary figure with no research | Weak position | A researched range, deferred to the recruiter |
 
-Two more habits cost points. Talking for five minutes without a pause stops the interviewer steering, so pause after each part. Treating the hour as a social chat also hurts, because the team leader is still collecting evidence.
+Two more habits cost points. The first is talking for five minutes without a pause, which stops the interviewer from steering you. Pause after each part and let them choose the next thread. The second is treating the hour as a social chat. It feels friendly, but the team leader is still collecting evidence from every answer.
 
 ## Connections to the rest of the handbook
+
+Imagine the moment after this chapter when you need a deeper explanation on one point. The list below shows where each topic is taught more fully.
 
 - 19.10 Customer workshops and the consulting method (`c19-10`) covers discovery and assessment as a method for talking to customers. Reuse its habit of asking about constraints before proposing anything.
 - 19.14 Interview question bank by topic (`c19-14`) and 19.15 Interview cheat sheet (`c19-15`) hold the technical questions. This chapter does not repeat them.

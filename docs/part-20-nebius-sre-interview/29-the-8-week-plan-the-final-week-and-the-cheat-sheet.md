@@ -14,11 +14,11 @@ lab_venue: "Laptop / Docker"
 
 ## What the interviewer is testing
 
-This chapter does not serve one round. It serves all of them, because it turns the other chapters into dated work. Nebius describes the loop as a CV review, a recruiter call, three technical interviews of 60 to 90 minutes each, and a final hour with a team leader [official: nebius.com/careers/interviews/sre]. The technical interviews cover "practical tasks in the Linux console", "coding, troubleshooting, debugging" and system design. The official page also says to explain your reasoning aloud, ask for hints, review your code and suggest alternatives.
+Imagine a calendar with weeks on it and an interview date at the end. This chapter does not serve one round. It serves all of them, because it turns the other chapters into dated work. Nebius describes the loop as a CV review, a recruiter call, three technical interviews of 60 to 90 minutes each, and a final hour with a team leader [official: nebius.com/careers/interviews/sre]. The technical interviews cover "practical tasks in the Linux console", "coding, troubleshooting, debugging" and system design. The official page also says to explain your reasoning aloud, ask for hints, review your code and suggest alternatives. Those last instructions shape the whole plan, because they describe how you must perform, not only what you must know.
 
-The plan in this chapter is my reasoning, not a Nebius recommendation. Nebius has not published a scoring rubric, round order or pass mark. [gap] So the plan trains the skills the page names, and it trains them in the form they will be asked: aloud, timed, without notes.
+The plan in this chapter is my reasoning, not a Nebius recommendation. Nebius has not published a scoring rubric, round order or pass mark. [gap] So the plan trains the skills the page names. It also trains them in the form they will be asked, which is aloud, timed and without notes. A skill you can only show on paper is not yet a skill for this loop.
 
-One candidate reported four stages: an hour of Linux troubleshooting, an hour of algorithms, an hour of system design and a 30-minute production incident [report]. Other reports described a different loop, so prepare for the hardest version and expect some rounds to be easy.
+One candidate reported four stages: an hour of Linux troubleshooting, an hour of algorithms, an hour of system design and a 30-minute production incident [report]. That is one account, and it is not a rule. Other reports described a different loop, so prepare for the hardest version and expect some rounds to be easy. Preparing for the hardest version is cheap insurance, because the skills overlap across rounds.
 
 A realistic question in the interviewer's voice, from the final round: "We have an hour. Tell me how you prepared for this interview, and what you found hardest." The honest answer is a plan, with dates, that you actually followed. Chapter 20.1 (`c20-01`) explains the loop itself, and this chapter schedules the study.
 
@@ -26,9 +26,11 @@ A realistic question in the interviewer's voice, from the final round: "We have 
 
 ### 1. The 8-week plan, with hours as a parameter
 
-An alert fires at 02:00 and you do not read a book. You run the commands you know. The 8-week plan exists to make the commands automatic. It follows the stage order of the loop as the reports describe it: Linux console first, then coding, then design, then the stress round, then the final round.
+An alert fires at 02:00 and you do not read a book. You run the commands you know, and you run them without looking up the flags. The 8-week plan exists to make those commands automatic before the real pressure arrives. It follows the stage order of the loop as the reports describe it: Linux console first, then coding, then design, then the stress round, then the final round. The order matters because each stage builds on the one before, and the plan lets you revisit earlier material as you go.
 
-Hours per week is a parameter. The generator at the end of this chapter takes it. The split inside each week is a rule I chose: about 40% reading and lab work, 30% drills and coding practice, 30% speaking aloud and mock rounds. Nothing in the official page sets this split. If you have 6 hours a week, keep the ratio and cut breadth, not the speaking.
+Hours per week is a parameter, so the plan works for a full-time learner and for someone fitting study into evenings. The generator at the end of this chapter takes that number. The split inside each week is a rule I chose: about 40% reading and lab work, 30% drills and coding practice, 30% speaking aloud and mock rounds. Nothing in the official page sets this split. If you have 6 hours a week, keep the ratio and cut breadth, not the speaking. Speaking is the part that is hardest to catch up on in a rush.
+
+A ratio is easier to keep than a list of tasks. When a busy week arrives, you will not have time to rebuild a plan, but you can still keep the split of reading, drilling and speaking in whatever hours you have. Keep the speaking slice even when the other two shrink, because it is the slice that no amount of reading can replace.
 
 | Week | Stage | Chapters | Checkpoint: do this without notes |
 |---|---|---|---|
@@ -41,13 +43,19 @@ Hours per week is a parameter. The generator at the end of this chapter takes it
 | 7 | Stress interview | [20.23](./23-kubernetes-failure-drills-for-gpu-platforms.md), [20.24](./24-terraform-for-resilient-gpu-clusters.md), [20.26](./26-the-stress-interview-production-incident-role-play.md) | Play two 30-minute incident drills, one inference and one general, and score yourself. |
 | 8 | Final round | [20.27](./27-post-mortems-on-call-and-incident-leadership.md), [20.28](./28-the-project-deep-dive-and-the-final-round.md), and a light pass of 20.30 to 20.33 | Tell the project story in two minutes and defend one decision. No new topics. |
 
-Each week ends with its checkpoint. If you fail one, do not move on. Spend the next week's first session on the gap, and cut the least likely topic from the week after.
+Each week ends with its checkpoint, which is a short test you do without notes. If you fail one, do not move on, because the next week will build on the gap. Spend the next week's first session on the gap, and cut the least likely topic from the week after. That trade keeps the schedule honest without letting it collapse.
 
-Two habits run through all eight weeks. Do 20 minutes of flashcards every day, covered in section 3. Do one timed coding problem every second day from week 3 on, because coding skill fades when it is not used. **Order the study by loop stage, check each week by doing the thing aloud, and treat a failed checkpoint as the real schedule.**
+Imagine a week where the Linux checkpoint fails on the disk question. You do not move on to coding. You spend the first session of the next week on the disk question, then cut the least likely topic from the week after. The schedule bends, but the gap is closed and the plan stays honest.
+
+Two habits run through all eight weeks. Do 20 minutes of flashcards every day, covered in section 3. Do one timed coding problem every second day from week 3 on, because coding skill fades when it is not used. Short daily practice keeps recall warm between the longer sessions, which is why it matters more than a single long weekend. **Order the study by loop stage, check each week by doing the thing aloud, and treat a failed checkpoint as the real schedule.**
+
+Pick a fixed time for the daily flashcards, such as the same slot each morning. A fixed slot is easier to keep than a flexible one, and the habit becomes part of the day rather than a task you must remember.
 
 ### 2. Compressed versions: 3 weeks and 10 days
 
-You may have three weeks, not eight. The research plan, section 4, gives a priority order for a short runway: Linux console and system design first, because both appear in every report, then inference failures and the incident round, then coding and Terraform. I follow that, but keep coding alive in 20-minute daily slices because it is hard to rebuild late.
+Consider a shorter runway, because not everyone has the full run. You may have three weeks, not eight. The research plan, section 4, gives a priority order for a short runway. Linux console and system design come first, because both appear in every report. Inference failures and the incident round come next, and coding and Terraform follow. I follow that order, but I keep coding alive in 20-minute daily slices, because coding skill is hard to rebuild late.
+
+A shorter plan asks more of your priorities. Write down the topics you will drop before you start, so that you do not drop them by accident in week two. A dropped topic you chose is a planned trade-off. A dropped topic you forgot about is a surprise in the room.
 
 | Week of 3 | Stage | Chapters | Checkpoint |
 |---|---|---|---|
@@ -55,19 +63,25 @@ You may have three weeks, not eight. The research plan, section 4, gives a prior
 | 2 | Design and inference SRE | 20.12, 20.13, 20.18, 20.19, 20.21 | Estimate GPUs. State SLIs and burn rates. Name the retry rules. |
 | 3 | Stress and final round | 20.26, 20.28, 20.29 | Two incident drills and the project story. Nothing new in the last two days. |
 
-With ten days the schedule is five blocks of two days. Days 1 and 2 cover 20.3, 20.4 and 20.5. Days 3 and 4 cover coding, 20.8 and 20.9. Days 5 and 6 cover 20.12, 20.13 and 20.19. Days 7 and 8 cover 20.18, 20.21 and 20.26. Days 9 and 10 are the final week in miniature: the project story, the cheat sheet once, the logistics check and an early night. With fewer than ten days, drop the earliest blocks. With fewer than two days, do only the day-before routine in section 5.
+Imagine the case where the interview date arrives sooner than planned. With ten days the schedule is five blocks of two days. Days 1 and 2 cover 20.3, 20.4 and 20.5. Days 3 and 4 cover coding, 20.8 and 20.9. Days 5 and 6 cover 20.12, 20.13 and 20.19. Days 7 and 8 cover 20.18, 20.21 and 20.26. Days 9 and 10 are the final week in miniature: the project story, the cheat sheet once, the logistics check and an early night. With fewer than ten days, drop the earliest blocks. With fewer than two days, do only the day-before routine in section 5. Dropping blocks from the start is deliberate, because the earliest blocks are the ones you have the most time to revisit later.
 
-The cost of compression is depth. You will skip the labs and many Terraform, PromQL and Kubernetes drills. Say so honestly if you are asked about them, and say how you would check the answer.
+The cost of compression is depth, and the cost is real. You will skip the labs and many Terraform, PromQL and Kubernetes drills. Say so honestly if you are asked about them. Then say how you would check the answer, which shows the interviewer that you know where your knowledge stops.
+
+When you compress, decide in advance what you will say about the gaps. A short sentence such as "I have not done that lab, and here is how I would check the behaviour" is far better than a confident guess. Interviewers are often more impressed by a clear boundary than by a thin answer that pretends to be deep.
 
 **With less time, cut breadth in the order Terraform, Kubernetes drills, then coding volume, and never cut speaking aloud.**
 
 ### 3. The spaced-repetition drill list
 
-Each chapter from 20.3 on ends with drill questions. The extractor in this chapter pulled them from the real files: 292 questions from 29 chapters, 10 each except 12 in 20.19, before 20.1, 20.2 and this chapter added theirs. That count includes 20.30 to 20.33. A question id is the chapter and the number, so `20.19-Q4` is chapter 20.19, question 4.
+Each chapter from 20.3 on ends with drill questions, and those questions are the raw material for your flashcards. The extractor in this chapter pulled them from the real files: 292 questions from 29 chapters, 10 each except 12 in 20.19, before 20.1, 20.2 and this chapter added theirs. That count includes 20.30 to 20.33. A question id is the chapter and the number, so `20.19-Q4` is chapter 20.19, question 4. The id lets you find a card's source in seconds when you want to check an answer.
 
-The review schedule is a Leitner scheme I chose, not a method any source requires. Every card starts in box 1. Answer it aloud without notes. A right answer moves it up a box, a wrong answer sends it back to box 1. The gaps are 1, 3, 7, 14 and 28 days for boxes 1 to 5. A card in box 5 that you still get right is done. Read the answer only after you have spoken yours, then check the exact facts.
+Consider a stack of index cards sorted into five boxes. The review schedule is a Leitner scheme I chose, not a method any source requires. The Leitner scheme is an old flashcard method in which a card moves up a box after a correct answer and drops back after a wrong one. Every card starts in box 1. Answer it aloud without notes. A right answer moves it up a box, and a wrong answer sends it back to box 1. The gaps are 1, 3, 7, 14 and 28 days for boxes 1 to 5. A card in box 5 that you still get right is done. Read the answer only after you have spoken yours, then check the exact facts.
 
-Do not start with 292 cards. Start with the priority set below, about 110 questions, and add a chapter's full set the week you study it. The table gives the stage, then the chapter and question numbers. It does not copy the answers.
+Follow one card through the boxes to see how the scheme works. A card starts in box 1 and you answer it correctly, so it moves up. You answer it wrongly on a later review, so it drops back to box 1 and you see it again soon. The card keeps returning until you can answer it correctly across the longer gaps, which is the point of the scheme.
+
+Do not start with 292 cards, because a deck that large is hard to keep fresh. Start with the priority set below, about 110 questions, and add a chapter's full set the week you study it. The table gives the stage, then the chapter and question numbers. It does not copy the answers, so you still have to write each answer from memory.
+
+Read the priority table as a set of stages you can finish, not a list to memorise. Each row is one stage, and each stage is finished when you can answer its questions aloud without looking. The table tells you what to study first, and the answers tell you whether you are done.
 
 | Stage | Priority questions | Why these |
 |---|---|---|
@@ -78,11 +92,15 @@ Do not start with 292 cards. Start with the priority set below, about 110 questi
 | Kubernetes, IaC, PromQL | 20.23: Q1 to Q7, Q10. 20.24: Q1 to Q4. 20.25: Q1 to Q8 | Stress-round vocabulary |
 | Stress and final | 20.26: Q1 to Q4, Q6, Q10. 20.27: Q1 to Q6. 20.28: Q1 to Q5, Q7 | Incident script, post-mortem, project story |
 
-To build your own deck, run the extractor from the code section with `--answers`. Import the CSV into any flashcard tool, or keep the `box` and `due` columns and update them yourself. **Drill the questions by speaking, move a card up only when the answer is complete and correct, and add chapters as you study them.**
+To build your own deck, run the extractor from the code section with `--answers`. That flag adds the answers to the file. Import the CSV into any flashcard tool, or keep the `box` and `due` columns and update them yourself. Those two columns are what the review schedule runs on. **Drill the questions by speaking, move a card up only when the answer is complete and correct, and add chapters as you study them.**
+
+Import the CSV once and check that the first few cards look right before you start reviewing. If a question reads oddly, open the source chapter and check the wording. A deck you trust is a deck you will use every day, and a deck with broken cards quietly stops being used.
 
 ### 4. The mock-interview protocol
 
-The most common failure in a loop like this is not missing knowledge. It is being unable to say what you know under a clock, with a person watching. So the mock protocol trains the output, not the input. Run one mock for each round type from week 3, then one every week in the last three.
+Imagine yourself at a whiteboard with a timer running and a person watching. The most common failure in a loop like this is not missing knowledge. It is being unable to say what you know under a clock, with a person watching. So the mock protocol trains the output, not the input. Run one mock for each round type from week 3, then one every week in the last three. Each mock rehearses your speaking, and the score shows where the speaking breaks down.
+
+Knowing and saying are different skills. Many candidates can explain a mechanism while reading it on a page, then freeze when they must speak it. The mock protocol is built to close that gap, because it makes you produce the answer under the same conditions as the real round.
 
 ```mermaid
 flowchart LR
@@ -101,9 +119,13 @@ flowchart LR
 | System design | 60 min | Pick a prompt from 20.13 to 20.16. Draw on paper and follow the 45-minute plan. | The partner interrupts twice with "what if that fails" and keeps the clock. |
 | Stress incident | 30 min | Use an incident from 20.26 and cover the third column of its table. | The partner gives the whole section, reads the opening and answers from the table. They score you. |
 
-The lengths come from the candidate reports and from Nebius's 60 to 90 minute range. The final round is an hour with a team leader [official]. Practise it as a conversation with a partner using 20.28, and alone as a two-minute project story, recorded.
+The lengths come from the candidate reports and from Nebius's 60 to 90 minute range. The final round is an hour with a team leader [official]. Practise it as a conversation with a partner using 20.28, and alone as a two-minute project story, recorded. A recording shows you the rhythm of your story, which a silent rehearsal hides.
 
-Score every round with five criteria, 0 to 2 each, so the maximum is 10. This rubric is my own design. It copies the behaviours the official page asks for.
+Start the mock with the clock running and the notes closed. Most candidates lose the first few minutes to settling, so practise the opening sentence until it comes out without thought. The opening is the part you can control completely, and a steady start makes the rest of the round easier to manage.
+
+Score every round with five criteria, 0 to 2 each, so the maximum is 10. Each criterion asks one question about your performance, and the score gives you a number to compare from mock to mock. This rubric is my own design. It copies the behaviours the official page asks for, so the criteria mirror the official advice.
+
+Try the rubric on a weak answer you recorded. Suppose you explained a fix but never said why you chose it over the alternative. That answer might score high on correctness, low on reasoning aloud and lower on communication if you never offered a trade-off. The rubric makes the weak part visible, which is why a number helps more than a general feeling of having done badly.
 
 | Criterion | 0 | 1 | 2 |
 |---|---|---|---|
@@ -113,15 +135,23 @@ Score every round with five criteria, 0 to 2 each, so the maximum is 10. This ru
 | Checking | Never verifies | Verifies at the end | Tests, cross-checks or reads the effect of a fix |
 | Communication | Ignores the interviewer | Answers questions | Asks for hints, offers alternatives, states trade-offs |
 
-Record four things for each mock. The date and round. The score on each criterion. The two moments where you lost time, with the cause. The facts you got wrong, each turned into a flashcard. In a stress round also record the minute you first stated a mitigation, because the chapter on incidents says to mitigate before you know the root cause. A score of 8 or more on two mocks in a row is a reasonable bar before you stop mocking that round. That bar is my choice.
+Record four things for each mock. The first is the date and round. The second is the score on each criterion. The third is the two moments where you lost time, with the cause. The fourth is the facts you got wrong, each turned into a flashcard. In a stress round, also record the minute you first stated a mitigation, because the chapter on incidents says to mitigate before you know the root cause. A score of 8 or more on two mocks in a row is a reasonable bar before you stop mocking that round. That bar is my choice, and you can set your own, but write it down before you start.
 
-If you have no partner, record yourself. Listen once for filler and silence, and once for facts. Listening is unpleasant, and it is the closest substitute for a real interviewer. **Run each round on the clock, score it on the rubric, and turn every miss into a card.**
+Read your mock record every week as a set, not as separate sessions. Look for the same lost minutes or the same criterion scored low. A pattern across three mocks tells you what to fix next, while a single bad mock may simply be a bad day. The record is the only way to see the difference.
+
+If you have no partner, record yourself. Listen once for filler words and long silences, and then listen again for facts. Listening back is unpleasant, and it is the closest substitute for a real interviewer. Notice the words you repeat when you are unsure, because an interviewer hears those too. **Run each round on the clock, score it on the rubric, and turn every miss into a card.**
+
+When you listen back, keep a short list in three columns: the filler you used, the silences that were too long and the facts you were unsure about. Work on one column at a time. Trying to fix all three in one listen usually fixes none of them.
 
 ### 5. The final week, the day before and the morning of
 
-By the final week the knowledge is in or it is not. The week is for rehearsal and logistics. Ask the recruiter which rounds apply and in what order, and whether a project deep dive or take-home exists, because Nebius has not published that. [gap] The posting was about four months old when the research was done, so confirm it is still open. These two points come from the plan.
+Consider the last week as a rehearsal week, not a study week. By the final week the knowledge is in or it is not. The week is for rehearsal and logistics. Ask the recruiter which rounds apply and in what order, and whether a project deep dive or take-home exists, because Nebius has not published that. [gap] The posting was about four months old when the research was done, so confirm it is still open. These two points come from the plan, and both are cheap to check.
 
-Use the official setup advice as a checklist: install Zoom before the call, have a stable internet connection, use headphones, test the microphone and check your background. For the recruiter call, have your resume and the job posting at hand. These come from the official page.
+The final week has its own risk, which is changing too much at the last moment. A new tool, a new template or a new study method can unsettle the habits that already work. Keep the routines you have practised, and make only the changes that remove a real obstacle, such as a broken microphone or a missing login.
+
+Use the official setup advice as a checklist. Install Zoom before the call, have a stable internet connection, use headphones, test the microphone and check your background. Do the check the day before, not five minutes before the call. For the recruiter call, have your resume and the job posting at hand. These come from the official page.
+
+Do one dry run of the whole setup before the real call. Open the meeting link, speak for a minute, check the sound and watch yourself on screen. A dry run turns the checklist into a habit, so the real call does not depend on your memory of the steps.
 
 | Days out | Do | Do not |
 |---|---|---|
@@ -130,13 +160,19 @@ Use the official setup advice as a checklist: install Zoom before the call, have
 | 1 | Cards in box 1 only, 30 minutes. Pack the desk: water, paper, pen, charger. Confirm the time zone and the link. Stop by early evening. | Mock a full round. Search for new interview stories online. |
 | Morning | Wake with margin. Eat. Read the cheat sheet once. Open a terminal and an editor you know. Join five minutes early. | Learn anything. Check candidate forums. |
 
-Sleep matters more than one more chapter. That is advice, not a measured result. The reason for a no-new-topics rule is practical: new material displaces what you can already recall, and you cannot fix a gap in a day. Say aloud at the start of each round that you will think aloud. It sets the interviewer's expectation and matches what Nebius asks for.
+Sleep matters more than one more chapter. That is advice, not a measured result. Imagine the night before, when a new topic feels urgent and sleep feels optional. The reason for a no-new-topics rule is practical. New material displaces what you can already recall, and you cannot fix a gap in a day. Say aloud at the start of each round that you will think aloud. It sets the interviewer's expectation and matches what Nebius asks for.
 
-If a round goes badly, do not carry it into the next one. The official page says interviews may be spread over several days, so you may get a break between them. Use it to eat and walk, not to study the topic that went wrong. **Treat the last week as rehearsal and logistics, and let the day before be a lighter day than the day after.**
+A simple way to use the last evening is to write a short list of the three things you are confident about and the one thing you would still like to check. Read the list once, then stop. The list gives your mind a clear picture of where you stand, which helps more than another hour of scanning pages.
+
+Consider a round that went badly and a break before the next one. If a round goes badly, do not carry it into the next one. The official page says interviews may be spread over several days, so you may get a break between them. Use that break to eat and walk, not to study the topic that went wrong. Studying a single weak point in a panic tends to make the next round worse. **Treat the last week as rehearsal and logistics, and let the day before be a lighter day than the day after.**
+
+After a bad round, take a short walk and write one sentence about what you would do differently. Then close the notes. Keeping the sentence short stops the round from taking over the next one, and it still gives you something concrete to practise.
 
 ### 6. The one-page cheat sheet
 
-Print this section. Every row names the chapter it came from, and each fact was sourced in that chapter. Anything those chapters labelled unverified is left out. Numbers from worked examples are marked as inputs, not as measurements of any Nebius system.
+Imagine yourself at the desk just before the call, with one sheet in front of you. Print this section. Every row names the chapter it came from, and each fact was sourced in that chapter. Anything those chapters labelled unverified is left out. Numbers from worked examples are marked as inputs, not as measurements of any Nebius system. Use the sheet as a memory cue, not as something to read aloud.
+
+Each table on the sheet has one job. The first column names the fact, the second column names the chapter where it was sourced, and the rest help you find the right row quickly. Read the sheet as an index that points back to the chapters, so that when a row looks thin you know exactly where to go to rebuild it.
 
 **Linux triage commands**
 
@@ -221,7 +257,9 @@ Print this section. Every row names the chapter it came from, and each fact was 
 | Ready below desired | Shrink, herd, slow load | Router backend list, load time | 20.18 |
 | Output complaints, infra green | Finish_reason drift, quantisation, version skew | `vllm:request_success_total` by finished reason | 20.18 |
 
-Three more facts for this table. A hang still returns 200 on `/health` in vLLM v0.32.0, so use the token rate (20.18). Xid 79 is the GPU falling off the bus. The catalog's immediate action is to restart the bare metal node, and its investigatory action is to contact support (20.16 and 20.18 agree). Read the live NVIDIA catalog before quoting any other action. 429 means this tenant is over its limit and another replica gives the same answer, while 503 means this server is overloaded or draining and one retry elsewhere is fine (20.21).
+Three more facts belong with this table, and they are easy to misread. A hang still returns 200 on `/health` in vLLM v0.32.0, so use the token rate (20.18). Xid 79 is the GPU falling off the bus. The catalog's immediate action is to restart the bare metal node, and its investigatory action is to contact support (20.16 and 20.18 agree). Read the live NVIDIA catalog before quoting any other action. 429 means this tenant is over its limit, and another replica gives the same answer, while 503 means this server is overloaded or draining and one retry elsewhere is fine (20.21).
+
+NVIDIA's Xid messages are GPU error codes that appear in the kernel log, and the NVIDIA catalog says what each code means and what action it recommends. The catalog changes, which is why the chapter asks you to read it live rather than trust a memory of it. Quote the action from the catalog, and say where you read it.
 
 **Kubernetes debug order**
 
@@ -235,7 +273,9 @@ Three more facts for this table. A hang still returns 200 on `/health` in vLLM v
 | Pods vanish when a node dies | node controller | Node conditions, taints | 20.23 |
 | Deploy rejected or hangs | API server and webhooks | Event text, webhook config | 20.23 |
 
-Also: restart back-off starts at 10 s, doubles, caps at 300 s. A node with no heartbeat gets evicted after five minutes by default. GPU requests go in `limits`. A PDB with zero allowed disruptions blocks a drain forever (20.23).
+Also keep these Kubernetes timings in mind. Restart back-off starts at 10 s, doubles, caps at 300 s. A node with no heartbeat gets evicted after five minutes by default. GPU requests go in `limits`. A PDB with zero allowed disruptions blocks a drain forever (20.23). PDB means PodDisruptionBudget, the rule that limits how many pods a drain may remove at once.
+
+Kubernetes timings are easy to mix up under pressure. The safest habit is to say the timing with its cause, for example that the restart back-off is a delay that grows after each failed restart. Saying the reason next to the number helps you recall both, and it shows the interviewer that you understand the mechanism rather than the memorised value.
 
 **Incident script**
 
@@ -267,75 +307,91 @@ Also: restart back-off starts at 10 s, doubles, caps at 300 s. A node with no he
 
 ### 7. After the interview
 
-Within an hour of ending a round, write notes. Record what you were asked, what you said, where you hesitated and what you would say now. Do it before sleep, because details fade fast. Turn each gap into a flashcard and update your mock record. This habit also prepares you for the next round.
+Consider the drive home after a round, when the questions are still fresh and the details are already starting to blur. Within an hour of ending a round, write notes. Record what you were asked, what you said, where you hesitated and what you would say now. Do it before sleep, because details fade fast. Turn each gap into a flashcard and update your mock record. This habit also prepares you for the next round, since your notes show what the interviewer tended to probe.
 
-The official page states what happens next. After each interview your recruiter connects with you within a week. After the last interview Nebius says it will be in touch. If extra technical tasks are needed, you are notified in advance. If an offer comes, you can talk through details with your recruiter and team lead. The page does not promise feedback to unsuccessful candidates. It says your recruiter will discuss the interview afterwards.
+Write the notes in your own words, not as a transcript. A transcript shows what was said, while your own summary shows what you understood. The summary also shows you where your understanding stopped, which is exactly where the next flashcard should go.
 
-A short thank-you note to the recruiter, and to the team leader after the final round, is courtesy and not a requirement. No source says Nebius expects one. Keep it to three lines: thanks, one specific thing you enjoyed discussing, and that you remain interested. Do not reopen a question you answered badly. Send it the same day.
+Imagine the wait between rounds. The official page states what happens next. After each interview your recruiter connects with you within a week. After the last interview Nebius says it will be in touch. If extra technical tasks are needed, you are notified in advance. If an offer comes, you can talk through details with your recruiter and team lead. The page does not promise feedback to unsuccessful candidates. It says your recruiter will discuss the interview afterwards. The wait is easier to bear when you know what the page does and does not promise.
 
-For follow-up, use the official timing. If a week passes after an interview and the recruiter has not been in touch, send one polite message asking about next steps. The one-week figure is from the official page and the single message is my advice. One candidate reported rescheduling and poor communication in a London loop [report]. That is an anecdote, but it is a reason to keep your own calendar of who promised what.
+If the wait feels long, do not fill it with new study on the topic you think went wrong. Use the time to write up your notes, rehearse your project story once and sleep. Waiting well is part of the process, and it protects you from the panic that makes the next round harder.
 
-If the answer is no, ask once for any feedback they are able to share, and then keep your notes. They are a record of your weak spots and are useful for the next interview anywhere. **Write notes the same day, follow the recruiter's stated timeline, and send at most one nudge.**
+Consider the note sitting in your drafts folder for a while. A short thank-you note to the recruiter, and to the team leader after the final round, is courtesy and not a requirement. No source says Nebius expects one. Keep it to three lines: thanks, one specific thing you enjoyed discussing, and that you remain interested. Do not reopen a question you answered badly, because a note is the wrong place to fix an answer. Send it the same day.
+
+Keep the note plain and specific. Name the part of the conversation you enjoyed, thank the person for their time, and say that you are still interested. Leave out apologies for answers you think went badly, because an apology invites the reader to dwell on the weak moment.
+
+Imagine a quiet inbox after the official week has passed. For follow-up, use the official timing. If a week passes after an interview and the recruiter has not been in touch, send one polite message asking about next steps. The one-week figure is from the official page and the single message is my advice. One candidate reported rescheduling and poor communication in a London loop [report]. That is an anecdote, but it is a reason to keep your own calendar of who promised what and when.
+
+The single follow-up message can be very short. Ask whether there is an update on next steps and whether any further information would help. Keep it polite and factual. The message is a reminder, not a complaint, and it works best when it is sent once.
+
+If the answer is no, ask once for any feedback they are able to share, and then keep your notes. They are a record of your weak spots, and they stay useful for the next interview anywhere. Asking once is polite, and asking again usually does not produce a different answer. **Write notes the same day, follow the recruiter's stated timeline, and send at most one nudge.**
+
+When you ask for feedback after a no, make the question specific enough to answer. Asking which round was weakest is easier to answer than asking for a general opinion. Whatever you hear, write it down the same day, because the note is the part of the process you keep.
 
 ## How to answer out loud
 
-These are the questions that ask about you and your preparation, not a technical topic. Rehearse the order, not the words.
+Consider an interviewer who has finished the technical questions and wants to know how you work. These are the questions that ask about you and your preparation, not a technical topic. Rehearse the order of your answer, not the exact words, because a memorised script sounds stiff.
 
-**Question 1. "How did you prepare for this interview?"** Say the plan in three beats. First, you mapped the stages to study blocks, Linux, coding, design and incidents. Second, you practised aloud against a clock and scored yourself. Third, you built a drill deck and reviewed it daily. Give one concrete example from your own mock record, such as the minute of your first stated mitigation in the incident drill, and how it moved. Expect the follow-up "what was weakest", and answer with a real gap and how you closed it.
+These questions often come at the end of a long round, when the interviewer is tired and curious about the person behind the answers. Keep your answers short and specific. A single concrete example does more work than a long list of general qualities.
 
-**Question 2. "What do you do when you do not know the answer?"** Say you state what you do know, name the nearest mechanism, and say how you would check it. Official guidance matches this: ask for hints, say your reasoning aloud, offer alternatives. Add that you never guess a flag or a default and present it as certain. Expect "give an example", and use a command option you would look up in the manual.
+**Question 1. "How did you prepare for this interview?"** Say the plan in three beats, and keep each beat short. First, you mapped the stages to study blocks, Linux, coding, design and incidents. Second, you practised aloud against a clock and scored yourself. Third, you built a drill deck and reviewed it daily. Give one concrete example from your own mock record, such as the minute of your first stated mitigation in the incident drill, and how that minute moved over time. Expect the follow-up "what was weakest", and answer with a real gap and how you closed it.
 
-**Question 3. "What questions do you have for us?"** Ask about on-call load, how the team measures reliability, the biggest recent incident class, and how the platform's control and data planes are split. Chapter 20.28 has the list and what each teaches. Say that you ask because you want to learn the real constraints, which Nebius has not published.
+**Question 2. "What do you do when you do not know the answer?"** Say that you state what you do know first, name the nearest mechanism, and then say how you would check it. Imagine the interviewer waiting for that honest pause. The official guidance matches this habit: ask for hints, say your reasoning aloud, and offer alternatives. Add that you never guess a flag or a default and present it as certain. Expect "give an example", and use a command option you would look up in the manual, then say you would check it.
 
-**Question 4. "Where did your time go in the last hour of this task?"** This can come at the end of a coding or console round. Say how long you spent clarifying, solving and testing, and what you would do with another ten minutes. It shows you track your own method.
+**Question 3. "What questions do you have for us?"** Ask about on-call load, how the team measures reliability, the biggest recent incident class, and how the platform's control and data planes are split. Chapter 20.28 has the list and what each question teaches you. Say that you ask because you want to learn the real constraints, which Nebius has not published, so the answers are yours to judge.
+
+**Question 4. "Where did your time go in the last hour of this task?"** This can come at the end of a coding or console round, when the interviewer wants to see how you managed your own clock. Say how long you spent clarifying, solving and testing, and what you would do with another ten minutes. It shows you track your own method, which is a skill the team will rely on.
 
 ## Worked scenarios
 
 ### Scenario 1. A runway of six weeks
 
-Today is 2026-11-09 and the interview is on 2026-12-21. That is 42 days. The generator picks the 3-week plan, because 42 is below 56, and it starts 21 days out. You get 21 spare days before the plan starts. The spare days go to the Linux chapters and to the first coding problems, so the plan can start on 2026-11-30 with a base.
+Consider a runway that looks long on the calendar and is shorter than it seems once you count the days. Today is 2026-11-09 and the interview is on 2026-12-21. That is 42 days. The generator picks the 3-week plan, because 42 is below 56, and it starts 21 days out. You get 21 spare days before the plan starts. The spare days go to the Linux chapters and to the first coding problems, so the plan can start on 2026-11-30 with a base already in place.
 
-You may prefer to use all 42 days. Then take the checkpoint test for each stage on day 1. A stage you pass goes to maintenance only, and a stage you fail takes the extra days. The generator does not make that cut, because it depends on what you already know.
+You may prefer to use all 42 days. Then take the checkpoint test for each stage on day 1. A stage you pass goes to maintenance only, and a stage you fail takes the extra days. The generator does not make that cut, because it depends on what you already know, and only you can measure that. Treat the day-1 tests as the decision point.
+
+The day-1 checkpoint test works best when you write its results down. A short table with each stage, the pass or fail, and the reason is enough. That record turns a vague feeling about your readiness into a plan you can check against at the end of each week.
 
 ### Scenario 2. Eight days left
 
-Eight days means the tail of the 10-day plan. Blocks for days 3 to 10 remain. You lose the Linux block, so take 30 minutes a day on 20.3 and 20.4 questions as flashcards. Days 3 and 4 cover coding, days 5 and 6 design, days 7 and 8 incidents and failure signatures, and the last two days cover the project and logistics.
+Imagine a calendar with eight days left. Eight days means the tail of the 10-day plan. Blocks for days 3 to 10 remain. You lose the Linux block, so take 30 minutes a day on 20.3 and 20.4 questions as flashcards. Days 3 and 4 cover coding, days 5 and 6 design, days 7 and 8 incidents and failure signatures, and the last two days cover the project and logistics.
 
-State the trade-off to the interviewer if it comes up. You focused on the stages the reports say appear in every loop, so your Terraform and PromQL depth is lower than your Linux depth, and you can say how you would close it in a month.
+State the trade-off to the interviewer if it comes up, and do it before they ask. You focused on the stages the reports say appear in every loop, so your Terraform and PromQL depth is lower than your Linux depth. You can say how you would close that gap in a month. A trade-off you name yourself sounds like judgment, and a gap the interviewer finds sounds like a surprise.
 
 ## Hands-on lab
 
-All three steps ran on a Mac with Python 3.12 and pytest 8.3.5.
+Consider the lab sheet open on one side of the screen and a terminal on the other. All three steps ran on a Mac with Python 3.12 and pytest 8.3.5. Step 4 is yours to do.
 
-1. Run the tests for both scripts.
+1. Run the tests for both scripts, the schedule generator and the flashcard extractor, with a single pytest command.
 
 ```bash
 python3 -m pytest code/part20/test_c29_schedule.py code/part20/test_c29_flashcards.py -q
 ```
 
-Expected result: 24 passed. The run printed a pytest-asyncio deprecation warning from the local installation, which is unrelated.
+Expected result: 24 passed. The run printed a pytest-asyncio deprecation warning from the local installation. That warning is unrelated to these scripts, so you can ignore it.
 
-2. Generate your schedule. Replace the date and hours.
+2. Generate your schedule. Replace the interview date and the weekly hours with your own.
 
 ```bash
 python3 code/part20/c29_schedule.py 2026-12-21 --hours 10 --today 2026-11-09
 ```
 
-Expected result: a "3-week" plan, 21 spare days, three dated blocks and an Interview day line. Run it again with `--today 2026-10-01` and read "8-week" in the first line.
+Expected result: a "3-week" plan, 21 spare days, three dated blocks and an Interview day line. Run it again with `--today 2026-10-01`, then read the first line. It should say "8-week".
 
-3. Extract the flashcards from the chapters.
+3. Extract the flashcards from the chapters into a CSV file.
 
 ```bash
 python3 code/part20/c29_flashcards.py docs/part-20-nebius-sre-interview cards.csv
 ```
 
-Expected result: `322 cards from 32 chapters -> cards.csv`, which is 292 plus 10 each from 20.1, 20.2 and this chapter. The count was real when the script ran on 2026-11-09 and grows if a chapter gains drills. Add `--answers` to include answers in the file.
+Expected result: `322 cards from 32 chapters -> cards.csv`, which is 292 plus 10 each from 20.1, 20.2 and this chapter. That count was true when the script ran on 2026-11-09, and it grows whenever a chapter gains drills. Add `--answers` to include answers in the file.
 
-4. Run one mock round alone, following section 4, and fill in a row of the rubric. This step is yours to do. It was not run here.
+4. Run one mock round alone, following section 4, and fill in a row of the rubric. Time it on a clock and score it yourself. This step is yours to do. It was not run here.
 
 ## The code
 
-The schedule generator uses only the standard library. It picks the plan from the days left and clips the plan to the days you have. Hours per block equal weekly hours times the days in the block over seven, scaled by a load factor that tapers the last block. The code block below equals the file.
+Imagine opening the generator script to see why the dates come out as they do. The schedule generator uses only the standard library, which means nothing to install. It picks the plan from the days left and clips the plan to the days you have. Hours per block equal weekly hours times the days in the block over seven, scaled by a load factor that tapers the last block. The load factor is a small multiplier, so the final week can be lighter than the weeks before it. The code block below equals the file.
+
+Try the generator with a few different dates before you settle on one. The output changes with the days left, and seeing the three templates side by side helps you understand why a short runway gives a different plan from a long one. The generator is simple, so it is easy to inspect and to trust.
 
 ```python
 # code/part20/c29_schedule.py
@@ -487,7 +543,9 @@ if __name__ == "__main__":
     main()
 ```
 
-The extractor reads three markdown shapes found in the chapters. It stops at the next heading, so questions in other sections are not taken. The block equals the file.
+Consider a drill section in a chapter file and the extractor reading it line by line. The extractor reads three markdown shapes found in the chapters. It stops at the next heading, so questions in other sections are not taken. The code block below equals the file, so you can run it as it stands.
+
+The extractor is useful because the chapters keep changing. When a chapter gains a drill question, rerunning the extractor adds it to your deck without you searching for it. A tool that reads the source files is more reliable than a list you copy by hand, because the copy goes stale the moment the source is edited.
 
 ```python
 # code/part20/c29_flashcards.py
@@ -619,9 +677,13 @@ if __name__ == "__main__":
     main()
 ```
 
-The tests use fixture markdown for each shape, a missing drill section and unnumbered files. The schedule tests cover exactly eight weeks, more than eight weeks, fewer than eight, the 3-week boundary at 21 days, a tail of fewer than ten days, hours that scale, a tapered final week and bad inputs.
+The tests use fixture markdown for each shape, a missing drill section and unnumbered files. Fixtures are small sample files, and they let the tests check the parser without touching the real chapters. The schedule tests cover exactly eight weeks, more than eight weeks, fewer than eight, the 3-week boundary at 21 days, a tail of fewer than ten days, hours that scale, a tapered final week and bad inputs. Reading the tests is a good way to see the edge cases the generator must handle.
+
+Run the tests after you change any part of the extractor or the schedule. The tests are small and quick, and they catch a broken edge case before it reaches your deck. If a test fails, read the fixture first, because the fixture shows the input the rule was written for.
 
 ## Drill questions
+
+Imagine a friend reading these questions to you while you stand at the window and answer without looking at the page. Answer each one first, then open the answer.
 
 <details><summary>1. What are the four stages a candidate reported, and how reliable is that report?</summary>
 An hour of Linux troubleshooting, an hour of algorithms, an hour of system design and a 30-minute production incident. It is one anecdote, so prepare for the hardest version and expect uneven rounds.
@@ -665,16 +727,20 @@ Page at burn 14.4 over 1 hour and 5 minutes. Page at burn 6 over 6 hours and 30 
 
 ## Common mistakes and weak answers
 
-- Studying by reading only. The rounds are spoken. Replace one reading hour with a spoken drill every week.
-- Never mocking the stress round. A 30-minute incident needs a clock. Run one in week 7 at the latest, and two in the last three weeks.
-- Skipping checkpoints because the week is over. Say the checkpoint is the schedule, and repeat the gap.
-- Cramming new material the night before. Say your last day was cards, packing and sleep.
+Consider the notes a coach writes after a weak mock. The same few mistakes come up again and again, so each one has a short fix you can practise before the real round.
+
+- Studying by reading only. The rounds are spoken, so replace one reading hour with a spoken drill every week.
+- Never mocking the stress round. A 30-minute incident needs a clock, so run one in week 7 at the latest, and two in the last three weeks.
+- Skipping checkpoints because the week is over. The checkpoint is the schedule, so repeat the gap before you move on.
+- Cramming new material the night before. Your last day is for cards, packing and sleep.
 - Carrying the cheat sheet as a script. In the round, speak from the mental model and let the numbers back it up.
 - Quoting a candidate report as a rule. Say "one candidate reported", and say what you did to prepare for the harder version.
 - Claiming Nebius internals. Say "Nebius has not published this, a reasonable design is" and then reason.
-- Treating the thank-you note as required. Keep it to three lines and do not reopen a weak answer.
+- Treating the thank-you note as required. Keep it to three lines, and do not reopen a weak answer.
 
 ## Connections to the rest of the handbook
+
+Imagine the moment after this plan when a topic feels thin. The list below shows which chapter goes deeper on each stage.
 
 - 20.1 The Nebius loop and how to use this volume (`c20-01`) describes the process and links to this plan. 20.2 The role in one page (`c20-02`) maps the job posting to chapters.
 - Linux console stage: 20.3 to 20.7. Coding stage: 20.8 to 20.11. System design stage: 20.12 to 20.16. Inference SRE: 20.18 to 20.22. Kubernetes, IaC and PromQL: 20.23 to 20.25. Stress and final: 20.26 to 20.28. Public architecture notes: 20.30 to 20.33.
