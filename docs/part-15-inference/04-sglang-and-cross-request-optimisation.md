@@ -213,7 +213,7 @@ flowchart TB
     Sys -.->|"Evicted by Leaf-First LRU"| Evict["Session C Leaf (Inactive)<br/>'User: Write a story...'<br/>(ref_count = 0 | Oldest Timestamp)"]
 ```
 
-Tracing the lifecycle of the Radix Tree across nine operational stages reveals how SGLang balances reuse against finite VRAM, which is the limited memory on the GPU card. The list below walks through the five stages the chapter spells out.
+Tracing the lifecycle of the Radix Tree across five operational stages reveals how SGLang balances reuse against finite VRAM, which is the limited memory on the GPU card. The list below walks through the five stages the chapter spells out.
 
 1. Initial empty state: Before traffic arrives, the tree contains only the root node, and all slots in the Level 2 Key-Value pool are free.
 2. First conversation insertion: When Session A completes its first turn, SGLang does not free its Key-Value tensors. Instead, it inserts a single node containing the system prompt and the first exchange into the Radix Tree with reference count zero, and it records the access timestamp. A reference count tracks how many active requests are using a node. A timestamp records when the node was last touched.

@@ -359,7 +359,7 @@ State the trade-off to the interviewer if it comes up, and do it before they ask
 
 ## Hands-on lab
 
-Consider the lab sheet open on one side of the screen and a terminal on the other. All three steps ran on a Mac with Python 3.12 and pytest 8.3.5. Step 4 is yours to do.
+Consider the lab sheet open on one side of the screen and a terminal on the other. Steps 1 to 3 ran on a Mac with Python 3.12 and pytest 8.3.5. Step 4 is yours to do.
 
 1. Run the tests for both scripts, the schedule generator and the flashcard extractor, with a single pytest command.
 
