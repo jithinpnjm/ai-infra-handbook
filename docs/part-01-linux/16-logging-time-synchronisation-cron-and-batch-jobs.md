@@ -286,6 +286,10 @@ You could run `adjtimex` to update the system clock smoothly from the RTC, as *H
 
 Three clocks matter to a programmer. `CLOCK_REALTIME` is wall time, and it jumps when someone sets it. `CLOCK_MONOTONIC` never jumps back, so use it to measure durations. `CLOCK_TAI` is the third. Software that measures elapsed time must use the monotonic clock. Leap seconds are handled either by smearing, as Google and many cloud providers do, or by stepping. Fleets should not mix servers that smear with servers that do not.
 
+![Linux clocks and time synchronisation](./img/ch16-d2-luna.svg)
+
+*Figure 1.16.2. Hardware RTC, kernel clocks, and NTP slewing versus stepping.*
+
 ### Time zones
 
 The zone comes from `/etc/localtime`, which is a link to, or a copy of, a binary file under `/usr/share/zoneinfo/`. That directory holds the IANA tz database, with names such as `UTC`, `America/New_York` and `Asia/Kolkata`. Set the zone with `timedatectl set-timezone UTC`, or with `ln -sf /usr/share/zoneinfo/UTC /etc/localtime`, and list the available names with `timedatectl list-timezones`.
@@ -398,7 +402,7 @@ You inherit a node that runs a dozen unattended jobs, and the only documentation
 
 ![Reading a cron line](./img/ch16-fig1-cron.jpg)
 
-*Figure 1.16.2. The five time fields of a cron line and what the example means.*
+*Figure 1.16.3. The five time fields of a cron line and what the example means.*
 
 ```text
 # minute  hour  day-of-month  month  day-of-week   command

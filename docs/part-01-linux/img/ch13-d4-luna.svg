@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>How the device mapper maps virtual sectors to physical disks</title>
+  <desc>Device mapper table mapping contiguous virtual sectors of logical volume myvg-mylv2 across two physical devices (8:17 and 8:33).</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Device mapper: virtual sectors to physical disks</text>
+
+  <!-- Left: Virtual block device -->
+  <rect x="40" y="140" width="380" height="580" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <ellipse cx="94" cy="186" rx="22" ry="8"/>
+    <path d="M72 186v26c0 5 10 8 22 8s22-3 22-8v-26"/>
+  </g>
+  <text x="134" y="198" fill="#303a36" font-family="monospace" font-size="26" font-weight="700">myvg-mylv2</text>
+  <text x="72" y="246" fill="#303a36" font-family="sans-serif" font-size="24">Major 253 (/dev/dm-*)</text>
+
+  <rect x="72" y="280" width="316" height="170" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="230" y="338" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Segment 1</text>
+  <text x="230" y="380" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="230" dy="0">start: 0</tspan>
+    <tspan x="230" dy="32">length: 10960896</tspan>
+  </text>
+
+  <rect x="72" y="485" width="316" height="170" rx="14" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5"/>
+  <text x="230" y="543" text-anchor="middle" fill="#db8129" font-family="sans-serif" font-size="26" font-weight="700">Segment 2</text>
+  <text x="230" y="585" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="230" dy="0">start: 10960896</tspan>
+    <tspan x="230" dy="32">length: 10010624</tspan>
+  </text>
+
+  <!-- Middle: dmsetup table -->
+  <rect x="460" y="140" width="660" height="580" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <circle cx="508" cy="192" r="16"/><circle cx="508" cy="192" r="6"/>
+    <path d="M508 170v7 M508 207v7 M486 192h7 M523 192h7"/>
+  </g>
+  <text x="542" y="200" fill="#303a36" font-family="monospace" font-size="27" font-weight="700">dmsetup table (512 B sectors)</text>
+
+  <rect x="490" y="280" width="600" height="170" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="516" y="330" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="516" dy="0">0  10960896  linear  8:17  2048</tspan>
+    <tspan x="516" dy="40" font-family="sans-serif" font-weight="400">Maps to 8:17 (/dev/sdb1) at sector 2048</tspan>
+  </text>
+
+  <rect x="490" y="485" width="600" height="170" rx="14" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5"/>
+  <text x="516" y="535" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="516" dy="0">10960896  10010624  linear 8:33 20973568</tspan>
+    <tspan x="516" dy="40" font-family="sans-serif" font-weight="400">Maps to 8:33 (/dev/sdc1) at 20973568</tspan>
+  </text>
+
+  <text x="490" y="694" fill="#303a36" font-family="sans-serif" font-size="24">Targets: linear, striped, raid, crypt, thin, multipath, cache</text>
+
+  <!-- Right: Physical PVs -->
+  <rect x="1160" y="140" width="400" height="270" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <ellipse cx="1212" cy="190" rx="22" ry="8"/>
+    <path d="M1190 190v26c0 5 10 8 22 8s22-3 22-8v-26"/>
+  </g>
+  <text x="1252" y="204" fill="#303a36" font-family="monospace" font-size="26" font-weight="700">/dev/sdb1 (8:17)</text>
+  <rect x="1190" y="255" width="340" height="120" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="1360" y="308" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">PV extents on disk 1</text>
+  <text x="1360" y="344" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">offset 2048 …</text>
+
+  <rect x="1160" y="450" width="400" height="270" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <ellipse cx="1212" cy="500" rx="22" ry="8"/>
+    <path d="M1190 500v26c0 5 10 8 22 8s22-3 22-8v-26"/>
+  </g>
+  <text x="1252" y="514" fill="#303a36" font-family="monospace" font-size="26" font-weight="700">/dev/sdc1 (8:33)</text>
+  <rect x="1190" y="565" width="340" height="120" rx="14" fill="#f5f8f5" stroke="#db8129" stroke-width="3"/>
+  <text x="1360" y="618" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">PV extents on disk 2</text>
+  <text x="1360" y="654" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">offset 20973568 …</text>
+
+  <!-- Arrows connecting segments -->
+  <path d="M388 365 H486" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M388 570 H486" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+  <path d="M1090 350 H1186" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1090 595 H1186" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+
+  <!-- Takeaway bar -->
+  <rect x="40" y="770" width="1520" height="90" rx="14" fill="#207448"/>
+  <text x="800" y="825" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Think of device mapper as virtual memory's translation applied to block storage: inspect with dmsetup ls --tree.</text>
+</svg>

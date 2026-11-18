@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>User namespaces and UID mapping</title>
+  <desc>How /proc/PID/uid_map translates root UID 0 inside a rootless container to an unprivileged UID 100000 on the host, and why shared cluster storage UIDs can mismatch.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">User namespaces and UID mapping</text>
+
+  <!-- Left: Inside container -->
+  <rect x="40" y="130" width="440" height="580" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="260" y="180" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Inside user namespace</text>
+
+  <rect x="72" y="220" width="376" height="190" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3.5"/>
+  <text x="260" y="270" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">UID 0 ("root")</text>
+  <text x="260" y="314" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="260" dy="0">Has capabilities only over</tspan>
+    <tspan x="260" dy="32">resources the namespace</tspan>
+    <tspan x="260" dy="32">owns (its mount / net ns)</tspan>
+  </text>
+
+  <rect x="72" y="450" width="376" height="190" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="260" y="500" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="27" font-weight="700">UID 1000</text>
+  <text x="260" y="544" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="260" dy="0">Ordinary container user</tspan>
+    <tspan x="260" dy="32">inside the mapped range</tspan>
+  </text>
+
+  <!-- Middle: Kernel uid_map -->
+  <rect x="550" y="130" width="490" height="580" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="795" y="180" text-anchor="middle" fill="#207448" font-family="monospace" font-size="28" font-weight="700">/proc/PID/uid_map</text>
+  <text x="795" y="222" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">inside_start  outside_start  length</text>
+
+  <rect x="582" y="260" width="426" height="110" rx="14" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5"/>
+  <text x="795" y="312" text-anchor="middle" fill="#db8129" font-family="monospace" font-size="28" font-weight="700">0    100000    65536</text>
+  <text x="795" y="348" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">UID 0 inside = UID 100000 outside</text>
+
+  <rect x="582" y="405" width="426" height="270" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="610" y="450" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Subordinate ID ranges</text>
+  <text x="610" y="492" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="610" dy="0">/etc/subuid, /etc/subgid</tspan>
+    <tspan x="610" dy="34">(newuidmap / newgidmap)</tspan>
+    <tspan x="610" dy="44" font-family="sans-serif">Enables rootless containers:</tspan>
+    <tspan x="610" dy="34" font-family="sans-serif">Podman, rootless Docker, Enroot,</tspan>
+    <tspan x="610" dy="34" font-family="sans-serif">Apptainer user-ns mode</tspan>
+  </text>
+
+  <!-- Right: Outside on host + shared storage caveat -->
+  <rect x="1110" y="130" width="450" height="580" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="1335" y="180" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">On the host</text>
+
+  <rect x="1142" y="220" width="386" height="190" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3.5"/>
+  <text x="1335" y="262" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="27" font-weight="700">
+    <tspan x="1335" dy="0">UID 100000</tspan>
+    <tspan x="1335" dy="32" font-family="sans-serif" font-size="24">(unprivileged)</tspan>
+  </text>
+  <text x="1335" y="330" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1335" dy="0">Even if container root escapes,</tspan>
+    <tspan x="1335" dy="30">it has no host privilege</tspan>
+  </text>
+
+  <rect x="1142" y="440" width="386" height="235" rx="16" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5"/>
+  <text x="1168" y="484" fill="#db8129" font-family="sans-serif" font-size="26" font-weight="700">HPC / shared storage caveat</text>
+  <text x="1168" y="522" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1168" dy="0">NFS, Lustre, GPFS, BeeGFS</tspan>
+    <tspan x="1168" dy="32">store real UIDs. Remapping</tspan>
+    <tspan x="1168" dy="32">can break ownership/quotas</tspan>
+    <tspan x="1168" dy="32">unless using ID-mapped mounts</tspan>
+    <tspan x="1168" dy="32">or real-user mode (Enroot).</tspan>
+  </text>
+
+  <!-- Arrows -->
+  <path d="M448 315 H578" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+  <path d="M1008 315 H1138" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+  <path d="M448 545 H546" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  <!-- Takeaway bar -->
+  <rect x="40" y="760" width="1520" height="90" rx="14" fill="#207448"/>
+  <text x="800" y="815" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Check who owns your data on shared storage before switching a workload to rootless user namespaces.</text>
+</svg>

@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="580" viewBox="0 0 1600 580">
+  <title>Three-stage drill-down</title>
+  <desc>Performance drill-down from monitoring to identification to tracing.</desc>
   <defs>
     <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="17" refY="9" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M1 1 L17 9 L1 17 Z" fill="#207448"/>

@@ -333,13 +333,9 @@ There is a bootstrap problem. Device files are needed very early in boot, but ud
 
 The kernel also notifies udev. udev does not create the nodes. It adjusts them by setting owner, group and mode. It also creates extra symbolic links, imports properties and runs actions.
 
-![Hardware event to device file](./img/ch10-fig1-udev.jpg)
-
-*Figure 1.10.3. How a hardware event becomes a device node in /dev.*
-
 ![The problem and the design](./img/ch10-d2-luna.svg)
 
-*Figure 1.10.4. The problem and the design.*
+*Figure 1.10.3. The problem and the design.*
 
 When you read the diagram, start at the top and work down. The hardware and the kernel act first. udev and its rules then decide the final state of the node. Subscribers react last.
 
@@ -508,6 +504,10 @@ The four numbers are the host adapter (`0`, `1`, `2`), the bus channel (`0`), th
 SATA disks connect through **libata**, which runs inside the kernel. libata translates SCSI commands into native ATA commands, one command at a time. Optical drives on ATAPI are different, because they already speak a repackaged SCSI command set. Hardware RAID controllers present their virtual disks as SCSI directly.
 
 **NVMe is separate.** NVMe devices use their own stack, the `nvme` driver and the `/dev/nvme*` nodes, not SCSI. The stack uses per-CPU submission and completion queues for very high IOPS. Some NVMe devices show up in `lsscsi` for convenience. NVMe-over-Fabrics carries the same protocol across the network, over RDMA or TCP. The storage chapters cover that.
+
+![Storage device stacks: SCSI vs NVMe](./img/ch10-d3-luna.svg)
+
+*Figure 1.10.4. Storage device stacks: the three-layer Linux SCSI subsystem and the separate NVMe stack.*
 
 **Generic SCSI nodes and multiple access methods.** User processes can bypass the top-level class drivers, `sd` and `sr`. They send SCSI protocol commands straight to the device through its generic character device, `/dev/sg*`. Tools from `sg3_utils`, such as `sg_inq` and `sg_map`, do this for you. Run `lsscsi -g` to see the generic node beside each device. It appends the node on the right, as in `/dev/sda /dev/sg0`, `/dev/sr0 /dev/sg1`, and so on up to `/dev/sde /dev/sg5`. The generic nodes use major number `21`.
 

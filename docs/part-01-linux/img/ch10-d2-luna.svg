@@ -2,10 +2,10 @@
   <title>The problem and the design</title>
   <desc>A sequence diagram showing how a detected device becomes a processed event for subscribers.</desc>
   <defs>
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M2 2L17 9L2 16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M2 2L17 9L2 16" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
     </marker>
     <style>

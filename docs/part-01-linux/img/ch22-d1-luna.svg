@@ -1,165 +1,169 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1320" viewBox="0 0 1600 1320">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060">
   <title>What a kernel module is</title>
-  <desc/>
+  <desc>Architecture showing user-space CUDA apps and modprobe loading kernel modules and talking to GPUs and ConnectX NICs.</desc>
+
   <defs>
-    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="15" refY="9" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M2 2 L15 9 L2 16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
     </marker>
-    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="15" refY="9" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M2 2 L15 9 L2 16" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
     </marker>
   </defs>
 
-  <rect width="1600" height="1320" fill="#f5f8f5"/>
-  <text x="800" y="92" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">What a kernel module is</text>
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">What a kernel module is</text>
 
-  <rect x="40" y="140" width="410" height="1100" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-  <rect x="480" y="140" width="720" height="1160" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-  <rect x="1220" y="140" width="340" height="1160" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <!-- Container 1: User space (x=35..345) -->
+  <rect x="35" y="110" width="310" height="900" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="190" y="158" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">User space</text>
 
-  <text x="245" y="190" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="32" font-weight="700">User space</text>
-  <text x="840" y="190" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="32" font-weight="700">Kernel space</text>
-  <text x="1390" y="190" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="32" font-weight="700">Hardware</text>
+  <!-- 210px gutter (x=345..555) for cross-boundary syscall labels -->
 
-  <!-- User-space nodes -->
-  <rect x="70" y="460" width="360" height="180" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="88" y="495" width="56" height="42" rx="4"/>
-    <path d="M88 507h56M98 500h2M106 500h2M96 525h20"/>
+  <!-- Container 2: Kernel space (x=555..1245) -->
+  <rect x="555" y="110" width="690" height="900" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="900" y="158" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Kernel space</text>
+
+  <!-- Container 3: Hardware (x=1285..1565) -->
+  <rect x="1285" y="110" width="280" height="900" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="1425" y="158" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Hardware</text>
+
+  <!-- User space nodes -->
+  <rect x="55" y="345" width="270" height="185" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <rect x="74" y="376" width="40" height="30" rx="4"/><path d="M74 386h40"/>
   </g>
-  <text x="160" y="502" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
-    <tspan x="160" dy="0">CUDA app /</tspan>
-    <tspan x="160" dy="36">nvidia-smi</tspan>
+  <text x="128" y="388" fill="#303a36" font-family="sans-serif" font-size="25" font-weight="700">
+    <tspan x="128" dy="0">CUDA app /</tspan>
+    <tspan x="128" dy="31">nvidia-smi</tspan>
   </text>
-  <text x="160" y="580" fill="#303a36" font-family="sans-serif" font-size="24">
-    <tspan x="160" dy="0">(libcuda,</tspan>
-    <tspan x="160" dy="30">libnvidia-ml)</tspan>
-  </text>
-
-  <rect x="70" y="970" width="360" height="200" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="116" cy="1070" r="20"/>
-    <circle cx="116" cy="1070" r="7"/>
-    <path d="M116 1039v10M116 1091v10M85 1070h10M137 1070h10M94 1048l7 7M131 1085l7 7M138 1048l-7 7M101 1085l-7 7"/>
-  </g>
-  <text x="160" y="1042" fill="#303a36" font-family="monospace" font-size="24">
-    <tspan x="160" dy="0">modprobe / udev /</tspan>
-    <tspan x="160" dy="32">systemd-modules-</tspan>
-    <tspan x="160" dy="32">load</tspan>
+  <text x="128" y="458" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="128" dy="0">(libcuda,</tspan>
+    <tspan x="128" dy="30">libnvidia-ml)</tspan>
   </text>
 
-  <!-- Kernel-space nodes -->
-  <rect x="500" y="220" width="330" height="200" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="518" y="240" width="56" height="56" rx="6"/>
-    <rect x="530" y="252" width="32" height="32" rx="3"/>
-    <path d="M528 232v8M540 232v8M552 232v8M564 232v8M528 296v8M540 296v8M552 296v8M564 296v8M510 250h8M510 262h8M510 274h8M510 286h8M574 250h8M574 262h8M574 274h8M574 286h8"/>
+  <rect x="55" y="730" width="270" height="195" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <circle cx="94" cy="828" r="16"/><circle cx="94" cy="828" r="6"/>
+    <path d="M94 805v7 M94 844v7 M71 828h7 M110 828h7"/>
   </g>
-  <text x="590" y="264" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Core kernel</text>
-  <text x="590" y="320" fill="#303a36" font-family="sans-serif" font-size="24">
-    <tspan x="590" dy="0">(vmlinuz)</tspan>
-    <tspan x="590" dy="28">exports symbols</tspan>
-    <tspan x="590" dy="28">(EXPORT_SYMBOL)</tspan>
+  <text x="128" y="782" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="128" dy="0">modprobe /</tspan>
+    <tspan x="128" dy="32">udev /</tspan>
+    <tspan x="128" dy="32">systemd-</tspan>
+    <tspan x="128" dy="32">modules-load</tspan>
   </text>
 
-  <rect x="850" y="220" width="320" height="180" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M868 246h56v40h-56zM878 256h36v20h-36z"/>
-    <path d="M874 238v8M886 238v8M898 238v8M910 238v8M874 286v8M886 286v8M898 286v8M910 286v8"/>
+  <!-- Kernel space nodes -->
+  <rect x="580" y="190" width="315" height="150" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="600" y="216" width="40" height="40" rx="5"/>
+    <path d="M610 216v-7 M620 216v-7 M630 216v-7 M610 256v7 M620 256v7 M630 256v7"/>
   </g>
-  <text x="940" y="265" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">nvidia-uvm.ko</text>
-  <text x="870" y="340" fill="#303a36" font-family="sans-serif" font-size="24">(unified memory)</text>
-
-  <rect x="650" y="500" width="320" height="160" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="668" y="522" width="56" height="56" rx="8"/>
-    <path d="M680 522v-10M692 522v-10M704 522v-10M716 522v-10M680 578v10M692 578v10M704 578v10M716 578v10M668 534h-10M668 546h-10M668 558h-10M724 534h10M724 546h10M724 558h10"/>
-    <circle cx="696" cy="550" r="12"/>
-  </g>
-  <text x="740" y="550" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">nvidia.ko</text>
-  <text x="740" y="588" fill="#303a36" font-family="sans-serif" font-size="24">(GPU core)</text>
-
-  <rect x="500" y="790" width="320" height="150" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="548" cy="838" r="20"/>
-    <circle cx="548" cy="838" r="7"/>
-    <path d="M548 808v10M548 858v10M518 838h10M568 838h10M527 817l7 7M562 852l7 7M569 817l-7 7M534 852l-7 7"/>
-  </g>
-  <text x="520" y="890" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
-    <tspan x="520" dy="0">nvidia-modeset.</tspan>
-    <tspan x="520" dy="34">ko</tspan>
+  <text x="656" y="232" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Core kernel</text>
+  <text x="656" y="266" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="656" dy="0">(vmlinuz)</tspan>
+    <tspan x="656" dy="29">exports symbols</tspan>
+    <tspan x="656" dy="29" font-family="monospace">(EXPORT_SYMBOL)</tspan>
   </text>
 
-  <rect x="500" y="1000" width="320" height="150" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="518" y="1020" width="56" height="44" rx="4"/>
-    <path d="M518 1032h56M528 1026h2M536 1026h2M530 1052h32"/>
+  <rect x="920" y="190" width="305" height="150" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="940" y="216" width="40" height="40" rx="5"/>
+    <path d="M950 216v-7 M960 216v-7 M970 216v-7 M950 256v7 M960 256v7 M970 256v7"/>
   </g>
-  <text x="520" y="1100" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">nvidia-drm.ko</text>
+  <text x="996" y="238" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">nvidia-uvm.ko</text>
+  <text x="996" y="284" fill="#303a36" font-family="sans-serif" font-size="24">(unified memory)</text>
 
-  <rect x="840" y="740" width="320" height="190" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="878" cy="780" r="10"/>
-    <circle cx="910" cy="780" r="10"/>
-    <circle cx="894" cy="808" r="10"/>
-    <path d="M886 785l5 14M902 785l-5 14M888 780h12"/>
+  <!-- Core kernel to nvidia.ko -->
+  <path d="M740 340 V385" fill="none" stroke="#207448" stroke-width="3.5"/>
+
+  <rect x="680" y="385" width="330" height="130" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="702" y="416" width="42" height="42" rx="5"/><circle cx="723" cy="437" r="8"/>
   </g>
-  <text x="930" y="780" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
-    <tspan x="930" dy="0">nvidia-peer</tspan>
-    <tspan x="930" dy="34">mem.ko</tspan>
-  </text>
-  <text x="860" y="866" fill="#303a36" font-family="sans-serif" font-size="24">
-    <tspan x="860" dy="0">(GPUDirect RDMA</tspan>
-    <tspan x="860" dy="30">↔ ib_core)</tspan>
+  <text x="762" y="438" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">nvidia.ko</text>
+  <text x="762" y="476" fill="#303a36" font-family="sans-serif" font-size="24">(GPU core)</text>
+
+  <path d="M960 385 V344" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  <rect x="580" y="595" width="315" height="120" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <circle cx="614" cy="645" r="15"/><circle cx="614" cy="645" r="5"/>
+  </g>
+  <text x="646" y="644" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="646" dy="0">nvidia-modeset.</tspan>
+    <tspan x="646" dy="32">ko</tspan>
   </text>
 
-  <rect x="840" y="1030" width="320" height="160" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="878" cy="1080" r="8"/>
-    <circle cx="910" cy="1064" r="8"/>
-    <circle cx="910" cy="1096" r="8"/>
-    <path d="M885 1076l18-9M885 1084l18 9M922 1064h14M922 1096h14"/>
+  <rect x="580" y="795" width="315" height="120" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <rect x="598" y="838" width="40" height="30" rx="4"/><path d="M598 848h40"/>
   </g>
-  <text x="950" y="1072" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">ib_core /</text>
-  <text x="950" y="1110" fill="#303a36" font-family="sans-serif" font-size="24">
-    <tspan x="950" dy="0">mlx5_core /</tspan>
-    <tspan x="950" dy="30">mlx5_ib</tspan>
+  <text x="654" y="864" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">nvidia-drm.ko</text>
+
+  <rect x="920" y="575" width="305" height="160" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <circle cx="956" cy="622" r="8"/><circle cx="976" cy="638" r="8"/><circle cx="950" cy="652" r="8"/>
+    <path d="M962 627l8 6 M954 630l-2 13"/>
+  </g>
+  <text x="996" y="618" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="996" dy="0">nvidia-peer</tspan>
+    <tspan x="996" dy="30">mem.ko</tspan>
   </text>
+  <text x="942" y="694" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="942" dy="0">(GPUDirect RDMA</tspan>
+    <tspan x="942" dy="28">↔ ib_core)</tspan>
+  </text>
+
+  <rect x="920" y="795" width="305" height="145" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <circle cx="950" cy="866" r="7"/><circle cx="978" cy="852" r="7"/><circle cx="978" cy="880" r="7"/>
+    <path d="M956 863l16-8 M956 869l16 8"/>
+  </g>
+  <text x="998" y="838" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">ib_core /</text>
+  <text x="998" y="870" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="998" dy="0">mlx5_core /</tspan>
+    <tspan x="998" dy="28">mlx5_ib</tspan>
+    <tspan x="998" dy="28" font-family="sans-serif">(RDMA stack)</tspan>
+  </text>
+
+  <!-- Internal kernel arrows -->
+  <path d="M740 515 V591" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <path d="M735 715 V791" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <path d="M945 515 V545 H1072 V571" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <path d="M1072 795 V739" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
 
   <!-- Hardware nodes -->
-  <rect x="1240" y="500" width="300" height="180" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="1362" y="518" width="56" height="56" rx="8"/>
-    <rect x="1375" y="531" width="30" height="30" rx="4"/>
-    <path d="M1372 518v-10M1384 518v-10M1396 518v-10M1408 518v-10M1372 574v10M1384 574v10M1396 574v10M1408 574v10M1362 530h-10M1362 542h-10M1362 554h-10M1418 530h10M1418 542h10M1418 554h10"/>
+  <rect x="1305" y="385" width="240" height="130" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="1403" y="405" width="44" height="44" rx="5"/><rect x="1415" y="417" width="20" height="20"/>
+    <path d="M1415 405v-7 M1425 405v-7 M1435 405v-7 M1415 449v7 M1425 449v7 M1435 449v7"/>
   </g>
-  <text x="1390" y="626" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">GPU (PCIe)</text>
+  <text x="1425" y="492" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">GPU (PCIe)</text>
 
-  <rect x="1240" y="1030" width="300" height="150" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="1362" y="1044" width="56" height="48" rx="5"/>
-    <path d="M1372 1056h8v12h-8zM1390 1056h8v12h-8zM1408 1056h4v12h-4zM1372 1080h36M1372 1100v8M1384 1100v8M1396 1100v8M1408 1100v8"/>
+  <rect x="1305" y="802" width="240" height="130" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <rect x="1400" y="820" width="50" height="36" rx="4"/>
+    <path d="M1410 856v10 M1420 856v10 M1430 856v10 M1440 856v10"/>
   </g>
-  <text x="1390" y="1144" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">ConnectX NIC</text>
+  <text x="1425" y="904" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">ConnectX NIC</text>
 
-  <!-- Connections -->
-  <path d="M700 420 V500" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-  <path d="M940 500 V400" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M700 660 V790" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M660 940 V1000" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M920 660 V680 H1000 V740" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
-  <path d="M1020 1030 V930" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <!-- Cross-boundary arrows cleanly inside the 210px gutter -->
+  <path d="M325 450 H676" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="345" y="362" width="210" height="72" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <text x="450" y="394" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="450" dy="0">/dev/nvidia*,</tspan>
+    <tspan x="450" dy="30">ioctl</tspan>
+  </text>
 
-  <path d="M430 550 H650" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M430 1070 H480" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M970 580 H1240" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
-  <path d="M1160 1110 H1240" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M325 828 H551" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="342" y="762" width="216" height="48" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <text x="450" y="794" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">finit_module()</text>
 
-  <!-- Connection labels -->
-  <rect x="445" y="480" width="210" height="58" rx="8" fill="#f5f8f5"/>
-  <text x="550" y="506" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">/dev/nvidia*,</text>
-  <text x="550" y="532" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">ioctl</text>
+  <!-- nvidia.ko -> GPU -->
+  <path d="M1010 450 H1301" fill="none" stroke="#db8129" stroke-width="4.5" marker-end="url(#orange-arrow)"/>
 
-  <rect x="100" y="890" width="300" height="48" rx="8" fill="#f5f8f5"/>
-  <text x="250" y="923" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">finit_module()</text>
+  <!-- ib_core -> ConnectX NIC -->
+  <path d="M1225 867 H1301" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 </svg>

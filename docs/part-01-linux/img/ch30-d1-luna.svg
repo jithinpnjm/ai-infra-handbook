@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>The X Window System</title>
+  <desc>Architecture of X11 client and X server over network or SSH forwarding.</desc>
   <defs>
     <marker id="arrowhead" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
       <path d="M0,1 L18,9 L0,17 Z" fill="#db8129"/>

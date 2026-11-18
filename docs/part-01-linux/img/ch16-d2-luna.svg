@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="940" viewBox="0 0 1600 940">
+  <title>Linux clocks and NTP slewing versus stepping</title>
+  <desc>Relationship between battery-backed hardware RTC, kernel system clock (CLOCK_REALTIME and CLOCK_MONOTONIC), and chrony slewing vs stepping.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="940" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Linux clocks and time synchronisation</text>
+
+  <!-- Top row: RTC -> Kernel Clock -> User space -->
+  <rect x="40" y="130" width="400" height="276" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <circle cx="92" cy="178" r="18"/><path d="M92 166v12l8 6"/>
+  </g>
+  <text x="130" y="188" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">Hardware RTC</text>
+  <text x="70" y="236" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="70" dy="0">• Battery-backed chip; runs</tspan>
+    <tspan x="90" dy="30">while machine is off.</tspan>
+    <tspan x="70" dy="38">• Keep in UTC (set-local-rtc 0).</tspan>
+    <tspan x="70" dy="38" font-family="monospace">• hwclock --hctosys</tspan>
+    <tspan x="92" dy="30" font-family="monospace">  hwclock --systohc</tspan>
+  </text>
+
+  <path d="M440 268 H506" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="473" y="248" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">boot</text>
+
+  <rect x="510" y="130" width="570" height="276" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="536" y="156" width="42" height="42" rx="5"/><rect x="547" y="167" width="20" height="20"/>
+    <path d="M547 156v-7 M557 156v-7 M567 156v-7 M547 198v7 M557 198v7 M567 198v7"/>
+  </g>
+  <text x="598" y="186" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">Kernel system clock</text>
+  <text x="536" y="236" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="536" dy="0">Seconds + ns since 1970-01-01 UTC</tspan>
+    <tspan x="536" dy="38" font-family="monospace">• CLOCK_REALTIME: wall (can jump)</tspan>
+    <tspan x="536" dy="34" font-family="monospace">• CLOCK_MONOTONIC: durations</tspan>
+    <tspan x="558" dy="30">(never jumps backward)</tspan>
+  </text>
+
+  <path d="M1080 268 H1146" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="1150" y="130" width="410" height="276" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5"><rect x="1178" y="162" width="44" height="32" rx="4"/><path d="M1178 172h44"/></g>
+  <text x="1240" y="188" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">User space &amp; TZ</text>
+  <text x="1180" y="238" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1180" dy="0">Applies /etc/localtime</tspan>
+    <tspan x="1180" dy="32">(/usr/share/zoneinfo/*)</tspan>
+    <tspan x="1180" dy="38" font-family="monospace">or TZ=UTC / Asia/Kolkata.</tspan>
+    <tspan x="1180" dy="38">Run servers in UTC.</tspan>
+  </text>
+
+  <!-- Bottom: NTP / chrony slew vs step -->
+  <rect x="40" y="430" width="740" height="370" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="72" y="480" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Slew (normal small drift)</text>
+  <text x="72" y="532" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="72" dy="0">• chrony slightly speeds up or slows down clock rate.</tspan>
+    <tspan x="72" dy="38">• Time stays continuous — never jumps backward.</tspan>
+    <tspan x="72" dy="38">• Safe for Munge, Kerberos, TLS, JWT, make, rsync,</tspan>
+    <tspan x="92" dy="32">logs, and distributed databases.</tspan>
+    <tspan x="72" dy="46" font-family="monospace">• NTP strata: Stratum 0 (GPS/atomic) → 1 → 2</tspan>
+  </text>
+
+  <rect x="820" y="430" width="740" height="370" rx="20" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+  <text x="852" y="480" fill="#db8129" font-family="sans-serif" font-size="30" font-weight="700">Step (large initial offset only)</text>
+  <text x="852" y="532" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="852" dy="0">• Jumping backward with date -s / hwclock mangles</tspan>
+    <tspan x="872" dy="32">timers and time-ordered events.</tspan>
+    <tspan x="852" dy="40" font-family="monospace">• chrony.conf: makestep 1.0 3</tspan>
+    <tspan x="872" dy="32">allows stepping only on first 3 updates if &gt; 1 s.</tspan>
+    <tspan x="852" dy="42">• Run one time daemon only (chrony OR timesyncd).</tspan>
+  </text>
+
+  <!-- Takeaway bar -->
+  <rect x="40" y="830" width="1520" height="80" rx="14" fill="#207448"/>
+  <text x="800" y="880" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Check sync first with timedatectl and chronyc tracking; use PTP (linuxptp) when sub-microsecond accuracy is needed.</text>
+</svg>

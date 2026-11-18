@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+  <title>How storage devices fit together in the kernel</title>
+  <desc>Three-layer Linux SCSI subsystem for sd, sr, and sg devices alongside the separate NVMe stack.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Storage device stacks: SCSI vs NVMe</text>
+
+  <!-- Left container: Linux SCSI subsystem -->
+  <rect x="40" y="120" width="1020" height="720" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="550" y="168" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Linux SCSI subsystem (SATA, SAS, USB, virtual disks)</text>
+
+  <!-- Top layer: Class drivers -->
+  <rect x="75" y="195" width="950" height="162" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="102" y="236" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">1. Top (class) layer — device nodes</text>
+  <rect x="102" y="254" width="280" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="242" y="288" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="242" dy="0">sd (/dev/sda)</tspan>
+    <tspan x="242" dy="30" font-family="sans-serif" font-weight="400">disks</tspan>
+  </text>
+  <rect x="402" y="254" width="280" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="542" y="288" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="542" dy="0">sr / st</tspan>
+    <tspan x="542" dy="30" font-family="sans-serif" font-weight="400">optical / tape</tspan>
+  </text>
+  <rect x="702" y="254" width="300" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="852" y="288" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="852" dy="0">sg (/dev/sg0)</tspan>
+    <tspan x="852" dy="30" font-family="sans-serif" font-weight="400">generic SCSI</tspan>
+  </text>
+
+  <path d="M550 357 V386" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Middle layer: SCSI core -->
+  <rect x="75" y="390" width="950" height="145" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <circle cx="122" cy="462" r="18"/><circle cx="122" cy="462" r="7"/>
+    <path d="M122 436v8 M122 480v8 M96 462h8 M140 462h8"/>
+  </g>
+  <text x="166" y="446" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">2. Middle layer — SCSI core [host:channel:target:lun]</text>
+  <text x="166" y="492" fill="#303a36" font-family="sans-serif" font-size="24">Mediates top and bottom, tracks hosts/LUNs, handles errors and timeouts</text>
+
+  <path d="M550 535 V576" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Bottom layer: Host-adapter drivers -->
+  <rect x="75" y="580" width="950" height="225" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="102" y="622" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">3. Bottom (host-adapter) layer — hardware translators</text>
+  <rect x="102" y="646" width="280" height="132" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="242" y="692" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="25" font-weight="700">libata (ahci)</text>
+  <text x="242" y="732" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="242" dy="0">Translates SCSI to</tspan>
+    <tspan x="242" dy="29">native ATA (SATA)</tspan>
+  </text>
+
+  <rect x="402" y="646" width="280" height="132" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="542" y="692" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="25" font-weight="700">usb-storage</text>
+  <text x="542" y="732" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="542" dy="0">Wraps SCSI commands</tspan>
+    <tspan x="542" dy="29">inside USB messages</tspan>
+  </text>
+
+  <rect x="702" y="646" width="300" height="142" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="852" y="684" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="852" dy="0">mpt3sas /</tspan>
+    <tspan x="852" dy="28">virtio_scsi</tspan>
+  </text>
+  <text x="852" y="744" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="852" dy="0">SAS, RAID, and VM</tspan>
+    <tspan x="852" dy="28">SCSI HBAs</tspan>
+  </text>
+
+  <!-- Right container: Separate NVMe stack -->
+  <rect x="1100" y="120" width="460" height="720" rx="22" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  <text x="1330" y="168" text-anchor="middle" fill="#db8129" font-family="sans-serif" font-size="30" font-weight="700">NVMe stack (separate)</text>
+
+  <rect x="1135" y="195" width="390" height="145" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <ellipse cx="1182" cy="245" rx="22" ry="8"/>
+    <path d="M1160 245v28c0 5 10 8 22 8s22-3 22-8v-28"/>
+  </g>
+  <text x="1224" y="252" fill="#303a36" font-family="monospace" font-size="25" font-weight="700">/dev/nvme0n1</text>
+  <text x="1224" y="294" fill="#303a36" font-family="sans-serif" font-size="24">Block namespace node</text>
+
+  <path d="M1330 340 V386" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+
+  <rect x="1135" y="390" width="390" height="185" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="1330" y="438" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="27" font-weight="700">nvme driver (blk-mq)</text>
+  <text x="1330" y="484" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1330" dy="0">Per-CPU submission and</tspan>
+    <tspan x="1330" dy="32">completion queues;</tspan>
+    <tspan x="1330" dy="32">bypasses SCSI layer</tspan>
+  </text>
+
+  <path d="M1330 575 V626" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+
+  <rect x="1135" y="630" width="390" height="175" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="1165" y="675" width="42" height="42" rx="5"/><rect x="1176" y="686" width="20" height="20"/>
+    <path d="M1176 675v-7 M1186 675v-7 M1196 675v-7 M1176 717v7 M1186 717v7 M1196 717v7"/>
+  </g>
+  <text x="1226" y="692" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">PCIe / NVMe-oF</text>
+  <text x="1226" y="736" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1226" dy="0">Direct PCIe flash or</tspan>
+    <tspan x="1226" dy="30">RDMA / TCP fabric</tspan>
+  </text>
+
+  <!-- Takeaway bar -->
+  <rect x="40" y="866" width="1520" height="80" rx="14" fill="#207448"/>
+  <text x="800" y="916" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Inspect with lsscsi (SCSI tree + /dev/sg*), lsblk (block devices), nvme list, and lspci (PCIe view).</text>
+</svg>

@@ -50,15 +50,11 @@ Your script works in your terminal, then fails when cron runs it from somewhere 
 
 Every file or directory on Linux is reached through a **path**: a string of names separated by `/`. There is one tree with a single top, the **root directory**, written `/`. Unlike some other operating systems, there are no drive letters. Additional disks and network filesystems are *attached into the same tree* at chosen directories called mount points. Chapter 1.12 covers mount points in detail.
 
-![Paths: how you name a file](./img/ch03-d1-luna.svg)
-
-*Figure 1.3.1. Paths: how you name a file.*
-
 An **absolute path** starts with `/` and means the same thing everywhere, such as `/home/alice/project/train.py`. A **relative path** does not start with `/`. The system reads it from the **current working directory** (`pwd`) of the process, so `project/train.py` depends on where the process started. Picture two people in different rooms both saying "the file on my desk": each means a different file, and both are correct.
 
 ![Absolute paths mean the same thing everywhere, while a relative path depends on the working directory, with . and .. shortcuts.](./img/ch03-fig4-paths.jpg)
 
-*Figure 1.3.2. An absolute path starts at the root; a relative path is read from the current working directory.*
+*Figure 1.3.1. An absolute path starts at the root; a relative path is read from the current working directory.*
 
 Relative paths are convenient at a prompt. They are also a classic source of script bugs, because the working directory is whatever the caller happened to be in. Cron jobs, systemd services, Slurm jobs and containers each start in a different directory. Automation should therefore use absolute paths, or `cd` explicitly first.
 
@@ -203,11 +199,7 @@ A **directory** is a special file that holds a simple table. Each entry maps a n
 
 ![A directory entry maps a name to an inode, and the inode holds the metadata and data block pointers.](./img/ch03-fig1-inode.jpg)
 
-*Figure 1.3.3. The name lives in the directory; everything else about the file lives in the inode.*
-
-![Inodes: what a file really is](./img/ch03-d2-luna.svg)
-
-*Figure 1.3.4. Inodes: what a file really is.*
+*Figure 1.3.2. The name lives in the directory; everything else about the file lives in the inode.*
 
 You can look at the inode yourself with these commands. The `ls -li` output shows the inode number in its first column.
 
@@ -287,7 +279,7 @@ Notice the row for a deleted original, because it decides most real incidents. A
 
 ![A hard link is a second name for one inode, and a symbolic link is a small file that names a path.](./img/ch03-fig2-links.jpg)
 
-*Figure 1.3.5. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
+*Figure 1.3.3. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
 
 ### The atomic "latest" pattern
 
@@ -302,7 +294,7 @@ The `-f` flag replaces an existing link. `-n` treats an existing directory symli
 
 ![A temporary symlink is created, then renamed over latest in one atomic step.](./img/ch03-fig3-atomic-latest.jpg)
 
-*Figure 1.3.6. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
+*Figure 1.3.4. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
 
 Before you point a `latest` link at a new checkpoint, use this two-step swap so readers never find it missing.
 

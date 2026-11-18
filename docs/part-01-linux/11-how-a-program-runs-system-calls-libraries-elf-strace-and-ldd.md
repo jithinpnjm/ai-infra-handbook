@@ -149,6 +149,10 @@ You can see this layout for any running process, with no special tool. `cat /pro
 
 The process tools show two different sizes. Virtual size (VSZ or VIRT) is the sum of all the mappings. Resident size (RSS) is the part that is actually in RAM. The two differ because the kernel allocates memory lazily. Reserving address space costs nothing, and a physical page is assigned only on first touch. This behaviour is **demand paging**, covered in chapter 1.8 section 8 and in chapter 1.17.
 
+![The process virtual address space](./img/ch11-d3-luna.svg)
+
+*Figure 1.11.3. The process virtual address space on x86-64 Linux and demand paging (VIRT vs RSS).*
+
 A small experiment makes this concrete. The program below reserves 1 GiB of virtual memory, then touches it one page at a time:
 
 ```c
@@ -189,7 +193,7 @@ A program that opens a file, sends a packet or asks the GPU to do work crosses t
 
 ![Crossing into the kernel](./img/ch11-fig1-syscall.jpg)
 
-*Figure 1.11.3. A system call is the controlled crossing from user space into the kernel; strace prints each one.*
+*Figure 1.11.4. A system call is the controlled crossing from user space into the kernel; strace prints each one.*
 
 ### The mechanism
 
@@ -237,7 +241,7 @@ You install a library, and the file sits right there on disk, yet the program st
 
 ![Shared libraries at start-up](./img/ch11-fig2-sharedlibs.jpg)
 
-*Figure 1.11.4. The dynamic linker finds each needed library, and ldd shows what will load.*
+*Figure 1.11.5. The dynamic linker finds each needed library, and ldd shows what will load.*
 
 Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. This section is about keeping them under control, and you can do that if you know four things. The source for this material is *How Linux Works* Section 15.1.3. First, you need to list the shared libraries an executable needs, with `ldd` or `readelf -d`. Second, you need to know how the executable looks for them: `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`, `/lib` and `/usr/lib`. Third, you need to link against a library at compile time, using `-L`, `-l` and `-Wl,-rpath`. Fourth, you need to know the common pitfalls. This section covers what makes a library file name work, how a program says which version it needs, and what goes wrong.
 

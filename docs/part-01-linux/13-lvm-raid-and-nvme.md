@@ -402,6 +402,10 @@ myvg-mylv1: 0 20971520 linear 8:33 2048
 
 Each field has a job. The first is the start offset in the mapped device. Then comes the length of the segment, the target type, which is `linear` here, the source device as major:minor, and the offset on that device. LVM places the first LV in one contiguous run where it can. The second LV needs two segments, one on each PV. When `mylv2` is removed and `mylv1` is extended, the table gains the second segment. The kernel only follows the map. Deciding the layout is the job of LVM in user space.
 
+![Device mapper: virtual sectors to physical disks](./img/ch13-d4-luna.svg)
+
+*Figure 1.13.3. How the device mapper maps virtual LV sector ranges across underlying physical devices.*
+
 The table can use these target types: `linear`, `striped`, `mirror`/`raid`, `snapshot`/`snapshot-origin`, `thin`/`thin-pool`, `crypt` (dm-crypt/LUKS), `multipath`, `cache`/`writecache`, `integrity`, `verity` (read-only integrity for images), `zero`, and `error` (to inject failures for testing).
 
 ### Device mapper inventory with `dmsetup`
@@ -483,7 +487,7 @@ Picture the moment a drive dies in the middle of a training run. What happens ne
 
 ![Common RAID levels](./img/ch13-fig1-raid.jpg)
 
-*Figure 1.13.3. RAID 0, 1, 5 and 10 compared; RAID is not a backup.*
+*Figure 1.13.4. RAID 0, 1, 5 and 10 compared; RAID is not a backup.*
 
 **Hardware RAID** runs on a controller card, which often has its own cache backed by a battery or capacitor. **Software RAID** runs in the operating system, through Linux `md`, LVM RAID or ZFS and btrfs. Modern CPUs make the parity calculation cheap. Software RAID also gives the operating system full sight of each drive, and it survives a dead controller. Most GPU servers use **software RAID (`md`)**.
 
@@ -564,6 +568,10 @@ Start with how the names map to hardware, because you will see these names in ev
 The data moves through **queues in host memory**. There is one **admin** queue pair, plus many **I/O submission and completion queue pairs**. The limits are up to 64 thousand queues, each up to 64 thousand entries deep. Linux creates **one queue pair per CPU** through blk-mq. So the CPU that issues an I/O also receives its completion interrupt (MSI-X). Nothing is shared, so there is no lock to wait on. This design is why NVMe scales to millions of IOPS with latency in the tens of microseconds. For comparison, the older SATA queue is 32 deep, and SAS is 256.
 
 Completion usually comes by interrupt. For the lowest latency, you can poll instead, using `io_poll` or `io_uring` with `IORING_SETUP_IOPOLL`.
+
+![NVMe queues per CPU and namespaces](./img/ch13-d5-luna.svg)
+
+*Figure 1.13.5. NVMe per-CPU submission/completion queue pairs and controller-to-namespace naming.*
 
 Bandwidth is limited by the **PCIe link**. A Gen3 x4 link gives about 3.5 GB/s. Gen4 x4 gives about 7 GB/s, and Gen5 x4 gives about 14 GB/s, each per direction. A drive running at x2, or at a lower generation, will be slow. Check the link state with `lspci -vv`, or read `/sys/class/nvme/nvme0/device/current_link_speed` and `max_link_width`.
 
@@ -711,7 +719,7 @@ Training data travels a long way. It crosses storage media, storage servers, the
 
 ![The full data path, layer by layer](./img/ch13-d2-luna.svg)
 
-*Figure 1.13.4. The full data path, layer by layer.*
+*Figure 1.13.6. The full data path, layer by layer.*
 
 The procedure has three steps. First, establish the demand: samples per second, multiplied by the bytes per sample, for each GPU. Second, measure the supply at each layer. Use a tool that bypasses the layers above it. Start with a raw device read using `fio --direct=1`, then test the filesystem, then the network path with the storage client, then the application loader. Third, the first layer whose measured capacity falls below the demand is the bottleneck. Also check for hidden copies. An extra decode or format conversion on the CPU can cost more than the disk does.
 
@@ -728,7 +736,7 @@ Use local NVMe staging when the shared link or filesystem is the measured bottle
 
 ![Local NVMe as cache and staging area](./img/ch13-d3-luna.svg)
 
-*Figure 1.13.5. Local NVMe as cache and staging area.*
+*Figure 1.13.7. Local NVMe as cache and staging area.*
 
 **Cache design points.** Verify every cached file with a checksum or a version key, so a run never trains on stale data after the source changes. Log the hit rate for each epoch. In a healthy setup it is about 0% in epoch 1 and above 95% from epoch 2, if the dataset fits. A drop in later epochs shows eviction pressure, which tends to appear once the NVMe is above about 85% full. Choose an eviction policy. Pre-stage the data in parallel before the job starts, instead of fetching lazily on first read. Keep the staging deterministic and idempotent, and treat the volume as disposable. Watch out for file naming. Two different names for the same data defeat the hit rate.
 

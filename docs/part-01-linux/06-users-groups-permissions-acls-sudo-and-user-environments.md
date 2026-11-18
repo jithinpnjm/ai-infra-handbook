@@ -586,6 +586,10 @@ hosts:    files dns
 
 Read each line from left to right. The local files come first, `/etc/passwd` and `/etc/group`. Next comes `systemd`, which handles dynamic service users. Then comes `sss`, which is SSSD for LDAP or Active Directory. On NIS+ systems, the last entry is `nis+` instead. That is why `getent passwd alice` is the authoritative test on any node. It queries the full NSS chain, while `grep alice /etc/passwd` looks only at one file.
 
+![Cluster identity: NSS and SSSD caching](./img/ch06-d3-luna.svg)
+
+*Figure 1.6.6. Cluster identity: NSS and SSSD caching.*
+
 Before you move a site from local files to a directory service, confirm that `getent passwd` returns the same answer on every node.
 
 ## 9. AI-infrastructure patterns

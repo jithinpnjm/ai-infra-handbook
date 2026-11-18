@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+  <title>LDAP burst storm, NSS, and SSSD caching</title>
+  <desc>Comparison of naive 500-node LDAP lookup storm at job launch versus Name Service Switch (NSS) backed by local SSSD caching.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Cluster identity: NSS and SSSD caching</text>
+
+  <!-- Top lane: Naive LDAP storm -->
+  <rect x="40" y="115" width="1520" height="310" rx="20" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+  <text x="72" y="162" fill="#db8129" font-family="sans-serif" font-size="30" font-weight="700">Without local cache: explosive job-launch storm</text>
+
+  <rect x="72" y="195" width="430" height="190" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="102" y="228" width="42" height="42" rx="5"/><rect x="113" y="239" width="20" height="20"/>
+    <path d="M113 228v-7 M123 228v-7 M133 228v-7 M113 270v7 M123 270v7 M133 270v7"/>
+  </g>
+  <text x="164" y="248" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">500 compute nodes</text>
+  <text x="102" y="310" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="102" dy="0">Slurm / Kubernetes launches job;</tspan>
+    <tspan x="102" dy="32">all 500 query UID/GID at once</tspan>
+  </text>
+
+  <path d="M502 290 H836" fill="none" stroke="#db8129" stroke-width="4.5" marker-end="url(#orange-arrow)"/>
+  <text x="669" y="254" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">
+    <tspan x="669" dy="0">500 simultaneous</tspan>
+    <tspan x="669" dy="28">LDAP lookups</tspan>
+  </text>
+
+  <rect x="840" y="195" width="688" height="190" rx="16" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5"/>
+  <g fill="none" stroke="#db8129" stroke-width="3.5">
+    <ellipse cx="892" cy="240" rx="24" ry="9"/>
+    <path d="M868 240v34c0 5 11 9 24 9s24-4 24-9v-34"/>
+  </g>
+  <text x="936" y="248" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">Standalone LDAP server</text>
+  <text x="936" y="294" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="936" dy="0">Runs out of worker threads, drops requests.</tspan>
+    <tspan x="936" dy="34">Job launch fails on affected nodes.</tspan>
+  </text>
+
+  <!-- Bottom lane: NSS + SSSD caching -->
+  <rect x="40" y="460" width="1520" height="480" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="72" y="508" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">With NSS and node-local SSSD cache</text>
+
+  <!-- Step 1: Program -->
+  <rect x="72" y="555" width="320" height="195" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5"><rect x="98" y="582" width="44" height="32" rx="4"/><path d="M98 592h44"/></g>
+  <text x="158" y="606" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">Program</text>
+  <text x="98" y="652" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="98" dy="0">getpwnam / getpwuid</tspan>
+    <tspan x="98" dy="32" font-family="sans-serif">(never reads</tspan>
+    <tspan x="98" dy="30" font-family="sans-serif">passwd directly)</tspan>
+  </text>
+
+  <path d="M392 652 H446" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Step 2: NSS -->
+  <rect x="450" y="555" width="380" height="195" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <path d="M476 582h26l10 10v34h-36z M502 582v10h10" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <text x="532" y="606" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">NSS switch</text>
+  <text x="476" y="652" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="476" dy="0">/etc/nsswitch.conf</tspan>
+    <tspan x="476" dy="34">passwd: files</tspan>
+    <tspan x="476" dy="30">        systemd sss</tspan>
+  </text>
+
+  <path d="M830 652 H876" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Step 3: SSSD cache -->
+  <rect x="880" y="555" width="330" height="195" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <circle cx="924" cy="600" r="16"/><circle cx="924" cy="600" r="6"/>
+    <path d="M924 578v7 M924 615v7 M902 600h7 M939 600h7"/>
+  </g>
+  <text x="958" y="606" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">Local SSSD</text>
+  <text x="906" y="656" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="906" dy="0">Serves cached UID, GID</tspan>
+    <tspan x="906" dy="32">and groups on node</tspan>
+  </text>
+
+  <path d="M1210 652 H1276" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
+
+  <!-- Step 4: LDAP / replicas -->
+  <rect x="1280" y="555" width="248" height="195" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <ellipse cx="1324" cy="596" rx="22" ry="8"/>
+    <path d="M1302 596v28c0 4 10 8 22 8s22-4 22-8v-28"/>
+  </g>
+  <text x="1364" y="606" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">LDAP</text>
+  <text x="1306" y="658" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1306" dy="0">Queried only on</tspan>
+    <tspan x="1306" dy="30">cache miss / expiry</tspan>
+  </text>
+
+  <!-- Takeaway bar -->
+  <rect x="72" y="790" width="1456" height="110" rx="14" fill="#207448"/>
+  <text x="800" y="838" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">
+    <tspan x="800" dy="0">Rule: pair LDAP with local SSSD caching (or replica servers) before launching multi-node jobs.</tspan>
+    <tspan x="800" dy="36" font-weight="400">Alternative: pull-based file sync (/usr/sbin/master-sync) gives microsecond local reads with zero network storm.</tspan>
+  </text>
+</svg>

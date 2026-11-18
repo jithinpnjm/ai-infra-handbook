@@ -178,6 +178,10 @@ A classic stack comes from the chsh example, and it is worth tracing line by lin
 
 Follow the order. If root passes, the stack is done. If root does not pass and the shell check fails, the stack stops with failure. If the password is correct, the stack succeeds. Otherwise, the deny line gives failure.
 
+![PAM stack evaluation](./img/ch21-d2-luna.svg)
+
+*Figure 1.21.2. PAM stack evaluation showing sufficient, requisite, and required control flags.*
+
 Several modules do the everyday work, and the first group checks the password itself. `pam_unix` handles traditional passwords and `/etc/shadow`, and its `nullok` option allows empty passwords, which should never be set. `pam_sss` connects to SSSD, LDAP or Kerberos, and `pam_pwquality` checks password strength.
 
 A second group controls access. `pam_faillock` and `pam_tally2` lock an account after repeated failures. `pam_limits` applies `/etc/security/limits.conf` and `limits.d`, and `pam_access` uses `/etc/security/access.conf` as a host and user allow list. `pam_time` and `pam_nologin` restrict when logins happen. `pam_nologin` reads `/etc/nologin` to block non-root logins during maintenance, and `pam_wheel` restricts `su` to a group.
@@ -230,7 +234,7 @@ Suppose a server must bind a port below 1024, but it should never be able to loa
 
 ![Capabilities split root into pieces](./img/ch21-fig1-caps.jpg)
 
-*Figure 1.21.2. Capabilities divide root's power into separate pieces that you grant one at a time.*
+*Figure 1.21.3. Capabilities divide root's power into separate pieces that you grant one at a time.*
 
 Linux breaks root's powers into about 40 **capabilities**. Each capability is a distinct privilege, one key rather than the whole ring, and each can be granted, dropped or inherited separately. A process with euid 0 *normally* holds all of them. A process with a few capabilities and a non-zero UID can still do just those operations.
 
@@ -324,6 +328,10 @@ Here is a question to keep in mind. A service runs as root and touches a file th
 A useful picture is a parcel with two labels. The owner writes one label and decides who may open it. The shipping company writes the other, and the owner cannot change that one.
 
 DAC and MAC are *both* checked. MAC can only deny more. Run `cat /sys/kernel/security/lsm` to see which LSMs are active on your node.
+
+![Three security gates: seccomp, DAC, and MAC](./img/ch21-d3-luna.svg)
+
+*Figure 1.21.4. Syscall security gates: seccomp-bpf filtering, DAC with capabilities, and MAC (SELinux/AppArmor).*
 
 ### SELinux (RHEL, Rocky, Fedora, Amazon Linux; also used by Android)
 

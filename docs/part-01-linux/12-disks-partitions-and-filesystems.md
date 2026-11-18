@@ -152,6 +152,10 @@ The two partition table formats differ in size limits, resilience and boot metho
 
 For anything new, use **GPT**. Keep MBR knowledge for old systems, USB sticks and some cloud images.
 
+![MBR versus GPT on disk](./img/ch12-d7-luna.svg)
+
+*Figure 1.12.2. MBR versus GPT on-disk partition layout.*
+
 ### Tools
 
 Several tools read and change the table. Some only look, and others change the disk, so check which kind you are running.
@@ -452,7 +456,7 @@ Picture a node that comes back from a reboot with `/data` missing. The boot log 
 
 ![Mounting attaches a filesystem to a directory](./img/ch12-fig1-mount.jpg)
 
-*Figure 1.12.2. Mounting makes a filesystem's files appear under a directory; what was there before is hidden until unmount.*
+*Figure 1.12.3. Mounting makes a filesystem's files appear under a directory; what was there before is hidden until unmount.*
 
 Start with `findmnt`. It shows the mount tree and answers the question you will ask most often: which filesystem holds this path?
 
@@ -681,7 +685,7 @@ An **inode** is a record, found by a number in an inode table, that describes on
 
 ![Inside a traditional filesystem](./img/ch12-d2-luna.svg)
 
-*Figure 1.12.3. Inside a traditional filesystem.*
+*Figure 1.12.4. Inside a traditional filesystem.*
 
 Here is how the kernel opens `dir_1/file_2`. As you follow the steps, notice that the name never sits in the inode itself. You will need that fact when you read `ls -i`. It starts at the **root inode** (inode 2 on ext filesystems; the superblock says where it is). It reads that directory's data to find `dir_1`, which is inode 12. It confirms that inode 12 is a directory. Then it reads that directory's data to find `file_2`, which is inode 14. Finally it reads inode 14, a file, and learns where the data blocks are. The dentry and inode caches (section 9) make this nearly free for hot paths.
 
@@ -887,7 +891,7 @@ The diagram below shows what happens when an application calls `read()`. The pat
 
 ![Files, file descriptors and the read path](./img/ch12-d3-luna.svg)
 
-*Figure 1.12.4. Files, file descriptors and the read path.*
+*Figure 1.12.5. Files, file descriptors and the read path.*
 
 `read()` hides everything below the VFS. A profiler that traces only the application shows "this call took 400 ms", and nothing more. The call alone cannot tell you whether the cause is an overloaded NVMe drive, an overloaded NFS server or a cold cache. To find out, look at the block layer or the network RPC layer.
 
@@ -923,7 +927,7 @@ The trade-off is reliability. Power loss loses unflushed data. A partial write c
 
 ![Write-back caching and durability](./img/ch12-d4-luna.svg)
 
-*Figure 1.12.5. Write-back caching and durability.*
+*Figure 1.12.6. Write-back caching and durability.*
 
 **Synchronous writes** complete only when the data, and the metadata needed to find it, is on persistent storage. You can request this for each write with the `O_SYNC` or `O_DSYNC` flags, or by mounting with `sync`. The efficient way is to **commit a group of earlier writes** with `fsync(fd)`. Databases and checkpointers batch their writes, then call `fsync` once. Closing a file does *not* guarantee durability. A long pause when unpacking an archive of many files over NFS is the cost of those implicit commits.
 
@@ -1054,7 +1058,7 @@ Each fix has a trade-off. You can stagger writes across nodes. You can write to 
 
 ![AI-infrastructure patterns](./img/ch12-d5-luna.svg)
 
-*Figure 1.12.6. AI-infrastructure patterns.*
+*Figure 1.12.7. AI-infrastructure patterns.*
 
 **Data-loader storms.** You may see this on your first large run. The same fan-in happens at start-up, when thousands of processes open the same files. That is a **metadata storm**. You will see high `await` on compute nodes, even though raw storage bandwidth is idle. The remedies are to shard the dataset, cache it on local NVMe (copy once per node), stage it with a parallel copy (`mpifileutils dcp`), use client-side caches, and stagger start-up. `iostat` covers only local block devices. For NFS, use `nfsiostat` or `mountstats`.
 
@@ -1062,7 +1066,7 @@ Each fix has a trade-off. You can stagger writes across nodes. You can write to 
 
 ![AI-infrastructure patterns](./img/ch12-d6-luna.svg)
 
-*Figure 1.12.7. AI-infrastructure patterns.*
+*Figure 1.12.8. AI-infrastructure patterns.*
 
 **Inode exhaustion.** An ext4 volume at 40% bytes but 100% inodes returns `ENOSPC` on the next `open()` or `create`. `df -h` and `df -i` on the same filesystem tell different stories. Prevent this by creating the filesystem with enough inodes, or by using XFS. Avoid million-file datasets on one volume. The container image store and package caches are the other usual victims.
 

@@ -196,10 +196,6 @@ Every task is in exactly one state at any moment, and the kernel writes that sta
 
 *Figure 1.8.3. The five process states you will see in the ps STAT column.*
 
-![Process states](./img/ch08-d3-luna.svg)
-
-*Figure 1.8.4. Process states.*
-
 **The `D` state causes the worst cluster days.** A process in `D` is waiting on a kernel operation that has not returned. The usual causes are a hung NFS, Lustre or GPFS mount, a failing disk, or a driver waiting for a GPU that has fallen off the bus.
 
 You cannot kill it. `kill -9` is ignored until the I/O completes, and the process still counts in the load average. Fix the underlying cause first. Restore the server, fix the mount, reset the GPU or reboot. To see what the process is waiting for, read `cat /proc/<pid>/stack` (as root) or `/proc/<pid>/wchan`.
@@ -498,6 +494,10 @@ kill -- -1234           # signal the whole PROCESS GROUP 1234 (note the minus)
 **Escalate in order.** When you are tempted to reach for `kill -9`, try `SIGTERM` first, and give the program time to shut down. It can flush buffers, save a checkpoint, close files and remove lock files. Use `SIGKILL` only when the program does not respond.
 
 A killed process gets no chance to clean up. That can leave lock files, half-written files and orphaned children. For GPU jobs it can also leave GPU memory that the driver must reclaim. A signal handled by a process in `D` state takes effect only when the process leaves that state.
+
+![How signals reach a process](./img/ch08-d4-luna.svg)
+
+*Figure 1.8.4. How signals reach a process, dispositions, and why D state delays SIGKILL.*
 
 ### Stopping, continuing and processes that resist
 

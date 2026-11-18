@@ -1,101 +1,113 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1220" viewBox="0 0 1600 1220">
   <title>Putting it together: what a runtime does</title>
-  <desc></desc>
+  <desc>Sequence diagram showing how kubelet/docker CLI, containerd, containerd-shim, runc, and the Linux kernel create and supervise a container.</desc>
+
   <defs>
-    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="14" refY="9" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M2 2 L14 9 L2 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
     </marker>
-    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="14" refY="9" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M2 2 L14 9 L2 16" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
     </marker>
   </defs>
 
-  <rect width="1600" height="1140" fill="#f5f8f5"/>
-  <text x="60" y="82" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Putting it together: what a runtime does</text>
+  <rect width="1600" height="1220" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Putting it together: what a runtime does</text>
 
-  <g fill="#e8f1ea">
-    <rect x="60" y="120" width="264" height="160" rx="18"/>
-    <rect x="364" y="120" width="264" height="160" rx="18"/>
-    <rect x="668" y="120" width="264" height="160" rx="18"/>
-    <rect x="972" y="120" width="264" height="160" rx="18"/>
-    <rect x="1276" y="120" width="264" height="160" rx="18"/>
+  <!-- 5 Participant boxes (centers: 190, 490, 795, 1100, 1410) -->
+  <rect x="55" y="106" width="270" height="160" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="166" y="122" width="48" height="36" rx="5"/><path d="M178 134l8 6-8 6 M192 146h12"/>
+  </g>
+  <text x="190" y="206" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">
+    <tspan x="190" dy="0">kubelet /</tspan>
+    <tspan x="190" dy="32">docker CLI</tspan>
+  </text>
+
+  <rect x="355" y="106" width="270" height="160" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <circle cx="490" cy="144" r="16"/><circle cx="490" cy="144" r="6"/>
+    <path d="M490 120v8 M490 160v8 M466 144h8 M506 144h8"/>
+  </g>
+  <text x="490" y="218" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">containerd</text>
+
+  <rect x="660" y="106" width="270" height="160" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <circle cx="795" cy="144" r="16"/><circle cx="795" cy="144" r="6"/>
+    <path d="M795 120v8 M795 160v8 M771 144h8 M811 144h8"/>
+  </g>
+  <text x="795" y="206" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">
+    <tspan x="795" dy="0">containerd-</tspan>
+    <tspan x="795" dy="32">shim</tspan>
+  </text>
+
+  <rect x="965" y="106" width="270" height="160" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <circle cx="1100" cy="144" r="16"/><circle cx="1100" cy="144" r="6"/>
+    <path d="M1100 120v8 M1100 160v8 M1076 144h8 M1116 144h8"/>
+  </g>
+  <text x="1100" y="206" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">
+    <tspan x="1100" dy="0">runc (OCI</tspan>
+    <tspan x="1100" dy="32">runtime)</tspan>
+  </text>
+
+  <rect x="1275" y="106" width="270" height="160" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="1388" y="122" width="44" height="44" rx="5"/><rect x="1400" y="134" width="20" height="20"/>
+    <path d="M1400 122v-7 M1410 122v-7 M1420 122v-7 M1400 166v7 M1410 166v7 M1420 166v7"/>
+  </g>
+  <text x="1410" y="218" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">Linux kernel</text>
+
+  <!-- Lifelines -->
+  <g stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.45">
+    <line x1="190" y1="266" x2="190" y2="1175"/>
+    <line x1="490" y1="266" x2="490" y2="1175"/>
+    <line x1="795" y1="266" x2="795" y2="1175"/>
+    <line x1="1100" y1="266" x2="1100" y2="1175"/>
+    <line x1="1410" y1="266" x2="1410" y2="1175"/>
   </g>
 
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <g transform="translate(164 137)">
-      <rect x="4" y="4" width="48" height="40" rx="5"/>
-      <path d="M4 14h48"/>
-      <circle cx="12" cy="9" r="1.5" fill="#207448"/>
-      <circle cx="19" cy="9" r="1.5" fill="#207448"/>
-      <path d="M15 25l6 5-6 5M27 35h12"/>
-    </g>
-    <g transform="translate(468 137)">
-      <path d="M28 5v7M28 40v7M5 28h7M40 28h7M11.7 11.7l5 5M39.3 39.3l-5-5M44.3 11.7l-5 5M16.7 39.3l-5 5"/>
-      <circle cx="28" cy="28" r="16"/>
-      <circle cx="28" cy="28" r="6"/>
-    </g>
-    <g transform="translate(772 137)">
-      <path d="M28 5v7M28 40v7M5 28h7M40 28h7M11.7 11.7l5 5M39.3 39.3l-5-5M44.3 11.7l-5 5M16.7 39.3l-5 5"/>
-      <circle cx="28" cy="28" r="16"/>
-      <circle cx="28" cy="28" r="6"/>
-    </g>
-    <g transform="translate(1076 137)">
-      <path d="M28 5v7M28 40v7M5 28h7M40 28h7M11.7 11.7l5 5M39.3 39.3l-5-5M44.3 11.7l-5 5M16.7 39.3l-5 5"/>
-      <circle cx="28" cy="28" r="16"/>
-      <circle cx="28" cy="28" r="6"/>
-    </g>
-    <g transform="translate(1380 137)">
-      <rect x="11" y="11" width="34" height="34" rx="3"/>
-      <path d="M19 4v7M28 4v7M37 4v7M19 45v7M28 45v7M37 45v7M4 19h7M4 28h7M4 37h7M45 19h7M45 28h7M45 37h7"/>
-      <path d="M20 21h18v14H20z"/>
-    </g>
-  </g>
+  <!-- 1: kubelet -> containerd -->
+  <path d="M190 340 H486" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="340" y="320" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">create container (image, config)</text>
 
-  <g fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700" text-anchor="middle">
-    <text x="192" y="222"><tspan x="192">kubelet /</tspan><tspan x="192" dy="32">docker CLI</tspan></text>
-    <text x="496" y="222">containerd</text>
-    <text x="800" y="222"><tspan x="800">containerd-</tspan><tspan x="800" dy="32">shim</tspan></text>
-    <text x="1104" y="222"><tspan x="1104">runc (OCI</tspan><tspan x="1104" dy="32">runtime)</tspan></text>
-    <text x="1408" y="238">Linux kernel</text>
-  </g>
+  <!-- 2: containerd self -->
+  <path d="M490 412 H542 V434 H494" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="515" y="394" text-anchor="start" fill="#303a36" font-family="sans-serif" font-size="24">unpack layers, prepare overlay snapshot</text>
 
-  <g>
-    <rect x="60" y="290" width="264" height="652" fill="#edf4ef"/>
-    <rect x="364" y="290" width="264" height="652" fill="#e8f1ea"/>
-    <rect x="668" y="290" width="264" height="652" fill="#edf4ef"/>
-    <rect x="972" y="290" width="264" height="652" fill="#e8f1ea"/>
-    <rect x="1276" y="290" width="264" height="652" fill="#edf4ef"/>
-  </g>
+  <!-- 3: containerd -> shim -->
+  <path d="M490 500 H791" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="642" y="482" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">start shim (stays as parent)</text>
 
-  <g fill="#303a36" font-family="sans-serif" font-size="24" text-anchor="middle">
-    <text x="800" y="322">create container (image, config)</text>
-    <text x="800" y="386">unpack layers, prepare overlay snapshot</text>
-    <text x="800" y="450">start shim (stays as parent)</text>
-    <text x="800" y="514">run with OCI bundle (<tspan font-family="monospace">config.json + rootfs</tspan>)</text>
-    <text x="800" y="578" font-family="monospace">clone(CLONE_NEWPID|NEWNS|NEWNET|NEWUTS|NEWIPC|…)</text>
-    <text x="800" y="642">create cgroup, write limits (ch. 1.18)</text>
-    <text x="800" y="706" font-family="monospace">mount rootfs, pivot_root, mask paths</text>
-    <text x="800" y="770">set capabilities, seccomp filter, LSM label (ch. 1.21)</text>
-    <text x="800" y="834" font-family="monospace">execve(user process) as PID 1</text>
-    <text x="800" y="898">exit (runc is gone, shim supervises)</text>
-  </g>
+  <!-- 4: shim -> runc -->
+  <path d="M795 575 H1096" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="948" y="555" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">run with OCI bundle (config.json + rootfs)</text>
 
-  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
-    <path d="M192 342H496" marker-end="url(#arrow-green)"/>
-    <path d="M496 406H548V418H496" marker-end="url(#arrow-green)"/>
-    <path d="M496 470H800" marker-end="url(#arrow-green)"/>
-    <path d="M800 534H1104" marker-end="url(#arrow-green)"/>
-    <path d="M1104 598H1408" marker-end="url(#arrow-green)"/>
-    <path d="M1104 662H1408" marker-end="url(#arrow-green)"/>
-    <path d="M1104 726H1408" marker-end="url(#arrow-green)"/>
-    <path d="M1104 790H1408" marker-end="url(#arrow-green)"/>
-    <path d="M1104 918H496" stroke-dasharray="9 8" marker-end="url(#arrow-green)"/>
-  </g>
-  <path d="M1104 854H1408" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+  <!-- 5: runc -> kernel: clone -->
+  <path d="M1100 652 H1406" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1255" y="632" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">clone(CLONE_NEWPID|NEWNS|NEWNET|NEWUTS|NEWIPC|…)</text>
 
-  <rect x="668" y="970" width="872" height="132" rx="18" fill="#e8f1ea"/>
-  <g fill="#303a36" font-family="sans-serif" font-size="24">
-    <text x="694" y="1022">CNI plugin is called to</text>
-    <text x="694" y="1060">create the net ns wiring</text>
-  </g>
+  <!-- 6: runc -> kernel: cgroup -->
+  <path d="M1100 726 H1406" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1255" y="708" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">create cgroup, write limits (ch. 1.18)</text>
+
+  <!-- 7: runc -> kernel: mount/pivot_root -->
+  <path d="M1100 800 H1406" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1255" y="782" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">mount rootfs, pivot_root, mask paths</text>
+
+  <!-- 8: runc -> kernel: caps/seccomp/LSM -->
+  <path d="M1100 874 H1406" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1245" y="856" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">set capabilities, seccomp filter, LSM label (ch. 1.21)</text>
+
+  <!-- 9: runc -> kernel: execve (orange) -->
+  <path d="M1100 948 H1406" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+  <text x="1255" y="930" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">execve(user process) as PID 1</text>
+
+  <!-- 10: runc -->> shim: exit -->
+  <path d="M1100 1022 H799" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
+  <text x="948" y="1002" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">exit (runc is gone, shim supervises)</text>
+
+  <!-- Note across SH..KN -->
+  <rect x="740" y="1075" width="720" height="82" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="1100" y="1125" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">CNI plugin is called to create the net ns wiring</text>
 </svg>

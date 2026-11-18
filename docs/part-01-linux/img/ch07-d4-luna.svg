@@ -1,156 +1,131 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1260" viewBox="0 0 1600 1260" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060">
   <title>From source to executable</title>
-  <desc></desc>
+  <desc>Toolchain pipeline from C source files through preprocessor, compiler, linker, and runtime dynamic loader.</desc>
+
   <defs>
-    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M2 2 L16 9 L2 16 Z" fill="#207448"/>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
     </marker>
-    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
-      <path d="M2 2 L16 9 L2 16 Z" fill="#db8129"/>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
     </marker>
-    <style>
-      .bg { fill:#f5f8f5; }
-      .card { fill:#e8f1ea; stroke:#207448; stroke-width:3; }
-      .ink { fill:#303a36; }
-      .arrow { fill:none; stroke:#207448; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; marker-end:url(#arrow-green); }
-      .dashed { stroke-dasharray:10 9; }
-      .orange-arrow { fill:none; stroke:#db8129; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; marker-end:url(#arrow-orange); }
-      .icon { fill:none; stroke:#207448; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; }
-      .label-bg { fill:#f5f8f5; }
-      .title { font:700 48px sans-serif; fill:#303a36; }
-      .node-title { font:700 30px sans-serif; fill:#303a36; }
-      .node-mono { font:700 30px monospace; fill:#303a36; }
-      .node-secondary { font:24px sans-serif; fill:#303a36; }
-      .node-mono-secondary { font:24px monospace; fill:#303a36; }
-      .edge-label { font:24px sans-serif; fill:#303a36; }
-      .edge-mono { font:24px monospace; fill:#303a36; }
-    </style>
   </defs>
 
-  <rect class="bg" x="0" y="0" width="1600" height="1260"/>
-  <text class="title" x="800" y="76" text-anchor="middle">From source to executable</text>
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+  <text x="800" y="76" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">From source to executable</text>
 
-  <!-- Connections -->
-  <path class="orange-arrow" d="M310 330 H660"/>
-  <path class="arrow" d="M980 330 H1200"/>
-  <path class="arrow" d="M310 590 H620"/>
-  <path class="arrow" d="M1350 430 V620 H1100 V700"/>
-  <path class="arrow" d="M770 660 V760 H850"/>
-  <path class="arrow" d="M370 940 H700 V840 H850"/>
-  <path class="arrow dashed" d="M710 1030 V970 H980 V900"/>
-  <path class="arrow" d="M1150 790 H1240"/>
-  <path class="arrow" d="M1390 880 V1060"/>
-  <path class="arrow dashed" d="M920 1140 H1240"/>
+  <!-- Row 1: main.c -> expanded source -> main.o -->
+  <rect x="40" y="180" width="240" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <path d="M72 220h28l10 10v36H72z M100 220v10h10 M82 242h20 M82 254h20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <text x="132" y="254" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">main.c</text>
 
-  <!-- Arrow labels -->
-  <rect class="label-bg" x="330" y="112" width="560" height="112" rx="12"/>
-  <text class="edge-label" x="610" y="145" text-anchor="middle">
-    <tspan x="610" dy="0">preprocessor (cpp)</tspan>
-    <tspan x="610" dy="30">expands #include, #define, #ifdef</tspan>
-  </text>
-  <rect class="label-bg" x="990" y="174" width="230" height="48" rx="10"/>
-  <text class="edge-mono" x="1105" y="207" text-anchor="middle">compiler (cc -c)</text>
-  <rect class="label-bg" x="1405" y="910" width="185" height="106" rx="12"/>
-  <text class="edge-mono" x="1415" y="940">
-    <tspan x="1415" dy="0">at run time:</tspan>
-    <tspan x="1415" dy="30">ld.so finds</tspan>
-    <tspan x="1415" dy="30">libbar.so</tspan>
+  <!-- Edge 1: preprocessor -->
+  <path d="M280 245 H616" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+  <text x="448" y="160" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="448" dy="0">preprocessor (cpp)</tspan>
+    <tspan x="448" dy="30">expands #include,</tspan>
+    <tspan x="448" dy="30">#define, #ifdef</tspan>
   </text>
 
-  <!-- main.c -->
-  <g>
-    <rect class="card" x="60" y="250" width="250" height="160" rx="18"/>
-    <path class="icon" d="M83 292 V276 H119 L139 296 V355 H83 Z M119 276 V297 H139 M96 321 H126 M96 336 H126"/>
-    <text class="node-mono" x="155" y="337">main.c</text>
-  </g>
+  <rect x="620" y="180" width="290" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <path d="M650 220h28l10 10v36h-38z M678 220v10h10 M660 242h20 M660 254h20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <text x="710" y="236" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">
+    <tspan x="710" dy="0">expanded</tspan>
+    <tspan x="710" dy="34">source</tspan>
+  </text>
 
-  <!-- expanded source -->
-  <g>
-    <rect class="card" x="660" y="250" width="320" height="160" rx="18"/>
-    <path class="icon" d="M684 292 V276 H720 L740 296 V355 H684 Z M720 276 V297 H740 M697 321 H727 M697 336 H727"/>
-    <text class="node-title" x="756" y="316">
-      <tspan x="756" dy="0">expanded</tspan>
-      <tspan x="756" dy="34">source</tspan>
-    </text>
-  </g>
+  <!-- Edge 2: compiler -->
+  <path d="M910 245 H1226" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="1068" y="220" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">compiler (cc -c)</text>
 
-  <!-- main.o -->
-  <g>
-    <rect class="card" x="1200" y="250" width="300" height="180" rx="18"/>
-    <path class="icon" d="M1222 292 V276 H1258 L1278 296 V355 H1222 Z M1258 276 V297 H1278 M1235 321 H1265 M1235 336 H1265"/>
-    <text class="node-mono" x="1294" y="313">
-      <tspan x="1294" dy="0">main.o</tspan>
-      <tspan class="node-secondary" x="1294" dy="34">object file</tspan>
-    </text>
-  </g>
+  <rect x="1230" y="180" width="320" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <path d="M1262 220h28l10 10v36h-38z M1290 220v10h10 M1272 242h20 M1272 254h20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <text x="1324" y="238" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">main.o</text>
+  <text x="1324" y="274" fill="#303a36" font-family="sans-serif" font-size="24">object file</text>
 
-  <!-- aux.c -->
-  <g>
-    <rect class="card" x="60" y="510" width="250" height="160" rx="18"/>
-    <path class="icon" d="M83 552 V536 H119 L139 556 V615 H83 Z M119 536 V557 H139 M96 581 H126 M96 596 H126"/>
-    <text class="node-mono" x="155" y="597">aux.c</text>
-  </g>
+  <!-- Row 2: aux.c -> aux.o -->
+  <rect x="40" y="380" width="240" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <path d="M72 420h28l10 10v36H72z M100 420v10h10 M82 442h20 M82 454h20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <text x="132" y="454" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">aux.c</text>
 
-  <!-- aux.o -->
-  <g>
-    <rect class="card" x="620" y="500" width="300" height="160" rx="18"/>
-    <path class="icon" d="M642 542 V526 H678 L698 546 V605 H642 Z M678 526 V547 H698 M655 571 H685 M655 586 H685"/>
-    <text class="node-mono" x="714" y="563">
-      <tspan x="714" dy="0">aux.o</tspan>
-      <tspan class="node-secondary" x="714" dy="34">object file</tspan>
-    </text>
-  </g>
+  <path d="M280 445 H616" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- linker -->
-  <g>
-    <rect class="card" x="850" y="700" width="300" height="200" rx="18"/>
-    <path class="icon" d="M900 747 L908 733 L920 739 L931 731 L943 739 L955 733 L963 747 L977 751 L975 765 L984 775 L975 787 L977 801 L963 805 L955 819 L943 813 L931 821 L920 813 L908 819 L900 805 L886 801 L888 787 L879 775 L888 765 L886 751 Z M931 760 A15 15 0 1 0 931 790 A15 15 0 1 0 931 760"/>
-    <text class="node-title" x="997" y="774">linker (ld)</text>
-    <text class="node-secondary" x="997" y="811">resolves symbols</text>
-  </g>
+  <rect x="620" y="380" width="290" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <path d="M650 420h28l10 10v36h-38z M678 420v10h10 M660 442h20 M660 454h20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <text x="710" y="438" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">aux.o</text>
+  <text x="710" y="474" fill="#303a36" font-family="sans-serif" font-size="24">object file</text>
 
-  <!-- executable -->
-  <g>
-    <rect class="card" x="1240" y="700" width="300" height="180" rx="18"/>
-    <rect class="icon" x="1265" y="738" width="58" height="48" rx="4"/>
-    <path class="icon" d="M1265 751 H1323 M1277 744 H1279 M1288 744 H1290 M1278 771 L1289 760 L1300 771 L1311 760"/>
-    <text class="node-title" x="1340" y="758">
-      <tspan x="1340" dy="0">executable</tspan>
-      <tspan class="node-mono-secondary" x="1340" dy="34">myprog (ELF)</tspan>
-    </text>
+  <!-- Row 3: static library -->
+  <rect x="40" y="575" width="350" height="165" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <ellipse cx="94" cy="635" rx="26" ry="10"/>
+    <path d="M68 635v38c0 6 12 10 26 10s26-4 26-10v-38 M68 654c0 6 12 10 26 10s26-4 26-10"/>
   </g>
+  <text x="142" y="622" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">static library</text>
+  <text x="142" y="658" fill="#303a36" font-family="monospace" font-size="24">libfoo.a</text>
+  <text x="142" y="694" fill="#303a36" font-family="sans-serif" font-size="24">(code copied in)</text>
+
+  <!-- Linker (ld) -->
+  <rect x="740" y="570" width="380" height="175" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <circle cx="806" cy="656" r="22"/>
+    <circle cx="806" cy="656" r="9"/>
+    <path d="M806 626v8 M806 678v8 M776 656h8 M828 656h8 M785 635l6 6 M821 671l6 6 M785 677l6-6 M821 641l6-6"/>
+  </g>
+  <text x="860" y="646" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">linker (ld)</text>
+  <text x="860" y="688" fill="#303a36" font-family="sans-serif" font-size="25">resolves symbols</text>
+
+  <!-- Arrows into linker -->
+  <path d="M1390 310 V520 H980 V566" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M765 510 V540 H860 V566" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M390 658 H736" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Executable -->
+  <rect x="1220" y="585" width="330" height="145" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round">
+    <rect x="1250" y="630" width="46" height="36" rx="5"/>
+    <path d="M1250 642h46 M1260 654l7-5 7 5 9-6"/>
+  </g>
+  <text x="1318" y="646" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">executable</text>
+  <text x="1318" y="684" fill="#303a36" font-family="monospace" font-size="24">myprog (ELF)</text>
+
+  <path d="M1120 658 H1216" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Row 4: shared library + running process -->
+  <rect x="440" y="820" width="440" height="190" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <ellipse cx="496" cy="885" rx="26" ry="10"/>
+    <path d="M470 885v38c0 6 12 10 26 10s26-4 26-10v-38 M470 904c0 6 12 10 26 10s26-4 26-10"/>
+  </g>
+  <text x="546" y="870" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">shared library</text>
+  <text x="546" y="906" fill="#303a36" font-family="monospace" font-size="24">libbar.so</text>
+  <text x="546" y="942" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="546" dy="0">(only a reference is</tspan>
+    <tspan x="546" dy="30">recorded)</tspan>
+  </text>
+
+  <!-- dashed shared lib -> linker -->
+  <path d="M660 820 V785 H930 V749" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
 
   <!-- running process -->
-  <g>
-    <rect class="card" x="1240" y="1060" width="300" height="160" rx="18"/>
-    <rect class="icon" x="1265" y="1105" width="58" height="48" rx="4"/>
-    <path class="icon" d="M1265 1118 H1323 M1277 1111 H1279 M1288 1111 H1290 M1283 1130 L1305 1141 L1283 1152 Z"/>
-    <text class="node-title" x="1340" y="1130">
-      <tspan x="1340" dy="0">running</tspan>
-      <tspan x="1340" dy="34">process</tspan>
-    </text>
+  <rect x="1220" y="850" width="330" height="145" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round">
+    <rect x="1250" y="896" width="46" height="36" rx="5"/>
+    <path d="M1250 908h46 M1268 914l10 6-10 6z"/>
   </g>
+  <text x="1318" y="914" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">
+    <tspan x="1318" dy="0">running</tspan>
+    <tspan x="1318" dy="34">process</tspan>
+  </text>
 
-  <!-- static library -->
-  <g>
-    <rect class="card" x="60" y="850" width="310" height="180" rx="18"/>
-    <path class="icon" d="M83 881 C83 870 101 864 119 864 C137 864 155 870 155 881 C155 892 137 898 119 898 C101 898 83 892 83 881 Z M83 881 V921 C83 932 101 938 119 938 C137 938 155 932 155 921 V881 M83 901 C83 912 101 918 119 918 C137 918 155 912 155 901"/>
-    <text class="node-title" x="172" y="885">
-      <tspan x="172" dy="0">static library</tspan>
-      <tspan class="node-mono-secondary" x="172" dy="32">libfoo.a</tspan>
-      <tspan class="node-secondary" x="172" dy="30">(code copied in)</tspan>
-    </text>
-  </g>
+  <!-- executable -> running process -->
+  <path d="M1385 730 V846" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="1405" y="778" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1405" dy="0">at run time:</tspan>
+    <tspan x="1405" dy="28" font-family="monospace">ld.so finds</tspan>
+    <tspan x="1405" dy="28" font-family="monospace">libbar.so</tspan>
+  </text>
 
-  <!-- shared library -->
-  <g>
-    <rect class="card" x="500" y="1030" width="420" height="200" rx="18"/>
-    <path class="icon" d="M523 1062 C523 1051 541 1045 559 1045 C577 1045 595 1051 595 1062 C595 1073 577 1079 559 1079 C541 1079 523 1073 523 1062 Z M523 1062 V1102 C523 1113 541 1119 559 1119 C577 1119 595 1113 595 1102 V1062 M523 1082 C523 1093 541 1099 559 1099 C577 1099 595 1093 595 1082"/>
-    <text class="node-title" x="612" y="1068">
-      <tspan x="612" dy="0">shared library</tspan>
-      <tspan class="node-mono-secondary" x="612" dy="32">libbar.so</tspan>
-      <tspan class="node-secondary" x="612" dy="30">(only a reference is</tspan>
-      <tspan class="node-secondary" x="612" dy="28">recorded)</tspan>
-    </text>
-  </g>
+  <!-- dashed shared lib -> running process -->
+  <path d="M880 922 H1216" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
 </svg>

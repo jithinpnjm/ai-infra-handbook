@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="920" viewBox="0 0 1600 920">
+  <title>MBR versus GPT on-disk partition layout</title>
+  <desc>Spatial comparison of legacy MBR (single 512-byte sector, 4 primary partitions, 2 TiB limit) versus GPT (protective MBR, primary header/entries, 128 partitions, CRC, and backup copy at disk end).</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="920" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">MBR versus GPT on disk</text>
+
+  <!-- Lane 1: MBR -->
+  <rect x="40" y="120" width="1520" height="310" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="72" y="168" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">MBR ("msdos" label) — BIOS boot, 2 TiB limit (32-bit sectors), no backup</text>
+
+  <rect x="72" y="200" width="280" height="140" rx="14" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5"/>
+  <text x="212" y="246" text-anchor="middle" fill="#db8129" font-family="sans-serif" font-size="25" font-weight="700">Sector 0 (512 B)</text>
+  <text x="212" y="284" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="212" dy="0">Boot code + 4-entry</tspan>
+    <tspan x="212" dy="30">partition table</tspan>
+  </text>
+
+  <rect x="372" y="200" width="275" height="140" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="510" y="260" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Primary 1</text>
+  <text x="510" y="298" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">e.g. type 83 Linux</text>
+
+  <rect x="667" y="200" width="275" height="140" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="805" y="260" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Primary 2</text>
+  <text x="805" y="298" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">e.g. type 82 swap</text>
+
+  <rect x="962" y="200" width="275" height="140" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="1100" y="260" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Primary 3</text>
+  <text x="1100" y="298" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">e.g. type 8e LVM</text>
+
+  <rect x="1257" y="200" width="271" height="140" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="1392" y="252" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="25" font-weight="700">Primary 4 or</text>
+  <text x="1392" y="286" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1392" dy="0">Extended →</tspan>
+    <tspan x="1392" dy="28">logical parts</tspan>
+  </text>
+
+  <text x="72" y="395" fill="#303a36" font-family="sans-serif" font-size="24">Single copy in Sector 0 with no checksums; overwriting Sector 0 destroys the partition table.</text>
+
+  <!-- Lane 2: GPT -->
+  <rect x="40" y="465" width="1520" height="320" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="72" y="513" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">GPT (GUID Partition Table) — UEFI/BIOS, 128 partitions default, CRC + backup</text>
+
+  <rect x="72" y="545" width="215" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="180" y="592" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">Protective MBR</text>
+  <text x="180" y="630" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="180" dy="0">Type ee keeps</tspan>
+    <tspan x="180" dy="28">legacy tools out</tspan>
+  </text>
+
+  <rect x="303" y="545" width="255" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3.5"/>
+  <text x="430" y="592" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">Primary GPT</text>
+  <text x="430" y="630" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="430" dy="0">Header + entries</tspan>
+    <tspan x="430" dy="28">(CRC + PARTUUID)</tspan>
+  </text>
+
+  <rect x="574" y="545" width="235" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="692" y="598" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="25" font-weight="700">ESP (UEFI)</text>
+  <text x="692" y="636" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="692" dy="0">FAT filesystem</tspan>
+    <tspan x="692" dy="28">(starts at 1 MiB)</tspan>
+  </text>
+
+  <rect x="825" y="545" width="445" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="1048" y="596" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Partition 2 … up to 128</text>
+  <text x="1048" y="636" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1048" dy="0">Named, unique GUIDs,</tspan>
+    <tspan x="1048" dy="30">zettabyte max size</tspan>
+  </text>
+
+  <rect x="1286" y="545" width="242" height="150" rx="14" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5"/>
+  <text x="1407" y="592" text-anchor="middle" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700">Backup GPT</text>
+  <text x="1407" y="630" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1407" dy="0">Copy at disk end</tspan>
+    <tspan x="1407" dy="28">(CRC checked)</tspan>
+  </text>
+
+  <text x="72" y="746" fill="#303a36" font-family="sans-serif" font-size="24">Partitions align to 1 MiB (2048 sectors) for SSD/NVMe erase-block and RAID stripe boundaries.</text>
+
+  <!-- Takeaway bar -->
+  <rect x="40" y="815" width="1520" height="75" rx="14" fill="#207448"/>
+  <text x="800" y="862" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Use GPT for all new disks; run partprobe or partx if the kernel reports device busy after editing.</text>
+</svg>

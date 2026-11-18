@@ -208,6 +208,10 @@ mount | grep overlay              # compare with a running container's root: doc
 
 Run these commands and watch where each change lands. The file in the top layer hides the one below it. Writing to it copies it up, and the lower layers stay untouched.
 
+![OverlayFS: layers, copy-up and whiteouts](./img/ch19-d5-luna.svg)
+
+*Figure 1.19.4. OverlayFS layers, copy-up on write, and 0/0 whiteouts on delete.*
+
 Four behaviours matter most in practice. The first is **copy-up**. The first write to a file that lives in a lower layer copies the entire file into the upper layer. Metadata-only changes copy only metadata, on modern kernels with `metacopy`. A training job that appends to a multi-GB file baked into an image therefore triggers a huge copy. A database stored in the image layer does the same. The copy doubles disk use and can fill the node's image storage, at `/var/lib/containerd` or `/var/lib/docker`. The result is evictions and `NodeNotReady`. Mutable and large data belongs in volumes, such as bind mounts, `emptyDir`, hostPath or PVCs, because volumes bypass overlay completely.
 
 The second is **whiteouts**. Deleting a lower file creates a 0/0 character device, or an opaque-directory xattr for removed directories, in the upper layer. That marker hides the file, but the lower data stay on disk. So deleting a file in a later Dockerfile layer does not shrink the image. The earlier layer still holds the bytes. That is why a secret baked into a layer and "deleted" later can still be extracted.
@@ -244,7 +248,7 @@ The standard way to connect a namespace is a **veth pair**. Think of it as a vir
 
 ![Network namespaces](./img/ch19-d3-luna.svg)
 
-*Figure 1.19.4. Network namespaces.*
+*Figure 1.19.5. Network namespaces.*
 
 The commands below build this wiring by hand. Run them in order on a disposable host, and you will see each step for yourself. Then ping in both directions to confirm the link works.
 
@@ -277,6 +281,10 @@ Imagine that a container's root process somehow escapes the container. User name
 
 Inside the namespace, root has capabilities only over resources that the namespace owns. It can mount inside its own mount namespace and configure its own network namespace, but it has no real power over the host. An unprivileged user can therefore create a user namespace and, inside it, other namespaces. This is the basis of **rootless containers**, used by Podman, rootless Docker, Enroot, and Apptainer or Singularity in user-namespace mode.
 
+![User namespaces and UID mapping](./img/ch19-d6-luna.svg)
+
+*Figure 1.19.6. User namespace UID mapping via /proc/PID/uid_map and shared-storage caveats.*
+
 ```bash
 unshare --user --map-root-user bash        # become "root" inside, mapped to your UID outside
 id; cat /proc/self/uid_map                 # uid 0 inside = your uid outside
@@ -308,7 +316,7 @@ When you run `docker run` or the kubelet starts a pod, a chain of programs does 
 
 ![Putting it together: what a runtime does](./img/ch19-d4-luna.svg)
 
-*Figure 1.19.5. Putting it together: what a runtime does.*
+*Figure 1.19.7. Putting it together: what a runtime does.*
 
 The OCI runtime spec, in `config.json`, lists every namespace, mount, capability, cgroup path and hook. `runc spec` generates a template for you. Reading a real container's `config.json` is the best way to learn what your platform configures. The shim keeps the container's stdio and exit status after `runc` exits, so containerd can restart without killing the containers.
 

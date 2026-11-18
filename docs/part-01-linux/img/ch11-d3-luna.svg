@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <title>The process virtual address space</title>
+  <desc>x86-64 Linux process virtual memory regions from low to high addresses, showing brk heap growth, mmap area, stack growth, and demand paging (VIRT vs RSS).</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">The process virtual address space (x86-64)</text>
+
+  <!-- Left column: Memory map (high addresses at top, low at bottom — classic layout with explicit labels) -->
+  <text x="72" y="132" fill="#207448" font-family="sans-serif" font-size="24" font-weight="700">High addresses (top)</text>
+
+  <!-- Kernel -->
+  <rect x="72" y="150" width="760" height="86" rx="12" fill="#303a36"/>
+  <text x="100" y="202" fill="#f5f8f5" font-family="sans-serif" font-size="27" font-weight="700">Kernel space</text>
+  <text x="340" y="202" fill="#e8f1ea" font-family="sans-serif" font-size="24">Not accessible from user mode</text>
+
+  <!-- Stack -->
+  <rect x="72" y="248" width="760" height="108" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="100" y="294" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">Stack (grows down ↓)</text>
+  <text x="100" y="332" fill="#303a36" font-family="sans-serif" font-size="24">Call frames, local vars; per thread; limit: ulimit -s (8 MiB)</text>
+  <path d="M790 264 V336" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- vDSO / vvar -->
+  <rect x="72" y="372" width="760" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="100" y="424" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">vDSO / vvar</text>
+  <text x="290" y="408" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="290" dy="0">Kernel-supplied pages for fast calls</tspan>
+    <tspan x="290" dy="30">(gettimeofday, clock_gettime)</tspan>
+  </text>
+
+  <!-- mmap area -->
+  <rect x="72" y="470" width="760" height="122" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="100" y="516" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">mmap area</text>
+  <text x="100" y="552" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="100" dy="0">Shared libraries (.so), mapped files, thread stacks,</tspan>
+    <tspan x="100" dy="30">large mallocs (≥128 KiB threshold); unmap returns RAM</tspan>
+  </text>
+
+  <!-- Heap -->
+  <rect x="72" y="612" width="760" height="108" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  <text x="100" y="658" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">Heap (grows up ↑ via brk)</text>
+  <text x="100" y="696" fill="#303a36" font-family="sans-serif" font-size="24">Small malloc allocations; arenas can retain freed RAM</text>
+  <path d="M790 704 V632" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+
+  <!-- Data / BSS -->
+  <rect x="72" y="732" width="760" height="74" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="100" y="778" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Data / BSS</text>
+  <text x="310" y="778" fill="#303a36" font-family="sans-serif" font-size="24">Initialised and zero-filled globals</text>
+
+  <!-- Text -->
+  <rect x="72" y="818" width="760" height="74" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="100" y="864" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Text</text>
+  <text x="310" y="864" fill="#303a36" font-family="sans-serif" font-size="24">Program code (r-x), shared across instances</text>
+
+  <text x="72" y="928" fill="#207448" font-family="sans-serif" font-size="24" font-weight="700">Low addresses (bottom)</text>
+
+  <!-- Right side: Demand paging & VIRT vs RSS -->
+  <rect x="875" y="150" width="685" height="390" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="908" y="200" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Demand paging: VIRT vs RSS</text>
+
+  <rect x="908" y="230" width="620" height="122" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="932" y="272" fill="#303a36" font-family="monospace" font-size="25" font-weight="700">1. mmap(1 GiB, MAP_ANONYMOUS)</text>
+  <text x="932" y="314" fill="#303a36" font-family="sans-serif" font-size="24">Reserves address space only: VIRT +1 GiB, RSS ≈ 0</text>
+
+  <path d="M1218 352 V388" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+
+  <rect x="908" y="392" width="620" height="122" rx="14" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5"/>
+  <text x="932" y="434" fill="#303a36" font-family="sans-serif" font-size="25" font-weight="700">2. First touch of each 4 KiB page</text>
+  <text x="932" y="476" fill="#303a36" font-family="sans-serif" font-size="24">Minor page fault assigns physical RAM: RSS grows</text>
+
+  <!-- Right bottom: Inspection & allocator notes -->
+  <rect x="875" y="570" width="685" height="322" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="908" y="620" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">How to inspect &amp; allocator reality</text>
+  <text x="908" y="670" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="908" dy="0">• cat /proc/PID/maps</tspan>
+    <tspan x="908" dy="36">• pmap -x PID</tspan>
+    <tspan x="908" dy="36">• ps -o pid,vsz,rss -p PID</tspan>
+    <tspan x="908" dy="44" font-family="sans-serif">• Judge leaks by RSS and cgroup memory,</tspan>
+    <tspan x="926" dy="32" font-family="sans-serif">not virtual size (VIRT).</tspan>
+    <tspan x="908" dy="40" font-family="sans-serif">• Python / glibc arenas may keep freed RAM.</tspan>
+  </text>
+</svg>

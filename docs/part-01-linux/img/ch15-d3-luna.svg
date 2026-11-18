@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040">
+  <title>Systemd unit precedence and drop-in overrides</title>
+  <desc>Unit file search path priority from /etc/systemd/system.control down to /usr/lib/systemd/system, and how drop-in .conf files merge with vendor units.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">systemd unit precedence and drop-ins</text>
+
+  <!-- Left: UnitPath search order -->
+  <rect x="40" y="120" width="740" height="780" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="72" y="168" fill="#207448" font-family="sans-serif" font-size="28" font-weight="700">Search priority (highest wins on match)</text>
+
+  <rect x="72" y="198" width="676" height="106" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+  <text x="98" y="236" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="98" dy="0">/etc/systemd/system.control</tspan>
+    <tspan x="98" dy="28">/run/systemd/system.control</tspan>
+  </text>
+  <text x="98" y="292" fill="#303a36" font-family="sans-serif" font-size="24">1. Dynamic changes from systemctl set-property</text>
+
+  <rect x="72" y="320" width="676" height="88" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+  <text x="98" y="358" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">/run/systemd/transient</text>
+  <text x="98" y="392" fill="#303a36" font-family="sans-serif" font-size="24">2. Transient units created by systemd-run</text>
+
+  <rect x="72" y="424" width="676" height="106" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <text x="98" y="464" fill="#207448" font-family="monospace" font-size="25" font-weight="700">/etc/systemd/system</text>
+  <text x="98" y="502" fill="#303a36" font-family="sans-serif" font-size="24">3. Your units and drop-ins (survive upgrades)</text>
+
+  <rect x="72" y="546" width="676" height="106" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+  <text x="98" y="584" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">
+    <tspan x="98" dy="0">/run/systemd/system</tspan>
+    <tspan x="98" dy="28">/run/systemd/generator</tspan>
+  </text>
+  <text x="98" y="640" fill="#303a36" font-family="sans-serif" font-size="24">4. Runtime &amp; boot-generated units (e.g. fstab)</text>
+
+  <rect x="72" y="668" width="676" height="128" rx="14" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5"/>
+  <text x="98" y="708" fill="#db8129" font-family="monospace" font-size="24" font-weight="700">/usr/lib/systemd/system (package-owned)</text>
+  <text x="98" y="746" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="98" dy="0">5. Never edit directly — package upgrades</tspan>
+    <tspan x="120" dy="30">overwrite these files.</tspan>
+  </text>
+
+  <text x="72" y="852" fill="#303a36" font-family="monospace" font-size="24">Inspect path: systemctl -p UnitPath show</text>
+
+  <!-- Right: Drop-in merge -->
+  <rect x="810" y="120" width="750" height="780" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <text x="842" y="168" fill="#207448" font-family="sans-serif" font-size="28" font-weight="700">How drop-ins merge overrides safely</text>
+
+  <rect x="842" y="200" width="686" height="145" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="868" y="242" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">/usr/lib/systemd/system/NAME.service</text>
+  <text x="868" y="284" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="868" dy="0">Base vendor unit (keeps getting package updates).</tspan>
+    <tspan x="868" dy="32">Provides every setting not changed by a drop-in.</tspan>
+  </text>
+
+  <text x="1185" y="384" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">+</text>
+
+  <rect x="842" y="402" width="686" height="225" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3.5"/>
+  <text x="868" y="444" fill="#207448" font-family="monospace" font-size="24" font-weight="700">/etc/systemd/system/NAME.service.d/*.conf</text>
+  <text x="868" y="486" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="868" dy="0">Applied in lexical order (10-limits.conf, 50-gpu.conf).</tspan>
+    <tspan x="868" dy="36" font-family="monospace">List keys (ExecStart=, Environment=,</tspan>
+    <tspan x="868" dy="30" font-family="monospace">After=) APPEND; clear first with ExecStart=</tspan>
+    <tspan x="868" dy="30" font-family="sans-serif">before setting a new ExecStart command.</tspan>
+  </text>
+
+  <path d="M1185 627 V676" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="842" y="680" width="686" height="175" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <text x="868" y="724" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Merged effective unit</text>
+  <text x="868" y="766" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="868" dy="0">systemctl edit NAME  # creates override.conf</tspan>
+    <tspan x="868" dy="34">systemctl cat NAME   # base + all drop-ins</tspan>
+  </text>
+
+  <!-- Takeaway bar -->
+  <rect x="40" y="930" width="1520" height="80" rx="14" fill="#207448"/>
+  <text x="800" y="980" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Use systemctl edit NAME (drop-in) instead of editing /usr/lib or copying with --full unless replacing the whole unit.</text>
+</svg>

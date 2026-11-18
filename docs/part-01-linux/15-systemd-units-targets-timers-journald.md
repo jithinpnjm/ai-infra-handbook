@@ -110,6 +110,10 @@ Now for the question that catches everyone at least once. When two files share a
 
 **Rule: never modify files in `/usr/lib/systemd/system`.** Package upgrades overwrite them, so your edits would be lost on the next upgrade. Put new units in `/etc/systemd/system`, and customise vendor units with **drop-ins** (section 5). The same rule holds across the whole system: prefer `/etc` over `/usr`. A file in `/etc` with the same name as one in `/usr/lib` **replaces** it entirely.
 
+![systemd unit precedence and drop-ins](./img/ch15-d3-luna.svg)
+
+*Figure 1.15.1. systemd unit search priority and how drop-ins merge overrides.*
+
 User services are the per-user instances that belong to ordinary users. They read `~/.config/systemd/user/` and `/etc/systemd/user/`, and you manage them with `systemctl --user`. If you want them to run without a login session, enable lingering with `loginctl enable-linger USER`.
 
 ### Anatomy of a service unit
@@ -274,7 +278,7 @@ Ordering is a separate setting from requirements, and it uses two modifiers. `Be
 
 ![Wants and After are separate](./img/ch15-fig1-ordering.jpg)
 
-*Figure 1.15.1. Wants= pulls a unit in; After= only sets the start order. Use both together.*
+*Figure 1.15.2. Wants= pulls a unit in; After= only sets the start order. Use both together.*
 
 The soft and hard forms matter for a practical reason, and one picture makes it obvious. Imagine a login prompt that hard-requires a database server. If that server fails, you cannot log in to fix the database. `Wants` keeps a failure local, much as a traditional boot tolerated failing scripts. A missing data disk may stop an application, but it should not stop `sshd`. Use `Requires` or `BindsTo` only when a unit is genuinely useless or dangerous without the other.
 
@@ -360,7 +364,7 @@ Dependencies form a **graph**, not a tree, and the diagram below shows why that 
 
 ![Targets](./img/ch15-d1-luna.svg)
 
-*Figure 1.15.2. Targets.*
+*Figure 1.15.3. Targets.*
 
 You can render the whole graph as an image with `systemd-analyze dot 'multi-user.target' | dot -Tsvg > g.svg`. Filter the patterns to keep the picture readable.
 
@@ -477,7 +481,7 @@ systemd places every service, scope and session into a **cgroup**. Slices decide
 
 ![Resource control, slices and host protection](./img/ch15-d2-luna.svg)
 
-*Figure 1.15.3. Resource control, slices and host protection.*
+*Figure 1.15.4. Resource control, slices and host protection.*
 
 | Property | Meaning |
 |---|---|
