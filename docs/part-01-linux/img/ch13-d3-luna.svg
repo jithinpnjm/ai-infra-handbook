@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Local NVMe as cache and staging area</title>
+  <desc></desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+    <symbol id="icon-decision" viewBox="0 0 56 56">
+      <path d="M28 4 L52 28 L28 52 L4 28 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="28" cy="28" r="4" fill="#207448"/>
+    </symbol>
+    <symbol id="icon-disk" viewBox="0 0 56 56">
+      <ellipse cx="28" cy="13" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M6 13 V42 C6 47 16 52 28 52 S50 47 50 42 V13" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M6 27 C6 32 16 36 28 36 S50 32 50 27" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M6 41 C6 46 16 50 28 50 S50 46 50 41" fill="none" stroke="#207448" stroke-width="4"/>
+    </symbol>
+    <symbol id="icon-check" viewBox="0 0 56 56">
+      <circle cx="28" cy="28" r="23" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M16 28 L24 36 L41 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-folder" viewBox="0 0 56 56">
+      <path d="M5 15 H22 L28 21 H51 V45 H5 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M5 22 H51" fill="none" stroke="#207448" stroke-width="4"/>
+    </symbol>
+    <symbol id="icon-gear" viewBox="0 0 56 56">
+      <path d="M24 4 H32 L34 11 L40 13 L46 9 L51 15 L47 21 L49 27 L56 30 L54 38 L47 39 L44 45 L47 52 L40 56 L35 51 L28 52 L24 58 L16 55 L16 48 L10 44 L3 46 L0 38 L6 33 L5 27 L0 22 L4 14 L11 16 L16 12 L16 5 Z" transform="translate(0 -3)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <circle cx="28" cy="28" r="9" fill="none" stroke="#207448" stroke-width="4"/>
+    </symbol>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Local NVMe as cache and staging area</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="4">
+    <rect x="370" y="105" width="860" height="120" rx="20"/>
+    <rect x="80" y="270" width="680" height="185" rx="20"/>
+    <rect x="840" y="270" width="680" height="185" rx="20"/>
+    <rect x="80" y="535" width="680" height="150" rx="20"/>
+    <rect x="840" y="535" width="680" height="150" rx="20"/>
+    <rect x="80" y="790" width="680" height="140" rx="20"/>
+    <rect x="840" y="790" width="680" height="140" rx="20"/>
+    <rect x="80" y="1010" width="680" height="140" rx="20"/>
+    <rect x="840" y="1010" width="680" height="140" rx="20"/>
+  </g>
+
+  <g fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M550 225 V245 H420 V270" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1050 225 V245 H1180 V270" stroke="#db8129" marker-end="url(#arrow-orange)"/>
+    <path d="M420 455 V535" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1180 455 V535" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M420 685 V790" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M760 685 H800 V1080 H760" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1180 685 V790" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1520 685 H1560 V1080 H1520" stroke="#207448" marker-end="url(#arrow-green)"/>
+  </g>
+
+  <g fill="#207448" font-family="sans-serif" font-size="24" font-weight="600">
+    <text x="445" y="264">yes</text>
+    <text x="1200" y="264">no</text>
+    <text x="445" y="758">yes: headroom</text>
+    <text x="420" y="980">no: link/servers saturated</text>
+    <text x="1205" y="758">yes</text>
+    <text x="1130" y="980">no</text>
+  </g>
+
+  <g>
+    <use href="#icon-decision" x="400" y="137" width="56" height="56"/>
+    <text x="490" y="155" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">First access of this item</text>
+    <text x="490" y="191" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">on this node?</text>
+
+    <use href="#icon-disk" x="105" y="333" width="56" height="56"/>
+    <text x="180" y="325" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Fetch from shared storage</text>
+    <text x="180" y="365" fill="#303a36" font-family="sans-serif" font-size="24">measure link use, server queue,</text>
+    <text x="180" y="396" fill="#303a36" font-family="sans-serif" font-size="24">metadata rate</text>
+
+    <use href="#icon-disk" x="865" y="333" width="56" height="56"/>
+    <text x="940" y="325" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Read from local NVMe cache</text>
+    <text x="940" y="365" fill="#303a36" font-family="sans-serif" font-size="24">measure NVMe throughput,</text>
+    <text x="940" y="396" fill="#303a36" font-family="sans-serif" font-size="24">CPU transform time</text>
+
+    <use href="#icon-decision" x="105" y="582" width="56" height="56"/>
+    <text x="180" y="592" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Link and servers</text>
+    <text x="180" y="630" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">healthy?</text>
+
+    <use href="#icon-decision" x="865" y="582" width="56" height="56"/>
+    <text x="940" y="592" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Local read much faster</text>
+    <text x="940" y="630" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">than demand?</text>
+
+    <use href="#icon-check" x="105" y="832" width="56" height="56"/>
+    <text x="180" y="838" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Simple design is enough</text>
+    <text x="180" y="878" fill="#303a36" font-family="sans-serif" font-size="24">no local cache needed</text>
+
+    <use href="#icon-folder" x="105" y="1052" width="56" height="56"/>
+    <text x="180" y="1052" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Add local staging, or</text>
+    <text x="180" y="1088" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">shrink the working set</text>
+
+    <use href="#icon-check" x="865" y="832" width="56" height="56"/>
+    <text x="940" y="838" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Cache works: monitor</text>
+    <text x="940" y="878" fill="#303a36" font-family="sans-serif" font-size="24">capacity, health, hit rate</text>
+
+    <use href="#icon-gear" x="865" y="1052" width="56" height="56"/>
+    <text x="940" y="1052" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Bottleneck is elsewhere:</text>
+    <text x="940" y="1088" fill="#303a36" font-family="sans-serif" font-size="24">CPU decode/transform,</text>
+    <text x="940" y="1118" fill="#303a36" font-family="sans-serif" font-size="24">NUMA, affinity</text>
+  </g>
+</svg>

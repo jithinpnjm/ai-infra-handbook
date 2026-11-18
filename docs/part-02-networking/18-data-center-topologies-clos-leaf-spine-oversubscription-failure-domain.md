@@ -99,6 +99,10 @@ For any AI design, treat the network as part of the computer, and size it with j
 
 Picture a team that has been given a room and a budget and told to fit as many servers into it as the switches allow. The first thing they must decide is not which brand to buy. It is the shape of the wiring, because the shape sets how many servers the room can ever hold. The leaf-spine idea answers that question with two rules that are easy to remember: every leaf reaches every spine, and no spine talks to another spine. Those two rules make the sums in the next pages come out cleanly, and the walkthrough below shows each sum in turn.
 
+![Leaf-spine](./img/n18-fig1-leafspine.jpg)
+
+*Figure 2.18.1. Every leaf connects to every spine, and spines never connect to each other.*
+
 Picture a data center that needs more ports than any single switch can offer. The biggest switch you can buy has, say, a few dozen ports, and you need thousands. A Clos network solves that by building one large non-blocking switch out of stages of smaller switches. Charles Clos described the idea in 1953, for telephone switching. A data center leaf-spine is a folded Clos. "Folded" means that instead of drawing the input stage on the left and the output stage on the right, you fold the picture so that the same leaf switches serve as both.
 
 Leaves, also called ToR switches, are where servers and other devices attach, and all external connectivity enters through the leaves. Spines connect the leaves to each other. Two standard rules keep the design simple. Spines never connect to other spines, and no devices attach to spines. Cross-links would add complexity, so the design avoids them.

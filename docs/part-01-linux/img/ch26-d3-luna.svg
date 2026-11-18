@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>The stack: KVM, QEMU, libvirt</title>
+  <desc>Admin / orchestrator, libvirt, QEMU process per VM, KVM kernel module, CPU VT-x/AMD-V · IOMMU · NIC/GPU/NVMe, and vhost-net / vhost-user / VFIO / SPDK.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0 2 L18 9 L0 16 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0 2 L18 9 L0 16 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="80" y="82" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">The stack: KVM, QEMU, libvirt</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="80" y="120" width="920" height="145" rx="20"/>
+    <rect x="80" y="310" width="920" height="155" rx="20"/>
+    <rect x="80" y="510" width="920" height="160" rx="20"/>
+    <rect x="80" y="760" width="920" height="175" rx="20"/>
+    <rect x="80" y="980" width="920" height="145" rx="20"/>
+    <rect x="1060" y="530" width="480" height="160" rx="20"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="120" y="166" width="56" height="44" rx="5"/>
+    <path d="M120 178 H176 M128 172 H130 M137 172 H139 M128 187 H168 M128 197 H158"/>
+    <circle cx="148" cy="387" r="16"/>
+    <circle cx="148" cy="387" r="6"/>
+    <path d="M148 360 V368 M148 406 V414 M121 387 H129 M167 387 H175 M129 368 L135 374 M161 400 L167 406 M167 368 L161 374 M135 400 L129 406"/>
+    <rect x="120" y="568" width="56" height="44" rx="5"/>
+    <path d="M120 580 H176 M128 574 H130 M137 574 H139 M130 590 H166 V604 H130 Z"/>
+    <rect x="128" y="817" width="40" height="40" rx="4"/>
+    <path d="M138 827 H158 V847 H138 Z M138 807 V817 M148 807 V817 M158 807 V817 M138 857 V867 M148 857 V867 M158 857 V867 M118 827 H128 M118 837 H128 M118 847 H128 M168 827 H178 M168 837 H178 M168 847 H178"/>
+    <rect x="128" y="1031" width="40" height="40" rx="4"/>
+    <path d="M138 1041 H158 V1061 H138 Z M138 1021 V1031 M148 1021 V1031 M158 1021 V1031 M138 1071 V1081 M148 1071 V1081 M158 1071 V1081 M118 1041 H128 M118 1051 H128 M118 1061 H128 M168 1041 H178 M168 1051 H178 M168 1061 H178"/>
+    <circle cx="1094" cy="610" r="8"/>
+    <circle cx="1122" cy="586" r="8"/>
+    <circle cx="1122" cy="634" r="8"/>
+    <path d="M1101 605 L1115 591 M1101 615 L1115 629"/>
+  </g>
+
+  <g font-family="sans-serif" fill="#303a36">
+    <text x="200" y="170" font-size="30" font-weight="700">Admin / orchestrator</text>
+    <text x="200" y="208" font-size="24">virsh · virt-manager · virt-install ·</text>
+    <text x="200" y="238" font-size="24">OpenStack Nova · KubeVirt · Cockpit</text>
+
+    <text x="200" y="365" font-size="30" font-weight="700">libvirt (libvirtd / virtqemud)</text>
+    <text x="200" y="403" font-size="24">domain XML, networks, storage pools,</text>
+    <text x="200" y="433" font-size="24">security labels</text>
+
+    <text x="200" y="565" font-size="30" font-weight="700">QEMU process per VM</text>
+    <text x="200" y="602" font-family="monospace" font-size="24">(qemu-system-x86_64)</text>
+    <text x="200" y="637" font-size="24">vCPU threads + device models + iothreads</text>
+
+    <text x="200" y="807" font-size="30" font-weight="700">KVM kernel module</text>
+    <text x="200" y="843" font-family="monospace" font-size="30" font-weight="700">(kvm, kvm_intel/kvm_amd)</text>
+    <text x="200" y="881" font-size="24">VM entry/exit, EPT, interrupts</text>
+
+    <text x="200" y="1063" font-size="30" font-weight="700">CPU VT-x/AMD-V · IOMMU · NIC/GPU/NVMe</text>
+
+    <text x="1150" y="570" font-size="30" font-weight="700">vhost-net /</text>
+    <text x="1150" y="606" font-size="30" font-weight="700">vhost-user / VFIO /</text>
+    <text x="1150" y="642" font-size="30" font-weight="700">SPDK</text>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M540 265 V310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    <path d="M540 465 V510" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    <path d="M540 670 V760" stroke="#db8129" stroke-width="4" marker-start="url(#arrow-orange)" marker-end="url(#arrow-orange)"/>
+    <path d="M540 935 V980" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    <path d="M1000 585 H1060" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow-green)"/>
+  </g>
+
+  <text x="570" y="725" font-family="monospace" font-size="24" fill="#303a36">/dev/kvm ioctls</text>
+</svg>

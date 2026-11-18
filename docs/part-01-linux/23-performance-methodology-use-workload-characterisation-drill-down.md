@@ -60,17 +60,9 @@ Performance work also spans a project's whole life. You set objectives, build mo
 
 ### Two perspectives
 
-```mermaid
-flowchart LR
-  subgraph W["Workload analysis (top-down)"]
-    W1["Application / request"] --> W2["Library / runtime"] --> W3["System calls / kernel"] --> W4["Drivers / hardware"]
-  end
-  subgraph R["Resource analysis (bottom-up)"]
-    R1["CPUs, memory, GPUs"] --> R2["Disks, NICs, fabric"] --> R3["Interconnects, buses"]
-  end
-  W -. "latency, throughput, errors of the workload" .- ZZ(("A real\nproblem"))
-  R -. "utilisation, saturation, errors of resources" .- ZZ
-```
+![Two perspectives](./img/ch23-d1-luna.svg)
+
+*Figure 1.23.1. Two perspectives.*
 
 The same system looks different depending on where you stand, and both views are honest. Resource analysis looks up from the hardware. Workload analysis looks down from the request.
 
@@ -216,6 +208,10 @@ A resource with low utilisation, no saturation and no errors is valuable evidenc
 
 A host is slow, and someone wants an answer now. Run these commands in the first minute of any investigation on a Linux host. The list is deliberately short, because this is a first look and not the whole investigation. Each one is covered in later chapters, where you will learn to read its output properly. Here, read each output once before you move on.
 
+![The 60-second Linux checklist](./img/ch23-fig1-60s.jpg)
+
+*Figure 1.23.2. Ten commands, one line each, that give a first view of a slow host.*
+
 | # | Command | What to check |
 |---|---|---|
 | 1 | `uptime` | Load averages 1/5/15 min: trend up or down; compare against logical CPU count; remember it includes uninterruptible tasks |
@@ -250,21 +246,9 @@ Be careful with one number in particular, because it misleads almost everyone at
 
 The diagram below is the loop, and it is worth reading once as a picture of the habit. For each resource you ask the cheap question first, and only then the expensive ones.
 
-```mermaid
-flowchart TD
-  A["Choose a resource"] --> B{"Errors?\n(objective, quick)"}
-  B -- yes --> I["Investigate: error is a finding"]
-  B -- no --> C{"Saturation?\n(any queueing)"}
-  C -- yes --> I
-  C -- no --> D{"Utilisation high?\n(>~60-70% sustained, or bursts to 100% at 1 s)"}
-  D -- yes --> I
-  D -- no --> E["Resource ruled out (for now)"]
-  I --> F["Confirm it limits the workload;\nthen drill down. Revisit USE for the next resource"]
-  E --> G{"More resources?"}
-  F --> G
-  G -- yes --> A
-  G -- no --> H["No resource problem found:\nuse other methods (workload, latency, static)"]
-```
+![The USE method](./img/ch23-d2-luna.svg)
+
+*Figure 1.23.3. The USE method.*
 
 When you read the results, check in this order. Errors come first, because they are cheap and objective. Saturation comes second, because any amount of it matters. Utilisation comes third, because it needs interpretation.
 
@@ -332,11 +316,9 @@ Drill-down narrows the search in three stages, from the whole fleet down to one 
 2. Identification looks at a suspect node or job. You run the 60-second checklist and USE to find *which* resource or area is involved.
 3. Analysis uses profilers and tracers, such as `perf`, flame graphs, bpftrace, Nsight Systems/Compute, the PyTorch profiler and NCCL traces. They find the code path, device or interaction responsible.
 
-```mermaid
-flowchart LR
-  M["Monitoring\nfleet dashboards, alerts"] --> I["Identification\n60 s checklist, USE on one node"] --> A["Analysis\nprofile, trace, flame graph"] --> F["Fix + verify\nre-measure vs baseline"]
-  F --> M
-```
+![Three-stage drill-down](./img/ch23-d3-luna.svg)
+
+*Figure 1.23.4. Three-stage drill-down.*
 
 ### Five whys
 
@@ -370,13 +352,9 @@ Before you tune anything, check the configuration at rest and compare it against
 
 Plot the performance you deliver, such as tokens/s, samples/s or requests/s, against a scaling dimension, such as GPUs, nodes, threads or clients. The shape of the curve tells you what limits you, often before any profiler does. Learn the shapes first, because you will recognise them in a graph long before you can name the cause.
 
-```mermaid
-flowchart LR
-  L["Linear\n(ideal)"] --> K["Knee point\n(a shared resource starts to matter)"]
-  K --> C["Contention\n(serial section: Amdahl)"]
-  K --> H["Coherence\n(cross-talk grows: USL; throughput can fall)"]
-  K --> Z["Ceiling\n(hard limit: a link, a limit, a single thread)"]
-```
+![Reading scalability curves](./img/ch23-d4-luna.svg)
+
+*Figure 1.23.5. Reading scalability curves.*
 
 - Linear: performance grows in proportion. That rarely lasts.
 - Contention: part of the work is serial or shared. A lock, a data loader, the all-reduce or a single metadata server can be that part.
@@ -507,18 +485,9 @@ If you run a test like this, check each of these points before you report a resu
 
 Here is the whole chapter as one flow, the way you would walk through it during an incident. Nothing in it is new by this point, and that is the point: a template is only useful once each step feels familiar.
 
-```mermaid
-flowchart TD
-  P["1. Problem statement\nmetric, since when, what changed, scope"] --> B["2. Baseline / expectation\nwhat should it be? known-good data"]
-  B --> U["3. 60 s checklist + USE sweep\nall resources: errors, saturation, utilisation"]
-  U --> Q{"Resource implicated?"}
-  Q -- yes --> D["4. Drill down on that resource\nprofile/trace; five whys"]
-  Q -- no --> W["4'. Workload + latency analysis\ncharacterise load; split time; static config audit"]
-  D --> H["5. Hypothesis → experiment\nchange ONE thing; predict result"]
-  W --> H
-  H --> V["6. Verify vs baseline; quantify gain;\nregression-test; document"]
-  V --> M["7. Monitor + alert; update checklist/runbook"]
-```
+![Putting a method into practice: a template](./img/ch23-d5-luna.svg)
+
+*Figure 1.23.6. Putting a method into practice: a template.*
 
 Follow the flow in the diagram. Start with the problem statement, then set a baseline. Run the 60-second checklist and a USE sweep. If a resource is implicated, drill down on it. Otherwise, analyse the workload and latency, and audit the static configuration. Form a hypothesis, change one thing, and predict the result. Then verify against the baseline, quantify the gain and document the work. Finally, add monitoring and alerts, and update the checklist or runbook.
 

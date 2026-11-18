@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>The problem LVM solves</title>
+  <desc>Physical volumes feed a volume group, which supplies logical volumes and mounted file systems.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="80" y="91" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">The problem LVM solves</text>
+
+  <rect x="50" y="130" width="1500" height="230" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="80" y="181" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Physical volumes (PV): any block device</text>
+
+  <rect x="130" y="215" width="620" height="115" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="185" cy="250" rx="27" ry="10"/>
+    <path d="M158 250v37c0 6 12 11 27 11s27-5 27-11v-37"/>
+    <path d="M158 268c0 6 12 11 27 11s27-5 27-11"/>
+  </g>
+  <text x="240" y="270" fill="#303a36" font-family="monospace" font-size="30" font-weight="700">/dev/nvme1n1p1</text>
+  <text x="240" y="305" fill="#303a36" font-family="monospace" font-size="24">(5 GB)</text>
+
+  <rect x="850" y="215" width="620" height="115" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="905" cy="250" rx="27" ry="10"/>
+    <path d="M878 250v37c0 6 12 11 27 11s27-5 27-11v-37"/>
+    <path d="M878 268c0 6 12 11 27 11s27-5 27-11"/>
+  </g>
+  <text x="960" y="270" fill="#303a36" font-family="monospace" font-size="30" font-weight="700">/dev/nvme2n1p1</text>
+  <text x="960" y="305" fill="#303a36" font-family="monospace" font-size="24">(15 GB)</text>
+
+  <rect x="50" y="390" width="1500" height="260" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="80" y="433" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="80" dy="0">Volume group (VG): the pool,</tspan>
+    <tspan x="80" dy="32">divided into physical extents</tspan>
+    <tspan x="80" dy="32">(PE, 4 MiB by default)</tspan>
+  </text>
+
+  <rect x="100" y="540" width="1400" height="85" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <rect x="132" y="555" width="24" height="24"/>
+    <rect x="159" y="555" width="24" height="24"/>
+    <rect x="132" y="582" width="24" height="24"/>
+    <rect x="159" y="582" width="24" height="24"/>
+  </g>
+  <text x="210" y="592" fill="#303a36" font-family="monospace" font-size="30" font-weight="700">PE PE PE PE PE PE PE PE PE PE PE PE ...</text>
+
+  <rect x="50" y="675" width="1500" height="315" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  <rect x="65" y="700" width="470" height="170" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="300" cy="725" rx="27" ry="10"/>
+    <path d="M273 725v31c0 6 12 11 27 11s27-5 27-11v-31"/>
+    <path d="M273 742c0 6 12 11 27 11s27-5 27-11"/>
+  </g>
+  <text x="300" y="795" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="30" font-weight="700">lv_data  (10 GB)</text>
+  <text x="300" y="823" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">/dev/vg0/lv_data</text>
+  <text x="300" y="851" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">/dev/mapper/vg0-lv_data</text>
+
+  <rect x="565" y="700" width="470" height="170" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="800" cy="725" rx="27" ry="10"/>
+    <path d="M773 725v31c0 6 12 11 27 11s27-5 27-11v-31"/>
+    <path d="M773 742c0 6 12 11 27 11s27-5 27-11"/>
+  </g>
+  <text x="800" y="823" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="30" font-weight="700">lv_scratch (10 GB)</text>
+
+  <rect x="1065" y="700" width="470" height="170" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <rect x="1276" y="713" width="24" height="24"/>
+    <rect x="1303" y="713" width="24" height="24"/>
+    <rect x="1276" y="740" width="24" height="24"/>
+    <rect x="1303" y="740" width="24" height="24"/>
+  </g>
+  <text x="1300" y="802" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">free extents</text>
+  <text x="1300" y="836" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">(grow later)</text>
+
+  <text x="1080" y="914" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1080" dy="0">Logical volumes (LV):</tspan>
+    <tspan x="1080" dy="32">block devices carved</tspan>
+    <tspan x="1080" dy="32">from the pool</tspan>
+  </text>
+
+  <rect x="65" y="1020" width="470" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M273 1035h54v40h-54z"/>
+    <path d="M273 1047h54"/>
+    <path d="M282 1041h2"/>
+  </g>
+  <text x="300" y="1110" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">ext4 / XFS,</text>
+  <text x="300" y="1142" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">mounted <tspan font-family="monospace">/data</tspan></text>
+
+  <rect x="565" y="1020" width="470" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M773 1035h54v40h-54z"/>
+    <path d="M773 1047h54"/>
+    <path d="M782 1041h2"/>
+  </g>
+  <text x="800" y="1110" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">xfs,</text>
+  <text x="800" y="1142" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">mounted <tspan font-family="monospace">/scratch</tspan></text>
+
+  <g fill="none" stroke-width="4" stroke-linejoin="round">
+    <path d="M440 330 V375 H800 V540" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1160 330 V540" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M300 625 V700" stroke="#db8129" marker-end="url(#arrow-orange)"/>
+    <path d="M800 625 V700" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1300 625 V700" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M300 870 V1020" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M800 870 V1020" stroke="#207448" marker-end="url(#arrow-green)"/>
+  </g>
+</svg>

@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1420" viewBox="0 0 1600 1420" role="img">
+  <title>The problem and the design</title>
+  <desc>A sequence diagram showing how a detected device becomes a processed event for subscribers.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M2 2L17 9L2 16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M2 2L17 9L2 16" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      text { fill: #303a36; font-family: sans-serif; }
+      .title { font-size: 48px; font-weight: 700; }
+      .lane-title { font-size: 30px; font-weight: 700; text-anchor: middle; }
+      .message { font-size: 24px; text-anchor: middle; }
+      .note-text { font-size: 24px; }
+      .icon { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1420" fill="#f5f8f5"/>
+  <text class="title" x="800" y="66" text-anchor="middle">The problem and the design</text>
+
+  <g fill="#e8f1ea">
+    <rect x="30" y="100" width="230" height="290" rx="16"/>
+    <rect x="285" y="100" width="230" height="290" rx="16"/>
+    <rect x="540" y="100" width="230" height="290" rx="16"/>
+    <rect x="795" y="100" width="230" height="290" rx="16"/>
+    <rect x="1050" y="100" width="230" height="290" rx="16"/>
+    <rect x="1305" y="100" width="230" height="290" rx="16"/>
+  </g>
+
+  <g class="icon" transform="translate(116 124)">
+    <rect x="4" y="4" width="48" height="52" rx="5"/>
+    <path d="M14 17h28M14 29h28M14 41h18M-2 14h6M-2 28h6M-2 42h6M52 14h6M52 28h6M52 42h6"/>
+  </g>
+  <g class="icon" transform="translate(371 124)">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <path d="M18 18h20v20H18zM18 0v10M30 0v10M42 0v10M18 46v10M30 46v10M42 46v10M0 18h10M0 30h10M0 42h10M46 18h10M46 30h10M46 42h10"/>
+  </g>
+  <g class="icon" transform="translate(626 124)">
+    <ellipse cx="30" cy="12" rx="24" ry="9"/>
+    <path d="M6 12v32c0 5 11 9 24 9s24-4 24-9V12M6 28c0 5 11 9 24 9s24-4 24-9"/>
+  </g>
+  <g class="icon" transform="translate(881 124)">
+    <circle cx="30" cy="30" r="11"/>
+    <path d="M26 3h8l2 8 6 3 7-4 6 7-5 6 1 7 7 4-3 8-8-1-5 5-1 8h-9l-2-8-6-3-7 4-6-7 5-6-1-7-7-4 3-8 8 1 5-5z"/>
+  </g>
+  <g class="icon" transform="translate(1136 124)">
+    <path d="M11 4h27l12 12v38H11zM38 4v13h12"/>
+    <path d="M20 27h20M20 36h20M20 45h13"/>
+  </g>
+  <g class="icon" transform="translate(1391 124)">
+    <rect x="3" y="6" width="54" height="44" rx="4"/>
+    <path d="M3 17h54M14 12h1M21 12h1M28 12h1M12 26h14v15H12zM33 26h14M33 34h14M33 42h10"/>
+  </g>
+
+  <text class="lane-title" x="145" y="230">Hardware</text>
+  <text class="lane-title" x="400" y="215">
+    <tspan x="400">Kernel</tspan><tspan x="400" dy="30">driver</tspan>
+  </text>
+  <text class="lane-title" x="655" y="215">
+    <tspan x="655">devtmpfs</tspan><tspan x="655" dy="30">(/dev)</tspan>
+  </text>
+  <text class="lane-title" x="910" y="215">
+    <tspan x="910">systemd-</tspan><tspan x="910" dy="30">udevd</tspan>
+  </text>
+  <text class="lane-title" x="1165" y="205">
+    <tspan x="1165">Rules</tspan>
+    <tspan x="1165" dy="30">(/usr/lib/</tspan>
+    <tspan x="1165" dy="30">udev/</tspan>
+    <tspan x="1165" dy="30">rules.d,</tspan>
+    <tspan x="1165" dy="30">/etc/udev/</tspan>
+    <tspan x="1165" dy="30">rules.d)</tspan>
+  </text>
+  <text class="lane-title" x="1420" y="205">
+    <tspan x="1420">Subscribers</tspan>
+    <tspan x="1420" dy="30">(udisks,</tspan>
+    <tspan x="1420" dy="30">systemd,</tspan>
+    <tspan x="1420" dy="30">libudev</tspan>
+    <tspan x="1420" dy="30">apps)</tspan>
+  </text>
+
+  <g stroke="#207448" stroke-width="2" stroke-dasharray="7 9" opacity="0.42">
+    <path d="M145 390V1370"/>
+    <path d="M400 390V1370"/>
+    <path d="M655 390V1370"/>
+    <path d="M910 390V1370"/>
+    <path d="M1165 390V1370"/>
+    <path d="M1420 390V1370"/>
+  </g>
+
+  <rect x="54" y="414" width="437" height="38" fill="#f5f8f5"/>
+  <text class="message" x="272.5" y="443">new device detected (or driver binds)</text>
+  <path d="M145 490H400" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <rect x="326" y="524" width="403" height="38" fill="#f5f8f5"/>
+  <text class="message" x="527.5" y="553">create /dev node (default owner/mode)</text>
+  <path d="M400 600H655" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <rect x="426" y="624" width="458" height="66" fill="#f5f8f5"/>
+  <text class="message" x="655" y="651">
+    <tspan x="655">uevent (ACTION=add, DEVPATH,</tspan>
+    <tspan x="655" dy="28">SUBSYSTEM, MAJOR, MINOR, ...)</tspan>
+  </text>
+  <path d="M400 710H910" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  <rect x="805" y="734" width="465" height="66" fill="#f5f8f5"/>
+  <text class="message" x="1037.5" y="761">
+    <tspan x="1037.5">read all rules in order, matching</tspan>
+    <tspan x="1037.5" dy="28">and updating properties</tspan>
+  </text>
+  <path d="M910 820H1165" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <rect x="916" y="844" width="493" height="66" fill="#f5f8f5"/>
+  <text class="message" x="1162.5" y="871">
+    <tspan x="1162.5">set OWNER/GROUP/MODE,</tspan>
+    <tspan x="1162.5" dy="28">SYMLINK+=, ENV, RUN+=</tspan>
+  </text>
+  <path d="M1165 930H910" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 7" marker-end="url(#arrow-green)"/>
+
+  <rect x="546" y="954" width="473" height="66" fill="#f5f8f5"/>
+  <text class="message" x="782.5" y="981">
+    <tspan x="782.5">apply permissions, create symlinks</tspan>
+    <tspan x="782.5" dy="28">(/dev/disk/by-id/...)</tspan>
+  </text>
+  <path d="M910 1040H655" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <rect x="907" y="1064" width="520" height="66" fill="#f5f8f5"/>
+  <text class="message" x="1167" y="1091">
+    <tspan x="1167">broadcast processed event</tspan>
+    <tspan x="1167" dy="28">(libudev monitor)</tspan>
+  </text>
+  <path d="M910 1150H1420" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <path d="M1260 1220H1550V1370H1260Z" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M1526 1220v24h24" fill="none" stroke="#207448" stroke-width="3"/>
+  <text class="note-text" x="1276" y="1255">
+    <tspan x="1276">systemd starts .device</tspan>
+    <tspan x="1276" dy="30">units, udisks mounts,</tspan>
+    <tspan x="1276" dy="30">apps react</tspan>
+  </text>
+</svg>

@@ -160,6 +160,10 @@ On a wired LAN you should see no loss and very low round-trip times. Some intern
 
 A user says the service is slow, and you suspect a router somewhere along the path. `traceroute` finds that path for you, one router at a time. It uses an old trick: it sends probes with an increasing TTL (IPv4) or hop limit (IPv6). Each router that decrements the TTL to 0 returns ICMP time exceeded (type 11), and that reply reveals the router's address. The first probe dies at the first router, the second at the second router, and so on, so each router introduces itself in turn. The destination answers in its own way. It sends ICMP port unreachable for UDP probes, an echo reply for ICMP probes, and SYN-ACK or RST for TCP probes.
 
+![How traceroute finds each hop](./img/n07-fig1-traceroute.jpg)
+
+*Figure 2.7.1. Each probe has a larger TTL; the router where it expires replies with Time exceeded.*
+
 The diagram below shows three probes, one TTL at a time.
 
 ```mermaid

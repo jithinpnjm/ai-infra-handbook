@@ -190,6 +190,10 @@ Bonding does not suit compute rails. One RDMA flow, which uses one queue pair, c
 
 Imagine a team whose small requests work perfectly, while every large download hangs. A ping of ordinary size gets an answer, and the application log shows nothing unusual. The usual culprit is a link on the path that accepts smaller packets than the others, so a large packet that cannot fit is quietly dropped. MTU design is the discipline of agreeing on one size everywhere, and checking that agreement with a test that refuses to fragment. The sections below explain how to set the size and how to prove it.
 
+![One small MTU on the path](./img/n24-fig1-mtu.jpg)
+
+*Figure 2.24.1. A single small-MTU link stops large packets while small ones pass.*
+
 How large can a packet be on this network, and does every device agree? The MTU is a deliberate property of each network. Every device on a layer-2 segment has to agree on it, including hosts, switch ports, VLAN interfaces, bonds, bridges, virtual switches and overlays. One device with a smaller value is enough to cause trouble, because the large packet either gets dropped or has to be split.
 
 The table gives the usual MTU for each network, along with what to watch for. Each row sets its own value, so check the MTU for each network separately.

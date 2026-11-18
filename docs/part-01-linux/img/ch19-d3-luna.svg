@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Network namespaces</title>
+  <desc></desc>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+  <text x="800" y="78" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Network namespaces</text>
+
+  <!-- Network namespace containers -->
+  <rect x="40" y="180" width="400" height="220" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="240" y="224" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Container net ns A</text>
+
+  <rect x="40" y="500" width="400" height="220" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="240" y="544" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Container net ns B</text>
+
+  <!-- Host network namespace container -->
+  <rect x="480" y="135" width="1080" height="690" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="1020" y="185" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="34" font-weight="700">Host network namespace</text>
+
+  <!-- Group connections -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M415 305 H520"/>
+    <path d="M415 630 H520"/>
+    <path d="M850 305 H870 V415 H900"/>
+    <path d="M850 630 H875 V490 H900"/>
+    <path d="M1240 455 H1255 V672 H1270"/>
+    <path d="M1405 350 V590"/>
+  </g>
+
+  <!-- Container interface A -->
+  <rect x="65" y="240" width="350" height="130" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="82" y="275" width="52" height="38" rx="5"/>
+    <path d="M94 288h8m12 0h8M94 300h8m12 0h8M108 313v10"/>
+  </g>
+  <text x="155" y="310" fill="#303a36" font-family="monospace" font-size="24">eth0 172.17.0.2</text>
+
+  <!-- Container interface B -->
+  <rect x="65" y="565" width="350" height="130" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="82" y="600" width="52" height="38" rx="5"/>
+    <path d="M94 613h8m12 0h8M94 625h8m12 0h8M108 638v10"/>
+  </g>
+  <text x="155" y="635" fill="#303a36" font-family="monospace" font-size="24">eth0 172.17.0.3</text>
+
+  <!-- Host veth A -->
+  <rect x="520" y="240" width="330" height="130" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M540 290h20l12 12-12 12h-20z"/>
+    <path d="M572 302h24m-8-10 10 10-10 10"/>
+    <path d="M540 282v40"/>
+  </g>
+  <text x="610" y="296" fill="#303a36" font-family="monospace" font-size="24">vethA</text>
+  <text x="610" y="328" fill="#303a36" font-family="monospace" font-size="24">(host end)</text>
+
+  <!-- Host veth B -->
+  <rect x="520" y="565" width="330" height="130" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M540 615h20l12 12-12 12h-20z"/>
+    <path d="M572 627h24m-8-10 10 10-10 10"/>
+    <path d="M540 607v40"/>
+  </g>
+  <text x="610" y="621" fill="#303a36" font-family="monospace" font-size="24">vethB</text>
+  <text x="610" y="653" fill="#303a36" font-family="monospace" font-size="24">(host end)</text>
+
+  <!-- Bridge -->
+  <rect x="900" y="380" width="340" height="150" rx="14" fill="#f5f8f5" stroke="#db8129" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="916" y="423" width="20" height="20" rx="3"/>
+    <rect x="916" y="463" width="20" height="20" rx="3"/>
+    <rect x="954" y="443" width="20" height="20" rx="3"/>
+    <path d="M936 433h8v20h10m-18 20h8v-20"/>
+  </g>
+  <text x="990" y="423" fill="#303a36" font-family="monospace" font-size="24">bridge docker0</text>
+  <text x="990" y="453" fill="#303a36" font-family="monospace" font-size="24">/ cni0</text>
+  <text x="990" y="483" fill="#303a36" font-family="monospace" font-size="24">172.17.0.1</text>
+
+  <!-- Physical network interface -->
+  <rect x="1270" y="200" width="270" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1283" y="245" width="52" height="38" rx="5"/>
+    <path d="M1295 258h8m12 0h8m-28 12h8m12 0h8m-14 13v10"/>
+  </g>
+  <text x="1350" y="240" fill="#303a36" font-family="monospace" font-size="24">eth0 / ens…</text>
+  <text x="1350" y="270" fill="#303a36" font-family="monospace" font-size="24">(physical</text>
+  <text x="1350" y="300" fill="#303a36" font-family="monospace" font-size="24">NIC)</text>
+
+  <!-- NAT rules -->
+  <rect x="1270" y="590" width="270" height="165" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1290 626l28-12 28 12v20c0 20-14 31-28 38-14-7-28-18-28-38z"/>
+    <path d="M1305 639h26m-26 12h26m-19-12v12"/>
+  </g>
+  <text x="1355" y="620" fill="#303a36" font-family="monospace" font-size="24">iptables /</text>
+  <text x="1355" y="649" fill="#303a36" font-family="monospace" font-size="24">nftables</text>
+  <text x="1355" y="678" fill="#303a36" font-family="monospace" font-size="24">MASQUERADE</text>
+  <text x="1355" y="707" fill="#303a36" font-family="monospace" font-size="24">+ DNAT</text>
+</svg>

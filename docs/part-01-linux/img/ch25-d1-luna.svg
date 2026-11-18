@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">Benchmark types</title>
+  <desc id="svg-desc">Micro-benchmark, Simulation / macro, Replay, Production; Industry standards; fixed rules and disclosure.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="20" markerHeight="20" refX="18" refY="10" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 1 L18 10 L0 19" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="20" markerHeight="20" refX="18" refY="10" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 1 L18 10 L0 19" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+  <text x="800" y="105" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Benchmark types</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="75" y="175" width="340" height="390" rx="20"/>
+    <rect x="445" y="175" width="340" height="390" rx="20"/>
+    <rect x="815" y="175" width="340" height="390" rx="20"/>
+    <rect x="1185" y="175" width="340" height="390" rx="20"/>
+    <rect x="445" y="790" width="340" height="260" rx="20"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="217" y="205" width="56" height="56" rx="8"/>
+    <rect x="230" y="218" width="30" height="30" rx="3"/>
+    <path d="M229 197v8 M245 197v8 M261 197v8 M229 261v8 M245 261v8 M261 261v8 M209 217h8 M209 233h8 M209 249h8 M273 217h8 M273 233h8 M273 249h8"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="587" y="205" width="56" height="48" rx="5"/>
+    <path d="M587 218h56 M597 211h1 M606 211h1 M615 211h1"/>
+    <path d="M600 233h30 M600 242h22"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M856 221a24 24 0 1 1-2 20"/>
+    <path d="M852 209v16h16"/>
+    <path d="M892 224v20l17-10z"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1327" y="204" width="56" height="52" rx="5"/>
+    <path d="M1327 217h56 M1337 211h1 M1347 211h1 M1357 211h1"/>
+    <path d="M1337 229h36 M1337 238h27 M1337 247h18"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M589 821h36l13 13v45h-49z"/>
+    <path d="M625 821v14h13 M599 844h26 M599 854h26 M599 864h18"/>
+    <path d="m599 833 3 3 6-7"/>
+  </g>
+
+  <path d="M415 370 H445" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M785 370 H815" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <path d="M1155 370 H1185" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <path d="M615 565 V790" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 9"/>
+  <text x="660" y="650" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="660" dy="0">fixed rules and</tspan>
+    <tspan x="660" dy="32">disclosure</tspan>
+  </text>
+
+  <g fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <text x="245" y="305" font-size="30" font-weight="700">Micro-benchmark</text>
+    <text x="245" y="356" font-size="24">
+      <tspan x="245" dy="0">simple artificial</tspan>
+      <tspan x="245" dy="32">operation</tspan>
+    </text>
+    <text x="245" y="443" font-size="24" font-family="monospace">
+      <tspan x="245" dy="0">(fio, iperf3,</tspan>
+      <tspan x="245" dy="32">stream, nccl-tests)</tspan>
+    </text>
+
+    <text x="615" y="298" font-size="30" font-weight="700">
+      <tspan x="615" dy="0">Simulation /</tspan>
+      <tspan x="615" dy="36">macro</tspan>
+    </text>
+    <text x="615" y="375" font-size="24">
+      <tspan x="615" dy="0">modelled client</tspan>
+      <tspan x="615" dy="32">workload</tspan>
+    </text>
+    <text x="615" y="455" font-size="24" font-family="monospace">
+      <tspan x="615" dy="0">(wrk, load</tspan>
+      <tspan x="615" dy="32">generator,</tspan>
+      <tspan x="615" dy="32">MLPerf-style)</tspan>
+    </text>
+
+    <text x="985" y="305" font-size="30" font-weight="700">Replay</text>
+    <text x="985" y="365" font-size="24">
+      <tspan x="985" dy="0">captured trace</tspan>
+      <tspan x="985" dy="32">re-run</tspan>
+    </text>
+
+    <text x="1355" y="305" font-size="30" font-weight="700">Production</text>
+    <text x="1355" y="365" font-size="24">
+      <tspan x="1355" dy="0">real traffic</tspan>
+      <tspan x="1355" dy="32">(canary, A/B)</tspan>
+    </text>
+
+    <text x="615" y="930" font-size="30" font-weight="700">Industry standards</text>
+    <text x="615" y="976" font-size="24">
+      <tspan x="615" dy="0">TPC, SPEC, MLPerf,</tspan>
+      <tspan x="615" dy="32">HPL/Top500, IO500</tspan>
+    </text>
+  </g>
+</svg>

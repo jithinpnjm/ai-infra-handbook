@@ -51,6 +51,10 @@ Every Python story starts the same way: someone types `python3` and something ha
 
 **CPython** is the Python you get when you type `python3`, and it is the reference implementation, the one the language is defined against. CPython is an **interpreted, byte-compiled** language: your source is first translated into **bytecode**, a compact instruction list, and a virtual machine then carries the instructions out one by one. When you run `python script.py`:
 
+![How CPython runs code](./img/p01-exec.jpg)
+
+*Figure 3.1.1. Source is compiled to bytecode, which the virtual machine executes.*
+
 1. The interpreter reads the source and **compiles** it to **bytecode**, a compact instruction list for a stack-based virtual machine. Bytecode for imported modules is cached in `__pycache__/*.pyc`; for a script run directly it is compiled each time.
 2. The **Python Virtual Machine (PVM)** executes the bytecode in a loop. There is no separate compile-link-run cycle: execution begins immediately, and errors in code that is never executed are not found until it runs.
 3. The **import system** finds, loads and executes module code once and caches it in `sys.modules`.
@@ -67,6 +71,10 @@ python3 -X importtime -c 'import json'     # where import time goes
 ### Ways to run code
 
 The table lists every way to run code, with the command and its typical use.
+
+![Ways to run Python code](./img/p01-ways.jpg)
+
+*Figure 3.1.2. Script, module, one-liner and REPL.*
 
 | Way | Command | Use |
 |---|---|---|
@@ -143,6 +151,10 @@ Unlike the REPL, a file shows nothing unless you call `print`. That silence is n
 
 Any file that ends in `.py` is a module, with no special syntax needed. Another file reaches its contents with an import. The import loads the file and runs its top-level code, and the names it defines are its attributes. Create `settings.py` with one line:
 
+![A file as a module](./img/p01-module.jpg)
+
+*Figure 3.1.3. Importing a module runs it and exposes its names as attributes.*
+
 ```python
 REGION = "eu-north-1"
 ```
@@ -195,6 +207,10 @@ Here is the bug that burns colleagues who come to Python from other languages. A
 
 In C, a variable is a named piece of memory. In Python, the picture is different: **objects** live in memory, and **names are labels bound to them**. People also call these labels **references**, and the label-versus-object picture explains most of what follows. Every object has:
 
+![Names and objects](./img/p01-names.jpg)
+
+*Figure 3.1.4. Names are labels bound to objects; two names can share one object.*
+
 - an **identity** (`id(obj)`; in CPython the memory address, constant for the object's lifetime),
 - a **type** (`type(obj)`; it determines the behaviour and cannot normally change),
 - a **value** (its content).
@@ -225,6 +241,10 @@ Assignment never copies objects: it **binds names to objects**. Keep that senten
 
 **Mutability** means whether an object can change in place once it exists. The distinction sorts every type you will use into two families, and the two families behave very differently:
 
+![Mutable and immutable objects](./img/p01-mutable.jpg)
+
+*Figure 3.1.5. Mutable objects change in place; immutable ones are replaced.*
+
 - **Immutable** objects cannot change after creation: `int`, `float`, `complex`, `bool`, `str`, `bytes`, `tuple` (of immutables), `frozenset`, `None`, `range`. Operations produce new objects.
 - **Mutable** objects can change in place: `list`, `dict`, `set`, `bytearray`, most user-defined class instances.
 
@@ -248,11 +268,19 @@ d = copy.deepcopy(a)   # recursively copies nested mutable structures
 
 **Garbage collection** is Python's way of reclaiming memory that no code can reach any more, and it works in two parts. CPython frees an object when its **reference count** drops to zero. The count is the number of labels on the object, so the moment the last one disappears, its memory is freed immediately, which is deterministic for non-cyclic garbage. A **cycle collector**, the `gc` module, periodically handles reference cycles, where objects keep each other's count above zero. `del name` removes a binding, not necessarily the object.
 
+![Reference counting](./img/p01-refcount.jpg)
+
+*Figure 3.1.6. An object is freed when its last reference goes away.*
+
 The practical consequences are worth listing. Files and sockets should be closed explicitly, and `with` does that for you. `__del__` is a poor cleanup mechanism. Memory growth in long-running services often comes from references you still hold: caches, globals, closures, and exception tracebacks stored somewhere. Weak references, from `weakref`, are available for caches. To diagnose leaks, use `sys.getrefcount`, `tracemalloc` and `objgraph`.
 
 ### Dynamic typing and duck typing
 
 **Dynamic typing** is the idea that names have no type; objects do. A name can be rebound to an object of any type, so the interpreter learns what you meant only when an operation runs. Type checks happen when an operation is attempted, which is why people say **duck typing**: if it supports the operation, it works.
+
+![Duck typing](./img/p01-duck.jpg)
+
+*Figure 3.1.7. Code calls the method it needs; the object's class does not matter.*
 
 Dynamically typed does not mean loosely typed. Python is **strongly typed**: `"1" + 1` raises `TypeError`, and there is no silent coercion. If you need a number and you have a string, you convert it explicitly. Optional **type hints** (chapter 3.4) document and statically check intent without changing runtime behaviour.
 
@@ -279,6 +307,10 @@ Operators: `+ - * / // % **`; `/` is always true division (float); `//` floors t
 
 **Precedence** decides how an expression groups when it mixes several operators without parentheses. Think of it as tightness of binding. The table below lists the operators from the highest precedence, the tightest binding, down to the lowest. Operators on the same row group from left to right, except `**`, which groups right to left, and comparisons, which chain left to right. One case is worth pausing on: `-2 ** 2` is `-(2 ** 2)`, which is -4, because `**` binds tighter than unary `-`.
 
+![Operator precedence](./img/p01-precedence.jpg)
+
+*Figure 3.1.8. Higher rows bind first.*
+
 | Precedence (highest to lowest) | Operators | Description |
 |---|---|---|
 | 1 (highest) | `(...)`, `[...]`, `{...}` | Tuple/parenthesized expression/generator expression, list/list comprehension, dict/set/comprehensions |
@@ -304,6 +336,10 @@ Operators: `+ - * / // % **`; `/` is always true division (float); `//` floors t
 ### Floor division (`//`, `math.floor`) versus truncation (`math.trunc`, `int`)
 
 The `//` operator is often loosely called truncating division, but it actually performs **floor division**: it rounds the result down toward $-\infty$, the closest whole number less than or equal to the true quotient. By contrast, **truncation**, which `math.trunc()` and `int()` perform, drops the fractional part and rounds toward zero. For positive numbers, floor and truncation give the same answer. For negative numbers, they differ by 1:
+
+![Floor versus truncation](./img/p01-floor-v3.jpg)
+
+*Figure 3.1.9. Floor rounds down; truncation drops the fraction.*
 
 ```python
 import math
@@ -335,6 +371,10 @@ Beware three quiet traps. Floating-point rounding affects metrics and thresholds
 Picture a script that reads a log file and prints a line, and the console shows the text wrapped in `b'...'` with a small `b` in front. The data came back as bytes, not text. Every engineer meets that difference in the first week of parsing files or sockets, and mixing the two raises `TypeError` on the spot. This section draws the line between text and bytes, then works through the string tools.
 
 A `str` is an **immutable sequence of Unicode code points**, where each code point is one character of text. `bytes` is an immutable sequence of integers 0 to 255, which is how raw data looks, and `bytearray` is its mutable form. Text and bytes are different types, and Python does not convert between them silently. You **encode** text to bytes with `s.encode("utf-8")` and **decode** bytes to text with `b.decode("utf-8")`. Mixing them raises `TypeError`. Files, sockets and subprocess pipes deal in bytes unless opened in text mode with an encoding, and chapter 3.5 covers this in depth.
+
+![str and bytes](./img/p01-strbytes.jpg)
+
+*Figure 3.1.10. Text is encoded to bytes on the way out and decoded on the way in.*
 
 ```python
 s = "GPU-0 temp=71C"
@@ -395,6 +435,10 @@ if m:
 
 Picture a script that checks whether each of a large set of hostnames is in a list, and takes noticeably long. The same check against a set finishes almost instantly. Collections decide that story: the type you pick sets how fast the script runs and which bugs it can carry. This section compares the core types, then lists the behaviours that surprise people.
 
+![The four core collections](./img/p01-collections.jpg)
+
+*Figure 3.1.11. List, tuple, dict and set, with a literal and a typical use each.*
+
 | Type | Literal | Properties | Typical use | Costs |
 |---|---|---|---|---|
 | `list` | `[1, 2, 3]` | Ordered, mutable, indexable, allows duplicates | Sequences of results, queues (small) | Index O(1); append amortised O(1); insert/delete at front O(n); `in` O(n) |
@@ -437,6 +481,10 @@ Important behaviours:
 ### Truthiness and `None`
 
 **Truthiness** is Python's answer to the question "what counts as false". Empty containers, `0`, `0.0`, `""`, `None` and `False` are falsy; everything else is truthy. Prefer `if not items:` to `if len(items) == 0:`, since both mean the same thing.
+
+![Falsy values versus truthy values in Python](./img/p01-truthy.jpg)
+
+*Figure 3.1.12. *Figure 3.1.Q. Falsy and truthy values: empty things and zero are false.**
 
 The trap fires when `0` or empty are valid values. Use `is None` and `is not None` for that case: `if timeout is None: timeout = 30`, not `if not timeout`, because a timeout of `0` would be treated as missing and replaced. `None` is the single null object, and it is the default return value of functions without `return`.
 
@@ -773,6 +821,10 @@ Prefer `file=log` (or `file=sys.stderr`) for per-call redirection so you do not 
 
 The block below shows the conditional forms in one place:
 
+![if, elif, else: the first true branch runs and the rest are skipped](./img/p01-ifelif.jpg)
+
+*Figure 3.1.13. *Figure 3.1.T. Conditions are tested in order; only the first matching branch runs.**
+
 ```python
 if state == "ready":
     ...
@@ -790,6 +842,10 @@ if 1024 <= port <= 65535 and not is_reserved(port): ...
 ### The `match` statement (3.10+)
 
 Structural pattern matching destructures values, which means it takes a value apart and binds the parts to names. That makes it useful for parsing commands, API events and heterogeneous data.
+
+![The match statement](./img/p01-match.jpg)
+
+*Figure 3.1.14. The first case whose pattern fits the value runs and binds its names.*
 
 ```python
 def handle(event: dict) -> str:
@@ -816,6 +872,10 @@ Patterns: literals, captures, wildcards `_`, sequences, mappings, class patterns
 
 The block below shows the loop patterns in one place, including the retry loop with `else`:
 
+![for walks items, while repeats on a condition, break and continue steer the loop](./img/p01-loops.jpg)
+
+*Figure 3.1.15. *Figure 3.1.U. The two loop kinds and the two keywords that steer them.**
+
 ```python
 while not ready():                    # condition loop
     time.sleep(2)
@@ -840,9 +900,17 @@ else:
 
 Here is the preview of what `for` actually does. It calls `iter(obj)` to get an iterator, then calls `next()` repeatedly until `StopIteration` ends the loop. Lists, tuples, dicts (keys), sets, strings, files (lines), `range`, generators and many library objects are iterable. Iterators are **single-use**: once exhausted they yield nothing. File objects and generators therefore stream data lazily, which is how a script processes a 50 GB log with constant memory. Chapter 3.3 goes deep on iterators, generators and comprehensions.
 
+![The iteration protocol](./img/p01-iterproto.jpg)
+
+*Figure 3.1.16. A for loop gets an iterator and calls next() until StopIteration.*
+
 ### Comprehensions (preview)
 
 The block below shows the four comprehension forms:
+
+![Anatomy of a comprehension](./img/p01-compr.jpg)
+
+*Figure 3.1.17. Expression, source and filter in one line.*
 
 ```python
 squares = [n * n for n in range(10) if n % 2 == 0]
@@ -1117,6 +1185,10 @@ A function is an **object**, and a first-class one: it can be assigned, stored i
 
 In many compiled languages, a function exists before the program starts. Python works differently. A `def` is a statement that runs when Python reaches it, and it creates the function object at that moment.
 
+![def builds a function object at import time; the call comes later](./img/p01-defruntime.jpg)
+
+*Figure 3.1.18. *Figure 3.1.R. def runs at import time to build the function; calling it runs later.**
+
 Because `def` is a real statement, you can place it inside an `if`. This lets a program choose which version of a function to build:
 
 ```python
@@ -1314,6 +1386,10 @@ Calling-side unpacking takes `f(*args_list, **kwargs_dict)`, and `print(*items, 
 
 In a function definition (`def` or `lambda`), the parameter list consists of four optional sections that must appear in strict left-to-right order:
 
+![How call arguments map to host, port, *args and **opts](./img/p01-params.jpg)
+
+*Figure 3.1.19. *Figure 3.1.S. How call arguments reach the parameters of one function.**
+
 ```python
 def func(pos_only, /, normal, *args, kw_only, **kwargs): ...
 ```
@@ -1353,6 +1429,10 @@ func(*[1], 2, **dict(c=3), d=4)              # 1 2 3 4
 
 Here is the bug that has bitten almost everyone at least once. A colleague writes a function that appends to a list, and the list is a default argument. On the second call, the first call's items are still in the list, even though the caller passed nothing. Nothing crashed, and no error message names the cause.
 
+![Mutable default argument](./img/p01-defaulttrap.jpg)
+
+*Figure 3.1.20. The default list is created once and shared across calls.*
+
 The mechanism is small. Default values are evaluated **once**, when `def` runs. A mutable default is shared by every call:
 
 ```python
@@ -1385,6 +1465,10 @@ Because of this, a function's variables do not clash with names elsewhere in the
 ### Scope: LEGB
 
 **Scope** is the set of names Python can see at a given point, and name lookup follows **L**ocal, **E**nclosing function, **G**lobal (module), **B**uilt-in, in that order. Assignment inside a function makes the name local to that function unless declared `global` or `nonlocal`. The code below shows both declarations, and it also shows what a **closure** is: a function that remembers a name from the function that created it.
+
+![LEGB lookup](./img/p01-legb.jpg)
+
+*Figure 3.1.21. Python searches Local, Enclosing, Global and Built-in scopes in that order.*
 
 ```python
 counter = 0

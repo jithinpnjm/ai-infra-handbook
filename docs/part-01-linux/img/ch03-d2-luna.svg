@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <title>Inodes: what a file really is</title>
+  <desc>A directory table points to inode records; inode 7401 points to data blocks on disk.</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="17" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L17 9 L1 17" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="17" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L17 9 L1 17" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+  <text x="60" y="82" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Inodes: what a file really is</text>
+
+  <rect x="40" y="140" width="520" height="900" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <path d="M82 194h31l11 12h42v38H82z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <text x="185" y="204" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Directory</text>
+  <text x="185" y="244" fill="#303a36" font-family="monospace" font-size="26" font-weight="700">/home/alice (a table)</text>
+
+  <rect x="80" y="330" width="440" height="190" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <path d="M112 385h44v58h-44z M145 385v14h11 M121 407h24 M121 419h24 M121 431h18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="180" y="405" fill="#303a36" font-family="monospace" font-size="26" font-weight="700">
+    <tspan x="180" dy="0">train.py →</tspan>
+    <tspan x="180" dy="38">inode 7401</tspan>
+  </text>
+
+  <rect x="80" y="570" width="440" height="190" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <path d="M112 625h44v58h-44z M145 625v14h11 M121 647h24 M121 659h24 M121 671h18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="180" y="645" fill="#303a36" font-family="monospace" font-size="26" font-weight="700">
+    <tspan x="180" dy="0">run.sh →</tspan>
+    <tspan x="180" dy="38">inode 7402</tspan>
+  </text>
+
+  <rect x="80" y="810" width="440" height="190" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <path d="M112 865h44v58h-44z M145 865v14h11 M121 887h24 M121 899h24 M121 911h18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="180" y="885" fill="#303a36" font-family="monospace" font-size="26" font-weight="700">
+    <tspan x="180" dy="0">latest →</tspan>
+    <tspan x="180" dy="38">inode 7420</tspan>
+  </text>
+
+  <rect x="650" y="210" width="390" height="360" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <path d="M688 250h48v58h-48z M724 250v14h12 M698 273h20 M698 285h20 M698 297h14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="752" y="289" fill="#303a36" font-family="monospace" font-size="30" font-weight="700">inode 7401</text>
+  <text x="690" y="354" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="690" dy="0">type, mode, owner, size</tspan>
+    <tspan x="690" dy="42">times, link count = 1</tspan>
+    <tspan x="690" dy="42">data block pointers</tspan>
+  </text>
+
+  <rect x="1180" y="270" width="360" height="240" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <path d="M1218 320c0-12 20-20 42-20s42 8 42 20v52c0 12-20 20-42 20s-42-8-42-20z M1218 320c0 12 20 20 42 20s42-8 42-20 M1218 346c0 12 20 20 42 20s42-8 42-20" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <text x="1320" y="348" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1320" dy="0">data blocks</tspan>
+    <tspan x="1320" dy="42">on disk</tspan>
+  </text>
+
+  <rect x="650" y="720" width="390" height="220" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <path d="M688 778h48v58h-48z M724 778v14h12 M698 801h20 M698 813h20 M698 825h14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="752" y="817" fill="#303a36" font-family="monospace" font-size="30" font-weight="700">inode 7402</text>
+
+  <path d="M520 425 H650" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+  <path d="M1040 390 H1180" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)"/>
+  <path d="M520 665 H600 V830 H650" fill="none" stroke="#207448" stroke-width="5" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+</svg>

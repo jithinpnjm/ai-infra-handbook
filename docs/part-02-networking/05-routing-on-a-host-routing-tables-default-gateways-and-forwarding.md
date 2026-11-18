@@ -42,6 +42,10 @@ Finally, you can add, change and remove routes for IPv4 and IPv6, and make them 
 
 Suppose a packet is about to leave your server for a remote address. Before it leaves, the kernel has to decide where it goes, much as a driver at a junction has to choose a road. Every outgoing packet a host creates, and every packet it forwards, triggers a **route lookup** in the kernel's FIB (Forwarding Information Base). The FIB is simply the kernel's table of routes, organised for fast searching. The kernel takes the destination address, and often the source address, input interface, TOS/DSCP and mark. From those it finds the next hop and the outgoing interface.
 
+![Longest prefix wins](./img/n05-fig1-lpm.jpg)
+
+*Figure 2.5.1. Several routes can match a destination; the most specific, longest prefix is used.*
+
 The lookup ends in one of five outcomes.
 
 - Local delivery: the destination is one of this host's own addresses, so the packet goes up the stack.

@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <title>Terminal, shell, command: three different things</title>
+  <desc>Terminal, shell, command: three different things</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" refX="18" refY="9" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" refX="18" refY="9" orient="auto-start-reverse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+  <text x="800" y="92" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Terminal, shell, command: three different things</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="4">
+    <rect x="60" y="190" width="340" height="265" rx="24"/>
+    <rect x="440" y="190" width="350" height="265" rx="24"/>
+    <rect x="1030" y="190" width="480" height="265" rx="24"/>
+    <rect x="60" y="760" width="440" height="260" rx="24"/>
+    <rect x="580" y="760" width="440" height="260" rx="24"/>
+    <rect x="1100" y="760" width="440" height="260" rx="24"/>
+  </g>
+
+  <!-- You type on keyboard -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="195" y="220" width="70" height="48" rx="7"/>
+    <path d="M205 232h8m8 0h8m8 0h8m8 0h8m-48 12h8m8 0h8m8 0h8m8 0h8m-48 12h38"/>
+  </g>
+  <text x="230" y="330" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">
+    <tspan x="230" dy="0">You type</tspan>
+    <tspan x="230" dy="42">on keyboard</tspan>
+  </text>
+
+  <!-- Terminal emulator window, fonts -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="577" y="215" width="76" height="58" rx="6"/>
+    <path d="M578 231h74m-61 15 10 8-10 8m18 0h20"/>
+    <circle cx="587" cy="223" r="2" fill="#207448"/>
+    <circle cx="598" cy="223" r="2" fill="#207448"/>
+  </g>
+  <text x="615" y="318" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="615" dy="0">Terminal emulator</tspan>
+    <tspan x="615" dy="40" font-size="24" font-weight="400">window, fonts</tspan>
+  </text>
+
+  <!-- Shell: bash, zsh reads and parses line -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1232" y="215" width="76" height="58" rx="6"/>
+    <path d="M1233 231h74m-61 15 10 8-10 8m18 0h20"/>
+    <circle cx="1242" cy="223" r="2" fill="#207448"/>
+    <circle cx="1253" cy="223" r="2" fill="#207448"/>
+  </g>
+  <text x="1270" y="318" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1270" dy="0">Shell: bash, zsh</tspan>
+    <tspan x="1270" dy="40" font-size="24" font-weight="400">reads and parses line</tspan>
+  </text>
+
+  <!-- Program: ls -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="242" y="795" width="76" height="58" rx="6"/>
+    <path d="M243 811h74m-61 15 10 8-10 8m18 0h20"/>
+    <circle cx="252" cy="803" r="2" fill="#207448"/>
+    <circle cx="263" cy="803" r="2" fill="#207448"/>
+  </g>
+  <text x="280" y="900" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Program: ls</text>
+
+  <!-- Program: python3 -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="762" y="795" width="76" height="58" rx="6"/>
+    <path d="M763 811h74m-61 15 10 8-10 8m18 0h20"/>
+    <circle cx="772" cy="803" r="2" fill="#207448"/>
+    <circle cx="783" cy="803" r="2" fill="#207448"/>
+  </g>
+  <text x="800" y="900" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Program: python3</text>
+
+  <!-- Builtins: cd, export -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1320" cy="824" r="31"/>
+    <circle cx="1320" cy="824" r="11"/>
+    <path d="M1320 783v10m0 62v10m41-41h-10m-62 0h-10m70-29-8 8m-44 44-8 8m60 0-8-8m-44-44-8-8"/>
+  </g>
+  <text x="1320" y="900" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Builtins: cd, export</text>
+
+  <!-- Connections -->
+  <path d="M400 320 H440" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+  <path d="M790 330 H1030" fill="none" stroke="#db8129" stroke-width="5" marker-start="url(#arrow-orange)" marker-end="url(#arrow-orange)"/>
+  <rect x="806" y="270" width="208" height="42" rx="10" fill="#f5f8f5"/>
+  <text x="910" y="300" text-anchor="middle" fill="#db8129" font-family="sans-serif" font-size="24">bytes over PTY</text>
+
+  <path d="M1070 455 C1050 570 650 615 280 760" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+  <rect x="510" y="558" width="244" height="44" rx="10" fill="#f5f8f5"/>
+  <text x="632" y="589" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">fork, then exec</text>
+
+  <path d="M1240 455 C1230 575 980 640 800 760" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+  <rect x="975" y="572" width="244" height="44" rx="10" fill="#f5f8f5"/>
+  <text x="1097" y="603" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">fork, then exec</text>
+
+  <path d="M1470 455 C1515 585 1435 655 1320 760" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+  <rect x="1325" y="572" width="177" height="44" rx="10" fill="#f5f8f5"/>
+  <text x="1413" y="603" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">inside shell</text>
+</svg>

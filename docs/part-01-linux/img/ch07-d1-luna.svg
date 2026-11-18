@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Two layers, and why they exist</title>
+  <desc/>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L16 9 L2 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L16 9 L2 16" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">Two layers, and why they exist</text>
+
+  <rect x="40" y="190" width="440" height="600" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="260" y="235" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="700" fill="#303a36">Repositories</text>
+
+  <rect x="80" y="250" width="380" height="150" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M101 292 L128 277 L155 292 L128 307 Z"/>
+    <path d="M101 292 V324 L128 339 L128 307"/>
+    <path d="M155 292 V324 L128 339"/>
+    <path d="M128 307 L155 292"/>
+  </g>
+  <text x="180" y="294" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Distribution</text>
+  <text x="180" y="327" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">repo</text>
+  <text x="180" y="356" font-family="sans-serif" font-size="24" fill="#303a36">(base, updates,</text>
+  <text x="180" y="380" font-family="sans-serif" font-size="24" fill="#303a36">security)</text>
+
+  <rect x="80" y="430" width="380" height="150" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M101 472 L128 457 L155 472 L128 487 Z"/>
+    <path d="M101 472 V504 L128 519 L128 487"/>
+    <path d="M155 472 V504 L128 519"/>
+    <path d="M128 487 L155 472"/>
+  </g>
+  <text x="180" y="474" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Third-party</text>
+  <text x="180" y="507" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">repo</text>
+  <text x="180" y="536" font-family="sans-serif" font-size="24" fill="#303a36">(EPEL, NVIDIA,</text>
+  <text x="180" y="560" font-family="sans-serif" font-size="24" fill="#303a36">Docker, vendor)</text>
+
+  <rect x="80" y="610" width="380" height="150" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M101 652 L128 637 L155 652 L128 667 Z"/>
+    <path d="M101 652 V684 L128 699 L128 667"/>
+    <path d="M155 652 V684 L128 699"/>
+    <path d="M128 667 L155 652"/>
+  </g>
+  <text x="180" y="660" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Local mirror</text>
+  <text x="180" y="695" font-family="sans-serif" font-size="24" fill="#303a36">(air-gapped</text>
+  <text x="180" y="724" font-family="sans-serif" font-size="24" fill="#303a36">cluster)</text>
+
+  <rect x="540" y="230" width="380" height="500" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <circle cx="730" cy="315" r="24"/>
+    <circle cx="730" cy="315" r="8"/>
+    <path d="M730 280 V290 M730 340 V350 M695 315 H705 M755 315 H765 M705 290 L712 297 M748 333 L755 340 M755 290 L748 297 M712 333 L705 340"/>
+  </g>
+  <text x="730" y="405" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">High-level manager</text>
+  <text x="730" y="450" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">apt / dnf</text>
+  <text x="730" y="500" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">resolve dependencies,</text>
+  <text x="730" y="535" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">download,</text>
+  <text x="730" y="570" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">verify signatures</text>
+
+  <rect x="1180" y="230" width="380" height="500" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1212 300 L1224 288 L1237 294 L1242 309 L1230 321 L1215 315 Z"/>
+    <path d="M1218 306 L1228 316 M1231 293 L1240 284"/>
+    <circle cx="1228" cy="304" r="5"/>
+  </g>
+  <text x="1370" y="405" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Low-level tool</text>
+  <text x="1370" y="450" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">dpkg / rpm</text>
+  <text x="1370" y="500" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">unpack files, run</text>
+  <text x="1370" y="535" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">scripts</text>
+
+  <path d="M460 320 H540" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M460 500 H540" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M460 680 H540" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <path d="M920 500 H1180" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <text x="1050" y="465" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">package files</text>
+
+  <rect x="1140" y="780" width="420" height="160" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M1161 827 H1183 L1191 836 H1217 V872 H1161 Z"/>
+    <path d="M1161 837 H1217"/>
+  </g>
+  <text x="1240" y="843" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Files on disk</text>
+  <text x="1240" y="880" font-family="monospace" font-size="24" fill="#303a36">/usr /etc</text>
+  <text x="1240" y="913" font-family="monospace" font-size="24" fill="#303a36">/lib ...</text>
+
+  <rect x="1140" y="980" width="420" height="180" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4">
+    <ellipse cx="1190" cy="1020" rx="27" ry="10"/>
+    <path d="M1163 1020 V1080 C1163 1086 1175 1090 1190 1090 C1205 1090 1217 1086 1217 1080 V1020"/>
+    <path d="M1163 1040 C1163 1046 1175 1050 1190 1050 C1205 1050 1217 1046 1217 1040"/>
+    <path d="M1163 1060 C1163 1066 1175 1070 1190 1070 C1205 1070 1217 1066 1217 1060"/>
+  </g>
+  <text x="1240" y="1025" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Local package</text>
+  <text x="1240" y="1060" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">database</text>
+  <text x="1240" y="1098" font-family="monospace" font-size="24" fill="#303a36">/var/lib/dpkg or</text>
+  <text x="1240" y="1133" font-family="monospace" font-size="24" fill="#303a36">/var/lib/rpm</text>
+
+  <path d="M1280 730 V760 H1350 V780" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M1490 730 H1580 V960 H1515 V980" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <path d="M1140 1070 H700 V730" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="12 10" marker-end="url(#arrow-green)"/>
+  <rect x="770" y="983" width="350" height="72" fill="#f5f8f5"/>
+  <text x="780" y="1010" font-family="sans-serif" font-size="24" fill="#303a36">queries: owns? version?</text>
+  <text x="780" y="1042" font-family="sans-serif" font-size="24" fill="#303a36">verify?</text>
+</svg>

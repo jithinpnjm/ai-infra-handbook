@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1320" viewBox="0 0 1600 1320" font-family="sans-serif" font-size="24" fill="#303a36">
+  <title>Choosing a tool</title>
+  <desc>Choosing a tool</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" viewBox="0 0 18 18" refX="18" refY="9" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" viewBox="0 0 18 18" refX="18" refY="9" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+    <style>
+      .box { fill:#e8f1ea; stroke:#207448; stroke-width:3; }
+      .icon { fill:none; stroke:#207448; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; }
+      .decision { font-size:30px; font-weight:700; }
+      .body { font-size:24px; }
+      .mono { font-family:monospace; font-size:24px; }
+      .flow { fill:none; stroke:#207448; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; marker-end:url(#arrow-green); }
+      .key-flow { fill:none; stroke:#db8129; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; marker-end:url(#arrow-orange); }
+      .branch { font-size:24px; font-weight:700; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1320" fill="#f5f8f5"/>
+  <text x="50" y="82" font-size="48" font-weight="700">Choosing a tool</text>
+
+  <!-- Nodes -->
+  <rect class="box" x="50" y="120" width="640" height="85" rx="18"/>
+  <rect class="box" x="50" y="230" width="640" height="100" rx="18"/>
+  <rect class="box" x="50" y="370" width="640" height="100" rx="18"/>
+  <rect class="box" x="50" y="510" width="640" height="100" rx="18"/>
+  <rect class="box" x="50" y="650" width="640" height="120" rx="18"/>
+  <rect class="box" x="50" y="810" width="640" height="120" rx="18"/>
+  <rect class="box" x="50" y="970" width="640" height="100" rx="18"/>
+
+  <rect class="box" x="900" y="225" width="650" height="110" rx="18"/>
+  <rect class="box" x="900" y="365" width="650" height="110" rx="18"/>
+  <rect class="box" x="900" y="505" width="650" height="110" rx="18"/>
+  <rect class="box" x="900" y="645" width="650" height="130" rx="18"/>
+  <rect class="box" x="900" y="805" width="650" height="130" rx="18"/>
+  <rect class="box" x="900" y="970" width="650" height="100" rx="18"/>
+  <rect class="box" x="900" y="1125" width="650" height="150" rx="18"/>
+
+  <!-- Question icon -->
+  <g class="icon">
+    <circle cx="92" cy="158" r="20"/>
+    <path d="M107 173 L126 192"/>
+  </g>
+
+  <!-- Decision icons -->
+  <g class="icon">
+    <path d="M99 249 L122 280 L99 311 L76 280 Z"/>
+    <circle cx="99" cy="280" r="5"/>
+    <path d="M99 275 L99 261 M99 285 L99 299"/>
+  </g>
+  <g class="icon">
+    <path d="M99 389 L122 420 L99 451 L76 420 Z"/>
+    <circle cx="99" cy="420" r="5"/>
+    <path d="M99 415 L99 401 M99 425 L99 439"/>
+  </g>
+  <g class="icon">
+    <path d="M99 529 L122 560 L99 591 L76 560 Z"/>
+    <circle cx="99" cy="560" r="5"/>
+    <path d="M99 555 L99 541 M99 565 L99 579"/>
+  </g>
+  <g class="icon">
+    <path d="M99 679 L122 710 L99 741 L76 710 Z"/>
+    <circle cx="99" cy="710" r="5"/>
+    <path d="M99 705 L99 691 M99 715 L99 729"/>
+  </g>
+  <g class="icon">
+    <path d="M99 839 L122 870 L99 901 L76 870 Z"/>
+    <circle cx="99" cy="870" r="5"/>
+    <path d="M99 865 L99 851 M99 875 L99 889"/>
+  </g>
+  <g class="icon">
+    <path d="M99 989 L122 1020 L99 1051 L76 1020 Z"/>
+    <circle cx="99" cy="1020" r="5"/>
+    <path d="M99 1015 L99 1001 M99 1025 L99 1039"/>
+  </g>
+
+  <!-- Counters icon -->
+  <g class="icon">
+    <path d="M922 296 A25 25 0 0 1 972 296"/>
+    <path d="M947 296 L962 278"/>
+    <path d="M927 287 L932 290 M947 273 L947 280 M967 287 L962 290"/>
+  </g>
+  <!-- Perf icon -->
+  <g class="icon">
+    <path d="M922 445 L922 395 M922 445 L972 445"/>
+    <path d="M930 437 L939 425 L947 431 L963 404 L971 410"/>
+  </g>
+  <!-- Off-CPU icon -->
+  <g class="icon">
+    <circle cx="947" cy="560" r="24"/>
+    <path d="M947 544 L947 560 L960 568"/>
+    <path d="M938 531 L956 531"/>
+  </g>
+  <!-- BCC icon -->
+  <g class="icon">
+    <path d="M922 710 L932 710 L938 690 L947 731 L955 700 L962 710 L972 710"/>
+  </g>
+  <!-- Ftrace icon -->
+  <g class="icon">
+    <path d="M925 851 L925 889 M945 851 L945 889 M965 851 L965 889"/>
+    <path d="M925 858 L945 858 M945 870 L965 870 M925 882 L945 882"/>
+    <circle cx="925" cy="858" r="3"/>
+    <circle cx="945" cy="870" r="3"/>
+    <circle cx="965" cy="882" r="3"/>
+  </g>
+  <!-- Perf-stat icon -->
+  <g class="icon">
+    <rect x="922" y="991" width="50" height="58" rx="5"/>
+    <path d="M932 1003 L962 1003 M932 1015 L962 1015 M932 1027 L962 1027 M932 1039 L952 1039"/>
+  </g>
+  <!-- Custom-program icon -->
+  <g class="icon">
+    <path d="M926 1157 L938 1170 L926 1183 M944 1183 L957 1183"/>
+    <path d="M918 1144 L976 1144 L976 1196 L918 1196 Z"/>
+  </g>
+
+  <!-- Connections -->
+  <path class="key-flow" d="M370 205 L370 230"/>
+  <path class="flow" d="M690 280 L900 280"/>
+  <path class="flow" d="M370 330 L370 370"/>
+  <path class="flow" d="M690 420 L900 420"/>
+  <path class="flow" d="M370 470 L370 510"/>
+  <path class="flow" d="M690 560 L900 560"/>
+  <path class="flow" d="M370 610 L370 650"/>
+  <path class="flow" d="M690 710 L900 710"/>
+  <path class="flow" d="M370 770 L370 810"/>
+  <path class="flow" d="M690 870 L900 870"/>
+  <path class="flow" d="M370 930 L370 970"/>
+  <path class="flow" d="M690 1020 L900 1020"/>
+  <path class="flow" d="M370 1070 L370 1200 L900 1200"/>
+
+  <!-- Branch labels -->
+  <text class="branch" x="795" y="264" text-anchor="middle">yes</text>
+  <text class="branch" x="328" y="357" text-anchor="end">no</text>
+  <text class="branch" x="795" y="404" text-anchor="middle">yes</text>
+  <text class="branch" x="328" y="497" text-anchor="end">no</text>
+  <text class="branch" x="795" y="544" text-anchor="middle">yes</text>
+  <text class="branch" x="328" y="637" text-anchor="end">no</text>
+  <text class="branch" x="795" y="694" text-anchor="middle">yes</text>
+  <text class="branch" x="328" y="797" text-anchor="end">no</text>
+  <text class="branch" x="795" y="854" text-anchor="middle">yes</text>
+  <text class="branch" x="328" y="957" text-anchor="end">no</text>
+  <text class="branch" x="795" y="1004" text-anchor="middle">yes</text>
+  <text class="branch" x="328" y="1110" text-anchor="end">no</text>
+
+  <!-- Question labels -->
+  <text class="decision" x="150" y="173">What do I want to know?</text>
+  <text class="decision" x="150" y="270">
+    <tspan x="150">A rate, total or</tspan>
+    <tspan x="150" dy="35">utilisation over time?</tspan>
+  </text>
+  <text class="decision" x="150" y="430">Where does CPU time go?</text>
+  <text class="decision" x="150" y="547">
+    <tspan x="150">Why do threads WAIT?</tspan>
+    <tspan x="150" dy="35">(blocked, off-CPU)</tspan>
+  </text>
+  <text class="decision" x="150" y="686">
+    <tspan x="150">Individual events or latency</tspan>
+    <tspan x="150" dy="35">distribution of a known</tspan>
+    <tspan x="150" dy="35">subsystem?</tspan>
+  </text>
+  <text class="decision" x="150" y="846">
+    <tspan x="150">Kernel function call flow</tspan>
+    <tspan x="150" dy="35">or counts, minimal</tspan>
+    <tspan x="150" dy="35">environment?</tspan>
+  </text>
+  <text class="decision" x="150" y="1006">
+    <tspan x="150">Microarchitecture</tspan>
+    <tspan x="150" dy="35">(IPC, cache, TLB)?</tspan>
+  </text>
+
+  <!-- Output labels -->
+  <text class="body" x="995" y="250">Counters:</text>
+  <text class="mono" x="1110" y="250">vmstat/mpstat/iostat/</text>
+  <text class="mono" x="995" y="278">sar/ss/nvidia-smi/DCGM</text>
+  <text class="body" x="995" y="306">(cheap, always on)</text>
+
+  <text class="mono" x="995" y="409">perf record -F 99 -g +</text>
+  <text class="body" x="995" y="441">flame graph (or <tspan class="mono">BCC</tspan> profile)</text>
+
+  <text class="mono" x="995" y="549">offcputime / perf sched /</text>
+  <text class="mono" x="995" y="577">wakeup stacks</text>
+
+  <text class="body" x="995" y="679">BCC tool (<tspan class="mono">biolatency, tcplife,</tspan></text>
+  <text class="mono" x="995" y="710">opensnoop, runqlat...)</text>
+  <text class="body" x="995" y="741">else <tspan class="mono">bpftrace</tspan> one-liner</text>
+
+  <text class="body" x="995" y="859">Ftrace: <tspan class="mono">funccount /</tspan></text>
+  <text class="mono" x="995" y="891">function_graph / trace-cmd</text>
+
+  <text class="mono" x="995" y="1009">perf stat / perf record</text>
+  <text class="mono" x="995" y="1041">on PMCs; perf c2c / mem</text>
+
+  <text class="body" x="995" y="1158">Custom question: write a</text>
+  <text class="mono" x="995" y="1190">bpftrace program</text>
+  <text class="body" x="995" y="1222">(or <tspan class="mono">uprobe/USDT</tspan> in the app)</text>
+</svg>

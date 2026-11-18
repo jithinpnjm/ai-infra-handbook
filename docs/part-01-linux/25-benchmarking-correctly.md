@@ -111,11 +111,9 @@ Notice how many cures ask you to check something before you believe the number: 
 
 Benchmarks sit on a spectrum, from one isolated operation to live traffic. Suppose you want to know whether a new filesystem is fast enough for training. You can measure a single system call, or you can replay a real workload, and the two answers will not agree. The diagram shows that spectrum, with the industry standards alongside the simulation step.
 
-```mermaid
-flowchart LR
-  M["Micro-benchmark\nsimple artificial operation\n(fio, iperf3, stream, nccl-tests)"] --> S["Simulation / macro\nmodelled client workload\n(wrk, load generator, MLPerf-style)"] --> R["Replay\ncaptured trace re-run"] --> P["Production\nreal traffic (canary, A/B)"]
-  I["Industry standards\nTPC, SPEC, MLPerf, HPL/Top500, IO500"] -. "fixed rules and disclosure" .- S
-```
+![Benchmark types](./img/ch25-d1-luna.svg)
+
+*Figure 1.25.1. Benchmark types.*
 
 Read the diagram from left to right. It runs from the simplest test to real traffic.
 
@@ -188,6 +186,10 @@ A number you cannot answer these questions about is a hypothesis, not a result.
 ## 5. A reproducible benchmarking procedure
 
 Picture a team that spends a week choosing between two load generators, then runs the winner on a node that is still running a nightly backup. The tool was never the problem. Before you pick a tool, fix the procedure. Most bad AI benchmarks fail at the procedure, not at the tool, and no amount of tooling repairs a procedure that was never written down.
+
+![A benchmark you can trust](./img/ch25-fig1-bench.jpg)
+
+*Figure 1.25.2. A reproducible benchmark fixes the setup, warms up, measures steady state, repeats and reports median and spread.*
 
 1. **Question and success criterion.** Write down the question and what counts as a pass. For example, does node X deliver at least 95% of the fleet median on a reference step? Or can this fabric sustain at least 90% of line rate for a 1 GiB all-reduce across 16 nodes? Without a criterion, the result can never pass or fail.
 2. **Record the environment** automatically. Capture the hardware: CPU model, microcode, BIOS version and settings, DIMMs, GPU model, SKU and VBIOS, NIC model and firmware, PCIe link width and speed, and topology. Capture the OS as well: kernel, boot parameters, sysctls, governor, and THP. Capture drivers and libraries, meaning the NVIDIA driver, CUDA, cuDNN, NCCL, MOFED/DOCA, PyTorch or the framework, and the container image digest. Then capture the cluster settings, such as scheduler, cgroup limits, and CPU, memory and GPU binding. Finally, capture clocks, power limits, and the software versions of the benchmark tool. Keep a script that dumps all of it next to your results.

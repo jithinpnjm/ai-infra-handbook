@@ -59,28 +59,9 @@ Here is the situation that motivates everything in this section. One volume is n
 
 LVM, the Logical Volume Manager, adds a layer between the physical block devices and the filesystems. The physical devices are called **physical volumes**, and the pooled storage is called a **volume group**. From that pool you carve **logical volumes**, and each one behaves like an ordinary block device that can hold a filesystem or swap. You can grow, shrink (carefully), move, snapshot and remove logical volumes while the system runs. Usually you do not need to unmount anything.
 
-```mermaid
-flowchart TB
-  subgraph PV["Physical volumes (PV): any block device"]
-    P1["/dev/nvme1n1p1\n(5 GB)"]
-    P2["/dev/nvme2n1p1\n(15 GB)"]
-  end
-  subgraph VG["Volume group (VG): the pool, divided into physical extents (PE, 4 MiB by default)"]
-    EXT["PE PE PE PE PE PE PE PE PE PE PE PE ..."]
-  end
-  subgraph LV["Logical volumes (LV): block devices carved from the pool"]
-    L1["lv_data  (10 GB)\n/dev/vg0/lv_data\n/dev/mapper/vg0-lv_data"]
-    L2["lv_scratch (10 GB)"]
-    FREE["free extents (grow later)"]
-  end
-  P1 --> EXT
-  P2 --> EXT
-  EXT --> L1
-  EXT --> L2
-  EXT --> FREE
-  L1 --> FS1["ext4 / XFS, mounted /data"]
-  L2 --> FS2["xfs, mounted /scratch"]
-```
+![The problem LVM solves](./img/ch13-d1-luna.svg)
+
+*Figure 1.13.1. The problem LVM solves.*
 
 The terms below appear in almost every LVM command, so it is worth learning them before you type anything.
 
@@ -239,6 +220,10 @@ sudo lvresize -r -L 50G /dev/myvg/mylv1       # set an absolute size
 ```
 
 If you prefer two separate commands, run `lvextend -L +20G ...` and then `xfs_growfs /data` or `resize2fs /dev/myvg/mylv1`. Growing is safe online for ext4 and XFS. Shrinking is a different story. ext4 must be unmounted, checked and shrunk *before* the LV is reduced. You can run `umount; e2fsck -f; resize2fs fs 40G; lvreduce -L 40G` by hand, or use `lvreduce -r`, which does the steps in the right order. XFS cannot be shrunk at all, so you must back up, recreate and restore. If you reduce the LV first, you destroy the tail of the filesystem. Always back up before you shrink.
+
+![Growing a volume without downtime](./img/ch13-fig2-grow.jpg)
+
+*Figure 1.13.2. Add space to the volume group, then extend the volume and its filesystem online with lvextend -r.*
 
 ### A worked two-disk example
 
@@ -496,6 +481,10 @@ Before you add a caching layer, check whether a hot subset really exists. If the
 
 Picture the moment a drive dies in the middle of a training run. What happens next depends on one decision made months earlier: which RAID level the volume uses. **RAID**, short for redundant array of independent disks, combines drives into one virtual device. The goal is capacity, speed or fault tolerance.
 
+![Common RAID levels](./img/ch13-fig1-raid.jpg)
+
+*Figure 1.13.3. RAID 0, 1, 5 and 10 compared; RAID is not a backup.*
+
 **Hardware RAID** runs on a controller card, which often has its own cache backed by a battery or capacitor. **Software RAID** runs in the operating system, through Linux `md`, LVM RAID or ZFS and btrfs. Modern CPUs make the parity calculation cheap. Software RAID also gives the operating system full sight of each drive, and it survives a dead controller. Most GPU servers use **software RAID (`md`)**.
 
 Some storage servers still use hardware RAID, which hides the physical disks. When they do, you need the controller tools to see the drives (section 6).
@@ -720,16 +709,9 @@ Everything the chapter teaches so far becomes a design decision here. It is one 
 
 Training data travels a long way. It crosses storage media, storage servers, the network and the client filesystem. Then it passes through the page cache, CPU memory and PCIe, before it reaches GPU memory. A slow GPU is not always caused by a slow disk. Like a bucket brigade, the slowest hand-off sets the pace, and any hand-off can be the limit. So measure every hand-off.
 
-```mermaid
-flowchart TD
-  M["1 Storage media (NVMe/HDD)\nsmartctl, iostat, nvme smart-log"] --> S["2 Storage server / controller queue\nserver-side queue depth, service time"]
-  S --> F["3 Network fabric (Ethernet/IB/NVMe-oF)\nethtool, link speed, errors, iperf/ib_write_bw"]
-  F --> C["4 Client filesystem / driver\nmountstats, lctl, nfsstat, cache stats"]
-  C --> P["5 Page cache\nfree, vmstat, cachestat, PSI memory"]
-  P --> H["6 CPU memory / NUMA\nnumactl -H, numastat, loader affinity"]
-  H --> E["7 PCIe\nlspci LnkSta, nvidia-smi dmon rxpci/txpci"]
-  E --> G["8 GPU memory\nnvidia-smi, torch.cuda.memory_summary"]
-```
+![The full data path, layer by layer](./img/ch13-d2-luna.svg)
+
+*Figure 1.13.4. The full data path, layer by layer.*
 
 The procedure has three steps. First, establish the demand: samples per second, multiplied by the bytes per sample, for each GPU. Second, measure the supply at each layer. Use a tool that bypasses the layers above it. Start with a raw device read using `fio --direct=1`, then test the filesystem, then the network path with the storage client, then the application loader. Third, the first layer whose measured capacity falls below the demand is the bottleneck. Also check for hidden copies. An extra decode or format conversion on the CPU can cost more than the disk does.
 
@@ -744,18 +726,9 @@ Enterprise advice says local disks are a bad idea, because they are stateless an
 
 Use local NVMe staging when the shared link or filesystem is the measured bottleneck. It also makes sense when the dataset fits in local capacity and is read repeatedly, through many epochs or fine-tuning iterations. If your run stalls at every checkpoint, you have a good case for staging. Checkpoint writes that block training can be staged asynchronously. And if preprocessing is expensive, staging its output for reuse pays off. Skip it in the opposite cases. Skip it when the shared storage has headroom, meaning the link is well below saturation and the metadata is healthy. Skip it when the dataset is too big to fit and must stream anyway, because you add complexity for no benefit. Skip it when the GPUs already run near full utilisation. And skip it when the run covers only one or two epochs, since the cold first epoch dominates. Skip it too when nodes fail often enough that re-staging eats up the gain.
 
-```mermaid
-flowchart TD
-  Q{"First access of this item on this node?"}
-  Q -- yes --> R["Fetch from shared storage\nmeasure link use, server queue, metadata rate"]
-  Q -- no --> L["Read from local NVMe cache\nmeasure NVMe throughput, CPU transform time"]
-  R --> D1{"Link and servers healthy?"}
-  D1 -- "yes: headroom" --> OK1["Simple design is enough\nno local cache needed"]
-  D1 -- "no: link/servers saturated" --> NC["Add local staging, or shrink the working set"]
-  L --> D2{"Local read much faster than demand?"}
-  D2 -- yes --> OK2["Cache works: monitor capacity, health, hit rate"]
-  D2 -- no --> BN["Bottleneck is elsewhere:\nCPU decode/transform, NUMA, affinity"]
-```
+![Local NVMe as cache and staging area](./img/ch13-d3-luna.svg)
+
+*Figure 1.13.5. Local NVMe as cache and staging area.*
 
 **Cache design points.** Verify every cached file with a checksum or a version key, so a run never trains on stale data after the source changes. Log the hit rate for each epoch. In a healthy setup it is about 0% in epoch 1 and above 95% from epoch 2, if the dataset fits. A drop in later epochs shows eviction pressure, which tends to appear once the NVMe is above about 85% full. Choose an eviction policy. Pre-stage the data in parallel before the job starts, instead of fetching lazily on first read. Keep the staging deterministic and idempotent, and treat the volume as disposable. Watch out for file naming. Two different names for the same data defeat the hit rate.
 

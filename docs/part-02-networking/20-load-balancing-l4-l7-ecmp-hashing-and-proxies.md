@@ -38,6 +38,10 @@ Tools such as IPVS, HAProxy, nginx and Envoy are introduced from scratch, each o
 
 Picture a single server that is now too busy to answer every request. Clients have been given one address, and they keep sending their requests to it. The load balancer stands between the clients and the servers, so the work is shared. Nobody has to change the address the clients use, and when a server is added or removed, the clients never notice. The rest of this section explains how that trick is done, and what it costs.
 
+![Load balancer and health checks](./img/n20-fig1-lb.jpg)
+
+*Figure 2.20.1. One virtual address in front of a pool; failed backends are skipped.*
+
 Suppose one server can no longer handle the traffic for a service, but clients should still use one address. Nobody wants to tell a million users to rotate through a list of servers by hand. A **load balancer (LB)** solves that. It presents one stable address, a virtual IP (VIP) or a name, and spreads incoming work across a pool of backends, which are the real servers. Think of the host at a busy restaurant: guests ask for "a table" and the host decides which waiter gets them.
 
 A load balancer gives you three things. It adds scale, because the pool holds more capacity than one server. It adds availability, because health checks remove failed backends. It adds maintainability, because you can drain a backend, upgrade it and return it to the pool. Often it also adds security and policy, such as TLS termination, rate limiting, a WAF or authentication.

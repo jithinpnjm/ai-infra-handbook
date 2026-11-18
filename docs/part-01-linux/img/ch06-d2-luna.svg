@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1400" viewBox="0 0 1600 1400">
+  <title>Which file is read when (bash)</title>
+  <desc>Which file is read when (bash)</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+    <style>
+      .bg { fill: #f5f8f5; }
+      .card { fill: #e8f1ea; stroke: #207448; stroke-width: 4; }
+      .labelbox { fill: #f5f8f5; stroke: #207448; stroke-width: 3; }
+      .title { fill: #303a36; font-family: sans-serif; font-size: 48px; font-weight: 700; }
+      .node-title { fill: #303a36; font-family: sans-serif; font-size: 34px; font-weight: 700; }
+      .node-text { fill: #303a36; font-family: sans-serif; font-size: 24px; }
+      .file-text { fill: #303a36; font-family: monospace; font-size: 30px; }
+      .edge-text { fill: #303a36; font-family: sans-serif; font-size: 24px; }
+      .icon { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .arrow { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow-green); }
+      .arrow-orange { fill: none; stroke: #db8129; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow-orange); }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="1400"/>
+  <text class="title" x="800" y="62" text-anchor="middle">Which file is read when (bash)</text>
+
+  <!-- bash starts -->
+  <rect class="card" x="560" y="95" width="480" height="130" rx="22"/>
+  <g class="icon" transform="translate(600 132)">
+    <rect x="0" y="0" width="58" height="43" rx="5"/>
+    <path d="M0 12 H58 M10 25 L18 31 L10 37 M25 37 H39"/>
+  </g>
+  <text class="node-title" x="690" y="174">bash starts</text>
+
+  <!-- interactive? -->
+  <rect class="card" x="555" y="310" width="490" height="160" rx="22"/>
+  <g class="icon" transform="translate(595 359)">
+    <rect x="0" y="0" width="58" height="43" rx="5"/>
+    <path d="M0 12 H58 M11 24 H22 M11 33 H34"/>
+  </g>
+  <text class="node-title" x="680" y="390">interactive?</text>
+
+  <!-- reads nothing by default (BASH_ENV if set) -->
+  <rect class="card" x="80" y="680" width="600" height="230" rx="22"/>
+  <g class="icon" transform="translate(108 722)">
+    <path d="M8 0 H38 L54 16 V58 H8 Z"/>
+    <path d="M38 0 V16 H54 M18 30 H44 M18 41 H44"/>
+  </g>
+  <text class="node-title" x="185" y="740">
+    <tspan x="185" dy="0">reads nothing by</tspan>
+    <tspan x="185" dy="39">default</tspan>
+  </text>
+  <text class="node-text" x="185" y="833">(BASH_ENV if set)</text>
+
+  <!-- login shell? (first char of $0 is '-', or bash -l, SSH or console login) -->
+  <rect class="card" x="920" y="660" width="600" height="230" rx="22"/>
+  <g class="icon" transform="translate(950 702)">
+    <rect x="0" y="0" width="58" height="43" rx="5"/>
+    <path d="M0 12 H58 M11 24 H22 M11 33 H34"/>
+  </g>
+  <text class="node-title" x="1025" y="714">login shell?</text>
+  <text class="node-text" x="1025" y="760">
+    <tspan x="1025" dy="0">(first char of $0 is '-',</tspan>
+    <tspan x="1025" dy="31">or bash -l,</tspan>
+    <tspan x="1025" dy="31">SSH or console login)</tspan>
+  </text>
+
+  <!-- /etc/profile, then the FIRST FOUND of ~/.bash_profile, ~/.bash_login, ~/.profile -->
+  <rect class="card" x="80" y="1110" width="680" height="250" rx="22"/>
+  <g class="icon" transform="translate(110 1140)">
+    <path d="M8 0 H38 L54 16 V58 H8 Z"/>
+    <path d="M38 0 V16 H54 M18 30 H44 M18 41 H44"/>
+  </g>
+  <text class="file-text" x="185" y="1168">
+    <tspan x="185" dy="0">/etc/profile, then the</tspan>
+    <tspan x="185" dy="36">FIRST FOUND of</tspan>
+    <tspan x="185" dy="36">~/.bash_profile,</tspan>
+    <tspan x="185" dy="36">~/.bash_login,</tspan>
+    <tspan x="185" dy="36">~/.profile</tspan>
+  </text>
+
+  <!-- /etc/bash.bashrc (Debian family), then ~/.bashrc -->
+  <rect class="card" x="820" y="1110" width="700" height="250" rx="22"/>
+  <g class="icon" transform="translate(850 1140)">
+    <path d="M8 0 H38 L54 16 V58 H8 Z"/>
+    <path d="M38 0 V16 H54 M18 30 H44 M18 41 H44"/>
+  </g>
+  <text class="file-text" x="925" y="1168">
+    <tspan x="925" dy="0">/etc/bash.bashrc</tspan>
+    <tspan x="925" dy="36">(Debian family), then</tspan>
+    <tspan x="925" dy="36">~/.bashrc</tspan>
+  </text>
+
+  <!-- Connections -->
+  <path class="arrow" d="M800 225 V310"/>
+  <path class="arrow" d="M555 390 H35 V795 H80"/>
+  <path class="arrow-orange" d="M1045 390 H1560 V775 H1520"/>
+  <path class="arrow" d="M920 775 H870 V970 H420 V1110"/>
+  <path class="arrow" d="M1520 775 H1560 V1060 H1170 V1110"/>
+
+  <!-- no (script, cron, ssh host cmd) -->
+  <rect class="labelbox" x="75" y="500" width="450" height="120" rx="16"/>
+  <text class="edge-text" x="99" y="535">
+    <tspan x="99" dy="0">no (script, cron,</tspan>
+    <tspan x="99" dy="31">ssh host cmd)</tspan>
+  </text>
+
+  <!-- yes -->
+  <rect x="1100" y="510" width="390" height="70" rx="16" fill="#f5f8f5" stroke="#db8129" stroke-width="3"/>
+  <text class="edge-text" x="1124" y="555">yes</text>
+
+  <!-- yes -->
+  <rect class="labelbox" x="700" y="944" width="150" height="52" rx="14"/>
+  <text class="edge-text" x="724" y="978">yes</text>
+
+  <!-- no (new terminal window, bash typed in a session) -->
+  <rect class="labelbox" x="920" y="915" width="600" height="70" rx="14"/>
+  <text class="edge-text" x="944" y="945">
+    <tspan x="944" dy="0">no (new terminal window,</tspan>
+    <tspan x="944" dy="29">bash typed in a session)</tspan>
+  </text>
+</svg>

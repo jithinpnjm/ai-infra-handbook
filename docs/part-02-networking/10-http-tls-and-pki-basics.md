@@ -247,6 +247,10 @@ Who is trusted depends on the trust store, which is the list of roots a given pr
 
 Public CAs, such as Let's Encrypt, DigiCert and Google Trust Services, issue certificates for names that the Internet can reach. They check control of the domain, using DV (domain validation) through a DNS or HTTP challenge. In plain words, they ask you to prove you control the name by placing a specific value where only the owner could. OV and EV certificates add organisation checks. ACME (RFC 8555) automates issuance and renewal. Tools include certbot, acme.sh, Caddy and cert-manager. Let's Encrypt certificates last 90 days, and the industry is moving toward even shorter lifetimes. Automation is therefore mandatory.
 
+![A certificate chain of trust](./img/n10-fig1-certchain.jpg)
+
+*Figure 2.10.1. Root signs intermediate, intermediate signs the server certificate; clients trust the root.*
+
 Private or internal CAs cover internal names, mTLS and cluster components, where a public CA cannot or should not be used. Options include HashiCorp Vault PKI, step-ca from Smallstep, cfssl and EJBCA. Cloud services include GCP CA Service and AWS Private CA. Others include Active Directory Certificate Services, Kubernetes' built-in cluster CA from kubeadm, and the service-mesh CAs in Istio and Linkerd. Keep the root offline, and issue certificates from intermediates. Also use name constraints, short lifetimes and automated rotation. Distribute the root to all trust stores through configuration management.
 
 Certificate Transparency (CT) requires public CAs to log every issued certificate in append-only public logs. Anyone can read them, so a certificate that should not exist cannot stay hidden. Monitor those logs for unexpected certificates issued for your domains. CAA DNS records restrict which CAs may issue certificates for a domain.

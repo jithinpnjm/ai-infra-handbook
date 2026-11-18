@@ -209,6 +209,10 @@ Many tools write rules on the same host. ufw runs on Ubuntu. firewalld runs on t
 
 If you run Kubernetes or a NAT gateway, you will eventually read this table. Conntrack is the kernel's table of active flows. It lets netfilter make stateful decisions, and it lets NAT translate replies back to the right client. A bank teller who remembers that you just asked to withdraw money can answer "yes, I was expecting you" when you return, and a conntrack table works the same way for packets. The module is `nf_conntrack`. Each entry stores the original tuple, which is the source, destination, protocol and ports as they arrived. A tuple is simply the set of values that identifies one flow. Each entry also stores the reply tuple, which shows how the reply looks after NAT, along with a state, a timeout, a mark, a zone and counters. Conntrack is required for stateful filtering with `ct state`, for NAT, for kube-proxy in iptables mode, for Docker published ports and for many helpers.
 
+![Conntrack table](./img/n23-fig1-conntrack.jpg)
+
+*Figure 2.23.1. Conntrack remembers each flow so replies can be matched.*
+
 ### States
 
 Think of conntrack states as stages in a visit. A new visitor arrives at the gate and is written in a book, and that is NEW. Once a reply comes back from the house they went to, the visit is known to be real, and the state becomes ESTABLISHED. A reply that belongs to an earlier visit but comes through a different gate is RELATED. A message that matches no visit at all is INVALID. Walk through a simple web request with these four stages in mind, and the rules that mention them will read like plain sentences.

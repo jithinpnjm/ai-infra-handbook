@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">Standard streams, redirection and pipes</title>
+  <desc id="svg-desc">keyboard feeds program; stdout and stderr lead to separate destinations.</desc>
+  <defs>
+    <marker id="arrowhead" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  <text x="800" y="105" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">Standard streams, redirection and pipes</text>
+
+  <g>
+    <rect x="70" y="330" width="300" height="240" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="192" y="365" width="56" height="40" rx="5"/>
+      <path d="M201 375h4m7 0h4m7 0h4m7 0h4m7 0h4M201 386h4m7 0h4m7 0h4m7 0h4m7 0h4M205 397h30"/>
+    </g>
+    <text x="220" y="475" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">keyboard</text>
+  </g>
+
+  <g>
+    <rect x="560" y="205" width="340" height="490" rx="20" fill="#e8f1ea" stroke="#db8129" stroke-width="6"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="702" y="360" width="56" height="56" rx="5"/>
+      <path d="M702 374h56M710 368h2m7 0h2m7 0h2M714 384v23m12-23v23m12-23v23m-34-15h8m4 0h8m4 0h8"/>
+    </g>
+    <text x="730" y="485" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">program</text>
+  </g>
+
+  <g>
+    <rect x="1160" y="200" width="400" height="210" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1332" y="220" width="56" height="48" rx="5"/>
+      <path d="M1332 232h56m-45 13 8 6-8 6m15 0h13"/>
+    </g>
+    <text x="1360" y="318" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+      <tspan x="1360" dy="0">terminal, or file,</tspan>
+      <tspan x="1360" dy="38">or next program</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect x="1160" y="500" width="400" height="210" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1332" y="520" width="56" height="48" rx="5"/>
+      <path d="M1332 532h56m-45 13 8 6-8 6m15 0h13"/>
+    </g>
+    <text x="1360" y="635" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">terminal, or file</text>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="butt">
+    <path d="M370 450H560" marker-end="url(#arrowhead)"/>
+    <path d="M900 320H1160" marker-end="url(#arrowhead)"/>
+    <path d="M900 610H1160" marker-end="url(#arrowhead)"/>
+  </g>
+
+  <g font-family="monospace" font-size="24" fill="#303a36">
+    <text x="390" y="418">fd 0 stdin</text>
+    <text x="946" y="288">fd 1 stdout</text>
+    <text x="946" y="578">fd 2 stderr</text>
+  </g>
+</svg>

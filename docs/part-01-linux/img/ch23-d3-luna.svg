@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="580" viewBox="0 0 1600 580">
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="17" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L17 9 L1 17 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="17" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L17 9 L1 17 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="580" fill="#f5f8f5"/>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="4">
+    <rect x="80" y="70" width="330" height="300" rx="18"/>
+    <rect x="450" y="70" width="330" height="300" rx="18"/>
+    <rect x="820" y="70" width="330" height="300" rx="18"/>
+    <rect x="1190" y="70" width="330" height="300" rx="18"/>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" text-anchor="middle">
+    <text x="245" y="165" font-size="32" font-weight="700">Monitoring</text>
+    <text x="245" y="220" font-size="26">
+      <tspan x="245">fleet dashboards,</tspan>
+      <tspan x="245" dy="36">alerts</tspan>
+    </text>
+
+    <text x="615" y="165" font-size="32" font-weight="700">Identification</text>
+    <text x="615" y="220" font-size="26">
+      <tspan x="615">60 s checklist,</tspan>
+      <tspan x="615" dy="36">USE on one node</tspan>
+    </text>
+
+    <text x="985" y="165" font-size="32" font-weight="700">Analysis</text>
+    <text x="985" y="220" font-size="26">
+      <tspan x="985">profile, trace,</tspan>
+      <tspan x="985" dy="36">flame graph</tspan>
+    </text>
+
+    <text x="1355" y="165" font-size="32" font-weight="700">Fix + verify</text>
+    <text x="1355" y="220" font-size="26">
+      <tspan x="1355">re-measure vs</tspan>
+      <tspan x="1355" dy="36">baseline</tspan>
+    </text>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <path d="M410 220H450" marker-end="url(#arrow-green)"/>
+    <path d="M780 220H820" marker-end="url(#arrow-green)"/>
+    <path d="M1150 220H1190" marker-end="url(#arrow-green)"/>
+  </g>
+
+  <path d="M1355 370V480H245V370" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+</svg>

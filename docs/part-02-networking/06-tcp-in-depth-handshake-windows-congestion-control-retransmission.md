@@ -126,6 +126,10 @@ TCP is a byte stream, so it has no message boundaries. It is like water through 
 
 Every TCP connection starts with a three-packet exchange. If that exchange fails, the client sees a specific error. The error tells you where to look, so learn the exchange before you learn the errors.
 
+![The TCP three-way handshake](./img/n06-fig1-handshake.jpg)
+
+*Figure 2.6.1. SYN, SYN-ACK, ACK: the three packets that open a TCP connection.*
+
 ```mermaid
 sequenceDiagram
   participant C as Client (CLOSED)
@@ -263,6 +267,10 @@ The first lines show the current limits. The commented lines show the maxima to 
 ## 7. Congestion control
 
 Flow control protects the receiver. But the network between two hosts can be the bottleneck too. Without a throttle, many senders would overload shared links together. That failure is called congestion collapse, and it was observed in 1986. Van Jacobson's answer, from 1988, is that each sender keeps a congestion window, `cwnd`, and probes for spare capacity. When it infers congestion, it backs off. Think of cars joining a motorway. Each driver eases forward until the traffic thickens, then slows down. The sender's usable window is the smaller of `cwnd` and `rwnd`. The `rwnd` value arrives in the header. `cwnd` stays private to the sender. If you have ever wondered why a fresh connection feels slow, slow start is the reason.
+
+![How TCP finds its sending rate](./img/n06-fig2-cwnd.jpg)
+
+*Figure 2.6.2. Slow start, congestion avoidance and a loss event shape the congestion window.*
 
 Several variables matter here. `cwnd` is the congestion window. `ssthresh` is the slow-start threshold. `rwnd` is the receive window. The initial window, IW10, is 10 segments on modern Linux, and you can set it per route with `initcwnd`. MSS is the segment size.
 

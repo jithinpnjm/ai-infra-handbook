@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">The model: lines of text flowing through small tools</title>
+  <desc id="svg-desc">Diagram of connected text-processing tools.</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L16 9 L1 17" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L16 9 L1 17" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+  <text x="800" y="91" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">The model: lines of text flowing through small tools</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="40" y="165" width="350" height="250" rx="18"/>
+    <rect x="430" y="165" width="350" height="250" rx="18"/>
+    <rect x="820" y="165" width="350" height="250" rx="18"/>
+    <rect x="1210" y="165" width="350" height="250" rx="18"/>
+    <rect x="1210" y="510" width="350" height="250" rx="18"/>
+    <rect x="820" y="510" width="350" height="250" rx="18"/>
+    <rect x="430" y="510" width="350" height="250" rx="18"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M390 290 H430" marker-end="url(#arrow-green)"/>
+    <path d="M780 290 H820" marker-end="url(#arrow-green)"/>
+    <path d="M1170 290 H1210" marker-end="url(#arrow-green)"/>
+    <path d="M1385 415 V510" marker-end="url(#arrow-green)"/>
+    <path d="M1210 635 H1170" marker-end="url(#arrow-green)"/>
+  </g>
+  <path d="M820 635 H780" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M190 195 h34 l16 16 v39 h-50 z"/>
+    <path d="M224 195 v17 h16 M200 222 h30 M200 233 h30"/>
+
+    <circle cx="605" cy="220" r="20"/>
+    <path d="M620 235 l18 18 M596 220 h18 M605 211 v18"/>
+
+    <path d="M982 208 l42 24 M1024 208 l-42 24 M983 232 l42 24 M1025 232 l-42 24"/>
+
+    <path d="M1364 204 h42 M1364 222 h42 M1364 240 h42"/>
+    <circle cx="1374" cy="204" r="5" fill="#e8f1ea"/>
+    <circle cx="1396" cy="222" r="5" fill="#e8f1ea"/>
+    <circle cx="1382" cy="240" r="5" fill="#e8f1ea"/>
+
+    <path d="M1360 550 h48 v48 h-48 z M1376 550 v48 M1392 550 v48 M1360 566 h48 M1360 582 h48"/>
+
+    <path d="M954 541 h28 v14 h-28 z M954 563 h28 v14 h-28 z M954 585 h28 v14 h-28 z"/>
+    <path d="M994 548 h24 M994 570 h24 M994 592 h24"/>
+  </g>
+
+  <g font-family="sans-serif" text-anchor="middle" fill="#303a36">
+    <text x="215" y="295" font-size="30" font-weight="700">Source</text>
+    <text x="215" y="333" font-size="24">file, command,</text>
+    <text x="215" y="363" font-size="24">journalctl</text>
+
+    <text x="605" y="295" font-size="30" font-weight="700" font-family="monospace">grep</text>
+    <text x="605" y="333" font-size="24">keep the lines</text>
+    <text x="605" y="363" font-size="24">you care about</text>
+
+    <text x="995" y="295" font-size="30" font-weight="700" font-family="monospace">cut / awk</text>
+    <text x="995" y="343" font-size="24">pick the fields</text>
+
+    <text x="1385" y="295" font-size="30" font-weight="700" font-family="monospace">sed / tr</text>
+    <text x="1385" y="333" font-size="24">clean and</text>
+    <text x="1385" y="363" font-size="24">normalise</text>
+
+    <text x="1385" y="640" font-size="30" font-weight="700" font-family="monospace">sort</text>
+    <text x="1385" y="678" font-size="24">bring equal keys</text>
+    <text x="1385" y="708" font-size="24">together</text>
+
+    <text x="995" y="640" font-size="30" font-weight="700" font-family="monospace">uniq -c</text>
+    <text x="995" y="688" font-size="24">count each group</text>
+
+    <text x="605" y="640" font-size="30" font-weight="700" font-family="monospace">sort -rn | head</text>
+    <text x="605" y="688" font-size="24">the top N</text>
+  </g>
+</svg>

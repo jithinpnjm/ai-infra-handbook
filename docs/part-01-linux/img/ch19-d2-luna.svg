@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-describedby="svg-desc">
+  <desc id="svg-desc">Nested namespace diagram with two directed connections.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  <rect x="50" y="130" width="1500" height="720" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="88" y="151" width="52" height="44" rx="5"/>
+    <path d="M88 164h52M102 151v13M126 151v13M102 178h24M102 187h24"/>
+  </g>
+  <text x="158" y="184" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Host PID namespace</text>
+
+  <rect x="790" y="215" width="720" height="600" rx="20" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="825" y="231" width="52" height="44" rx="5"/>
+    <rect x="835" y="241" width="32" height="24" rx="2"/>
+    <path d="M843 248h16M843 256h16"/>
+  </g>
+  <text x="895" y="263" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Container PID namespace</text>
+
+  <rect x="100" y="225" width="640" height="125" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="392" y="238" width="56" height="48" rx="5"/>
+    <path d="M392 251h56M400 244h2M408 244h2M400 262h40M400 272h40"/>
+  </g>
+  <text x="420" y="330" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">PID 1 systemd</text>
+
+  <rect x="100" y="365" width="640" height="155" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="392" y="380" width="56" height="48" rx="5"/>
+    <path d="M392 393h56M400 386h2M408 386h2M400 404h40M400 414h40"/>
+  </g>
+  <text x="420" y="484" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">PID 2140 containerd-shim</text>
+
+  <rect x="850" y="330" width="620" height="205" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1132" y="346" width="56" height="48" rx="5"/>
+    <path d="M1132 359h56M1140 352h2M1148 352h2M1140 370h40M1140 380h40"/>
+  </g>
+  <text x="1160" y="447" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1160" dy="0">host PID 45982 = PID 1 inside</tspan>
+    <tspan x="1160" dy="38">(bash / python train.py)</tspan>
+  </text>
+
+  <rect x="850" y="595" width="620" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1132" y="610" width="56" height="48" rx="5"/>
+    <path d="M1132 623h56M1140 616h2M1148 616h2M1140 634h40M1140 644h40"/>
+  </g>
+  <text x="1160" y="714" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1160" dy="0">host PID 45990 = PID 7 inside</tspan>
+    <tspan x="1160" dy="38">(data loader worker)</tspan>
+  </text>
+
+  <path d="M740 442H770V432H832" fill="none" stroke="#db8129" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M832 423L850 432L832 441Z" fill="#db8129"/>
+  <path d="M1160 535V577" fill="none" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <path d="M1151 577L1160 595L1169 577Z" fill="#207448"/>
+</svg>

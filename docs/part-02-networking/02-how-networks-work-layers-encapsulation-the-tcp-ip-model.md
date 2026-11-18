@@ -186,6 +186,10 @@ QoS and flow control are often layered on top as connection-like state. That can
 
 Think about one HTTP request leaving your laptop. The request text is not sent as it is. Picture writing a letter, putting it in an envelope, putting that envelope in a courier bag and putting the bag in a van. Each layer adds its own header on the way down. When an application sends data, each layer wraps what it receives from above in its own header, and sometimes a trailer. It then passes the larger unit down. This is encapsulation. On the receiving side, each layer strips its header and hands the payload up. That reverse step is decapsulation, like unpacking the van, then the bag, then the envelope.
 
+![Encapsulation: each layer adds a header](./img/n02-fig1-encap.jpg)
+
+*Figure 2.2.1. Each layer wraps the data from the layer above with its own header; the receiver strips them in reverse.*
+
 ```mermaid
 flowchart TB
   APP["Application data: 'GET / HTTP/1.1 ...' (e.g. 1,000 bytes)"] --> TLS["(TLS record: + 5-byte header + 16-byte tag)"]

@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1460" viewBox="0 0 1600 1460">
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0L18 9L0 18Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0L18 9L0 18Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1460" fill="#f5f8f5"/>
+  <text x="800" y="70" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Network booting: DHCP, TFTP, PXE and NFS root</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="48" y="104" width="288" height="158" rx="16"/>
+    <rect x="352" y="104" width="288" height="158" rx="16"/>
+    <rect x="656" y="104" width="288" height="158" rx="16"/>
+    <rect x="960" y="104" width="288" height="158" rx="16"/>
+    <rect x="1264" y="104" width="288" height="158" rx="16"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(164 117)">
+      <rect x="2" y="7" width="52" height="36" rx="5"/>
+      <path d="M10 16h12v10H10zM27 16h18M27 23h18M27 30h12M8 49v-6m12 6v-6m12 6v-6m12 6v-6"/>
+    </g>
+    <g transform="translate(468 117)">
+      <rect x="4" y="4" width="48" height="18" rx="3"/>
+      <rect x="4" y="28" width="48" height="18" rx="3"/>
+      <circle cx="13" cy="13" r="2"/>
+      <circle cx="13" cy="37" r="2"/>
+      <path d="M22 13h22M22 37h22"/>
+    </g>
+    <g transform="translate(772 117)">
+      <rect x="5" y="3" width="46" height="44" rx="4"/>
+      <path d="M13 13h30M13 23h30M13 33h30"/>
+      <circle cx="12" cy="13" r="1.5"/>
+      <circle cx="12" cy="23" r="1.5"/>
+      <circle cx="12" cy="33" r="1.5"/>
+    </g>
+    <g transform="translate(1076 117)">
+      <rect x="10" y="8" width="36" height="36" rx="4"/>
+      <path d="M18 1v7m10-7v7m10-7v7M18 44v7m10-7v7m10-7v7M3 16h7m-7 10h7m-7 10h7m36-20h7m-7 10h7m-7 10h7"/>
+      <path d="M20 19h16v14H20z"/>
+    </g>
+    <g transform="translate(1380 117)">
+      <path d="M4 12c0-5 48-5 48 0v28c0 7-48 7-48 0z"/>
+      <path d="M4 12c0 7 48 7 48 0M4 26c0 7 48 7 48 0"/>
+    </g>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700" text-anchor="middle">
+    <text x="192" y="202"><tspan x="192">Node firmware</tspan><tspan x="192" dy="32">(PXE NIC)</tspan></text>
+    <text x="496" y="202">DHCP server</text>
+    <text x="800" y="202"><tspan x="800">TFTP / HTTP</tspan><tspan x="800" dy="32">server</tspan></text>
+    <text x="1104" y="190"><tspan x="1104">Kernel +</tspan><tspan x="1104" dy="29">initramfs</tspan><tspan x="1104" dy="29">(on node)</tspan></text>
+    <text x="1408" y="218" font-size="28">NFS / image server</text>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="7 9" opacity="0.35">
+    <path d="M192 262V1410"/>
+    <path d="M496 262V1410"/>
+    <path d="M800 262V1410"/>
+    <path d="M1104 262V1410"/>
+    <path d="M1408 262V1410"/>
+  </g>
+
+  <g font-family="sans-serif" font-size="24" fill="#303a36">
+    <g>
+      <circle cx="68" cy="365" r="24" fill="#207448"/>
+      <text x="68" y="373" text-anchor="middle" fill="#ffffff" font-weight="700">1</text>
+      <rect x="100" y="286" width="490" height="58" fill="#f5f8f5"/>
+      <text x="345" y="308" text-anchor="middle"><tspan x="345">DHCPDISCOVER (broadcast, includes</tspan><tspan x="345" dy="28">PXE client architecture)</tspan></text>
+    </g>
+    <g>
+      <circle cx="68" cy="490" r="24" fill="#207448"/>
+      <text x="68" y="498" text-anchor="middle" fill="#ffffff" font-weight="700">2</text>
+      <rect x="100" y="394" width="490" height="82" fill="#f5f8f5"/>
+      <text x="345" y="416" text-anchor="middle"><tspan x="345">IP address, next-server (TFTP),</tspan><tspan x="345" dy="28">filename (boot loader), routers,</tspan><tspan x="345" dy="28">DNS, NTP</tspan></text>
+    </g>
+    <g>
+      <circle cx="68" cy="615" r="24" fill="#207448"/>
+      <text x="68" y="623" text-anchor="middle" fill="#ffffff" font-weight="700">3</text>
+      <rect x="204" y="532" width="584" height="58" fill="#f5f8f5"/>
+      <text x="496" y="554" text-anchor="middle"><tspan x="496">fetch boot loader (pxelinux.0 /</tspan><tspan x="496" dy="28">ipxe.efi / grubx64.efi) over TFTP</tspan></text>
+    </g>
+    <g>
+      <circle cx="68" cy="740" r="24" fill="#207448"/>
+      <text x="68" y="748" text-anchor="middle" fill="#ffffff" font-weight="700">4</text>
+      <rect x="112" y="682" width="160" height="34" fill="#f5f8f5"/>
+      <text x="192" y="708" text-anchor="middle">run boot loader</text>
+    </g>
+    <g>
+      <circle cx="68" cy="865" r="24" fill="#207448"/>
+      <text x="68" y="873" text-anchor="middle" fill="#ffffff" font-weight="700">5</text>
+      <rect x="700" y="778" width="504" height="58" fill="#f5f8f5"/>
+      <text x="952" y="800" text-anchor="middle"><tspan x="952">boot loader fetches its config,</tspan><tspan x="952" dy="28">kernel and initrd (TFTP or HTTP)</tspan></text>
+    </g>
+    <g>
+      <circle cx="68" cy="990" r="24" fill="#207448"/>
+      <text x="68" y="998" text-anchor="middle" fill="#ffffff" font-weight="700">6</text>
+      <rect x="720" y="903" width="464" height="82" fill="#f5f8f5"/>
+      <text x="952" y="925" text-anchor="middle"><tspan x="952">vmlinuz + initrd + cmdline</tspan><tspan x="952" dy="28">(ip=dhcp root=/dev/nfs</tspan><tspan x="952" dy="28">nfsroot=...)</tspan></text>
+    </g>
+    <g>
+      <circle cx="68" cy="1115" r="24" fill="#207448"/>
+      <text x="68" y="1123" text-anchor="middle" fill="#ffffff" font-weight="700">7</text>
+      <rect x="600" y="1036" width="400" height="58" fill="#f5f8f5"/>
+      <text x="800" y="1058" text-anchor="middle"><tspan x="800">initramfs brings up the network</tspan><tspan x="800" dy="28">(DHCP again)</tspan></text>
+    </g>
+    <g>
+      <circle cx="68" cy="1240" r="24" fill="#207448"/>
+      <text x="68" y="1248" text-anchor="middle" fill="#ffffff" font-weight="700">8</text>
+      <rect x="900" y="1156" width="660" height="82" fill="#f5f8f5"/>
+      <text x="1230" y="1178" text-anchor="middle"><tspan x="1230">mount root: NFS read-only (+ tmpfs</tspan><tspan x="1230" dy="28">for writable dirs) or download a RAM</tspan><tspan x="1230" dy="28">image</tspan></text>
+    </g>
+    <g>
+      <circle cx="68" cy="1365" r="24" fill="#207448"/>
+      <text x="68" y="1373" text-anchor="middle" fill="#ffffff" font-weight="700">9</text>
+      <rect x="928" y="1300" width="352" height="34" fill="#f5f8f5"/>
+      <text x="1104" y="1326" text-anchor="middle">switch_root and start init</text>
+    </g>
+  </g>
+
+  <g fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M192 365H496" stroke="#db8129" marker-end="url(#arrow-orange)"/>
+    <path d="M496 490H192" stroke="#207448" stroke-dasharray="10 8" marker-end="url(#arrow-green)"/>
+    <path d="M192 615H800" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M192 740H252V768H192" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1104 865H800" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M800 990H1104" stroke="#207448" stroke-dasharray="10 8" marker-end="url(#arrow-green)"/>
+    <path d="M1104 1115H496" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1104 1240H1408" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1104 1365H1160V1393H1104" stroke="#207448" marker-end="url(#arrow-green)"/>
+  </g>
+</svg>

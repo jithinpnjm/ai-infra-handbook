@@ -54,18 +54,9 @@ SSH gives you three guarantees, and it pays to name them once. The traffic is **
 
 A connection goes through four stages, shown in the diagram below.
 
-```mermaid
-sequenceDiagram
-  participant C as ssh client (your laptop)
-  participant S as sshd (server)
-  C->>S: connect to port 22, agree on protocol and algorithms
-  S->>C: server proves its identity with its HOST KEY
-  Note over C: client checks the host key against ~/.ssh/known_hosts.<br/>First time: asks you to confirm the fingerprint.<br/>Changed key: loud warning.
-  C->>S: both sides derive session keys (key exchange), channel is now encrypted
-  C->>S: user authentication: public key (best), or password, or other methods
-  S->>C: authenticated
-  C->>S: open a session: shell, a single command, a file transfer, or a tunnel
-```
+![How SSH works](./img/ch05-d1-luna.svg)
+
+*Figure 1.5.1. How SSH works.*
 
 Two separate key pairs take part in that exchange, and it helps to keep them apart in your mind. One belongs to the machine, and the other belongs to you.
 
@@ -77,6 +68,10 @@ Now take the warning you will eventually meet: `WARNING: REMOTE HOST IDENTIFICAT
 ## 2. Keys: create, install, protect
 
 Typing a password on every login gets tedious, and a password can be guessed or reused from somewhere else. A key pair fixes both problems at once. You generate the pair once, copy the public half to the server, and from then on you log in with the private half.
+
+![Two key pairs in every SSH login: host key and user key](./img/ch05-fig1-ssh-keys.jpg)
+
+*Figure 1.5.2. Two key pairs in every SSH login: the server proves itself with its host key, you prove yourself with your user key.*
 
 ```bash
 ssh-keygen -t ed25519 -C "alice@laptop-2026"       # create a key pair; choose a passphrase when asked
@@ -152,6 +147,10 @@ With this file, `ssh gpu01` means something specific. It connects to the bastion
 
 `ProxyJump` is the clean way to traverse a bastion, and you can also pass it on the command line as `ssh -J bastion gpu01`. A jump host is just a machine your connection passes through on the way to the final one. The connection to the final host stays end-to-end encrypted through the bastion, and your agent does not need to be exposed there.
 
+![Reaching a private node through a jump host](./img/ch29-fig1-jump-v2.jpg)
+
+*Figure 1.5.3. A jump host lets one SSH command reach a private node; the private key stays on your laptop.*
+
 `ControlMaster` and ControlPersist share one TCP connection across many ssh, scp and rsync runs. That makes repeated commands, and tools such as Ansible, dramatically faster. The first matching value wins in the file, so put specific hosts before the catch-all `Host *`. When a setting seems ignored, run `ssh -G hostname` to print the effective configuration.
 
 ### Port forwarding (tunnels)
@@ -168,6 +167,10 @@ Suppose a Jupyter server is running on a compute node that nothing outside the c
 Read each row by asking two questions. Which side listens, and where does the traffic go? The `-L` form listens on your machine, while `-R` listens on the server.
 
 A typical use is a Jupyter or TensorBoard server running on a compute node. From your laptop, `ssh -L 8888:localhost:8888 gpu01` forwards the port, and with `ProxyJump` configured, the bastion is used automatically. By default `-L` binds only to localhost on your machine, which is the safe setting. Exposing the forwarded port to the whole network, with `-L 0.0.0.0:...`, is rarely what you want. Kubernetes has its own equivalent, `kubectl port-forward`, which chapter 5.25 covers.
+
+![SSH local port forward through a firewall](./img/ch05-fig2-tunnel.jpg)
+
+*Figure 1.5.4. SSH local port forward: traffic to localhost:6006 travels inside the port 22 connection.*
 
 X11 forwarding is a separate case. When you forward graphical applications with `ssh -X` or `ssh -Y`, which chapters 1.29 and 1.30 cover, you must have the `xauth` program installed on both computers. Be careful with remote `sudo` inside such a session. You need to pass your `XAUTHORITY` environment variable through `sudo`. That is the variable `ssh` set for you after you logged in, and it lets the privileged process read your X11 authentication cookie.
 
@@ -259,6 +262,10 @@ tmux kill-session -t train  # end it
 ```
 
 Once you are inside tmux, every command is a keystroke that follows the prefix `Ctrl-b`. Press `c` for a new window, and `n` or `p` to move to the next or previous one. Press `%` to split into left and right panes, and `"` to split into top and bottom. Arrow keys move between panes. `[` starts scroll mode, and `q` leaves it. `d` detaches, and `?` lists all the keys. A common debugging layout puts a job in one pane, `watch -n1 nvidia-smi` in a second, and a shell in a third.
+
+![tmux detach and reattach](./img/ch05-fig3-tmux.jpg)
+
+*Figure 1.5.5. tmux keeps a session alive on the server: detach, lose the connection, reattach later.*
 
 Two cautions apply. First, tmux protects you from a dropped connection. It does not protect you from the machine rebooting or the job being preempted. For production batch work on a cluster, submit a batch job to the scheduler with `sbatch`, covered in chapter 6.11, instead of leaving something running in tmux on a login node. Login nodes are shared, and long CPU-heavy processes there are usually forbidden. Second, `nohup cmd &` and `disown` are lighter options for fire-and-forget background commands, and chapter 1.8 covers them. They give you no way to reattach, though.
 

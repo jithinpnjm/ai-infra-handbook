@@ -60,6 +60,10 @@ When you finish this chapter, you will be able to do the following:
 
 Think about what a program must do to talk to a hard disk. One option is to learn that disk's own protocol. The other is to open a file and write bytes to it. The second is the Unix way, and Linux follows it, which is why so much of this chapter looks familiar.
 
+![/dev, /sys and /proc](./img/ch10-fig2-vfs.jpg)
+
+*Figure 1.10.1. Three kernel-backed views of the machine: device files, the device tree and process and kernel state.*
+
 Unix exposes most hardware through the same file interface you use for ordinary files, and that is one of its oldest and most useful tricks. A device file lives in `/dev` and looks like any other file. You can list it, read it, write to it, and check who may use it. When you open it, though, the kernel hands your reads and writes to a device driver instead of a disk filesystem. The file is a doorway, and the driver is the room behind it.
 
 The null device shows the idea in a single line:
@@ -210,21 +214,9 @@ Open `/sys/class/net/eth0/speed` on a healthy server and you get a number. That 
 
 `/dev` lets programs use a device, but it says little about the device itself. **sysfs**, mounted at `/sys`, works differently. It is a virtual filesystem that exists only in memory, and the kernel uses it to expose its device model. Every device, bus, driver and class appears as a directory. Each **attribute** appears as a small file, usually holding one value. Programs are the main readers of sysfs, but you will read it by hand all the time.
 
-```mermaid
-flowchart TB
-  sys["/sys"]
-  sys --> devices["/sys/devices\nthe real hierarchy (by physical connection)"]
-  sys --> bus["/sys/bus\ndevices grouped by bus: pci, scsi, usb, nvme, platform ..."]
-  sys --> sysclass["/sys/class\ndevices grouped by function: net, block, infiniband, hwmon, thermal, drm ..."]
-  sys --> block["/sys/block\nblock devices (symlinks)"]
-  sys --> module["/sys/module\nloaded kernel modules and their parameters"]
-  sys --> fs["/sys/fs\ncgroup, bpf, fuse ..."]
-  sys --> kernel["/sys/kernel\nkernel tunables, mm (hugepages, THP), irq, security"]
-  sys --> firmware["/sys/firmware\nACPI, DMI, EFI variables"]
-  devices --> pci["pci0000:00/0000:00:03.0/...\n(PCI topology: bridges, switches, endpoints)"]
-  bus --> pcidev["/sys/bus/pci/devices/0000:3b:00.0\n(symlink into /sys/devices)"]
-  sysclass --> netdev["/sys/class/net/eth0 -> ../../devices/.../net/eth0"]
-```
+![sysfs: the kernel's device model as a tree](./img/ch10-d1-luna.svg)
+
+*Figure 1.10.2. sysfs: the kernel's device model as a tree.*
 
 Start reading at the top of the tree. Most of what you need lives under `/sys/devices`.
 
@@ -341,23 +333,13 @@ There is a bootstrap problem. Device files are needed very early in boot, but ud
 
 The kernel also notifies udev. udev does not create the nodes. It adjusts them by setting owner, group and mode. It also creates extra symbolic links, imports properties and runs actions.
 
-```mermaid
-sequenceDiagram
-  participant HW as Hardware
-  participant K as Kernel driver
-  participant DT as devtmpfs (/dev)
-  participant U as systemd-udevd
-  participant R as Rules (/usr/lib/udev/rules.d, /etc/udev/rules.d)
-  participant S as Subscribers (udisks, systemd, libudev apps)
-  HW->>K: new device detected (or driver binds)
-  K->>DT: create /dev node (default owner/mode)
-  K->>U: uevent (ACTION=add, DEVPATH, SUBSYSTEM, MAJOR, MINOR, ...)
-  U->>R: read all rules in order, matching and updating properties
-  R-->>U: set OWNER/GROUP/MODE, SYMLINK+=, ENV, RUN+=
-  U->>DT: apply permissions, create symlinks (/dev/disk/by-id/...)
-  U->>S: broadcast processed event (libudev monitor)
-  Note over S: systemd starts .device units, udisks mounts, apps react
-```
+![Hardware event to device file](./img/ch10-fig1-udev.jpg)
+
+*Figure 1.10.3. How a hardware event becomes a device node in /dev.*
+
+![The problem and the design](./img/ch10-d2-luna.svg)
+
+*Figure 1.10.4. The problem and the design.*
 
 When you read the diagram, start at the top and work down. The hardware and the kernel act first. udev and its rules then decide the final state of the node. Subscribers react last.
 

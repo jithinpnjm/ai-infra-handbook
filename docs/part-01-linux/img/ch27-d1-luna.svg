@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <desc></desc>
+  <defs>
+    <marker id="arrow" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <rect x="40" y="150" width="480" height="1010" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="560" y="150" width="480" height="1010" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="1080" y="150" width="480" height="1010" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  <g font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <text x="64" y="190">
+      <tspan x="64">Hardware</tspan>
+      <tspan x="64" dy="36">virtualisation (VMs):</tspan>
+      <tspan x="64" dy="36">KVM, Xen, Nitro,</tspan>
+      <tspan x="64" dy="36">Hyper-V</tspan>
+    </text>
+    <text x="584" y="190">
+      <tspan x="584">OS virtualisation</tspan>
+      <tspan x="584" dy="36">(containers):</tspan>
+      <tspan x="584" dy="36">namespaces + cgroups</tspan>
+    </text>
+    <text x="1104" y="190">
+      <tspan x="1104">Lightweight</tspan>
+      <tspan x="1104" dy="36">virtualisation</tspan>
+      <tspan x="1104" dy="36">(microVMs): Firecracker,</tspan>
+      <tspan x="1104" dy="36">Kata, Cloud Hypervisor</tspan>
+    </text>
+  </g>
+
+  <g fill="#f5f8f5" stroke="#207448" stroke-width="3">
+    <rect x="60" y="340" width="440" height="180" rx="14"/>
+    <rect x="60" y="550" width="440" height="180" rx="14"/>
+    <rect x="60" y="760" width="440" height="180" rx="14"/>
+    <rect x="60" y="970" width="440" height="180" rx="14"/>
+
+    <rect x="580" y="340" width="440" height="180" rx="14"/>
+    <rect x="580" y="550" width="440" height="180" rx="14"/>
+    <rect x="580" y="760" width="440" height="180" rx="14"/>
+
+    <rect x="1100" y="340" width="440" height="180" rx="14"/>
+    <rect x="1100" y="550" width="440" height="180" rx="14"/>
+    <rect x="1100" y="760" width="440" height="180" rx="14"/>
+    <rect x="1100" y="970" width="440" height="180" rx="14"/>
+  </g>
+  <rect x="580" y="550" width="440" height="180" rx="14" fill="none" stroke="#db8129" stroke-width="5"/>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(82 402)">
+      <rect x="2" y="4" width="56" height="44" rx="4"/>
+      <path d="M2 16h56"/>
+      <circle cx="10" cy="10" r="1.5" fill="#207448"/>
+      <circle cx="17" cy="10" r="1.5" fill="#207448"/>
+    </g>
+    <g transform="translate(82 612)">
+      <rect x="10" y="8" width="40" height="40" rx="5"/>
+      <path d="M20 18h20v20H20z M18 1v7 M28 1v7 M38 1v7 M48 1v7 M18 48v7 M28 48v7 M38 48v7 M48 48v7 M3 18h7 M3 28h7 M3 38h7 M50 18h7 M50 28h7 M50 38h7"/>
+    </g>
+    <g transform="translate(82 822)">
+      <path d="M30 2v8 M30 48v8 M2 30h8 M50 30h8 M10 10l6 6 M44 44l6 6 M50 10l-6 6 M16 44l-6 6"/>
+      <circle cx="30" cy="30" r="21"/>
+      <circle cx="30" cy="30" r="9"/>
+    </g>
+    <g transform="translate(82 1032)">
+      <rect x="10" y="8" width="40" height="40" rx="5"/>
+      <path d="M20 18h20v20H20z M18 1v7 M28 1v7 M38 1v7 M48 1v7 M18 48v7 M28 48v7 M38 48v7 M48 48v7 M3 18h7 M3 28h7 M3 38h7 M50 18h7 M50 28h7 M50 38h7"/>
+    </g>
+
+    <g transform="translate(602 402)">
+      <rect x="2" y="4" width="38" height="42" rx="4"/>
+      <rect x="18" y="12" width="38" height="42" rx="4"/>
+      <path d="M18 24h38"/>
+      <circle cx="26" cy="18" r="1.5" fill="#207448"/>
+    </g>
+    <g transform="translate(602 612)">
+      <rect x="10" y="8" width="40" height="40" rx="5"/>
+      <path d="M20 18h20v20H20z M18 1v7 M28 1v7 M38 1v7 M48 1v7 M18 48v7 M28 48v7 M38 48v7 M48 48v7 M3 18h7 M3 28h7 M3 38h7 M50 18h7 M50 28h7 M50 38h7"/>
+    </g>
+    <g transform="translate(602 822)">
+      <rect x="10" y="8" width="40" height="40" rx="5"/>
+      <path d="M20 18h20v20H20z M18 1v7 M28 1v7 M38 1v7 M48 1v7 M18 48v7 M28 48v7 M38 48v7 M48 48v7 M3 18h7 M3 28h7 M3 38h7 M50 18h7 M50 28h7 M50 38h7"/>
+    </g>
+
+    <g transform="translate(1122 402)">
+      <rect x="2" y="4" width="56" height="44" rx="4"/>
+      <path d="M2 16h56"/>
+      <circle cx="10" cy="10" r="1.5" fill="#207448"/>
+      <circle cx="17" cy="10" r="1.5" fill="#207448"/>
+    </g>
+    <g transform="translate(1122 612)">
+      <rect x="10" y="8" width="40" height="40" rx="5"/>
+      <path d="M20 18h20v20H20z M18 1v7 M28 1v7 M38 1v7 M48 1v7 M18 48v7 M28 48v7 M38 48v7 M48 48v7 M3 18h7 M3 28h7 M3 38h7 M50 18h7 M50 28h7 M50 38h7"/>
+    </g>
+    <g transform="translate(1122 822)">
+      <path d="M30 2v8 M30 48v8 M2 30h8 M50 30h8 M10 10l6 6 M44 44l6 6 M50 10l-6 6 M16 44l-6 6"/>
+      <circle cx="30" cy="30" r="21"/>
+      <circle cx="30" cy="30" r="9"/>
+    </g>
+    <g transform="translate(1122 1032)">
+      <rect x="10" y="8" width="40" height="40" rx="5"/>
+      <path d="M20 18h20v20H20z M18 1v7 M28 1v7 M38 1v7 M48 1v7 M18 48v7 M28 48v7 M38 48v7 M48 48v7 M3 18h7 M3 28h7 M3 38h7 M50 18h7 M50 28h7 M50 38h7"/>
+    </g>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)">
+    <path d="M280 520V550"/>
+    <path d="M280 730V760"/>
+    <path d="M280 940V970"/>
+    <path d="M800 520V550"/>
+    <path d="M800 730V760"/>
+    <path d="M1320 520V550"/>
+    <path d="M1320 730V760"/>
+    <path d="M1320 940V970"/>
+  </g>
+
+  <g font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <text x="172" y="440">Guest app</text>
+
+    <text x="172" y="618">
+      <tspan x="172">Guest kernel</tspan>
+      <tspan x="172" dy="34">(own)</tspan>
+    </text>
+
+    <text x="172" y="804">
+      <tspan x="172">Hypervisor / VMM</tspan>
+      <tspan x="172" dy="34">(+ QEMU I/O proxy</tspan>
+      <tspan x="172" dy="34">or Nitro offload)</tspan>
+    </text>
+
+    <text x="172" y="1040">Hardware</text>
+
+    <text x="692" y="422">
+      <tspan x="692">Container</tspan>
+      <tspan x="692" dy="34">processes</tspan>
+    </text>
+
+    <text x="692" y="618">
+      <tspan x="692">ONE shared host</tspan>
+      <tspan x="692" dy="34">kernel</tspan>
+    </text>
+
+    <text x="692" y="840">Hardware</text>
+
+    <text x="1212" y="440">Guest app</text>
+
+    <text x="1212" y="618">
+      <tspan x="1212">Minimal guest</tspan>
+      <tspan x="1212" dy="34">kernel</tspan>
+    </text>
+
+    <text x="1212" y="804">
+      <tspan x="1212">Lightweight VMM</tspan>
+      <tspan x="1212" dy="34">(KVM-based, few</tspan>
+      <tspan x="1212" dy="34">devices)</tspan>
+    </text>
+
+    <text x="1212" y="1040">Hardware</text>
+  </g>
+</svg>

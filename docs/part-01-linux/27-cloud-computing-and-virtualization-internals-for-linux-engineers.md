@@ -145,18 +145,9 @@ Every major provider offers managed Kubernetes, such as GKE, EKS and AKS, and ma
 
 Two jobs feel slow this week, and they have nothing in common except the symptom. One runs in a VM. The other runs in a container. Before you compare them, you need to see how many kernels stand between each program and the hardware. The diagram shows the three stacks side by side.
 
-```mermaid
-flowchart TB
-  subgraph HW["Hardware virtualisation (VMs): KVM, Xen, Nitro, Hyper-V"]
-    H1["Guest app"] --> H2["Guest kernel (own)"] --> H3["Hypervisor / VMM (+ QEMU I/O proxy or Nitro offload)"] --> H4["Hardware"]
-  end
-  subgraph OS["OS virtualisation (containers): namespaces + cgroups"]
-    O1["Container processes"] --> O2["ONE shared host kernel"] --> O4["Hardware"]
-  end
-  subgraph LW["Lightweight virtualisation (microVMs): Firecracker, Kata, Cloud Hypervisor"]
-    L1["Guest app"] --> L2["Minimal guest kernel"] --> L3["Lightweight VMM (KVM-based, few devices)"] --> L4["Hardware"]
-  end
-```
+![Three ways to virtualise](./img/ch27-d1-luna.svg)
+
+*Figure 1.27.1. Three ways to virtualise.*
 
 The top stack has a full VM with its own kernel. The middle stack has no guest kernel at all, because every container shares the host kernel. The bottom stack keeps a guest kernel, but a minimal one behind a small hypervisor. Count the kernels, and you can predict most of the differences that follow.
 

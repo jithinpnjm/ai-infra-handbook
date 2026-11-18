@@ -118,6 +118,10 @@ Choose a UDP-based encapsulation, or enable inner-header hashing, when you need 
 
 Picture hypervisors spread across a routed network. Each virtual machine must sit on the same Layer-2 segment as its peers, even though the network between them is routed. A virtual machine can move from one rack to another while it is running, and it expects to keep its address and its neighbours. VXLAN solves this. Virtual eXtensible LAN carries Ethernet frames over UDP, so a routed L3 network can provide L2 segments to hosts and VMs.
 
+![VXLAN encapsulation](./img/n17-fig1-vxlan.jpg)
+
+*Figure 2.17.1. VXLAN carries the original Ethernet frame inside UDP, labelled by a VNI.*
+
 ```text
 | Outer Eth | Outer IP (VTEP src → VTEP dst) | UDP (src=hash, dst 4789) | VXLAN hdr (flags, VNI 24b) | Inner Ethernet frame | payload |
 ```

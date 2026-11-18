@@ -103,16 +103,9 @@ Here is how a careful deploy script becomes a bad afternoon. Someone writes a cl
 
 You type a command that looks right, and it misbehaves. The cause is usually expansion, the work the shell does before your command runs. The shell performs a series of **expansions** on each line before it executes anything. The command never sees quotes or `$` signs. It sees only the result. Misunderstanding this is the source of most shell bugs.
 
-```mermaid
-flowchart LR
-  A["Typed line:\ngrep r.*t /etc/passwd"] --> B["1. Brace expansion\n{a,b} {1..3}"]
-  B --> C["2. Tilde expansion\n~ ~user"]
-  C --> D["3. Parameter, arithmetic and\ncommand substitution\n$var $(( )) $( )"]
-  D --> E["4. Word splitting\non IFS (space, tab, newline)"]
-  E --> F["5. Pathname expansion (globbing)\n* ? [ ]"]
-  F --> G["6. Quote removal"]
-  G --> H["argv given to the program:\ngrep r.input r.output /etc/passwd"]
-```
+![Quoting and expansion: the heart of shell](./img/ch09-d1-luna.svg)
+
+*Figure 1.9.1. Quoting and expansion: the heart of shell.*
 
 Read the diagram from top to bottom. Each box is one step the shell takes before the program receives its arguments. The classic trap shows the danger. Say the current directory has files `r.input` and `r.output`. The unquoted pattern `r.*t` is a glob, so it matches those two files, and `grep` runs on the wrong arguments.
 
@@ -416,6 +409,10 @@ rm -f $TMPFILE1 $TMPFILE2
 ```
 
 When you trap `INT` or `TERM`, you **must** include an explicit `exit` inside the handler, as in `trap "rm -f ...; exit 1" INT`. Without it, the shell cleans up the files and then carries on executing the script right where it left off. In `bash`, an `EXIT` trap cleans up for you. For example, `tmp=$(mktemp); tmpdir=$(mktemp -d /tmp/myjob.XXXXXX); trap 'rm -rf -- "$tmp" "$tmpdir"' EXIT` runs on a normal exit, on `exit 1`, and on a `set -e` failure. No user-space trap can run on `SIGKILL` (`kill -9`), though.
+
+![Strict mode and trap cleanup](./img/ch09-fig1-strict.jpg)
+
+*Figure 1.9.2. Strict mode makes a script fail loudly, and an EXIT trap cleans up after it.*
 
 ### Here documents and here strings
 

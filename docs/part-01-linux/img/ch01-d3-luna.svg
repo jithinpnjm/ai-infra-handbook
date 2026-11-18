@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1150" viewBox="0 0 1600 1150" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">What happens when you type a command</title>
+  <desc id="svg-desc">Four swimlanes show messages in time order.</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="9" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L16 9 L2 16 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="9" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L16 9 L2 16 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+  <text x="800" y="75" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">What happens when you type a command</text>
+
+  <g fill="#e8f1ea">
+    <rect x="42" y="92" width="366" height="134" rx="14"/>
+    <rect x="425" y="92" width="366" height="134" rx="14"/>
+    <rect x="808" y="92" width="366" height="134" rx="14"/>
+    <rect x="1191" y="92" width="366" height="134" rx="14"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(197 104)">
+      <circle cx="28" cy="13" r="10"/>
+      <path d="M10 51c2-13 9-20 18-20s16 7 18 20M28 34v17M16 40l-8 9M40 40l8 9"/>
+    </g>
+    <g transform="translate(580 104)">
+      <rect x="2" y="3" width="52" height="42" rx="4"/>
+      <path d="M2 14h52M12 25l8 6-8 6M26 37h15"/>
+    </g>
+    <g transform="translate(963 104)">
+      <rect x="13" y="13" width="30" height="30" rx="3"/>
+      <path d="M19 2v11M28 2v11M37 2v11M19 43v11M28 43v11M37 43v11M2 19h11M2 28h11M2 37h11M43 19h11M43 28h11M43 37h11"/>
+    </g>
+    <g transform="translate(1346 104)">
+      <rect x="2" y="4" width="52" height="42" rx="4"/>
+      <path d="M2 15h52M11 10h1M18 10h1M25 10h1M20 23l16 9-16 9z"/>
+    </g>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700" text-anchor="middle">
+    <text x="225" y="205">You</text>
+    <text x="608" y="205">bash (process 100)</text>
+    <text x="991" y="205">Kernel</text>
+    <text x="1374" y="205">New process 101</text>
+  </g>
+
+  <g stroke="#a9c5b0" stroke-width="3" stroke-dasharray="10 10">
+    <line x1="225" y1="226" x2="225" y2="1090"/>
+    <line x1="608" y1="226" x2="608" y2="1090"/>
+    <line x1="991" y1="226" x2="991" y2="1090"/>
+    <line x1="1374" y1="226" x2="1374" y2="1090"/>
+  </g>
+
+  <g font-family="sans-serif" font-size="24" fill="#303a36">
+    <g>
+      <circle cx="76" cy="258" r="24" fill="#207448"/>
+      <text x="76" y="266" text-anchor="middle" fill="#ffffff" font-weight="700">1</text>
+      <text x="416.5" y="266" text-anchor="middle">types <tspan font-family="monospace">&quot;ls&quot;</tspan> and presses Enter</text>
+      <line x1="225" y1="286" x2="608" y2="286" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="334" r="24" fill="#207448"/>
+      <text x="76" y="342" text-anchor="middle" fill="#ffffff" font-weight="700">2</text>
+      <text x="799.5" y="342" text-anchor="middle">system call <tspan font-family="monospace">clone</tspan>: create a copy of myself</text>
+      <line x1="608" y1="362" x2="991" y2="362" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="410" r="24" fill="#207448"/>
+      <text x="76" y="418" text-anchor="middle" fill="#ffffff" font-weight="700">3</text>
+      <text x="799.5" y="418" text-anchor="middle">returns the child&apos;s process ID, 101</text>
+      <line x1="991" y1="438" x2="608" y2="438" stroke="#207448" stroke-width="4" stroke-dasharray="12 9" marker-end="url(#arrow-green)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="486" r="24" fill="#207448"/>
+      <text x="76" y="494" text-anchor="middle" fill="#ffffff" font-weight="700">4</text>
+      <text x="1182.5" y="494" text-anchor="middle">new process 101 exists, copy of shell</text>
+      <line x1="991" y1="514" x2="1374" y2="514" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="562" r="24" fill="#207448"/>
+      <text x="76" y="570" text-anchor="middle" fill="#ffffff" font-weight="700">5</text>
+      <text x="1182.5" y="570" text-anchor="middle">system call <tspan font-family="monospace">execve(&quot;/usr/bin/ls&quot;)</tspan></text>
+      <line x1="1374" y1="590" x2="991" y2="590" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="638" r="24" fill="#207448"/>
+      <text x="76" y="646" text-anchor="middle" fill="#ffffff" font-weight="700">6</text>
+      <text x="1182.5" y="646" text-anchor="middle">replace program with ls, keep PID 101</text>
+      <line x1="991" y1="666" x2="1374" y2="666" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="714" r="24" fill="#207448"/>
+      <text x="76" y="722" text-anchor="middle" fill="#ffffff" font-weight="700">7</text>
+      <text x="1182.5" y="722" text-anchor="middle"><tspan font-family="monospace">write(1, &quot;file1 file2 ...&quot;)</tspan></text>
+      <line x1="1374" y1="742" x2="991" y2="742" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="790" r="24" fill="#207448"/>
+      <text x="76" y="798" text-anchor="middle" fill="#ffffff" font-weight="700">8</text>
+      <text x="1182.5" y="798" text-anchor="middle"><tspan font-family="monospace">exit_group(0)</tspan></text>
+      <line x1="1374" y1="818" x2="991" y2="818" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="866" r="24" fill="#207448"/>
+      <text x="76" y="874" text-anchor="middle" fill="#ffffff" font-weight="700">9</text>
+      <text x="799.5" y="874" text-anchor="middle"><tspan font-family="monospace">wait4</tspan>: wait for child to end</text>
+      <line x1="608" y1="894" x2="991" y2="894" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="942" r="24" fill="#207448"/>
+      <text x="76" y="950" text-anchor="middle" fill="#ffffff" font-weight="700">10</text>
+      <text x="799.5" y="950" text-anchor="middle">child 101 finished with status 0</text>
+      <line x1="991" y1="970" x2="608" y2="970" stroke="#207448" stroke-width="4" stroke-dasharray="12 9" marker-end="url(#arrow-green)"/>
+    </g>
+    <g>
+      <circle cx="76" cy="1018" r="24" fill="#207448"/>
+      <text x="76" y="1026" text-anchor="middle" fill="#ffffff" font-weight="700">11</text>
+      <text x="416.5" y="1026" text-anchor="middle">prints a new prompt</text>
+      <line x1="608" y1="1046" x2="225" y2="1046" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    </g>
+  </g>
+</svg>

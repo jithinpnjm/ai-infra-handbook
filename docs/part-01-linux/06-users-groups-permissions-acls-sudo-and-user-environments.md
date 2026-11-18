@@ -50,20 +50,9 @@ The names live in a small set of plain-text configuration files inside `/etc`, a
 
 The diagram below shows the split. The kernel sees only numbers, while the names sit in user space and reach the kernel through the C library.
 
-```mermaid
-flowchart LR
-  subgraph kernel["Kernel: knows only numbers"]
-    P["process: UID 1042, GID 1042, supplementary GIDs"]
-    F["file inode: owner UID 1042, group GID 2001, mode 0640"]
-  end
-  subgraph userspace["User space: names and policy"]
-    PW["/etc/passwd<br/>name : x : UID : GID : comment : home : shell"]
-    SH["/etc/shadow<br/>name : password hash : aging fields"]
-    GR["/etc/group<br/>group : x : GID : members"]
-  end
-  LIB["C library: getpwnam, getpwuid, getgrnam<br/>(through NSS, see section 9)"]
-  userspace --> LIB --> kernel
-```
+![Users and groups: names for numbers](./img/ch06-d1-luna.svg)
+
+*Figure 1.6.1. Users and groups: names for numbers.*
 
 Read the arrows from top to bottom. The names pass through the C library before the kernel sees anything.
 
@@ -176,6 +165,10 @@ dr-xr-sr-x  2 root  projx 4096 Oct 23 19:34 shared
 
 The first character is the file type, which chapter 1.3 covers. The other nine form three triples, one each for the **user** (`u`), the **group** (`g`) and **other** (`o`). Each triple is some combination of `r` for read, `w` for write, `x` for execute and `-` for not granted. When the kernel checks access, it goes in a fixed order and stops at the first match. If your effective UID is the file's owner, the user triple applies. If not, and your effective GID or one of your supplementary groups matches the file's group, the group triple applies. Otherwise, the other triple applies. The checks do not add up. If the owner's triple is `---` and the group's is `rwx`, the owner is still denied, because the owner matched first. Also, root, which the kernel knows as UID 0, gets past nearly all of these checks through capabilities, as chapter 1.21 explains.
 
+![Reading permission bits](./img/ch06-fig1-permbits.jpg)
+
+*Figure 1.6.2. Reading -rwxr-x---: three triples, octal 750, and what r, w, x mean on files versus directories.*
+
 ### What the bits mean: files versus directories
 
 The same three letters mean different things on a file and on a directory. The table shows both meanings.
@@ -244,6 +237,10 @@ Sometimes plain ownership is not enough, and three extra mode bits fill the gap.
 | **sticky** (`+t`, 1000) | ignored on Linux | **only the owner of a file (or of the directory, or root) may delete or rename entries**, even if others have write permission on the directory. It shows `t` in the other's execute slot. |
 
 Two familiar examples show the bits at work. `/usr/bin/passwd` and `/usr/bin/sudo` are setuid-root, so ordinary users can change `/etc/shadow` through a vetted program. `/tmp` is `1777`, which reads as `drwxrwxrwt`, so everyone can create files there, but nobody can delete someone else's. Setuid has no effect on interpreted scripts on Linux. The kernel honors it only for real executables, for security reasons.
+
+![setuid, setgid, sticky and umask](./img/ch06-fig2-special.jpg)
+
+*Figure 1.6.3. The three special bits, with a umask 022 example.*
 
 ### A recipe: a safe shared project directory
 
@@ -339,6 +336,10 @@ You can still act on the risk in concrete ways. Audit the system from time to ti
 
 Keep three words distinct. **Identification** answers "who are you?" and is ultimately a username, which maps to a UID. **Authentication** answers "prove it" with a password, an SSH key, a token or a smart card. **Authorization** answers "what may you do?" through file permissions, `sudo` rules and scheduler limits. The kernel handles identification by number and authorization for files and processes. It knows nothing about authentication, which is entirely user space.
 
+![Identification, authentication, authorization before sudo](./img/ch06-fig3-sudo.jpg)
+
+*Figure 1.6.4. The three questions sudo answers before a command runs as root.*
+
 A program that needs its own username calls `geteuid()` to get the number. Then it asks the C library to map that number to a name with `getpwuid()`. The library decides where to look, and the site can configure that, as section 8.5 explains. This extra step is what lets a site move from local files to a network directory without changing any program. The old approach of simply reading `/etc/passwd` had three limits. It used one fixed hashing method, it always prompted for a password, and it had no support for tokens or smart cards. **PAM**, the Pluggable Authentication Modules framework, was created to remove those limits, as chapter 1.21 explains.
 
 ### `sudo`: administrative power with a trail
@@ -384,14 +385,9 @@ Have you ever opened a terminal and found that your `PATH` or your editor settin
 
 As chapter 1.2 introduced, the file that gets read depends on the kind of shell instance. The diagram shows the choices.
 
-```mermaid
-flowchart TB
-  S["bash starts"] --> Q{"interactive?"}
-  Q -->|"no (script, cron, ssh host cmd)"| N["reads nothing by default<br/>(BASH_ENV if set)"]
-  Q -->|"yes"| L{"login shell?<br/>(first char of $0 is '-', or bash -l,<br/>SSH or console login)"}
-  L -->|"yes"| LF["/etc/profile, then the FIRST FOUND of<br/>~/.bash_profile, ~/.bash_login, ~/.profile"]
-  L -->|"no (new terminal window, bash typed in a session)"| NL["/etc/bash.bashrc (Debian family), then ~/.bashrc"]
-```
+![Which file is read when (bash)](./img/ch06-d2-luna.svg)
+
+*Figure 1.6.5. Which file is read when (bash).*
 
 Two practical facts govern bash startup. First, login shells do not read `~/.bashrc`, and non-login shells do not read `~/.bash_profile`. The standard fix is to keep your settings in `~/.bashrc` and have `~/.bash_profile` or `~/.profile` source it. You can do that with a symlink or a one-liner, `[ -f ~/.bashrc ] && . ~/.bashrc`, and that is what the default files on Ubuntu do. Second, you can test which kind of shell you are in. `echo $0` shows a leading `-` for a login shell. Inside a startup file, `case $- in *i*)` tests for an interactive shell, because `$-` contains `i` only then. That keeps commands that print output or need a terminal away from scripts.
 

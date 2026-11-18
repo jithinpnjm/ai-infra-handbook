@@ -36,23 +36,9 @@ Start on a throwaway VM, one you can rebuild at any time without losing anything
 
 The picture below is the machine you are about to assemble, all in one view. Read it from the host box outward, and notice that each box is something you will create by hand in the steps that follow.
 
-```mermaid
-flowchart TB
-  subgraph Host
-    BR["bridge br-lab 10.77.0.1/24"] --- VH["vethh0"]
-    NAT["iptables MASQUERADE + ip_forward"] --- BR
-    CG["cgroup /sys/fs/cgroup/lab-ctr\ncpu.max, memory.max, pids.max"]
-    OV["overlay: lowerdir=base, upperdir=upper, workdir=work → merged"]
-  end
-  subgraph CTR["Container (unshare: pid mnt uts ipc net)"]
-    P1["PID 1 /bin/sh"]
-    EC["eth0 10.77.0.2"]
-    RF["/ = merged (pivot_root)"]
-  end
-  VH --- EC
-  OV --> RF
-  CG -. "contains" .-> P1
-```
+![Architecture of what we build](./img/ch20-d1-luna.svg)
+
+*Figure 1.20.1. Architecture of what we build.*
 
 ## Step 0. Preconditions and local Python verification
 

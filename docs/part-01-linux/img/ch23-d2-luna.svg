@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1350" viewBox="0 0 1600 1350">
+  <title>The USE method</title>
+  <desc>Flowchart for the USE method.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1350" fill="#f5f8f5"/>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)">
+    <path d="M800 240 V290"/>
+    <path d="M800 430 V480"/>
+    <path d="M800 620 V670"/>
+    <path d="M550 790 H520 V920 H300 V960"/>
+    <path d="M1050 340 H1100 V420 H1130"/>
+    <path d="M1050 540 H1090 V500 H1130"/>
+    <path d="M1050 760 H1065 V580 H1590 V465 H1570"/>
+    <path d="M1350 550 V650"/>
+    <path d="M1300 900 V930 H800 V960"/>
+    <path d="M510 1030 H550"/>
+    <path d="M650 1110 V1240 H40 V180 H550"/>
+    <path d="M1050 1035 H1120"/>
+  </g>
+
+  <g font-family="sans-serif" font-size="24" fill="#303a36">
+    <text x="820" y="466">no</text>
+    <text x="820" y="657">no</text>
+    <text x="470" y="908">no</text>
+    <text x="1060" y="326">yes</text>
+    <text x="1060" y="520">yes</text>
+    <text x="1460" y="570">yes</text>
+    <text x="100" y="1230">yes</text>
+    <text x="1065" y="1010">no</text>
+  </g>
+
+  <text x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">The USE method</text>
+
+  <g font-family="sans-serif" fill="#303a36" stroke="#207448" stroke-width="3">
+    <rect x="550" y="120" width="500" height="120" rx="22" fill="#e8f1ea"/>
+    <rect x="550" y="290" width="500" height="140" rx="22" fill="#e8f1ea"/>
+    <rect x="550" y="480" width="500" height="140" rx="22" fill="#e8f1ea"/>
+    <rect x="550" y="670" width="500" height="180" rx="22" fill="#e8f1ea"/>
+    <rect x="80" y="960" width="430" height="140" rx="22" fill="#e8f1ea"/>
+    <rect x="550" y="960" width="500" height="150" rx="22" fill="#e8f1ea"/>
+    <rect x="1120" y="960" width="450" height="190" rx="22" fill="#e8f1ea"/>
+    <rect x="1130" y="380" width="440" height="170" rx="22" fill="#e8f1ea" stroke="#db8129" stroke-width="5"/>
+    <rect x="1080" y="650" width="500" height="250" rx="22" fill="#e8f1ea"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="605" cy="180" r="27"/>
+    <path d="M590 171 H620 M590 180 H620 M590 189 H620"/>
+    <circle cx="595" cy="171" r="3" fill="#e8f1ea"/>
+    <circle cx="613" cy="180" r="3" fill="#e8f1ea"/>
+    <circle cx="600" cy="189" r="3" fill="#e8f1ea"/>
+
+    <path d="M605 313 L635 367 H575 Z"/>
+    <path d="M605 330 V347 M605 357 V358"/>
+
+    <path d="M580 565 A26 26 0 0 1 632 565"/>
+    <path d="M606 563 L623 540"/>
+    <path d="M580 570 H632"/>
+    <path d="M588 555 L584 551 M624 555 L628 551"/>
+
+    <circle cx="605" cy="760" r="27"/>
+    <path d="M605 742 V760 L620 770"/>
+    <path d="M605 733 V737 M632 760 H628 M582 760 H578"/>
+
+    <circle cx="125" cy="1030" r="27"/>
+    <path d="M111 1030 H139"/>
+
+    <path d="M580 995 H625 L635 1006 V1046 H580 Z"/>
+    <path d="M590 1008 H620 M590 1020 H620 M590 1032 H610"/>
+
+    <path d="M1160 987 L1190 998 V1017 C1190 1037 1178 1049 1160 1057 C1142 1049 1130 1037 1130 1017 V998 Z"/>
+    <path d="M1147 1019 L1157 1029 L1175 1009"/>
+
+    <circle cx="1172" cy="425" r="20"/>
+    <path d="M1187 440 L1206 459"/>
+    <path d="M1162 425 H1182 M1172 415 V435"/>
+
+    <rect x="1100" y="732" width="55" height="48" rx="5"/>
+    <path d="M1100 744 H1155 M1110 738 H1112 M1118 738 H1120 M1126 738 H1128"/>
+    <path d="M1112 758 H1143 M1112 768 H1135"/>
+  </g>
+
+  <g font-family="sans-serif" fill="#303a36">
+    <text x="660" y="190" font-size="30" font-weight="700">Choose a resource</text>
+
+    <text x="660" y="345" font-size="30" font-weight="700">Errors?</text>
+    <text x="660" y="385" font-size="24">(objective, quick)</text>
+
+    <text x="660" y="535" font-size="30" font-weight="700">Saturation?</text>
+    <text x="660" y="575" font-size="24">(any queueing)</text>
+
+    <text x="660" y="722" font-size="30" font-weight="700">Utilisation high?</text>
+    <text x="660" y="762" font-size="24">(>~60-70% sustained,</text>
+    <text x="660" y="796" font-size="24">or bursts to 100% at 1 s)</text>
+
+    <text x="190" y="1022" font-size="30" font-weight="700">Resource ruled</text>
+    <text x="190" y="1057" font-size="30" font-weight="700">out</text>
+    <text x="190" y="1087" font-size="24">(for now)</text>
+
+    <text x="650" y="1047" font-size="30" font-weight="700">More resources?</text>
+
+    <text x="1225" y="997" font-size="30" font-weight="700">No resource</text>
+    <text x="1225" y="1032" font-size="30" font-weight="700">problem found:</text>
+    <text x="1225" y="1068" font-size="24">use other methods</text>
+    <text x="1225" y="1100" font-size="24">(workload, latency,</text>
+    <text x="1225" y="1126" font-size="24">static)</text>
+
+    <text x="1230" y="425" font-size="30" font-weight="700">Investigate:</text>
+    <text x="1230" y="465" font-size="30" font-weight="700">error is a</text>
+    <text x="1230" y="505" font-size="30" font-weight="700">finding</text>
+
+    <text x="1170" y="720" font-size="30" font-weight="700">Confirm it limits</text>
+    <text x="1170" y="755" font-size="30" font-weight="700">the workload;</text>
+    <text x="1170" y="790" font-size="30" font-weight="700">then drill down.</text>
+    <text x="1170" y="825" font-size="30" font-weight="700">Revisit USE for</text>
+    <text x="1170" y="860" font-size="30" font-weight="700">the next resource</text>
+  </g>
+</svg>

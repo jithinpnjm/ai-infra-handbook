@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1370" viewBox="0 0 1600 1370" role="img">
+  <title>Troubleshooting flow: "the node has no GPUs"</title>
+  <desc></desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M2 2L16 9L2 16" fill="none" stroke="context-stroke" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .bg{fill:#f5f8f5}
+      .card{fill:#e8f1ea;stroke:#207448;stroke-width:3}
+      .title{font:700 48px sans-serif;fill:#303a36}
+      .node{font:700 30px sans-serif;fill:#303a36}
+      .smallnode{font:700 26px sans-serif;fill:#303a36}
+      .edge{font:400 24px sans-serif;fill:#303a36}
+      .line{fill:none;stroke:#207448;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
+      .hot{fill:none;stroke:#db8129;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
+      .icon{fill:none;stroke:#207448;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+      .labelbg{fill:#f5f8f5}
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="1370"/>
+  <text class="title" x="48" y="82">Troubleshooting flow: "the node has no GPUs"</text>
+
+  <g>
+    <rect class="card" x="40" y="135" width="360" height="175" rx="18"/>
+    <g class="icon" transform="translate(62 190)">
+      <rect x="4" y="0" width="52" height="44" rx="5"/>
+      <path d="M13 10h34v22H13zM19 17h8v8h-8zM36 17h5M36 24h5M15-8v8M28-8v8M41-8v8M15 44v8M28 44v8M41 44v8M-4 9h8M-4 22h8M-4 35h8M56 9h8M56 22h8M56 35h8"/>
+    </g>
+    <text class="node" x="145" y="190">
+      <tspan x="145">nvidia-smi fails /</tspan>
+      <tspan x="145" dy="38">GPUs missing</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="465" y="130" width="455" height="185" rx="18"/>
+    <g class="icon" transform="translate(488 190)">
+      <circle cx="27" cy="22" r="18"/>
+      <path d="M40 36l17 17M19 22h16M27 14v16"/>
+    </g>
+    <text class="node" x="570" y="176">
+      <tspan x="570">lspci | grep -i nvidia</tspan>
+      <tspan x="570" dy="38">shows the devices?</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="1035" y="125" width="525" height="200" rx="18"/>
+    <g class="icon" transform="translate(1057 197)">
+      <rect x="5" y="3" width="52" height="42" rx="4"/>
+      <path d="M5 14h52M14 9h2M22 9h2M17 23h28M17 31h22M17 39h17"/>
+    </g>
+    <text class="node" x="1135" y="165">
+      <tspan x="1135">Hardware/firmware:</tspan>
+      <tspan x="1135" dy="34">PCIe link, riser, BMC</tspan>
+      <tspan x="1135" dy="34">logs, Xid 79 'fallen</tspan>
+      <tspan x="1135" dy="34">off the bus', BIOS</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="465" y="375" width="455" height="165" rx="18"/>
+    <g class="icon" transform="translate(488 425)">
+      <circle cx="28" cy="22" r="12"/>
+      <path d="M28 0v8M28 36v8M6 22h8M42 22h8M12 6l6 6M38 32l6 6M44 6l-6 6M18 32l-6 6M22 5l2 6M32 33l2 6M5 16l6 2M45 26l6 2"/>
+    </g>
+    <text class="node" x="570" y="422">
+      <tspan x="570">lsmod | grep nvidia</tspan>
+      <tspan x="570" dy="38">loaded?</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="40" y="375" width="385" height="165" rx="18"/>
+    <g class="icon" transform="translate(62 428)">
+      <circle cx="27" cy="22" r="18"/>
+      <path d="M27 10v13l9 6M27 0v5M27 39v5M5 22h5M44 22h5"/>
+    </g>
+    <text class="node" x="145" y="422">
+      <tspan x="145">modprobe nvidia:</tspan>
+      <tspan x="145" dy="38">what error?</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="1035" y="375" width="525" height="165" rx="18"/>
+    <g class="icon" transform="translate(1057 428)">
+      <circle cx="27" cy="22" r="18"/>
+      <path d="M27 10v13l9 6M27 0v5M27 39v5M5 22h5M44 22h5"/>
+    </g>
+    <text class="node" x="1135" y="422">
+      <tspan x="1135">nvidia-smi error text?</tspan>
+    </text>
+  </g>
+
+  <path class="hot" d="M400 222H465"/>
+  <path class="line" d="M920 222H1035"/>
+  <rect class="labelbg" x="930" y="181" width="78" height="34" rx="8"/>
+  <text class="edge" x="949" y="207">no</text>
+  <path class="line" d="M692 315V375"/>
+  <rect class="labelbg" x="708" y="327" width="82" height="34" rx="8"/>
+  <text class="edge" x="726" y="353">yes</text>
+  <path class="line" d="M465 458H425"/>
+  <rect class="labelbg" x="424" y="416" width="78" height="34" rx="8"/>
+  <text class="edge" x="442" y="442">no</text>
+  <path class="line" d="M920 458H1035"/>
+  <rect class="labelbg" x="938" y="416" width="82" height="34" rx="8"/>
+  <text class="edge" x="956" y="442">yes</text>
+
+  <g>
+    <rect class="card" x="20" y="700" width="290" height="250" rx="18"/>
+    <g class="icon" transform="translate(36 773)">
+      <path d="M5 2h34l12 12v38H5zM39 2v13h12M13 26h27M13 36h27M13 46h18"/>
+    </g>
+    <text class="smallnode" x="98" y="738">
+      <tspan x="98">No module for</tspan>
+      <tspan x="98" dy="30">this kernel:</tspan>
+      <tspan x="98" dy="30">dkms status /</tspan>
+      <tspan x="98" dy="30">package for</tspan>
+      <tspan x="98" dy="30">uname -r;</tspan>
+      <tspan x="98" dy="30">depmod -a</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="336" y="700" width="290" height="250" rx="18"/>
+    <g class="icon" transform="translate(350 782)">
+      <circle cx="24" cy="24" r="19"/>
+      <path d="M24 11v15l11 7M24 1v5M24 42v5M1 24h5M42 24h5"/>
+    </g>
+    <text class="smallnode" x="410" y="775">
+      <tspan x="410">vermagic/ABI</tspan>
+      <tspan x="410" dy="34">mismatch:</tspan>
+      <tspan x="410" dy="34">rebuilt for</tspan>
+      <tspan x="410" dy="34">another kernel</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="652" y="700" width="290" height="250" rx="18"/>
+    <g class="icon" transform="translate(667 782)">
+      <path d="M24 2L46 43H2zM24 16v14M24 36v1"/>
+    </g>
+    <text class="smallnode" x="725" y="775">
+      <tspan x="725">Secure Boot:</tspan>
+      <tspan x="725" dy="34">sign module,</tspan>
+      <tspan x="725" dy="34">enrol MOK</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="968" y="700" width="290" height="250" rx="18"/>
+    <g class="icon" transform="translate(982 782)">
+      <path d="M5 8h46v34H5zM5 17h46M13 12h2M21 12h2M15 26h26M15 34h20"/>
+    </g>
+    <text class="smallnode" x="1040" y="775">
+      <tspan x="1040">Blacklist</tspan>
+      <tspan x="1040" dy="34">nouveau, rebuild</tspan>
+      <tspan x="1040" dy="34">initramfs, reboot</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="1284" y="700" width="290" height="250" rx="18"/>
+    <g class="icon" transform="translate(1298 782)">
+      <circle cx="24" cy="24" r="18"/>
+      <path d="M24 11v14l10 6M24 1v5M24 42v5M1 24h5M42 24h5"/>
+    </g>
+    <text class="smallnode" x="1356" y="738">
+      <tspan x="1356">Dependency</tspan>
+      <tspan x="1356" dy="30">missing (ib_core</tspan>
+      <tspan x="1356" dy="30">for peermem) or</tspan>
+      <tspan x="1356" dy="30">kernel/driver</tspan>
+      <tspan x="1356" dy="30">mismatch</tspan>
+    </text>
+  </g>
+
+  <path class="line" d="M80 540C80 603 118 650 165 700"/>
+  <path class="line" d="M155 540C155 602 355 650 481 700"/>
+  <path class="line" d="M230 540C230 600 610 650 797 700"/>
+  <path class="line" d="M305 540C305 603 968 644 1113 700"/>
+  <path class="line" d="M405 540C405 605 1320 650 1429 700"/>
+
+  <rect class="labelbg" x="20" y="570" width="290" height="62" rx="8"/>
+  <text class="edge" x="165" y="595" text-anchor="middle">
+    <tspan x="165">"Module not found"</tspan>
+  </text>
+  <rect class="labelbg" x="336" y="570" width="290" height="62" rx="8"/>
+  <text class="edge" x="481" y="595" text-anchor="middle">
+    <tspan x="481">"Invalid module</tspan>
+    <tspan x="481" dy="27">format"</tspan>
+  </text>
+  <rect class="labelbg" x="652" y="570" width="290" height="62" rx="8"/>
+  <text class="edge" x="797" y="595" text-anchor="middle">
+    <tspan x="797">"Key was rejected /</tspan>
+    <tspan x="797" dy="27">Required key"</tspan>
+  </text>
+  <rect class="labelbg" x="968" y="570" width="290" height="62" rx="8"/>
+  <text class="edge" x="1113" y="595" text-anchor="middle">
+    <tspan x="1113">"No such device /</tspan>
+    <tspan x="1113" dy="27">nouveau bound"</tspan>
+  </text>
+  <rect class="labelbg" x="1284" y="570" width="290" height="62" rx="8"/>
+  <text class="edge" x="1429" y="595" text-anchor="middle">
+    <tspan x="1429">"Unknown symbol"</tspan>
+  </text>
+
+  <g>
+    <rect class="card" x="40" y="1130" width="490" height="200" rx="18"/>
+    <g class="icon" transform="translate(62 1192)">
+      <path d="M8 2h34l12 12v38H8zM42 2v13h12M16 26h28M16 36h28M16 46h18"/>
+    </g>
+    <text class="node" x="145" y="1170">
+      <tspan x="145">journalctl -k | grep NVRM;</tspan>
+      <tspan x="145" dy="36">firmware; power; Xid decode</tspan>
+    </text>
+  </g>
+  <g>
+    <rect class="card" x="555" y="1130" width="490" height="200" rx="18"/>
+    <g class="icon" transform="translate(578 1192)">
+      <path d="M8 4h44v42H8zM8 15h44M15 10h2M23 10h2M16 24h27M16 33h27M16 42h18"/>
+    </g>
+    <text class="node" x="660" y="1168">
+      <tspan x="660">Fabric Manager</tspan>
+      <tspan x="660" dy="36">version/state;</tspan>
+      <tspan x="660" dy="36">nvidia-smi topo -m;</tspan>
+      <tspan x="660" dy="36">nvlink status</tspan>
+    </text>
+  </g>
+  <g>
+    <rect class="card" x="1070" y="1130" width="490" height="200" rx="18"/>
+    <g class="icon" transform="translate(1092 1192)">
+      <path d="M8 2h34l12 12v38H8zM42 2v13h12M16 26h28M16 36h28M16 46h18"/>
+    </g>
+    <text class="node" x="1175" y="1165">
+      <tspan x="1175">Old module loaded</tspan>
+      <tspan x="1175" dy="36">vs new libs: reload</tspan>
+      <tspan x="1175" dy="36">modules or reboot</tspan>
+    </text>
+  </g>
+
+  <path class="line" d="M1560 400H1570V1050H1315V1130"/>
+  <path class="line" d="M1560 450H1580V1072H800V1130"/>
+  <path class="line" d="M1560 500H1590V1094H285V1130"/>
+
+  <rect class="labelbg" x="1070" y="970" width="490" height="62" rx="8"/>
+  <text class="edge" x="1315" y="995" text-anchor="middle">
+    <tspan x="1315">"Driver/library version</tspan>
+    <tspan x="1315" dy="27">mismatch"</tspan>
+  </text>
+  <rect class="labelbg" x="555" y="970" width="490" height="62" rx="8"/>
+  <text class="edge" x="800" y="995" text-anchor="middle">
+    <tspan x="800">"works, but multi-GPU</tspan>
+    <tspan x="800" dy="27">job fails"</tspan>
+  </text>
+  <rect class="labelbg" x="40" y="970" width="490" height="62" rx="8"/>
+  <text class="edge" x="285" y="995" text-anchor="middle">
+    <tspan x="285">"no devices found / Xid in dmesg"</tspan>
+  </text>
+</svg>

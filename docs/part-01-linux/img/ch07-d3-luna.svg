@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>The standard sequence</title>
+  <desc></desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="70" y="88" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="bold">The standard sequence</text>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+    <style>
+      .card { fill:#e8f1ea; stroke:#207448; stroke-width:3; }
+      .icon { fill:none; stroke:#207448; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; }
+      .step { fill:#207448; }
+      .stepnum { fill:#ffffff; font-family:sans-serif; font-size:26px; font-weight:bold; text-anchor:middle; }
+      .node-title { fill:#303a36; font-family:sans-serif; font-size:32px; font-weight:bold; }
+      .node-text { fill:#303a36; font-family:monospace; font-size:24px; }
+      .diag-text { fill:#303a36; font-family:sans-serif; font-size:24px; }
+      .flow { fill:none; stroke:#207448; stroke-width:4; marker-end:url(#arrow-green); }
+      .branch { fill:none; stroke:#207448; stroke-width:4; stroke-dasharray:8 8; marker-end:url(#arrow-green); }
+      .highlight { fill:none; stroke:#db8129; stroke-width:4; marker-end:url(#arrow-orange); }
+      .edge-label { fill:#303a36; font-family:sans-serif; font-size:24px; text-anchor:middle; }
+    </style>
+  </defs>
+
+  <!-- Ordered steps -->
+  <rect class="card" x="70" y="130" width="700" height="130" rx="18"/>
+  <circle class="step" cx="116" cy="195" r="24"/>
+  <text class="stepnum" x="116" y="204">1</text>
+  <g class="icon" transform="translate(164 167)">
+    <path d="M4 13 28 2l24 11-24 12L4 13Z"/>
+    <path d="M4 13v29l24 12 24-12V13M28 25v29M16 7l24 12"/>
+  </g>
+  <text class="node-title" x="245" y="190">Unpack</text>
+  <text class="node-text" x="245" y="225">tar xf pkg-1.23.tar.xz</text>
+
+  <rect class="card" x="70" y="305" width="700" height="130" rx="18"/>
+  <circle class="step" cx="116" cy="370" r="24"/>
+  <text class="stepnum" x="116" y="379">2</text>
+  <g class="icon" transform="translate(164 342)">
+    <path d="M5 8h46M5 28h46M5 48h46"/>
+    <circle cx="19" cy="8" r="6" fill="#e8f1ea"/>
+    <circle cx="38" cy="28" r="6" fill="#e8f1ea"/>
+    <circle cx="23" cy="48" r="6" fill="#e8f1ea"/>
+  </g>
+  <text class="node-title" x="245" y="365">Configure</text>
+  <text class="node-text" x="245" y="402">./configure --prefix=...</text>
+
+  <rect class="card" x="70" y="480" width="700" height="130" rx="18"/>
+  <circle class="step" cx="116" cy="545" r="24"/>
+  <text class="stepnum" x="116" y="554">3</text>
+  <g class="icon" transform="translate(164 517)">
+    <circle cx="28" cy="28" r="10"/>
+    <path d="M28 3v8M28 45v8M3 28h8M45 28h8M10 10l6 6M40 40l6 6M46 10l-6 6M16 40l-6 6"/>
+    <circle cx="28" cy="28" r="22"/>
+  </g>
+  <text class="node-title" x="245" y="540">Build</text>
+  <text class="node-text" x="245" y="577">make</text>
+
+  <rect class="card" x="70" y="655" width="700" height="130" rx="18"/>
+  <circle class="step" cx="116" cy="720" r="24"/>
+  <text class="stepnum" x="116" y="729">4</text>
+  <g class="icon" transform="translate(164 692)">
+    <path d="M8 4h34l10 10v38H8z"/>
+    <path d="M42 4v12h10M16 30l8 8 17-18"/>
+  </g>
+  <text class="node-title" x="245" y="715">Test</text>
+  <text class="node-text" x="245" y="752">make check</text>
+
+  <rect class="card" x="70" y="830" width="700" height="130" rx="18"/>
+  <circle class="step" cx="116" cy="895" r="24"/>
+  <text class="stepnum" x="116" y="904">5</text>
+  <g class="icon" transform="translate(164 867)">
+    <rect x="4" y="6" width="48" height="40" rx="4"/>
+    <path d="M4 17h48M14 12h1M21 12h1M15 29l7 6-7 6M29 41h12"/>
+  </g>
+  <text class="node-title" x="245" y="890">Dry run</text>
+  <text class="node-text" x="245" y="927">make -n install</text>
+
+  <rect class="card" x="70" y="1005" width="700" height="130" rx="18"/>
+  <circle class="step" cx="116" cy="1070" r="24"/>
+  <text class="stepnum" x="116" y="1079">6</text>
+  <g class="icon" transform="translate(164 1042)">
+    <path d="M4 14 28 3l24 11-24 12L4 14Z"/>
+    <path d="M4 14v29l24 12 24-12V14M28 26v29"/>
+    <path d="M28 32v13M21 38l7 7 7-7"/>
+  </g>
+  <text class="node-title" x="245" y="1045">Install</text>
+  <text class="node-text" x="245" y="1080">make install</text>
+  <text class="node-text" x="245" y="1112">(or package it)</text>
+
+  <!-- Failure branches -->
+  <rect class="card" x="950" y="305" width="580" height="130" rx="18"/>
+  <g class="icon" transform="translate(985 342)">
+    <path d="M8 4h30l12 12v38H8z"/>
+    <path d="M38 4v13h12M16 28h25M16 38h25M16 48h18"/>
+  </g>
+  <text class="diag-text" x="1065" y="348">read config.log:</text>
+  <text class="diag-text" x="1065" y="382">missing -dev package,</text>
+  <text class="diag-text" x="1065" y="416">wrong CPPFLAGS/LDFLAGS</text>
+
+  <rect class="card" x="950" y="480" width="580" height="130" rx="18"/>
+  <g class="icon" transform="translate(985 517)">
+    <circle cx="24" cy="24" r="17"/>
+    <path d="m37 37 15 15M17 24h14M24 17v14"/>
+  </g>
+  <text class="diag-text" x="1065" y="535">find the first real error,</text>
+  <text class="diag-text" x="1065" y="571">not the make[N] cascade</text>
+
+  <!-- Five ordered arrows -->
+  <path class="flow" d="M420 260 V305"/>
+  <path class="flow" d="M420 435 V480"/>
+  <path class="flow" d="M420 610 V655"/>
+  <path class="flow" d="M420 785 V830"/>
+  <path class="highlight" d="M420 960 V1005"/>
+
+  <!-- Two dashed failure arrows -->
+  <path class="branch" d="M770 370 H950"/>
+  <text class="edge-label" x="860" y="354">fails?</text>
+
+  <path class="branch" d="M770 545 H950"/>
+  <text class="edge-label" x="860" y="529">fails?</text>
+</svg>

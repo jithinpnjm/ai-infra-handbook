@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120">
+  <title>The full data path, layer by layer</title>
+  <desc></desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+  <text x="800" y="105" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">The full data path, layer by layer</text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="60" y="190" width="340" height="350" rx="18" fill="#e8f1ea"/>
+    <ellipse cx="230" cy="222" rx="26" ry="10"/>
+    <path d="M204 222v31c0 6 12 11 26 11s26-5 26-11v-31"/>
+    <path d="M204 238c0 6 12 11 26 11s26-5 26-11"/>
+
+    <rect x="440" y="190" width="340" height="350" rx="18" fill="#e8f1ea"/>
+    <rect x="582" y="205" width="56" height="42" rx="5"/>
+    <path d="M592 217h36M592 229h36M592 239h22"/>
+    <circle cx="626" cy="239" r="2" fill="#207448"/>
+
+    <rect x="820" y="190" width="340" height="350" rx="18" fill="#e8f1ea"/>
+    <circle cx="990" cy="229" r="24"/>
+    <circle cx="990" cy="229" r="5"/>
+    <circle cx="990" cy="205" r="4" fill="#e8f1ea"/>
+    <circle cx="1014" cy="229" r="4" fill="#e8f1ea"/>
+    <circle cx="990" cy="253" r="4" fill="#e8f1ea"/>
+    <circle cx="966" cy="229" r="4" fill="#e8f1ea"/>
+    <path d="M990 201v8M1018 229h-8M990 257v-8M962 229h8"/>
+
+    <rect x="1200" y="190" width="340" height="350" rx="18" fill="#e8f1ea"/>
+    <path d="M1341 209h24l8 9h26v37h-58z"/>
+    <path d="M1341 218h58"/>
+
+    <rect x="1200" y="680" width="340" height="350" rx="18" fill="#e8f1ea"/>
+    <rect x="1345" y="698" width="50" height="12" rx="3"/>
+    <rect x="1345" y="716" width="50" height="12" rx="3"/>
+    <rect x="1345" y="734" width="50" height="12" rx="3"/>
+
+    <rect x="820" y="680" width="340" height="350" rx="18" fill="#e8f1ea"/>
+    <rect x="964" y="696" width="52" height="52" rx="6"/>
+    <rect x="977" y="709" width="26" height="26" rx="3"/>
+    <path d="M974 688v8M986 688v8M998 688v8M1010 688v8M974 748v8M986 748v8M998 748v8M1010 748v8M956 705h8M956 717h8M956 729h8M956 741h8M1016 705h8M1016 717h8M1016 729h8M1016 741h8"/>
+
+    <rect x="440" y="680" width="340" height="350" rx="18" fill="#e8f1ea"/>
+    <path d="M583 710h54v31h-54z"/>
+    <path d="M590 710v-9h40v9M597 719v14M610 719v14M623 719v14"/>
+    <circle cx="610" cy="727" r="3" fill="#207448"/>
+
+    <rect x="60" y="680" width="340" height="350" rx="18" fill="#e8f1ea"/>
+    <rect x="202" y="698" width="56" height="50" rx="7"/>
+    <rect x="214" y="709" width="32" height="28" rx="3"/>
+    <path d="M212 690v8M224 690v8M236 690v8M248 690v8M212 748v8M224 748v8M236 748v8M248 748v8M194 708h8M194 720h8M194 732h8M258 708h8M258 720h8M258 732h8"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M400 365H440" marker-end="url(#arrow-green)"/>
+    <path d="M780 365H820" marker-end="url(#arrow-green)"/>
+    <path d="M1160 365H1200" marker-end="url(#arrow-green)"/>
+    <path d="M1370 540V680" marker-end="url(#arrow-green)"/>
+    <path d="M1200 855H1160" marker-end="url(#arrow-green)"/>
+    <path d="M820 855H780" marker-end="url(#arrow-green)"/>
+  </g>
+  <path d="M440 855H400" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+
+  <g fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700" text-anchor="middle">
+    <text x="230" y="300">
+      <tspan x="230">1 Storage media</tspan>
+      <tspan x="230" dy="36">(NVMe/HDD)</tspan>
+    </text>
+    <text x="610" y="300">
+      <tspan x="610">2 Storage server</tspan>
+      <tspan x="610" dy="36">/ controller queue</tspan>
+    </text>
+    <text x="990" y="300">
+      <tspan x="990">3 Network fabric</tspan>
+      <tspan x="990" dy="36">(Ethernet/IB/</tspan>
+      <tspan x="990" dy="36">NVMe-oF)</tspan>
+    </text>
+    <text x="1370" y="300">
+      <tspan x="1370">4 Client</tspan>
+      <tspan x="1370" dy="36">filesystem / driver</tspan>
+    </text>
+    <text x="1370" y="800">5 Page cache</text>
+    <text x="990" y="800">
+      <tspan x="990">6 CPU memory /</tspan>
+      <tspan x="990" dy="36">NUMA</tspan>
+    </text>
+    <text x="610" y="800">7 PCIe</text>
+    <text x="230" y="800">8 GPU memory</text>
+  </g>
+
+  <g fill="#303a36" font-family="monospace" font-size="24" text-anchor="middle">
+    <text x="230" y="410">
+      <tspan x="230">smartctl, iostat,</tspan>
+      <tspan x="230" dy="32">nvme smart-log</tspan>
+    </text>
+    <text x="610" y="410">
+      <tspan x="610">server-side queue</tspan>
+      <tspan x="610" dy="32">depth, service time</tspan>
+    </text>
+    <text x="990" y="410">
+      <tspan x="990">ethtool, link speed,</tspan>
+      <tspan x="990" dy="32">errors, iperf/</tspan>
+      <tspan x="990" dy="32">ib_write_bw</tspan>
+    </text>
+    <text x="1370" y="410">
+      <tspan x="1370">mountstats, lctl,</tspan>
+      <tspan x="1370" dy="32">nfsstat, cache stats</tspan>
+    </text>
+    <text x="1370" y="890">
+      <tspan x="1370">free, vmstat,</tspan>
+      <tspan x="1370" dy="32">cachestat, PSI memory</tspan>
+    </text>
+    <text x="990" y="890">
+      <tspan x="990">numactl -H,</tspan>
+      <tspan x="990" dy="32">numastat, loader</tspan>
+      <tspan x="990" dy="32">affinity</tspan>
+    </text>
+    <text x="610" y="890">
+      <tspan x="610">lspci LnkSta,</tspan>
+      <tspan x="610" dy="32">nvidia-smi dmon</tspan>
+      <tspan x="610" dy="32">rxpci/txpci</tspan>
+    </text>
+    <text x="230" y="890">
+      <tspan x="230">nvidia-smi,</tspan>
+      <tspan x="230" dy="32">torch.cuda.</tspan>
+      <tspan x="230" dy="32">memory_summary</tspan>
+    </text>
+  </g>
+</svg>

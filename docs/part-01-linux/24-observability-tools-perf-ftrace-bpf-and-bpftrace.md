@@ -58,14 +58,9 @@ Suppose a training job is slow and you finally have a shell on the node. Before 
 
 Most tools focus on one resource. A few are **multi-tools** that reach every layer, and those are `perf`, Ftrace, BCC and bpftrace.
 
-```mermaid
-flowchart TB
-  APP["Applications / Python / CUDA runtime\nstrace, ltrace, py-spy, uprobes, USDT, Nsight"] --> LIB["System libraries\nuprobes, ldd, LD_DEBUG"]
-  LIB --> SC["System call interface\nstrace, perf trace, syscount, tracepoints"]
-  SC --> K["Kernel: VFS · scheduler · memory · TCP/IP · block\nvmstat, mpstat, iostat, sar, ss · tracepoints, kprobes · perf, ftrace, BPF"]
-  K --> D["Drivers (NVMe, NIC, NVIDIA)\ndmesg, ethtool, nvidia-smi, DCGM, kprobes"]
-  D --> HW["Hardware\nPMCs (perf stat), turbostat, ipmitool, lspci, nvme-cli"]
-```
+![Tool coverage: what can each tool see?](./img/ch24-d1-luna.svg)
+
+*Figure 1.24.1. Tool coverage: what can each tool see?.*
 
 It helps to think of these four names as three lenses on the same machine. `perf` samples and counts, using hardware events and stacks. Ftrace reads the kernel's own call flow through tracefs. BPF loads small programs that run whenever an event fires. Each lens sees something the other two miss, and each one costs something different to run.
 
@@ -132,26 +127,9 @@ Monitoring records metrics continuously over time. `sar` does this for a single 
 
 You have three tools that disagree about the same metric. Before you blame the tools, it helps to know where each number was born. Every tool in this chapter reads from one of a few kernel sources, so those sources are the real map of what is knowable. The diagram below groups them into counters and events. The tools on the right use them.
 
-```mermaid
-flowchart LR
-  subgraph Counters
-    P["/proc (process & system)"]
-    S["/sys (devices, drivers, cgroups)"]
-    D["delay accounting (taskstats via netlink)"]
-    N["netlink (network config & sockets)"]
-    C["cgroup files (cpu.stat, memory.events, io.stat, PSI)"]
-  end
-  subgraph Events
-    T["tracepoints (static, stable-ish)"]
-    K["kprobes/kretprobes (dynamic kernel, unstable)"]
-    U["uprobes/uretprobes (dynamic user, unstable)"]
-    US["USDT (static user, stable)"]
-    PMC["PMCs (hardware counters)"]
-    SW["software events (page faults, context switches)"]
-  end
-  Counters --> TOOLS["vmstat, iostat, ss, sar, top, ..."]
-  Events -->|"perf_event_open(2) / tracefs"| TR["perf, Ftrace, BCC, bpftrace"]
-```
+![Observability sources](./img/ch24-d2-luna.svg)
+
+*Figure 1.24.2. Observability sources.*
 
 ### /proc
 
@@ -354,6 +332,10 @@ Python profiles show interpreter frames, not Python functions, unless you use Py
 ### Flame graphs
 
 Two engineers are arguing about where the time goes. A flame graph ends that argument in about a minute. It turns thousands of stack samples into one picture. Each box is a function. Its width is proportional to the time, measured in samples, spent in that function and its callees. The y-axis is the stack depth. Look for **wide plateaus**.
+
+![How to read a flame graph](./img/ch24-fig1-flame.jpg)
+
+*Figure 1.24.3. In a flame graph, width is the share of samples and height is call depth.*
 
 ```bash
 sudo perf record -F 99 -a -g -- sleep 30
@@ -559,13 +541,9 @@ Suppose you want a histogram of `read()` sizes across the whole machine, updated
 
 Unlike older tracers, BPF is programmable. A program can filter events and store state in **maps**, such as hash tables, arrays, per-CPU maps and histograms. A map is a small key-value store that lives in the kernel and survives between events. A program can compute latency too. It aggregates **in the kernel** and sends only summaries to user space. That makes per-event latency histograms and stack counting affordable on production systems. Copying every event to user space would drown those systems. BPF also powers networking (XDP, tc, Cilium), security (Falco, Tetragon, seccomp-bpf) and observability products. This chapter covers the tracing front ends.
 
-```mermaid
-flowchart LR
-  A["Tracing program\n(bpftrace script / BCC C)"] --> V["Verifier + JIT"]
-  V --> P["Attach to probes:\ntracepoints, kprobes, uprobes, USDT,\nperf events, timers"]
-  P --> M["BPF maps in kernel\n(counts, histograms, stacks)"]
-  M --> U["User space reads summaries\nprints on Ctrl-C / interval"]
-```
+![BPF, BCC and bpftrace](./img/ch24-d3-luna.svg)
+
+*Figure 1.24.4. BPF, BCC and bpftrace.*
 
 BPF needs Linux 4.9 or later for most tools, and 4.4 or later for basic BCC. The kernel options `CONFIG_BPF`, `CONFIG_BPF_SYSCALL` and `CONFIG_BPF_EVENTS` must be present. Modern **CO-RE** ("compile once, run everywhere") tools also need BTF, which lives at `/sys/kernel/btf/vmlinux`. Running a tool requires root, or `CAP_BPF` with `CAP_PERFMON`, and `CAP_SYS_ADMIN` on older kernels. Container security profiles typically block BPF, as chapter 1.21 explains. Your kernel upgrade policy matters here. kprobe-based tools can break when internal functions change, while tracepoint-based tools are more stable.
 
@@ -710,22 +688,9 @@ Workflow for "training throughput dropped":
 
 You have collected three screens of numbers and still have to decide what to run next. Start with the question, and let the flowchart point you to a tool family.
 
-```mermaid
-flowchart TD
-  Q["What do I want to know?"] --> A{"A rate, total or\nutilisation over time?"}
-  A -- yes --> C["Counters: vmstat/mpstat/iostat/sar/ss/nvidia-smi/DCGM\n(cheap, always on)"]
-  A -- no --> B{"Where does CPU time go?"}
-  B -- yes --> P["perf record -F 99 -g + flame graph\n(or BCC profile)"]
-  B -- no --> D{"Why do threads WAIT?\n(blocked, off-CPU)"}
-  D -- yes --> O["offcputime / perf sched / wakeup stacks"]
-  D -- no --> E{"Individual events or latency\ndistribution of a known subsystem?"}
-  E -- yes --> F["BCC tool (biolatency, tcplife, opensnoop, runqlat...)\nelse bpftrace one-liner"]
-  E -- no --> G{"Kernel function call flow\nor counts, minimal environment?"}
-  G -- yes --> H["Ftrace: funccount / function_graph / trace-cmd"]
-  G -- no --> I{"Microarchitecture\n(IPC, cache, TLB)?"}
-  I -- yes --> J["perf stat / perf record on PMCs; perf c2c / mem"]
-  I -- no --> K["Custom question: write a bpftrace program\n(or uprobe/USDT in the app)"]
-```
+![Choosing a tool](./img/ch24-d4-luna.svg)
+
+*Figure 1.24.5. Choosing a tool.*
 
 Four rules of thumb cover most choices. Rule 1 is to start with counters, then profiling, then tracing. Rule 2 is to use the cheapest tool that can answer the question, and the highest-level tool that can still see the thing you are measuring. Rule 3 is to confirm important conclusions with a second tool. Rule 4 is to keep a library of your own one-liners and of saved "normal" outputs.
 

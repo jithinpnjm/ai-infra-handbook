@@ -110,6 +110,10 @@ When management, storage and tenant traffic share the same switches, you need a 
 
 How does one cable carry several VLANs without mixing them up? A trunk link carries frames for many VLANs. It does this by inserting a 4-byte tag after the source MAC, a small label that says which VLAN the frame belongs to. The tag has four fields, shown here in order:
 
+![A VLAN trunk carries tagged frames](./img/n11-fig1-vlan.jpg)
+
+*Figure 2.11.1. The 802.1Q tag carries the VLAN ID across a trunk link.*
+
 ```text
 | Dst MAC | Src MAC | 0x8100 (TPID) | PCP(3) DEI(1) VID(12) | EtherType | payload | FCS |
 ```
@@ -186,6 +190,10 @@ You still want redundant links for resilience, so simply removing the second cab
 ### How STP works
 
 STP settles the topology in four stages, and it helps to think of a group of strangers choosing a leader and then agreeing on a road map. First, the switches elect a root bridge. Each switch has a bridge ID made of a priority, which defaults to 32768, plus its MAC. With the VLAN extension, each VLAN has its own bridge ID. Switches exchange BPDUs, which are bridge protocol data units, sent to the multicast address 01:80:C2:00:00:00. Each BPDU advertises the best root that a switch knows about. The lowest bridge ID becomes the root. You should set the priority deliberately on the core or spine switch, and on a secondary, so the root is predictable instead of simply the oldest MAC.
+
+![Spanning Tree blocks one link](./img/n11-fig2-stp.jpg)
+
+*Figure 2.11.2. STP keeps one loop-free path and blocks the redundant link.*
 
 Picture three switches wired in a triangle, all left at the default priority. The one with the lowest MAC address becomes the root, which is why an old closet switch can win by accident. The other two each choose their cheapest path to it as the root port. On the link between those two, one end is blocked, and that single blocked port is what cuts the loop. If an active link fails, the blocked port wakes up and takes over.
 

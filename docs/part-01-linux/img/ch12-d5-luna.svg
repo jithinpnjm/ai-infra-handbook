@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <title>AI-infrastructure patterns</title>
+  <desc></desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L16 9 L1 17" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L16 9 L1 17" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+  <text x="80" y="100" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">AI-infrastructure patterns</text>
+
+  <rect x="80" y="150" width="1440" height="290" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="800" y="211" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">64 GPU nodes (same 30-minute window)</text>
+
+  <g fill="#f5f8f5" stroke="#207448" stroke-width="3">
+    <rect x="130" y="260" width="300" height="140" rx="14"/>
+    <rect x="480" y="260" width="300" height="140" rx="14"/>
+    <rect x="830" y="260" width="300" height="140" rx="14"/>
+    <rect x="1180" y="260" width="300" height="140" rx="14"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="154" y="302" width="48" height="48" rx="5"/>
+    <path d="M166 290 V302 M178 290 V302 M190 290 V302 M166 350 V362 M178 350 V362 M190 350 V362 M142 314 H154 M142 326 H154 M142 338 H154 M202 314 H214 M202 326 H214 M202 338 H214"/>
+    <rect x="504" y="302" width="48" height="48" rx="5"/>
+    <path d="M516 290 V302 M528 290 V302 M540 290 V302 M516 350 V362 M528 350 V362 M540 350 V362 M492 314 H504 M492 326 H504 M492 338 H504 M552 314 H564 M552 326 H564 M552 338 H564"/>
+    <rect x="854" y="302" width="48" height="48" rx="5"/>
+    <path d="M866 290 V302 M878 290 V302 M890 290 V302 M866 350 V362 M878 350 V362 M890 350 V362 M842 314 H854 M842 326 H854 M842 338 H854 M902 314 H914 M902 326 H914 M902 338 H914"/>
+    <rect x="1204" y="302" width="48" height="48" rx="5"/>
+    <path d="M1216 290 V302 M1228 290 V302 M1240 290 V302 M1216 350 V362 M1228 350 V362 M1240 350 V362 M1192 314 H1204 M1192 326 H1204 M1192 338 H1204 M1252 314 H1264 M1252 326 H1264 M1252 338 H1264"/>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <text x="232" y="336">node 1</text>
+    <text x="582" y="336">node 2</text>
+    <text x="932" y="336">...</text>
+    <text x="1282" y="336">node 64</text>
+  </g>
+
+  <path d="M280 400 V440 L150 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M630 400 V440 L250 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M980 400 V440 L350 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M1330 400 V440 L450 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <path d="M510 745 H600" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <path d="M1030 745 H1120" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="4">
+    <rect x="80" y="560" width="430" height="370" rx="18"/>
+    <rect x="600" y="560" width="430" height="370" rx="18"/>
+    <rect x="1120" y="560" width="400" height="370" rx="18"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="267" y="598" width="56" height="48" rx="5"/>
+    <path d="M279 610 H311 M279 622 H311 M279 634 H301"/>
+    <circle cx="815" cy="622" r="25"/>
+    <circle cx="815" cy="622" r="9"/>
+    <path d="M815 588 V597 M815 647 V656 M781 622 H790 M840 622 H849 M791 598 L797 604 M833 640 L839 646 M839 598 L833 604 M797 640 L791 646"/>
+    <ellipse cx="1320" cy="605" rx="31" ry="12"/>
+    <path d="M1289 605 V641 C1289 648 1303 653 1320 653 C1337 653 1351 648 1351 641 V605 M1289 623 C1289 630 1303 635 1320 635 C1337 635 1351 630 1351 623"/>
+  </g>
+
+  <g fill="#303a36" text-anchor="middle">
+    <text x="295" y="710" font-family="monospace" font-size="24">
+      <tspan x="295" dy="0">open / write / fsync /</tspan>
+      <tspan x="295" dy="36">close  x 64</tspan>
+    </text>
+
+    <text x="815" y="710" font-family="sans-serif" font-size="30" font-weight="700">Metadata server(s)</text>
+    <text x="815" y="768" font-family="sans-serif" font-size="24">
+      <tspan x="815" dy="0">saturate first:</tspan>
+      <tspan x="815" dy="34">scale with node</tspan>
+      <tspan x="815" dy="34">COUNT</tspan>
+    </text>
+
+    <text x="1320" y="710" font-family="sans-serif" font-size="30" font-weight="700">
+      <tspan x="1320" dy="0">Data servers (many,</tspan>
+      <tspan x="1320" dy="36">striped)</tspan>
+    </text>
+    <text x="1320" y="800" font-family="sans-serif" font-size="24">
+      <tspan x="1320" dy="0">mostly idle while MDS</tspan>
+      <tspan x="1320" dy="34">is the bottleneck</tspan>
+    </text>
+  </g>
+</svg>

@@ -250,6 +250,10 @@ Changing the DR requires clearing the process. Avoid relying on the election, an
 
 A large flat OSPF domain puts everyone's SPF and flooding load on every router. Areas split the autonomous system to limit that load, in the way that a company splits into departments. Area 0, the backbone, connects all the other areas. Area border routers (ABRs) attach to several areas. They keep a database for each area, and they summarise prefixes between areas as type 3 LSAs. Autonomous system boundary routers (ASBRs) inject external routes as type 5 LSAs.
 
+![OSPF areas](./img/n14-fig1-areas.jpg)
+
+*Figure 2.14.1. Area 0 connects the other areas through area border routers.*
+
 Special area types reduce state. A stub area drops external LSAs and uses a default route instead. A totally stubby area also drops inter-area routes. An NSSA is a stub area that can still originate external routes through type 7 LSAs. Inter-area routing acts like distance vector at the ABR level, so areas must stay loop-free through the backbone. Modern data centres usually use a single area of up to a few hundred routers. Larger scales often avoid OSPF in favour of IS-IS or BGP.
 
 ### Cost, SPF and ECMP

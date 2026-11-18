@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>CPU virtualisation</title>
+  <desc>CPU virtualisation sequence diagram.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 16" refX="18" refY="8" markerWidth="18" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 8 L0 16 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 16" refX="18" refY="8" markerWidth="18" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 8 L0 16 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">CPU virtualisation</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="80" y="112" width="360" height="150" rx="18"/>
+    <rect x="620" y="112" width="360" height="150" rx="18"/>
+    <rect x="1160" y="112" width="360" height="150" rx="18"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="102" y="161" width="52" height="52" rx="8"/>
+    <path d="M115 174h26v26h-26z M128 161v-9 M128 213v9 M102 187h-9 M154 187h9 M112 154v7 M144 154v7 M112 213v7 M144 213v7"/>
+
+    <rect x="642" y="157" width="52" height="16" rx="4"/>
+    <rect x="642" y="181" width="52" height="16" rx="4"/>
+    <rect x="642" y="205" width="52" height="16" rx="4"/>
+    <path d="M650 165h5 M650 189h5 M650 213h5 M663 165h23 M663 189h23 M663 213h23"/>
+
+    <rect x="1182" y="157" width="52" height="48" rx="5"/>
+    <path d="M1182 169h52 M1192 163h1 M1201 163h1 M1193 181h30v16h-30z M1199 186h18 M1199 191h12"/>
+  </g>
+
+  <g font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <text x="176" y="160">
+      <tspan x="176" dy="0">Guest</tspan>
+      <tspan x="176" dy="35">(vCPU running</tspan>
+      <tspan x="176" dy="35">natively)</tspan>
+    </text>
+    <text x="716" y="174">
+      <tspan x="716" dy="0">KVM</tspan>
+      <tspan x="716" dy="36">(host kernel)</tspan>
+    </text>
+    <text x="1256" y="174">
+      <tspan x="1256" dy="0">QEMU</tspan>
+      <tspan x="1256" dy="36">(user space)</tspan>
+    </text>
+  </g>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="2.5">
+    <rect x="70" y="510" width="1460" height="116" rx="16"/>
+    <rect x="70" y="645" width="1500" height="500" rx="16"/>
+  </g>
+
+  <g font-family="sans-serif" font-size="24" fill="#303a36">
+    <text x="104" y="544" font-weight="700">handled in the kernel (fast path)</text>
+    <text x="104" y="679" font-weight="700">needs device emulation / I/O</text>
+  </g>
+
+  <g font-family="sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#ffffff">
+    <circle cx="100" cy="330" r="24" fill="#207448"/><text x="100" y="339">1</text>
+    <circle cx="100" cy="433" r="24" fill="#207448"/><text x="100" y="442">2</text>
+    <circle cx="100" cy="579" r="24" fill="#207448"/><text x="100" y="588">3</text>
+    <circle cx="100" cy="720" r="24" fill="#207448"/><text x="100" y="729">4</text>
+    <circle cx="100" cy="830" r="24" fill="#207448"/><text x="100" y="839">5</text>
+    <circle cx="100" cy="930" r="24" fill="#207448"/><text x="100" y="939">6</text>
+    <circle cx="100" cy="1030" r="24" fill="#207448"/><text x="100" y="1039">7</text>
+  </g>
+
+  <g font-family="sans-serif" font-size="24" fill="#303a36">
+    <text x="460" y="330" text-anchor="middle">runs guest code directly on CPU</text>
+    <text x="530" y="418" text-anchor="middle">
+      <tspan x="530" dy="0">VM exit (e.g. HLT, MSR write, I/O instruction,</tspan>
+      <tspan x="530" dy="28">EPT violation)</tspan>
+    </text>
+    <text x="530" y="579" text-anchor="middle">VM entry</text>
+    <text x="1070" y="720" text-anchor="middle">return to user space (KVM_RUN returns)</text>
+    <text x="1445" y="830" text-anchor="middle">emulate device, do I/O</text>
+    <text x="1070" y="930" text-anchor="middle">KVM_RUN again</text>
+    <text x="530" y="1030" text-anchor="middle">VM entry</text>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M260 355 H660 V375 H260" marker-end="url(#arrow-green)"/>
+    <path d="M260 475 H800" marker-end="url(#arrow-orange)"/>
+    <path d="M800 600 H260" marker-end="url(#arrow-green)"/>
+    <path d="M800 742 H1340" marker-end="url(#arrow-green)"/>
+    <path d="M1340 850 H1550 V870 H1340" marker-end="url(#arrow-green)"/>
+    <path d="M1340 950 H800" marker-end="url(#arrow-green)"/>
+    <path d="M800 1050 H260" marker-end="url(#arrow-green)"/>
+  </g>
+</svg>

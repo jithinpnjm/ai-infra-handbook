@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>UMA versus NUMA</title>
+  <desc>Two grouped layouts with component connections and a bidirectional link.</desc>
+
+  <defs>
+    <marker id="interconnect-arrow" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+  <text x="800" y="88" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">UMA versus NUMA</text>
+
+  <rect x="40" y="220" width="730" height="640" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <rect x="830" y="220" width="730" height="640" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+
+  <text x="405" y="276" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="700" fill="#207448">NUMA node 0</text>
+  <text x="1195" y="276" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="700" fill="#207448">NUMA node 1</text>
+
+  <text x="800" y="330" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="600" fill="#303a36">UPI / xGMI interconnect (slower, shared)</text>
+  <line x1="595" y1="405" x2="1005" y2="405" stroke="#db8129" stroke-width="5" marker-start="url(#interconnect-arrow)" marker-end="url(#interconnect-arrow)"/>
+
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M405 455 V490 H230 V535 M405 490 H580 V535"/>
+    <path d="M580 635 V680 H230 V720 M580 680 V720"/>
+    <path d="M1195 455 V490 H1020 V535 M1195 490 H1370 V535"/>
+    <path d="M1370 635 V680 H1020 V720 M1370 680 V720"/>
+  </g>
+
+  <g fill="#ffffff" stroke="#207448" stroke-width="4">
+    <rect x="215" y="355" width="380" height="100" rx="16"/>
+    <rect x="1005" y="355" width="380" height="100" rx="16"/>
+    <rect x="80" y="535" width="300" height="100" rx="16"/>
+    <rect x="430" y="535" width="300" height="100" rx="16"/>
+    <rect x="870" y="535" width="300" height="100" rx="16"/>
+    <rect x="1220" y="535" width="300" height="100" rx="16"/>
+    <rect x="80" y="720" width="300" height="100" rx="16"/>
+    <rect x="430" y="720" width="300" height="100" rx="16"/>
+    <rect x="870" y="720" width="300" height="100" rx="16"/>
+    <rect x="1220" y="720" width="300" height="100" rx="16"/>
+  </g>
+
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(240 377)">
+      <rect x="8" y="8" width="48" height="56" rx="6"/>
+      <path d="M0 18 H8 M0 32 H8 M0 46 H8 M0 60 H8 M56 18 H64 M56 32 H64 M56 46 H64 M56 60 H64 M18 0 V8 M32 0 V8 M46 0 V8 M18 64 V72 M32 64 V72 M46 64 V72"/>
+      <rect x="22" y="22" width="20" height="28" rx="3"/>
+    </g>
+    <g transform="translate(1030 377)">
+      <rect x="8" y="8" width="48" height="56" rx="6"/>
+      <path d="M0 18 H8 M0 32 H8 M0 46 H8 M0 60 H8 M56 18 H64 M56 32 H64 M56 46 H64 M56 60 H64 M18 0 V8 M32 0 V8 M46 0 V8 M18 64 V72 M32 64 V72 M46 64 V72"/>
+      <rect x="22" y="22" width="20" height="28" rx="3"/>
+    </g>
+
+    <g transform="translate(100 555)">
+      <ellipse cx="28" cy="10" rx="24" ry="9"/>
+      <path d="M4 10 V48 C4 60 52 60 52 48 V10 M4 29 C4 41 52 41 52 29"/>
+    </g>
+    <g transform="translate(450 555)">
+      <circle cx="28" cy="34" r="15"/>
+      <circle cx="28" cy="34" r="5"/>
+      <path d="M25 5 H31 L34 14 L41 17 L50 13 L54 18 L49 26 L51 34 L59 39 L57 45 L48 46 L43 53 L44 62 L38 65 L32 58 L24 58 L18 65 L12 62 L13 53 L7 46 L-2 45 L-4 39 L4 34 L6 26 L1 18 L5 13 L14 17 L21 14 Z"/>
+    </g>
+    <g transform="translate(890 555)">
+      <ellipse cx="28" cy="10" rx="24" ry="9"/>
+      <path d="M4 10 V48 C4 60 52 60 52 48 V10 M4 29 C4 41 52 41 52 29"/>
+    </g>
+    <g transform="translate(1240 555)">
+      <circle cx="28" cy="34" r="15"/>
+      <circle cx="28" cy="34" r="5"/>
+      <path d="M25 5 H31 L34 14 L41 17 L50 13 L54 18 L49 26 L51 34 L59 39 L57 45 L48 46 L43 53 L44 62 L38 65 L32 58 L24 58 L18 65 L12 62 L13 53 L7 46 L-2 45 L-4 39 L4 34 L6 26 L1 18 L5 13 L14 17 L21 14 Z"/>
+    </g>
+
+    <g transform="translate(100 742)">
+      <rect x="8" y="8" width="48" height="56" rx="6"/>
+      <path d="M0 18 H8 M0 32 H8 M0 46 H8 M0 60 H8 M56 18 H64 M56 32 H64 M56 46 H64 M56 60 H64 M18 0 V8 M32 0 V8 M46 0 V8 M18 64 V72 M32 64 V72 M46 64 V72"/>
+      <rect x="22" y="22" width="20" height="28" rx="3"/>
+    </g>
+    <g transform="translate(450 742)">
+      <circle cx="32" cy="35" r="8"/>
+      <circle cx="8" cy="12" r="6"/>
+      <circle cx="56" cy="12" r="6"/>
+      <circle cx="8" cy="58" r="6"/>
+      <circle cx="56" cy="58" r="6"/>
+      <path d="M14 16 L26 29 M50 16 L38 29 M14 54 L26 41 M50 54 L38 41"/>
+    </g>
+    <g transform="translate(890 742)">
+      <rect x="8" y="8" width="48" height="56" rx="6"/>
+      <path d="M0 18 H8 M0 32 H8 M0 46 H8 M0 60 H8 M56 18 H64 M56 32 H64 M56 46 H64 M56 60 H64 M18 0 V8 M32 0 V8 M46 0 V8 M18 64 V72 M32 64 V72 M46 64 V72"/>
+      <rect x="22" y="22" width="20" height="28" rx="3"/>
+    </g>
+    <g transform="translate(1240 742)">
+      <circle cx="32" cy="35" r="8"/>
+      <circle cx="8" cy="12" r="6"/>
+      <circle cx="56" cy="12" r="6"/>
+      <circle cx="8" cy="58" r="6"/>
+      <circle cx="56" cy="58" r="6"/>
+      <path d="M14 16 L26 29 M50 16 L38 29 M14 54 L26 41 M50 54 L38 41"/>
+    </g>
+  </g>
+
+  <g font-family="sans-serif" font-size="28" font-weight="700" fill="#303a36">
+    <text x="320" y="416">CPU socket 0</text>
+    <text x="1110" y="416">CPU socket 1</text>
+    <text x="180" y="596">DRAM 0</text>
+    <text x="530" y="596">PCIe root 0</text>
+    <text x="970" y="596">DRAM 1</text>
+    <text x="1320" y="596">PCIe root 1</text>
+    <text x="180" y="781">GPU 0,1</text>
+    <text x="530" y="781">NIC 0</text>
+    <text x="970" y="781">GPU 2,3</text>
+    <text x="1320" y="781">NIC 1</text>
+  </g>
+</svg>

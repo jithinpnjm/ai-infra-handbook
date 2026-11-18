@@ -169,6 +169,10 @@ Before you accept a link as working, check its speed, FEC mode and error counter
 
 Picture a receptionist in a building who has never met anyone. At first they do not know which office anyone is in, but every time someone walks past, they note which door they came from. After a while they never need to ask. A **switch** works the same way. It is a bridge with many ports. It joins stations into one layer 2 segment, and it forwards each frame only to the place that frame needs to go. A switch starts with no knowledge of where hosts sit. You can watch it learn that as traffic flows.
 
+![How a switch learns and forwards](./img/n03-fig1-switch-v2.jpg)
+
+*Figure 2.3.1. A switch learns source MACs per port, looks up the destination, then forwards or floods.*
+
 ### Learning, forwarding and flooding
 
 The switch keeps a **MAC address table**, also called the forwarding database (FDB) or CAM table. Each entry maps a VLAN and a MAC address to a port. Each entry also has an age timer, commonly 300 s. If a host goes silent for that long, the switch forgets it, which keeps the table from filling with machines that left.

@@ -211,6 +211,10 @@ The `--enable-logging` flag is what gives you the NAT logs you will read in the 
 
 When one VPC is not enough, you connect networks. The right option depends on the bandwidth you need, how isolated the networks must be, and whether the traffic can cross the Internet.
 
+![VPC peering is not transitive](./img/n32-fig1-peering.jpg)
+
+*Figure 2.32.1. A and C cannot reach each other through B.*
+
 | Option | What it is | Notes |
 |---|---|---|
 | **VPC Network Peering** | Private connectivity between two VPC networks (same or different projects/orgs); non-transitive; no overlapping ranges; exchange of subnet routes (and optionally custom routes) | Low latency, no extra gateways; quota limits; no transitive routing (use NCC or hub VPC) |

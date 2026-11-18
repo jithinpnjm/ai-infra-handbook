@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140">
+  <title>Write-back caching and durability</title>
+  <desc></desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  <text x="80" y="88" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Write-back caching and durability</text>
+
+  <g fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)">
+    <path d="M1017 240 V195 H150 V240" stroke-dasharray="12 10"/>
+  </g>
+  <text x="583" y="173" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">write() returns here: FAST, NOT durable</text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)">
+    <path d="M230 317 H285"/>
+    <path d="M535 317 H590"/>
+    <path d="M820 317 H875"/>
+    <path d="M925 395 V510 H430 V570"/>
+    <path d="M1080 395 V530 H1490 V570"/>
+    <path d="M430 730 V775 H190 V850"/>
+    <path d="M1270 730 V805 H430 V850"/>
+    <path d="M530 945 H650"/>
+    <path d="M1010 945 H1120"/>
+  </g>
+
+  <text x="678" y="484" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">fsync/fdatasync: caller blocks</text>
+  <text x="1290" y="456" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1290" dy="0">kernel flusher threads</tspan>
+    <tspan x="1290" dy="30">(age, dirty thresholds)</tspan>
+  </text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="70" y="240" width="160" height="155" rx="16"/>
+    <rect x="285" y="240" width="250" height="155" rx="16"/>
+    <rect x="590" y="240" width="230" height="155" rx="16"/>
+    <rect x="875" y="240" width="285" height="155" rx="16"/>
+
+    <rect x="240" y="570" width="380" height="160" rx="16"/>
+    <rect x="1050" y="570" width="440" height="160" rx="16"/>
+
+    <rect x="70" y="850" width="460" height="230" rx="16"/>
+    <rect x="650" y="850" width="360" height="230" rx="16"/>
+    <rect x="1120" y="850" width="420" height="230" rx="16"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <g>
+      <rect x="122" y="258" width="56" height="42" rx="4"/>
+      <path d="M122 270 H178 M132 264 H134 M142 264 H144"/>
+      <path d="M132 283 H168 M132 291 H158"/>
+    </g>
+
+    <g>
+      <rect x="382" y="256" width="56" height="48" rx="4"/>
+      <path d="M382 272 H438 M382 288 H438"/>
+    </g>
+
+    <g>
+      <path d="M668 268 V258 H690 L698 266 H742 V302 H668 Z"/>
+      <path d="M668 272 H742"/>
+    </g>
+
+    <g>
+      <rect x="989" y="258" width="56" height="48" rx="5"/>
+      <rect x="1002" y="270" width="30" height="24" rx="3"/>
+      <path d="M997 251 V258 M1009 251 V258 M1021 251 V258 M1033 251 V258 M997 306 V313 M1009 306 V313 M1021 306 V313 M1033 306 V313"/>
+      <path d="M982 265 H989 M982 277 H989 M982 289 H989 M1045 265 H1052 M1045 277 H1052 M1045 289 H1052"/>
+    </g>
+
+    <g>
+      <circle cx="288" cy="650" r="22"/>
+      <circle cx="288" cy="650" r="8"/>
+      <path d="M288 621 V628 M288 672 V679 M259 650 H266 M310 650 H317 M268 630 L273 635 M303 665 L308 670 M308 630 L303 635 M273 665 L268 670"/>
+    </g>
+
+    <g>
+      <circle cx="1098" cy="650" r="22"/>
+      <circle cx="1098" cy="650" r="8"/>
+      <path d="M1098 621 V628 M1098 672 V679 M1069 650 H1076 M1120 650 H1127 M1078 630 L1083 635 M1113 665 L1118 670 M1118 630 L1113 635 M1083 665 L1078 670"/>
+    </g>
+
+    <g>
+      <rect x="96" y="899" width="58" height="38" rx="3"/>
+      <rect x="108" y="911" width="58" height="38" rx="3"/>
+      <rect x="120" y="923" width="58" height="38" rx="3"/>
+    </g>
+
+    <g>
+      <rect x="672" y="909" width="56" height="48" rx="5"/>
+      <rect x="685" y="921" width="30" height="24" rx="3"/>
+      <path d="M680 902 V909 M692 902 V909 M704 902 V909 M716 902 V909 M680 957 V964 M692 957 V964 M704 957 V964 M716 957 V964"/>
+      <path d="M665 916 H672 M665 928 H672 M665 940 H672 M728 916 H735 M728 928 H735 M728 940 H735"/>
+    </g>
+
+    <g>
+      <ellipse cx="1158" cy="910" rx="28" ry="10"/>
+      <path d="M1130 910 V950 C1130 956 1142 961 1158 961 C1174 961 1186 956 1186 950 V910"/>
+      <path d="M1130 930 C1130 936 1142 941 1158 941 C1174 941 1186 936 1186 930"/>
+    </g>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700" text-anchor="middle">
+    <text x="150" y="351">write()</text>
+    <text x="410" y="342">
+      <tspan x="410" dy="0">libc buffer</tspan>
+      <tspan x="410" dy="36">(user space)</tspan>
+    </text>
+    <text x="705" y="342">
+      <tspan x="705" dy="0">VFS and</tspan>
+      <tspan x="705" dy="36">filesystem</tspan>
+    </text>
+    <text x="1017" y="342">
+      <tspan x="1017" dy="0">Page cache</tspan>
+      <tspan x="1017" dy="36">(dirty page)</tspan>
+    </text>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <text x="340" y="639">
+      <tspan x="340" dy="0">Synchronous</tspan>
+      <tspan x="340" dy="38">flush</tspan>
+    </text>
+    <text x="1160" y="639">
+      <tspan x="1160" dy="0">Asynchronous</tspan>
+      <tspan x="1160" dy="38">write-back</tspan>
+    </text>
+
+    <text x="190" y="925">
+      <tspan x="190" dy="0">Block layer:</tspan>
+      <tspan x="190" dy="40">merge + scheduler</tspan>
+    </text>
+    <text x="750" y="925">
+      <tspan x="750" dy="0">Driver, then</tspan>
+      <tspan x="750" dy="40">device cache</tspan>
+    </text>
+    <text x="1200" y="903">
+      <tspan x="1200" dy="0">Persistent media</tspan>
+      <tspan x="1200" dy="32">(durable only</tspan>
+      <tspan x="1200" dy="32">after the device</tspan>
+      <tspan x="1200" dy="32">flushes its own</tspan>
+      <tspan x="1200" dy="32">cache)</tspan>
+    </text>
+  </g>
+</svg>

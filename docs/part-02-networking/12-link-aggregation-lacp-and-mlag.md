@@ -62,6 +62,10 @@ flowchart LR
 
 A hash maps a large input to a small fixed output, and it spreads inputs roughly evenly across the buckets. Imagine a toy hash that sums the digits of a number. The same input always gives the same output, so a flow sticks to one link. You cannot recover the input from the output, and different inputs can collide into the same bucket. For load sharing, you want those collisions spread evenly, not avoided. Think of sorting a crowd into queues by the last digit of their ticket number. Everyone with the same last digit joins the same queue.
 
+![A hash picks one link per flow](./img/n12-fig1-hash.jpg)
+
+*Figure 2.12.1. Each flow is pinned to one link, so balance is imperfect.*
+
 Real switches and the kernel use CRC variants, XOR folds, or Jenkins and Toeplitz style hashes. Many of them add a per-device seed.
 
 Balance is statistical, which means it improves with numbers, like coin tosses. It depends on the entropy of the hash inputs, the sizes of the flows and the layer you hash on. Entropy means how much the inputs vary. Many hosts in one broadcast domain that talk to each other have varied MACs. A few hosts that talk to a single server show little MAC or IP variety, so hashing on the L4 source and destination ports adds the entropy you need. A single TCP connection between two hosts has exactly one 5-tuple, so it uses one member no matter how many links exist.
@@ -162,6 +166,10 @@ Teaming with `teamd` and OVS bonds are alternatives. Modern distributions are re
 ## 4. Multi-chassis link aggregation (MLAG, vPC, EVPN multihoming)
 
 Picture a server whose two links both land on one switch. When that switch is upgraded, the server loses both links. LACP bundles terminate on one switch, so that switch is a single point of failure for the server, and for any upgrade. **MLAG** removes that dependency. A bundle's members connect to two switches, and those two switches present themselves to the server, and to STP and LACP, as one logical switch.
+
+![MLAG](./img/n12-fig2-mlag-v2.jpg)
+
+*Figure 2.12.2. Two switches act as one logical switch for the server's bond.*
 
 MLAG goes by different names on each vendor's platform. You will see Cisco vPC, Arista MLAG, Juniper MC-LAG or ESI-LAG, Cumulus or NVIDIA MLAG (CLAG), and Dell VLT.
 

@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Inside a traditional filesystem</title>
+  <desc>Traditional filesystem inode table and data pool.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0L18 9L0 18Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0L18 9L0 18Z" fill="#db8129"/>
+    </marker>
+    <symbol id="folder-icon" viewBox="0 0 64 64">
+      <path d="M6 17h20l7 8h25v29H6zM6 25h52" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="file-icon" viewBox="0 0 64 64">
+      <path d="M15 5h23l13 13v41H15zM38 5v14h13M23 32h20M23 42h20M23 52h15" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="data-icon" viewBox="0 0 64 64">
+      <path d="M8 15c0-6 11-10 24-10s24 4 24 10-11 10-24 10S8 21 8 15zM8 15v34c0 6 11 10 24 10s24-4 24-10V15M8 32c0 6 11 10 24 10s24-4 24-10" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="64" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">Inside a traditional filesystem</text>
+
+  <rect x="40" y="95" width="700" height="1060" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="860" y="95" width="700" height="1060" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="390" y="140" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Inode table</text>
+  <text x="1210" y="140" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Data pool</text>
+
+  <g fill="#f5f8f5" stroke="#207448" stroke-width="3">
+    <rect x="70" y="160" width="640" height="180" rx="14"/>
+    <rect x="70" y="350" width="640" height="180" rx="14"/>
+    <rect x="70" y="540" width="640" height="180" rx="14"/>
+    <rect x="70" y="730" width="640" height="180" rx="14"/>
+    <rect x="70" y="920" width="640" height="180" rx="14"/>
+    <rect x="890" y="160" width="640" height="180" rx="14"/>
+    <rect x="890" y="350" width="640" height="180" rx="14"/>
+    <rect x="890" y="540" width="640" height="180" rx="14"/>
+    <rect x="890" y="730" width="640" height="180" rx="14"/>
+    <rect x="890" y="920" width="640" height="180" rx="14"/>
+  </g>
+
+  <g fill="none" stroke-width="4">
+    <path d="M710 250H890" stroke="#db8129" marker-end="url(#arrow-orange)"/>
+    <path d="M710 440H890" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M710 630H890" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M710 820H890" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M710 1010H890" stroke="#207448" marker-end="url(#arrow-green)"/>
+  </g>
+
+  <use href="#folder-icon" x="88" y="220" width="56" height="56"/>
+  <text x="160" y="240" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="160" dy="0">inode 2: DIRECTORY (root)</tspan>
+    <tspan x="160" dy="42" font-family="monospace" font-size="24" font-weight="400">links=4</tspan>
+  </text>
+
+  <use href="#folder-icon" x="88" y="410" width="56" height="56"/>
+  <text x="160" y="430" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="160" dy="0">inode 12: DIRECTORY dir_1</tspan>
+    <tspan x="160" dy="42" font-family="monospace" font-size="24" font-weight="400">links=2</tspan>
+  </text>
+
+  <use href="#file-icon" x="88" y="600" width="56" height="56"/>
+  <text x="160" y="620" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="160" dy="0">inode 14: FILE file_2</tspan>
+    <tspan x="160" dy="42" font-family="monospace" font-size="24" font-weight="400">links=1</tspan>
+  </text>
+
+  <use href="#file-icon" x="88" y="790" width="56" height="56"/>
+  <text x="160" y="810" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="160" dy="0">inode 15: FILE file_3</tspan>
+    <tspan x="160" dy="42" font-family="monospace" font-size="24" font-weight="400" xml:space="preserve">links=2  (hard link)</tspan>
+  </text>
+
+  <use href="#folder-icon" x="88" y="980" width="56" height="56"/>
+  <text x="160" y="1000" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="160" dy="0">inode 7633: DIRECTORY dir_2</tspan>
+    <tspan x="160" dy="42" font-family="monospace" font-size="24" font-weight="400">links=2</tspan>
+  </text>
+
+  <use href="#data-icon" x="910" y="174" width="56" height="56"/>
+  <text x="980" y="202" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">root dir data:</text>
+  <text x="910" y="248" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="910" dy="0">. -&gt; 2</tspan>
+    <tspan x="910" dy="26">.. -&gt; 2</tspan>
+    <tspan x="910" dy="26">dir_1 -&gt; 12</tspan>
+    <tspan x="910" dy="26">dir_2 -&gt; 7633</tspan>
+  </text>
+
+  <use href="#data-icon" x="910" y="364" width="56" height="56"/>
+  <text x="980" y="392" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">dir_1 data:</text>
+  <text x="910" y="448" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="910" dy="0">file_1, file_2 -&gt; 14,</tspan>
+    <tspan x="910" dy="30">file_3 -&gt; 15</tspan>
+  </text>
+
+  <use href="#data-icon" x="910" y="554" width="56" height="56"/>
+  <text x="980" y="582" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">dir_2 data:</text>
+  <text x="910" y="648" font-family="monospace" font-size="24" fill="#303a36">file_4, file_5 -&gt; 15</text>
+
+  <use href="#file-icon" x="910" y="792" width="56" height="56"/>
+  <text x="980" y="828" font-family="monospace" font-size="30" font-weight="700" fill="#303a36">file_2 contents</text>
+
+  <use href="#file-icon" x="910" y="982" width="56" height="56"/>
+  <text x="980" y="992" font-family="monospace" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="980" dy="0">file_3 / file_5</tspan>
+    <tspan x="980" dy="40">contents (one copy)</tspan>
+  </text>
+</svg>

@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <title>Job 1: running processes</title>
+  <desc>A six-node process flow with a timer-triggered return to the kernel.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L15 8 L1 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-left" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="1" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M15 1 L1 8 L15 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-down-orange" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="8" refY="15" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L8 15 L15 1 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+  <text x="80" y="108" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Job 1: running processes</text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="80" y="230" width="660" height="220" rx="20" fill="#e8f1ea"/>
+    <rect x="780" y="230" width="660" height="220" rx="20" fill="#e8f1ea"/>
+    <rect x="780" y="500" width="660" height="220" rx="20" fill="#e8f1ea"/>
+    <rect x="80" y="500" width="660" height="220" rx="20" fill="#e8f1ea"/>
+    <rect x="80" y="770" width="660" height="220" rx="20" fill="#e8f1ea"/>
+    <rect x="780" y="770" width="660" height="220" rx="20" fill="#e8f1ea"/>
+
+    <path d="M740 340 H780" marker-end="url(#arrow-green)"/>
+    <path d="M1110 450 V500" marker-end="url(#arrow-green)"/>
+    <path d="M780 610 H740" marker-end="url(#arrow-left)"/>
+    <path d="M410 720 V770" marker-end="url(#arrow-green)"/>
+    <path d="M740 880 H780" marker-end="url(#arrow-green)"/>
+    <path d="M1440 880 H1480 V190 H1110 V230" stroke="#db8129" marker-end="url(#arrow-down-orange)"/>
+
+    <!-- Process window icon -->
+    <rect x="165" y="312" width="58" height="52" rx="5"/>
+    <path d="M165 326 H223 M176 319 H177 M188 319 H189"/>
+    <!-- Timer icon -->
+    <circle cx="865" cy="340" r="25"/>
+    <path d="M865 323 V341 L878 349 M856 307 H874 M865 307 V315"/>
+    <!-- CPU chip icon -->
+    <rect x="855" y="584" width="52" height="52" rx="6"/>
+    <rect x="868" y="597" width="26" height="26" rx="3"/>
+    <path d="M865 576 V584 M878 576 V584 M891 576 V584 M904 576 V584 M865 636 V644 M878 636 V644 M891 636 V644 M904 636 V644 M847 594 H855 M847 607 H855 M847 620 H855 M907 594 H915 M907 607 H915 M907 620 H915"/>
+    <!-- Scheduler gear icon -->
+    <circle cx="165" cy="610" r="17"/>
+    <circle cx="165" cy="610" r="6"/>
+    <path d="M165 579 V586 M165 634 V641 M134 610 H141 M189 610 H196 M143 588 L148 593 M182 627 L187 632 M143 632 L148 627 M182 593 L187 588"/>
+    <!-- Memory mappings icon -->
+    <rect x="157" y="838" width="52" height="42" rx="4"/>
+    <path d="M168 850 H198 M168 860 H198 M168 870 H188 M165 830 H217 V872"/>
+    <!-- Process window icon -->
+    <rect x="865" y="852" width="58" height="52" rx="5"/>
+    <path d="M865 866 H923 M876 859 H877 M888 859 H889"/>
+  </g>
+
+  <g fill="#207448">
+    <circle cx="120" cy="278" r="24"/>
+    <circle cx="820" cy="278" r="24"/>
+    <circle cx="820" cy="548" r="24"/>
+    <circle cx="120" cy="548" r="24"/>
+    <circle cx="120" cy="818" r="24"/>
+    <circle cx="820" cy="818" r="24"/>
+  </g>
+  <g fill="#ffffff" font-family="sans-serif" font-size="24" font-weight="700" text-anchor="middle">
+    <text x="120" y="286">1</text>
+    <text x="820" y="286">2</text>
+    <text x="820" y="556">3</text>
+    <text x="120" y="556">4</text>
+    <text x="120" y="826">5</text>
+    <text x="820" y="826">6</text>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <text x="245" y="324">
+      <tspan x="245" dy="0">Process A runs</tspan>
+      <tspan x="245" dy="42">in user mode</tspan>
+    </text>
+    <text x="945" y="324">
+      <tspan x="945" dy="0">Timer interrupt fires</tspan>
+      <tspan x="945" dy="42">CPU enters kernel mode</tspan>
+    </text>
+    <text x="945" y="594">
+      <tspan x="945" dy="0">Kernel saves A's state:</tspan>
+      <tspan x="945" dy="42">registers and counter</tspan>
+    </text>
+    <text x="245" y="594">
+      <tspan x="245" dy="0">Scheduler picks next</tspan>
+      <tspan x="245" dy="42">ready process B</tspan>
+    </text>
+    <text x="245" y="864">
+      <tspan x="245" dy="0">Kernel loads B's state</tspan>
+      <tspan x="245" dy="42">and memory mappings</tspan>
+    </text>
+    <text x="945" y="864">
+      <tspan x="945" dy="0">Back to user mode:</tspan>
+      <tspan x="945" dy="42">B runs for its slice</tspan>
+    </text>
+  </g>
+
+  <text x="1290" y="164" fill="#303a36" font-family="sans-serif" font-size="24" text-anchor="middle">timer fires again</text>
+</svg>

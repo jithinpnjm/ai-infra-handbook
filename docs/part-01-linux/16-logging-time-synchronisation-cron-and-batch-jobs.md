@@ -238,18 +238,9 @@ Before you ship a new daemon, check whether it can reopen its log, because that 
 
 Once you run a fleet, the logs on each node stop being the archive and become a buffer. The usual design has four steps: collect on each node, ship reliably, store and index centrally, then query and alert. The diagram below shows the flow.
 
-```mermaid
-flowchart LR
-  subgraph Node["Each GPU / login / management node"]
-    A["Applications, services\n(stdout, syslog, files)"] --> J["journald / rsyslog"]
-    K["kernel (dmesg, Xid, MCE)"] --> J
-    J --> AG["Agent: rsyslog omfwd / Fluent Bit / Vector / Promtail / OTel collector\n(buffer to disk, retry, add labels: node, rack, cluster)"]
-    C["Container logs\n(/var/log/pods, containerd)"] --> AG
-  end
-  AG -->|"TCP+TLS / HTTP / Kafka"| Q["Optional queue/broker (Kafka, Redis)"]
-  Q --> S["Store: Loki / Elasticsearch / OpenSearch / ClickHouse / S3 archive"]
-  S --> V["Query + dashboards (Grafana, Kibana), alert rules"]
-```
+![Central logging for clusters](./img/ch16-d1-luna.svg)
+
+*Figure 1.16.1. Central logging for clusters.*
 
 Reliability comes first, because a log you never received cannot be investigated. Agents should buffer to disk and retry, because syslog over UDP is not acceptable for audit-relevant logs. Back-pressure must never stall the application that writes the log.
 
@@ -404,6 +395,10 @@ On each node, the `/etc/ntpd.conf` file needs only one line: `server server.clus
 ## 7. Scheduling recurring tasks: cron
 
 You inherit a node that runs a dozen unattended jobs, and the only documentation is the crontab itself. cron is the classic periodic scheduler, and it is old enough to be present on almost every Unix system you will meet. The `crond` daemon wakes every minute and runs jobs from crontab files. Each job is a command with five time fields in front of it:
+
+![Reading a cron line](./img/ch16-fig1-cron.jpg)
+
+*Figure 1.16.2. The five time fields of a cron line and what the example means.*
 
 ```text
 # minute  hour  day-of-month  month  day-of-week   command

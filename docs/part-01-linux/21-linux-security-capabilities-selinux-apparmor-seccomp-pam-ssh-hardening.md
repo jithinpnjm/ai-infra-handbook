@@ -65,14 +65,9 @@ Suppose an engineer logs in and starts a training job. Before a single byte of m
 
 Security on Linux is layered, and each layer answers one of those questions. A request from a user or a service passes through them in order. Read the diagram from top to bottom, starting with who is asking and ending with what happened. The third layer is where two access-control models meet: DAC, the permissions an owner sets, and MAC, a policy the owner cannot override. Section 6 takes them apart.
 
-```mermaid
-flowchart TB
-  A["Who are you? (identification, authentication)\n PAM, sssd/LDAP, SSH keys/certs, MFA"] --> B["What may you do as a process?\n UID/GID, supplementary groups, capabilities"]
-  B --> C["Which objects may you touch?\n DAC: mode bits, ACLs → MAC: SELinux/AppArmor labels/profiles"]
-  C --> D["Which system calls may you issue?\n seccomp-bpf filters, no_new_privs"]
-  D --> E["What can you see and use?\n namespaces, cgroups (ch. 1.18-1.19)"]
-  E --> F["What did happen?\n auditd, journald, IMA, integrity monitoring"]
-```
+![The security model in one picture](./img/ch21-d1-luna.svg)
+
+*Figure 1.21.1. The security model in one picture.*
 
 Several principles run through every section of this chapter. The first and most important is **least privilege**, which asks you to give a process only what it needs. Defence in depth means stacking several independent layers, so that one failure is not fatal. Where practical, aim for default deny. Keep separation of duties and auditability in view as well.
 
@@ -232,6 +227,10 @@ Machines should use **keys, not passwords**. Use SSH keys or certificates (secti
 ## 4. Capabilities: splitting root into pieces
 
 Suppose a server must bind a port below 1024, but it should never be able to load a kernel module. Traditional Unix offers only two kinds of process: root, which is all-powerful, and everyone else.
+
+![Capabilities split root into pieces](./img/ch21-fig1-caps.jpg)
+
+*Figure 1.21.2. Capabilities divide root's power into separate pieces that you grant one at a time.*
 
 Linux breaks root's powers into about 40 **capabilities**. Each capability is a distinct privilege, one key rather than the whole ring, and each can be granted, dropped or inherited separately. A process with euid 0 *normally* holds all of them. A process with a few capabilities and a non-zero UID can still do just those operations.
 

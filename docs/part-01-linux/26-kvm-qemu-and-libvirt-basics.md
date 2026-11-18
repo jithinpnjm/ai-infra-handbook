@@ -59,23 +59,9 @@ Hardware-assisted virtualisation takes the other route. Guest instructions run d
 
 The classical **Type 1** hypervisor runs directly on the hardware. People also call that bare metal or native, and Xen, VMware ESXi and Hyper-V are examples. A **Type 2** hypervisor runs inside a host operating system, as VirtualBox and early QEMU do. Kernel modules have blurred that line, so a more practical split is by where the hypervisor lives. Either a small native hypervisor sits on bare metal with a privileged management VM beside the guests, or the host Linux kernel itself acts as the hypervisor through a module. The diagram shows both.
 
-```mermaid
-flowchart TB
-  subgraph A["Native hypervisor (Xen-style)"]
-    HA["Hypervisor on bare metal\nschedules vCPUs, owns hardware"]
-    D0["Privileged domain (dom0)\nadministers, runs I/O proxy (QEMU)"]
-    GA1["Guest VM"]; GA2["Guest VM"]
-    HA --- D0; HA --- GA1; HA --- GA2
-  end
-  subgraph B["Kernel-module hypervisor (KVM-style)"]
-    HK["Host Linux kernel + KVM module\n(Linux scheduler schedules vCPU threads)"]
-    Q1["QEMU process per VM\n(device models, I/O proxy)"]
-    Q2["QEMU process per VM"]
-    GB1["Guest VM"]; GB2["Guest VM"]
-    HK --- Q1 --- GB1
-    HK --- Q2 --- GB2
-  end
-```
+![Hypervisor types and configurations](./img/ch26-d1-luna.svg)
+
+*Figure 1.26.1. Hypervisor types and configurations.*
 
 In KVM, each VM is an ordinary Linux process, `qemu-system-x86_64`. Each virtual CPU is an ordinary thread of that process, named `CPU 0/KVM`, `CPU 1/KVM` and so on. The host's own scheduler, memory manager, cgroups, NUMA policy, `perf` and tracepoints all apply to it. That is KVM's strength, and it is why chapters 1.8, 1.17 and 1.18 carry over so neatly. What you already know about Linux processes applies to VMs too.
 
@@ -114,22 +100,9 @@ Classic x86 CPUs had privilege rings, numbered 0 for the kernel and 3 for user p
 3. **Paravirtualisation (PV).** The guest kernel is changed to call the hypervisor directly through **hypercalls**, instead of running privileged operations itself. Xen does this. It is efficient, but the guest must support it.
 4. **Hardware assist.** Intel VT-x and AMD-V, introduced between 2005 and 2006, add a CPU mode for the hypervisor, called VMX root, and a mode for the guest, called non-root. The guest kernel runs in ring 0, but that ring 0 is unprivileged from the host's point of view. A control structure, the **VMCS** on Intel and the **VMCB** on AMD, describes the guest state and which events cause exits. Some guest actions are intercepted on purpose. Executing `CPUID` or `HLT` is one, and so are port or MSR access, receiving an interrupt, and raising an EPT fault. On those, the CPU performs a **VM exit**: it saves the guest state and runs the hypervisor. After the hypervisor handles the event, a **VM entry** resumes the guest.
 
-```mermaid
-sequenceDiagram
-  participant G as Guest (vCPU running natively)
-  participant K as KVM (host kernel)
-  participant Q as QEMU (user space)
-  G->>G: runs guest code directly on CPU
-  G->>K: VM exit (e.g. HLT, MSR write, I/O instruction, EPT violation)
-  alt handled in the kernel (fast path)
-    K->>G: VM entry
-  else needs device emulation / I/O
-    K->>Q: return to user space (KVM_RUN returns)
-    Q->>Q: emulate device, do I/O
-    Q->>K: KVM_RUN again
-    K->>G: VM entry
-  end
-```
+![CPU virtualisation](./img/ch26-d2-luna.svg)
+
+*Figure 1.26.2. CPU virtualisation.*
 
 **VM exits are where virtualisation costs time.** Two things matter: how long the CPU spends outside the guest handling exits, and how often exits happen. An exit that the kernel handles on its own is cheap. An exit that must go back to QEMU in user space costs much more, because of the context switches.
 
@@ -167,6 +140,10 @@ The IOMMU, which is Intel VT-d, AMD-Vi or Arm SMMU depending on the hardware, do
 
 Devices that cannot be isolated from each other are grouped into **IOMMU groups**. Interrupts are virtualised too, using posted interrupts and APICv or AVIC, so that each interrupt does not cause an exit.
 
+![GPU passthrough with VFIO](./img/ch26-fig1-vfio.jpg)
+
+*Figure 1.26.3. VFIO hands a whole IOMMU group, including the GPU, to a guest VM.*
+
 When you read VM configurations, you will see names such as `virtio-blk`, `virtio-scsi`, `virtio-net`, `virtio-balloon`, `virtio-fs`, `virtio-vsock`, `vhost-net`, `vfio-pci` and `qemu-guest-agent`. Some are plain English once you know the shape. OVMF is the UEFI firmware for guests. `q35` is the modern chipset with PCIe, and `i440fx` is the legacy one. `QMP` is the QEMU Machine Protocol. You will also see `qcow2` and `cloud-init` in almost every VM setup.
 
 Keep the IOMMU in mind whenever you plan a GPU or a NIC for a guest, because passthrough without it is not safe.
@@ -177,14 +154,9 @@ Picture your first `virsh` session. You type `virsh list --all` and wonder who a
 
 Read the diagram from the top down. Admins and orchestrators sit at the top. libvirt holds the configuration in the middle. QEMU runs each machine, and the KVM kernel module does the hardware work underneath.
 
-```mermaid
-flowchart TB
-  U["Admin / orchestrator\nvirsh · virt-manager · virt-install · OpenStack Nova · KubeVirt · Cockpit"] --> L["libvirt (libvirtd / virtqemud)\ndomain XML, networks, storage pools, security labels"]
-  L --> Q["QEMU process per VM\n(qemu-system-x86_64)\nvCPU threads + device models + iothreads"]
-  Q <-->|"/dev/kvm ioctls"| K["KVM kernel module (kvm, kvm_intel/kvm_amd)\nVM entry/exit, EPT, interrupts"]
-  K --> HW["CPU VT-x/AMD-V · IOMMU · NIC/GPU/NVMe"]
-  Q -.-> V["vhost-net / vhost-user / VFIO / SPDK"]
-```
+![The stack: KVM, QEMU, libvirt](./img/ch26-d3-luna.svg)
+
+*Figure 1.26.4. The stack: KVM, QEMU, libvirt.*
 
 The three names are easy to tangle, so keep one picture. KVM is the kernel side. QEMU is the process that builds and runs a machine. libvirt is the manager you talk to.
 

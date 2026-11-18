@@ -63,6 +63,10 @@ Get comfortable with these conversions before you go on, because every subnet ca
 
 Suppose a node reports the address 10.23.2.37, and you need to know which other hosts it can reach directly. The answer depends on the mask as much as on the address. An address on its own does not say who the neighbours are, in the same way that a house number is meaningless without the street. An IPv4 address is 32 bits, written as four decimal octets. This notation is called dotted quad, and an example is `10.23.2.37`. The address identifies an interface, not a host. It has two parts. The network prefix names the subnet, and the host part names the interface inside that subnet. The subnet mask, or prefix length, marks where the split falls. Its 1s cover the network part, and its 0s cover the host part.
 
+![Reading a CIDR block](./img/n04-fig1-cidr-v2.jpg)
+
+*Figure 2.4.1. A /22 has 22 fixed network bits and 10 host bits: 1024 addresses, 1022 usable.*
+
 ```text
 Address     10.23.2.37    = 00001010.00010111.00000010.00100101
 Mask /24    255.255.255.0 = 11111111.11111111.11111111.00000000

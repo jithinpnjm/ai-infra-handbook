@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2340" height="1280" viewBox="0 0 2340 1280">
+  <title>Systemd, Docker, Slurm and the cgroup tree</title>
+  <desc>Hierarchy of cgroup slices and scopes.</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" viewBox="0 0 18 18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" viewBox="0 0 18 18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+    <symbol id="folder" viewBox="0 0 56 56">
+      <path d="M6 15h17l6 7h21v25H6z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M6 23h44" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="gear" viewBox="0 0 56 56">
+      <path d="M24 5h8l2 6 5 2 5-3 6 6-3 5 2 5 6 2v8l-6 2-2 5 3 5-6 6-5-3-5 2-2 6h-8l-2-6-5-2-5 3-6-6 3-5-2-5-6-2v-8l6-2 2-5-3-5 6-6 5 3 5-2z" transform="translate(0 -2) scale(.92)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <circle cx="28" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    </symbol>
+    <symbol id="chip" viewBox="0 0 56 56">
+      <rect x="12" y="12" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M20 3v9m8-9v9m8-9v9M20 44v9m8-9v9m8-9v9M3 20h9m-9 8h9m-9 8h9m32-16h9m-9 8h9m-9 8h9M20 20h16v16H20z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="window" viewBox="0 0 56 56">
+      <rect x="5" y="9" width="46" height="38" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M5 19h46M13 14h1m7 0h1m7 0h1" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+
+  <rect width="2340" height="1280" fill="#f5f8f5"/>
+  <text x="80" y="78" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Systemd, Docker, Slurm and the cgroup tree</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="920" y="130" width="360" height="150" rx="18"/>
+    <rect x="60" y="340" width="280" height="170" rx="18"/>
+    <rect x="420" y="340" width="280" height="170" rx="18"/>
+    <rect x="780" y="340" width="280" height="170" rx="18"/>
+    <rect x="1510" y="340" width="500" height="170" rx="18"/>
+    <rect x="40" y="600" width="280" height="180" rx="18"/>
+    <rect x="350" y="600" width="280" height="180" rx="18"/>
+    <rect x="660" y="600" width="300" height="180" rx="18"/>
+    <rect x="900" y="600" width="440" height="180" rx="18"/>
+    <rect x="1350" y="600" width="300" height="180" rx="18"/>
+    <rect x="1680" y="600" width="300" height="180" rx="18"/>
+    <rect x="2000" y="600" width="300" height="180" rx="18"/>
+    <rect x="1270" y="830" width="460" height="180" rx="18"/>
+    <rect x="1270" y="1060" width="460" height="170" rx="18"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)">
+    <path d="M1100 280 C1100 305 200 310 200 340"/>
+    <path d="M1100 280 C1100 310 560 310 560 340"/>
+    <path d="M1100 280 C1100 310 920 310 920 340"/>
+    <path d="M1100 280 C1100 310 1760 310 1760 340"/>
+
+    <path d="M200 510 C200 545 180 550 180 600"/>
+    <path d="M200 510 C200 550 490 550 490 600"/>
+    <path d="M200 510 C200 550 810 550 810 600"/>
+    <path d="M560 510 C560 550 1120 550 1120 600"/>
+
+    <path d="M1760 510 C1760 545 1500 550 1500 600"/>
+    <path d="M1760 510 C1760 550 1830 550 1830 600"/>
+    <path d="M1760 510 C1760 545 2150 550 2150 600"/>
+
+    <path d="M1500 780 L1500 830"/>
+  </g>
+  <path d="M1500 1010 L1500 1060" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+
+  <g>
+    <use href="#folder" x="1072" y="142" width="56" height="56"/>
+    <text x="1100" y="238" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">-.slice (root)</text>
+  </g>
+
+  <g>
+    <use href="#folder" x="172" y="354" width="56" height="56"/>
+    <text x="200" y="455" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">system.slice</text>
+  </g>
+  <g>
+    <use href="#folder" x="532" y="354" width="56" height="56"/>
+    <text x="560" y="455" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">user.slice</text>
+  </g>
+  <g>
+    <use href="#chip" x="892" y="354" width="56" height="56"/>
+    <text x="920" y="455" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">machine.slice</text>
+  </g>
+  <g>
+    <use href="#folder" x="1732" y="352" width="56" height="56"/>
+    <text x="1760" y="440" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+      <tspan x="1760">kubepods.slice</tspan>
+      <tspan x="1760" dy="30">(Kubernetes)</tspan>
+    </text>
+  </g>
+
+  <g>
+    <use href="#gear" x="152" y="612" width="56" height="56"/>
+    <text x="180" y="715" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">sshd.service</text>
+  </g>
+  <g>
+    <use href="#gear" x="462" y="612" width="56" height="56"/>
+    <text x="490" y="715" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">slurmd.service</text>
+  </g>
+  <g>
+    <use href="#gear" x="782" y="612" width="56" height="56"/>
+    <text x="810" y="697" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+      <tspan x="810">containerd.</tspan>
+      <tspan x="810" dy="30">service</tspan>
+    </text>
+  </g>
+  <g>
+    <use href="#window" x="1092" y="612" width="56" height="56"/>
+    <text x="1120" y="697" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+      <tspan x="1120">user-1000.slice →</tspan>
+      <tspan x="1120" dy="30">session-3.scope</tspan>
+    </text>
+  </g>
+  <g>
+    <use href="#folder" x="1472" y="612" width="56" height="56"/>
+    <text x="1500" y="697" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+      <tspan x="1500">kubepods-</tspan>
+      <tspan x="1500" dy="30">burstable.slice</tspan>
+    </text>
+  </g>
+  <g>
+    <use href="#folder" x="1802" y="612" width="56" height="56"/>
+    <text x="1830" y="697" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+      <tspan x="1830">kubepods-</tspan>
+      <tspan x="1830" dy="30">besteffort.slice</tspan>
+    </text>
+  </g>
+  <g>
+    <use href="#folder" x="2122" y="612" width="56" height="56"/>
+    <text x="2150" y="685" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+      <tspan x="2150">kubepods-pod&lt;uid&gt;.</tspan>
+      <tspan x="2150" dy="30">slice</tspan>
+      <tspan x="2150" dy="30">(Guaranteed)</tspan>
+    </text>
+  </g>
+
+  <g>
+    <use href="#folder" x="1472" y="842" width="56" height="56"/>
+    <text x="1500" y="927" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+      <tspan x="1500">kubepods-burstable-</tspan>
+      <tspan x="1500" dy="30">pod&lt;uid&gt;.slice</tspan>
+    </text>
+  </g>
+  <g>
+    <use href="#window" x="1472" y="1072" width="56" height="56"/>
+    <text x="1500" y="1157" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">cri-containerd-&lt;id&gt;.scope</text>
+  </g>
+</svg>

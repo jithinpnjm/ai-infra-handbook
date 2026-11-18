@@ -106,6 +106,10 @@ Start with administrative access and VPNs when you add MFA, because the chapter 
 
 Not every firewall works the same way. A firewall is a checkpoint that decides which packets may pass, and some checkpoints only read the address label while others open the parcel. The table shows the main types, and each one fits a different place in the network.
 
+![Firewall rule order](./img/n21-fig1-fwrules.jpg)
+
+*Figure 2.21.1. A packet is checked against rules from the top; the first match decides.*
+
 | Type | What it does | Notes |
 |---|---|---|
 | **Stateless ACL / packet filter** | Matches header fields per packet (src/dst IP, ports, flags) | Fast, in switch hardware; no memory of connections; use at edges and between zones |

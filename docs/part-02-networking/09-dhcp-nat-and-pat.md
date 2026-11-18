@@ -51,6 +51,10 @@ Without DHCP, an administrator configures each host by hand, which is like writi
 
 The exchange between client and server has four messages, remembered as DORA: Discover, Offer, Request and Acknowledge. Read the diagram from top to bottom, because the first two messages are broadcasts. The client has no address yet and does not know where the server is. So it shouts to the whole network, "is there a DHCP server here?", and any server that hears it can answer.
 
+![DHCP in four steps](./img/n09-fig1-dhcp.jpg)
+
+*Figure 2.9.1. Discover, Offer, Request, Acknowledge: the four DORA messages.*
+
 ```mermaid
 sequenceDiagram
   participant C as Client (0.0.0.0, UDP 68)
@@ -197,6 +201,10 @@ PAT is the type you will meet most often, because it lets many hosts share one a
 Follow one connection through the gateway in the diagram. The inside host sends from `10.0.0.5:51000`, and the gateway rewrites that source to its own outside address and a new port.
 
 Say it in words as well. The inside host `10.0.0.5` opens a connection from port 51000. The gateway rewrites the source to its own outside address and picks a new port, 40001. It writes the pair in its table. When the reply comes back addressed to port 40001, the gateway looks it up, rewrites the destination back to `10.0.0.5` and port 51000, and passes it inside. The outside server never learns that the inside address exists.
+
+![How PAT shares one public address](./img/n09-fig2-pat.jpg)
+
+*Figure 2.9.2. PAT gives each inside host its own outside port on one public address.*
 
 ```mermaid
 sequenceDiagram

@@ -66,17 +66,15 @@ Pick the tool by the job it does. The table maps each task to a tool and a short
 
 A habit worth building right away is to build pipelines one stage at a time. Run the first command by itself and look at what it prints. Add the next stage, then look again. A six-stage pipeline written blind is where small mistakes hide, so do not write one that way.
 
-```mermaid
-flowchart LR
-  A["Source<br/>file, command, journalctl"] --> B["grep<br/>keep the lines you care about"]
-  B --> C["cut / awk<br/>pick the fields"]
-  C --> D["sed / tr<br/>clean and normalise"]
-  D --> E["sort<br/>bring equal keys together"]
-  E --> F["uniq -c<br/>count each group"]
-  F --> G["sort -rn | head<br/>the top N"]
-```
+![The model: lines of text flowing through small tools](./img/ch04-d1-luna.svg)
+
+*Figure 1.4.1. The model: lines of text flowing through small tools.*
 
 Before you write any pipeline, run its first stage alone and confirm the output looks right.
+
+![Count by key pipeline: cut, sort, uniq -c, sort -rn, head](./img/ch04-fig1-pipeline-v2.jpg)
+
+*Figure 1.4.2. Counting by key: each stage reshapes the lines, and uniq -c only counts adjacent duplicates.*
 
 ## 2. Regular expressions from scratch
 
@@ -293,6 +291,10 @@ Two points save time. First, because awk separates fields on runs of whitespace,
 
 When a field carries units, strip them before you do any arithmetic on it.
 
+![How awk splits a line into fields](./img/ch04-fig2-awk-v2.jpg)
+
+*Figure 1.4.3. How awk reads a line: fields, NF, NR and `pattern { action }`.*
+
 ## 7. Fan-out: `find`, `xargs`, and parallelism
 
 Many tasks mean "do X to each of these N things." You might compress every old log, change the owner of every file, or check every node in a cluster. `find`, covered in chapter 1.3, produces the list of things. Then **`xargs`** turns each line on its standard input into an argument for another command.
@@ -317,6 +319,10 @@ Five options control how `xargs` behaves, and you will use most of them.
 The `find ... -exec cmd {} +` form is an alternative that batches arguments without a pipe, as chapter 1.3 explains. For larger fan-out jobs, GNU `parallel` is a more featureful relative of `xargs -P`.
 
 For any fan-out job, start with `-print0` and `-0`, so that odd file names cannot break your run.
+
+![xargs fan-out](./img/ch04-fig3-xargs.jpg)
+
+*Figure 1.4.4. Fan-out with find -print0 and xargs -0.*
 
 ## 8. Comparing files and handling structured text
 

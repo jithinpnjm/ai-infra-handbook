@@ -76,13 +76,9 @@ When you install the server package, host keys are generated automatically. If y
 
 ### The sequence of a session
 
-```mermaid
-flowchart LR
-  C["SSH client\n(~/.ssh/id_ed25519)"] -->|"1. Diffie-Hellman KEX\n(symmetric session key)"| S["sshd server\n(/etc/ssh/ssh_host_*)"]
-  S -->|"2. Host key verified in\n~/.ssh/known_hosts"| C
-  C -->|"3-6. Public key lookup in\n~/.ssh/authorized_keys + signature"| S
-  S -->|"7. Encrypted shell / command\nor port/X11/agent tunnel"| C
-```
+![The sequence of a session](./img/ch29-d1-luna.svg)
+
+*Figure 1.29.1. The sequence of a session.*
 
 The login runs in seven steps.
 

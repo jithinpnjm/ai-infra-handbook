@@ -296,6 +296,10 @@ Put the schema check in CI so a bad value stops before it reaches a device.
 
 Imagine writing a switch configuration by hand for every leaf in a fabric. Thirty leaves are thirty nearly identical files, and the differences hide among the similarities. A **template** avoids that work. It combines **static text with placeholders and logic**, and it renders the configuration from data. Web development made templates popular with Jinja, Django templates and Handlebars. Network automation uses them to generate device configs, reports and API payloads. The value is simple. You write one template per role, such as leaf, spine or border, keep the data per device, and review the template once instead of every config.
 
+![Templates plus data](./img/n28-fig1-template.jpg)
+
+*Figure 2.28.1. A template and data are rendered into a device configuration.*
+
 Here is the work that a template removes. You write the configuration once, with placeholders where the leaves differ. The engine reads the variables for one leaf, fills the placeholders, and writes a finished file. Then it repeats the work for the next leaf. A change to the template changes every output at once, and a reviewer reads one file rather than one file per leaf.
 
 ### Jinja2

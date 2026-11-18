@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>BPF, BCC and bpftrace</title>
+  <desc></desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 1 L18 9 L0 17 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 1 L18 9 L0 17 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">BPF, BCC and bpftrace</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="40" y="285" width="272" height="430" rx="20"/>
+    <rect x="352" y="285" width="272" height="430" rx="20"/>
+    <rect x="664" y="285" width="272" height="430" rx="20"/>
+    <rect x="976" y="285" width="272" height="430" rx="20"/>
+    <rect x="1288" y="285" width="272" height="430" rx="20"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="butt">
+    <path d="M312 500 H352" marker-end="url(#arrow-green)"/>
+    <path d="M624 500 H664" marker-end="url(#arrow-green)"/>
+    <path d="M936 500 H976" stroke="#db8129" marker-end="url(#arrow-orange)"/>
+    <path d="M1248 500 H1288" marker-end="url(#arrow-green)"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="148" y="316" width="56" height="44" rx="5"/>
+    <path d="M148 328 H204 M159 316 V308 M176 316 V308 M193 316 V308 M159 360 V368 M176 360 V368 M193 360 V368"/>
+    <circle cx="160" cy="322" r="1.5" fill="#207448" stroke="none"/>
+
+    <path d="M488 309 L510 318 V338 C510 352 500 362 488 369 C476 362 466 352 466 338 V318 Z"/>
+    <path d="M478 338 L485 345 L499 329"/>
+
+    <circle cx="800" cy="338" r="27"/>
+    <circle cx="800" cy="338" r="12"/>
+    <path d="M800 302 V313 M800 363 V374 M764 338 H775 M825 338 H836"/>
+
+    <ellipse cx="1112" cy="319" rx="28" ry="10"/>
+    <path d="M1084 319 V354 C1084 360 1097 365 1112 365 C1127 365 1140 360 1140 354 V319"/>
+    <path d="M1084 337 C1084 343 1097 348 1112 348 C1127 348 1140 343 1140 337"/>
+
+    <rect x="1384" y="310" width="56" height="50" rx="5"/>
+    <path d="M1384 323 H1440 M1395 317 H1396 M1405 317 H1406"/>
+    <path d="M1396 341 H1428 M1396 350 H1420"/>
+  </g>
+
+  <g font-family="sans-serif" fill="#303a36" text-anchor="middle">
+    <text x="176" y="408" font-size="30" font-weight="700">
+      <tspan x="176">Tracing</tspan>
+      <tspan x="176" dy="36">program</tspan>
+    </text>
+    <text x="176" y="488" font-size="24">
+      <tspan x="176">(bpftrace script</tspan>
+      <tspan x="176" dy="30">/ BCC C)</tspan>
+    </text>
+
+    <text x="488" y="426" font-size="30" font-weight="700">
+      <tspan x="488">Verifier +</tspan>
+      <tspan x="488" dy="36">JIT</tspan>
+    </text>
+
+    <text x="800" y="408" font-size="30" font-weight="700">
+      <tspan x="800">Attach to</tspan>
+      <tspan x="800" dy="36">probes:</tspan>
+    </text>
+    <text x="800" y="488" font-size="24">
+      <tspan x="800">tracepoints,</tspan>
+      <tspan x="800" dy="30">kprobes,</tspan>
+      <tspan x="800" dy="30">uprobes, USDT,</tspan>
+      <tspan x="800" dy="30">perf events,</tspan>
+      <tspan x="800" dy="30">timers</tspan>
+    </text>
+
+    <text x="1112" y="408" font-size="30" font-weight="700">
+      <tspan x="1112">BPF maps in</tspan>
+      <tspan x="1112" dy="36">kernel</tspan>
+    </text>
+    <text x="1112" y="488" font-size="24">
+      <tspan x="1112">(counts,</tspan>
+      <tspan x="1112" dy="30">histograms,</tspan>
+      <tspan x="1112" dy="30">stacks)</tspan>
+    </text>
+
+    <text x="1424" y="390" font-size="30" font-weight="700">
+      <tspan x="1424">User space</tspan>
+      <tspan x="1424" dy="36">reads</tspan>
+      <tspan x="1424" dy="36">summaries</tspan>
+    </text>
+    <text x="1424" y="502" font-size="24">
+      <tspan x="1424">prints on</tspan>
+      <tspan x="1424" dy="30">Ctrl-C /</tspan>
+      <tspan x="1424" dy="30">interval</tspan>
+    </text>
+  </g>
+</svg>

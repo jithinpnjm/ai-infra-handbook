@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140" role="img">
+  <title>What the shell does with a line</title>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+  <text x="60" y="70" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">What the shell does with a line</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="40" y="125" width="730" height="225" rx="18"/>
+    <rect x="830" y="125" width="730" height="225" rx="18"/>
+    <rect x="40" y="375" width="730" height="225" rx="18"/>
+    <rect x="830" y="375" width="730" height="225" rx="18"/>
+    <rect x="40" y="625" width="730" height="225" rx="18"/>
+    <rect x="830" y="625" width="730" height="225" rx="18"/>
+    <rect x="830" y="875" width="730" height="225" rx="18"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M770 235 H830" marker-end="url(#arrow-green)"/>
+    <path d="M1195 350 V375" marker-end="url(#arrow-green)"/>
+    <path d="M830 485 H770" marker-end="url(#arrow-orange)"/>
+    <path d="M405 600 V625" marker-end="url(#arrow-green)"/>
+    <path d="M770 735 H830" marker-end="url(#arrow-green)"/>
+    <path d="M1195 850 V875" marker-end="url(#arrow-green)"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(60 145)">
+      <rect x="2" y="3" width="52" height="46" rx="5"/>
+      <path d="M2 16 H54"/>
+      <circle cx="10" cy="10" r="1.5" fill="#207448"/>
+      <circle cx="18" cy="10" r="1.5" fill="#207448"/>
+    </g>
+    <g transform="translate(850 145)">
+      <path d="M2 8 H23 V22 H50"/>
+      <path d="M23 22 V42 H50"/>
+      <path d="M44 16 L50 22 L44 28"/>
+      <path d="M44 36 L50 42 L44 48"/>
+      <path d="M2 8 V42"/>
+    </g>
+    <g transform="translate(60 395)">
+      <path d="M10 4 H2 V48 H10"/>
+      <path d="M46 4 H54 V48 H46"/>
+      <path d="M28 10 V24"/>
+      <path d="M18 24 H38"/>
+      <path d="M22 35 L28 41 L34 35"/>
+      <path d="M28 24 V40"/>
+    </g>
+    <g transform="translate(850 395)">
+      <path d="M6 3 H38 L50 15 V49 H6 Z"/>
+      <path d="M38 3 V15 H50"/>
+      <path d="M15 29 H32"/>
+      <path d="M26 23 L32 29 L26 35"/>
+    </g>
+    <g transform="translate(60 645)">
+      <circle cx="24" cy="23" r="17"/>
+      <path d="M37 36 L52 51"/>
+      <path d="M16 23 H32"/>
+      <path d="M16 16 H28"/>
+    </g>
+    <g transform="translate(850 645)">
+      <rect x="4" y="8" width="44" height="40" rx="5"/>
+      <path d="M26 8 V1 H54 V27 H48"/>
+      <path d="M18 28 H34"/>
+      <path d="M27 21 L34 28 L27 35"/>
+    </g>
+    <g transform="translate(850 895)">
+      <circle cx="28" cy="28" r="24"/>
+      <path d="M28 13 V28 L39 34"/>
+    </g>
+  </g>
+
+  <g font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <text x="136" y="174">You type</text>
+    <text x="926" y="174">1. Split into words</text>
+    <text x="136" y="424">2. Expand variables and globs</text>
+    <text x="926" y="424">3. Set up redirections</text>
+    <text x="136" y="674">4. Find the command</text>
+    <text x="926" y="674">5. fork a child, exec the program</text>
+    <text x="926" y="924">6. Wait for it to finish</text>
+  </g>
+
+  <g font-family="sans-serif" font-size="24" fill="#303a36">
+    <text x="64" y="225" font-family="monospace">rm -r $DIR/*.log 'my file'</text>
+    <text x="64" y="255" font-family="monospace">&gt; out.txt</text>
+    <text x="64" y="295">(DIR=/tmp/run, two .log files exist)</text>
+
+    <text x="854" y="225">(quotes keep 'my file' together)</text>
+    <text x="854" y="265" font-family="monospace">rm | -r | $DIR/*.log | my file |</text>
+    <text x="854" y="295" font-family="monospace">&gt; out.txt</text>
+
+    <text x="64" y="475" font-family="monospace">rm | -r | /tmp/run/a.log |</text>
+    <text x="64" y="505" font-family="monospace">/tmp/run/b.log | my file | &gt; out.txt</text>
+
+    <text x="854" y="475">(removed from the word list)</text>
+    <text x="854" y="515">standard output now goes to out.txt</text>
+    <text x="854" y="555" font-family="monospace">words left: rm | -r | /tmp/run/a.log |</text>
+    <text x="854" y="585" font-family="monospace">/tmp/run/b.log | my file</text>
+
+    <text x="64" y="725">alias? function? builtin? no, so search PATH</text>
+    <text x="64" y="765" font-family="monospace">rm is /usr/bin/rm</text>
+
+    <text x="854" y="725">rm receives exactly 5 arguments:</text>
+    <text x="854" y="765" font-family="monospace">rm, -r, /tmp/run/a.log,</text>
+    <text x="854" y="795" font-family="monospace">/tmp/run/b.log, my file</text>
+
+    <text x="854" y="975">exit status is stored in $?</text>
+  </g>
+</svg>

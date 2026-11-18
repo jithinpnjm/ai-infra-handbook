@@ -165,6 +165,10 @@ The fabric therefore has three jobs that you can check one at a time. It must av
 
 Dropping packets is the old response to a filling queue. A dropped packet is a crude message: "something is wrong somewhere, guess what". ECN offers a gentler option. It marks the packet, and the sender slows down before anything is lost. A marked packet is like a note stuck on a parcel saying "this route is getting busy", which the receiver passes back to the sender. ECN uses the low two bits of the IP ToS byte:
 
+![ECN marking and CNP](./img/n19-fig1-ecn-v2.jpg)
+
+*Figure 2.19.1. Marked packets reach the receiver, which sends a congestion notice back to the sender.*
+
 | ECT | CE | Meaning |
 |---|---|---|
 | 0 | 0 | Not ECN-capable; congestion causes a drop |
@@ -186,6 +190,10 @@ Thresholds are set in bytes or cells of queue occupancy. They can apply per queu
 ## 6. PFC: lossless links by backpressure
 
 Here is the same story as a timeline, from a single receiver's point of view. A burst from several senders arrives at one ingress buffer. The queue for priority 3 climbs past the XOFF line, and the receiver sends a pause frame upstream. The upstream switch stops sending priority 3 and keeps sending everything else. The packets that were already on the wire keep arriving, and the headroom above XOFF takes them. The buffer drains, and when it falls below the XON line the receiver sends a resume. The upstream switch then restarts priority 3 from where it stopped. Nothing was dropped, and the cost was a pause that stalled the whole class for a short time.
+
+![PFC pause and resume](./img/n19-fig2-pfc.jpg)
+
+*Figure 2.19.2. XOFF triggers a pause frame; XON resumes the priority.*
 
 Picture one faulty network card that keeps telling its neighbour to stop sending. The neighbour pauses, then its own neighbour pauses too, and the stoppage spreads back along the path like a line of cars that halts when one car breaks down. Priority Flow Control is designed to stop a queue from overflowing, but it has this dangerous side. The explanation below describes the mechanism first, and then the ways it can go wrong.
 

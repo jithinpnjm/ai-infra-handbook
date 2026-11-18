@@ -63,19 +63,9 @@ If one of these items feels out of reach, go back to the chapter it depends on b
 
 Before the details, follow one process's memory to where it actually lives. A process sees one large, private block of addresses, but those addresses land in several places. Some sit in RAM, some wait on disk, and some are only promises. The diagram shows the paths a page can take.
 
-```mermaid
-flowchart TB
-  subgraph Proc["Each process"]
-    VA["Virtual address space (private, huge, mostly unmapped)"]
-  end
-  VA -->|"MMU + page tables + TLB\n(per-page translation)"| PM["Physical memory (RAM, DRAM, NUMA nodes)"]
-  VA -.->|"anonymous pages paged out (swapping)"| SW["Swap (disk/zram)"]
-  VA -.->|"file-backed pages (mmap, page cache) paged from"| FS["Filesystem / disk"]
-  PM --> K["Kernel memory: slab, page tables, stacks, driver buffers"]
-  PM --> PC["Page cache (file data), reclaimable"]
-  PM --> AN["Anonymous memory: heap, stacks, tensors on the host"]
-  PM --> HP["Hugepages / pinned (locked) memory"]
-```
+![Memory at a glance](./img/ch17-d1-luna.svg)
+
+*Figure 1.17.1. Memory at a glance.*
 
 Four ideas carry the chapter. Keep them in mind as you read, because most later sections return to one of them.
 
@@ -114,16 +104,9 @@ Huge pages, at 2 MiB and 1 GiB, multiply the reach and also shorten the walk. Th
 
 The diagram traces one translation from the virtual address to the answer. Notice that a TLB hit skips the walk entirely, and a missing entry leads to a page fault.
 
-```mermaid
-flowchart LR
-  VA["64-bit virtual address"] --> SPLIT["split into: PGD idx | P4D idx | PUD idx | PMD idx | PTE idx | 12-bit offset"]
-  SPLIT --> TLB{"TLB hit?"}
-  TLB -- yes --> PA["physical address -> RAM / CPU cache"]
-  TLB -- no --> WALK["page walk: CR3 -> PGD -> P4D -> PUD -> PMD -> PTE (up to 5 memory reads)"]
-  WALK --> FILL["fill TLB"]
-  FILL --> PA
-  WALK -- "entry not present" --> PF["page fault -> kernel"]
-```
+![Translation: page tables, MMU and TLB](./img/ch17-d2-luna.svg)
+
+*Figure 1.17.2. Translation: page tables, MMU and TLB.*
 
 ### Demand paging, page faults, memory states
 
@@ -194,22 +177,9 @@ PCIe devices such as GPUs, NICs and NVMe drives hang off one socket's root compl
 
 The diagram shows a two-socket layout, with GPUs and NICs attached to each socket. Notice that the interconnect between the sockets is the slow path.
 
-```mermaid
-flowchart LR
-  subgraph N0["NUMA node 0"]
-    C0["CPU socket 0"] --- M0[("DRAM 0")]
-    C0 --- P0["PCIe root 0"]
-    P0 --- G0["GPU 0,1"] 
-    P0 --- NIC0["NIC 0"]
-  end
-  subgraph N1["NUMA node 1"]
-    C1["CPU socket 1"] --- M1[("DRAM 1")]
-    C1 --- P1["PCIe root 1"]
-    P1 --- G1["GPU 2,3"]
-    P1 --- NIC1["NIC 1"]
-  end
-  C0 <-->|"UPI / xGMI interconnect (slower, shared)"| C1
-```
+![UMA versus NUMA](./img/ch17-d3-luna.svg)
+
+*Figure 1.17.3. UMA versus NUMA.*
 
 The NUMA trap is common on AI hosts, and it is easy to miss. A data-loading process runs on node 0 and allocates its buffers there. The GPU it feeds, though, is attached to node 1. Every host-to-device copy then crosses the interconnect, because the memory sits on node 0 while the GPU hangs off node 1's PCIe root. Picture a warehouse on the wrong side of town: the goods are correct, but every delivery pays the cross-town drive. The fix is to bind the loader's CPUs and memory to the GPU's node, which section 7 covers. Before you start a loader, check which node the GPU lives on, and bind to that node.
 
@@ -223,15 +193,9 @@ The kernel's own small objects, such as inodes, dentries and task structs, come 
 
 When free memory falls, Linux responds in stages. The diagram shows the order, roughly, as pressure rises.
 
-```mermaid
-flowchart TD
-  A["Free pages above 'high' watermark: all fine"] --> B["Below 'low' watermark:\nkswapd wakes (background reclaim)"]
-  B --> C1["Reclaim page cache (clean pages dropped instantly; dirty ones written first)"]
-  B --> C2["Swap out cold anonymous pages (if swap exists; bias set by vm.swappiness)"]
-  B --> C3["Reap/shrink kernel caches (slab: dentries, inodes)"]
-  B -->|"allocation outpaces kswapd; below 'min'"| D["Direct reclaim:\nthe ALLOCATING thread pauses and reclaims synchronously -> latency stalls"]
-  D -->|"nothing left to reclaim"| E["OOM killer selects and kills a process"]
-```
+![How Linux frees memory](./img/ch17-d4-luna.svg)
+
+*Figure 1.17.4. How Linux frees memory.*
 
 The steps run roughly in order as pressure rises, and the last step is the OOM killer. The next paragraphs explain each of the knobs that shape those steps.
 
@@ -256,6 +220,10 @@ When a node reports low free memory, check the page cache and reclaim counters b
 A training job disappears in the middle of the night, and the application logs show nothing useful. There is no traceback, no error, no goodbye. The reason is often the OOM killer. It is the kernel's last resort when memory runs out, and it leaves its trace in the kernel log rather than the application log. That is why the first place to look is `dmesg`, not your Python output.
 
 When reclaim fails, the kernel invokes the **out-of-memory (OOM) killer**. Reclaim has already tried the gentler options: dropping cache, swapping, shrinking slab. When none of them frees enough, something has to give, and the kernel chooses a process to end. It selects that process using a "badness" score and kills it with `SIGKILL`. The event goes to the kernel ring buffer, which you can read with `dmesg` or `journalctl -k`. The key line looks like `Out of memory: Killed process 1234 (python) total-vm:... anon-rss:...`. The log also shows `oom-kill:constraint=...` and a dump of all candidate processes.
+
+![When memory runs out](./img/ch17-fig1-oom.jpg)
+
+*Figure 1.17.5. From low free memory to an OOM kill, and where to look afterwards.*
 
 The victim gets no chance to clean up, because it receives `SIGKILL` rather than `SIGTERM`. There is no exception handler, no final checkpoint, no flush. Partial checkpoints and GPU state may be left behind. A parent process, or Kubernetes, sees the exit status `137`, which is 128 + 9.
 

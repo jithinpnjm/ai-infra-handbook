@@ -92,6 +92,6 @@ subprocess.run(["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", 
 epub = OUT / f"ai-infra-handbook-part-{part:02d}.epub"
 cmd = ["pandoc", "-f", "gfm-tex_math_dollars+raw_html", "-t", "epub3", str(WORK/"meta.yaml"), str(WORK/"book.md"), "-o", str(epub),
        "--toc", "--toc-depth=2", "--split-level=1", "--no-highlight", "--css", str(HERE/"style.css"),
-       "--epub-cover-image", str(WORK/"cover.png"), "--resource-path", str(WORK)]
+       "--epub-cover-image", str(WORK/"cover.png"), "--resource-path", f"{WORK}:{pdir}"]
 r = subprocess.run(cmd, capture_output=True, text=True, cwd=WORK)
 print(r.stderr[-1500:]); print("OK" if r.returncode == 0 else "FAILED", epub, round(epub.stat().st_size/1e6, 2), "MB")

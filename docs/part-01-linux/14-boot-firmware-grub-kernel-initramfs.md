@@ -54,20 +54,9 @@ By the end of this chapter, you should be able to do the following:
 
 Something has gone wrong at boot, and you have a console open. Before you type anything, it helps to know how many stages the machine has to pass through, and what each one hands to the next. Here is that journey, drawn once from above.
 
-```mermaid
-flowchart TB
-  P["Power on"] --> FW["Firmware (BIOS or UEFI)\nPOST: test and initialise hardware\nchoose boot device from boot order"]
-  FW -->|"BIOS: read MBR (first 446 bytes of code)"| S1["Stage 1 boot code"]
-  FW -->|"UEFI: read ESP (FAT), run \\EFI\\<vendor>\\*.efi"| EFI["UEFI boot loader (shim, then GRUB)"]
-  S1 --> S15["Stage 1.5/2 (core.img in the gap or boot partition)"]
-  S15 --> BL
-  EFI --> BL["Boot loader (GRUB 2)\nreads grub.cfg, shows menu, loads kernel + initramfs into memory"]
-  BL --> K["Kernel (vmlinuz)\ndecompress, set up CPU/memory, discover buses and devices"]
-  K --> IR["initramfs (temporary root in RAM)\nload storage/network/crypto/LVM/RAID modules, assemble and unlock, find the real root"]
-  IR --> R["Mount real root filesystem (read-only), switch_root"]
-  R --> I["init = PID 1 (systemd)\nmount filesystems, start services, reach default target"]
-  I --> L["Login prompt / sshd / scheduler daemons running"]
-```
+![The big picture](./img/ch14-d1-luna.svg)
+
+*Figure 1.14.1. The big picture.*
 
 There are seven stages in the simple form, and each stage is one hand-off. Stage 1 is the firmware, which loads and runs a boot loader. Stage 2 is the boot loader, which finds the kernel image on disk, loads it into memory with its parameters, and starts it. Stage 3 is the kernel, which initialises devices and drivers. Stage 4 is the root filesystem, which the kernel mounts, using the initramfs when it is needed. Stage 5 is the point where the kernel starts `init` as PID 1. Stage 6 is `init` starting the rest of the system. Stage 7 is the moment a login service becomes available.
 
@@ -80,6 +69,10 @@ When a node fails to boot, first decide which stage it reached, because that cho
 ## 2. Firmware: BIOS, UEFI and the hardware settings that matter
 
 The first stage of boot happens before Linux exists. Long before any kernel code runs, the machine's firmware has already tested the memory, woken the devices and decided what to start. When a node will not boot at all, this is where the story begins.
+
+![BIOS with MBR versus UEFI with GPT](./img/ch14-fig1-uefi.jpg)
+
+*Figure 1.14.2. The two firmware boot paths that lead to the kernel and initramfs.*
 
 ### BIOS (legacy) boot
 
@@ -355,23 +348,9 @@ The kernel then runs `/init` from it. The programs and modules inside do exactly
 
 Read the diagram from top to bottom. Each arrow is one hand-off, from the boot loader to the kernel, then to the initramfs, and finally to systemd.
 
-```mermaid
-sequenceDiagram
-  participant BL as Boot loader
-  participant K as Kernel
-  participant RD as initramfs /init
-  participant UD as udev (in initramfs)
-  participant R as Real root fs
-  participant SD as systemd (PID 1)
-  BL->>K: load vmlinuz + initrd.img, pass cmdline (root=UUID=...)
-  K->>RD: unpack initramfs to RAM, run /init as PID 1
-  RD->>UD: start udev, load modules for detected hardware (nvme, mpt3sas, mlx5, dm-crypt, md, lvm)
-  RD->>RD: assemble md/LVM, unlock LUKS, configure network if needed, apply rd.* options
-  RD->>R: wait for root=UUID device, mount it read-only
-  RD->>K: switch_root to the real root
-  K->>SD: exec /sbin/init (systemd) as PID 1 on the real root
-  SD->>R: remount rw, mount fstab filesystems, start units
-```
+![The initial RAM filesystem (initramfs)](./img/ch14-d2-luna.svg)
+
+*Figure 1.14.3. The initial RAM filesystem (initramfs).*
 
 The two families of distributions use different tools. Debian and Ubuntu use `initramfs-tools`, while RHEL, Fedora and SUSE use `dracut`. The table compares the commands for each.
 
@@ -537,23 +516,9 @@ Supercomputer and AI-cluster nodes are often **diskless**. Others have disks but
 
 The diagram traces a network boot from the first DHCP request to the hand-off to `init`.
 
-```mermaid
-sequenceDiagram
-  participant N as Node firmware (PXE NIC)
-  participant D as DHCP server
-  participant T as TFTP / HTTP server
-  participant K as Kernel + initramfs (on node)
-  participant F as NFS / image server
-  N->>D: DHCPDISCOVER (broadcast, includes PXE client architecture)
-  D-->>N: IP address, next-server (TFTP), filename (boot loader), routers, DNS, NTP
-  N->>T: fetch boot loader (pxelinux.0 / ipxe.efi / grubx64.efi) over TFTP
-  N->>N: run boot loader
-  K->>T: boot loader fetches its config, kernel and initrd (TFTP or HTTP)
-  T-->>K: vmlinuz + initrd + cmdline (ip=dhcp root=/dev/nfs nfsroot=...)
-  K->>D: initramfs brings up the network (DHCP again)
-  K->>F: mount root: NFS read-only (+ tmpfs for writable dirs) or download a RAM image
-  K->>K: switch_root and start init
-```
+![Network booting: DHCP, TFTP, PXE and NFS root](./img/ch14-d3-luna.svg)
+
+*Figure 1.14.4. Network booting: DHCP, TFTP, PXE and NFS root.*
 
 ### Components
 

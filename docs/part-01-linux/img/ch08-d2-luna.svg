@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1160" viewBox="0 0 1600 1160">
+  <title>Where processes come from: fork and exec</title>
+  <desc>Sequence diagram showing messages between bash (PID 1000), child (PID 1234), and kernel, including process creation and execution.</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 18 18">
+      <path d="M0 1 L16 9 L0 17 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 18 18">
+      <path d="M0 1 L16 9 L0 17 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  <text x="800" y="78" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">
+    <tspan>Where processes come from: </tspan><tspan font-family="monospace">fork</tspan><tspan> and </tspan><tspan font-family="monospace">exec</tspan>
+  </text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="70" y="112" width="400" height="128" rx="16"/>
+    <rect x="600" y="112" width="400" height="128" rx="16"/>
+    <rect x="1130" y="112" width="400" height="128" rx="16"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(242 126)">
+      <rect x="0" y="0" width="56" height="42" rx="5"/>
+      <path d="M0 12h56M10 7h2M18 7h2M10 24h15M10 32h28"/>
+    </g>
+    <g transform="translate(772 126)">
+      <rect x="0" y="0" width="56" height="42" rx="5"/>
+      <path d="M0 12h56M10 7h2M18 7h2M10 24h15M10 32h28"/>
+    </g>
+    <g transform="translate(1302 126)">
+      <rect x="2" y="5" width="52" height="32" rx="5"/>
+      <path d="M2 15h52M12 10h2M20 10h2M12 25h8M12 31h18"/>
+      <path d="M8 1v4M48 1v4M8 37v4M48 37v4"/>
+    </g>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700" text-anchor="middle">
+    <text x="270" y="216">bash (PID 1000)</text>
+    <text x="800" y="216">child (PID 1234)</text>
+    <text x="1330" y="216">kernel</text>
+  </g>
+
+  <g fill="none" stroke="#a9b8ad" stroke-width="3" stroke-dasharray="10 10">
+    <path d="M270 240V1065"/>
+    <path d="M800 240V1065"/>
+    <path d="M1330 240V1065"/>
+  </g>
+
+  <g font-family="sans-serif" font-size="24" font-weight="700" text-anchor="middle">
+    <g>
+      <circle cx="86" cy="300" r="24" fill="#207448"/>
+      <text x="86" y="309" fill="#ffffff">1</text>
+    </g>
+    <rect x="730" y="252" width="140" height="40" rx="4" fill="#f5f8f5"/>
+    <text x="800" y="284" fill="#303a36" font-family="monospace">fork()</text>
+    <path d="M270 310H1330" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+    <g>
+      <circle cx="86" cy="390" r="24" fill="#207448"/>
+      <text x="86" y="399" fill="#ffffff">2</text>
+    </g>
+    <rect x="580" y="342" width="440" height="40" rx="4" fill="#f5f8f5"/>
+    <text x="800" y="374" fill="#303a36" font-family="monospace">returns 1234 (child's PID)</text>
+    <path d="M1330 400H270" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <g>
+      <circle cx="86" cy="480" r="24" fill="#207448"/>
+      <text x="86" y="489" fill="#ffffff">3</text>
+    </g>
+    <text x="1065" y="464" fill="#303a36" font-family="monospace">returns 0 (you are the child)</text>
+    <path d="M1330 490H800" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <g>
+      <circle cx="86" cy="570" r="24" fill="#207448"/>
+      <text x="86" y="579" fill="#ffffff">4</text>
+    </g>
+    <text x="1065" y="554" fill="#303a36" font-family="monospace">execve("/bin/ls", ...)</text>
+    <path d="M800 580H1330" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <g>
+      <rect x="540" y="626" width="520" height="64" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <text x="800" y="666" fill="#303a36" font-weight="400">memory replaced, now running ls</text>
+    </g>
+
+    <g>
+      <circle cx="86" cy="750" r="24" fill="#207448"/>
+      <text x="86" y="759" fill="#ffffff">5</text>
+    </g>
+    <rect x="780" y="702" width="570" height="40" rx="4" fill="#f5f8f5"/>
+    <text x="1065" y="734" fill="#303a36" font-family="monospace">write(1, "file list"), exit_group(0)</text>
+    <path d="M800 760H1330" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <g>
+      <circle cx="86" cy="850" r="24" fill="#207448"/>
+      <text x="86" y="859" fill="#ffffff">6</text>
+    </g>
+    <rect x="590" y="802" width="420" height="40" rx="4" fill="#f5f8f5"/>
+    <text x="800" y="834" fill="#303a36" font-family="monospace">SIGCHLD (child terminated)</text>
+    <path d="M1330 860H270" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <g>
+      <circle cx="86" cy="950" r="24" fill="#207448"/>
+      <text x="86" y="959" fill="#ffffff">7</text>
+    </g>
+    <rect x="700" y="902" width="200" height="40" rx="4" fill="#f5f8f5"/>
+    <text x="800" y="934" fill="#303a36" font-family="monospace">wait4(1234)</text>
+    <path d="M270 960H1330" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <g>
+      <circle cx="86" cy="1050" r="24" fill="#207448"/>
+      <text x="86" y="1059" fill="#ffffff">8</text>
+    </g>
+    <rect x="590" y="1002" width="420" height="40" rx="4" fill="#f5f8f5"/>
+    <text x="800" y="1034" fill="#303a36" font-family="monospace">exit status 0 (child reaped)</text>
+    <path d="M1330 1060H270" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  </g>
+</svg>

@@ -104,6 +104,10 @@ Picture a long path, several hops from one host to another, with a flow that fai
 
 Why halves and not single hops? A long path takes many tests if you walk it one hop at a time. The same path takes only a handful of tests if each test cuts the remaining path in half. The saving grows with the length of the path, and that is why half-split is the first method to reach for on a long flow.
 
+![Half-split](./img/n30-fig1-halfsplit.jpg)
+
+*Figure 2.30.1. Each test cuts the remaining path in half.*
+
 ### Half split and move
 
 Hopping at random between models and tools is common, and it is slow. A flow that fails somewhere between two hosts can send you through a dozen tools in an afternoon. The **half-split method** gives you structure. It is the method behind the old guessing game of finding a number between one and a hundred by asking "higher or lower" and halving the range each time. It works like this:

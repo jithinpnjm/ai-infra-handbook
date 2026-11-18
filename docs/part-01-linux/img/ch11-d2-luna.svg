@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1280" viewBox="0 0 1600 1280" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">The ELF file format</title>
+  <desc id="svg-desc">ELF file format infographic.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L16 9 L1 17 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L16 9 L1 17 Z" fill="#db8129"/>
+    </marker>
+
+    <symbol id="icon-page" viewBox="0 0 56 56">
+      <path d="M12 5 H34 L45 16 V51 H12 Z M34 5 V16 H45 M19 26 H38 M19 34 H38 M19 42 H34" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-list" viewBox="0 0 56 56">
+      <path d="M18 13 H46 M18 28 H46 M18 43 H46 M8 13 H10 M8 28 H10 M8 43 H10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-code" viewBox="0 0 56 56">
+      <path d="M20 13 L8 28 L20 43 M36 13 L48 28 L36 43 M32 9 L24 47" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-book" viewBox="0 0 56 56">
+      <path d="M7 12 Q18 8 28 15 Q38 8 49 12 V44 Q38 40 28 47 Q18 40 7 44 Z M28 15 V47" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-database" viewBox="0 0 56 56">
+      <path d="M9 13 C9 4 47 4 47 13 V43 C47 52 9 52 9 43 Z M9 13 C9 22 47 22 47 13 M9 28 C9 37 47 37 47 28" fill="none" stroke="currentColor" stroke-width="4"/>
+    </symbol>
+    <symbol id="icon-block" viewBox="0 0 56 56">
+      <path d="M10 10 H46 V46 H10 Z M10 22 H46 M10 34 H46 M22 10 V46 M34 10 V46" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-gear" viewBox="0 0 56 56">
+      <circle cx="28" cy="28" r="11" fill="none" stroke="currentColor" stroke-width="4"/>
+      <circle cx="28" cy="28" r="3" fill="none" stroke="currentColor" stroke-width="4"/>
+      <path d="M28 5 V12 M28 44 V51 M5 28 H12 M44 28 H51 M12 12 L17 17 M39 39 L44 44 M44 12 L39 17 M17 39 L12 44" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-search" viewBox="0 0 56 56">
+      <circle cx="24" cy="23" r="14" fill="none" stroke="currentColor" stroke-width="4"/>
+      <path d="M34 34 L49 49 M18 18 H30 M18 25 H30" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-up" viewBox="0 0 56 56">
+      <path d="M12 47 H44 M17 39 H39 M22 31 H34 M28 27 V8 M18 18 L28 8 L38 18" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-window" viewBox="0 0 56 56">
+      <rect x="6" y="9" width="44" height="38" rx="2" fill="none" stroke="currentColor" stroke-width="4"/>
+      <path d="M6 19 H50 M14 14 H15 M21 14 H22 M28 14 H29" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-down" viewBox="0 0 56 56">
+      <path d="M10 12 H46 M15 20 H41 M20 28 H36 M28 8 V48 M18 38 L28 48 L38 38" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+
+  <rect width="1600" height="1280" fill="#f5f8f5"/>
+  <text x="800" y="88" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">The ELF file format</text>
+
+  <rect x="40" y="130" width="700" height="1120" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="1030" y="130" width="530" height="1120" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="80" y="180" font-family="sans-serif" font-size="30" font-weight="700" fill="#207448">ELF file on disk</text>
+  <text x="1070" y="180" font-family="sans-serif" font-size="30" font-weight="700" fill="#207448">Process memory</text>
+
+  <rect x="80" y="210" width="620" height="180" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+  <use href="#icon-page" x="96" y="257" width="56" height="56" color="#207448"/>
+  <text x="170" y="252" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">ELF header</text>
+  <text x="170" y="282" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="170" dy="0">(class</tspan>
+    <tspan x="170" dy="26">64-bit,</tspan>
+    <tspan x="170" dy="26">endian, type,</tspan>
+    <tspan x="170" dy="26">machine, entry point)</tspan>
+  </text>
+
+  <g transform="translate(0 40)">
+    <rect x="80" y="370" width="620" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+    <use href="#icon-list" x="96" y="417" width="56" height="56" color="#207448"/>
+    <text x="170" y="425" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Program headers (segments)</text>
+    <text x="170" y="460" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="170" dy="0">LOAD, INTERP, DYNAMIC,</tspan>
+      <tspan x="170" dy="28">TLS ...</tspan>
+    </text>
+
+    <rect x="80" y="560" width="290" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+    <use href="#icon-code" x="96" y="607" width="56" height="56" color="#207448"/>
+    <text x="170" y="619" font-family="monospace" font-size="30" font-weight="700" fill="#303a36">.text</text>
+    <text x="170" y="657" font-family="monospace" font-size="24" fill="#303a36">(code)</text>
+
+    <rect x="410" y="560" width="290" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+    <use href="#icon-book" x="426" y="607" width="56" height="56" color="#207448"/>
+    <text x="500" y="640" font-family="monospace" font-size="30" font-weight="700" fill="#303a36">.rodata</text>
+
+    <rect x="80" y="750" width="290" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+    <use href="#icon-database" x="96" y="797" width="56" height="56" color="#207448"/>
+    <text x="170" y="830" font-family="monospace" font-size="30" font-weight="700" fill="#303a36">.data</text>
+
+    <rect x="410" y="750" width="290" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+    <use href="#icon-block" x="426" y="797" width="56" height="56" color="#207448"/>
+    <text x="500" y="819" font-family="monospace" font-size="30" font-weight="700" fill="#303a36">.bss</text>
+    <text x="500" y="855" font-family="sans-serif" font-size="24" fill="#303a36">(size only)</text>
+
+    <rect x="80" y="940" width="290" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+    <use href="#icon-gear" x="96" y="987" width="56" height="56" color="#207448"/>
+    <text x="170" y="982" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="170" dy="0">.dynamic</tspan>
+      <tspan x="170" dy="28">.dynsym  .plt</tspan>
+      <tspan x="170" dy="28">.got</tspan>
+    </text>
+
+    <rect x="410" y="940" width="290" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+    <use href="#icon-search" x="426" y="987" width="56" height="56" color="#207448"/>
+    <text x="500" y="982" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="500" dy="0">.symtab</tspan>
+      <tspan x="500" dy="28">.debug_*</tspan>
+    </text>
+    <text x="500" y="1066" font-family="sans-serif" font-size="24" fill="#303a36">(strippable)</text>
+
+    <rect x="80" y="1100" width="620" height="1" fill="none"/>
+    <use href="#icon-page" x="426" y="1100" width="56" height="56" color="#207448"/>
+    <text x="500" y="1134" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Section headers</text>
+  </g>
+
+  <path d="M700 435 C810 435 930 280 1070 280" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+  <rect x="810" y="208" width="180" height="40" fill="#f5f8f5"/>
+  <text x="820" y="235" font-family="monospace" font-size="24" fill="#db8129">LOAD (r-x)</text>
+
+  <path d="M700 500 C820 500 940 460 1070 460" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+  <rect x="810" y="418" width="180" height="40" fill="#f5f8f5"/>
+  <text x="820" y="445" font-family="monospace" font-size="24" fill="#207448">LOAD (rw-)</text>
+
+  <rect x="1070" y="210" width="450" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+  <use href="#icon-code" x="1086" y="257" width="56" height="56" color="#207448"/>
+  <text x="1160" y="258" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="1160" dy="0">r-x  code</tspan>
+    <tspan x="1160" dy="34">and read-only</tspan>
+    <tspan x="1160" dy="34">data</tspan>
+  </text>
+
+  <rect x="1070" y="400" width="450" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+  <use href="#icon-database" x="1086" y="447" width="56" height="56" color="#207448"/>
+  <text x="1160" y="454" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="1160" dy="0">rw-  data +</tspan>
+    <tspan x="1160" dy="36">zero-filled bss</tspan>
+  </text>
+
+  <rect x="1070" y="590" width="450" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+  <use href="#icon-up" x="1086" y="637" width="56" height="56" color="#207448"/>
+  <text x="1160" y="644" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="1160" dy="0">heap (grows up</tspan>
+    <tspan x="1160" dy="36">via </tspan><tspan font-family="monospace">brk)</tspan>
+  </text>
+
+  <rect x="1070" y="780" width="450" height="170" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+  <use href="#icon-window" x="1086" y="837" width="56" height="56" color="#207448"/>
+  <text x="1160" y="814" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="1160" dy="0">mmap region:</tspan>
+    <tspan x="1160" dy="34">libraries, mapped</tspan>
+    <tspan x="1160" dy="34">files, big</tspan>
+    <tspan x="1160" dy="34">allocations</tspan>
+  </text>
+
+  <rect x="1070" y="990" width="450" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+  <use href="#icon-down" x="1086" y="1037" width="56" height="56" color="#207448"/>
+  <text x="1160" y="1044" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="1160" dy="0">stack (grows</tspan>
+    <tspan x="1160" dy="36">down)</tspan>
+  </text>
+</svg>

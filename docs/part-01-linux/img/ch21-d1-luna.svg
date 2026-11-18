@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>The security model in one picture</title>
+  <desc></desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="102" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">The security model in one picture</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="75" y="155" width="1450" height="130" rx="18"/>
+    <rect x="75" y="325" width="1450" height="130" rx="18"/>
+    <rect x="75" y="495" width="1450" height="130" rx="18"/>
+    <rect x="75" y="665" width="1450" height="130" rx="18"/>
+    <rect x="75" y="835" width="1450" height="130" rx="18"/>
+    <rect x="75" y="1005" width="1450" height="130" rx="18"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M140 183 L165 193 L165 216 Q165 236 140 248 Q115 236 115 216 L115 193 Z"/>
+    <rect x="128" y="211" width="24" height="20" rx="3"/>
+    <path d="M133 211 V205 Q133 196 140 196 Q147 196 147 205 V211"/>
+
+    <circle cx="140" cy="390" r="13"/>
+    <path d="M140 358 V367 M140 413 V422 M108 390 H117 M163 390 H172 M117 367 L123 373 M157 407 L163 413 M163 367 L157 373 M123 407 L117 413"/>
+    <path d="M126 359 L130 368 M150 412 L154 421 M109 376 L118 380 M162 400 L171 404 M109 404 L118 400 M162 380 L171 376 M126 421 L130 412 M150 368 L154 359"/>
+
+    <path d="M112 523 Q140 510 168 523 V593 Q140 606 112 593 Z"/>
+    <path d="M112 523 Q140 536 168 523 M112 593 Q140 580 168 593 M112 558 Q140 571 168 558"/>
+
+    <rect x="112" y="688" width="56" height="44" rx="4"/>
+    <path d="M112 701 H168 M121 695 H122 M130 695 H131 M125 714 L134 720 L125 726 M143 726 H155"/>
+
+    <rect x="113" y="858" width="54" height="44" rx="4"/>
+    <path d="M113 871 H167 M122 865 H123 M131 865 H132 M140 865 H141 M123 883 H135 M123 892 H145 M151 883 H158 M151 892 H158"/>
+
+    <circle cx="140" cy="1070" r="27"/>
+    <path d="M140 1053 V1070 L152 1077 M140 1038 V1043 M140 1097 V1102 M108 1070 H113 M167 1070 H172"/>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif">
+    <text x="205" y="211" font-size="30" font-weight="700">Who are you? (identification, authentication)</text>
+    <text x="205" y="255" font-size="24">PAM, sssd/LDAP, SSH keys/certs, MFA</text>
+
+    <text x="205" y="381" font-size="30" font-weight="700">What may you do as a process?</text>
+    <text x="205" y="425" font-size="24">UID/GID, supplementary groups, capabilities</text>
+
+    <text x="205" y="551" font-size="30" font-weight="700">Which objects may you touch?</text>
+    <text x="205" y="595" font-size="24">DAC: mode bits, ACLs → MAC: SELinux/AppArmor labels/profiles</text>
+
+    <text x="205" y="721" font-size="30" font-weight="700">Which system calls may you issue?</text>
+    <text x="205" y="765" font-size="24">seccomp-bpf filters, no_new_privs</text>
+
+    <text x="205" y="891" font-size="30" font-weight="700">What can you see and use?</text>
+    <text x="205" y="935" font-size="24">namespaces, cgroups (ch. 1.18-1.19)</text>
+
+    <text x="205" y="1061" font-size="30" font-weight="700">What did happen?</text>
+    <text x="205" y="1105" font-size="24">auditd, journald, IMA, integrity monitoring</text>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <path d="M800 285 V309"/>
+    <path d="M800 455 V479"/>
+    <path d="M800 625 V649"/>
+    <path d="M800 795 V819"/>
+    <path d="M800 965 V989"/>
+  </g>
+  <g fill="#207448">
+    <path d="M800 325 L791 309 L809 309 Z"/>
+    <path d="M800 495 L791 479 L809 479 Z"/>
+    <path d="M800 665 L791 649 L809 649 Z"/>
+    <path d="M800 835 L791 819 L809 819 Z"/>
+    <path d="M800 1005 L791 989 L809 989 Z"/>
+  </g>
+</svg>

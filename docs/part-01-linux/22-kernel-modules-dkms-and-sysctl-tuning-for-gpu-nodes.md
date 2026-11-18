@@ -59,29 +59,9 @@ Suppose a CUDA job fails at startup because the NVIDIA driver is missing from th
 
 The Linux kernel is **monolithic**. That means it runs as one program in one address space, not as a set of small servers that talk to each other. It can still be **extended at run time** with **loadable kernel modules**, which are files ending in `.ko`, short for "kernel object". A module holds drivers for devices, filesystems and network protocols, or any other code that does not need to be compiled in. Picture the kernel as a house whose walls are already built, and a module as a room you slide into the frame while the lights are on. A module runs in kernel mode with full privilege. A bug in it can crash the machine, and a malicious module can take over the machine. That risk is why each module is tied to the exact kernel it was built for, and why Secure Boot and signing exist.
 
-```mermaid
-flowchart LR
-  subgraph User["User space"]
-    APP["CUDA app / nvidia-smi\n(libcuda, libnvidia-ml)"]
-    MP["modprobe / udev / systemd-modules-load"]
-  end
-  subgraph Kernel["Kernel space"]
-    CORE["Core kernel (vmlinuz)\nexports symbols (EXPORT_SYMBOL)"]
-    N["nvidia.ko\n(GPU core)"] --> UVM["nvidia-uvm.ko\n(unified memory)"]
-    N --> MS["nvidia-modeset.ko"] --> DRM["nvidia-drm.ko"]
-    N --> PEER["nvidia-peermem.ko\n(GPUDirect RDMA ↔ ib_core)"]
-    IB["ib_core / mlx5_core / mlx5_ib\n(RDMA stack)"] --> PEER
-    CORE --- N
-  end
-  subgraph HW["Hardware"]
-    GPU["GPU (PCIe)"]
-    NIC["ConnectX NIC"]
-  end
-  APP -- "/dev/nvidia*, ioctl" --> N
-  MP -- "finit_module()" --> Kernel
-  N --> GPU
-  IB --> NIC
-```
+![What a kernel module is](./img/ch22-d1-luna.svg)
+
+*Figure 1.22.1. What a kernel module is.*
 
 The following facts explain how modules fail, and why.
 
@@ -200,6 +180,10 @@ Before a kernel update reaches the fleet, confirm that `dkms status` shows the d
 ## 4. The NVIDIA driver stack
 
 A GPU node runs several NVIDIA pieces, and each one depends on the others. When a job cannot reach a GPU or a network card, the first question is which piece failed. The table in this section shows what each piece does, so you know where to look first.
+
+![The NVIDIA driver stack on a node](./img/ch22-fig1-nvidia.jpg)
+
+*Figure 1.22.2. The layers of the NVIDIA stack, from user-space libraries to kernel modules and the GPU.*
 
 ### Kernel modules and device nodes
 
@@ -380,22 +364,9 @@ Record the current value of every parameter before you change it, and write down
 
 Picture the ticket that reads: "Node 17 has no GPUs." Use this flow when `nvidia-smi` fails, or when the GPUs are missing from a node that should have them. Start at the top and answer one question at a time. Each answer points you to the next check. If you already know where the fault is, you can skip ahead.
 
-```mermaid
-flowchart TD
-  S["nvidia-smi fails / GPUs missing"] --> Q1{"lspci | grep -i nvidia\nshows the devices?"}
-  Q1 -- no --> H["Hardware/firmware: PCIe link, riser, BMC logs, Xid 79 'fallen off the bus', BIOS"]
-  Q1 -- yes --> Q2{"lsmod | grep nvidia\nloaded?"}
-  Q2 -- no --> Q3{"modprobe nvidia: what error?"}
-  Q3 -- "Module not found" --> M1["No module for this kernel: dkms status / package for uname -r; depmod -a"]
-  Q3 -- "Invalid module format" --> M2["vermagic/ABI mismatch: rebuilt for another kernel"]
-  Q3 -- "Key was rejected / Required key" --> M3["Secure Boot: sign module, enrol MOK"]
-  Q3 -- "No such device / nouveau bound" --> M4["Blacklist nouveau, rebuild initramfs, reboot"]
-  Q3 -- "Unknown symbol" --> M5["Dependency missing (ib_core for peermem) or kernel/driver mismatch"]
-  Q2 -- yes --> Q4{"nvidia-smi error text?"}
-  Q4 -- "Driver/library version mismatch" --> V["Old module loaded vs new libs: reload modules or reboot"]
-  Q4 -- "no devices found / Xid in dmesg" --> D["journalctl -k | grep NVRM; firmware; power; Xid decode"]
-  Q4 -- "works, but multi-GPU job fails" --> F["Fabric Manager version/state; nvidia-smi topo -m; nvlink status"]
-```
+![Troubleshooting flow: the node has no GPUs](./img/ch22-d2-luna.svg)
+
+*Figure 1.22.3. Troubleshooting flow: "the node has no GPUs".*
 
 Some symptoms do not fit neatly into the flow. The table lists them with their cause and their fix. If you see one of them, jump straight to its row.
 

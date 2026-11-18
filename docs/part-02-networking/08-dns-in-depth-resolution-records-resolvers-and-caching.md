@@ -70,6 +70,10 @@ When you set up replication, decide early which server holds the editable copy o
 
 Suppose a service calls a hostname and the answer is slow or wrong. To find the cause, you need to know which server walks the tree and how long each answer is kept. The diagram follows one lookup from the application to the authoritative server.
 
+![How a DNS lookup is resolved](./img/n08-fig1-dns.jpg)
+
+*Figure 2.8.1. The resolver asks root, TLD and authoritative servers in turn and caches the answer.*
+
 ```mermaid
 sequenceDiagram
   participant App as Application

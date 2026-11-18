@@ -272,6 +272,10 @@ This is the sentence worth memorising. By themselves, `Requires=` and `Wants=` d
 
 Ordering is a separate setting from requirements, and it uses two modifiers. `Before=B` means this unit activates before unit B. `After=B` means this unit activates after unit B. Suppose `foo.target` contains `Before=bar.target`. Then systemd starts `foo.target` first and `bar.target` after it. Ordering only matters once both units are going to start, so check it whenever a unit must wait for another.
 
+![Wants and After are separate](./img/ch15-fig1-ordering.jpg)
+
+*Figure 1.15.1. Wants= pulls a unit in; After= only sets the start order. Use both together.*
+
 The soft and hard forms matter for a practical reason, and one picture makes it obvious. Imagine a login prompt that hard-requires a database server. If that server fails, you cannot log in to fix the database. `Wants` keeps a failure local, much as a traditional boot tolerated failing scripts. A missing data disk may stop an application, but it should not stop `sshd`. Use `Requires` or `BindsTo` only when a unit is genuinely useless or dangerous without the other.
 
 systemd also adds some dependencies itself, so you do not have to write the boilerplate and you avoid a class of common mistakes. A service gets `Requires=` and `After=` `sysinit.target` and `basic.target`, and `Conflicts=` and `Before=` `shutdown.target`. Any unit listed in a target's `Wants=` is ordered `After=` that target's ... (the target is started after its members, so that reaching the target means they are up). Mounts depend on their devices and parents, and units that use sockets depend on the socket units. Turn these defaults off for early-boot units with `DefaultDependencies=no`. The defaults for each unit type are listed in the DEFAULT DEPENDENCIES section of its manual page. See what systemd computed with `systemctl list-dependencies --all NAME` and `systemctl show -p After,Requires NAME`.
@@ -354,20 +358,9 @@ Use these commands to inspect and switch targets. `systemctl get-default` shows 
 
 Dependencies form a **graph**, not a tree, and the diagram below shows why that distinction matters. It traces the path from the early targets to the GPU services, which is a good way to picture the graph.
 
-```mermaid
-flowchart LR
-  LF["local-fs.target"] --> SI["sysinit.target"]
-  SW["swap.target"] --> SI
-  SI --> BA["basic.target"]
-  SO["sockets.target"] --> BA
-  TI["timers.target"] --> BA
-  BA --> MU["multi-user.target"]
-  NO["network-online.target"] --> MU
-  MU --> GR["graphical.target (default on desktops)"]
-  MU --> SVC["sshd, containerd, kubelet, slurmd, nvidia-*, ..."]
-  NO --> NVFM["nvidia-fabricmanager"]
-  NVFM --> CD["containerd"] --> KL["kubelet"]
-```
+![Targets](./img/ch15-d1-luna.svg)
+
+*Figure 1.15.2. Targets.*
 
 You can render the whole graph as an image with `systemd-analyze dot 'multi-user.target' | dot -Tsvg > g.svg`. Filter the patterns to keep the picture readable.
 
@@ -482,13 +475,9 @@ A runaway training job can consume every byte of memory on a shared node. Withou
 
 systemd places every service, scope and session into a **cgroup**. Slices decide where that cgroup sits in the hierarchy, and the resource properties on a unit apply to its cgroup. Chapter 1.8 section 9 covers cgroups at an introductory level, and chapter 1.18 explains the controllers. On cgroup v2, the hierarchy looks like this:
 
-```mermaid
-flowchart TB
-  ROOT["-.slice (root)"] --> SYS["system.slice\nsshd, containerd, kubelet, slurmd, nvidia-*"]
-  ROOT --> USR["user.slice\nuser-1000.slice > session-3.scope"]
-  ROOT --> MCH["machine.slice\nVMs / nspawn containers"]
-  ROOT --> KP["kubepods.slice\nkubepods-burstable / besteffort / pod... (kubelet-managed)"]
-```
+![Resource control, slices and host protection](./img/ch15-d2-luna.svg)
+
+*Figure 1.15.3. Resource control, slices and host protection.*
 
 | Property | Meaning |
 |---|---|

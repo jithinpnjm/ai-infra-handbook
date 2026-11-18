@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">Two perspectives</title>
+  <desc id="svg-desc">Two linked perspectives: workload analysis proceeds top-down, while resource analysis proceeds bottom-up. Both connect to A real problem.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="18" markerHeight="18" refX="17" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L17 9 L1 17 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="60" y="83" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Two perspectives</text>
+
+  <rect x="60" y="130" width="900" height="450" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="92" y="180" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Workload analysis (top-down)</text>
+
+  <rect x="100" y="210" width="810" height="70" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="137" y="225" width="50" height="39" rx="4"/>
+    <path d="M137 235h50M146 230h2M154 230h2M162 230h2"/>
+    <path d="M151 264v7M173 264v7M145 271h34"/>
+  </g>
+  <text x="215" y="255" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Application / request</text>
+
+  <path d="M505 280 V300" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="100" y="300" width="810" height="70" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M139 235h20l8 8h19v29h-47z" transform="translate(0 80)"/>
+    <path d="M139 325h43M139 335h43M139 345h43"/>
+  </g>
+  <text x="215" y="345" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Library / runtime</text>
+
+  <path d="M505 370 V390" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="100" y="390" width="810" height="70" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="143" y="404" width="42" height="42" rx="5"/>
+    <path d="M151 412h26v26h-26zM151 398v6M164 398v6M177 398v6M151 446v6M164 446v6M177 446v6M137 412h6M137 425h6M137 438h6M185 412h6M185 425h6M185 438h6"/>
+  </g>
+  <text x="215" y="435" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">System calls / kernel</text>
+
+  <path d="M505 460 V480" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="100" y="480" width="810" height="70" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="164" cy="515" r="17"/>
+    <circle cx="164" cy="515" r="6"/>
+    <path d="M164 490v8M164 532v8M139 515h8M181 515h8M146 497l6 6M176 527l6 6M182 497l-6 6M152 527l-6 6"/>
+  </g>
+  <text x="215" y="525" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Drivers / hardware</text>
+
+  <rect x="60" y="650" width="900" height="420" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="92" y="705" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Resource analysis (bottom-up)</text>
+
+  <rect x="100" y="750" width="810" height="70" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="163" cy="785" r="19"/>
+    <circle cx="163" cy="785" r="8"/>
+    <path d="M163 759v7M163 804v7M137 785h7M182 785h7M145 767l5 5M176 798l5 5M181 767l-5 5M150 798l-5 5"/>
+  </g>
+  <text x="215" y="795" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Interconnects, buses</text>
+
+  <path d="M505 860 V820" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="100" y="860" width="810" height="70" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="163" cy="877" rx="23" ry="8"/>
+    <path d="M140 877v27c0 5 10 9 23 9s23-4 23-9v-27M140 890c0 5 10 9 23 9s23-4 23-9"/>
+  </g>
+  <text x="215" y="905" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Disks, NICs, fabric</text>
+
+  <path d="M505 970 V930" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="100" y="970" width="810" height="70" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="144" y="984" width="40" height="42" rx="5"/>
+    <path d="M152 992h24v26h-24zM152 978v6M164 978v6M176 978v6M152 1026v6M164 1026v6M176 1026v6M138 992h6M138 1005h6M138 1018h6M184 992h6M184 1005h6M184 1018h6"/>
+  </g>
+  <text x="215" y="1015" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">CPUs, memory, GPUs</text>
+
+  <path d="M960 440 C1080 440 1165 535 1280 535" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 10"/>
+  <text x="995" y="330" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="995" dy="0">latency,</tspan>
+    <tspan x="995" dy="30">throughput,</tspan>
+    <tspan x="995" dy="30">errors of the</tspan>
+    <tspan x="995" dy="30">workload</tspan>
+  </text>
+
+  <path d="M960 840 C1080 840 1165 665 1280 665" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 10"/>
+  <text x="995" y="885" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="995" dy="0">utilisation,</tspan>
+    <tspan x="995" dy="30">saturation,</tspan>
+    <tspan x="995" dy="30">errors of</tspan>
+    <tspan x="995" dy="30">resources</tspan>
+  </text>
+
+  <rect x="1280" y="475" width="270" height="220" rx="24" fill="#e8f1ea" stroke="#db8129" stroke-width="5"/>
+  <g fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1415 505l34 58h-68z"/>
+    <path d="M1415 523v19M1415 550h1"/>
+  </g>
+  <text x="1415" y="615" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1415" dy="0">A real</tspan>
+    <tspan x="1415" dy="38">problem</tspan>
+  </text>
+</svg>

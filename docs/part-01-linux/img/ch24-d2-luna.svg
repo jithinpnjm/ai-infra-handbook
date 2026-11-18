@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">Observability sources</title>
+  <desc id="svg-desc">Observability sources diagram.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 1 L16 9 L0 17 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 1 L16 9 L0 17 Z" fill="#db8129"/>
+    </marker>
+    <g id="icon-file" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 5h19l12 12v34H15z"/>
+      <path d="M34 5v13h12M22 29h17M22 38h17"/>
+    </g>
+    <g id="icon-clock" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <path d="M28 14v15l11 7"/>
+    </g>
+    <g id="icon-network" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="13" r="7"/>
+      <circle cx="13" cy="42" r="7"/>
+      <circle cx="43" cy="42" r="7"/>
+      <path d="M25 20 16 35M31 20l9 15M20 42h16"/>
+    </g>
+    <g id="icon-wave" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 30h8l6-15 10 29 8-22 6 8h8"/>
+    </g>
+    <g id="icon-probe" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="25" cy="25" r="16"/>
+      <circle cx="25" cy="25" r="5"/>
+      <path d="m37 37 13 13M25 4v7M4 25h7"/>
+    </g>
+    <g id="icon-marker" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 51s18-18 18-31a18 18 0 1 0-36 0c0 13 18 31 18 31Z"/>
+      <circle cx="28" cy="20" r="6"/>
+    </g>
+    <g id="icon-chip" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="14" y="14" width="28" height="28" rx="3"/>
+      <path d="M21 21h14v14H21zM21 5v9M28 5v9M35 5v9M21 42v9M28 42v9M35 42v9M5 21h9M5 28h9M5 35h9M42 21h9M42 28h9M42 35h9"/>
+    </g>
+    <g id="icon-window" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="9" width="46" height="38" rx="4"/>
+      <path d="M5 19h46M13 14h1M20 14h1M27 14h1"/>
+    </g>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="56" y="78" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Observability sources</text>
+
+  <rect x="40" y="120" width="900" height="420" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="76" y="174" fill="#207448" font-family="sans-serif" font-size="32" font-weight="700">Counters</text>
+
+  <use href="#icon-file" x="76" y="194"/>
+  <text x="156" y="234" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">/proc (process &amp; system)</text>
+
+  <use href="#icon-file" x="76" y="255"/>
+  <text x="156" y="285" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="156" dy="0">/sys (devices, drivers,</tspan>
+    <tspan x="156" dy="34">cgroups)</tspan>
+  </text>
+
+  <use href="#icon-clock" x="76" y="326"/>
+  <text x="156" y="366" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">delay accounting (taskstats via netlink)</text>
+
+  <use href="#icon-network" x="76" y="388"/>
+  <text x="156" y="428" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">netlink (network config &amp; sockets)</text>
+
+  <use href="#icon-file" x="76" y="454"/>
+  <text x="156" y="482" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="156" dy="0">cgroup files (cpu.stat,</tspan>
+    <tspan x="156" dy="34">memory.events, io.stat, PSI)</tspan>
+  </text>
+
+  <rect x="40" y="570" width="900" height="550" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="76" y="624" fill="#207448" font-family="sans-serif" font-size="32" font-weight="700">Events</text>
+
+  <use href="#icon-wave" x="76" y="642"/>
+  <text x="156" y="682" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">tracepoints (static, stable-ish)</text>
+
+  <use href="#icon-probe" x="76" y="706"/>
+  <text x="156" y="736" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="156" dy="0">kprobes/kretprobes (dynamic kernel,</tspan>
+    <tspan x="156" dy="34">unstable)</tspan>
+  </text>
+
+  <use href="#icon-probe" x="76" y="784"/>
+  <text x="156" y="814" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="156" dy="0">uprobes/uretprobes (dynamic user,</tspan>
+    <tspan x="156" dy="34">unstable)</tspan>
+  </text>
+
+  <use href="#icon-marker" x="76" y="856"/>
+  <text x="156" y="896" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">USDT (static user, stable)</text>
+
+  <use href="#icon-chip" x="76" y="918"/>
+  <text x="156" y="958" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">PMCs (hardware counters)</text>
+
+  <use href="#icon-wave" x="76" y="980"/>
+  <text x="156" y="1010" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="156" dy="0">software events (page faults,</tspan>
+    <tspan x="156" dy="34">context switches)</tspan>
+  </text>
+
+  <path d="M940 340 H1050" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+  <rect x="1050" y="260" width="510" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <use href="#icon-window" x="1072" y="312"/>
+  <text x="1148" y="326" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1148" dy="0">vmstat, iostat, ss,</tspan>
+    <tspan x="1148" dy="38">sar, top, ...</tspan>
+  </text>
+
+  <path d="M940 900 H970 V1080 H1050" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)"/>
+  <text x="994" y="930" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="994" dy="0">perf_event_open(2) /</tspan>
+    <tspan x="994" dy="32">tracefs</tspan>
+  </text>
+  <rect x="1050" y="1000" width="510" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <use href="#icon-window" x="1072" y="1052"/>
+  <text x="1148" y="1066" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1148" dy="0">perf, Ftrace,</tspan>
+    <tspan x="1148" dy="38">BCC, bpftrace</tspan>
+  </text>
+</svg>

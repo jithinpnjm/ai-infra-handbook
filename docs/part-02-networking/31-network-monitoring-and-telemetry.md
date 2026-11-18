@@ -69,6 +69,10 @@ Decide which baselines you will record for each device role before you set any t
 
 Each mechanism trades speed, detail and effort in a different way. The table below sets them side by side, so you can see what each one costs before you choose. Read the Strengths and Weaknesses columns first.
 
+![Polling versus streaming telemetry](./img/n31-fig1-telemetry.jpg)
+
+*Figure 2.31.1. Polling asks on an interval; streaming telemetry pushes continuously.*
+
 | Mechanism | How it works | Typical granularity | Strengths | Weaknesses |
 |---|---|---|---|---|
 | **SNMP polling** (v2c/v3) | Collector polls OIDs/MIBs (interface counters, queue stats, buffer use, CPU, memory, FIB/RIB/MAC/TCAM utilisation) | 30 s to 5 min | Universal; standard MIBs; simple | Pull overhead; coarse; slow bulk walks; v2c weak security; vendor MIB gaps; poor for microbursts |

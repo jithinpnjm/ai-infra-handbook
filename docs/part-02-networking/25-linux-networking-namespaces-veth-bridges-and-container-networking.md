@@ -79,6 +79,10 @@ The veth pair is the basic link between namespaces. Think of it as a short patch
 
 Picture a host with two containers that each believe they are alone on the network. Each has its own address, its own routes and its own ports. The host has to connect them, let them reach the outside, and let the outside reach one chosen port. Container runtimes do this quietly, so people rarely see the parts. Building it once by hand shows you the parts, and after that a CNI plugin or Docker's network driver is just a script you have already run.
 
+![Containers, veth pairs and a bridge](./img/n25-fig1-veth.jpg)
+
+*Figure 2.25.1. Each container namespace is cabled to a bridge by a veth pair.*
+
 Container networking is nothing more than the primitives from the last section, assembled by software. You learn what the software does by building the same thing yourself, once, with plain commands. After that, a CNI plugin or Docker's network driver reads as a long script that you have already run.
 
 The first script creates two containers, `c1` and `c2`, on a host bridge. It adds NAT so they can reach the outside.

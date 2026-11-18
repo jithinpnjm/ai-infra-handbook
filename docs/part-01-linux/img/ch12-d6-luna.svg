@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>AI-infrastructure patterns</title>
+  <desc></desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1 1L17 9L1 17" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1 1L17 9L1 17" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  <text x="800" y="88" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">AI-infrastructure patterns</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="40" y="330" width="300" height="220" rx="18"/>
+    <rect x="470" y="330" width="240" height="220" rx="18"/>
+    <rect x="840" y="330" width="240" height="220" rx="18"/>
+    <rect x="1210" y="330" width="350" height="220" rx="18"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="190" cy="386" rx="34" ry="12"/>
+    <path d="M156 386v34c0 7 15 12 34 12s34-5 34-12v-34"/>
+    <path d="M156 403c0 7 15 12 34 12s34-5 34-12"/>
+  </g>
+  <text x="190" y="470" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="190" dy="0">NVMe / network</tspan>
+    <tspan x="190" dy="36">storage</tspan>
+  </text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M568 362h44l17 17v42h-61z"/>
+    <path d="M612 362v18h17M578 391h40M578 404h40"/>
+  </g>
+  <text x="590" y="470" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Page cache</text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <rect x="928" y="363" width="64" height="58" rx="4"/>
+    <path d="M928 379h64M938 371h2M947 371h2M956 371h2M940 392h40M940 404h31"/>
+  </g>
+  <text x="960" y="470" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">App buffer</text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1341" y="366" width="68" height="58" rx="7"/>
+    <rect x="1356" y="381" width="38" height="28" rx="3"/>
+    <path d="M1350 357v9M1365 357v9M1380 357v9M1395 357v9M1350 424v9M1365 424v9M1380 424v9M1395 424v9M1332 375h9M1332 390h9M1332 405h9M1409 375h9M1409 390h9M1409 405h9"/>
+  </g>
+  <text x="1385" y="470" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">GPU memory</text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)">
+    <path d="M340 440H470"/>
+    <path d="M710 440H840"/>
+    <path d="M1080 440H1210"/>
+  </g>
+  <g fill="#303a36" font-family="sans-serif" font-size="24" font-weight="600" text-anchor="middle">
+    <text x="405" y="300">1 DMA (buffered)</text>
+    <text x="775" y="300">2 CPU copy</text>
+    <text x="1145" y="300">3 cudaMemcpy</text>
+  </g>
+
+  <path d="M300 550V650H870V550" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 9" marker-end="url(#arrow-green)"/>
+  <text x="585" y="625" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">O_DIRECT: DMA to app buffer</text>
+
+  <path d="M250 550V760H1240V550" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)"/>
+  <text x="745" y="735" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">GPUDirect Storage: direct DMA</text>
+</svg>

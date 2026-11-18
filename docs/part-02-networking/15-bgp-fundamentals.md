@@ -146,6 +146,10 @@ Keep the attribute categories in mind when you debug a route, because they decid
 
 A router often hears several paths to the same prefix, and each one can carry different attributes. It has to pick one, and it does so with an ordered list of tests. It is like a judge who compares candidates on the first criterion, and moves to the next only if there is a tie. The list below is the common baseline, although vendors differ in small details. The first test that separates the paths decides the winner.
 
+![BGP best-path order](./img/n15-fig1-bestpath.jpg)
+
+*Figure 2.15.1. The first test that finds a difference decides.*
+
 1. Highest WEIGHT (local to the router; Cisco/FRR).
 2. Highest `LOCAL_PREF` (exit policy of this AS).
 3. Prefer locally originated routes (network, aggregate or redistributed on this router).

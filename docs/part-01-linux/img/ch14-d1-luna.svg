@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1740" viewBox="0 0 1600 1740" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">The big picture</title>
+  <desc id="svg-desc">Boot flow from power on through firmware, the boot loader, kernel startup, and login.</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L16 9 L2 16 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L16 9 L2 16 Z" fill="#db8129"/>
+    </marker>
+    <style>
+      .bg { fill: #f5f8f5; }
+      .card { fill: #e8f1ea; stroke: #207448; stroke-width: 3; }
+      .icon { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .title { fill: #303a36; font: 700 48px sans-serif; }
+      .node-title { fill: #303a36; font: 700 30px sans-serif; }
+      .body { fill: #303a36; font: 24px sans-serif; }
+      .mono { fill: #303a36; font: 24px monospace; }
+      .edge-label { fill: #303a36; font: 24px sans-serif; }
+      .edge-mono { fill: #303a36; font: 24px monospace; }
+      .arrow { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow-green); }
+      .key-arrow { fill: none; stroke: #db8129; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow-orange); }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="1740"/>
+  <text class="title" x="64" y="78">The big picture</text>
+
+  <!-- Connections -->
+  <path class="arrow" d="M800 130 V180"/>
+  <path class="arrow" d="M600 345 V455 H270 V500"/>
+  <path class="arrow" d="M1000 345 V455 H1320 V500"/>
+  <path class="arrow" d="M270 640 V720"/>
+  <path class="arrow" d="M460 800 H530"/>
+  <path class="arrow" d="M1320 640 V700 H1100 V820 H1070"/>
+  <path class="key-arrow" d="M690 900 V970 H420 V1030"/>
+  <path class="arrow" d="M760 1115 H840"/>
+  <path class="arrow" d="M1200 1200 V1290"/>
+  <path class="arrow" d="M840 1370 H760"/>
+  <path class="arrow" d="M420 1450 V1540"/>
+
+  <!-- Firmware branch labels -->
+  <text class="edge-label" x="64" y="382">
+    <tspan x="64" dy="0">BIOS: read MBR (first 446</tspan>
+    <tspan x="64" dy="30">bytes of code)</tspan>
+  </text>
+  <text class="edge-label" x="1080" y="382">
+    <tspan x="1080" dy="0">UEFI: read ESP (FAT), run</tspan>
+    <tspan class="edge-mono" x="1080" dy="30">\EFI\&lt;vendor&gt;\*.efi</tspan>
+  </text>
+
+  <!-- Power on -->
+  <g>
+    <rect class="card" x="640" y="30" width="320" height="100" rx="18"/>
+    <g class="icon" transform="translate(670 50)">
+      <path d="M30 2 V27"/>
+      <path d="M16 9 A25 25 0 1 0 44 9"/>
+    </g>
+    <text class="node-title" x="740" y="91">Power on</text>
+  </g>
+
+  <!-- Firmware -->
+  <g>
+    <rect class="card" x="450" y="180" width="700" height="165" rx="18"/>
+    <g class="icon" transform="translate(474 220)">
+      <rect x="10" y="10" width="40" height="40" rx="4"/>
+      <path d="M18 2 V10 M30 2 V10 M42 2 V10 M18 50 V58 M30 50 V58 M42 50 V58"/>
+      <path d="M2 18 H10 M2 30 H10 M2 42 H10 M50 18 H58 M50 30 H58 M50 42 H58"/>
+      <path d="M20 22 H40 M20 30 H40 M20 38 H34"/>
+    </g>
+    <text class="node-title" x="550" y="226">Firmware (BIOS or UEFI)</text>
+    <text class="body" x="550" y="267">
+      <tspan x="550" dy="0">POST: test and initialise</tspan>
+      <tspan x="550" dy="30">hardware</tspan>
+      <tspan x="550" dy="30">choose boot device from boot order</tspan>
+    </text>
+  </g>
+
+  <!-- Stage 1 boot code -->
+  <g>
+    <rect class="card" x="80" y="500" width="380" height="140" rx="18"/>
+    <g class="icon" transform="translate(102 540)">
+      <path d="M8 3 H34 L48 17 V53 H8 Z"/>
+      <path d="M34 3 V17 H48 M17 29 H39 M17 38 H39 M17 47 H31"/>
+    </g>
+    <text class="node-title" x="180" y="558">
+      <tspan x="180" dy="0">Stage 1</tspan>
+      <tspan x="180" dy="36">boot code</tspan>
+    </text>
+  </g>
+
+  <!-- Stage 1.5/2 -->
+  <g>
+    <rect class="card" x="80" y="720" width="380" height="160" rx="18"/>
+    <g class="icon" transform="translate(102 766)">
+      <ellipse cx="30" cy="9" rx="25" ry="8"/>
+      <path d="M5 9 V40 C5 45 16 49 30 49 S55 45 55 40 V9"/>
+      <path d="M5 24 C5 29 16 33 30 33 S55 29 55 24"/>
+    </g>
+    <text class="node-title" x="180" y="776">
+      <tspan x="180" dy="0">Stage 1.5/2</tspan>
+      <tspan x="180" dy="36">(core.img in the</tspan>
+      <tspan x="180" dy="36">gap or boot partition)</tspan>
+    </text>
+  </g>
+
+  <!-- UEFI boot loader -->
+  <g>
+    <rect class="card" x="1120" y="500" width="400" height="140" rx="18"/>
+    <g class="icon" transform="translate(1140 541)">
+      <rect x="3" y="5" width="54" height="42" rx="4"/>
+      <path d="M3 16 H57 M13 11 H14 M22 11 H23 M31 11 H32"/>
+      <path d="M15 27 H45 M15 35 H39"/>
+    </g>
+    <text class="node-title" x="1210" y="558">
+      <tspan x="1210" dy="0">UEFI boot loader</tspan>
+      <tspan x="1210" dy="36">(shim, then GRUB)</tspan>
+    </text>
+  </g>
+
+  <!-- Boot loader -->
+  <g>
+    <rect class="card" x="530" y="740" width="540" height="160" rx="18"/>
+    <g class="icon" transform="translate(550 786)">
+      <rect x="3" y="5" width="54" height="42" rx="4"/>
+      <path d="M3 16 H57 M13 11 H14 M22 11 H23 M31 11 H32"/>
+      <path d="M15 27 H45 M15 35 H39"/>
+    </g>
+    <text class="node-title" x="620" y="781">Boot loader (GRUB 2)</text>
+    <text class="body" x="620" y="818">
+      <tspan>reads </tspan><tspan class="mono">grub.cfg</tspan><tspan>, shows menu,</tspan>
+      <tspan x="620" dy="30">loads kernel + initramfs into memory</tspan>
+    </text>
+  </g>
+
+  <!-- Kernel -->
+  <g>
+    <rect class="card" x="40" y="1030" width="720" height="170" rx="18"/>
+    <g class="icon" transform="translate(62 1084)">
+      <rect x="8" y="8" width="40" height="40" rx="4"/>
+      <path d="M16 0 V8 M28 0 V8 M40 0 V8 M16 48 V56 M28 48 V56 M40 48 V56"/>
+      <path d="M0 16 H8 M0 28 H8 M0 40 H8 M48 16 H56 M48 28 H56 M48 40 H56"/>
+      <path d="M18 20 H38 M18 28 H38 M18 36 H32"/>
+    </g>
+    <text class="node-title" x="140" y="1085">Kernel (<tspan class="mono" font-weight="700">vmlinuz</tspan>)</text>
+    <text class="body" x="140" y="1124">
+      <tspan x="140" dy="0">decompress, set up CPU/memory,</tspan>
+      <tspan x="140" dy="30">discover buses and devices</tspan>
+    </text>
+  </g>
+
+  <!-- initramfs -->
+  <g>
+    <rect class="card" x="840" y="1030" width="720" height="170" rx="18"/>
+    <g class="icon" transform="translate(862 1084)">
+      <rect x="4" y="4" width="48" height="48" rx="5"/>
+      <path d="M13 18 H43 M13 28 H43 M13 38 H35"/>
+      <path d="M16 4 V-2 M28 4 V-2 M40 4 V-2 M16 52 V58 M28 52 V58 M40 52 V58"/>
+    </g>
+    <text class="node-title" x="920" y="1085">initramfs (temporary root in RAM)</text>
+    <text class="body" x="920" y="1124">
+      <tspan x="920" dy="0">load storage/network/crypto/LVM/RAID</tspan>
+      <tspan x="920" dy="30">modules, assemble and unlock, find</tspan>
+      <tspan x="920" dy="30">the real root</tspan>
+    </text>
+  </g>
+
+  <!-- Mount real root filesystem -->
+  <g>
+    <rect class="card" x="840" y="1290" width="720" height="160" rx="18"/>
+    <g class="icon" transform="translate(862 1340)">
+      <ellipse cx="28" cy="9" rx="24" ry="8"/>
+      <path d="M4 9 V43 C4 48 15 52 28 52 S52 48 52 43 V9"/>
+      <path d="M4 24 C4 29 15 33 28 33 S52 29 52 24"/>
+    </g>
+    <text class="node-title" x="920" y="1345">
+      <tspan x="920" dy="0">Mount real root filesystem</tspan>
+      <tspan x="920" dy="36">(read-only), switch_root</tspan>
+    </text>
+  </g>
+
+  <!-- init -->
+  <g>
+    <rect class="card" x="40" y="1290" width="720" height="160" rx="18"/>
+    <g class="icon" transform="translate(62 1340)">
+      <circle cx="30" cy="30" r="12"/>
+      <path d="M30 2 V10 M30 50 V58 M2 30 H10 M50 30 H58 M10 10 L16 16 M44 44 L50 50 M50 10 L44 16 M16 44 L10 50"/>
+      <circle cx="30" cy="30" r="24"/>
+    </g>
+    <text class="node-title" x="140" y="1345">init = PID 1 (systemd)</text>
+    <text class="body" x="140" y="1384">
+      <tspan x="140" dy="0">mount filesystems, start services,</tspan>
+      <tspan x="140" dy="30">reach default target</tspan>
+    </text>
+  </g>
+
+  <!-- Login -->
+  <g>
+    <rect class="card" x="40" y="1540" width="720" height="150" rx="18"/>
+    <g class="icon" transform="translate(62 1584)">
+      <rect x="3" y="5" width="54" height="42" rx="4"/>
+      <path d="M3 16 H57 M13 11 H14 M22 11 H23 M31 11 H32"/>
+      <path d="M15 28 L22 34 L15 40 M27 40 H41"/>
+    </g>
+    <text class="node-title" x="140" y="1602">
+      <tspan x="140" dy="0">Login prompt / sshd /</tspan>
+      <tspan x="140" dy="36">scheduler daemons running</tspan>
+    </text>
+  </g>
+</svg>

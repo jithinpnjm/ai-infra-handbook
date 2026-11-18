@@ -109,6 +109,10 @@ A trailing `/` on the source changes what arrives. The two lines below look almo
 - `rsync -a dir host:dest_dir` creates `dest_dir/dir/...`. The directory itself arrives.
 - `rsync -a dir/ host:dest_dir` copies the contents of `dir` into `dest_dir` without creating `dir`. Locally, this behaves like `cp dir/* dest_dir`.
 
+![The rsync trailing slash](./img/ch30-fig1-rsync.jpg)
+
+*Figure 1.30.1. A trailing slash on the source copies the contents; without it, the folder itself is copied.*
+
 Combined with `--delete`, a stray slash can remove unrelated files at the destination. Watch out for **shell tab-completion**, which adds trailing slashes after directory names automatically, and does it without asking.
 
 ### Excluding and including
@@ -426,16 +430,9 @@ Wayland is gradually replacing X11 (see How Linux Works, chapter 14). It combine
 
 Desktop components also rely on D-Bus (How Linux Works, section 14.5), an interprocess communication bus. It has a system instance, used by `systemd`, `NetworkManager` and `Upstart`, which you monitor with `dbus-monitor --system`. It also has a per-user session instance, monitored with `dbus-monitor --session`. Printing uses CUPS, which stands for Common UNIX Printing System. Its commands include `lp`, `lpr`, `lpstat`, `cancel` and `cupstestppd`. It converts PostScript and PDF jobs through RIP filters, and it sends them to IPP or LPD network printers. How Linux Works, section 14.6, covers CUPS in more depth.
 
-```mermaid
-flowchart LR
-  subgraph ClusterNode["Remote cluster login/viz node"]
-    XC["X11 Client app\n(xclock, paraview, xterm)"]
-  end
-  subgraph Workstation["User's local laptop / workstation"]
-    XS["X11 Server (Xorg / XQuartz / VcXsrv)\nowns screen, mouse, keyboard (:0)"]
-  end
-  XC <-->|"X11 protocol (or ssh -X tunnel\nwith DISPLAY + xauth cookie)"| XS
-```
+![The X Window System](./img/ch30-d1-luna.svg)
+
+*Figure 1.30.2. The X Window System.*
 
 X uses a client/server architecture, but the names run the opposite way from what you might expect, and this trips up almost everyone the first time. The X server is the program on your machine. It owns the screen, keyboard and mouse. The clients are the graphical applications. They may run on a different machine, and they talk to your server over the X protocol (version 11), through Unix sockets or network sockets. The server consists of drivers for input and output devices, plus the part that talks to applications.
 

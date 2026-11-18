@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Putting a method into practice: a template</title>
+  <desc>A flowchart of the method template, its decision, and follow-up steps.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+    <style>
+      text { fill: #303a36; font-family: sans-serif; }
+      .card { fill: #e8f1ea; stroke: #207448; stroke-width: 3; }
+      .icon { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .title { font-size: 48px; font-weight: 700; }
+      .node-title { font-size: 30px; font-weight: 700; }
+      .body { font-size: 24px; }
+      .branch { font-size: 24px; font-weight: 700; }
+      .arrow { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: butt; stroke-linejoin: round; }
+      .key-arrow { fill: none; stroke: #db8129; stroke-width: 4; stroke-linecap: butt; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text class="title" x="800" y="82" text-anchor="middle">Putting a method into practice: a template</text>
+
+  <g>
+    <rect class="card" x="40" y="130" width="480" height="240" rx="18"/>
+    <g class="icon" transform="translate(64 150)">
+      <path d="M10 7h30v46H10z"/>
+      <path d="M19 7V3h12v8H19z"/>
+      <path d="M18 25h15M18 35h15M18 45h11"/>
+    </g>
+    <text class="node-title" x="140" y="174">
+      <tspan x="140">1. Problem</tspan>
+      <tspan x="140" dy="36">statement</tspan>
+    </text>
+    <text class="body" x="64" y="270">
+      <tspan x="64">metric, since when, what</tspan>
+      <tspan x="64" dy="32">changed, scope</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="560" y="130" width="480" height="240" rx="18"/>
+    <g class="icon" transform="translate(584 150)">
+      <path d="M5 52V8M5 52h48"/>
+      <path d="M14 43V31h9v12M29 43V20h9v23M44 43V11h8v32"/>
+    </g>
+    <text class="node-title" x="660" y="174">
+      <tspan x="660">2. Baseline /</tspan>
+      <tspan x="660" dy="36">expectation</tspan>
+    </text>
+    <text class="body" x="584" y="270">
+      <tspan x="584">what should it be?</tspan>
+      <tspan x="584" dy="32">known-good data</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="1080" y="130" width="480" height="240" rx="18"/>
+    <g class="icon" transform="translate(1104 150)">
+      <circle cx="25" cy="24" r="16"/>
+      <path d="M37 36l15 15M18 24h14M25 17v14"/>
+    </g>
+    <text class="node-title" x="1180" y="174">
+      <tspan x="1180">3. 60 s checklist</tspan>
+      <tspan x="1180" dy="36">+ USE sweep</tspan>
+    </text>
+    <text class="body" x="1104" y="270">
+      <tspan x="1104">all resources: errors,</tspan>
+      <tspan x="1104" dy="32">saturation, utilisation</tspan>
+    </text>
+  </g>
+
+  <path class="arrow" d="M520 250H560" marker-end="url(#arrow-green)"/>
+  <path class="arrow" d="M1040 250H1080" marker-end="url(#arrow-green)"/>
+
+  <path class="arrow" d="M1320 370V395H800V420" marker-end="url(#arrow-green)"/>
+  <g>
+    <rect class="card" x="600" y="420" width="400" height="130" rx="18"/>
+    <g class="icon" transform="translate(624 456)">
+      <circle cx="22" cy="22" r="17"/>
+      <path d="M34 34l16 16M17 22h10M22 17v10"/>
+    </g>
+    <text class="node-title" x="694" y="476">
+      <tspan x="694">Resource</tspan>
+      <tspan x="694" dy="36">implicated?</tspan>
+    </text>
+  </g>
+
+  <path class="key-arrow" d="M600 485H390V600" marker-end="url(#arrow-orange)"/>
+  <text class="branch" x="494" y="470" text-anchor="middle">yes</text>
+  <path class="arrow" d="M1000 485H1210V600" marker-end="url(#arrow-green)"/>
+  <text class="branch" x="1100" y="470" text-anchor="middle">no</text>
+
+  <g>
+    <rect class="card" x="40" y="600" width="700" height="200" rx="18"/>
+    <g class="icon" transform="translate(64 625)">
+      <circle cx="23" cy="22" r="16"/>
+      <path d="M35 34l17 17M16 22h14M23 15v14"/>
+    </g>
+    <text class="node-title" x="140" y="666">4. Drill down on that resource</text>
+    <text class="body" x="64" y="730">profile/trace; five whys</text>
+  </g>
+
+  <g>
+    <rect class="card" x="860" y="600" width="700" height="200" rx="18"/>
+    <g class="icon" transform="translate(884 625)">
+      <path d="M4 49h50M8 43V28h10v15M24 43V15h10v28M40 43V7h10v36"/>
+    </g>
+    <text class="node-title" x="960" y="666">4'. Workload + latency analysis</text>
+    <text class="body" x="884" y="720">
+      <tspan x="884">characterise load; split time;</tspan>
+      <tspan x="884" dy="32">static config audit</tspan>
+    </text>
+  </g>
+
+  <path class="arrow" d="M390 800V835H320V870" marker-end="url(#arrow-green)"/>
+  <path class="arrow" d="M1210 800V840H460V870" marker-end="url(#arrow-green)"/>
+
+  <g>
+    <rect class="card" x="40" y="870" width="480" height="210" rx="18"/>
+    <g class="icon" transform="translate(64 892)">
+      <path d="M19 5h18M23 5v16L10 45a7 7 0 0 0 6 10h24a7 7 0 0 0 6-10L33 21V5"/>
+      <path d="M17 40h26M22 33h16"/>
+    </g>
+    <text class="node-title" x="140" y="916">
+      <tspan x="140">5. Hypothesis →</tspan>
+      <tspan x="140" dy="36">experiment</tspan>
+    </text>
+    <text class="body" x="64" y="1010">
+      <tspan x="64">change ONE thing;</tspan>
+      <tspan x="64" dy="32">predict result</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="560" y="870" width="480" height="210" rx="18"/>
+    <g class="icon" transform="translate(584 892)">
+      <path d="M11 5h31l9 9v40H11z"/>
+      <path d="M42 5v11h9M18 31l7 7 14-15M18 47h24"/>
+    </g>
+    <text class="node-title" x="660" y="916">
+      <tspan x="660">6. Verify vs</tspan>
+      <tspan x="660" dy="36">baseline; quantify</tspan>
+      <tspan x="660" dy="36">gain;</tspan>
+    </text>
+    <text class="body" x="584" y="1026">
+      <tspan x="584">regression-test;</tspan>
+      <tspan x="584" dy="30">document</tspan>
+    </text>
+  </g>
+
+  <g>
+    <rect class="card" x="1080" y="870" width="480" height="210" rx="18"/>
+    <g class="icon" transform="translate(1104 892)">
+      <path d="M12 42h36l-5-7V23a13 13 0 0 0-26 0v12z"/>
+      <path d="M22 49a8 8 0 0 0 16 0"/>
+      <path d="M30 3v5"/>
+    </g>
+    <text class="node-title" x="1180" y="916">
+      <tspan x="1180">7. Monitor + alert;</tspan>
+      <tspan x="1180" dy="36">update checklist/</tspan>
+      <tspan x="1180" dy="36">runbook</tspan>
+    </text>
+  </g>
+
+  <path class="arrow" d="M520 975H560" marker-end="url(#arrow-green)"/>
+  <path class="arrow" d="M1040 975H1080" marker-end="url(#arrow-green)"/>
+</svg>

@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1400" viewBox="0 0 1600 1400" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">The operating system in one picture</title>
+  <desc id="svg-desc">Flowchart of the operating system labels and connections.</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" viewBox="0 0 18 18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" viewBox="0 0 18 18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1400" fill="#f5f8f5"/>
+  <text x="80" y="82" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">The operating system in one picture</text>
+
+  <rect x="80" y="120" width="1440" height="240" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="110" y="165" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">User space (unprivileged CPU mode)</text>
+
+  <rect x="145" y="190" width="560" height="140" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="177" y="231" width="56" height="48" rx="4"/>
+    <path d="M177 244 H233 M188 237 H191 M198 237 H201 M208 237 H211"/>
+    <path d="M185 254 H225 M185 263 H216 M185 272 H220"/>
+  </g>
+  <text x="255" y="231" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="255" dy="0">Applications:</tspan>
+    <tspan x="255" dy="32" font-family="monospace" font-size="24" font-weight="400">python train.py, sshd,</tspan>
+    <tspan x="255" dy="30" font-family="monospace" font-size="24" font-weight="400">slurmd, vLLM</tspan>
+  </text>
+
+  <rect x="895" y="190" width="560" height="140" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="936" cy="260" r="22"/>
+    <circle cx="936" cy="260" r="8"/>
+    <path d="M936 229 V238 M936 282 V291 M905 260 H914 M958 260 H967 M914 238 L920 244 M952 276 L958 282 M958 238 L952 244 M920 276 L914 282"/>
+  </g>
+  <text x="985" y="231" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="985" dy="0">System libraries:</tspan>
+    <tspan x="985" dy="32" font-family="monospace" font-size="24" font-weight="400">libc, libpthread,</tspan>
+    <tspan x="985" dy="30" font-family="monospace" font-size="24" font-weight="400">libcuda ...</tspan>
+  </text>
+
+  <path d="M705 260 H895" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <rect x="80" y="390" width="1440" height="780" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="110" y="435" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Kernel (privileged CPU mode)</text>
+
+  <path d="M680 330 V500" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow-orange)"/>
+  <rect x="700" y="406" width="360" height="42" fill="#f5f8f5"/>
+  <text x="710" y="437" fill="#303a36" font-family="sans-serif" font-size="24">direct syscalls (some runtimes)</text>
+  <path d="M1175 330 V500" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <rect x="100" y="500" width="1400" height="100" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M721 535 H753 V565 H721 Z M729 543 H745 M729 551 H745 M729 559 H739"/>
+    <circle cx="721" cy="535" r="3" fill="#f5f8f5"/>
+    <circle cx="753" cy="565" r="3" fill="#f5f8f5"/>
+  </g>
+  <text x="780" y="560" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">System call interface</text>
+
+  <path d="M245 600 V680" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M615 600 V680" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M985 600 V680" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M1355 600 V680" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <rect x="80" y="680" width="330" height="230" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="245" cy="746" r="27"/>
+    <path d="M245 729 V747 L258 756"/>
+  </g>
+  <text x="245" y="850" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Scheduler</text>
+
+  <rect x="450" y="680" width="330" height="230" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="586" y="716" width="58" height="24" rx="4"/>
+    <rect x="586" y="746" width="58" height="24" rx="4"/>
+    <path d="M595 728 H602 M610 728 H617 M625 728 H635 M595 758 H602 M610 758 H617 M625 758 H635"/>
+  </g>
+  <text x="615" y="850" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Memory manager</text>
+
+  <rect x="820" y="680" width="330" height="230" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="985" cy="704" rx="28" ry="10"/>
+    <path d="M957 704 V742 C957 748 970 753 985 753 C1000 753 1013 748 1013 742 V704"/>
+    <path d="M957 723 C957 729 970 734 985 734 C1000 734 1013 729 1013 723"/>
+  </g>
+  <text x="985" y="810" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="985" dy="0">VFS +</tspan>
+    <tspan x="985" dy="35">filesystems +</tspan>
+    <tspan x="985" dy="35">block layer</tspan>
+  </text>
+
+  <rect x="1190" y="680" width="330" height="230" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1355" cy="744" r="5"/>
+    <circle cx="1331" cy="725" r="5"/>
+    <circle cx="1379" cy="725" r="5"/>
+    <circle cx="1331" cy="763" r="5"/>
+    <circle cx="1379" cy="763" r="5"/>
+    <path d="M1335 729 L1351 741 M1375 729 L1359 741 M1335 759 L1351 747 M1375 759 L1359 747"/>
+  </g>
+  <text x="1355" y="850" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Network stack</text>
+
+  <path d="M985 910 V940 H1020 V970" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M1355 910 V940 H1270 V970" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <rect x="850" y="970" width="530" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="884" y="1017" width="56" height="56" rx="5"/>
+    <path d="M900 1017 V1005 M924 1017 V1005 M900 1085 V1073 M924 1085 V1073 M884 1033 H872 M884 1057 H872 M952 1033 H940 M952 1057 H940"/>
+    <path d="M900 1033 H924 V1057 H900 Z"/>
+  </g>
+  <text x="970" y="1042" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="970" dy="0">Device drivers</tspan>
+    <tspan x="970" dy="36">(including NVIDIA)</tspan>
+  </text>
+
+  <path d="M245 910 L650 1240" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M615 910 L930 1240" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M1120 1120 L1210 1240" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <rect x="550" y="1240" width="900" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="601" y="1272" width="56" height="56" rx="5"/>
+    <path d="M617 1272 V1260 M641 1272 V1260 M617 1340 V1328 M641 1340 V1328 M601 1288 H589 M601 1312 H589 M669 1288 H657 M669 1312 H657"/>
+    <path d="M617 1288 H641 V1312 H617 Z"/>
+  </g>
+  <text x="690" y="1310" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Hardware: CPUs, RAM, disks, NICs, GPUs</text>
+
+  <path d="M1450 1300 H1550 V1050 H1520" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow-green)"/>
+  <text x="1380" y="1150" fill="#303a36" font-family="sans-serif" font-size="24">interrupts</text>
+</svg>

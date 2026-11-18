@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>The sequence of a session</title>
+  <desc></desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  <text x="800" y="94" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">The sequence of a session</text>
+
+  <rect x="90" y="150" width="380" height="700" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <rect x="1130" y="150" width="380" height="700" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="262" y="196" width="56" height="44" rx="4"/>
+    <path d="M262 208 H318 M270 202 H271 M279 202 H280 M288 202 H289"/>
+    <path d="M274 250 H306 M280 240 V250 M300 240 V250"/>
+  </g>
+  <text x="280" y="293" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="700" fill="#303a36">SSH client</text>
+  <text x="280" y="333" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">(~/.ssh/id_ed25519)</text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1320" cy="218" r="17"/>
+    <circle cx="1320" cy="218" r="6"/>
+    <rect x="1315" y="188" width="10" height="12" rx="2"/>
+    <rect x="1315" y="236" width="10" height="12" rx="2"/>
+    <rect x="1290" y="213" width="12" height="10" rx="2"/>
+    <rect x="1338" y="213" width="12" height="10" rx="2"/>
+    <rect x="1297" y="195" width="10" height="12" rx="2" transform="rotate(-45 1302 201)"/>
+    <rect x="1333" y="229" width="10" height="12" rx="2" transform="rotate(-45 1338 235)"/>
+    <rect x="1333" y="195" width="10" height="12" rx="2" transform="rotate(45 1338 201)"/>
+    <rect x="1297" y="229" width="10" height="12" rx="2" transform="rotate(45 1302 235)"/>
+  </g>
+  <text x="1320" y="293" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="700" fill="#303a36">sshd server</text>
+  <text x="1320" y="333" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">(/etc/ssh/ssh_host_*)</text>
+
+  <g font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <text x="800" y="308">1. Diffie-Hellman KEX</text>
+    <text x="800" y="336" font-family="monospace">(symmetric session key)</text>
+
+    <text x="800" y="428">2. Host key verified in</text>
+    <text x="800" y="456" font-family="monospace">~/.ssh/known_hosts</text>
+
+    <text x="800" y="548">3-6. Public key lookup in</text>
+    <text x="800" y="576" font-family="monospace">~/.ssh/authorized_keys + signature</text>
+
+    <text x="800" y="668">7. Encrypted shell / command</text>
+    <text x="800" y="696">or port/X11/agent tunnel</text>
+  </g>
+
+  <path d="M470 380 H1130" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M1130 500 H470" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M470 620 H1130" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <path d="M1130 740 H470" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+</svg>

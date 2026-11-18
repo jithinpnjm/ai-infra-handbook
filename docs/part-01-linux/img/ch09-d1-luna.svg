@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050">
+  <title>Quoting and expansion: the heart of shell</title>
+  <desc>Quoting and expansion: the heart of shell</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+    <style>
+      .bg { fill: #f5f8f5; }
+      .card { fill: #e8f1ea; stroke: #207448; stroke-width: 3; }
+      .icon { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .heading { fill: #303a36; font-family: sans-serif; font-size: 48px; font-weight: 700; }
+      .node-title { fill: #303a36; font-family: sans-serif; font-size: 30px; font-weight: 700; text-anchor: middle; }
+      .detail { fill: #303a36; font-family: monospace; font-size: 24px; text-anchor: middle; }
+      .arrow { fill: none; stroke: #207448; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow-green); }
+      .key-arrow { fill: none; stroke: #db8129; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow-orange); }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="1050"/>
+  <text class="heading" x="800" y="88" text-anchor="middle">Quoting and expansion: the heart of shell</text>
+
+  <g>
+    <rect class="card" x="40" y="140" width="350" height="330" rx="18"/>
+    <g class="icon" transform="translate(187 166)">
+      <rect x="2" y="4" width="54" height="48" rx="5"/>
+      <path d="M2 16 H56"/>
+      <circle cx="10" cy="10" r="1.5"/>
+      <circle cx="17" cy="10" r="1.5"/>
+      <path d="M13 29 L20 35 L13 41 M26 41 H38"/>
+    </g>
+    <text class="node-title" x="215" y="277">Typed line:</text>
+    <text class="detail" x="215" y="337">grep r.*t</text>
+    <text class="detail" x="215" y="369">/etc/passwd</text>
+  </g>
+
+  <g>
+    <rect class="card" x="430" y="140" width="350" height="330" rx="18"/>
+    <g class="icon" transform="translate(577 166)">
+      <path d="M23 5 C12 5 14 12 14 19 V23 C14 28 11 30 5 32 C11 34 14 37 14 42 V46 C14 53 12 56 23 56"/>
+      <path d="M35 5 C46 5 44 12 44 19 V23 C44 28 47 30 53 32 C47 34 44 37 44 42 V46 C44 53 46 56 35 56"/>
+      <circle cx="29" cy="22" r="2"/>
+      <circle cx="29" cy="42" r="2"/>
+    </g>
+    <text class="node-title" x="605" y="277">1. Brace</text>
+    <text class="node-title" x="605" y="311">expansion</text>
+    <text class="detail" x="605" y="370">{a,b} {1..3}</text>
+  </g>
+
+  <g>
+    <rect class="card" x="820" y="140" width="350" height="330" rx="18"/>
+    <g class="icon" transform="translate(967 166)">
+      <path d="M4 27 L29 6 L54 27 V53 H4 Z"/>
+      <path d="M22 53 V36 H36 V53"/>
+      <path d="M12 28 H18 M40 28 H46"/>
+    </g>
+    <text class="node-title" x="995" y="277">2. Tilde</text>
+    <text class="node-title" x="995" y="311">expansion</text>
+    <text class="detail" x="995" y="370">~ ~user</text>
+  </g>
+
+  <g>
+    <rect class="card" x="1210" y="140" width="350" height="330" rx="18"/>
+    <g class="icon" transform="translate(1357 166)">
+      <circle cx="29" cy="30" r="25"/>
+      <path d="M39 20 C37 16 33 14 29 14 C23 14 20 18 20 22 C20 27 24 29 30 31 C36 33 39 36 39 41 C39 46 35 49 29 49 C24 49 20 47 18 43"/>
+      <path d="M29 9 V53"/>
+    </g>
+    <text class="node-title" x="1385" y="255">3. Parameter,</text>
+    <text class="node-title" x="1385" y="289">arithmetic and</text>
+    <text class="node-title" x="1385" y="323">command</text>
+    <text class="node-title" x="1385" y="357">substitution</text>
+    <text class="detail" x="1385" y="413">$var $(( ))</text>
+    <text class="detail" x="1385" y="444">$( )</text>
+  </g>
+
+  <g>
+    <rect class="card" x="1210" y="650" width="350" height="330" rx="18"/>
+    <g class="icon" transform="translate(1357 676)">
+      <path d="M5 13 H25 L31 20 H53 V51 H5 Z"/>
+      <path d="M5 24 H53"/>
+      <path d="M16 34 H28 M16 42 H38"/>
+      <circle cx="44" cy="36" r="3"/>
+    </g>
+    <text class="node-title" x="1385" y="787">4. Word</text>
+    <text class="node-title" x="1385" y="821">splitting</text>
+    <text class="detail" x="1385" y="880">on IFS (space, tab,</text>
+    <text class="detail" x="1385" y="912">newline)</text>
+  </g>
+
+  <g>
+    <rect class="card" x="820" y="650" width="350" height="330" rx="18"/>
+    <g class="icon" transform="translate(967 676)">
+      <path d="M4 18 H24 L30 24 H54 V51 H4 Z"/>
+      <path d="M4 26 H54"/>
+      <path d="M36 8 L39 15 L47 16 L41 21 L43 29 L36 25 L29 29 L31 21 L25 16 L33 15 Z"/>
+    </g>
+    <text class="node-title" x="995" y="775">5. Pathname</text>
+    <text class="node-title" x="995" y="809">expansion</text>
+    <text class="node-title" x="995" y="843">(globbing)</text>
+    <text class="detail" x="995" y="900">* ? [ ]</text>
+  </g>
+
+  <g>
+    <rect class="card" x="430" y="650" width="350" height="330" rx="18"/>
+    <g class="icon" transform="translate(577 676)">
+      <path d="M10 20 C10 14 14 10 20 10 H22 V18 H20 C18 18 18 20 18 22 V27 C18 31 16 33 12 34 C16 35 18 37 18 41 V46 C18 48 18 50 20 50 H22 V58 H20 C14 58 10 54 10 48 V42 C10 38 8 36 3 34 C8 32 10 30 10 26 Z"/>
+      <path d="M48 20 C48 14 44 10 38 10 H36 V18 H38 C40 18 40 20 40 22 V27 C40 31 42 33 46 34 C42 35 40 37 40 41 V46 C40 48 40 50 38 50 H36 V58 H38 C44 58 48 54 48 48 V42 C48 38 50 36 55 34 C50 32 48 30 48 26 Z"/>
+    </g>
+    <text class="node-title" x="605" y="787">6. Quote</text>
+    <text class="node-title" x="605" y="821">removal</text>
+  </g>
+
+  <g>
+    <rect class="card" x="40" y="650" width="350" height="330" rx="18"/>
+    <g class="icon" transform="translate(187 676)">
+      <rect x="2" y="4" width="54" height="48" rx="5"/>
+      <path d="M2 16 H56"/>
+      <circle cx="10" cy="10" r="1.5"/>
+      <circle cx="17" cy="10" r="1.5"/>
+      <path d="M13 27 H43 M13 35 H48 M13 43 H37"/>
+      <circle cx="8" cy="27" r="1"/>
+      <circle cx="8" cy="35" r="1"/>
+      <circle cx="8" cy="43" r="1"/>
+    </g>
+    <text class="node-title" x="215" y="775">argv given to</text>
+    <text class="node-title" x="215" y="809">the program:</text>
+    <text class="detail" x="215" y="868">grep r.input</text>
+    <text class="detail" x="215" y="900">r.output</text>
+    <text class="detail" x="215" y="932">/etc/passwd</text>
+  </g>
+
+  <path class="arrow" d="M390 305 H430"/>
+  <path class="arrow" d="M780 305 H820"/>
+  <path class="arrow" d="M1170 305 H1210"/>
+  <path class="key-arrow" d="M1385 470 V650"/>
+  <path class="arrow" d="M1210 815 H1170"/>
+  <path class="arrow" d="M820 815 H780"/>
+  <path class="arrow" d="M430 815 H390"/>
+</svg>

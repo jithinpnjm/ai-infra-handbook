@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>A container is not a kernel object</title>
+  <desc></desc>
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="80" y="100" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">A container is not a kernel object</text>
+
+  <rect x="40" y="140" width="1520" height="1020" rx="28" fill="none" stroke="#207448" stroke-width="4"/>
+  <rect x="64" y="158" width="1438" height="70" rx="14" fill="#e8f1ea"/>
+  <text x="88" y="204" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">One Linux kernel, one set of drivers (including the NVIDIA driver)</text>
+
+  <rect x="80" y="270" width="900" height="560" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="110" y="324" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Container A (a process tree)</text>
+
+  <rect x="105" y="350" width="405" height="225" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="145" cy="446" r="9"/>
+    <circle cx="171" cy="420" r="9"/>
+    <circle cx="171" cy="472" r="9"/>
+    <path d="M152 440 L164 426 M152 452 L164 466 M180 420 H190 M180 472 H190"/>
+    <circle cx="195" cy="420" r="5"/>
+    <circle cx="195" cy="472" r="5"/>
+  </g>
+  <text x="210" y="389" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="210" dy="0">pid ns · mnt ns</tspan>
+    <tspan x="210" dy="36">· net ns · uts</tspan>
+    <tspan x="210" dy="36">ns · ipc ns ·</tspan>
+    <tspan x="210" dy="36">user ns ·</tspan>
+    <tspan x="210" dy="36">cgroup ns</tspan>
+  </text>
+
+  <rect x="550" y="350" width="405" height="225" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(450 0)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M145 411 L157 404 L169 411 V425 C169 441 159 451 145 457 C131 451 121 441 121 425 V411 Z"/>
+    <path d="M135 430 L142 437 L156 420"/>
+  </g>
+  <text x="655" y="422" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="655" dy="0">cgroup: cpu/</tspan>
+    <tspan x="655" dy="36">mem/io/pids</tspan>
+    <tspan x="655" dy="36">limits</tspan>
+  </text>
+
+  <rect x="105" y="600" width="405" height="225" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="145" cy="660" rx="28" ry="10"/>
+    <path d="M117 660 V701 C117 707 129 712 145 712 C161 712 173 707 173 701 V660 M117 681 C117 687 129 692 145 692 C161 692 173 687 173 681"/>
+  </g>
+  <text x="210" y="676" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="210" dy="0">rootfs: overlay</tspan>
+    <tspan x="210" dy="36">of image layers</tspan>
+  </text>
+
+  <rect x="550" y="600" width="405" height="225" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(450 0)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="122" y="655" width="46" height="56" rx="7"/>
+    <path d="M133 655 V644 C133 633 157 633 157 644 V655 M145 678 V690"/>
+    <circle cx="145" cy="675" r="4"/>
+  </g>
+  <text x="655" y="657" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="655" dy="0">capabilities +</tspan>
+    <tspan x="655" dy="36">seccomp +</tspan>
+    <tspan x="655" dy="36">AppArmor/</tspan>
+    <tspan x="655" dy="36">SELinux</tspan>
+  </text>
+
+  <rect x="1020" y="270" width="500" height="560" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="1050" y="324" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Container B</text>
+
+  <rect x="1050" y="430" width="440" height="260" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1090 526 L1120 509 L1150 526 V562 C1150 587 1132 603 1120 609 C1108 603 1090 587 1090 562 Z"/>
+    <path d="M1105 551 H1135 M1120 536 V566 M1107 579 H1133"/>
+    <circle cx="1120" cy="551" r="7"/>
+  </g>
+  <text x="1170" y="509" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1170" dy="0">its own</tspan>
+    <tspan x="1170" dy="36">namespaces,</tspan>
+    <tspan x="1170" dy="36">cgroup, rootfs,</tspan>
+    <tspan x="1170" dy="36">filters</tspan>
+  </text>
+
+  <rect x="120" y="930" width="1360" height="190" rx="24" fill="#f5f8f5" stroke="#db8129" stroke-width="5"/>
+
+  <path d="M530 830 V930" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+  <path d="M1270 830 V930" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  <g fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="175" y="993" width="64" height="64" rx="10"/>
+    <path d="M195 993 V981 M219 993 V981 M195 1069 V1057 M219 1069 V1057 M175 1013 H163 M175 1037 H163 M251 1013 H239 M251 1037 H239"/>
+    <path d="M193 1011 H221 V1039 H193 Z M203 1019 H211 V1031 H203 Z"/>
+  </g>
+  <text x="285" y="1008" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="285" dy="0">Shared kernel: scheduler, memory</tspan>
+    <tspan x="285" dy="42">manager, drivers, network stack</tspan>
+  </text>
+</svg>

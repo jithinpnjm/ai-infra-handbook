@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" viewBox="0 0 1600 1050" role="img">
+  <title>Hypervisor types and configurations</title>
+  <desc>Hypervisor types and configurations</desc>
+
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  <text x="800" y="68" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Hypervisor types and configurations</text>
+
+  <rect x="40" y="120" width="740" height="890" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="820" y="120" width="740" height="890" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  <text x="70" y="162" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Native hypervisor (Xen-style)</text>
+  <text x="842" y="162" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Kernel-module hypervisor (KVM-style)</text>
+
+  <!-- Connections: Native hypervisor -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M215 420 V500"/>
+    <path d="M370 420 V760"/>
+    <path d="M555 420 V500"/>
+  </g>
+
+  <!-- Connections: Kernel-module hypervisor -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1000 420 V535"/>
+    <path d="M1360 420 V535"/>
+    <path d="M1000 790 V850"/>
+    <path d="M1360 790 V850"/>
+  </g>
+
+  <!-- Hypervisor on bare metal -->
+  <rect x="100" y="220" width="540" height="200" rx="18" fill="#f5f8f5" stroke="#db8129" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="126" y="292" width="56" height="56" rx="8"/>
+    <path d="M138 284 V292 M154 284 V292 M170 284 V292 M138 348 V356 M154 348 V356 M170 348 V356"/>
+    <path d="M118 304 H126 M118 320 H126 M118 336 H126 M182 304 H190 M182 320 H190 M182 336 H190"/>
+    <path d="M139 305 H169 V335 H139 Z"/>
+  </g>
+  <text x="208" y="280" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="208" dy="0">Hypervisor on</tspan>
+    <tspan x="208" dy="34">bare metal</tspan>
+  </text>
+  <text x="208" y="358" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="208" dy="0">schedules vCPUs,</tspan>
+    <tspan x="208" dy="28">owns hardware</tspan>
+  </text>
+
+  <!-- Guest VM -->
+  <rect x="70" y="500" width="290" height="170" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="90" y="557" width="56" height="48" rx="4"/>
+    <path d="M90 570 H146 M108 613 H128 M118 605 V613"/>
+    <circle cx="98" cy="563" r="2" fill="#207448" stroke="none"/>
+  </g>
+  <text x="162" y="598" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Guest VM</text>
+
+  <!-- Guest VM -->
+  <rect x="410" y="500" width="290" height="170" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="430" y="557" width="56" height="48" rx="4"/>
+    <path d="M430 570 H486 M448 613 H468 M458 605 V613"/>
+    <circle cx="438" cy="563" r="2" fill="#207448" stroke="none"/>
+  </g>
+  <text x="502" y="598" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Guest VM</text>
+
+  <!-- Privileged domain -->
+  <rect x="70" y="760" width="630" height="190" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="123" cy="855" r="19"/>
+    <circle cx="123" cy="855" r="6"/>
+    <path d="M123 827 V836 M123 874 V883 M95 855 H104 M142 855 H151 M103 835 L110 842 M136 868 L143 875 M143 835 L136 842 M110 868 L103 875"/>
+  </g>
+  <text x="167" y="832" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Privileged domain (dom0)</text>
+  <text x="167" y="870" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="167" dy="0">administers, runs I/O proxy</tspan>
+    <tspan x="167" dy="28">(QEMU)</tspan>
+  </text>
+
+  <!-- Host Linux kernel + KVM module -->
+  <rect x="850" y="220" width="680" height="200" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="875" y="292" width="56" height="56" rx="8"/>
+    <path d="M887 284 V292 M903 284 V292 M919 284 V292 M887 348 V356 M903 348 V356 M919 348 V356"/>
+    <path d="M867 304 H875 M867 320 H875 M867 336 H875 M931 304 H939 M931 320 H939 M931 336 H939"/>
+    <path d="M888 305 H918 V335 H888 Z"/>
+  </g>
+  <text x="965" y="280" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="965" dy="0">Host Linux kernel +</tspan>
+    <tspan x="965" dy="34">KVM module</tspan>
+  </text>
+  <text x="965" y="358" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="965" dy="0">(Linux scheduler schedules</tspan>
+    <tspan x="965" dy="28">vCPU threads)</tspan>
+  </text>
+
+  <!-- QEMU process per VM -->
+  <rect x="840" y="535" width="320" height="255" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1000" cy="583" r="23"/>
+    <circle cx="1000" cy="583" r="7"/>
+    <path d="M1000 552 V560 M1000 606 V614 M969 583 H977 M1023 583 H1031 M978 561 L984 567 M1016 599 L1022 605 M1022 561 L1016 567 M984 599 L978 605"/>
+  </g>
+  <text x="1000" y="648" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1000" dy="0">QEMU process</tspan>
+    <tspan x="1000" dy="34">per VM</tspan>
+  </text>
+  <text x="1000" y="718" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1000" dy="0">(device models,</tspan>
+    <tspan x="1000" dy="28">I/O proxy)</tspan>
+  </text>
+
+  <!-- QEMU process per VM -->
+  <rect x="1200" y="535" width="320" height="255" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1360" cy="583" r="23"/>
+    <circle cx="1360" cy="583" r="7"/>
+    <path d="M1360 552 V560 M1360 606 V614 M1329 583 H1337 M1383 583 H1391 M1338 561 L1344 567 M1376 599 L1382 605 M1382 561 L1376 567 M1344 599 L1338 605"/>
+  </g>
+  <text x="1360" y="648" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1360" dy="0">QEMU process</tspan>
+    <tspan x="1360" dy="34">per VM</tspan>
+  </text>
+
+  <!-- Guest VM -->
+  <rect x="840" y="850" width="320" height="140" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="870" y="896" width="56" height="48" rx="4"/>
+    <path d="M870 909 H926 M888 952 H908 M898 944 V952"/>
+    <circle cx="878" cy="902" r="2" fill="#207448" stroke="none"/>
+  </g>
+  <text x="942" y="933" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Guest VM</text>
+
+  <!-- Guest VM -->
+  <rect x="1200" y="850" width="320" height="140" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1230" y="896" width="56" height="48" rx="4"/>
+    <path d="M1230 909 H1286 M1248 952 H1268 M1258 944 V952"/>
+    <circle cx="1238" cy="902" r="2" fill="#207448" stroke="none"/>
+  </g>
+  <text x="1302" y="933" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Guest VM</text>
+</svg>

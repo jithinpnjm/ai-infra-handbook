@@ -50,14 +50,9 @@ Here is a confusion you can watch on any team. Someone says "the terminal is bro
 - A **shell** is a program that runs *inside* the terminal. It prints a **prompt**, reads a line you type, interprets it, and runs the programs you ask for. The shell is just a user-space program like any other, and it is not part of the kernel. Common shells include `sh` (the original Bourne shell, and its small modern relatives such as dash), **bash** (the "Bourne-again shell", the default on most Linux distributions), zsh (the default on macOS), tcsh/csh, and fish. Scripts and cluster tooling are overwhelmingly written for bash or plain `sh`. If you want a whole book on bash beyond this chapter and chapter 1.9, Jason Edelman, Scott S. Lowe, and Matt Oswalt recommend *Learning the bash Shell*, 3rd edition, by Cameron Newham and Bill Rosenblatt.
 - A **command** is whatever you ask the shell to run. It may be a *program on disk* (`ls`, `python3`), a *shell builtin* handled inside the shell itself (`cd`, `export`), an *alias* (a shorthand you or the system defined), or a *shell function*.
 
-```mermaid
-flowchart LR
-  U["You type<br/>on keyboard"] --> T["Terminal emulator<br/>window, fonts"]
-  T <-->|"bytes over PTY"| S["Shell: bash, zsh<br/>reads and parses line"]
-  S -->|"fork, then exec"| P1["Program: ls"]
-  S -->|"fork, then exec"| P2["Program: python3"]
-  S -->|"inside shell"| B["Builtins: cd, export"]
-```
+![Terminal, shell, command: three different things](./img/ch02-d1-luna.svg)
+
+*Figure 1.2.1. Terminal, shell, command: three different things.*
 
 Want to know which shell you are in? Run `echo $0` or `ps -p $$`. The file `/etc/shells` lists the shells installed on the system. Your **login shell**, the one started when you log in, is recorded in `/etc/passwd`, and the command `chsh` changes it. Do not change root's shell or the shell used by system scripts. The interpreter of a script is chosen by its first line (`#!/bin/bash`, chapter 1.9), not by your login shell.
 
@@ -94,15 +89,9 @@ Most Linux tools follow a few conventions, and you can rely on them once you hav
 
 Between the moment you press Enter and the moment a program starts, the shell does a lot of work. It reads, splits, expands, rewires, and only then starts anything. This order is the most useful thing in this chapter, because once you know it you can predict what a line will do before you run it.
 
-```mermaid
-flowchart TB
-  L["Line typed: rm -r $DIR/*.log 'my file' > out.txt"] --> W["1. Split into words<br/>respecting quotes"]
-  W --> E["2. Expand<br/>braces {a,b}, tilde ~, variables $DIR,<br/>command substitution $(...), globs *.log"]
-  E --> R["3. Set up redirections<br/>> out.txt, 2>&1, pipes"]
-  R --> F["4. Find the command<br/>alias? function? builtin? else search PATH"]
-  F --> X["5. fork a child, exec the program<br/>with the final list of arguments"]
-  X --> WT["6. wait for it to finish<br/>read its exit status into $?"]
-```
+![What the shell does with a line](./img/ch02-d2-luna.svg)
+
+*Figure 1.2.2. What the shell does with a line.*
 
 The sequence has a consequence that surprises many people. **The program never sees your wildcards, variables, or quotes. It only sees the final result.** When you type `ls *.txt`, the *shell* replaces `*.txt` with the list of matching names before `ls` starts. You can check this yourself. `echo *.txt` prints the names the shell produced, because `echo` receives them as ordinary arguments. Use `echo` or `printf '%s\n'` as a free preview tool whenever you are unsure what a line will expand to.
 
@@ -273,6 +262,10 @@ The full set of shell patterns includes `*` for any string, `?` for any one char
 
 The most important rule in shell scripting is this: **double-quote your variable expansions**, such as `"$var"`, `"$@"` and `"$(cmd)"`. An unquoted `$var` is first split on whitespace and then expanded by globs. Say `file="my report.txt"`. Then `cp $file /backup` runs `cp my report.txt /backup`. That is three arguments, so the command fails or copies the wrong thing. `cp "$file" /backup` is correct.
 
+![Infographic titled Quoting decides what the program receives. With file set to my report.txt, an unquoted dollar-file is split on whitespace into three arguments, which is wrong. A double-quoted dollar-file is kept whole as two arguments, which is correct. Single quotes keep everything literal, double quotes expand variables without splitting, and a backslash escapes one character.](./img/ch02-fig1-quoting.jpg)
+
+*Figure 1.2.3. Quoting decides what the program receives. An unquoted variable is split on whitespace, while a double-quoted variable reaches the program as one argument.*
+
 ### Special characters: the names to know
 
 When you talk about Linux with others, the spoken names of special characters help. Say "pipe" out loud on a call and everyone knows which key you mean. Many of these characters mean something to the shell. You must quote or escape them when you want them taken literally. If you enjoy the folklore behind Unix terminology, read the *Jargon File* (`http://www.catb.org/jargon/html/`), or its printed companion, *The New Hacker's Dictionary*, edited by Eric S. Raymond.
@@ -324,12 +317,9 @@ Every process starts with three open **file descriptors**. A file descriptor is 
 
 Keeping errors in a *separate* stream was a deliberate design choice, and it matters a lot. You can capture results without mixing in warnings. You can still see errors when the output is redirected. The shell rewires these descriptors before it starts a program, and the program does not know or care where they lead. This is the "everything is a file" idea from chapter 1.1, applied to standard streams.
 
-```mermaid
-flowchart LR
-  KB["keyboard"] -->|"fd 0 stdin"| PROG["program"]
-  PROG -->|"fd 1 stdout"| OUT["terminal, or file, or next program"]
-  PROG -->|"fd 2 stderr"| ERR["terminal, or file"]
-```
+![Standard streams, redirection and pipes](./img/ch02-d3-luna.svg)
+
+*Figure 1.2.4. Standard streams, redirection and pipes.*
 
 These are the redirection operators. Each one tells the shell where a descriptor should point before the program starts.
 
@@ -349,6 +339,10 @@ The table leaves out two points. First, **`>` destroys the previous contents of 
 **Order matters.** The shell processes redirections from left to right, and this one rule explains a family of confusing bugs. In `cmd > out.txt 2>&1`, stdout goes to the file first. Then stderr is pointed at the same place, so both end up in the file. In `cmd 2>&1 > out.txt`, stderr is pointed at the terminal first, because that is where stdout goes at that moment. Only then does stdout move to the file, so errors still appear on the screen. Memorise the first form. It is the one you want almost every time.
 
 **Pipes.** The `|` character connects the stdout of one command directly to the stdin of the next. No temporary file is needed. `ps -ef | grep slurmd | wc -l` is a complete example. The kernel keeps a small in-memory buffer between the two processes, and both run *at the same time*. This is the heart of the Unix philosophy. Many small tools each do one job, and you join them into pipelines. A pipe carries only stdout. Stderr still goes to the terminal unless you redirect it, as in `cmd1 2>&1 | cmd2`.
+
+![Infographic titled Streams, redirection and pipes. A program reads standard input as file descriptor 0 from the keyboard and writes standard output as descriptor 1 and standard error as descriptor 2 to the terminal. With cmd > out.txt 2>&1 both end up in the file. With cmd 2>&1 > out.txt the errors still reach the screen. A pipe turns the standard output of one command into the standard input of the next.](./img/ch02-fig2-streams.jpg)
+
+*Figure 1.2.5. Every process has three streams, the shell rewires them before the program starts, and the order of redirections decides where errors end up.*
 
 Four tools pair naturally with redirection and pipes.
 
@@ -410,6 +404,10 @@ A related trap is this. **In a pipeline, the exit status comes from the *last* c
 
 Check the status of every critical stage, not only the final one.
 
+![Infographic titled Exit status. A child process hands an exit status to the shell, available as dollar-question-mark. Common codes are 0 for success, 1 generic error, 2 misuse of a command, 126 found but not executable and 127 command not found. A code of 128 plus N means killed by signal N: 130 for SIGINT 2, 137 for SIGKILL 9, often OOMKilled, and 143 for SIGTERM 15. The operators && and || run the second command on success or failure, and a pipeline reports only the last command status.](./img/ch02-fig3-exit-status.jpg)
+
+*Figure 1.2.6. The exit status is the number a finished process hands back to its parent, and 128 plus N means it was killed by signal N.*
+
 ## 8. Environment variables, `PATH` and startup files
 
 Here is a mystery you will meet in your first month: a command works when you type it, then fails inside the job. The program is the same, the arguments are the same, and the environment is not. A shell keeps named values called **variables**. The ones marked with `export` go into the **environment**, which is a block of `NAME=value` strings. Every child process inherits it, because the kernel copies it on `execve` (chapter 1.1). That is how `PATH`, `HOME`, `LANG` and application settings travel from the shell into programs.
@@ -424,6 +422,10 @@ NCCL_DEBUG=INFO python3 train.py     # set a variable for ONE command only
 ```
 
 Notice what the child sees in that block. It prints `[$name] [$CUDA_VISIBLE_DEVICES]` with the first pair empty, because a plain assignment never leaves the shell that made it.
+
+![Infographic titled Shell variables and the environment. A plain shell variable named name stays in the shell. CUDA_VISIBLE_DEVICES, once exported, is inherited by the child process. NCCL_DEBUG=INFO before a command sets a variable for that one command only. Steps: a plain assignment stays in the shell, export puts the variable into the environment, and every child process inherits the environment.](./img/ch02-fig4-environment.jpg)
+
+*Figure 1.2.7. A plain assignment never leaves the shell that made it, while an exported variable is copied into the environment that every child process inherits.*
 
 Some variables matter throughout this book. `PATH` drives command lookup. `HOME`, `USER` and `PWD` describe you and your location. `LANG` and `LC_ALL` set the locale and sorting order, and `EDITOR` picks your editor. You will also set AI-specific variables again and again: `CUDA_VISIBLE_DEVICES`, `NCCL_DEBUG`, `NCCL_SOCKET_IFNAME`, `OMP_NUM_THREADS`, and `LD_LIBRARY_PATH`. Remember this rule. An environment variable set in your terminal does not exist inside a Slurm job, a systemd service, or a container, unless it is passed along explicitly. Many "works interactively, fails in the job" mysteries come down to this rule.
 
@@ -455,6 +457,10 @@ When bash starts, the configuration files it reads depend on *how* the shell was
 | **non-interactive** (scripts, `ssh host command`, cron, Slurm batch steps) | nothing by default (only what `BASH_ENV` names) | automation and batch jobs |
 
 Pay close attention to how bash handles login shells. It first executes `/etc/profile`. Then it looks in your home directory for `.bash_profile`, `.bash_login` and `.profile`. It **runs only the first one it finds**. If `.bash_profile` exists, bash ignores `.bash_login` and `.profile` completely. This one sentence explains a great many "my alias is missing over SSH" reports. It may sound strange, but you can run a non-interactive shell as a login shell, with `bash -l -c 'cmd'`. Most graphical desktop display managers do exactly this. They start your session with one non-interactive login shell, which keeps the login versus non-login environment model intact.
+
+![Infographic titled Which startup file runs. A login shell, such as an SSH login, reads /etc/profile and then only the first file it finds among .bash_profile, .bash_login and .profile. An interactive non-login shell, such as a new terminal window, reads .bashrc. A non-interactive shell, such as scripts, cron and Slurm batch steps, reads nothing by default. .bash_profile should source .bashrc.](./img/ch02-fig5-startup-files.jpg)
+
+*Figure 1.2.8. Which startup file bash reads depends on how the shell was started.*
 
 In bash, you can choose among `.bash_profile`, `.profile`, `.bash_login` and `.bashrc`. Which one should hold your command path? The path starts with `/usr/local/bin:/usr/bin:/bin`, adds `$HOME/bin` or `$HOME/.local/bin`, and then includes `/usr/local/sbin:/usr/sbin:/sbin` for utilities such as `sysctl`, `fdisk` and `lsmod`. Where should the manual page path (`MANPATH`), the prompt (`PS1`), aliases, `EDITOR` (`vi`, `emacs`, or `nano`), `PAGER` (`less`) and the permissions mask (`umask 022`) go? Put your main configuration in `~/.bashrc`. Then have `~/.bash_profile` source `~/.bashrc`, so login and non-login interactive shells share one setup. One file to edit, one place to look when something is missing.
 

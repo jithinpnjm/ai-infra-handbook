@@ -57,39 +57,17 @@ An **operating system**, or **OS** for short, is the software that sits between 
 
 A good mental picture is a large office building. The people inside are the programs. The property manager handles the building itself. That manager allocates rooms, which is memory. The manager schedules the shared meeting rooms, which is CPU time. The manager decides who may enter which floor, which is protection. And the manager runs the plumbing and electricity, so a tenant can turn on a tap for hardware access without rewiring anything. Tenants never touch the building directly. They make requests at the front desk. In Linux, the property manager is the **kernel**, and the front desk is the **system call interface**. Keep the building in mind, because we will come back to it.
 
+![A cross-section of an office building. Programs are tenants on the upper floors. They queue at a ground-floor front desk labelled System calls. Behind it the kernel manages memory keys, a CPU time schedule and a protection door. Hardware (CPU, disks, network, GPU) runs in the basement.](./img/ch01-fig1-office-building.jpg)
+
+*Figure 1.1.1. The operating system as an office building: programs are tenants, the front desk is the system call interface, and the kernel manager hands out memory and CPU time and enforces protection.*
+
 ## 2. The three layers
 
 Suppose a GPU job crashes with an error. Your first question is where the fault lives. Almost everything you will ever debug on Linux fits on the picture below.
 
-```mermaid
-flowchart TB
-  subgraph UserSpace["USER SPACE: restricted mode"]
-    direction LR
-    APPS["Applications<br/>python, slurmd, containerd"]
-    LIBS["Shared libraries<br/>glibc, libcuda.so, libibverbs.so"]
-    INIT["System services<br/>systemd (PID 1), cron, journald"]
-  end
-  subgraph Kernel["KERNEL: privileged mode"]
-    direction LR
-    SCHED["Process scheduler"]
-    MEM["Memory manager<br/>virtual memory"]
-    FS["Filesystems and block layer"]
-    NET["Network stack<br/>TCP/IP, netfilter"]
-    DRV["Device drivers<br/>nvidia.ko, mlx5, nvme, e1000"]
-  end
-  subgraph HW["HARDWARE"]
-    direction LR
-    CPU["CPU cores"]
-    RAM["Main memory: RAM"]
-    DISK["Disks, NVMe"]
-    NIC["NICs, InfiniBand HCAs"]
-    GPU["GPUs"]
-  end
-  APPS --> LIBS
-  LIBS -->|"system calls"| Kernel
-  INIT -->|"system calls"| Kernel
-  Kernel --> HW
-```
+![The three layers](./img/ch01-d1-luna.svg)
+
+*Figure 1.1.2. The three layers.*
 
 Read the picture from the bottom up, the way work actually travels.
 
@@ -110,6 +88,10 @@ Treat that layering as a sketch, not a law, because **user space has no real rul
 ### Why two modes? Kernel mode and user mode
 
 You might wonder who stops a program from simply ignoring these rules. Nobody's honor is required, because modern CPUs build the split into the hardware. A CPU can run in at least two privilege levels. On x86 processors, people traditionally call them **ring 0** and **ring 3**. Ring 0 is the most privileged level, and the kernel runs there. Ring 3 is the least privileged level, and your programs run there. In ring 0, the CPU allows the dangerous instructions: the ones that control memory protection, talk to devices, and handle interrupts. In ring 3, those same instructions are refused. If a normal program tries one, the CPU raises a fault and hands the case to the kernel. The kernel then decides what to do, and usually it kills the offending program.
+
+![Infographic titled Kernel mode and user mode. The kernel runs in the inner ring 0 and programs run in the outer ring 3. When a program attempts a privileged instruction the CPU refuses it, raises a fault and hands it to the kernel, which usually kills the program. A user-space crash lets the rest of the system continue, while a kernel bug can stop the whole machine.](./img/ch01-fig2-kernel-user-mode.jpg)
+
+*Figure 1.1.3. Kernel mode and user mode. A privileged instruction tried from ring 3 triggers a fault that the kernel handles, and the program is usually killed.*
 
 This boundary buys you a property you rely on every single day. **If a user-space program crashes, the kernel cleans it up and the rest of the system continues.** A buggy Python script can die without corrupting the kernel's memory or another user's process. The reverse is why kernel problems are more serious: a bug *inside* the kernel can bring down the whole machine. That includes a bug in a kernel module, such as a GPU driver, because that code runs in kernel mode. When the kernel itself concludes it cannot safely continue, the machine stops with a "kernel panic".
 
@@ -134,15 +116,9 @@ For many years, Linux's default scheduler for ordinary processes was the Complet
 
 What triggers the switch? A hardware timer. At the end of a slice, the timer interrupts the CPU. The CPU switches into privileged mode and hands control to the kernel. Here is the sequence in everyday terms:
 
-```mermaid
-flowchart LR
-  A["Process A runs<br/>in user mode"] --> B["Timer interrupt fires<br/>CPU enters kernel mode"]
-  B --> C["Kernel saves A's state:<br/>registers and counter"]
-  C --> D["Scheduler picks next<br/>ready process B"]
-  D --> E["Kernel loads B's state<br/>and memory mappings"]
-  E --> F["Back to user mode:<br/>B runs for its slice"]
-  F -->|"timer fires again"| B
-```
+![Job 1: running processes](./img/ch01-d2-luna.svg)
+
+*Figure 1.1.4. Job 1: running processes.*
 
 Two consequences of this design are worth carrying with you. First, *the kernel only runs between slices of user programs*, or when a program makes a system call, or when a device raises an interrupt. The kernel is not a separate program running in parallel with yours; it is the manager who steps in on a regular basis, does the bookkeeping, and steps out again. Second, on a machine with several cores, this same dance happens per core, with one extra decision: which core a process should run on. That placement matters a great deal for performance with GPUs and fast networks, and chapter 1.17 covers it under the name NUMA.
 
@@ -158,6 +134,10 @@ Here is how the illusion works. The addresses a program uses are virtual address
 - **Overcommit and swap.** The kernel can promise more memory than exists, and it can move rarely used pages out to disk and bring them back on demand.
 - **Lazy loading.** Pages can be filled in only when first touched, so a program never pays for memory it does not use.
 
+![Infographic titled Virtual memory. Process A and Process B each have their own page table. One MMU translates each virtual address to a page in physical RAM. A shared page is mapped by both processes, and an address that is not mapped raises a page fault. Four steps: virtual address, MMU lookup, mapped access to RAM, or not mapped and a page fault.](./img/ch01-fig3-virtual-memory.jpg)
+
+*Figure 1.1.5. Virtual memory. Each process has its own page table, the MMU translates every access in hardware, and an access to a page that is not mapped raises a page fault.*
+
 What happens when a program touches a page that is not currently mapped? The CPU raises a **page fault**, and the kernel takes over. The kernel may load the page from disk, allocate a fresh one, or kill the program if the access was illegal. That last case is the famous "segmentation fault". You will meet page faults again in GPU work, because GPU unified memory is built on this same idea.
 
 The kernel's own bookkeeping is also memory, and the kernel needs a private region that user processes can never map. That reserved region is **kernel space**, and the part that user processes may use is **user space**.
@@ -167,6 +147,10 @@ The kernel's own bookkeeping is also memory, and the kernel needs a private regi
 Disks, network cards, keyboards, and GPUs all speak different low-level languages, and no program should have to learn them all. The kernel's answer is the **device driver**: one piece of code per kind of hardware that understands its device and exposes it through a common, simple interface. A driver is code that runs in kernel mode, and this one fact explains a lot about GPU nodes: **the NVIDIA driver is kernel code.** It arrives as kernel modules named `nvidia`, `nvidia_uvm`, and a few more, together with user-space libraries that talk to those modules.
 
 Linux goes one step further and presents many devices as **special files** under `/dev`. A program can open `/dev/nvidia0` or `/dev/nvme0n1` and use ordinary file operations on it, and the kernel quietly routes those operations to the right driver. Notice the idea underneath, because it is one you will see everywhere in Linux: *many things are made to look like files*. Devices, processes under `/proc`, hardware information under `/sys`, and network sockets all look like files, so the same small set of tools and system calls works on all of them.
+
+![Infographic titled Many things look like files. A program performs ordinary file operations on /dev/nvidia0, /dev/nvme0n1 and /dev/null. The kernel routes each operation to the device driver, which talks to the GPU, the NVMe disk or discards what is written. Proc, sys and network sockets are also made to look like files.](./img/ch01-fig4-everything-is-a-file.jpg)
+
+*Figure 1.1.6. Many things look like files. A program uses ordinary file operations, and the kernel quietly routes them to the right driver for the hardware.*
 
 Some device files do not correspond to any hardware at all. **Pseudodevices** look like devices to programs, but they are implemented purely in software, usually inside the kernel for practical reasons. `/dev/null` discards whatever you write. `/dev/zero` provides an endless supply of zero bytes. `/dev/random` and `/dev/urandom` supply random numbers from the kernel's generator, which would be hard to implement securely in an ordinary program. Notice also that a process still needs a system call to open one of these; on Linux, processes never escape system calls entirely.
 
@@ -186,6 +170,10 @@ You have walked past the front desk several times now, so here is its proper def
 
 In practice you almost never call these directly. Your program calls a function in a library, such as `printf`, `open`, or `socket`, and that library function eventually performs the actual system call on your behalf. The most important of these libraries is **glibc**, the GNU C library, which lives in the file `libc.so.6`. Nearly every program on mainstream distributions uses it.
 
+![Infographic titled System calls. Your program calls a library function such as open, glibc (libc.so.6) makes the system call, and the call crosses a dashed line to the system call interface in the kernel, which has counters for files, processes, memory, network, and control and info. strace prints every system call a program makes.](./img/ch01-fig5-system-calls.jpg)
+
+*Figure 1.1.7. System calls. A program's library call, through glibc, becomes the system call that enters the kernel, which serves it by category.*
+
 Two notation habits will greet you in every book and manual page. First, system calls are written with parentheses, such as `fork()`, `exec()`, and `execve()`; the habit comes from the C language, in which they are called. You do not need to know C. Just remember that *a system call is an interaction between a process and the kernel*. Second, a name like `exec()` usually stands for a **family** of related C library functions, such as `execl()`, `execv()`, and `execvp()`. Those functions differ only in how they pass their arguments, and all of them invoke the same underlying kernel system call, `execve()`.
 
 One relative of the process also deserves a name while we are here. A **thread** is a lighter variant of a process that shares most of its memory with the process that created it. Threads are how a single program uses several cores at once, and chapter 1.8 picks up that story.
@@ -198,24 +186,9 @@ Here is the payoff for this whole section: everything in Linux eventually reduce
 
 Here is the most important worked example in the whole chapter, because it answers a question most people never think to ask: how does anything start at all? Suppose you type `ls` into a terminal and press Enter. The program that reads your typing is a **shell**, such as `bash`. A shell is just a user-space program with no magic in it: it reads your text and runs other programs. Watch what that looks like through the kernel's eyes.
 
-```mermaid
-sequenceDiagram
-  participant You
-  participant Shell as bash (process 100)
-  participant K as Kernel
-  participant Child as New process 101
-  You->>Shell: types "ls" and presses Enter
-  Shell->>K: system call clone: create a copy of myself
-  K-->>Shell: returns the child's process ID, 101
-  K->>Child: new process 101 exists, copy of shell
-  Child->>K: system call execve("/usr/bin/ls")
-  K->>Child: replace program with ls, keep PID 101
-  Child->>K: write(1, "file1 file2 ...")
-  Child->>K: exit_group(0)
-  Shell->>K: wait4: wait for child to end
-  K-->>Shell: child 101 finished with status 0
-  Shell->>You: prints a new prompt
-```
+![What happens when you type a command](./img/ch01-d3-luna.svg)
+
+*Figure 1.1.8. What happens when you type a command.*
 
 Two steps in that diagram do all the real work. The first step creates a new process. The classic Unix call for this is `fork()`, which makes the child an almost exact copy of the parent. On modern Linux, the C library implements `fork()` using the `clone` system call, so `strace` will show `clone` or `clone3`.
 
@@ -307,23 +280,16 @@ The second thread began in 1991, when Linus Torvalds started writing a free **MI
 
 A **distribution**, or **distro** for short, bundles that kernel with a selection of open-source utilities. It also adds a C library, an init system, a **package manager**, configuration defaults, and a support policy. Early distributions like Slackware pioneered this packaging. The key idea is that when you choose a distribution, you choose all five parts at once, not just a logo. And in AI infrastructure, almost every server and cluster you touch belongs to one of two major distribution lineages.
 
-```mermaid
-flowchart LR
-  subgraph Distro["A Linux distribution bundles these five parts"]
-    K["Linux kernel build<br/>+ modules"]
-    C["C library, core tools,<br/>shell, systemd"]
-    P["Package manager<br/>apt, dnf, zypper"]
-    S["Services and defaults<br/>networking, logging"]
-    D["Support policy and<br/>release schedule"]
-  end
-  K --- C --- P --- S --- D
-```
+![Distributions: Linux is a kernel, not a system](./img/ch01-d4-luna.svg)
+
+*Figure 1.1.9. Distributions: Linux is a kernel, not a system.*
 
 ### 6.1 The Red Hat, Fedora, CentOS, and Amazon Linux branch
 
 The easiest way to remember this branch is as a river, because the family itself talks in upstreams and downstreams. At the mouth of the river sits **Red Hat Enterprise Linux**, or **RHEL**, the first major commercial success in the Linux market. Enterprise and HPC data centers prize it for multi-year stability, vendor certifications, and commercial support contracts. Fast-moving upstream kernel development clashes with the slow, careful stability that RHEL customers need, so Red Hat sponsors **Fedora** as its upstream distribution. New kernels, package tools, and system features land in Fedora first, developers and the open-source community vet them there, and they later flow downstream into RHEL.
 
 Because the GNU GPL requires Red Hat to publish the source code of RHEL, community engineers used that source to rebuild RHEL as **CentOS**, short for *Community Enterprise OS*, a free, binary-compatible clone of RHEL without paid support. In late 2020, Red Hat shifted CentOS into **CentOS Stream**, a "midstream" distribution that sits between upstream Fedora and downstream RHEL. Organizations that wanted a strict downstream binary rebuild of RHEL created **AlmaLinux** and **Rocky Linux** as direct CentOS replacements.
+
 
 AWS also builds **Amazon Linux** in this family. It launched in September 2011 and was succeeded by **Amazon Linux 2** in 2018, then by **Amazon Linux 2022** and **Amazon Linux 2023**, which draw from Fedora, CentOS Stream, and RHEL sources. Other members of the family include Oracle Linux and Scientific Linux.
 
@@ -356,43 +322,9 @@ If this chapter leaves you wanting a deeper sysadmin library, Sergey Zhumatiy's 
 
 Time to land the map on the machine you will actually work on: a server with GPUs and InfiniBand adapters, running a Kubernetes or Slurm agent. Walk the picture below layer by layer, and notice how everything you have met so far has a home on this box.
 
-```mermaid
-flowchart TB
-  subgraph US["USER SPACE"]
-    direction LR
-    JOB["Training job<br/>python + PyTorch"]
-    CUDA["CUDA libraries<br/>libcuda.so, libcudart, NCCL"]
-    RDMA["RDMA libraries<br/>libibverbs, UCX"]
-    CTR["Container runtime<br/>containerd, runc"]
-    AGENT["Agents<br/>slurmd, kubelet, dcgm"]
-    SYSD["systemd, sshd"]
-  end
-  subgraph KS["KERNEL SPACE"]
-    direction LR
-    SCH["Scheduler"]
-    VM["Memory manager"]
-    NSCG["Namespaces and cgroups"]
-    NETK["Network stack"]
-    NVK["NVIDIA kernel modules<br/>nvidia, nvidia_uvm"]
-    IBK["RDMA kernel drivers<br/>mlx5_core, ib_core"]
-    NVMEK["NVMe & FS drivers"]
-  end
-  subgraph HW["HARDWARE"]
-    direction LR
-    G["GPUs & NVLink"]
-    H["ConnectX HCAs"]
-    N["NVMe drives"]
-    CPUs["CPUs, RAM, NUMA"]
-  end
-  JOB --> CUDA --> NVK
-  JOB --> RDMA --> IBK
-  CTR --> NSCG
-  AGENT --> NSCG
-  NVK --> G
-  IBK --> H
-  NVMEK --> N
-  SCH --> CPUs
-```
+![Putting a GPU node on the map](./img/ch01-d5-luna.svg)
+
+*Figure 1.1.10. Putting a GPU node on the map.*
 
 The table lists each component with its layer, its role, and the boundary where its failures show up, so when something breaks you know where to look first.
 

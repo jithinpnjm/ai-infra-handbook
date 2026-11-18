@@ -62,24 +62,9 @@ Here is a fact that surprises almost everyone: the Linux kernel has no object ca
 
 Two of those pieces are this chapter's subject: namespaces and the root filesystem. The other two belong to chapters 1.18 and 1.21. The diagram below shows how several containers sit on one shared kernel.
 
-```mermaid
-flowchart TB
-  subgraph Host["One Linux kernel, one set of drivers (including the NVIDIA driver)"]
-    direction TB
-    subgraph C1["Container A (a process tree)"]
-      A1["pid ns · mnt ns · net ns · uts ns · ipc ns · user ns · cgroup ns"]
-      A2["cgroup: cpu/mem/io/pids limits"]
-      A3["rootfs: overlay of image layers"]
-      A4["capabilities + seccomp + AppArmor/SELinux"]
-    end
-    subgraph C2["Container B"]
-      B1["its own namespaces, cgroup, rootfs, filters"]
-    end
-    K["Shared kernel: scheduler, memory manager, drivers, network stack"]
-  end
-  C1 --> K
-  C2 --> K
-```
+![A container is not a kernel object](./img/ch19-d1-luna.svg)
+
+*Figure 1.19.1. A container is not a kernel object.*
 
 Gregg puts it this way: the kernel keeps a pointer, `struct nsproxy`, from each task to its namespaces. That structure is the closest thing the kernel has to a "container". Because the kernel is shared, a container starts in milliseconds. It uses no guest-kernel memory, has no virtualisation overhead on CPU or memory, and calls the GPU driver natively. The price is real, though. All containers contend for the same kernel locks, caches and queues, which is the noisy-neighbour problem. A kernel bug or panic affects every container on that node. Guests cannot load their own kernel modules or run a different kernel. Isolation is also weaker than hardware virtualisation, because the attack surface is the whole system-call interface.
 
@@ -90,6 +75,10 @@ Before you debug a container, decide which of those four pieces is the likely ca
 ## 2. The namespace types
 
 Two services on one host can both insist on port 80, and neither one notices the other. The network namespace is what makes that possible. A **namespace** wraps a global system resource, so that the processes inside it see their own isolated copy. Changes made inside are visible only to members of that namespace, never to anyone outside it. Every process always belongs to exactly one namespace of each type, starting with the host's initial namespaces, often called the "init" namespaces.
+
+![The eight namespace types](./img/ch19-fig1-nstypes.jpg)
+
+*Figure 1.19.2. Each namespace type gives a process its own view of one kind of resource.*
 
 | Namespace | Clone flag | Isolates | Notes |
 |---|---|---|---|
@@ -140,19 +129,9 @@ Learn to read the `/proc/PID/ns` links before you need them during an incident.
 
 Run `ps` inside a container and the list starts at PID 1. That surprise is a PID namespace at work. A PID namespace gives its members a private PID numbering, and the first process in it is always PID 1. Inside, the process sees only itself and its descendants in `/proc`, and only once `/proc` is mounted from inside that namespace. The same process can have a different PID in each namespace. PID 1 in a container may be PID 45982 on the host. PID namespaces also nest: a parent namespace sees all descendants, each with its own number, while a child sees nothing above it.
 
-```mermaid
-flowchart TB
-  subgraph H["Host PID namespace"]
-    H1["PID 1 systemd"]
-    H2["PID 2140 containerd-shim"]
-    subgraph Cns["Container PID namespace"]
-      C1["host PID 45982 = PID 1 inside\n(bash / python train.py)"]
-      C2["host PID 45990 = PID 7 inside\n(data loader worker)"]
-    end
-    H2 --> C1
-    C1 --> C2
-  end
-```
+![PID namespaces](./img/ch19-d2-luna.svg)
+
+*Figure 1.19.3. PID namespaces.*
 
 PID 1 is the init of its namespace, and it follows three special rules. The first rule is that PID 1 has no default signal actions. A signal sent from inside the namespace reaches PID 1 only if PID 1 installed a handler for it. `SIGKILL` and `SIGSTOP` from inside are ignored. From the parent namespace they still work, which is how `docker stop`, `kubectl delete pod` and the kubelet's `SIGTERM` followed by `SIGKILL` reach the process.
 
@@ -263,25 +242,9 @@ When a pod's network misbehaves, start in its network namespace. The namespace d
 
 The standard way to connect a namespace is a **veth pair**. Think of it as a virtual Ethernet cable with two ends, each one a separate interface. One end stays in the host namespace and attaches to a **bridge**, such as `docker0` or `cni0`, or it is routed. The other end moves into the container's namespace, is renamed `eth0`, and gets an address. Traffic leaving the host is usually **NAT**ed, or masqueraded, by iptables or nftables. Published ports use DNAT rules.
 
-```mermaid
-flowchart LR
-  subgraph HostNS["Host network namespace"]
-    ETH["eth0 / ens… (physical NIC)"]
-    BR["bridge docker0 / cni0\n172.17.0.1"]
-    V1["vethA (host end)"]
-    V2["vethB (host end)"]
-    NAT["iptables / nftables\nMASQUERADE + DNAT"]
-  end
-  subgraph NS1["Container net ns A"]
-    E1["eth0 172.17.0.2"]
-  end
-  subgraph NS2["Container net ns B"]
-    E2["eth0 172.17.0.3"]
-  end
-  E1 --- V1 --- BR
-  E2 --- V2 --- BR
-  BR --- NAT --- ETH
-```
+![Network namespaces](./img/ch19-d3-luna.svg)
+
+*Figure 1.19.4. Network namespaces.*
 
 The commands below build this wiring by hand. Run them in order on a disposable host, and you will see each step for yourself. Then ping in both directions to confirm the link works.
 
@@ -343,25 +306,9 @@ When a PyTorch job crashes on shared memory, check the size of `/dev/shm` before
 
 When you run `docker run` or the kubelet starts a pod, a chain of programs does the work. Knowing that chain tells you which step failed. The sequence below is simplified, but it shows which program makes each kernel call.
 
-```mermaid
-sequenceDiagram
-  participant K as kubelet / docker CLI
-  participant CD as containerd
-  participant SH as containerd-shim
-  participant RC as runc (OCI runtime)
-  participant KN as Linux kernel
-  K->>CD: create container (image, config)
-  CD->>CD: unpack layers, prepare overlay snapshot
-  CD->>SH: start shim (stays as parent)
-  SH->>RC: run with OCI bundle (config.json + rootfs)
-  RC->>KN: clone(CLONE_NEWPID|NEWNS|NEWNET|NEWUTS|NEWIPC|…)
-  RC->>KN: create cgroup, write limits (ch. 1.18)
-  RC->>KN: mount rootfs, pivot_root, mask paths
-  RC->>KN: set capabilities, seccomp filter, LSM label (ch. 1.21)
-  RC->>KN: execve(user process) as PID 1
-  RC-->>SH: exit (runc is gone, shim supervises)
-  Note over SH,KN: CNI plugin is called to create the net ns wiring
-```
+![Putting it together: what a runtime does](./img/ch19-d4-luna.svg)
+
+*Figure 1.19.5. Putting it together: what a runtime does.*
 
 The OCI runtime spec, in `config.json`, lists every namespace, mount, capability, cgroup path and hook. `runc spec` generates a template for you. Reading a real container's `config.json` is the best way to learn what your platform configures. The shim keeps the container's stdio and exit status after `runc` exits, so containerd can restart without killing the containers.
 

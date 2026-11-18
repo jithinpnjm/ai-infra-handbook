@@ -59,24 +59,9 @@ After this chapter you can:
 
 Suppose a training job reads its dataset slowly, while the same read on another node flies. No error message points anywhere. The place to start is the path between the application and the disk. Every `read()` or `write()` call passes through many layers. Each layer can cache, reorder, merge, delay or fail the request. That is why "the disk is fine" and "the application is slow" can both be true.
 
-```mermaid
-flowchart TB
-  APP["Application / language runtime\n(libc buffers, mmap, O_DIRECT, io_uring)"]
-  SC["System call interface\nread write open fsync mmap"]
-  VFS["VFS: common interface; dentry cache, inode cache"]
-  FS["Filesystem driver\next4 / XFS / btrfs / NFS client / Lustre client / overlayfs / tmpfs"]
-  PC["Page cache (buffered I/O): read-ahead, write-back, dirty pages"]
-  BIO["Block layer: I/O merging, I/O scheduler (none, mq-deadline, bfq, kyber), cgroup I/O control"]
-  DM["Device mapper / LVM / md RAID / dm-crypt (virtual block devices)"]
-  DRV["Device drivers: SCSI (sd) / NVMe / virtio-blk / libata"]
-  DEV["Device: HDD / SSD / NVMe (own cache and queue) / SAN LUN / cloud disk"]
-  APP --> SC --> VFS --> FS
-  FS --> PC
-  PC --> BIO
-  FS -.->|"O_DIRECT bypasses page cache"| BIO
-  BIO --> DM --> DRV --> DEV
-  APP -.->|"raw block device I/O (rare)"| BIO
-```
+![The storage stack in one picture](./img/ch12-d1-luna.svg)
+
+*Figure 1.12.1. The storage stack in one picture.*
 
 Three principles carry through the rest of the chapter.
 
@@ -465,6 +450,10 @@ Before you format anything, be certain of the device first.
 
 Picture a node that comes back from a reboot with `/data` missing. The boot log points at a mount, and you need to know how mounts work before you can fix it. **Mounting** attaches a filesystem to a directory, called the **mount point**, in the global tree. Walk into that directory and you reach the filesystem. To mount, you need three things: the **source** (a device, UUID, label, remote path, or a pseudo name for special filesystems), the **type**, and the **mount point**, which must be an existing directory. `/mnt` is a conventional place for temporary mounts. Permanent filesystems get their own directories, such as `/data` or `/scratch`.
 
+![Mounting attaches a filesystem to a directory](./img/ch12-fig1-mount.jpg)
+
+*Figure 1.12.2. Mounting makes a filesystem's files appear under a directory; what was there before is hidden until unmount.*
+
 Start with `findmnt`. It shows the mount tree and answers the question you will ask most often: which filesystem holds this path?
 
 ```bash
@@ -690,28 +679,9 @@ Open any directory on a Linux machine and you see file names. Underneath sits a 
 
 An **inode** is a record, found by a number in an inode table, that describes one filesystem object. It stores the object's **type** (regular file, directory, symlink, device, socket, FIFO), its **permissions and owner**, its **size**, and its **timestamps** (modify, change, access; ext4 adds creation). It also stores its **link count** and **where its data blocks are**. An inode does *not* contain the file's name. Names live in **directories**. A directory is itself a file, and its data is a list of `(name, inode number)` entries, including `.` (itself) and `..` (its parent).
 
-```mermaid
-flowchart LR
-  subgraph IT["Inode table"]
-    I2["inode 2: DIRECTORY (root)\nlinks=4"]
-    I12["inode 12: DIRECTORY dir_1\nlinks=2"]
-    I14["inode 14: FILE file_2\nlinks=1"]
-    I15["inode 15: FILE file_3\nlinks=2  (hard link)"]
-    I7633["inode 7633: DIRECTORY dir_2\nlinks=2"]
-  end
-  subgraph DP["Data pool"]
-    D2["root dir data:\n. -> 2\n.. -> 2\ndir_1 -> 12\ndir_2 -> 7633"]
-    D12["dir_1 data:\nfile_1, file_2 -> 14, file_3 -> 15"]
-    D7633["dir_2 data:\nfile_4, file_5 -> 15"]
-    F14["file_2 contents"]
-    F15["file_3 / file_5 contents (one copy)"]
-  end
-  I2 --> D2
-  I12 --> D12
-  I7633 --> D7633
-  I14 --> F14
-  I15 --> F15
-```
+![Inside a traditional filesystem](./img/ch12-d2-luna.svg)
+
+*Figure 1.12.3. Inside a traditional filesystem.*
 
 Here is how the kernel opens `dir_1/file_2`. As you follow the steps, notice that the name never sits in the inode itself. You will need that fact when you read `ls -i`. It starts at the **root inode** (inode 2 on ext filesystems; the superblock says where it is). It reads that directory's data to find `dir_1`, which is inode 12. It confirms that inode 12 is a directory. Then it reads that directory's data to find `file_2`, which is inode 14. Finally it reads inode 14, a file, and learns where the data blocks are. The dentry and inode caches (section 9) make this nearly free for hot paths.
 
@@ -915,37 +885,9 @@ grep -i 'open files' /proc/PID/limits   # soft limit (enforced now) and hard lim
 
 The diagram below shows what happens when an application calls `read()`. The path differs for a local filesystem and a network one.
 
-```mermaid
-sequenceDiagram
-  participant App as Application
-  participant VFS as VFS (dispatch)
-  participant FS as ext4 / XFS driver
-  participant NFS as NFS / Lustre client
-  participant PC as Page cache
-  participant BL as Block layer
-  participant HW as NVMe / network
-  App->>VFS: read(fd, buf, n)
-  alt local filesystem
-    VFS->>FS: dispatch to the filesystem driver
-    FS->>PC: page in cache?
-    alt cache hit
-      PC-->>App: copy data (microseconds)
-    else cache miss
-      PC->>BL: request blocks
-      BL->>HW: submit I/O
-      HW-->>BL: completion interrupt
-      BL-->>PC: populate cache
-      PC-->>App: copy data
-    end
-  else network filesystem
-    VFS->>NFS: dispatch to the network driver
-    NFS->>PC: page in cache?
-    NFS->>HW: RPC over the network on a miss
-    HW-->>NFS: reply with data
-    NFS-->>PC: populate cache
-    PC-->>App: copy data
-  end
-```
+![Files, file descriptors and the read path](./img/ch12-d3-luna.svg)
+
+*Figure 1.12.4. Files, file descriptors and the read path.*
 
 `read()` hides everything below the VFS. A profiler that traces only the application shows "this call took 400 ms", and nothing more. The call alone cannot tell you whether the cause is an overloaded NVMe drive, an overloaded NFS server or a cold cache. To find out, look at the block layer or the network RPC layer.
 
@@ -979,19 +921,9 @@ A normal `write()` copies data into the page cache and returns. That data is **n
 
 The trade-off is reliability. Power loss loses unflushed data. A partial write can corrupt anything that has no journal or copy-on-write behind it.
 
-```mermaid
-flowchart TD
-  W["write()"] --> L["libc buffer (user space)"]
-  L --> V["VFS and filesystem"]
-  V --> PC["Page cache (dirty page)"]
-  PC -. "write() returns here: FAST, NOT durable" .-> W
-  PC -- "fsync/fdatasync: caller blocks" --> S["Synchronous flush"]
-  PC -- "kernel flusher threads (age, dirty thresholds)" --> A["Asynchronous write-back"]
-  S --> B["Block layer: merge + scheduler"]
-  A --> B
-  B --> D["Driver, then device cache"]
-  D --> M["Persistent media (durable only after the device flushes its own cache)"]
-```
+![Write-back caching and durability](./img/ch12-d4-luna.svg)
+
+*Figure 1.12.5. Write-back caching and durability.*
 
 **Synchronous writes** complete only when the data, and the metadata needed to find it, is on persistent storage. You can request this for each write with the `O_SYNC` or `O_DSYNC` flags, or by mounting with `sync`. The efficient way is to **commit a group of earlier writes** with `fsync(fd)`. Databases and checkpointers batch their writes, then call `fsync` once. Closing a file does *not* guarantee durability. A long pause when unpacking an archive of many files over NFS is the cost of those implicit commits.
 
@@ -1120,26 +1052,17 @@ Picture your first production decision on a new training node. Somebody asks whe
 
 Each fix has a trade-off. You can stagger writes across nodes. You can write to local NVMe and copy asynchronously, but then you risk losing the last checkpoint if the node dies before the upload. You can shard checkpoints into fewer, larger files, or use the framework's distributed checkpoint format. You can tune stripe count and size on the parallel filesystem. Finally, keep checkpoint frequency in proportion to the failure rate and the cost of lost work.
 
-```mermaid
-flowchart TD
-  subgraph N["64 GPU nodes (same 30-minute window)"]
-    N1["node 1"] & N2["node 2"] & N3["..."] & N64["node 64"]
-  end
-  N1 & N2 & N3 & N64 --> OPS["open / write / fsync / close  x 64"]
-  OPS --> MDS["Metadata server(s)\nsaturate first: scale with node COUNT"]
-  MDS --> OSS["Data servers (many, striped)\nmostly idle while MDS is the bottleneck"]
-```
+![AI-infrastructure patterns](./img/ch12-d5-luna.svg)
+
+*Figure 1.12.6. AI-infrastructure patterns.*
 
 **Data-loader storms.** You may see this on your first large run. The same fan-in happens at start-up, when thousands of processes open the same files. That is a **metadata storm**. You will see high `await` on compute nodes, even though raw storage bandwidth is idle. The remedies are to shard the dataset, cache it on local NVMe (copy once per node), stage it with a parallel copy (`mpifileutils dcp`), use client-side caches, and stagger start-up. `iostat` covers only local block devices. For NFS, use `nfsiostat` or `mountstats`.
 
 **Page cache versus GPU data path.** Buffered I/O copies data from storage into the page cache, then into the application buffer, and then into GPU memory with `cudaMemcpy`. The page cache keeps growing with data that is read only once. Streaming loaders use `O_DIRECT`, with aligned buffers, often through `io_uring` or a thread pool, to skip the cache. **GPUDirect Storage (GDS)** goes further. It uses a direct DMA path from NVMe, or from the NIC for network storage, into GPU memory over PCIe. That skips the CPU bounce buffer. GDS needs a supported filesystem and driver stack. When the direct path is unavailable, the cuFile library falls back to a **compatibility mode**. That mode uses ordinary POSIX I/O through host memory and loses the benefit. So confirm which path is active with `gdscheck` or the cuFile logs. Memory-mapped loading still uses the page cache.
 
-```mermaid
-flowchart LR
-  ST["NVMe / network storage"] -->|"1 DMA (buffered)"| PCA["Page cache"] -->|"2 CPU copy"| AB["App buffer"] -->|"3 cudaMemcpy"| GM["GPU memory"]
-  ST -.->|"O_DIRECT: DMA to app buffer"| AB
-  ST ==>|"GPUDirect Storage: direct DMA"| GM
-```
+![AI-infrastructure patterns](./img/ch12-d6-luna.svg)
+
+*Figure 1.12.7. AI-infrastructure patterns.*
 
 **Inode exhaustion.** An ext4 volume at 40% bytes but 100% inodes returns `ENOSPC` on the next `open()` or `create`. `df -h` and `df -i` on the same filesystem tell different stories. Prevent this by creating the filesystem with enough inodes, or by using XFS. Avoid million-file datasets on one volume. The container image store and package caches are the other usual victims.
 

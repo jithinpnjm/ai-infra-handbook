@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">Translation: page tables, MMU and TLB</title>
+  <desc id="svg-desc"></desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  <text x="50" y="90" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Translation: page tables, MMU and TLB</text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="50" y="400" width="300" height="200" rx="20"/>
+    <rect x="400" y="365" width="460" height="270" rx="20"/>
+    <rect x="930" y="400" width="260" height="200" rx="20"/>
+    <rect x="1240" y="360" width="310" height="225" rx="20"/>
+    <rect x="810" y="760" width="500" height="320" rx="20"/>
+    <rect x="1370" y="790" width="180" height="190" rx="20"/>
+    <rect x="80" y="860" width="350" height="180" rx="20"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Virtual-address document icon -->
+    <path d="M173 418h34l18 18v49h-52z"/>
+    <path d="M207 418v19h18M183 449h31M183 461h31M183 473h22"/>
+
+    <!-- Page-table split tree icon -->
+    <circle cx="630" cy="389" r="8"/>
+    <circle cx="602" cy="417" r="7"/>
+    <circle cx="630" cy="417" r="7"/>
+    <circle cx="658" cy="417" r="7"/>
+    <path d="M630 397v10M602 407v-4h56v4M602 424v9M630 424v9M658 424v9"/>
+
+    <!-- TLB cylinder icon -->
+    <ellipse cx="1060" cy="426" rx="27" ry="10"/>
+    <path d="M1033 426v33c0 6 12 11 27 11s27-5 27-11v-33M1033 443c0 6 12 11 27 11s27-5 27-11"/>
+
+    <!-- Physical-address chip icon -->
+    <rect x="1372" y="381" width="46" height="46" rx="5"/>
+    <rect x="1383" y="392" width="24" height="24" rx="2"/>
+    <path d="M1380 373v8M1394 373v8M1408 373v8M1380 427v8M1394 427v8M1408 427v8M1364 389h8M1364 403h8M1364 417h8M1418 389h8M1418 403h8M1418 417h8"/>
+
+    <!-- Page-walk magnifier icon -->
+    <circle cx="1048" cy="814" r="21"/>
+    <path d="M1064 830l18 18M1048 801v26M1035 814h26"/>
+
+    <!-- TLB gear icon -->
+    <circle cx="1460" cy="837" r="17"/>
+    <circle cx="1460" cy="837" r="6"/>
+    <path d="M1460 811v8M1460 855v8M1434 837h8M1478 837h8M1442 819l6 6M1472 849l6 6M1478 819l-6 6M1448 849l-6 6"/>
+
+    <!-- Page-fault shield icon -->
+    <path d="M255 882l24 9v20c0 17-12 28-24 35-12-7-24-18-24-35v-20z"/>
+    <path d="M255 896v17M255 924v1"/>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+    <path d="M350 500H400" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M860 500H930" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1060 600V760" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1310 940H1370" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1460 790V585" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M810 930H470V950H430" stroke="#207448" marker-end="url(#arrow-green)"/>
+    <path d="M1190 440H1210V300H1395V360" stroke="#db8129" marker-end="url(#arrow-orange)"/>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" font-weight="700" text-anchor="middle">
+    <text x="200" y="530" font-size="30">64-bit virtual</text>
+    <text x="200" y="564" font-size="30">address</text>
+
+    <text x="630" y="482" font-size="24">split into: PGD idx |</text>
+    <text x="630" y="512" font-size="24">P4D idx | PUD idx |</text>
+    <text x="630" y="542" font-size="24">PMD idx | PTE idx |</text>
+    <text x="630" y="572" font-size="24">12-bit offset</text>
+
+    <text x="1060" y="550" font-size="30">TLB hit?</text>
+
+    <text x="1395" y="478" font-size="24">physical address</text>
+    <text x="1395" y="512" font-size="24">-&gt; RAM / CPU cache</text>
+
+    <text x="1060" y="885" font-size="24">page walk: CR3 -&gt; PGD</text>
+    <text x="1060" y="916" font-size="24">-&gt; P4D -&gt; PUD -&gt; PMD</text>
+    <text x="1060" y="947" font-size="24">-&gt; PTE (up to 5</text>
+    <text x="1060" y="978" font-size="24">memory reads)</text>
+
+    <text x="1460" y="936" font-size="30">fill TLB</text>
+
+    <text x="255" y="978" font-size="30">page fault -&gt;</text>
+    <text x="255" y="1014" font-size="30">kernel</text>
+  </g>
+
+  <g fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">
+    <text x="1080" y="692">no</text>
+    <text x="625" y="908" text-anchor="middle">entry not present</text>
+  </g>
+  <text x="1300" y="286" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700" text-anchor="middle">yes</text>
+</svg>

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">Resource control, slices and host protection</title>
+  <desc id="svg-desc">Resource control, slices and host protection.</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+  <text x="800" y="96" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Resource control, slices and host protection</text>
+
+  <rect x="50" y="155" width="1500" height="175" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g transform="translate(73,-35)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M690 232 H716 L728 244 H764 V274 H690 Z"/>
+    <path d="M690 232 V222 H710 L720 232"/>
+  </g>
+  <text x="800" y="292" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="32" font-weight="700">-.slice (root)</text>
+
+  <path d="M237.5 330 V540" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M612.5 330 V540" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M987.5 330 V540" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M1362.5 330 V540" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="62.5" y="540" width="350" height="300" rx="20"/>
+    <rect x="437.5" y="540" width="350" height="300" rx="20"/>
+    <rect x="812.5" y="540" width="350" height="300" rx="20"/>
+    <rect x="1187.5" y="540" width="350" height="300" rx="20"/>
+  </g>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="237.5" cy="590" r="17"/>
+    <circle cx="237.5" cy="590" r="6"/>
+    <path d="M237.5 563 V570 M237.5 610 V617 M210.5 590 H217 M258 590 H264.5 M218.4 570.9 L223.4 575.9 M251.6 604.1 L256.6 609.1 M256.6 570.9 L251.6 575.9 M223.4 604.1 L218.4 609.1"/>
+
+    <circle cx="612.5" cy="578" r="11"/>
+    <path d="M590 614 C590 599 600 592 612.5 592 C625 592 635 599 635 614 Z"/>
+
+    <rect x="963.5" y="566" width="48" height="48" rx="4"/>
+    <path d="M963.5 580 H1011.5 M963.5 597 H1011.5 M972 572 H976 M972 589 H976 M972 606 H976 M982 572 H1003 M982 589 H1003 M982 606 H1003"/>
+
+    <rect x="1337.5" y="566" width="50" height="18" rx="3"/>
+    <rect x="1337.5" y="591" width="50" height="18" rx="3"/>
+    <path d="M1345 575 H1348 M1345 600 H1348 M1355 575 H1380 M1355 600 H1380"/>
+  </g>
+
+  <g fill="#303a36" text-anchor="middle">
+    <text x="237.5" y="670" font-family="monospace" font-size="30" font-weight="700">system.slice</text>
+    <text x="237.5" y="718" font-family="monospace" font-size="24">sshd, containerd,</text>
+    <text x="237.5" y="750" font-family="monospace" font-size="24">kubelet, slurmd,</text>
+    <text x="237.5" y="782" font-family="monospace" font-size="24">nvidia-*</text>
+
+    <text x="612.5" y="670" font-family="monospace" font-size="30" font-weight="700">user.slice</text>
+    <text x="612.5" y="718" font-family="monospace" font-size="24">user-1000.slice &gt;</text>
+    <text x="612.5" y="750" font-family="monospace" font-size="24">session-3.scope</text>
+
+    <text x="987.5" y="670" font-family="monospace" font-size="30" font-weight="700">machine.slice</text>
+    <text x="987.5" y="718" font-family="sans-serif" font-size="24">VMs / nspawn</text>
+    <text x="987.5" y="750" font-family="sans-serif" font-size="24">containers</text>
+
+    <text x="1362.5" y="670" font-family="monospace" font-size="30" font-weight="700">kubepods.slice</text>
+    <text x="1362.5" y="710" font-family="monospace" font-size="24">kubepods-burstable</text>
+    <text x="1362.5" y="742" font-family="monospace" font-size="24">/ besteffort /</text>
+    <text x="1362.5" y="774" font-family="monospace" font-size="24">pod...</text>
+    <text x="1362.5" y="806" font-family="monospace" font-size="24">(kubelet-managed)</text>
+  </g>
+</svg>

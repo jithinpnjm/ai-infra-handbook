@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">Reading scalability curves</title>
+  <desc id="svg-desc">A flow diagram from Linear (ideal) to Knee point (a shared resource starts to matter), then branching to Contention, Coherence, and Ceiling.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="18" markerHeight="18" viewBox="0 0 18 18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  <text x="60" y="78" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Reading scalability curves</text>
+
+  <!-- Linear -->
+  <rect x="60" y="350" width="330" height="200" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M197 378v54h62"/>
+    <path d="M207 420l17-16 13 4 24-24"/>
+  </g>
+  <text x="225" y="474" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Linear</text>
+  <text x="225" y="518" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">(ideal)</text>
+
+  <!-- Knee point -->
+  <rect x="470" y="330" width="430" height="240" rx="18" fill="#e8f1ea" stroke="#db8129" stroke-width="5"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M657 355v54h62"/>
+    <path d="M667 399l20-19 13 2 19-18"/>
+  </g>
+  <text x="685" y="447" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Knee point</text>
+  <text x="685" y="493" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">(a shared resource</text>
+  <text x="685" y="525" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">starts to matter)</text>
+
+  <!-- Contention -->
+  <rect x="1100" y="120" width="440" height="205" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1156" cy="170" r="19"/>
+    <circle cx="1156" cy="170" r="7"/>
+    <path d="M1156 142v9M1156 189v9M1128 170h9M1175 170h9M1136 150l7 7M1169 183l7 7M1176 150l-7 7M1143 183l-7 7"/>
+  </g>
+  <text x="1190" y="181" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Contention</text>
+  <text x="1125" y="251" fill="#303a36" font-family="sans-serif" font-size="24">(serial section: Amdahl)</text>
+
+  <!-- Coherence -->
+  <rect x="1100" y="347" width="440" height="205" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4">
+    <circle cx="1137" cy="395" r="23"/>
+    <circle cx="1157" cy="395" r="23"/>
+    <path d="M1142 377l10 36"/>
+  </g>
+  <text x="1200" y="408" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Coherence</text>
+  <text x="1125" y="470" fill="#303a36" font-family="sans-serif" font-size="24">(cross-talk grows: USL;</text>
+  <text x="1125" y="502" fill="#303a36" font-family="sans-serif" font-size="24">throughput can fall)</text>
+
+  <!-- Ceiling -->
+  <rect x="1100" y="574" width="440" height="205" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1128 622h56"/>
+    <path d="M1130 674l20-17 14 3 20-22"/>
+    <path d="M1128 644h56"/>
+  </g>
+  <text x="1200" y="635" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Ceiling</text>
+  <text x="1125" y="697" fill="#303a36" font-family="sans-serif" font-size="24">(hard limit: a link, a</text>
+  <text x="1125" y="729" fill="#303a36" font-family="sans-serif" font-size="24">limit, a single thread)</text>
+
+  <!-- Connections -->
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M390 450H470" marker-end="url(#arrow)"/>
+    <path d="M900 390H1000V222H1100" marker-end="url(#arrow)"/>
+    <path d="M900 450H1100" marker-end="url(#arrow)"/>
+    <path d="M900 510H1040V676H1100" marker-end="url(#arrow)"/>
+  </g>
+</svg>

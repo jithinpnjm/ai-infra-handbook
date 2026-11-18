@@ -59,22 +59,9 @@ Caches sit between the core and main memory, and they come in levels, like shelv
 
 The diagram below shows how these pieces fit together on a two-socket machine.
 
-```mermaid
-flowchart TB
-  subgraph S0["Socket 0 (NUMA node 0)"]
-    subgraph C0["Core 0"]
-      T0["HW thread 0 (CPU 0)"]
-      T1["HW thread 1 (CPU 64)"]
-      L1a["L1i/L1d + L2"]
-    end
-    subgraph C1["Core 1"]
-      T2["CPU 1"] --- T3["CPU 65"]
-    end
-    L3["Shared L3"]
-  end
-  M0[("Local DRAM")] --- S0
-  S0 <--> S1["Socket 1 (NUMA node 1)"]
-```
+![CPU basics](./img/ch18-d1-luna.svg)
+
+*Figure 1.18.1. CPU basics.*
 
 Read it slowly: two hardware threads share core 0, and each socket has its own local DRAM.
 
@@ -175,19 +162,9 @@ For AI workloads, the pattern is one rank per GPU, pinned to the cores and memor
 
 The diagram shows idle balance in action. CPU 2 has nothing to run, so the balancer can pull Task D from the queue on CPU 0. The pull is cheap inside an SMT or L3 domain, and strongly resisted across NUMA nodes.
 
-```mermaid
-flowchart LR
-  subgraph CPU0["CPU 0 run queue (rbtree by vruntime)"]
-    A["Task A\nvr=100"]; B["Task B\nvr=120"]; D["Task D\nvr=150"]
-  end
-  subgraph CPU1["CPU 1"]
-    C["Task C\nvr=90"]
-  end
-  subgraph CPU2["CPU 2 (idle)"]
-    E["(empty)"]
-  end
-  D -. "idle balance pulls a task (cheap within an SMT/L3 domain,\nresisted across NUMA nodes)" .-> CPU2
-```
+![Load balancing and migration cost](./img/ch18-d2-luna.svg)
+
+*Figure 1.18.2. Load balancing and migration cost.*
 
 If a latency-sensitive thread keeps moving between cores, pin it with affinity and keep its memory local.
 
@@ -343,6 +320,10 @@ Older container tooling expects v1. That includes old Docker, Kubernetes before 
 
 Before you trust a container runtime with your cgroups, build one yourself. The files are plain text, and once you have created a group by hand you will know which file to read when a pod behaves strangely. The steps below need root, so work in a throwaway VM.
 
+![cgroup v2 is one tree](./img/ch18-fig1-cgtree.jpg)
+
+*Figure 1.18.3. In cgroup v2 every group is a directory; its control files set limits for all member processes.*
+
 ```bash
 cd /sys/fs/cgroup
 cat cgroup.controllers                 # controllers available here: cpuset cpu io memory hugetlb pids rdma misc
@@ -424,14 +405,9 @@ Two rules of thumb follow from this. For latency-sensitive services, a common pr
 
 The diagram traces one throttling period from start to finish.
 
-```mermaid
-flowchart TB
-  P["cpu.max = 200000 100000\n(quota 200 ms per 100 ms period)"]
-  P --> T1["period 1: 16 threads run in parallel\nquota used up after ~12.5 ms"]
-  T1 --> TH["THROTTLED: all threads paused\nfor the remaining 87.5 ms"]
-  TH --> T2["period 2: quota refilled, repeat"]
-  T2 --> OBS["Observed: avg CPU ≈ 2 cores, but latency spikes\ncpu.stat: nr_throttled / nr_periods high"]
-```
+![Quota: hard ceiling (CFS bandwidth control)](./img/ch18-d3-luna.svg)
+
+*Figure 1.18.4. Quota: hard ceiling (CFS bandwidth control).*
 
 Notice that the average looks healthy while the pauses hide inside each period.
 
@@ -485,22 +461,9 @@ Most of the time you do not create cgroups yourself. systemd, Docker and Slurm c
 
 systemd owns the tree on most systems. It organises the tree into **slices**. `-.slice` is the root, `system.slice` holds services, `user.slice` holds login sessions, and `machine.slice` holds VMs and containers. Services and **scopes** sit inside the slices. A scope groups processes that were created outside systemd, such as a container or a login session. The diagram shows one part of this layout. Every process on the node ends up in one of these branches, so the tree is also your first map when a limit looks wrong.
 
-```mermaid
-flowchart TB
-  R["-.slice (root)"] --> SYS[system.slice]
-  R --> USR[user.slice]
-  R --> MCH[machine.slice]
-  R --> KUB["kubepods.slice (Kubernetes)"]
-  SYS --> SD["sshd.service"]
-  SYS --> SL["slurmd.service"]
-  SYS --> CD["containerd.service"]
-  USR --> U1["user-1000.slice → session-3.scope"]
-  KUB --> G["kubepods-burstable.slice"]
-  KUB --> BE["kubepods-besteffort.slice"]
-  KUB --> GU["kubepods-pod&lt;uid&gt;.slice (Guaranteed)"]
-  G --> POD["kubepods-burstable-pod&lt;uid&gt;.slice"]
-  POD --> CTR["cri-containerd-&lt;id&gt;.scope"]
-```
+![Systemd, Docker, Slurm and the cgroup tree](./img/ch18-d4-luna.svg)
+
+*Figure 1.18.5. Systemd, Docker, Slurm and the cgroup tree.*
 
 Notice that Kubernetes gets its own slice, `kubepods.slice`, with a branch for each QoS class.
 
@@ -547,18 +510,9 @@ Finally, the NVIDIA device plugin and containers can lose GPU access after `syst
 
 When a node gets slow, start with the flowchart below. It walks you through the first questions to ask, in the order that saves the most time.
 
-```mermaid
-flowchart TD
-  S["Symptom: slow / latency spikes / jitter"] --> Q1{"CPU saturated?\nmpstat, runqlat, PSI cpu"}
-  Q1 -- "yes, some CPUs hot" --> A1["Single-thread bottleneck or IRQs: per-thread top -H,\n/proc/interrupts, RPS/RSS, pin IRQs"]
-  Q1 -- "yes, all busy" --> A2["Profile (perf, flame graph); is IPC low (memory-bound) or high?"]
-  Q1 -- "no" --> Q2{"In a cgroup with cpu.max?\ncat cpu.stat"}
-  Q2 -- "nr_throttled rising" --> A3["Quota throttling: raise/remove limit, fewer threads, GOMAXPROCS/OMP"]
-  Q2 -- "no" --> Q3{"Steal time or low clocks?\n%steal, turbostat, dmesg thermal"}
-  Q3 -- "steal" --> A4["Noisy neighbour / over-committed host: move or resize"]
-  Q3 -- "low MHz" --> A5["Governor, power cap, thermal throttling, C-states"]
-  Q3 -- "no" --> A6["Migration/NUMA: perf stat cpu-migrations, numastat;\nbind with numactl/cpuset; memory or I/O cgroup pressure?"]
-```
+![Troubleshooting](./img/ch18-d5-luna.svg)
+
+*Figure 1.18.6. Troubleshooting.*
 
 Read the flowchart from the top, one question at a time. Each answer sends you to a different family of fixes.
 

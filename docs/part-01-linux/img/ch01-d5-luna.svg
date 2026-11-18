@@ -1,0 +1,150 @@
+<svg width="1600" height="1400" viewBox="0 0 1600 1400" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">Putting a GPU node on the map</title>
+  <desc id="svg-desc">Layered diagram of a GPU node.</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="17" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 2 L17 9 L1 16 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="17" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 2 L17 9 L1 16 Z" fill="#db8129"/>
+    </marker>
+    <style>
+      .band { fill:#e8f1ea; stroke:#b8cfbd; stroke-width:2; }
+      .band-label { font:700 28px sans-serif; fill:#207448; }
+      .box { fill:#fff; stroke:#207448; stroke-width:3; rx:14; }
+      .title { font:700 30px sans-serif; fill:#303a36; text-anchor:middle; }
+      .detail { font:24px monospace; fill:#303a36; text-anchor:middle; }
+      .arrow { fill:none; stroke:#207448; stroke-width:4; marker-end:url(#arrow-green); }
+      .gpu-arrow { fill:none; stroke:#db8129; stroke-width:5; marker-end:url(#arrow-orange); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1400" fill="#f5f8f5"/>
+  <text x="60" y="78" font-family="sans-serif" font-size="48" font-weight="700" fill="#207448">Putting a GPU node on the map</text>
+
+  <rect class="band" x="40" y="120" width="1520" height="320" rx="18"/>
+  <rect class="band" x="40" y="480" width="1520" height="530" rx="18"/>
+  <rect class="band" x="40" y="1050" width="1520" height="310" rx="18"/>
+
+  <text class="band-label" x="70" y="165">USER SPACE</text>
+  <text class="band-label" x="70" y="525">KERNEL SPACE</text>
+  <text class="band-label" x="70" y="1095">HARDWARE</text>
+
+  <!-- Connections, behind the node boxes -->
+  <path class="gpu-arrow" d="M1050 322 H1015"/>
+  <path class="arrow" d="M1260 322 H1295"/>
+  <path class="gpu-arrow" d="M910 405 V610"/>
+  <path class="arrow" d="M1400 405 V610"/>
+  <path class="arrow" d="M175 405 V610"/>
+  <path class="arrow" d="M420 405 V610"/>
+  <path class="gpu-arrow" d="M910 780 V1170"/>
+  <path class="arrow" d="M1400 780 V1170"/>
+  <path class="arrow" d="M420 980 V1170"/>
+  <path class="arrow" d="M660 780 V1170"/>
+
+  <!-- USER SPACE -->
+  <rect class="box" x="70" y="240" width="210" height="165"/>
+  <text class="title" x="175" y="278">
+    <tspan x="175">Container</tspan><tspan x="175" dy="31">runtime</tspan>
+  </text>
+  <text class="detail" x="175" y="340">
+    <tspan x="175">containerd,</tspan><tspan x="175" dy="28">runc</tspan>
+  </text>
+
+  <rect class="box" x="315" y="240" width="210" height="165"/>
+  <text class="title" x="420" y="278">Agents</text>
+  <text class="detail" x="420" y="315">
+    <tspan x="420">slurmd,</tspan><tspan x="420" dy="28">kubelet,</tspan><tspan x="420" dy="28">dcgm</tspan>
+  </text>
+
+  <rect class="box" x="560" y="240" width="210" height="165"/>
+  <text class="title" x="665" y="292">
+    <tspan x="665">systemd,</tspan><tspan x="665" dy="31">sshd</tspan>
+  </text>
+
+  <rect class="box" x="805" y="240" width="210" height="165"/>
+  <text class="title" x="910" y="278">
+    <tspan x="910">CUDA</tspan><tspan x="910" dy="31">libraries</tspan>
+  </text>
+  <text class="detail" x="910" y="340">
+    <tspan x="910">libcuda.so,</tspan><tspan x="910" dy="27">libcudart,</tspan><tspan x="910" dy="27">NCCL</tspan>
+  </text>
+
+  <rect class="box" x="1050" y="240" width="210" height="165"/>
+  <text class="title" x="1155" y="278">
+    <tspan x="1155">Training</tspan><tspan x="1155" dy="31">job</tspan>
+  </text>
+  <text class="detail" x="1155" y="340">
+    <tspan x="1155">python +</tspan><tspan x="1155" dy="28">PyTorch</tspan>
+  </text>
+
+  <rect class="box" x="1295" y="240" width="210" height="165"/>
+  <text class="title" x="1400" y="278">
+    <tspan x="1400">RDMA</tspan><tspan x="1400" dy="31">libraries</tspan>
+  </text>
+  <text class="detail" x="1400" y="340">
+    <tspan x="1400">libibverbs,</tspan><tspan x="1400" dy="28">UCX</tspan>
+  </text>
+
+  <!-- KERNEL SPACE, upper row -->
+  <rect class="box" x="70" y="610" width="455" height="170"/>
+  <text class="title" x="297.5" y="665">
+    <tspan x="297.5">Namespaces</tspan><tspan x="297.5" dy="34">and cgroups</tspan>
+  </text>
+
+  <rect class="box" x="550" y="610" width="220" height="170"/>
+  <text class="title" x="660" y="700">Scheduler</text>
+
+  <rect class="box" x="800" y="610" width="220" height="170"/>
+  <text class="title" x="910" y="647">
+    <tspan x="910">NVIDIA</tspan><tspan x="910" dy="30">kernel</tspan><tspan x="910" dy="30">modules</tspan>
+  </text>
+  <text class="detail" x="910" y="738">
+    <tspan x="910">nvidia,</tspan><tspan x="910" dy="27">nvidia_uvm</tspan>
+  </text>
+
+  <rect class="box" x="1045" y="610" width="220" height="170"/>
+  <text class="title" x="1155" y="677">
+    <tspan x="1155">Network</tspan><tspan x="1155" dy="32">stack</tspan>
+  </text>
+
+  <rect class="box" x="1290" y="610" width="220" height="170"/>
+  <text class="title" x="1400" y="647">
+    <tspan x="1400">RDMA</tspan><tspan x="1400" dy="30">kernel</tspan><tspan x="1400" dy="30">drivers</tspan>
+  </text>
+  <text class="detail" x="1400" y="738">
+    <tspan x="1400">mlx5_core,</tspan><tspan x="1400" dy="27">ib_core</tspan>
+  </text>
+
+  <!-- KERNEL SPACE, lower row -->
+  <rect class="box" x="70" y="835" width="220" height="145"/>
+  <text class="title" x="180" y="892">
+    <tspan x="180">Memory</tspan><tspan x="180" dy="34">manager</tspan>
+  </text>
+
+  <rect class="box" x="310" y="835" width="220" height="145"/>
+  <text class="title" x="420" y="887">
+    <tspan x="420">NVMe &amp; FS</tspan><tspan x="420" dy="34">drivers</tspan>
+  </text>
+
+  <!-- HARDWARE -->
+  <rect class="box" x="310" y="1170" width="220" height="145"/>
+  <text class="title" x="420" y="1227">
+    <tspan x="420">NVMe</tspan><tspan x="420" dy="34">drives</tspan>
+  </text>
+
+  <rect class="box" x="550" y="1170" width="220" height="145"/>
+  <text class="title" x="660" y="1217">
+    <tspan x="660">CPUs, RAM,</tspan><tspan x="660" dy="34">NUMA</tspan>
+  </text>
+
+  <rect class="box" x="800" y="1170" width="220" height="145"/>
+  <text class="title" x="910" y="1227">
+    <tspan x="910">GPUs &amp;</tspan><tspan x="910" dy="34">NVLink</tspan>
+  </text>
+
+  <rect class="box" x="1290" y="1170" width="220" height="145"/>
+  <text class="title" x="1400" y="1227">
+    <tspan x="1400">ConnectX</tspan><tspan x="1400" dy="34">HCAs</tspan>
+  </text>
+</svg>

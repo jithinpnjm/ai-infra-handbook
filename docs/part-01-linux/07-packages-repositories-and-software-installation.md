@@ -86,25 +86,13 @@ The **high-level manager**, `apt` or `dnf`, talks to repositories. It works out 
 
 Think of the pair as a shop and its storeroom. The manager is the shopper who works out the list and brings the goods. The tool is the unpacker who puts them on the shelf and updates the inventory.
 
-```mermaid
-flowchart LR
-  subgraph Internet_or_Local["Repositories"]
-    R1["Distribution repo\n(base, updates, security)"]
-    R2["Third-party repo\n(EPEL, NVIDIA, Docker, vendor)"]
-    R3["Local mirror\n(air-gapped cluster)"]
-  end
-  HM["High-level manager\napt / dnf\nresolve dependencies, download,\nverify signatures"]
-  LL["Low-level tool\ndpkg / rpm\nunpack files, run scripts"]
-  DB[("Local package database\n/var/lib/dpkg or /var/lib/rpm")]
-  FS["Files on disk\n/usr /etc /lib ..."]
-  R1 --> HM
-  R2 --> HM
-  R3 --> HM
-  HM -->|"package files"| LL
-  LL --> FS
-  LL --> DB
-  DB -.->|"queries: owns? version? verify?"| HM
-```
+![Two layers of package tools](./img/ch07-fig1-layers.jpg)
+
+*Figure 1.7.1. High-level tools resolve dependencies and download; low-level tools install one package file.*
+
+![Two layers, and why they exist](./img/ch07-d1-luna.svg)
+
+*Figure 1.7.2. Two layers, and why they exist.*
 
 ### The package database is precious
 
@@ -299,24 +287,9 @@ Unattended upgrades are valuable for security patches on servers. They run as `u
 
 The failure these rules prevent is concrete and common, and it starts with an upgrade you did not plan. The diagram below shows how a routine upgrade can leave a node without a working driver.
 
-```mermaid
-sequenceDiagram
-  participant Admin as Routine upgrade (cron or unattended)
-  participant Pkg as apt / dnf
-  participant Kern as Kernel package
-  participant DKMS as DKMS (driver module)
-  participant Node as GPU node
-  Admin->>Pkg: apt upgrade
-  Pkg->>Kern: install new kernel 6.x
-  Pkg->>DKMS: rebuild nvidia module for 6.x
-  alt build succeeds (headers present, driver supports kernel)
-    DKMS-->>Node: module ready
-    Note over Node: next reboot: GPUs fine
-  else build fails (no headers / driver too old for kernel)
-    DKMS-->>Node: no module for 6.x
-    Note over Node: next reboot boots 6.x: nvidia-smi says no driver
-  end
-```
+![Holding, pinning and reproducibility](./img/ch07-d2-luna.svg)
+
+*Figure 1.7.3. Holding, pinning and reproducibility.*
 
 Chapter 1.22 develops DKMS and kernel modules in detail. The fix at the package layer is to hold the kernel and driver packages together, upgrade them in one controlled step, and test a rebooted canary node before you roll out the change.
 
@@ -342,22 +315,19 @@ Sometimes the package you need does not exist, or it is the wrong build. You the
 
 You should not replace your distribution's packages with source builds wholesale. Distributions fix security problems quickly, keep dependencies consistent, and let you upgrade with one command. There are good reasons to build from source yourself, though. You may need control over the options, such as building an MPI library with exactly the network backends your cluster has, or a Slurm with specific plugins. You may need control over the version, because the distribution's copy is too old or too new, which is common for add-ons such as language libraries. You may need control over the install location, including keeping several versions of the same software side by side. And you may simply want to understand how the software works and what it depends on.
 
+![Installing from source safely](./img/ch07-fig2-source.jpg)
+
+*Figure 1.7.4. Unpack, configure with a private prefix, build and install without touching the package manager's files.*
+
 The costs are real. Building takes time. Custom installs **do not update themselves**, which is a security issue for anything network-facing. You may overwrite files the distribution owns. A typo in an option can leave a half-working build. So the rule is this: prefer the package, build from source into an isolated prefix when you need control, and turn the result into a package if you will deploy it to more than one machine.
 
 ### The standard sequence
 
 Most C and C++ projects built with the GNU autotools follow four steps, and the pattern transfers to other build systems, such as CMake, Meson and SCons. The diagram below shows the steps and where each one can fail.
 
-```mermaid
-flowchart LR
-  A["1. Unpack\ntar xf pkg-1.23.tar.xz"] --> B["2. Configure\n./configure --prefix=..."]
-  B --> C["3. Build\nmake"]
-  C --> D["4. Test\nmake check"]
-  D --> E["5. Dry run\nmake -n install"]
-  E --> F["6. Install\nmake install\n(or package it)"]
-  B -.->|"fails?"| L["read config.log:\nmissing -dev package,\nwrong CPPFLAGS/LDFLAGS"]
-  C -.->|"fails?"| M["find the first real error,\nnot the make[N] cascade"]
-```
+![The standard sequence](./img/ch07-d3-luna.svg)
+
+*Figure 1.7.5. The standard sequence.*
 
 **Unpack carefully.** Source archives come as .tar.gz, .tar.bz2 or .tar.xz files. Chapter 1.3 covered `tar`. Before you extract, list the contents with `tar tvf` or `tar ztvf`, for two reasons. The first is tidiness. A well-formed archive has everything under one top directory, such as `package-1.23/...`. Some archives instead spill their files straight into the current directory. Picture an engineer who unpacks an archive into a shared home directory and then cannot tell which files came from it. If the listing shows bare names such as `Makefile` and `main.c`, extract into a new, empty directory so you do not make a mess.
 
@@ -499,19 +469,9 @@ Picture the end of a long build day: hundreds of lines of compiler output, and o
 
 The diagram below follows one program from source text to a running process. Read it left to right.
 
-```mermaid
-flowchart LR
-  S1["main.c"] -->|"preprocessor (cpp)\nexpands #include, #define, #ifdef"| P1["expanded source"]
-  P1 -->|"compiler (cc -c)"| O1["main.o\nobject file"]
-  S2["aux.c"] --> O2["aux.o"]
-  O1 --> L["linker (ld)\nresolves symbols"]
-  O2 --> L
-  LIB1["static library\nlibfoo.a\n(code copied in)"] --> L
-  LIB2["shared library\nlibbar.so\n(only a reference is recorded)"] -.-> L
-  L --> EXE["executable\nmyprog (ELF)"]
-  EXE -->|"at run time:\nld.so finds libbar.so"| RUN["running process"]
-  LIB2 -.-> RUN
-```
+![From source to executable](./img/ch07-d4-luna.svg)
+
+*Figure 1.7.6. From source to executable.*
 
 The source code is the human-written text, such as the .c and .cc files. A compiler translates it into object files, which end in .o. An object file holds binary code with loose ends. It refers to functions defined elsewhere, and it lacks the information the operating system needs to start it.
 

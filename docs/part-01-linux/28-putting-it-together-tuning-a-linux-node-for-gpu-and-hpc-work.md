@@ -56,16 +56,9 @@ When you finish this chapter, you should be able to do the following.
 
 A procurement team orders two identical GPU nodes, and the invoices agree down to the part numbers. Months later one of them trains slower than the other, and nobody can say why. The answer usually hides in a layer of the machine that was never set on purpose. It helps to picture a GPU node as a stack of layers, with your workload at the top and the physical hardware at the bottom. The diagram shows each layer and what lives in it.
 
-```mermaid
-flowchart TB
-  W["Workload: PyTorch/JAX job, NCCL, data loader, inference server"] --> C["Containers / Slurm steps / Kubernetes pods\ncgroups, CPU Manager, Topology Manager, device plugin"]
-  C --> R["Runtime libs: CUDA, NCCL, MPI, allocators (jemalloc/tcmalloc), OMP/MKL threads"]
-  R --> D["GPU driver & services: nvidia modules, persistenced, fabric manager, DCGM, MIG/MPS, clocks, ECC"]
-  D --> O["OS: sysctl, ulimits, THP, swap, governors, IRQ affinity, services, filesystems, time sync, security"]
-  O --> K["Kernel & boot: cmdline (iommu, numa_balancing, isolcpus, hugepages), modules, cgroup v2, mitigations"]
-  K --> F["Firmware: BIOS/UEFI (NUMA, SMT, C-states, power profile, ACS, ReBAR, PCIe), BMC, GPU/NIC firmware"]
-  F --> H["Hardware: CPU sockets, DRAM, PCIe switches, GPUs, NVLink/NVSwitch, NICs, NVMe, power & cooling"]
-```
+![The tuning stack, top to bottom](./img/ch28-d1-luna.svg)
+
+*Figure 1.28.1. The tuning stack, top to bottom.*
 
 The order matters for two practical reasons. First, lower layers cannot be fixed from above. An OS cannot repair a PCIe link that negotiated at x8, and it cannot undo a BIOS that hides NUMA. Second, each layer must be verified before the next one is tuned, or you will tune around a fault. So build and verify bottom-up, and diagnose symptoms top-down.
 
@@ -246,6 +239,10 @@ For this reason, many teams leave memory limits off training and inference conta
 ## 7. CPU placement and interrupts
 
 Here is the failure this section prevents. A data loader runs on a CPU socket that sits far from the GPU it feeds, so every batch crosses the interconnect before it can reach the card. The GPU waits, the step time wobbles, and nothing in the profiler says "wrong NUMA node". The fix is placement. Each training process should run on the CPUs of the NUMA node that holds its GPU, and the simplest pattern is one process per GPU, bound to that GPU's NUMA domain. The launcher below reads the GPU's NUMA node from sysfs, which is more robust against odd `nvidia-smi topo` text formats. Then it binds the process with `numactl`.
+
+![Keep the GPU, NIC and CPU on one NUMA node](./img/ch28-fig1-numa.jpg)
+
+*Figure 1.28.2. Work placed on the GPU's own NUMA node avoids the slower trip across the interconnect.*
 
 ```bash
 #!/usr/bin/env bash
@@ -526,15 +523,9 @@ Prolog and epilog scripts, along with node health scripts, clean up the state a 
 
 A fleet stays uniform only when every node is built the same way, and that is a pipeline problem rather than a discipline problem. Hand-built consistency lasts until the first busy week. The pipeline below takes a change from Git through a canary to the whole fleet, in waves.
 
-```mermaid
-flowchart LR
-  G["Git: kickstart/autoinstall, Ansible roles, tuned profiles, sysctl, systemd units,\nGRUB args, node audit, baseline"] --> B["Image build (Packer/BCM image/Ansible)\nkernel + driver + MOFED + toolkit + agents"]
-  B --> T["Canary node(s):\nboot, audit, dcgmi diag, nccl-tests, reference step"]
-  T -->|pass| R["Rollout waves\n(drain → reimage/update → audit → uncordon)"]
-  T -->|fail| X["Reject image / fix"]
-  R --> M["Continuous health & drift checks\n(prolog/epilog, node-health, DCGM, audit cron)"]
-  M -->|"drift or fault"| D["Drain, diagnose, repair or RMA"]
-```
+![Configuration as code and fleet operations](./img/ch28-d2-luna.svg)
+
+*Figure 1.28.3. Configuration as code and fleet operations.*
 
 Notice that a failed canary rejects the image, while drift or a fault sends the node back for diagnosis.
 

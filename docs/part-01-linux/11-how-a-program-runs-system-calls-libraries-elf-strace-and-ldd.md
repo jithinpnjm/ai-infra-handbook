@@ -55,28 +55,9 @@ Check your own skills against this list before you start. If a line is unfamilia
 
 Suppose a program fails before it prints its first log line. None of your own code has run yet, so the fault must sit in the machinery that starts it. To find the broken step, you need the whole sequence in order. It starts when you type `./train` in a shell. The diagram below shows every hand-off, from the shell to the kernel, then to the dynamic linker, and finally to your program.
 
-```mermaid
-sequenceDiagram
-  participant Sh as Shell
-  participant K as Kernel
-  participant L as ELF loader (kernel)
-  participant LD as ld.so (dynamic linker)
-  participant P as Program (libc start code + main)
-  Sh->>K: fork() then execve("./train", argv, envp)
-  K->>K: check file exists, execute permission, not on a noexec mount
-  K->>L: read first bytes: "#!" script? ELF magic? other format (binfmt)?
-  L->>K: ELF: map LOAD segments (code r-x, data rw-), set up bss, heap start, stack
-  L->>K: PT_INTERP says "/lib64/ld-linux-x86-64.so.2": map that too
-  K->>LD: start executing at the dynamic linker's entry point
-  LD->>LD: read DT_NEEDED list, find each library (RPATH, LD_LIBRARY_PATH, ld.so.cache, defaults)
-  LD->>LD: mmap each library, resolve symbols (relocations), lazy binding for functions via PLT/GOT
-  LD->>LD: run library constructors (init functions)
-  LD->>P: jump to _start
-  P->>P: __libc_start_main: set up stdio, atexit handlers, argc/argv, call main()
-  P->>K: main runs: read/write/mmap/... system calls
-  P->>K: exit_group(status)
-  K->>Sh: SIGCHLD, shell wait4() collects the status
-```
+![From keystroke to `main()`](./img/ch11-d1-luna.svg)
+
+*Figure 1.11.1. From keystroke to `main()`.*
 
 Read the diagram from top to bottom. Each arrow is one hand-off, and each hand-off is a place where a failure can start. A useful picture is a stage crew. The kernel, the ELF loader and `ld.so` set the stage, and only then does `main` walk on.
 
@@ -116,29 +97,9 @@ One ELF file can be read in two ways. The first view belongs to the **linker**, 
 
 The second view belongs to the **kernel loader**, which sees the file as a set of **segments**, also called program headers. The `LOAD` segments are the ones mapped into memory. `INTERP` gives the interpreter path. `DYNAMIC` holds the linking data, and `TLS` holds thread-local storage. `GNU_STACK` says whether the stack is executable, and it should not be. `GNU_RELRO` marks memory that becomes read-only after relocation.
 
-```mermaid
-flowchart LR
-  subgraph File["ELF file on disk"]
-    H["ELF header\n(class 64-bit, endian, type, machine, entry point)"]
-    PH["Program headers (segments)\nLOAD, INTERP, DYNAMIC, TLS ..."]
-    T[".text  (code)"]
-    R[".rodata"]
-    D[".data"]
-    B[".bss (size only)"]
-    DY[".dynamic  .dynsym  .plt  .got"]
-    S[".symtab  .debug_*  (strippable)"]
-    SH["Section headers"]
-  end
-  subgraph Mem["Process memory"]
-    CODE["r-x  code and read-only data"]
-    DATA["rw-  data + zero-filled bss"]
-    HEAP["heap (grows up via brk)"]
-    MM["mmap region: libraries, mapped files, big allocations"]
-    STK["stack (grows down)"]
-  end
-  PH -->|"LOAD (r-x)"| CODE
-  PH -->|"LOAD (rw-)"| DATA
-```
+![The ELF file format](./img/ch11-d2-luna.svg)
+
+*Figure 1.11.2. The ELF file format.*
 
 ### Reading an ELF file
 
@@ -226,6 +187,10 @@ Before you call a process a leak, watch its RSS over time. Virtual size on its o
 
 A program that opens a file, sends a packet or asks the GPU to do work crosses the same line every time. That line is the system call boundary. Once you can see it, most questions about what a program is doing become answerable. This section explains the crossing, then shows how to read it in `strace`.
 
+![Crossing into the kernel](./img/ch11-fig1-syscall.jpg)
+
+*Figure 1.11.3. A system call is the controlled crossing from user space into the kernel; strace prints each one.*
+
 ### The mechanism
 
 Picture a program that wants one byte written to a file. It cannot touch the disk, the network or the GPU directly. It asks the kernel to do the work, and it does so through a system call. A **system call** is the controlled entry into the kernel. The C library offers a **wrapper function** for each one, such as `open()`, `read()`, `write()` or `mmap()`. The wrapper places the call **number** and the arguments in specific CPU registers. Then it runs a special instruction: `syscall` on x86-64, or `svc` on ARM64.
@@ -269,6 +234,10 @@ When a program fails silently, read the last few failing calls in `strace` befor
 ## 5. Shared libraries in depth
 
 You install a library, and the file sits right there on disk, yet the program still says it cannot open it. That is the kind of puzzle this section prepares you for. A shared library is code that many programs use without each one carrying its own copy. That saving comes with its own management costs and a tangled linking procedure.
+
+![Shared libraries at start-up](./img/ch11-fig2-sharedlibs.jpg)
+
+*Figure 1.11.4. The dynamic linker finds each needed library, and ldd shows what will load.*
 
 Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. This section is about keeping them under control, and you can do that if you know four things. The source for this material is *How Linux Works* Section 15.1.3. First, you need to list the shared libraries an executable needs, with `ldd` or `readelf -d`. Second, you need to know how the executable looks for them: `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`, `/lib` and `/usr/lib`. Third, you need to link against a library at compile time, using `-L`, `-l` and `-Wl,-rpath`. Fourth, you need to know the common pitfalls. This section covers what makes a library file name work, how a program says which version it needs, and what goes wrong.
 

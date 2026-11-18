@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">Targets</title>
+  <desc id="svg-desc">A flowchart of target dependencies and the containerd-to-kubelet chain.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="18" refX="15" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L15 9 L2 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="18" markerHeight="18" refX="15" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L15 9 L2 16" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="80" y="88" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Targets</text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)">
+    <path d="M440 205 H465 V270 H500"/>
+    <path d="M440 425 H480 V350 H500"/>
+    <path d="M840 305 H870 V630 H670 V670"/>
+    <path d="M440 665 H460 V730 H500"/>
+    <path d="M440 895 H480 V800 H500"/>
+    <path d="M840 755 H900" stroke="#db8129" marker-end="url(#arrow-orange)"/>
+    <path d="M440 1085 H500"/>
+    <path d="M840 1085 H880"/>
+    <path d="M1200 1085 H1240"/>
+    <path d="M420 1010 V980 H1045 V840"/>
+    <path d="M1190 710 H1200 V470 H1240"/>
+    <path d="M1190 810 H1220 V790 H1240"/>
+  </g>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="80" y="130" width="360" height="150" rx="18"/>
+    <rect x="80" y="350" width="360" height="150" rx="18"/>
+    <rect x="500" y="220" width="340" height="170" rx="18"/>
+    <rect x="80" y="590" width="360" height="150" rx="18"/>
+    <rect x="80" y="820" width="360" height="150" rx="18"/>
+    <rect x="500" y="670" width="340" height="170" rx="18"/>
+    <rect x="900" y="670" width="290" height="170" rx="18"/>
+    <rect x="1240" y="350" width="330" height="240" rx="18"/>
+    <rect x="1240" y="670" width="330" height="240" rx="18"/>
+    <rect x="80" y="1010" width="360" height="150" rx="18"/>
+    <rect x="500" y="1010" width="340" height="150" rx="18"/>
+    <rect x="880" y="1010" width="320" height="150" rx="18"/>
+    <rect x="1240" y="1010" width="330" height="150" rx="18"/>
+  </g>
+
+  <!-- local-fs.target: disk -->
+  <g transform="translate(102 177)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="10" rx="24" ry="9"/>
+    <path d="M4 10v30c0 5 11 9 24 9s24-4 24-9V10"/>
+    <path d="M4 25c0 5 11 9 24 9s24-4 24-9"/>
+    <circle cx="40" cy="43" r="2"/>
+  </g>
+  <text x="180" y="190" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="180">local-fs.</tspan><tspan x="180" dy="36">target</tspan>
+  </text>
+
+  <!-- swap.target: exchange arrows -->
+  <g transform="translate(102 397)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 17h39l-9-9M46 17l-9 9"/>
+    <path d="M49 39H10l9 9M10 39l9-9"/>
+  </g>
+  <text x="180" y="410" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">swap.target</text>
+
+  <!-- sysinit.target: gear -->
+  <g transform="translate(522 277)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="12"/>
+    <circle cx="28" cy="28" r="4"/>
+    <path d="M28 3v7M28 46v7M3 28h7M46 28h7M10 10l5 5M41 41l5 5M46 10l-5 5M15 41l-5 5"/>
+  </g>
+  <text x="600" y="278" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="600">sysinit.</tspan><tspan x="600" dy="36">target</tspan>
+  </text>
+
+  <!-- sockets.target: socket -->
+  <g transform="translate(102 637)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 8v18a11 11 0 0 0 22 0V8"/>
+    <path d="M17 8v9M39 8v9M28 37v12M18 49h20"/>
+  </g>
+  <text x="180" y="650" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="180">sockets.</tspan><tspan x="180" dy="36">target</tspan>
+  </text>
+
+  <!-- timers.target: clock -->
+  <g transform="translate(102 867)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="29" r="23"/>
+    <path d="M28 14v16l11 7M20 3h16"/>
+  </g>
+  <text x="180" y="880" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">timers.target</text>
+
+  <!-- basic.target: gear -->
+  <g transform="translate(522 727)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="12"/>
+    <circle cx="28" cy="28" r="4"/>
+    <path d="M28 3v7M28 46v7M3 28h7M46 28h7M10 10l5 5M41 41l5 5M46 10l-5 5M15 41l-5 5"/>
+  </g>
+  <text x="600" y="728" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="600">basic.</tspan><tspan x="600" dy="36">target</tspan>
+  </text>
+
+  <!-- multi-user.target: users -->
+  <g transform="translate(922 727)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="17" r="9"/>
+    <circle cx="39" cy="20" r="7"/>
+    <path d="M4 48c1-10 7-16 16-16s15 6 16 16M34 34c9-2 16 4 18 13"/>
+  </g>
+  <text x="1000" y="728" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1000">multi-user.</tspan><tspan x="1000" dy="36">target</tspan>
+  </text>
+
+  <!-- graphical.target: window -->
+  <g transform="translate(1262 442)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="42" rx="4"/>
+    <path d="M4 17h48M13 12h1M20 12h1M27 12h1"/>
+  </g>
+  <text x="1340" y="400" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1340">graphical.</tspan><tspan x="1340" dy="36">target</tspan><tspan x="1340" dy="36">(default</tspan><tspan x="1340" dy="36">on</tspan><tspan x="1340" dy="36">desktops)</tspan>
+  </text>
+
+  <!-- sshd, containerd, kubelet, slurmd, nvidia-*, ...: services -->
+  <g transform="translate(1262 747)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="10"/>
+    <circle cx="28" cy="28" r="3"/>
+    <path d="M28 4v7M28 45v7M4 28h7M45 28h7M11 11l5 5M40 40l5 5M45 11l-5 5M16 40l-5 5"/>
+  </g>
+  <text x="1340" y="705" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="1340">sshd,</tspan><tspan x="1340" dy="34">containerd,</tspan><tspan x="1340" dy="34">kubelet,</tspan><tspan x="1340" dy="34">slurmd,</tspan><tspan x="1340" dy="34">nvidia-*,</tspan><tspan x="1340" dy="34">...</tspan>
+  </text>
+
+  <!-- network-online.target: network -->
+  <g transform="translate(102 1057)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="10" r="6"/>
+    <circle cx="9" cy="43" r="6"/>
+    <circle cx="47" cy="43" r="6"/>
+    <path d="M25 16L12 37M31 16l13 21M15 43h26"/>
+  </g>
+  <text x="180" y="1055" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="180">network-</tspan><tspan x="180" dy="36">online.target</tspan>
+  </text>
+
+  <!-- nvidia-fabricmanager: chip -->
+  <g transform="translate(522 1057)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="12" width="32" height="32" rx="4"/>
+    <path d="M20 20h16v16H20zM20 3v9M28 3v9M36 3v9M20 44v9M28 44v9M36 44v9M3 20h9M3 28h9M3 36h9M44 20h9M44 28h9M44 36h9"/>
+  </g>
+  <text x="600" y="1055" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">
+    <tspan x="600">nvidia-</tspan><tspan x="600" dy="36">fabricmanager</tspan>
+  </text>
+
+  <!-- containerd: containers -->
+  <g transform="translate(902 1057)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 15l20-10 20 10-20 11zM8 15v25l20 11 20-11V15M28 26v25"/>
+    <path d="M18 10l20 11"/>
+  </g>
+  <text x="980" y="1080" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">containerd</text>
+
+  <!-- kubelet: hexagonal node -->
+  <g transform="translate(1262 1057)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 4l22 13v26L28 56 6 43V17z"/>
+    <circle cx="28" cy="30" r="8"/>
+    <path d="M28 22v-9M21 34l-8 5M35 34l8 5"/>
+  </g>
+  <text x="1340" y="1080" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">kubelet</text>
+</svg>

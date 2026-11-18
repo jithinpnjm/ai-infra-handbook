@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1220" viewBox="0 0 1600 1220" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">sysfs: the kernel's device model as a tree</title>
+  <desc id="svg-desc">sysfs: the kernel's device model as a tree</desc>
+  <defs>
+    <marker id="arrow" markerWidth="18" markerHeight="18" refX="17" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L17 9 L0 18 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1220" fill="#f5f8f5"/>
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">sysfs: the kernel's device model as a tree</text>
+
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M730 205 C620 220 390 235 230 270" marker-end="url(#arrow)"/>
+    <path d="M770 205 C730 225 670 245 610 270" marker-end="url(#arrow)"/>
+    <path d="M830 205 C870 225 930 245 990 270" marker-end="url(#arrow)"/>
+    <path d="M870 205 C980 220 1210 235 1370 270" marker-end="url(#arrow)"/>
+
+    <path d="M690 165 H40 V860 H230 V880" marker-end="url(#arrow)"/>
+    <path d="M790 205 V860 H610 V880" marker-end="url(#arrow)"/>
+    <path d="M810 205 V860 H990 V880" marker-end="url(#arrow)"/>
+    <path d="M910 165 H1560 V860 H1370 V880" marker-end="url(#arrow)"/>
+
+    <path d="M230 530 V570" marker-end="url(#arrow)"/>
+    <path d="M610 530 V570" marker-end="url(#arrow)"/>
+    <path d="M990 530 V570" marker-end="url(#arrow)"/>
+  </g>
+
+  <g>
+    <rect x="690" y="125" width="220" height="80" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    <g transform="translate(710 137)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+      <path d="M4 15h20l7 8h25v29H4z"/>
+      <path d="M4 23h52"/>
+    </g>
+    <text x="780" y="177" font-family="monospace" font-size="30" font-weight="700" fill="#303a36">/sys</text>
+  </g>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="60" y="270" width="340" height="260" rx="16"/>
+    <rect x="440" y="270" width="340" height="260" rx="16"/>
+    <rect x="820" y="270" width="340" height="260" rx="16"/>
+    <rect x="1200" y="270" width="340" height="260" rx="16"/>
+  </g>
+
+  <g transform="translate(80 290)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M4 15h20l7 8h25v29H4z"/>
+    <path d="M4 23h52"/>
+  </g>
+  <text x="80" y="378" font-size="24" fill="#303a36">
+    <tspan x="152" y="325" font-family="monospace" font-weight="700">/sys/devices</tspan>
+    <tspan x="80" y="380" font-family="sans-serif">the real hierarchy</tspan>
+    <tspan x="80" y="410" font-family="sans-serif">(by physical</tspan>
+    <tspan x="80" y="440" font-family="sans-serif">connection)</tspan>
+  </text>
+
+  <g transform="translate(460 290)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M4 15h20l7 8h25v29H4z"/>
+    <path d="M4 23h52"/>
+  </g>
+  <text x="460" y="378" font-size="24" fill="#303a36">
+    <tspan x="532" y="325" font-family="monospace" font-weight="700">/sys/bus</tspan>
+    <tspan x="460" y="380" font-family="sans-serif">devices grouped by</tspan>
+    <tspan x="460" y="410" font-family="sans-serif">bus: pci, scsi, usb,</tspan>
+    <tspan x="460" y="440" font-family="sans-serif">nvme, platform ...</tspan>
+  </text>
+
+  <g transform="translate(840 290)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M4 15h20l7 8h25v29H4z"/>
+    <path d="M4 23h52"/>
+  </g>
+  <text x="840" y="378" font-size="24" fill="#303a36">
+    <tspan x="912" y="325" font-family="monospace" font-weight="700">/sys/class</tspan>
+    <tspan x="840" y="380" font-family="sans-serif">devices grouped by</tspan>
+    <tspan x="840" y="410" font-family="sans-serif">function: net, block,</tspan>
+    <tspan x="840" y="440" font-family="sans-serif">infiniband, hwmon,</tspan>
+    <tspan x="840" y="470" font-family="sans-serif">thermal, drm ...</tspan>
+  </text>
+
+  <g transform="translate(1220 290)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <g transform="rotate(-40 30 30)">
+      <rect x="7" y="20" width="31" height="18" rx="9"/>
+      <rect x="23" y="20" width="31" height="18" rx="9"/>
+    </g>
+  </g>
+  <text x="1220" y="378" font-size="24" fill="#303a36">
+    <tspan x="1292" y="325" font-family="monospace" font-weight="700">/sys/block</tspan>
+    <tspan x="1220" y="380" font-family="sans-serif">block devices</tspan>
+    <tspan x="1220" y="410" font-family="sans-serif">(symlinks)</tspan>
+  </text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="60" y="570" width="340" height="270" rx="16"/>
+    <rect x="440" y="570" width="340" height="270" rx="16"/>
+    <rect x="820" y="570" width="340" height="270" rx="16"/>
+  </g>
+
+  <g transform="translate(80 590)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M4 15h20l7 8h25v29H4z"/>
+    <path d="M4 23h52"/>
+  </g>
+  <text x="80" y="635" font-size="24" fill="#303a36">
+    <tspan x="152" y="615" font-family="monospace" font-weight="700">pci0000:00/</tspan>
+    <tspan x="152" y="644" font-family="monospace" font-weight="700">0000:00:03.0/</tspan>
+    <tspan x="152" y="673" font-family="monospace" font-weight="700">...</tspan>
+    <tspan x="80" y="720" font-family="sans-serif">(PCI topology:</tspan>
+    <tspan x="80" y="750" font-family="sans-serif">bridges, switches,</tspan>
+    <tspan x="80" y="780" font-family="sans-serif">endpoints)</tspan>
+  </text>
+
+  <g transform="translate(460 590)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <g transform="rotate(-40 30 30)">
+      <rect x="7" y="20" width="31" height="18" rx="9"/>
+      <rect x="23" y="20" width="31" height="18" rx="9"/>
+    </g>
+  </g>
+  <text x="460" y="635" font-size="24" fill="#303a36">
+    <tspan x="532" y="615" font-family="monospace" font-weight="700">/sys/bus/pci/</tspan>
+    <tspan x="532" y="644" font-family="monospace" font-weight="700">devices/</tspan>
+    <tspan x="532" y="673" font-family="monospace" font-weight="700">0000:3b:00.0</tspan>
+    <tspan x="460" y="720" font-family="sans-serif">(symlink into</tspan>
+    <tspan x="460" y="750" font-family="sans-serif">/sys/devices)</tspan>
+  </text>
+
+  <g transform="translate(840 590)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <g transform="rotate(-40 30 30)">
+      <rect x="7" y="20" width="31" height="18" rx="9"/>
+      <rect x="23" y="20" width="31" height="18" rx="9"/>
+    </g>
+  </g>
+  <text x="840" y="635" font-size="24" fill="#303a36">
+    <tspan x="912" y="615" font-family="monospace" font-weight="700">/sys/class/net/</tspan>
+    <tspan x="912" y="644" font-family="monospace" font-weight="700">eth0 -&gt;</tspan>
+    <tspan x="912" y="673" font-family="monospace" font-weight="700">../../devices/</tspan>
+    <tspan x="912" y="702" font-family="monospace" font-weight="700">...</tspan>
+    <tspan x="912" y="731" font-family="monospace" font-weight="700">/net/eth0</tspan>
+  </text>
+
+  <g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+    <rect x="60" y="880" width="340" height="260" rx="16"/>
+    <rect x="440" y="880" width="340" height="260" rx="16"/>
+    <rect x="820" y="880" width="340" height="260" rx="16"/>
+    <rect x="1200" y="880" width="340" height="260" rx="16"/>
+  </g>
+
+  <g transform="translate(80 900)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M4 15h20l7 8h25v29H4z"/>
+    <path d="M4 23h52"/>
+  </g>
+  <text x="80" y="988" font-size="24" fill="#303a36">
+    <tspan x="152" y="935" font-family="monospace" font-weight="700">/sys/module</tspan>
+    <tspan x="80" y="990" font-family="sans-serif">loaded kernel</tspan>
+    <tspan x="80" y="1020" font-family="sans-serif">modules and their</tspan>
+    <tspan x="80" y="1050" font-family="sans-serif">parameters</tspan>
+  </text>
+
+  <g transform="translate(460 900)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M4 15h20l7 8h25v29H4z"/>
+    <path d="M4 23h52"/>
+  </g>
+  <text x="460" y="988" font-size="24" fill="#303a36">
+    <tspan x="532" y="935" font-family="monospace" font-weight="700">/sys/fs</tspan>
+    <tspan x="460" y="990" font-family="sans-serif">cgroup, bpf,</tspan>
+    <tspan x="460" y="1020" font-family="sans-serif">fuse ...</tspan>
+  </text>
+
+  <g transform="translate(840 900)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M4 15h20l7 8h25v29H4z"/>
+    <path d="M4 23h52"/>
+  </g>
+  <text x="840" y="988" font-size="24" fill="#303a36">
+    <tspan x="912" y="935" font-family="monospace" font-weight="700">/sys/kernel</tspan>
+    <tspan x="840" y="990" font-family="sans-serif">kernel tunables,</tspan>
+    <tspan x="840" y="1020" font-family="sans-serif">mm (hugepages,</tspan>
+    <tspan x="840" y="1050" font-family="sans-serif">THP), irq,</tspan>
+    <tspan x="840" y="1080" font-family="sans-serif">security</tspan>
+  </text>
+
+  <g transform="translate(1220 900)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M4 15h20l7 8h25v29H4z"/>
+    <path d="M4 23h52"/>
+  </g>
+  <text x="1220" y="988" font-size="24" fill="#303a36">
+    <tspan x="1292" y="935" font-family="monospace" font-weight="700">/sys/firmware</tspan>
+    <tspan x="1220" y="990" font-family="sans-serif">ACPI, DMI, EFI</tspan>
+    <tspan x="1220" y="1020" font-family="sans-serif">variables</tspan>
+  </text>
+</svg>

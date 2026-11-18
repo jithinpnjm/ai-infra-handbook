@@ -66,31 +66,9 @@ The kernel is the program that is always running. It manages the hardware and sh
 
 Around the kernel sit **system libraries**. The C library, `libc`, is one of them, and it wraps system calls in a friendlier interface. Applications sit above the libraries. Programs normally reach the kernel through libraries, but they can also invoke system calls directly, as some language runtimes, such as Go's, do.
 
-```mermaid
-flowchart TB
-  subgraph UserSpace["User space (unprivileged CPU mode)"]
-    A["Applications: python train.py, sshd, slurmd, vLLM"]
-    L["System libraries: libc, libpthread, libcuda ..."]
-  end
-  subgraph KernelSpace["Kernel (privileged CPU mode)"]
-    SC["System call interface"]
-    SCH["Scheduler"]
-    MM["Memory manager"]
-    VFS["VFS + filesystems + block layer"]
-    NET["Network stack"]
-    DRV["Device drivers (including NVIDIA)"]
-  end
-  HW["Hardware: CPUs, RAM, disks, NICs, GPUs"]
-  A --> L --> SC
-  A -.->|"direct syscalls (some runtimes)"| SC
-  SC --> SCH & MM & VFS & NET
-  VFS --> DRV
-  NET --> DRV
-  DRV --> HW
-  SCH --> HW
-  MM --> HW
-  HW -.->|"interrupts"| KernelSpace
-```
+![The operating system in one picture](./img/ch08-d1-luna.svg)
+
+*Figure 1.8.1. The operating system in one picture.*
 
 ### Kernel mode and user mode
 
@@ -179,21 +157,9 @@ The copy is cheap because Linux uses **copy-on-write**. Both processes first poi
 
 To run a different program, the child calls **exec** (the kernel call is `execve`). That replaces its memory with the new program and starts it. The PID stays the same. When a shell runs `ls`, it forks a child, the child execs `ls`, and the shell waits.
 
-```mermaid
-sequenceDiagram
-  participant Sh as bash (PID 1000)
-  participant Ch as child (PID 1234)
-  participant K as kernel
-  Sh->>K: fork()
-  K-->>Sh: returns 1234 (child's PID)
-  K-->>Ch: returns 0 (you are the child)
-  Ch->>K: execve("/bin/ls", ...)
-  Note over Ch: memory replaced, now running ls
-  Ch->>K: write(1, "file list"), exit_group(0)
-  K-->>Sh: SIGCHLD (child terminated)
-  Sh->>K: wait4(1234)
-  K-->>Sh: exit status 0 (child reaped)
-```
+![Where processes come from: `fork` and `exec`](./img/ch08-d2-luna.svg)
+
+*Figure 1.8.2. Where processes come from: `fork` and `exec`.*
 
 Three practical consequences follow, and you will meet all of them.
 
@@ -226,20 +192,13 @@ Every task is in exactly one state at any moment, and the kernel writes that sta
 
 `ps` adds modifier characters: `s` session leader, `l` multithreaded, `+` in the foreground process group of its terminal, `<` high priority, `N` low priority.
 
-```mermaid
-stateDiagram-v2
-  [*] --> Ready: fork()
-  Ready --> Running: scheduler picks it (on-CPU)
-  Running --> Ready: time slice ends / preempted
-  Running --> Sleeping: blocks on I/O, lock, timer (S)
-  Running --> DiskWait: blocked in kernel I/O (D)
-  Sleeping --> Ready: event or signal arrives
-  DiskWait --> Ready: I/O completes
-  Running --> Stopped: SIGSTOP / SIGTSTP (T)
-  Stopped --> Ready: SIGCONT
-  Running --> Zombie: exit() (Z)
-  Zombie --> [*]: parent calls wait()
-```
+![Process states in ps](./img/ch08-fig2-states.jpg)
+
+*Figure 1.8.3. The five process states you will see in the ps STAT column.*
+
+![Process states](./img/ch08-d3-luna.svg)
+
+*Figure 1.8.4. Process states.*
 
 **The `D` state causes the worst cluster days.** A process in `D` is waiting on a kernel operation that has not returned. The usual causes are a hung NFS, Lustre or GPFS mount, a failing disk, or a driver waiting for a GPU that has fallen off the bus.
 

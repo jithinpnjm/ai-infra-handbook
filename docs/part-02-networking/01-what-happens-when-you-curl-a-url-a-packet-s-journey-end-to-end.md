@@ -52,6 +52,10 @@ Once you have read the chapter and done the lab, use this list as a self-check. 
 
 Before we go step by step, look at the whole trip once. Think of sending a parcel to a friend in another city. You write a name on it, someone has to find the street address for that name, the local post office decides which truck takes it, the truck hands it on at depots, and at the far end somebody checks it is really for them. A network request is the same story told in milliseconds. Read the diagram from top to bottom. The numbered arrows show the order in which things happen.
 
+![What happens when you run curl](./img/n01-fig1-curl-v2.jpg)
+
+*Figure 2.1.1. The six stages of a curl request: DNS, route, ARP, TCP, TLS and HTTP.*
+
 ```mermaid
 sequenceDiagram
   autonumber
