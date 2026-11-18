@@ -48,6 +48,10 @@ Suppose a small ops script grows until it needs a second file. The helpers now l
 
 A module is a single Python file. It can also be a built-in or extension module. Either way, it provides a namespace of names. Think of a namespace as a labelled box: every name the module defines goes into that box, and other files reach in by the box's name.
 
+![A module is a namespace: util.py becomes a module object](./img/p02-module.jpg)
+
+*Figure 3.2.1. A module is a namespace. Importing util.py runs its top-level code once and caches the module object in sys.modules.*
+
 Importing a module runs its top-level code once. Python then caches the module object, so the second import costs almost nothing. Modules are the unit of code reuse, and they keep names separate from one another.
 
 ```python
@@ -59,6 +63,10 @@ print("util loaded")       # side effects at import time: avoid in libraries
 ```
 
 Each of these import forms binds a name in a different way. Read them as five different choices about what your code can see.
+
+![Five import forms and the name each one binds](./img/p02-importforms.jpg)
+
+*Figure 3.2.2. Five import forms and the name each one binds.*
 
 ```python
 import util                       # binds the name util to the module object
@@ -91,6 +99,10 @@ A `from` statement works in steps. The statement `from module import name1, name
 A `from module import *` statement is allowed only at the top level of a module file. Inside a `def` body it raises a `SyntaxError`. Python must know a function's local names at compile time, and a star import would hide them.
 
 Because `from` copies object references, it does not create a live link to the source module. This matters in four situations. Rebinding a copied name, mutating a shared object, colliding names and reloading each behave differently.
+
+![What from-import copies: rebinding versus mutating shared objects](./img/p02-fromrefs.jpg)
+
+*Figure 3.2.3. What from-import copies: rebinding a name stays local, mutating a shared object is visible everywhere.*
 
 Rebinding changes only your local name. Assigning `x = 99` after `from mod import x` changes only the importer's variable. The module's `mod.x` stays the same. The same holds for `X = 88` in a module `nested.py`, where `printer()` still prints `99`. To change the module's own value, so that other importers see it, go through the module object: `import nested; nested.X = 88`.
 
@@ -141,6 +153,10 @@ Two different rules govern name lookup. An unqualified name, such as `X`, is sea
 
 Imports never give upward visibility. An imported module cannot see names in the file that imported it. A function's global scope is always the module file where its `def` was written.
 
+![Imports never give upward visibility: lex1.f() changes lex1.X only](./img/p02-lexvis.jpg)
+
+*Figure 3.2.4. Imports never give upward visibility. Calling lex1.f() changes lex1.X to 99 and leaves lex2.X at 11.*
+
 The book's `lex1.py` and `lex2.py` examples show this. In `lex1.py`, `X = 88` and `def f(): global X; X = 99`. In `lex2.py`, `X = 11`, then `import lex1`, then `lex1.f()`, then `print(X, lex1.X)`. Running `python3 lex2.py` prints `11 99`. The call to `lex1.f()` changes `lex1.X` to `99`. It leaves `lex2.X` at `11`.
 
 A qualified path, such as `X.Y.Z`, works differently. Python finds the leftmost name, `X`, by the same LEGB rule. Then it reads each attribute from left to right. Because `import` stores a module object as an attribute of the importing module, namespaces nest downward along an import chain.
@@ -148,6 +164,10 @@ A qualified path, such as `X.Y.Z`, works differently. Python finds the leftmost 
 The book's `nest` files show the downward path. `nest3.py` sets `X = 3`. `nest2.py` sets `X = 2`, imports `nest3`, and prints `X` and `nest3.X`. `nest1.py` sets `X = 1`, imports `nest2`, and prints `X`, `nest2.X` and `nest2.nest3.X`. Running `python3 nest1.py` prints `2 3` from `nest2`, then `1 2 3` from `nest1`.
 
 So `nest1` can reach `nest2.nest3.X`, even though `nest3` cannot see `nest2` or `nest1`. Writing `import nest2.nest3` in `nest1` fails, unless `nest2` is a directory package.
+
+![Namespaces nest downward along an import chain](./img/p02-nestdown.jpg)
+
+*Figure 3.2.5. Namespaces nest downward: nest1 can reach nest2.nest3.X, but nest3 cannot see nest2 or nest1.*
 
 ### Data hiding (`_X`, `__all__`, `__getattr__`, `__dir__`), `__future__`, and `__name__ == '__main__'`
 
@@ -160,6 +180,10 @@ Two conventions control what `from module import *` copies. Two special hooks co
 A single leading underscore marks a name as private for star imports. Without `__all__`, `from module import *` skips every top-level name that starts with `_`. Take a module `unders.py` in which `a, b, _c, _d = 1, 2, 3, 4` is followed by `from unders import *`. That copies only `a` and `b`. Explicit imports still reach `_c` and `_d`, as in `from unders import _c` or `import unders; unders._d`.
 
 An explicit export list is stronger. Assigning a list of names to `__all__` tells star imports to copy only those names. This rule overrides the underscore rule. In a module `alls.py`, `__all__ = ['a', '_c']` means `from alls import *` copies `a` and `_c`, but not `b` or `_d`. Neither rule blocks direct access, such as `import alls; alls.b, alls._d`.
+
+![What from unders import star copies, with and without __all__](./img/p02-starimport.jpg)
+
+*Figure 3.2.6. What from unders import * copies, with and without an __all__ list.*
 
 Module-level `__getattr__` and `__dir__` add dynamic attributes. These arrived in Python 3.7, through PEP 562. If a module defines `def __getattr__(name):`, Python calls it whenever a client asks for `mod.name` and that name is not in `mod.__dict__`. The call also happens for `from mod import name`. Defining `def __dir__():` changes what `dir(mod)` returns. This replaces an older trick that swapped `sys.modules[__name__]` for a class instance.
 
@@ -187,6 +211,10 @@ In this file, `var` is a real attribute, so it comes straight from the dictionar
 Next, `from __future__ import ...` turns on compiler features for one module. It must be the first executable statement, after any docstring or comments. Examples include `from __future__ import annotations` and the historical `generator_stop` and Python 2-to-3 bridges. Python keeps these feature names in `__future__` permanently. So older imports keep working on newer Pythons.
 
 The `__name__ == '__main__'` test lets one file serve two purposes. When you run a file directly, as in `python3 dualmode.py` or `python3 minmax.py`, Python sets its `__name__` to `'__main__'`. When another file imports it, `__name__` becomes the module's import name, such as `'dualmode'` or `'minmax'`.
+
+![One file, two uses: __name__ differs when run or imported](./img/p02-dualmode.jpg)
+
+*Figure 3.2.7. One file, two uses: Python sets __name__ to '__main__' when you run the file and to the module name when you import it.*
 
 Put your self-tests or command-line logic under `if __name__ == '__main__':`. The file then works as an importable library and as a standalone script. The book's `minmax.py` defines `def minmax(test, *args): ...` along with `lessthan` and `grtrthan`. This is different from a package's `__main__.py`, which is a bundle entry point.
 
@@ -229,7 +257,15 @@ The second technique is importing a module by a runtime string. A module name ca
 
 Dotted names expose a difference between the last two. For `'email.message'`, `__import__('email.message')` returns the leftmost top-level package, `<module 'email'>`. The function `importlib.import_module('email.message')` returns the rightmost target submodule, `<module 'email.message'>`. It also accepts a `package=` argument, which resolves relative imports that begin with a dot.
 
+![Three ways to import a module from a string](./img/p02-importstr.jpg)
+
+*Figure 3.2.8. Three ways to import a module from a runtime string. Prefer importlib.import_module.*
+
 The third technique reloads a whole import graph. Suppose `ra.py` sets `X = 1` and runs `import rb`. Suppose `rb.py` sets `Y = 2` and runs `import rc`. And suppose `rc.py` sets `Z = 3`. Calling `importlib.reload(ra)` reloads only `ra`. The values `ra.rb.Y` and `ra.rb.rc.Z` keep their old values. The `import rb` inside `ra.py` does nothing once `rb` is in `sys.modules`.
+
+![reload reloads only one module, not the modules it imports](./img/p02-reloadgraph.jpg)
+
+*Figure 3.2.9. importlib.reload reloads only one module. The book's reloadall.py walks the whole import chain.*
 
 The book's `reloadall.py` walks `module.__dict__.values()`. It keeps only entries where `type(attrobj) == types.ModuleType`. It calls `reload(module)` inside a defensive `try / except`, called `tryreload`. That guard matters, because some special modules, such as `sys.monitoring` in Python 3.12, cannot be reloaded. The walker also records visited modules, in a `visited` dictionary or `set()`. Without that record, circular imports would loop forever.
 
@@ -251,7 +287,15 @@ Those tags let several files sit side by side. For example, `codefile.cpython-31
 
 Third, Python runs the bytecode from top to bottom, inside the new module object's namespace.
 
+![How an import works: check sys.modules, then find, compile and run](./img/p02-importsteps.jpg)
+
+*Figure 3.2.10. How an import works: check sys.modules first, then find, compile and run.*
+
 Python builds `sys.path` at startup from five components. They appear in this order.
+
+![The five parts of sys.path in search order](./img/p02-syspath.jpg)
+
+*Figure 3.2.11. The five parts of sys.path, from first searched to last searched.*
 
 1. The home directory of the program. This is the folder that holds the top-level script. In the REPL, and with `-c` or `-m`, the home directory is `''`, the current working directory. Import search paths are separate from `os.getcwd()`, which controls relative file I/O.
 2. The `PYTHONPATH` directories. On Unix and macOS they are separated by colons, as in `/Users/me/pycode/utilities:/Volumes/ssd/pycode/package1`. On Windows they are separated by semicolons, as in `C:\Users\me\pycode\utilities;d:\pycode\package1`. Set them with `export PYTHONPATH=...`. Each entry can also be a `.zip` archive.
@@ -275,6 +319,10 @@ Run these commands to see the search path for yourself. The first prints every e
 ### `.pyc` and bytecode caches
 
 Python caches compiled bytecode in `__pycache__/name.cpython-312.pyc`. This is the cache that saves the compile step on a later import. The cache is invalidated when the source's timestamp or hash changes. On a read-only file system, or in a container, you have three options. You can precompile with `python -m compileall`. You can set `PYTHONDONTWRITEBYTECODE=1` to stop writing caches. Or you can use `PYTHONPYCACHEPREFIX` to move the caches somewhere else. Choose one before you deploy, so the cache behaves the same on every machine.
+
+![Bytecode caches and the three deploy options](./img/p02-pyc.jpg)
+
+*Figure 3.2.12. Bytecode caches: __pycache__ saves the compile step, and three options control it on read-only systems.*
 
 ## 2. Packages
 
@@ -309,6 +357,10 @@ from myops.clients.slurm import submit
 
 Name collisions are the reason packages exist. Picture two systems in one project. The folder `system1/` holds `utilities.py`, `main.py` and `other.py`. The folder `system2/` holds its own copies of all three names.
 
+![Packages stop name collisions between two utilities.py files](./img/p02-collide2.jpg)
+
+*Figure 3.2.13. Packages stop name collisions: system1.utilities and system2.utilities are both reachable.*
+
 If you run `python3 system1/main.py` or `python3 system2/main.py` on its own, each script works. Its own folder is first on `sys.path`, so `import utilities` finds the right file. Each script lives in its own small world, and the small world is enough.
 
 The trouble starts with a third script, `mycode/myfile.py`. Suppose it needs functions from both `utilities.py` files. If you add both folders to `PYTHONPATH`, the scan of `sys.path` always takes the first match. The second `utilities.py` becomes unreachable, because no import name can point at it.
@@ -330,6 +382,10 @@ Adding a `__main__.py` lets users run a folder like an application bundle. The b
 Run `python3 -m dir1` or `python3 -m dir1.dir2` instead, and Python uses the full package machinery. It runs `dir1/__init__.py`, and then `dir1/dir2/__init__.py`, before it runs `__main__.py`. A `.zip` archive on `sys.path` can be launched the same way.
 
 What `__main__.py` can import depends on how you launch it, and this is the most confusing corner of packages. Take three versions in turn.
+
+![Which import styles work in __main__.py for each launch command](./img/p02-mainlaunch.jpg)
+
+*Figure 3.2.14. Which import styles work in dir1/__main__.py for each way of launching it.*
 
 If `dir1/__main__.py` contains a plain `import mod`, then `python3 dir1` and `python3 dir1/__main__.py` both succeed. The home directory is `dir1/`, so `mod` is found. But `python3 -m dir1` fails with `ModuleNotFoundError: No module named 'mod'`. Absolute imports skip the enclosing package.
 
@@ -374,6 +430,10 @@ For example, set `export PYTHONPATH=ns/part1:ns/part2`, then run `import sub.mod
 ### Circular (`recursive`) imports: why `import recur1` fails while `import recur2` succeeds
 
 Two modules can import each other without looping forever. The trick is the order in which Python builds them. Python adds the new module object to `sys.modules` before it runs the file's top-level statements. The problem is that a circular `from` import can catch a module only partly built. The book uses two files to show it.
+
+![Why import recur1 fails while import recur2 first works](./img/p02-circular.jpg)
+
+*Figure 3.2.15. Why import recur1 fails: Y = 2 has not run when recur2 asks for it. Importing recur2 first works.*
 
 `recur1.py` sets `X = 1`, then runs `import recur2`, then sets `Y = 2`. `recur2.py` runs `from recur1 import X` and then `from recur1 import Y`.
 
