@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1560" viewBox="0 0 1600 1560">
+  <title>From keystroke to main()</title>
+  <desc>Sequence diagram tracing command launch from shell fork and execve through ELF loading, dynamic linking, libc startup, and process exit.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1560" fill="#f5f8f5"/>
+  <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">From keystroke to main()</text>
+
+  
+  <rect x="90" y="106" width="240" height="165" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="184" y="124" width="52" height="40" rx="5"/><path d="M196 138l10 8-10 8 M212 154h12"/>
+  </g>
+  <text x="210" y="214" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">Shell</text>
+
+  <rect x="370" y="106" width="260" height="165" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <rect x="478" y="124" width="44" height="44" rx="5"/><rect x="490" y="136" width="20" height="20"/>
+    <path d="M490 124v-7 M500 124v-7 M510 124v-7 M490 168v7 M500 168v7 M510 168v7"/>
+  </g>
+  <text x="500" y="214" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">Kernel</text>
+
+  <rect x="665" y="106" width="260" height="165" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <path d="M778 124h26l10 10v34h-36z M804 124v10h10" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <text x="795" y="206" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">
+    <tspan x="795" dy="0">ELF loader</tspan>
+    <tspan x="795" dy="32">(kernel)</tspan>
+  </text>
+
+  <rect x="960" y="106" width="270" height="165" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+    <circle cx="1095" cy="146" r="18"/><circle cx="1095" cy="146" r="7"/>
+    <path d="M1095 120v7 M1095 165v7 M1069 146h7 M1114 146h7"/>
+  </g>
+  <text x="1095" y="206" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">
+    <tspan x="1095" dy="0">ld.so (dynamic</tspan>
+    <tspan x="1095" dy="32">linker)</tspan>
+  </text>
+
+  <rect x="1265" y="106" width="295" height="165" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5">
+    <rect x="1390" y="124" width="44" height="32" rx="4"/><path d="M1390 134h44"/>
+  </g>
+  <text x="1412" y="192" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">
+    <tspan x="1412" dy="0">Program</tspan>
+    <tspan x="1412" dy="30">(libc start</tspan>
+    <tspan x="1412" dy="30">code + main)</tspan>
+  </text>
+
+  
+  <g stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.45">
+    <line x1="210" y1="271" x2="210" y2="1520"/>
+    <line x1="500" y1="271" x2="500" y2="1520"/>
+    <line x1="795" y1="271" x2="795" y2="1520"/>
+    <line x1="1095" y1="271" x2="1095" y2="1520"/>
+    <line x1="1412" y1="271" x2="1412" y2="1520"/>
+  </g>
+
+  
+  <circle cx="52" cy="335" r="22" fill="#207448"/><text x="52" y="344" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">1</text>
+  <path d="M210 352 H496" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="355" y="306" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="355" dy="0">fork() then</tspan>
+    <tspan x="355" dy="28">execve("./train", argv, envp)</tspan>
+  </text>
+
+  
+  <circle cx="52" cy="420" r="22" fill="#207448"/><text x="52" y="429" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">2</text>
+  <path d="M500 415 H550 V438 H504" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="520" y="398" text-anchor="start" fill="#303a36" font-family="sans-serif" font-size="24">check file exists, execute permission, not on a noexec mount</text>
+
+  
+  <circle cx="52" cy="505" r="22" fill="#207448"/><text x="52" y="514" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">3</text>
+  <path d="M500 515 H791" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="648" y="495" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">read first bytes: "#!" script? ELF magic? other format (binfmt)?</text>
+
+  
+  <circle cx="52" cy="590" r="22" fill="#207448"/><text x="52" y="599" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">4</text>
+  <path d="M795 600 H504" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="648" y="580" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">ELF: map LOAD segments (code r-x, data rw-), set up bss, heap start, stack</text>
+
+  
+  <circle cx="52" cy="675" r="22" fill="#207448"/><text x="52" y="684" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">5</text>
+  <path d="M795 685 H504" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="648" y="665" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">PT_INTERP says "/lib64/ld-linux-x86-64.so.2": map that too</text>
+
+  
+  <circle cx="52" cy="760" r="22" fill="#207448"/><text x="52" y="769" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">6</text>
+  <path d="M500 770 H1091" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="795" y="750" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">start executing at the dynamic linker's entry point</text>
+
+  
+  <circle cx="52" cy="855" r="22" fill="#207448"/><text x="52" y="864" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">7</text>
+  <path d="M1095 855 H1145 V878 H1099" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1095" y="814" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1095" dy="0">read DT_NEEDED list, find each library</tspan>
+    <tspan x="1095" dy="28">(RPATH, LD_LIBRARY_PATH, ld.so.cache, defaults)</tspan>
+  </text>
+
+  
+  <circle cx="52" cy="955" r="22" fill="#207448"/><text x="52" y="964" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">8</text>
+  <path d="M1095 955 H1145 V978 H1099" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1095" y="914" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1095" dy="0">mmap each library, resolve symbols (relocations),</tspan>
+    <tspan x="1095" dy="28">lazy binding for functions via PLT/GOT</tspan>
+  </text>
+
+  
+  <circle cx="52" cy="1040" r="22" fill="#207448"/><text x="52" y="1049" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">9</text>
+  <path d="M1095 1035 H1145 V1058 H1099" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1095" y="1018" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">run library constructors (init functions)</text>
+
+  
+  <circle cx="52" cy="1115" r="22" fill="#207448"/><text x="52" y="1124" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">10</text>
+  <path d="M1095 1125 H1408" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1254" y="1105" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">jump to _start</text>
+
+  
+  <circle cx="52" cy="1210" r="22" fill="#db8129"/><text x="52" y="1219" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">11</text>
+  <path d="M1412 1210 H1462 V1233 H1416" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+  <text x="1380" y="1172" text-anchor="end" fill="#303a36" font-family="monospace" font-size="24">
+    <tspan x="1480" dy="0">__libc_start_main: set up stdio, atexit</tspan>
+    <tspan x="1480" dy="28">handlers, argc/argv, call main()</tspan>
+  </text>
+
+  
+  <circle cx="52" cy="1295" r="22" fill="#207448"/><text x="52" y="1304" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">12</text>
+  <path d="M1412 1305 H504" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="956" y="1285" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">main runs: read/write/mmap/... system calls</text>
+
+  
+  <circle cx="52" cy="1380" r="22" fill="#207448"/><text x="52" y="1389" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">13</text>
+  <path d="M1412 1390 H504" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="956" y="1370" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">exit_group(status)</text>
+
+  
+  <circle cx="52" cy="1465" r="22" fill="#207448"/><text x="52" y="1474" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">14</text>
+  <path d="M500 1475 H214" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="355" y="1455" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">SIGCHLD, shell wait4() collects the status</text>
+</svg>

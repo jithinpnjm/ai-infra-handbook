@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>How device management interfaces evolved</title>
+  <desc>Timeline illustrating the evolution of network device management interfaces from SNMP and CLI screen scraping to NETCONF, gRPC/gNMI, RESTCONF, and modern Linux NOS.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">How device management interfaces evolved</text>
+
+  
+  <path d="M 70 545 L 1520 545" fill="none" stroke="#207448" stroke-width="6" stroke-linecap="round" />
+  <path d="M 1515 545 L 1545 545" fill="none" stroke="#207448" stroke-width="6" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="177" y1="470" x2="177" y2="521" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
+  <circle cx="177" cy="545" r="24" fill="#207448" />
+  <text x="177" y="553" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <line x1="201" y1="545" x2="400" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g id="marker-1">
+    <rect x="25" y="90" width="305" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(149, 108)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 42 A 25 25 0 1 1 50 42" />
+      <line x1="28" y1="28" x2="40" y2="16" />
+      <circle cx="28" cy="28" r="3" fill="#207448" />
+    </g>
+    <text x="177" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">1990s SNMP</text>
+    
+    
+    <rect x="65" y="215" width="225" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="177" y="245" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">UDP 161/162</text>
+    
+    
+    <rect x="45" y="275" width="265" height="74" rx="8" fill="#d2e7d7" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="177" y="306">good for</tspan>
+      <tspan x="177" y="334">monitoring</tspan>
+    </text>
+
+    
+    <rect x="45" y="365" width="265" height="74" rx="8" fill="#fdeddc" stroke="#db8129" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+      <tspan x="177" y="396">poor for</tspan>
+      <tspan x="177" y="424">configuration</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="432" y1="569" x2="432" y2="620" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
+  <circle cx="432" cy="545" r="24" fill="#207448" />
+  <text x="432" y="553" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <line x1="456" y1="545" x2="660" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g id="marker-2">
+    <rect x="245" y="620" width="375" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(404, 638)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="50" height="38" rx="6" />
+      <path d="M 12 19 L 20 25 L 12 31" />
+      <line x1="26" y1="31" x2="38" y2="31" />
+    </g>
+    <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="432" y="718">1990s to now</tspan>
+      <tspan x="432" y="753">SSH/Telnet CLI</tspan>
+      <tspan x="432" y="788">screen scraping</tspan>
+    </text>
+
+    
+    <rect x="295" y="805" width="275" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="432" y="834" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">unstructured text</text>
+
+    
+    <rect x="295" y="855" width="275" height="40" rx="8" fill="#fdeddc" stroke="#db8129" stroke-width="2" />
+    <text x="432" y="883" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">fragile parsing</text>
+
+    <rect x="295" y="903" width="275" height="40" rx="8" fill="#fdeddc" stroke="#db8129" stroke-width="2" />
+    <text x="432" y="931" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">no transactions</text>
+
+    
+    <rect x="260" y="953" width="345" height="142" rx="10" fill="#fff5ec" stroke="#db8129" stroke-width="2.5" />
+    <text font-family="sans-serif" font-size="24" fill="#db8129" text-anchor="middle">
+      <tspan x="432" y="981">A script parsing the</tspan>
+      <tspan x="432" y="1007">fourth column of a</tspan>
+      <tspan x="432" y="1033">CLI table breaks</tspan>
+      <tspan x="432" y="1059">silently when a</tspan>
+      <tspan x="432" y="1085">vendor adds a column</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="692" y1="470" x2="692" y2="521" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
+  <circle cx="692" cy="545" r="24" fill="#207448" />
+  <text x="692" y="553" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <line x1="716" y1="545" x2="918" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g id="marker-3">
+    <rect x="540" y="90" width="305" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(664, 108)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 5 L 34 5 L 46 17 L 46 47 L 10 47 Z" />
+      <path d="M 34 5 L 34 17 L 46 17" />
+      <path d="M 18 29 L 24 35 L 18 41" />
+      <path d="M 38 29 L 32 35 L 38 41" />
+    </g>
+    <text x="692" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">2006+ NETCONF</text>
+
+    
+    <rect x="605" y="215" width="175" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="692" y="244" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">RFC 6241</text>
+
+    <rect x="560" y="265" width="265" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="692" y="293">XML over SSH</tspan>
+      <tspan x="692" y="321">port 830</tspan>
+    </text>
+
+    
+    <rect x="560" y="343" width="265" height="44" rx="8" fill="#d2e7d7" stroke="#207448" stroke-width="2" />
+    <text x="692" y="373" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">transactional</text>
+
+    <rect x="605" y="397" width="175" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="692" y="427" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">YANG</text>
+  </g>
+
+  
+  <line x1="950" y1="569" x2="950" y2="620" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
+  <circle cx="950" cy="545" r="24" fill="#207448" />
+  <text x="950" y="553" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <line x1="974" y1="545" x2="1178" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g id="marker-4">
+    <rect x="780" y="620" width="340" height="440" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(922, 638)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 5 26 L 17 26 L 24 9 L 34 43 L 41 26 L 51 26" />
+      <circle cx="49" cy="14" r="3" fill="#207448" />
+    </g>
+    <text x="950" y="725" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">2016+ gRPC/gNMI</text>
+
+    
+    <rect x="840" y="750" width="220" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="950" y="780" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">OpenConfig</text>
+
+    <rect x="805" y="804" width="290" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="950" y="834">HTTP/2 +</tspan>
+      <tspan x="950" y="862">Protocol Buffers</tspan>
+    </text>
+
+    
+    <rect x="805" y="888" width="290" height="74" rx="8" fill="#d2e7d7" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="950" y="919">streaming</tspan>
+      <tspan x="950" y="947">telemetry</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1210" y1="470" x2="1210" y2="521" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
+  <circle cx="1210" cy="545" r="24" fill="#207448" />
+  <text x="1210" y="553" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  <line x1="1234" y1="545" x2="1398" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g id="marker-5">
+    <rect x="1055" y="90" width="310" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1182, 108)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="26" r="21" />
+      <ellipse cx="28" cy="26" rx="9" ry="21" />
+      <line x1="7" y1="26" x2="49" y2="26" />
+    </g>
+    <text x="1210" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">2017+ RESTCONF</text>
+
+    
+    <rect x="1120" y="225" width="180" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1210" y="255" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">RFC 8040</text>
+
+    <rect x="1075" y="285" width="270" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1210" y="315">HTTP + JSON/XML</tspan>
+      <tspan x="1210" y="343">on YANG</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1430" y1="569" x2="1430" y2="620" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
+  <circle cx="1430" cy="545" r="24" fill="#207448" />
+  <text x="1430" y="553" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+
+  <g id="marker-6">
+    <rect x="1275" y="620" width="310" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1402, 638)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="10" width="46" height="30" rx="6" />
+      <line x1="15" y1="25" x2="19" y2="25" />
+      <line x1="27" y1="25" x2="31" y2="25" />
+      <line x1="39" y1="25" x2="43" y2="25" />
+      <circle cx="28" cy="18" r="2" fill="#207448" />
+    </g>
+    <text x="1430" y="725" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">now Linux NOS</text>
+
+    
+    <rect x="1295" y="765" width="270" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1430" y="796">SONiC, Cumulus,</tspan>
+      <tspan x="1430" y="824">FRR</tspan>
+    </text>
+  </g>
+</svg>

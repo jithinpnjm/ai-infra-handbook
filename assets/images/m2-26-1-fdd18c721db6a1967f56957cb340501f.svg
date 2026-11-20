@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>How packet capture works</title>
+  <desc>Visual infographic explaining Linux packet capture mechanics from physical wire through NIC, driver, AF_PACKET tap, BPF filter, ring buffer, libpcap, to user space applications, alongside the normal networking stack.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="13" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="60" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How packet capture works</text>
+
+  
+
+  
+  <line x1="270" y1="205" x2="320" y2="205" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="690" y1="205" x2="740" y2="205" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="1120" y1="205" x2="1170" y2="205" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="1090" y1="290" x2="1090" y2="410" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="1060" y1="495" x2="1000" y2="495" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="560" y1="495" x2="500" y2="495" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="270" y1="580" x2="270" y2="700" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="480" y1="790" x2="540" y2="790" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g id="node-wire">
+    <rect x="60" y="120" width="210" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="6" width="34" height="24" rx="4" />
+      <path d="M 4 18 L 10 18" />
+      <path d="M 44 14 L 52 14" />
+      <path d="M 44 22 L 52 22" />
+      <path d="M 20 6 L 20 2" />
+      <path d="M 27 6 L 27 2" />
+      <path d="M 34 6 L 34 2" />
+    </g>
+    
+    <circle cx="230" cy="155" r="20" fill="#207448" />
+    <text x="230" y="163" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">1</text>
+    
+    <text x="165" y="245" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">Wire</text>
+  </g>
+
+  
+  <g id="node-nic">
+    <rect x="320" y="120" width="370" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(345, 138)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="46" height="30" rx="3" />
+      <path d="M 14 36 L 14 44" />
+      <path d="M 22 36 L 22 44" />
+      <path d="M 30 36 L 30 44" />
+      <path d="M 38 36 L 38 44" />
+      <rect x="12" y="12" width="16" height="16" />
+      <line x1="50" y1="14" x2="54" y2="14" />
+      <line x1="50" y1="28" x2="54" y2="28" />
+    </g>
+    
+    <circle cx="650" cy="155" r="20" fill="#207448" />
+    <text x="650" y="163" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">2</text>
+    
+    <text x="420" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NIC</text>
+    <text x="345" y="226" font-family="sans-serif" font-size="24" fill="#303a36">(promiscuous mode</text>
+    <text x="345" y="258" font-family="sans-serif" font-size="24" fill="#303a36">optional)</text>
+  </g>
+
+  
+  <g id="node-driver">
+    <rect x="740" y="120" width="380" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(765, 138)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="8" width="34" height="34" rx="4" />
+      <line x1="18" y1="2" x2="18" y2="8" />
+      <line x1="27" y1="2" x2="27" y2="8" />
+      <line x1="36" y1="2" x2="36" y2="8" />
+      <line x1="18" y1="42" x2="18" y2="48" />
+      <line x1="27" y1="42" x2="27" y2="48" />
+      <line x1="36" y1="42" x2="36" y2="48" />
+      <line x1="4" y1="16" x2="10" y2="16" />
+      <line x1="4" y1="25" x2="10" y2="25" />
+      <line x1="4" y1="34" x2="10" y2="34" />
+      <line x1="44" y1="16" x2="50" y2="16" />
+      <line x1="44" y1="25" x2="50" y2="25" />
+      <line x1="44" y1="34" x2="50" y2="34" />
+    </g>
+    
+    <circle cx="1080" cy="155" r="20" fill="#207448" />
+    <text x="1080" y="163" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">3</text>
+    
+    <text x="840" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Driver / NAPI →</text>
+    <text x="765" y="240" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">sk_buff</text>
+  </g>
+
+  
+  <g id="node-normal-stack">
+    <rect x="1170" y="120" width="370" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1195, 138)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="44" height="10" rx="2" />
+      <rect x="6" y="19" width="44" height="10" rx="2" />
+      <rect x="6" y="32" width="44" height="10" rx="2" />
+    </g>
+    
+    <text x="1265" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Normal stack</text>
+    <text x="1195" y="226" font-family="sans-serif" font-size="24" fill="#303a36">(routing, netfilter,</text>
+    <text x="1195" y="258" font-family="sans-serif" font-size="24" fill="#303a36">sockets)</text>
+  </g>
+
+  
+
+  
+  <g id="node-af-packet-tap">
+    <rect x="1060" y="410" width="480" height="170" rx="16" fill="#fdf5ec" stroke="#db8129" stroke-width="4" />
+    
+    <g transform="translate(1085, 428)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="6" y1="12" x2="50" y2="12" />
+      <circle cx="28" cy="12" r="5" fill="#db8129" />
+      <path d="M 28 17 L 28 32 L 46 44" />
+      <polyline points="38,44 46,44 46,36" />
+    </g>
+    
+    <circle cx="1500" cy="445" r="20" fill="#db8129" />
+    <text x="1500" y="453" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">4</text>
+    
+    <text x="1155" y="462" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">AF_PACKET tap</text>
+    <text x="1085" y="516" font-family="sans-serif" font-size="24" fill="#303a36">(before/after netfilter and</text>
+    <text x="1085" y="548" font-family="sans-serif" font-size="24" fill="#303a36">tc depending on hook)</text>
+  </g>
+
+  
+  <g id="node-bpf-filter">
+    <rect x="560" y="410" width="440" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(585, 428)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="6,8 50,8 32,28 32,44 24,44 24,28" />
+      <line x1="16" y1="14" x2="40" y2="14" />
+      <line x1="20" y1="20" x2="36" y2="20" />
+    </g>
+    
+    <circle cx="960" cy="445" r="20" fill="#207448" />
+    <text x="960" y="453" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">5</text>
+    
+    <text x="655" y="462" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kernel BPF filter</text>
+    <text x="585" y="516" font-family="sans-serif" font-size="24" fill="#303a36">(classic/eBPF): drop</text>
+    <text x="585" y="548" font-family="sans-serif" font-size="24" fill="#303a36">non-matching early</text>
+  </g>
+
+  
+  <g id="node-ring-buffer">
+    <rect x="60" y="410" width="440" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 428)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="16" rx="22" ry="10" />
+      <path d="M 6 16 L 6 36 C 6 42, 50 42, 50 36 L 50 16" />
+      <path d="M 14 24 C 20 28, 36 28, 42 24" />
+    </g>
+    
+    <circle cx="460" cy="445" r="20" fill="#207448" />
+    <text x="460" y="453" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">6</text>
+    
+    <text x="155" y="452" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ring buffer /</text>
+    <text x="155" y="488" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">socket buffer</text>
+    <text x="85" y="545" font-family="monospace" font-size="24" fill="#303a36">(PACKET_MMAP, TPACKET_V3)</text>
+  </g>
+
+  
+
+  
+  <g id="node-libpcap">
+    <rect x="60" y="700" width="420" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 725)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="6" width="38" height="42" rx="3" />
+      <line x1="16" y1="16" x2="38" y2="16" />
+      <line x1="16" y1="24" x2="38" y2="24" />
+      <line x1="16" y1="32" x2="30" y2="32" />
+      <circle cx="36" cy="36" r="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="36" cy="36" r="3" fill="#207448" />
+    </g>
+    
+    <circle cx="440" cy="735" r="20" fill="#207448" />
+    <text x="440" y="743" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">7</text>
+    
+    <text x="85" y="820" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36">libpcap</text>
+  </g>
+
+  
+  <g id="node-tools">
+    <rect x="540" y="700" width="1000" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(565, 725)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="46" height="38" rx="4" />
+      <line x1="6" y1="18" x2="52" y2="18" />
+      <circle cx="13" cy="13" r="2" fill="#207448" />
+      <circle cx="20" cy="13" r="2" fill="#207448" />
+      <polyline points="14,26 20,31 14,36" />
+      <line x1="24" y1="36" x2="34" y2="36" />
+    </g>
+    
+    <circle cx="1500" cy="735" r="20" fill="#207448" />
+    <text x="1500" y="743" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">8</text>
+    
+    <text x="640" y="775" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">tcpdump / tshark / Wireshark</text>
+    <text x="640" y="835" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">/ Zeek / Suricata</text>
+  </g>
+
+</svg>

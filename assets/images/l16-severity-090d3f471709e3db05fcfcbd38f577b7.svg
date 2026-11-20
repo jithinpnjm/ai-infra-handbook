@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>Syslog severity levels</title>
+  <desc>Visual infographic explaining the eight syslog severity levels from 0 emerg to 7 debug, with urgency direction and journal priority side notes.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Syslog severity levels</text>
+
+  
+  <g>
+    <line x1="85" y1="945" x2="85" y2="168" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <polygon points="85,145 72,172 98,172" fill="#207448"/>
+    <text transform="rotate(-90 50 550)" x="50" y="550" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#303a36">more urgent</text>
+  </g>
+
+  
+  <g>
+    <line x1="1025" y1="160" x2="1025" y2="937" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <polygon points="1025,960 1012,933 1038,933" fill="#207448"/>
+    <text transform="rotate(90 1062 550)" x="1062" y="550" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#303a36">less urgent</text>
+  </g>
+
+  
+
+  
+  <g id="row-0">
+    <rect x="170" y="140" width="800" height="88" rx="10" fill="#faeee4" stroke="#db8129" stroke-width="3"/>
+    <circle cx="216" cy="184" r="24" fill="#db8129"/>
+    <text x="216" y="193" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">0</text>
+    
+    <g transform="translate(256, 156)">
+      <rect x="8" y="38" width="40" height="12" rx="3" fill="none" stroke="#db8129" stroke-width="3.5"/>
+      <path d="M14,38 C14,18 42,18 42,38 Z" fill="none" stroke="#db8129" stroke-width="3.5"/>
+      <line x1="28" y1="14" x2="28" y2="6" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="12" y1="18" x2="6" y2="12" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="44" y1="18" x2="50" y2="12" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="340" y="194" font-family="'Courier New', Courier, monospace" font-size="30" font-weight="bold" fill="#303a36">emerg</text>
+    <text x="520" y="193" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">system unusable</text>
+  </g>
+
+  
+  <g id="row-1">
+    <rect x="170" y="245" width="800" height="88" rx="10" fill="#f8efe6" stroke="#e08f3d" stroke-width="2.5"/>
+    <circle cx="216" cy="289" r="24" fill="#e08f3d"/>
+    <text x="216" y="298" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(256, 261)">
+      <path d="M12,40 C12,40 16,18 28,16 C40,18 44,40 44,40 Z" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="28" cy="11" r="3.5" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="28" cy="45" r="3.5" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="9" y1="40" x2="47" y2="40" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="340" y="299" font-family="'Courier New', Courier, monospace" font-size="30" font-weight="bold" fill="#303a36">alert</text>
+    <text x="520" y="298" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">act immediately</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="170" y="350" width="800" height="88" rx="10" fill="#f7f2e8" stroke="#dda153" stroke-width="2.5"/>
+    <circle cx="216" cy="394" r="24" fill="#dda153"/>
+    <text x="216" y="403" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(256, 366)">
+      <path d="M32,6 L14,28 L28,28 L22,50 L42,24 L28,24 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    </g>
+    <text x="340" y="404" font-family="'Courier New', Courier, monospace" font-size="30" font-weight="bold" fill="#303a36">crit</text>
+    <text x="520" y="403" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">critical condition</text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="170" y="455" width="800" height="88" rx="10" fill="#f4f4eb" stroke="#c0aa69" stroke-width="2.5"/>
+    <circle cx="216" cy="499" r="24" fill="#c0aa69"/>
+    <text x="216" y="508" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(256, 471)">
+      <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="18" y1="18" x2="38" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="38" y1="18" x2="18" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="340" y="509" font-family="'Courier New', Courier, monospace" font-size="30" font-weight="bold" fill="#303a36">err</text>
+    <text x="520" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">error</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="170" y="560" width="800" height="88" rx="10" fill="#f1f5ec" stroke="#9bb179" stroke-width="2.5"/>
+    <circle cx="216" cy="604" r="24" fill="#9bb179"/>
+    <text x="216" y="613" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(256, 576)">
+      <polygon points="28,8 6,48 50,48" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="28" y1="22" x2="28" y2="34" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="28" cy="41" r="2.5" fill="#207448"/>
+    </g>
+    <text x="340" y="614" font-family="'Courier New', Courier, monospace" font-size="30" font-weight="bold" fill="#303a36">warning</text>
+    <text x="520" y="613" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">warning</text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="170" y="665" width="800" height="88" rx="10" fill="#eef6ed" stroke="#71b387" stroke-width="2.5"/>
+    <circle cx="216" cy="709" r="24" fill="#71b387"/>
+    <text x="216" y="718" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(256, 681)">
+      <line x1="14" y1="6" x2="14" y2="50" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M14,8 L44,19 L14,30 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="8" y1="50" x2="20" y2="50" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="340" y="719" font-family="'Courier New', Courier, monospace" font-size="30" font-weight="bold" fill="#303a36">notice</text>
+    <text x="520" y="718" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">normal but significant</text>
+  </g>
+
+  
+  <g id="row-6">
+    <rect x="170" y="770" width="800" height="88" rx="10" fill="#ebf4ec" stroke="#469d6e" stroke-width="2.5"/>
+    <circle cx="216" cy="814" r="24" fill="#469d6e"/>
+    <text x="216" y="823" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g transform="translate(256, 786)">
+      <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="28" cy="18" r="3" fill="#207448"/>
+      <path d="M24,26 L29,26 L29,39 M24,39 L34,39" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="340" y="824" font-family="'Courier New', Courier, monospace" font-size="30" font-weight="bold" fill="#303a36">info</text>
+    <text x="520" y="823" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">informational</text>
+  </g>
+
+  
+  <g id="row-7">
+    <rect x="170" y="875" width="800" height="88" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="216" cy="919" r="24" fill="#207448"/>
+    <text x="216" y="928" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+    
+    <g transform="translate(256, 891)">
+      <ellipse cx="28" cy="30" rx="13" ry="16" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M20,16 C20,9 36,9 36,16" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="22" y1="10" x2="15" y2="4" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="34" y1="10" x2="41" y2="4" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="15" y1="23" x2="6" y2="19" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="15" y1="31" x2="5" y2="31" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="15" y1="39" x2="6" y2="43" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="41" y1="23" x2="50" y2="19" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="41" y1="31" x2="51" y2="31" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="41" y1="39" x2="50" y2="43" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="340" y="929" font-family="'Courier New', Courier, monospace" font-size="30" font-weight="bold" fill="#303a36">debug</text>
+    <text x="520" y="928" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">debug detail</text>
+  </g>
+
+  
+  <g id="side-note">
+    <rect x="1110" y="140" width="450" height="420" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <text x="1142" y="194" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#207448">Side note</text>
+    
+    
+    <g transform="translate(1490, 155)">
+      <rect x="0" y="0" width="38" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="8" y1="14" x2="30" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="8" y1="24" x2="30" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="8" y1="34" x2="22" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <line x1="1142" y1="216" x2="1528" y2="216" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="1142" y="262" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" fill="#303a36">
+      <tspan x="1142" dy="0">in the journal severity</tspan>
+      <tspan x="1142" dy="36">is called priority</tspan>
+    </text>
+
+    
+    <g transform="translate(1142, 335)">
+      <rect x="0" y="0" width="386" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="24" y="42" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" fill="#303a36">field <tspan font-family="'Courier New', Courier, monospace" font-size="27" font-weight="bold" fill="#207448">PRIORITY=</tspan></text>
+    </g>
+
+    
+    <g transform="translate(1142, 428)">
+      <rect x="0" y="0" width="386" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="24" y="42" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" fill="#303a36">filter <tspan font-family="'Courier New', Courier, monospace" font-size="27" font-weight="bold" fill="#207448">journalctl -p</tspan></text>
+    </g>
+  </g>
+</svg>

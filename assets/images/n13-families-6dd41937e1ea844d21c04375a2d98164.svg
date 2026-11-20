@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Three routing families compared</title>
+  <desc>A comparative table of Distance vector, Link state, and Path vector routing families across key protocol characteristics.</desc>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Three routing families compared</text>
+
+  
+  <g id="header-chips">
+    <rect x="350" y="110" width="390" height="76" rx="12" fill="#207448"/>
+    <text x="545" y="158" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Distance vector</text>
+
+    <rect x="760" y="110" width="390" height="76" rx="12" fill="#207448"/>
+    <text x="955" y="158" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Link state</text>
+
+    <rect x="1170" y="110" width="390" height="76" rx="12" fill="#207448"/>
+    <text x="1365" y="158" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Path vector</text>
+  </g>
+
+  
+  <g id="row-1">
+    
+    <rect x="40" y="206" width="290" height="116" rx="10" fill="#d5e8dc" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 58 264 Q 78 244 98 264 Q 78 284 58 264 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="78" cy="264" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="116" y="273" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Knows</text>
+
+    
+    <rect x="350" y="206" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="545" y="252" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">distances and</text>
+    <text x="545" y="282" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">next hops</text>
+
+    
+    <rect x="760" y="206" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="955" y="272" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">whole topology</text>
+
+    
+    <rect x="1170" y="206" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="1365" y="272" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">paths, AS lists</text>
+  </g>
+
+  
+  <g id="row-2">
+    
+    <rect x="40" y="338" width="290" height="116" rx="10" fill="#d5e8dc" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="60" y="378" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="53" y1="388" x2="60" y2="388" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="53" y1="404" x2="60" y2="404" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="96" y1="388" x2="103" y2="388" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="96" y1="404" x2="103" y2="404" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="70" y1="371" x2="70" y2="378" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="86" y1="371" x2="86" y2="378" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="70" y1="414" x2="70" y2="421" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="86" y1="414" x2="86" y2="421" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="116" y="384" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">State per</text>
+    <text x="116" y="416" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">router</text>
+
+    
+    <rect x="350" y="338" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="545" y="404" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">low</text>
+
+    
+    <rect x="760" y="338" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="955" y="404" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">high LSDB</text>
+
+    
+    <rect x="1170" y="338" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="1365" y="384" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">per-prefix</text>
+    <text x="1365" y="414" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">per-path</text>
+  </g>
+
+  
+  <g id="row-3">
+    
+    <rect x="40" y="470" width="290" height="116" rx="10" fill="#d5e8dc" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 78 496 L 98 506 C 98 528 78 544 78 544 C 78 544 58 528 58 506 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <text x="116" y="516" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Loop</text>
+    <text x="116" y="548" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">avoidance</text>
+
+    
+    <rect x="350" y="470" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="545" y="516" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">split horizon</text>
+    <text x="545" y="546" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">or DUAL</text>
+
+    
+    <rect x="760" y="470" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="955" y="516" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">consistent database</text>
+    <text x="955" y="546" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">and SPF</text>
+
+    
+    <rect x="1170" y="470" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="1365" y="536" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">own ID in path</text>
+  </g>
+
+  
+  <g id="row-4">
+    
+    <rect x="40" y="602" width="290" height="116" rx="10" fill="#d5e8dc" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="78" cy="660" r="20" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="78 648 78 660 88 660" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="116" y="669" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Convergence</text>
+
+    
+    <rect x="350" y="602" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="545" y="648" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">slower RIP,</text>
+    <text x="545" y="678" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">fast DUAL</text>
+
+    
+    <rect x="760" y="602" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="955" y="668" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">fast</text>
+
+    
+    <rect x="1170" y="602" width="390" height="116" rx="10" fill="#fef3e7" stroke="#db8129" stroke-width="4"/>
+    <text x="1365" y="648" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">slow without</text>
+    <text x="1365" y="678" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">tuning</text>
+  </g>
+
+  
+  <g id="row-5">
+    
+    <rect x="40" y="734" width="290" height="116" rx="10" fill="#d5e8dc" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="58" y1="777" x2="98" y2="777" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="68" cy="777" r="5" fill="#207448"/>
+    <line x1="58" y1="792" x2="98" y2="792" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="88" cy="792" r="5" fill="#207448"/>
+    <line x1="58" y1="807" x2="98" y2="807" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="76" cy="807" r="5" fill="#207448"/>
+    <text x="116" y="801" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Policy</text>
+
+    
+    <rect x="350" y="734" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="545" y="800" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">limited</text>
+
+    
+    <rect x="760" y="734" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="955" y="800" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">limited</text>
+
+    
+    <rect x="1170" y="734" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="1365" y="800" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">rich</text>
+  </g>
+
+  
+  <g id="row-6">
+    
+    <rect x="40" y="866" width="290" height="116" rx="10" fill="#d5e8dc" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="62" y="904" width="32" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="70" y1="916" x2="86" y2="916" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="70" y1="925" x2="86" y2="925" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="70" y1="934" x2="80" y2="934" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="116" y="933" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Examples</text>
+
+    
+    <rect x="350" y="866" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="545" y="932" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">RIP, EIGRP</text>
+
+    
+    <rect x="760" y="866" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="955" y="932" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">OSPF, IS-IS</text>
+
+    
+    <rect x="1170" y="866" width="390" height="116" rx="10" fill="#e8f1ea" stroke="#c2dbca" stroke-width="1.5"/>
+    <text x="1365" y="932" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">BGP</text>
+  </g>
+</svg>

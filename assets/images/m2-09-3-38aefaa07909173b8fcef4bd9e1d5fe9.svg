@@ -1,0 +1,257 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Troubleshooting</title>
+  <desc>Flowchart diagram diagnosing network reachability issues from an inside host to the Internet, covering IP configuration, gateway reachability, gateway forwarding, and outside interface NAT translation.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="60" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Troubleshooting</text>
+
+  
+  
+  
+  <line x1="400" y1="160" x2="400" y2="200" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="740" y1="247" x2="765" y2="247" stroke="#207448" stroke-width="3" />
+  <line x1="835" y1="247" x2="860" y2="247" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="400" y1="295" x2="400" y2="335" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="740" y1="380" x2="765" y2="380" stroke="#207448" stroke-width="3" />
+  <line x1="835" y1="380" x2="860" y2="380" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="400" y1="425" x2="400" y2="465" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="740" y1="512" x2="765" y2="512" stroke="#207448" stroke-width="3" />
+  <line x1="835" y1="512" x2="860" y2="512" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="520" y1="560" x2="520" y2="600" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 520,695 L 520,730 L 290,730 L 290,742" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="290" y1="778" x2="290" y2="820" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="800" y1="695" x2="800" y2="742" stroke="#207448" stroke-width="3" />
+  <line x1="800" y1="778" x2="800" y2="820" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1080,695 L 1080,730 L 1310,730 L 1310,742" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="1310" y1="778" x2="1310" y2="820" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+
+  
+  <rect x="765" y="229" width="70" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">no</text>
+
+  
+  <rect x="425" y="297" width="80" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="465" y="323" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <rect x="765" y="362" width="70" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="388" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">no</text>
+
+  
+  <rect x="425" y="427" width="80" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="465" y="453" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <rect x="765" y="494" width="70" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">no</text>
+
+  
+  <rect x="545" y="562" width="80" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="585" y="588" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <rect x="130" y="742" width="320" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="290" y="768" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">source still private</text>
+
+  
+  <rect x="640" y="742" width="320" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="768" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">translated, no reply</text>
+
+  
+  <rect x="1090" y="742" width="440" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1310" y="768" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">reply arrives, not delivered</text>
+
+
+  
+
+  
+  <g id="node-X">
+    <rect x="60" y="75" width="680" height="85" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(85, 89)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="32" rx="4" />
+      <line x1="28" y1="36" x2="28" y2="48" />
+      <line x1="16" y1="48" x2="40" y2="48" />
+      <line x1="28" y1="12" x2="28" y2="22" />
+      <circle cx="28" cy="28" r="1.5" fill="#db8129" />
+    </g>
+    <text x="165" y="128" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Inside host cannot reach Internet</text>
+  </g>
+
+  
+  <g id="node-A">
+    <rect x="60" y="200" width="680" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 219)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="36" rx="4" />
+      <circle cx="16" cy="20" r="3" fill="#207448" />
+      <circle cx="40" cy="20" r="3" fill="#207448" />
+      <circle cx="28" cy="32" r="3" fill="#207448" />
+      <line x1="16" y1="20" x2="28" y2="32" stroke-width="2.5" />
+      <line x1="40" y1="20" x2="28" y2="32" stroke-width="2.5" />
+      <line x1="28" y1="42" x2="28" y2="48" />
+    </g>
+    <text x="165" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Has IP, gateway, DNS?</text>
+    <text x="165" y="274" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(DHCP / static)</text>
+  </g>
+
+  
+  <g id="node-A1">
+    <rect x="860" y="200" width="680" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(885, 219)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="28" y1="20" x2="28" y2="48" />
+      <line x1="16" y1="48" x2="40" y2="48" />
+      <circle cx="28" cy="16" r="4" fill="#207448" />
+      <path d="M 18,12 A 14,14 0 0 1 38,12" stroke-width="3" />
+      <path d="M 10,6 A 24,24 0 0 1 46,6" stroke-width="3" />
+    </g>
+    <text x="965" y="239" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36">DHCP: tcpdump 67/68, relay,</text>
+    <text x="965" y="273" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">pool, VLAN, rogue server</text>
+  </g>
+
+  
+  <g id="node-B">
+    <rect x="60" y="335" width="680" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 352)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="6" fill="#207448" />
+      <path d="M 16,16 A 17,17 0 0 0 16,40" stroke-width="3.5" />
+      <path d="M 40,16 A 17,17 0 0 1 40,40" stroke-width="3.5" />
+      <path d="M 8,8 A 28,28 0 0 0 8,48" stroke-width="3.5" />
+      <path d="M 48,8 A 28,28 0 0 1 48,48" stroke-width="3.5" />
+    </g>
+    <text x="165" y="391" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">ping gateway ok?</text>
+  </g>
+
+  
+  <g id="node-B1">
+    <rect x="860" y="335" width="680" height="90" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(885, 352)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="14" width="44" height="24" rx="4" />
+      <circle cx="16" cy="22" r="2" fill="#207448" />
+      <circle cx="24" cy="22" r="2" fill="#207448" />
+      <circle cx="32" cy="22" r="2" fill="#207448" />
+      <circle cx="40" cy="22" r="2" fill="#207448" />
+      <line x1="12" y1="30" x2="24" y2="30" />
+      <line x1="32" y1="30" x2="44" y2="30" />
+      <line x1="26" y1="26" x2="30" y2="34" stroke-width="3" />
+    </g>
+    <text x="965" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">L2/ARP problems (chapter 2.3)</text>
+  </g>
+
+  
+  <g id="node-C">
+    <rect x="60" y="465" width="680" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 484)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <path d="M 14,24 L 28,24 M 24,20 L 28,24 L 24,28" stroke-width="3" />
+      <path d="M 42,32 L 28,32 M 32,28 L 28,32 L 32,36" stroke-width="3" />
+    </g>
+    <text x="165" y="505" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Gateway forwards?</text>
+    <text x="165" y="539" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">ip_forward, FORWARD policy</text>
+  </g>
+
+  
+  <g id="node-C1">
+    <rect x="860" y="465" width="680" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(885, 484)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28,6 L 46,13 C 46,31 28,46 28,50 C 28,46 10,31 10,13 Z" />
+      <path d="M 18,26 L 25,33 L 38,18" stroke-width="3.5" />
+    </g>
+    <text x="965" y="505" font-family="system-ui, -apple-system, sans-serif" font-size="27" font-weight="bold" fill="#303a36">Enable forwarding;</text>
+    <text x="965" y="539" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">allow in <tspan font-family="ui-monospace, monospace">FORWARD</tspan> chain</text>
+  </g>
+
+  
+  <g id="node-D">
+    <rect x="450" y="600" width="700" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(475, 619)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="14" />
+      <line x1="34" y1="34" x2="48" y2="48" stroke-width="5" />
+      <line x1="16" y1="21" x2="32" y2="21" stroke-width="2.5" />
+      <line x1="18" y1="27" x2="30" y2="27" stroke-width="2.5" />
+    </g>
+    <text x="555" y="640" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#303a36">tcpdump on outside iface:</text>
+    <text x="555" y="674" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">source translated?</text>
+  </g>
+
+  
+  <g id="node-D1">
+    <rect x="60" y="820" width="460" height="320" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(262, 845)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="4" />
+      <line x1="14" y1="20" x2="42" y2="20" stroke-width="3" />
+      <line x1="14" y1="30" x2="32" y2="30" stroke-width="3" />
+      <line x1="34" y1="34" x2="44" y2="44" stroke-width="3" />
+      <line x1="44" y1="34" x2="34" y2="44" stroke-width="3" />
+    </g>
+    <text x="290" y="945" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Missing/incorrect</text>
+    <text x="290" y="985" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">SNAT/masquerade rule</text>
+    <text x="290" y="1035" font-family="ui-monospace, monospace" font-size="24" fill="#303a36" text-anchor="middle">(wrong -o, -s); rule order</text>
+  </g>
+
+  
+  <g id="node-D2">
+    <rect x="570" y="820" width="460" height="320" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(772, 845)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 16,36 L 40,36 A 8,8 0 0 0 44,24 A 10,10 0 0 0 24,16 A 9,9 0 0 0 12,26 A 7,7 0 0 0 16,36 Z" />
+      <line x1="8" y1="46" x2="48" y2="46" stroke-width="3" />
+      <line x1="28" y1="36" x2="28" y2="44" stroke-width="3" />
+    </g>
+    <text x="800" y="945" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Upstream routing/filtering;</text>
+    <text x="800" y="985" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">asymmetric path;</text>
+    <text x="800" y="1025" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">wrong outside IP</text>
+  </g>
+
+  
+  <g id="node-D3">
+    <rect x="1080" y="820" width="460" height="320" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1282, 845)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="18" ry="6" />
+      <path d="M 10,14 L 10,38 A 18,6 0 0 0 46,38 L 46,14" />
+      <path d="M 10,26 A 18,6 0 0 0 46,26" />
+      <path d="M 28,32 L 28,48 M 22,42 L 28,48 L 34,42" stroke-width="3" />
+    </g>
+    <text x="1310" y="945" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle"><tspan font-family="ui-monospace, monospace">conntrack</tspan> drop</text>
+    <text x="1310" y="985" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(table full, timeouts),</text>
+    <text x="1310" y="1025" font-family="ui-monospace, monospace" font-size="24" fill="#303a36" text-anchor="middle">rp_filter, FORWARD rules</text>
+  </g>
+
+</svg>

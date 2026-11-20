@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 950" width="1600" height="950">
+  <title>The Secure Boot trust chain</title>
+  <desc>The Secure Boot trust chain</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="950" fill="#f5f8f5"/>
+
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The Secure Boot trust chain</text>
+
+  <path d="M 215 142 L 215 125 L 840 125 L 840 142" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <rect x="420" y="110" width="220" height="30" fill="#f5f8f5"/>
+  <text x="530" y="132" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">verifies and runs</text>
+
+  <line x1="215" y1="280" x2="253" y2="280" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <line x1="450" y1="280" x2="488" y2="280" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <line x1="620" y1="280" x2="658" y2="280" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <line x1="800" y1="280" x2="838" y2="280" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <g id="box-firmware">
+    <rect x="40" y="155" width="175" height="330" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="127" cy="195" r="24" fill="#207448"/>
+    <text x="127" y="204" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(99, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="4"/>
+      <rect x="18" y="18" width="20" height="20" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="8"/>
+      <line x1="28" y1="2" x2="28" y2="8"/>
+      <line x1="40" y1="2" x2="40" y2="8"/>
+      <line x1="16" y1="48" x2="16" y2="54"/>
+      <line x1="28" y1="48" x2="28" y2="54"/>
+      <line x1="40" y1="48" x2="40" y2="54"/>
+      <line x1="2" y1="16" x2="8" y2="16"/>
+      <line x1="2" y1="28" x2="8" y2="28"/>
+      <line x1="2" y1="40" x2="8" y2="40"/>
+      <line x1="48" y1="16" x2="54" y2="16"/>
+      <line x1="48" y1="28" x2="54" y2="28"/>
+      <line x1="48" y1="40" x2="54" y2="40"/>
+    </g>
+    <text x="127" y="335" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">firmware</text>
+    <text x="127" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="127" dy="0">(trusts</tspan>
+      <tspan x="127" dy="28">vendor</tspan>
+      <tspan x="127" dy="28">keys)</tspan>
+    </text>
+  </g>
+
+  <g id="box-shim">
+    <rect x="255" y="155" width="195" height="330" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="352" cy="195" r="24" fill="#207448"/>
+    <text x="352" y="204" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(324, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 16 C 50 36 28 50 28 50 C 28 50 6 36 6 16 Z"/>
+      <path d="M 20 27 L 26 33 L 38 21"/>
+    </g>
+    <text x="352" y="335" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">shim</text>
+    <text x="352" y="395" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="352" dy="0">(Microsoft-</tspan>
+      <tspan x="352" dy="32">signed)</tspan>
+    </text>
+  </g>
+
+  <g id="box-grub">
+    <rect x="490" y="155" width="130" height="330" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="555" cy="195" r="24" fill="#207448"/>
+    <text x="555" y="204" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(527, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="38" rx="5"/>
+      <path d="M 14 20 L 22 27 L 14 34"/>
+      <line x1="26" y1="34" x2="38" y2="34"/>
+    </g>
+    <text x="555" y="355" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">GRUB</text>
+  </g>
+
+  <g id="box-kernel">
+    <rect x="660" y="155" width="140" height="330" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="730" cy="195" r="24" fill="#207448"/>
+    <text x="730" y="204" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(702, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14"/>
+      <circle cx="28" cy="28" r="5" fill="#207448"/>
+      <line x1="28" y1="6" x2="28" y2="12"/>
+      <line x1="28" y1="44" x2="28" y2="50"/>
+      <line x1="6" y1="28" x2="12" y2="28"/>
+      <line x1="44" y1="28" x2="50" y2="28"/>
+      <line x1="12" y1="12" x2="17" y2="17"/>
+      <line x1="39" y1="39" x2="44" y2="44"/>
+      <line x1="12" y1="44" x2="17" y2="39"/>
+      <line x1="39" y1="17" x2="44" y2="12"/>
+    </g>
+    <text x="730" y="355" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">kernel</text>
+  </g>
+
+  <g id="box-modules">
+    <rect x="840" y="155" width="190" height="330" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="935" cy="195" r="24" fill="#207448"/>
+    <text x="935" y="204" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    <g transform="translate(907, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="20" height="20" rx="3"/>
+      <rect x="30" y="6" width="20" height="20" rx="3"/>
+      <rect x="6" y="30" width="20" height="20" rx="3"/>
+      <rect x="30" y="30" width="20" height="20" rx="3" fill="#207448"/>
+    </g>
+    <text x="935" y="340" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="935" dy="0">kernel</tspan>
+      <tspan x="935" dy="38">modules</tspan>
+    </text>
+  </g>
+
+  <g id="orange-callout">
+    <rect x="1070" y="155" width="490" height="330" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(1287, 172)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,4 52,48 4,48"/>
+      <line x1="28" y1="20" x2="28" y2="32"/>
+      <circle cx="28" cy="40" r="2" fill="#db8129"/>
+    </g>
+    <text x="1315" y="250" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1315" dy="0">out-of-tree modules such as</tspan>
+      <tspan x="1315" dy="32">the NVIDIA driver built by <tspan font-family="monospace" font-weight="bold">DKMS</tspan></tspan>
+      <tspan x="1315" dy="32">must be signed, otherwise</tspan>
+      <tspan x="1315" dy="32">the kernel refuses with</tspan>
+      <tspan x="1315" dy="34" font-family="monospace" font-weight="bold" fill="#db8129">Required key not available</tspan>
+      <tspan x="1315" dy="32" font-family="monospace" font-weight="bold" fill="#db8129">or module verification failed</tspan>
+      <tspan x="1315" dy="32">and <tspan font-family="monospace" font-weight="bold">nvidia-smi</tspan> fails.</tspan>
+    </text>
+  </g>
+
+  <text x="800" y="535" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">three options</text>
+
+  <g id="option-1">
+    <rect x="40" y="565" width="480" height="225" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="75" cy="600" r="22" fill="#207448"/>
+    <text x="75" y="608" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(252, 580)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 16 C 50 36 28 50 28 50 C 28 50 6 36 6 16 Z"/>
+      <line x1="14" y1="14" x2="42" y2="42"/>
+    </g>
+    <text x="280" y="695" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="280" dy="0">disable Secure Boot</tspan>
+      <tspan x="280" dy="40">in firmware</tspan>
+    </text>
+  </g>
+
+  <g id="option-2">
+    <rect x="560" y="565" width="480" height="225" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="595" cy="600" r="22" fill="#207448"/>
+    <text x="595" y="608" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(772, 580)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="22" r="14"/>
+      <line x1="30" y1="32" x2="52" y2="50"/>
+      <line x1="42" y1="40" x2="48" y2="34"/>
+      <line x1="47" y1="45" x2="53" y2="39"/>
+      <circle cx="20" cy="22" r="4" fill="#207448"/>
+    </g>
+    <text x="800" y="682" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">enrol a MOK</tspan>
+      <tspan x="800" dy="36" font-family="monospace" fill="#207448">(mokutil --import)</tspan>
+      <tspan x="800" dy="36">and sign modules</tspan>
+    </text>
+  </g>
+
+  <g id="option-3">
+    <rect x="1080" y="565" width="480" height="225" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="1135" cy="600" r="22" fill="#207448"/>
+    <text x="1135" y="608" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(1292, 580)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,6 50,18 50,42 28,54 6,42 6,18"/>
+      <line x1="28" y1="6" x2="28" y2="30"/>
+      <line x1="28" y1="30" x2="50" y2="18"/>
+      <line x1="28" y1="30" x2="6" y2="18"/>
+      <line x1="28" y1="30" x2="28" y2="54"/>
+    </g>
+    <text x="1320" y="682" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="1320" dy="0">use distribution-signed or</tspan>
+      <tspan x="1320" dy="36">vendor-precompiled</tspan>
+      <tspan x="1320" dy="36">driver packages</tspan>
+    </text>
+  </g>
+
+  <g id="note-banner">
+    <rect x="40" y="820" width="1520" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(65, 838)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="46" height="36" rx="4"/>
+      <path d="M 12 18 L 20 24 L 12 30"/>
+      <line x1="24" y1="30" x2="36" y2="30"/>
+    </g>
+    <text x="135" y="872" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">Note: </tspan>
+      <tspan>enrolment needs console interaction at next boot, so do it once in the image build.</tspan>
+    </text>
+  </g>
+</svg>

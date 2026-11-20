@@ -1,0 +1,231 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Weighted ECMP with link bandwidth</title>
+  <desc>Infographic comparing Plain ECMP where mismatched link capacities lead to congestion on narrow links versus Link Bandwidth Extended Community where weights are assigned proportionally to link capacity.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+
+    
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#1b3626" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Weighted ECMP with link bandwidth</text>
+
+  
+  <g transform="translate(60, 110)">
+    
+    <rect width="710" height="780" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+
+    
+    <g transform="translate(40, 32)">
+      <rect x="0" y="0" width="56" height="56" rx="12" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <path d="M 28 44 L 28 26 M 28 26 L 14 14 M 28 26 L 42 14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="116" y="72" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Plain ECMP</text>
+
+    
+    <rect x="40" y="110" width="630" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="64" y="152" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">one leaf with four next-hop links</tspan>
+      <tspan x="64" dy="36">of different capacity, each receiving</tspan>
+      <tspan x="64" dy="36">an equal quarter of the traffic</tspan>
+    </text>
+
+    
+    
+    
+    <g transform="translate(65, 300)">
+      <rect x="0" y="0" width="110" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <ellipse cx="55" cy="24" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 27 24 L 27 42 C 27 48 83 48 83 42 L 83 24" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <g transform="translate(215, 300)">
+      <rect x="0" y="0" width="110" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <ellipse cx="55" cy="24" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 27 24 L 27 42 C 27 48 83 48 83 42 L 83 24" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <g transform="translate(365, 300)">
+      <rect x="0" y="0" width="110" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <ellipse cx="55" cy="24" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 27 24 L 27 42 C 27 48 83 48 83 42 L 83 24" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <g transform="translate(515, 300)">
+      <rect x="0" y="0" width="110" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <ellipse cx="55" cy="24" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 27 24 L 27 42 C 27 48 83 48 83 42 L 83 24" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    
+    <rect x="94" y="370" width="52" height="260" rx="6" fill="#dfebe1" stroke="#9bbba4" stroke-width="2" />
+    
+    <rect x="244" y="370" width="52" height="260" rx="6" fill="#dfebe1" stroke="#9bbba4" stroke-width="2" />
+    
+    <rect x="409" y="370" width="22" height="260" rx="4" fill="#fae8d7" stroke="#db8129" stroke-width="2" />
+    
+    <rect x="544" y="370" width="52" height="260" rx="6" fill="#dfebe1" stroke="#9bbba4" stroke-width="2" />
+
+    
+    
+    <line x1="120" y1="620" x2="120" y2="378" stroke="#207448" stroke-width="20" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+    
+    <line x1="270" y1="620" x2="270" y2="378" stroke="#207448" stroke-width="20" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+    
+    <line x1="420" y1="620" x2="420" y2="378" stroke="#db8129" stroke-width="20" stroke-linecap="round" marker-end="url(#arrow-orange)" />
+
+    
+    <line x1="570" y1="620" x2="570" y2="378" stroke="#207448" stroke-width="20" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(65, 640)">
+      <rect x="0" y="0" width="580" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      
+      <g transform="translate(24, 18)">
+        <rect x="0" y="0" width="54" height="54" rx="8" fill="none" stroke="#207448" stroke-width="3.5" />
+        <path d="M 12 20 L 42 20 M 34 14 L 42 20 L 34 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M 42 34 L 12 34 M 20 28 L 12 34 L 20 40" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+      
+      <path d="M 98 45 L 530 45" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 6" />
+      <circle cx="120" cy="45" r="7" fill="#207448" />
+      <circle cx="270" cy="45" r="7" fill="#207448" />
+      <circle cx="420" cy="45" r="7" fill="#db8129" />
+      <circle cx="570" cy="45" r="7" fill="#207448" />
+    </g>
+  </g>
+
+  
+  <g transform="translate(830, 110)">
+    
+    <rect width="710" height="780" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+
+    
+    <g transform="translate(40, 32)">
+      <rect x="0" y="0" width="56" height="56" rx="12" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="116" y="72" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Link Bandwidth Extended Community</text>
+
+    
+    <rect x="40" y="110" width="630" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="64" y="146" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">advertising router encodes link speed</tspan>
+      <tspan x="64" dy="32">in the community; the receiver assigns weights</tspan>
+      <tspan x="64" dy="32">proportional to capacity</tspan>
+      <tspan x="64" dy="32">(weighted ECMP, also called UCMP)</tspan>
+    </text>
+
+    
+    
+    
+    <g transform="translate(65, 300)">
+      <rect x="0" y="0" width="110" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <ellipse cx="55" cy="24" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 27 24 L 27 42 C 27 48 83 48 83 42 L 83 24" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <g transform="translate(215, 300)">
+      <rect x="0" y="0" width="110" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <ellipse cx="55" cy="24" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 27 24 L 27 42 C 27 48 83 48 83 42 L 83 24" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <g transform="translate(365, 300)">
+      <rect x="0" y="0" width="110" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <ellipse cx="55" cy="24" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 27 24 L 27 42 C 27 48 83 48 83 42 L 83 24" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <g transform="translate(515, 300)">
+      <rect x="0" y="0" width="110" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <ellipse cx="55" cy="24" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 27 24 L 27 42 C 27 48 83 48 83 42 L 83 24" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    
+    <rect x="94" y="370" width="52" height="260" rx="6" fill="#dfebe1" stroke="#9bbba4" stroke-width="2" />
+    
+    <rect x="244" y="370" width="52" height="260" rx="6" fill="#dfebe1" stroke="#9bbba4" stroke-width="2" />
+    
+    <rect x="409" y="370" width="22" height="260" rx="4" fill="#dfebe1" stroke="#9bbba4" stroke-width="2" />
+    
+    <rect x="544" y="370" width="52" height="260" rx="6" fill="#dfebe1" stroke="#9bbba4" stroke-width="2" />
+
+    
+    
+    <line x1="120" y1="620" x2="120" y2="378" stroke="#207448" stroke-width="26" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+    
+    <line x1="270" y1="620" x2="270" y2="378" stroke="#207448" stroke-width="26" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+    
+    <line x1="420" y1="620" x2="420" y2="378" stroke="#207448" stroke-width="10" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+    
+    <line x1="570" y1="620" x2="570" y2="378" stroke="#207448" stroke-width="26" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(65, 640)">
+      <rect x="0" y="0" width="580" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      
+      <g transform="translate(24, 18)">
+        <rect x="0" y="0" width="54" height="54" rx="8" fill="none" stroke="#207448" stroke-width="3.5" />
+        <path d="M 12 20 L 42 20 M 34 14 L 42 20 L 34 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M 42 34 L 12 34 M 20 28 L 12 34 L 20 40" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+      
+      <path d="M 98 45 L 530 45" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 6" />
+      <circle cx="120" cy="45" r="9" fill="#207448" />
+      <circle cx="270" cy="45" r="9" fill="#207448" />
+      <circle cx="420" cy="45" r="5" fill="#207448" />
+      <circle cx="570" cy="45" r="9" fill="#207448" />
+    </g>
+  </g>
+
+  
+  <g transform="translate(60, 920)">
+    <rect width="1480" height="100" rx="14" fill="#207448" filter="url(#card-shadow)" />
+
+    
+    <g transform="translate(36, 22)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#ffffff" stroke-width="3.5" />
+      <path d="M 28 14 L 28 42 M 14 28 L 42 28" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="5" fill="#ffffff" />
+    </g>
+
+    
+    <text x="100" y="44" font-family="sans-serif" font-size="24" fill="#ffffff">
+      <tspan x="100" dy="0">if a spine loses a link to the super-spine, it advertises reduced capacity</tspan>
+      <tspan x="100" dy="32">and leaves send proportionally less through it</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>The sparse dragonfly</title>
+  <desc>Visual explanation of the sparse dragonfly network topology showing groups A, B, and C with local and global switches.</desc>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The sparse dragonfly</text>
+
+  
+  
+  <rect x="70" y="180" width="420" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="280" y="225" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Group A</text>
+
+  
+  <rect x="595" y="180" width="410" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="225" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Group B</text>
+
+  
+  <rect x="1110" y="180" width="420" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1320" y="225" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Group C</text>
+
+  
+  
+  <path d="M 410 365 L 410 133 Q 410 125 418 125 L 1182 125 Q 1190 125 1190 133 L 1190 365" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <path d="M 410 775 L 410 912 Q 410 920 418 920 L 1182 920 Q 1190 920 1190 912 L 1190 775" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <line x1="455" y1="420" x2="625" y2="420" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <line x1="455" y1="720" x2="625" y2="720" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <path d="M 700 665 L 700 578 Q 700 570 708 570 L 1052 570 Q 1060 570 1060 562 L 1060 428 Q 1060 420 1068 420 L 1145 420" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <path d="M 700 775 L 700 812 Q 700 820 708 820 L 1052 820 Q 1060 820 1060 812 L 1060 728 Q 1060 720 1068 720 L 1145 720" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  
+  <line x1="255" y1="420" x2="305" y2="420" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <line x1="255" y1="720" x2="305" y2="720" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <path d="M 180 475 L 180 562 Q 180 570 188 570 L 372 570 Q 380 570 380 578 L 380 665" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <path d="M 105 720 L 98 720 Q 90 720 90 712 L 90 298 Q 90 290 98 290 L 342 290 Q 350 290 350 298 L 350 365" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  
+  <line x1="775" y1="420" x2="825" y2="420" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <line x1="775" y1="720" x2="825" y2="720" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  
+  <line x1="1295" y1="420" x2="1345" y2="420" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <line x1="1295" y1="720" x2="1345" y2="720" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <path d="M 1220 665 L 1220 578 Q 1220 570 1228 570 L 1412 570 Q 1420 570 1420 562 L 1420 475" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <path d="M 1495 720 L 1502 720 Q 1510 720 1510 712 L 1510 298 Q 1510 290 1502 290 L 1258 290 Q 1250 290 1250 298 L 1250 365" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  
+  <rect x="105" y="365" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(180, 400)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="180" y="457" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">LA1</text>
+
+  
+  <rect x="305" y="365" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(380, 400)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="380" y="457" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">SA1</text>
+
+  
+  <rect x="105" y="665" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(180, 700)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="180" y="757" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">LA2</text>
+
+  
+  <rect x="305" y="665" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(380, 700)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="380" y="757" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">SA2</text>
+
+  
+  
+  <rect x="625" y="365" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(700, 400)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="700" y="457" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">SB2</text>
+
+  
+  <rect x="825" y="365" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(900, 400)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="900" y="457" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">LB2</text>
+
+  
+  <rect x="625" y="665" width="150" height="110" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="4"/>
+  <g transform="translate(700, 700)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#db8129" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="700" y="757" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">SB1</text>
+
+  
+  <rect x="825" y="665" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(900, 700)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="900" y="757" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">LB1</text>
+
+  
+  
+  <rect x="1145" y="365" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1220, 400)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1220" y="457" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">SC1</text>
+
+  
+  <rect x="1345" y="365" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1420, 400)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1420" y="457" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">LC1</text>
+
+  
+  <rect x="1145" y="665" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1220, 700)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1220" y="757" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">SC2</text>
+
+  
+  <rect x="1345" y="665" width="150" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1420, 700)">
+    <rect x="-24" y="-16" width="48" height="32" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="-14" y1="-5" x2="14" y2="-5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="8,-9 14,-5 8,-1" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="5" x2="-14" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-8,1 -14,5 -8,9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1420" y="757" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">LC2</text>
+</svg>

@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Counters: where packets disappear</title>
+  <desc>Packet drop counters and drop points across the Linux networking stack from Wire/PHY to Socket buffer.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="80" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Counters: where packets disappear</text>
+
+  
+  
+  <path d="M 760 210 L 840 210" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1180 300 L 1180 360" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 840 450 L 760 450" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 420 540 L 420 600" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 760 690 L 840 690" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1180 780 L 1180 840" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 840 930 L 760 930" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(80, 120)">
+    <rect width="680" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="52" cy="48" r="24" fill="#207448" />
+    <text x="52" y="48" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(94, 20)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="10" width="34" height="36" rx="4" />
+      <path d="M 16 10 L 16 4 L 30 4 L 30 10" />
+      <path d="M 40 28 L 50 28" />
+      <line x1="12" y1="20" x2="12" y2="36" />
+      <line x1="18" y1="20" x2="18" y2="36" />
+      <line x1="24" y1="20" x2="24" y2="36" />
+      <line x1="30" y1="20" x2="30" y2="36" />
+    </g>
+    <text x="168" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Wire / PHY</text>
+    <line x1="28" y1="88" x2="652" y2="88" stroke="#c8dcce" stroke-width="1.5" />
+    <text x="32" y="138" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CRC, symbol, FEC errors</text>
+  </g>
+
+  
+  <g transform="translate(840, 120)">
+    <rect width="680" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="52" cy="48" r="24" fill="#207448" />
+    <text x="52" y="48" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(94, 20)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="6" y1="6" x2="6" y2="50" />
+      <rect x="12" y="12" width="38" height="30" rx="3" />
+      <line x1="20" y1="42" x2="20" y2="48" />
+      <line x1="26" y1="42" x2="26" y2="48" />
+      <line x1="32" y1="42" x2="32" y2="48" />
+      <line x1="38" y1="42" x2="38" y2="48" />
+      <rect x="23" y="19" width="16" height="16" rx="2" />
+    </g>
+    <text x="168" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">NIC hardware</text>
+    <line x1="28" y1="88" x2="652" y2="88" stroke="#c8dcce" stroke-width="1.5" />
+    <text x="32" y="122" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">rx_missed, rx_no_buffer,</text>
+    <text x="32" y="154" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">rx_fifo/over, pause frames</text>
+  </g>
+
+  
+  <g transform="translate(840, 360)">
+    <rect width="680" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="52" cy="48" r="24" fill="#207448" />
+    <text x="52" y="48" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(94, 20)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="22" />
+      <circle cx="28" cy="28" r="10" />
+      <line x1="28" y1="6" x2="28" y2="18" />
+      <line x1="28" y1="38" x2="28" y2="50" />
+      <line x1="6" y1="28" x2="18" y2="28" />
+      <line x1="38" y1="28" x2="50" y2="28" />
+    </g>
+    <text x="168" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">RX ring / driver</text>
+    <line x1="28" y1="88" x2="652" y2="88" stroke="#c8dcce" stroke-width="1.5" />
+    <text x="32" y="138" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">rx_dropped, rx_alloc_fail</text>
+  </g>
+
+  
+  <g transform="translate(80, 360)">
+    <rect width="680" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="52" cy="48" r="24" fill="#207448" />
+    <text x="52" y="48" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(94, 20)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="12" y="12" width="32" height="32" rx="4" />
+      <line x1="20" y1="6" x2="20" y2="12" />
+      <line x1="28" y1="6" x2="28" y2="12" />
+      <line x1="36" y1="6" x2="36" y2="12" />
+      <line x1="20" y1="44" x2="20" y2="50" />
+      <line x1="28" y1="44" x2="28" y2="50" />
+      <line x1="36" y1="44" x2="36" y2="50" />
+      <path d="M 30 18 L 22 29 L 29 29 L 25 38" />
+    </g>
+    <text x="168" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">softirq / NAPI</text>
+    <line x1="28" y1="88" x2="652" y2="88" stroke="#c8dcce" stroke-width="1.5" />
+    <text x="32" y="122" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">/proc/net/softnet_stat:</text>
+    <text x="32" y="154" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">dropped, time_squeeze</text>
+  </g>
+
+  
+  <g transform="translate(80, 600)">
+    <rect width="680" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="52" cy="48" r="24" fill="#207448" />
+    <text x="52" y="48" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(94, 20)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="7" />
+      <circle cx="12" cy="16" r="5" />
+      <circle cx="44" cy="16" r="5" />
+      <circle cx="14" cy="42" r="5" />
+      <circle cx="42" cy="42" r="5" />
+      <line x1="16" y1="19" x2="23" y2="24" />
+      <line x1="40" y1="19" x2="33" y2="24" />
+      <line x1="18" y1="39" x2="24" y2="32" />
+      <line x1="38" y1="39" x2="32" y2="32" />
+    </g>
+    <text x="168" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">IP layer</text>
+    <line x1="28" y1="88" x2="652" y2="88" stroke="#c8dcce" stroke-width="1.5" />
+    <text x="32" y="122" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">InHdrErrors, InAddrErrors,</text>
+    <text x="32" y="154" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">rp_filter, InNoRoutes</text>
+  </g>
+
+  
+  <g transform="translate(840, 600)">
+    <rect width="680" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="52" cy="48" r="24" fill="#207448" />
+    <text x="52" y="48" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g transform="translate(94, 20)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 28 6 L 46 14 C 46 32 38 44 28 50 C 18 44 10 32 10 14 Z" />
+      <line x1="20" y1="24" x2="36" y2="24" />
+      <line x1="22" y1="32" x2="34" y2="32" />
+    </g>
+    <text x="168" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">netfilter / conntrack</text>
+    <line x1="28" y1="88" x2="652" y2="88" stroke="#c8dcce" stroke-width="1.5" />
+    <text x="32" y="138" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">drops, nf_conntrack insert_failed</text>
+  </g>
+
+  
+  <g transform="translate(840, 840)">
+    <rect width="680" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="52" cy="48" r="24" fill="#207448" />
+    <text x="52" y="48" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+    
+    <g transform="translate(94, 20)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="8" y="10" width="22" height="18" rx="3" />
+      <rect x="26" y="28" width="22" height="18" rx="3" />
+      <path d="M 32 18 L 46 18 L 42 14" />
+      <path d="M 24 38 L 10 38 L 14 42" />
+    </g>
+    <text x="168" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">TCP / UDP</text>
+    <line x1="28" y1="88" x2="652" y2="88" stroke="#c8dcce" stroke-width="1.5" />
+    <text x="32" y="122" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">retransmits, listen overflows,</text>
+    <text x="32" y="154" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">UDP rcvbuf errors, checksum errors</text>
+  </g>
+
+  
+  <g transform="translate(80, 840)">
+    <rect width="680" height="180" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+    <circle cx="52" cy="48" r="24" fill="#db8129" />
+    <text x="52" y="48" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">8</text>
+    
+    <g transform="translate(94, 20)" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="8" y="8" width="40" height="40" rx="4" />
+      <line x1="8" y1="18" x2="48" y2="18" />
+      <rect x="14" y="24" width="28" height="6" rx="2" fill="#db8129" />
+      <rect x="14" y="34" width="20" height="6" rx="2" fill="#db8129" />
+    </g>
+    <text x="168" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Socket buffer</text>
+    <line x1="28" y1="88" x2="652" y2="88" stroke="#db8129" stroke-width="1.5" stroke-opacity="0.4" />
+    <text x="32" y="122" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">recv queue overflow ;</text>
+    <text x="32" y="154" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">application reads slowly</text>
+  </g>
+</svg>

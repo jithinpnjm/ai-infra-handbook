@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Axes for comparing automation tools</title>
+  <desc>Comparison of automation tools on four axes: configuration management versus provisioning, declarative versus imperative, push versus pull, and mutable versus immutable.</desc>
+
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Axes for comparing automation tools</text>
+
+  <g id="axis-1">
+    <rect x="50" y="95" width="1500" height="205" rx="16" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
+
+    <rect x="68" y="112" width="510" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(88, 126)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="11"/>
+      <path d="M 20 4 L 20 8 M 20 32 L 20 36 M 4 20 L 8 20 M 32 20 L 36 20 M 9 9 L 12 12 M 28 28 L 31 31 M 9 31 L 12 28 M 28 12 L 31 9"/>
+      <circle cx="38" cy="38" r="7"/>
+      <path d="M 38 27 L 38 30 M 38 46 L 38 49 M 27 38 L 30 38 M 46 38 L 49 38"/>
+    </g>
+    <text x="160" y="146" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="160" dy="0">configuration</tspan>
+      <tspan x="160" dy="34">management</tspan>
+    </text>
+    <text x="88" y="226" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="88" dy="0">converge existing machines:</tspan>
+      <tspan x="88" dy="30">Ansible, Nornir</tspan>
+    </text>
+
+    <g id="slider-1">
+      <rect x="730" y="118" width="140" height="38" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="800" y="145" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Axis 1</text>
+      <rect x="615" y="208" width="370" height="12" rx="6" fill="#ccd9d0"/>
+      <rect x="615" y="210" width="370" height="8" rx="4" fill="#207448" opacity="0.2"/>
+      <polygon points="615,202 592,214 615,226" fill="#207448"/>
+      <polygon points="985,202 1008,214 985,226" fill="#207448"/>
+      <line x1="675" y1="206" x2="675" y2="222" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="735" y1="208" x2="735" y2="220" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="800" y1="204" x2="800" y2="224" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="865" y1="208" x2="865" y2="220" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="925" y1="206" x2="925" y2="222" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="800" cy="214" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <line x1="796" y1="206" x2="796" y2="222" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="804" y1="206" x2="804" y2="222" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <rect x="1022" y="112" width="510" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1042, 126)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 38 A 10 10 0 0 1 10 24 A 14 14 0 0 1 34 16 A 12 12 0 0 1 46 26 A 10 10 0 0 1 42 42 Z"/>
+      <line x1="26" y1="25" x2="26" y2="35"/>
+      <line x1="21" y1="30" x2="31" y2="30"/>
+    </g>
+    <text x="1115" y="162" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">provisioning</text>
+    <text x="1042" y="226" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1042" dy="0">create and destroy resources:</tspan>
+      <tspan x="1042" dy="30">Terraform</tspan>
+    </text>
+  </g>
+
+  <g id="axis-2">
+    <rect x="50" y="325" width="1500" height="205" rx="16" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
+
+    <rect x="68" y="342" width="510" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(88, 356)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="36" height="40" rx="4"/>
+      <path d="M 18 10 V 6 H 34 V 10"/>
+      <polyline points="16,30 24,38 36,22"/>
+    </g>
+    <text x="160" y="392" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">declarative</text>
+    <text x="88" y="462" font-family="sans-serif" font-size="24" fill="#303a36">end state, Terraform</text>
+
+    <g id="slider-2">
+      <rect x="730" y="348" width="140" height="38" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="800" y="375" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Axis 2</text>
+      <rect x="615" y="438" width="370" height="12" rx="6" fill="#ccd9d0"/>
+      <rect x="615" y="440" width="370" height="8" rx="4" fill="#207448" opacity="0.2"/>
+      <polygon points="615,432 592,444 615,456" fill="#207448"/>
+      <polygon points="985,432 1008,444 985,456" fill="#207448"/>
+      <line x1="675" y1="436" x2="675" y2="452" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="735" y1="438" x2="735" y2="450" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="800" y1="434" x2="800" y2="454" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="865" y1="438" x2="865" y2="450" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="925" y1="436" x2="925" y2="452" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="800" cy="444" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <line x1="796" y1="436" x2="796" y2="452" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="804" y1="436" x2="804" y2="452" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <rect x="1022" y="342" width="510" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1042, 356)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="5"/>
+      <line x1="6" y1="18" x2="50" y2="18" stroke-width="3"/>
+      <polyline points="14,26 22,32 14,38" stroke-width="3"/>
+      <line x1="26" y1="38" x2="38" y2="38" stroke-width="3"/>
+    </g>
+    <text x="1115" y="392" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">imperative</text>
+    <text x="1042" y="462" font-family="sans-serif" font-size="24" fill="#303a36">steps, scripts</text>
+  </g>
+
+  <g id="axis-3">
+    <rect x="50" y="555" width="1500" height="205" rx="16" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
+
+    <rect x="68" y="572" width="510" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(88, 586)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="16" width="20" height="22" rx="3"/>
+      <path d="M 26 20 L 46 12 M 40 8 L 46 12 L 42 17" stroke-width="3.5"/>
+      <path d="M 26 27 L 48 27 M 42 23 L 48 27 L 42 31" stroke-width="3.5"/>
+      <path d="M 26 34 L 46 42 M 42 37 L 46 42 L 40 46" stroke-width="3.5"/>
+    </g>
+    <text x="160" y="622" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">push</text>
+    <text x="88" y="686" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="88" dy="0">central control node:</tspan>
+      <tspan x="88" dy="30">Ansible, Nornir, Terraform</tspan>
+    </text>
+
+    <g id="slider-3">
+      <rect x="730" y="578" width="140" height="38" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="800" y="605" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Axis 3</text>
+      <rect x="615" y="668" width="370" height="12" rx="6" fill="#ccd9d0"/>
+      <rect x="615" y="670" width="370" height="8" rx="4" fill="#207448" opacity="0.2"/>
+      <polygon points="615,662 592,674 615,686" fill="#207448"/>
+      <polygon points="985,662 1008,674 985,686" fill="#207448"/>
+      <line x1="675" y1="666" x2="675" y2="682" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="735" y1="668" x2="735" y2="680" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="800" y1="664" x2="800" y2="684" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="865" y1="668" x2="865" y2="680" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="925" y1="666" x2="925" y2="682" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="800" cy="674" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <line x1="796" y1="666" x2="796" y2="682" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="804" y1="666" x2="804" y2="682" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <rect x="1022" y="572" width="510" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1042, 586)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="22" width="44" height="26" rx="4"/>
+      <line x1="14" y1="35" x2="18" y2="35" stroke-width="3"/>
+      <line x1="24" y1="35" x2="28" y2="35" stroke-width="3"/>
+      <line x1="28" y1="4" x2="28" y2="18" stroke-width="3.5"/>
+      <polyline points="20,11 28,19 36,11" stroke-width="3.5"/>
+    </g>
+    <text x="1115" y="622" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">pull</text>
+    <text x="1042" y="686" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1042" dy="0">ZTP, on-box agents,</tspan>
+      <tspan x="1042" dy="30">GitOps pull</tspan>
+    </text>
+  </g>
+
+  <g id="axis-4">
+    <rect x="50" y="785" width="1500" height="205" rx="16" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
+
+    <rect x="68" y="802" width="510" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(88, 816)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="16" width="42" height="26" rx="4"/>
+      <circle cx="14" cy="29" r="2" fill="#207448"/>
+      <circle cx="22" cy="29" r="2" fill="#207448"/>
+      <path d="M 18 10 A 11 11 0 1 1 34 18" stroke-width="3.5"/>
+      <polyline points="29,18 35,18 35,12" stroke-width="3.5"/>
+    </g>
+    <text x="160" y="852" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">mutable</text>
+    <text x="88" y="916" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="88" dy="0">change devices in place,</tspan>
+      <tspan x="88" dy="30">usual for networks</tspan>
+    </text>
+
+    <g id="slider-4">
+      <rect x="730" y="808" width="140" height="38" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="800" y="835" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Axis 4</text>
+      <rect x="615" y="898" width="370" height="12" rx="6" fill="#ccd9d0"/>
+      <rect x="615" y="900" width="370" height="8" rx="4" fill="#207448" opacity="0.2"/>
+      <polygon points="615,892 592,904 615,916" fill="#207448"/>
+      <polygon points="985,892 1008,904 985,916" fill="#207448"/>
+      <line x1="675" y1="896" x2="675" y2="912" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="735" y1="898" x2="735" y2="910" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="800" y1="894" x2="800" y2="914" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="865" y1="898" x2="865" y2="910" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <line x1="925" y1="896" x2="925" y2="912" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="800" cy="904" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <line x1="796" y1="896" x2="796" y2="912" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="804" y1="896" x2="804" y2="912" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <rect x="1022" y="802" width="510" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1042, 816)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 26 6 L 46 16 L 46 40 L 26 50 L 6 40 L 6 16 Z"/>
+      <line x1="26" y1="6" x2="26" y2="50" stroke-width="3"/>
+      <line x1="26" y1="28" x2="46" y2="16" stroke-width="3"/>
+      <line x1="26" y1="28" x2="6" y2="16" stroke-width="3"/>
+    </g>
+    <text x="1115" y="852" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">immutable</text>
+    <text x="1042" y="916" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1042" dy="0">replace a node with</tspan>
+      <tspan x="1042" dy="30">a new image</tspan>
+    </text>
+  </g>
+
+  <g id="orange-note">
+    <rect x="250" y="1030" width="1100" height="72" rx="14" fill="#fff6ee" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(280, 1041)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="25" cy="25" r="15"/>
+      <line x1="36" y1="36" x2="46" y2="46" stroke-width="4"/>
+      <line x1="18" y1="25" x2="32" y2="25"/>
+      <line x1="25" y1="18" x2="25" y2="32"/>
+    </g>
+    <text x="820" y="1076" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Declarative tools depend on trustworthy diffs</text>
+  </g>
+</svg>

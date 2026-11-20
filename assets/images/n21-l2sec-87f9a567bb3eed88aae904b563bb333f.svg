@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1190" width="1600" height="1190">
+  <title>Layer-2 attacks and their controls</title>
+  <desc>Visual comparison mapping seven Layer-2 attacks to their corresponding security controls, featuring DHCP snooping guidance and link protection summary.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 15 8 L 2 14 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 15 8 L 2 14 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1190" fill="#f5f8f5" />
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Layer-2 attacks and their controls</text>
+
+  
+  
+  <rect x="40" y="120" width="530" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="62" y="162" width="52" height="26" rx="4" />
+    <circle cx="74" cy="175" r="3" fill="#207448" />
+    <circle cx="88" cy="175" r="3" fill="#207448" />
+    <circle cx="102" cy="175" r="3" fill="#207448" />
+    <path d="M 66 156 L 66 148 M 88 156 L 88 144 M 110 156 L 110 148" />
+    <path d="M 62 151 L 66 147 L 70 151 M 84 147 L 88 143 L 92 147 M 106 151 L 110 147 L 114 151" />
+  </g>
+  <text x="136" y="162" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MAC flooding /</text>
+  <text x="136" y="198" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CAM overflow</text>
+
+  
+  <line x1="570" y1="175" x2="710" y2="175" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="710" y="120" width="850" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="732" y="150" width="32" height="40" rx="4" />
+    <path d="M 742 190 L 754 190 M 748 178 L 748 190" />
+    <rect x="758" y="164" width="24" height="22" rx="3" />
+    <path d="M 763 164 L 763 156 A 7 7 0 0 1 777 156 L 777 164" />
+  </g>
+  <text x="806" y="162" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">port security (limit MACs per port),</text>
+  <text x="806" y="198" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">storm control</text>
+
+
+  
+  
+  <rect x="40" y="254" width="530" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="64" y="291" width="50" height="42" rx="4" />
+    <line x1="72" y1="305" x2="86" y2="305" />
+    <line x1="72" y1="319" x2="86" y2="319" />
+    <circle cx="102" cy="305" r="3" fill="#207448" />
+    <circle cx="102" cy="319" r="3" fill="#207448" />
+    <path d="M 78 283 L 100 283 L 89 267 Z" />
+    <line x1="89" y1="273" x2="89" y2="277" />
+    <circle cx="89" cy="280" r="1" fill="#207448" />
+  </g>
+  <text x="136" y="319" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Rogue DHCP server</text>
+
+  
+  <line x1="570" y1="309" x2="710" y2="309" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="710" y="254" width="850" height="110" rx="12" fill="#fff9f5" stroke="#db8129" stroke-width="3" />
+  <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 735 281 L 758 273 L 781 281 C 781 306 758 322 758 322 C 758 322 735 306 735 281 Z" />
+    <path d="M 748 296 L 755 303 L 769 289" />
+  </g>
+  <text x="806" y="296" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">DHCP snooping, IP source guard</text>
+  <rect x="806" y="314" width="460" height="34" rx="6" fill="#fbeee4" stroke="#db8129" stroke-width="1.5" />
+  <text x="818" y="338" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">trust only uplink and server ports</text>
+
+
+  
+  
+  <rect x="40" y="388" width="530" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="73" cy="443" r="11" />
+    <circle cx="105" cy="443" r="11" />
+    <path d="M 74 425 C 85 417 93 417 104 425" />
+    <path d="M 98 421 L 105 425 L 101 431" />
+    <path d="M 104 461 C 93 469 85 469 74 461" />
+    <path d="M 80 465 L 73 461 L 77 455" />
+    <path d="M 89 435 L 89 451" />
+  </g>
+  <text x="136" y="453" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">ARP/ND spoofing</text>
+
+  
+  <line x1="570" y1="443" x2="710" y2="443" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="710" y="388" width="850" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 735 415 L 758 407 L 781 415 C 781 438 758 452 758 452 C 758 452 735 438 735 415 Z" />
+    <circle cx="756" cy="426" r="7" />
+    <line x1="762" y1="432" x2="770" y2="440" />
+  </g>
+  <text x="806" y="453" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Dynamic ARP Inspection, RA guard</text>
+
+
+  
+  
+  <rect x="40" y="522" width="530" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="76" y="549" width="24" height="16" rx="3" />
+    <rect x="62" y="583" width="20" height="14" rx="3" />
+    <rect x="94" y="583" width="20" height="14" rx="3" />
+    <path d="M 82 565 L 72 583 M 94 565 L 104 583" />
+    <path d="M 70 567 L 76 571 L 72 575 L 78 579" />
+  </g>
+  <text x="136" y="564" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Rogue switch /</text>
+  <text x="136" y="600" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">STP manipulation</text>
+
+  
+  <line x1="570" y1="577" x2="710" y2="577" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="710" y="522" width="850" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 735 549 L 758 541 L 781 549 C 781 574 758 588 758 588 C 758 588 735 574 735 549 Z" />
+    <path d="M 746 570 L 746 560 L 752 564 L 758 558 L 764 564 L 770 560 L 770 570 Z" />
+  </g>
+  <text x="806" y="587" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">BPDU guard, root guard</text>
+
+
+  
+  
+  <rect x="40" y="656" width="530" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="65" y="691" width="8" height="34" rx="2" fill="#207448" />
+    <rect x="103" y="691" width="8" height="34" rx="2" fill="#207448" />
+    <path d="M 60 708 C 65 670 111 670 116 708" />
+    <path d="M 110 702 L 116 708 L 118 700" />
+  </g>
+  <text x="136" y="721" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">VLAN hopping</text>
+
+  
+  <line x1="570" y1="711" x2="710" y2="711" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="710" y="656" width="850" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="734" y1="701" x2="782" y2="701" />
+    <line x1="734" y1="721" x2="782" y2="721" />
+    <line x1="748" y1="693" x2="768" y2="729" />
+    <line x1="768" y1="693" x2="748" y2="729" />
+  </g>
+  <text x="806" y="698" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">disable DTP, no VLAN 1 native,</text>
+  <text x="806" y="734" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">prune trunks</text>
+
+
+  
+  
+  <rect x="40" y="790" width="530" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="64" y="828" width="40" height="26" rx="3" />
+    <line x1="58" y1="854" x2="110" y2="854" />
+    <circle cx="106" cy="820" r="9" fill="#ffffff" />
+    <line x1="100" y1="814" x2="112" y2="826" />
+    <line x1="112" y1="814" x2="100" y2="826" />
+  </g>
+  <text x="136" y="832" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Unauthorised</text>
+  <text x="136" y="868" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">device attach</text>
+
+  
+  <line x1="570" y1="845" x2="710" y2="845" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="710" y="790" width="850" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="736" y="825" width="44" height="36" rx="4" />
+    <circle cx="758" cy="838" r="5" />
+    <path d="M 748 855 C 748 848 768 848 768 855" />
+    <circle cx="774" cy="853" r="7" fill="#ffffff" />
+    <path d="M 771 853 L 773 855 L 777 851" />
+  </g>
+  <text x="806" y="855" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">802.1X (EAP-TLS) or MAB</text>
+
+
+  
+  
+  <rect x="40" y="924" width="530" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="62" y1="984" x2="114" y2="984" />
+    <path d="M 88 958 L 88 984" />
+    <path d="M 78 964 A 14 14 0 0 1 98 964" />
+    <path d="M 72 958 A 22 22 0 0 1 104 958" />
+  </g>
+  <text x="136" y="989" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Link eavesdropping</text>
+
+  
+  <line x1="570" y1="979" x2="710" y2="979" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="710" y="924" width="850" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="734" y="966" width="14" height="26" rx="3" />
+    <rect x="780" y="966" width="14" height="26" rx="3" />
+    <line x1="748" y1="979" x2="780" y2="979" stroke-dasharray="3 3" />
+    <rect x="758" y="971" width="16" height="14" rx="2" />
+    <path d="M 762 971 L 762 966 A 4 4 0 0 1 770 966 L 770 971" />
+  </g>
+  <text x="806" y="989" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MACsec (802.1AE)</text>
+
+
+  
+  <rect x="40" y="1074" width="1520" height="76" rx="12" fill="#207448" />
+  <text x="800" y="1122" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">802.1X decides which devices may attach; MACsec protects the link itself</text>
+</svg>

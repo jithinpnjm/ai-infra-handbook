@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Oversubscription ratios</title>
+  <desc>Visual infographic explaining oversubscription ratios in fabric leaf switches with server-facing ports below, uplinks above, two worked numerical cases, and incast contention considerations.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <polygon points="0,3 16,9 0,15" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <polygon points="0,3 16,9 0,15" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Oversubscription ratios</text>
+
+  
+  <g id="definition-box">
+    <rect x="60" y="95" width="1480" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 112)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="28" y1="10" x2="28" y2="46" />
+      <line x1="14" y1="46" x2="42" y2="46" />
+      <line x1="8" y1="16" x2="48" y2="16" />
+      <path d="M 8 16 L 2 30 L 14 30 Z" />
+      <path d="M 48 16 L 42 30 L 54 30 Z" />
+    </g>
+    <text x="165" y="136" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">oversubscription = bandwidth offered to endpoints</tspan>
+      <tspan x="165" dy="34">over bandwidth into the fabric (worst-case contention)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="leaf-switch-structure">
+    <rect x="60" y="215" width="580" height="665" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g id="node-uplinks">
+      <rect x="90" y="240" width="520" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(112, 260)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 12 36 A 12 12 0 0 1 20 18 A 16 16 0 0 1 44 20 A 10 10 0 0 1 48 36 Z" />
+        <line x1="28" y1="36" x2="28" y2="46" />
+        <polyline points="22,40 28,46 34,40" />
+      </g>
+      <text x="190" y="298" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">uplinks</text>
+      
+      <g transform="translate(340, 272)" fill="#207448">
+        <rect x="0" y="0" width="35" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+        <rect x="45" y="0" width="35" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+        <rect x="90" y="0" width="35" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+        <rect x="135" y="0" width="35" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+        <circle cx="17" cy="15" r="4" />
+        <circle cx="62" cy="15" r="4" />
+        <circle cx="107" cy="15" r="4" />
+        <circle cx="152" cy="15" r="4" />
+      </g>
+    </g>
+
+    
+    <line x1="280" y1="440" x2="280" y2="355" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <line x1="420" y1="440" x2="420" y2="355" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="node-leaf-switch">
+      <rect x="90" y="440" width="520" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(112, 465)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="8" width="48" height="36" rx="6" />
+        <line x1="14" y1="20" x2="38" y2="20" />
+        <polyline points="32,15 38,20 32,25" />
+        <line x1="38" y1="32" x2="14" y2="32" />
+        <polyline points="20,27 14,32 20,37" />
+      </g>
+      <text x="190" y="500" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Leaf switch</text>
+
+      
+      <g transform="translate(190, 528)">
+        <rect x="0" y="0" width="300" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <circle cx="25" cy="21" r="5" fill="#207448" />
+        <circle cx="50" cy="21" r="5" fill="#207448" />
+        <circle cx="75" cy="21" r="5" fill="#207448" />
+        <circle cx="100" cy="21" r="5" fill="#207448" />
+        <circle cx="125" cy="21" r="5" fill="#207448" />
+        <circle cx="150" cy="21" r="5" fill="#207448" />
+        <circle cx="175" cy="21" r="5" fill="#207448" />
+        <circle cx="200" cy="21" r="5" fill="#207448" />
+        <circle cx="225" cy="21" r="5" fill="#207448" />
+        <circle cx="250" cy="21" r="5" fill="#207448" />
+        <circle cx="275" cy="21" r="5" fill="#207448" />
+      </g>
+    </g>
+
+    
+    <line x1="280" y1="590" x2="280" y2="675" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <line x1="420" y1="590" x2="420" y2="675" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="node-server-facing-ports">
+      <rect x="90" y="675" width="520" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(112, 695)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="40" rx="6" />
+        <line x1="16" y1="48" x2="16" y2="54" />
+        <line x1="28" y1="48" x2="28" y2="54" />
+        <line x1="40" y1="48" x2="40" y2="54" />
+        <line x1="14" y1="20" x2="42" y2="20" />
+      </g>
+      <text x="190" y="733" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">server-facing ports</text>
+    </g>
+
+    
+    <g transform="translate(115, 800)">
+      <rect x="0" y="0" width="130" height="55" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="15" y1="28" x2="45" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="105" cy="28" r="5" fill="#207448" />
+
+      <rect x="170" y="0" width="130" height="55" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="185" y1="28" x2="215" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="275" cy="28" r="5" fill="#207448" />
+
+      <rect x="340" y="0" width="130" height="55" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="355" y1="28" x2="385" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="445" cy="28" r="5" fill="#207448" />
+    </g>
+    <line x1="180" y1="770" x2="180" y2="800" stroke="#207448" stroke-width="3" />
+    <line x1="350" y1="770" x2="350" y2="800" stroke="#207448" stroke-width="3" />
+    <line x1="520" y1="770" x2="520" y2="800" stroke="#207448" stroke-width="3" />
+  </g>
+
+  
+  <g id="case-1-container">
+    <rect x="680" y="215" width="860" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(710, 240)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="44" height="44" rx="8" />
+      <line x1="16" y1="20" x2="40" y2="20" />
+      <line x1="16" y1="34" x2="40" y2="34" />
+      <circle cx="28" cy="27" r="2.5" fill="#207448" />
+    </g>
+    <text x="785" y="262" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="785" dy="0">Case 1: d downlinks and u uplinks</tspan>
+      <tspan x="785" dy="36">gives ratio d:u; </tspan>
+      <tspan font-family="monospace" font-size="26" fill="#303a36">48 downlinks and 16 uplinks = 3:1</tspan>
+    </text>
+
+    
+    <g transform="translate(710, 375)">
+      <rect x="0" y="0" width="800" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <rect x="30" y="25" width="450" height="40" rx="6" fill="#207448" opacity="0.15" stroke="#207448" stroke-width="2" />
+      <rect x="30" y="25" width="150" height="40" rx="6" fill="#207448" opacity="0.3" stroke="#207448" stroke-width="1" />
+      <rect x="180" y="25" width="150" height="40" rx="6" fill="#207448" opacity="0.3" stroke="#207448" stroke-width="1" />
+      <rect x="330" y="25" width="150" height="40" rx="6" fill="#207448" opacity="0.3" stroke="#207448" stroke-width="1" />
+
+      
+      <rect x="30" y="75" width="150" height="40" rx="6" fill="#207448" stroke="#207448" stroke-width="2" />
+
+      
+      <path d="M 500 25 L 530 25 L 530 55 L 550 55 L 530 55 L 530 85 L 500 85" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 600 25 H 750 V 105 H 600 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" rx="8" />
+      <line x1="675" y1="35" x2="675" y2="95" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" />
+    </g>
+  </g>
+
+  
+  <g id="case-2-container">
+    <rect x="680" y="560" width="860" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(710, 585)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 42 A 20 20 0 1 1 46 42" />
+      <line x1="28" y1="30" x2="40" y2="18" />
+      <circle cx="28" cy="30" r="4" fill="#207448" />
+    </g>
+    <text x="785" y="612" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="785" dy="0">Case 2: ToR with 320 Gb/s of server ports</tspan>
+      <tspan x="785" dy="38" font-family="monospace" font-size="26" fill="#303a36">and 180 Gb/s of uplinks = 1.78:1</tspan>
+    </text>
+
+    
+    <g transform="translate(710, 690)">
+      <rect x="0" y="0" width="800" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <rect x="30" y="30" width="480" height="40" rx="6" fill="#207448" opacity="0.25" stroke="#207448" stroke-width="2" />
+      <rect x="30" y="30" width="270" height="40" rx="6" fill="#207448" opacity="0.4" stroke="#207448" stroke-width="1" />
+
+      
+      <rect x="30" y="95" width="270" height="40" rx="6" fill="#207448" stroke="#207448" stroke-width="2" />
+
+      
+      <path d="M 530 30 L 560 30 L 560 72 L 580 72 L 560 72 L 560 115 L 530 115" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 620 30 H 760 V 135 H 620 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" rx="8" />
+      <line x1="690" y1="40" x2="690" y2="125" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" />
+    </g>
+  </g>
+
+  
+  <g id="orange-note">
+    <rect x="60" y="910" width="1480" height="135" rx="16" fill="#fff8f2" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(90, 945)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 46 L 6 46 Z" />
+      <line x1="28" y1="22" x2="28" y2="32" />
+      <circle cx="28" cy="38" r="2.5" fill="#db8129" />
+    </g>
+    <text x="175" y="968" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">
+      <tspan x="175" dy="0">Non-blocking and non-contending are different;</tspan>
+      <tspan x="175" dy="36">packet-switched fabrics cannot be truly non-blocking because of incast</tspan>
+    </text>
+  </g>
+</svg>

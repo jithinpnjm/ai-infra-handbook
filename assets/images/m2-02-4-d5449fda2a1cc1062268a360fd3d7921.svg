@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The hourglass (wasp waist)</title>
+  <desc>Visual representation of the Internet hourglass architecture: many application protocols at the top, narrowing to few transport protocols, exactly one IP protocol at the waist, and expanding to many link technologies at the bottom.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <path d="M 40 180 Q 420 737 40 1060" fill="none" stroke="#cfdfd4" stroke-width="2" stroke-dasharray="8 8"/>
+  <path d="M 1560 180 Q 1180 737 1560 1060" fill="none" stroke="#cfdfd4" stroke-width="2" stroke-dasharray="8 8"/>
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The hourglass (wasp waist)</text>
+
+  
+  <rect x="50" y="105" width="1500" height="255" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="148" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Many application protocols</text>
+
+  
+  <g id="node-http">
+    <rect x="75" y="175" width="195" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="144" y="190" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="144" y1="204" x2="200" y2="204" stroke="#207448" stroke-width="3"/>
+    <circle cx="154" cy="197" r="2.5" fill="#207448"/>
+    <circle cx="162" cy="197" r="2.5" fill="#207448"/>
+    <circle cx="170" cy="197" r="2.5" fill="#207448"/>
+    <line x1="154" y1="216" x2="174" y2="216" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="154" y1="224" x2="190" y2="224" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="172.5" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">HTTP</text>
+  </g>
+
+  
+  <g id="node-dns">
+    <rect x="290" y="175" width="195" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 360 196 c 0 -7 13 -11 28 -11 s 28 4 28 11 v 34 c 0 7 -13 11 -28 11 s -28 -4 -28 -11 z" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 360 208 c 0 7 13 11 28 11 s 28 -4 28 -11" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 360 220 c 0 7 13 11 28 11 s 28 -4 28 -11" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="387.5" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">DNS</text>
+  </g>
+
+  
+  <g id="node-ssh">
+    <rect x="505" y="175" width="195" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="574" y="190" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 586 206 l 8 7 l -8 7" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="602" y1="220" x2="618" y2="220" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="602.5" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">SSH</text>
+  </g>
+
+  
+  <g id="node-nfs">
+    <rect x="720" y="175" width="195" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 790 196 h 16 l 6 6 h 26 a 4 4 0 0 1 4 4 v 24 a 4 4 0 0 1 -4 4 h -48 a 4 4 0 0 1 -4 -4 z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="817" y1="234" x2="817" y2="242" stroke="#207448" stroke-width="4"/>
+    <line x1="805" y1="242" x2="829" y2="242" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="817.5" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">NFS</text>
+  </g>
+
+  
+  <g id="node-grpc">
+    <rect x="935" y="175" width="195" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1010 203 h 38 l -8 -7 m 8 7 l -8 7" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1054 225 h -38 l 8 -7 m -8 7 l 8 7" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="1032.5" cy="214" r="4" fill="#207448"/>
+    <text x="1032.5" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">gRPC</text>
+  </g>
+
+  
+  <g id="node-nccl">
+    <rect x="1150" y="175" width="375" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="1317" cy="198" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="1358" cy="198" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="1358" cy="234" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="1317" cy="234" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 1325 198 h 25 M 1358 206 v 20 M 1350 234 h -25 M 1317 226 v -20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="1337.5" y="278" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">NCCL</text>
+    <text x="1337.5" y="315" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(over TCP/RDMA)</text>
+  </g>
+
+  
+  <line x1="800" y1="360" x2="800" y2="426" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-tr">
+    <rect x="480" y="430" width="640" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="760" y="446" width="80" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <line x1="786" y1="446" x2="786" y2="492" stroke="#207448" stroke-width="3" stroke-dasharray="4 4"/>
+    <line x1="814" y1="446" x2="814" y2="492" stroke="#207448" stroke-width="3" stroke-dasharray="4 4"/>
+    <path d="M 768 469 h 10 M 795 469 h 10 M 822 469 h 10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="800" y="542" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">TCP / UDP / QUIC (few)</text>
+  </g>
+
+  
+  <line x1="800" y1="580" x2="800" y2="646" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-ipn">
+    <rect x="450" y="650" width="700" height="185" rx="16" fill="#fff9f2" stroke="#db8129" stroke-width="4"/>
+    
+    <circle cx="800" cy="688" r="26" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    <path d="M 800 668 v 40 M 780 688 h 40" stroke="#db8129" stroke-width="3"/>
+    <path d="M 792 675 l 8 -7 l 8 7 M 813 680 l 7 8 l -7 8 M 808 701 l -8 7 l -8 -7 M 787 696 l -7 -8 l 7 -8" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="800" y="756" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129" text-anchor="middle">IP</text>
+    <text x="800" y="798" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(exactly one, plus its IPv6 version)</text>
+  </g>
+
+  
+  <line x1="800" y1="835" x2="800" y2="891" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="895" width="1500" height="255" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="938" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Many link technologies</text>
+
+  
+  <g id="node-eth">
+    <rect x="75" y="965" width="270" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="186" y="983" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 196 1017 v 12 h 28 v -12" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="198" y1="991" x2="198" y2="1003" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="204" y1="991" x2="204" y2="1003" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="210" y1="991" x2="210" y2="1003" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="216" y1="991" x2="216" y2="1003" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="222" y1="991" x2="222" y2="1003" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="210" y="1088" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Ethernet</text>
+  </g>
+
+  
+  <g id="node-wifi">
+    <rect x="370" y="965" width="270" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="505" cy="1030" r="4.5" fill="#207448"/>
+    <path d="M 491 1018 a 20 20 0 0 1 28 0" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 481 1007 a 34 34 0 0 1 48 0" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 471 996 a 48 48 0 0 1 68 0" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="505" y="1088" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Wi-Fi</text>
+  </g>
+
+  
+  <g id="node-sat">
+    <rect x="665" y="965" width="270" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="788" y="988" width="24" height="26" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 788 995 h -20 v 12 h 20 M 812 995 h 20 v 12 h -20" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 794 1014 l -8 14 M 806 1014 l 8 14" stroke="#207448" stroke-width="3"/>
+    <path d="M 780 1025 a 18 18 0 0 0 40 0" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="800" y="1088" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Satellite</text>
+  </g>
+
+  
+  <g id="node-ppp">
+    <rect x="960" y="965" width="270" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1095 983 v 48 M 1083 1031 l 12 -48 l 12 48" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="1087" y1="1013" x2="1103" y2="1013" stroke="#207448" stroke-width="3"/>
+    <path d="M 1081 992 a 20 20 0 0 1 28 0" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 1075 984 a 28 28 0 0 1 40 0" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="1095" y="1088" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">PPP/LTE/5G</text>
+  </g>
+
+  
+  <g id="node-ib">
+    <rect x="1255" y="965" width="270" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="1362" y="986" width="56" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="1377" cy="1003" r="4" fill="#207448"/>
+    <circle cx="1403" cy="1003" r="4" fill="#207448"/>
+    <path d="M 1377 1003 h 26" stroke="#207448" stroke-width="3" stroke-dasharray="2 2"/>
+    <path d="M 1390 1020 v 13 M 1380 1033 h 20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="1390" y="1088" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">IPoIB</text>
+  </g>
+</svg>
