@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>The Ethernet frame</title>
+  <desc>Visual diagram of the Ethernet frame format with field byte widths, optional 802.1Q tag, frame boundaries, and Dest MAC NIC processing note.</desc>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The Ethernet frame</text>
+
+  
+  <g id="callout-note">
+    <rect x="90" y="170" width="620" height="120" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(118, 202)">
+      
+      <rect x="8" y="8" width="40" height="40" rx="6" fill="#fef5ec" stroke="#db8129" stroke-width="4"/>
+      
+      <line x1="0" y1="18" x2="8" y2="18" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="0" y1="28" x2="8" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="0" y1="38" x2="8" y2="38" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="18" x2="56" y2="18" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="28" x2="56" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="38" x2="56" y2="38" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="0" x2="18" y2="8" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="0" x2="28" y2="8" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="38" y1="0" x2="38" y2="8" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="48" x2="18" y2="56" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="48" x2="28" y2="56" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="38" y1="48" x2="38" y2="56" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="445" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">
+      <tspan x="445" dy="0">arrives first: NIC decides at once</tspan>
+      <tspan x="445" dy="38">whether to keep the frame</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-to-dest-mac">
+    <line x1="400" y1="290" x2="400" y2="370" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="400,388 391,368 409,368" fill="#db8129"/>
+  </g>
+
+  
+
+  
+  <g id="field-preamble">
+    <rect x="50" y="390" width="176" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="138" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Preamble</text>
+    <text x="138" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">7 B</text>
+  </g>
+
+  
+  <g id="field-sfd">
+    <rect x="226" y="390" width="86" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="269" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">SFD</text>
+    <text x="269" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">1 B</text>
+  </g>
+
+  
+  <g id="field-dest-mac">
+    <rect x="312" y="390" width="176" height="240" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="4"/>
+    <text x="400" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129" text-anchor="middle">Dest MAC</text>
+    <text x="400" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">6 B</text>
+  </g>
+
+  
+  <g id="field-src-mac">
+    <rect x="488" y="390" width="114" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="545" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="545" dy="0">Src</tspan>
+      <tspan x="545" dy="36">MAC</tspan>
+    </text>
+    <text x="545" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">6 B</text>
+  </g>
+
+  
+  <g id="field-8021q">
+    <rect x="602" y="390" width="240" height="240" rx="12" fill="#f0f6f1" stroke="#207448" stroke-width="3" stroke-dasharray="8,6"/>
+    <text x="722" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">802.1Q tag</text>
+    <text x="722" y="488" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">[4 B]</text>
+    <text x="722" y="534" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="722" dy="0">(TPID <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24">0x8100</tspan>,</tspan>
+      <tspan x="722" dy="34">PCP, DEI, VID)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="field-ethertype">
+    <rect x="842" y="390" width="196" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="940" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">EtherType</text>
+    <text x="940" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">2 B</text>
+  </g>
+
+  
+  <g id="field-payload">
+    <rect x="1038" y="390" width="166" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="1121" y="465" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Payload</text>
+    <text x="1121" y="505" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">(+pad)</text>
+    <text x="1121" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">46-1500 B</text>
+  </g>
+
+  
+  <g id="field-fcs">
+    <rect x="1204" y="390" width="150" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="1279" y="465" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">FCS</text>
+    <text x="1279" y="510" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">4 B</text>
+    <text x="1279" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">(CRC-32)</text>
+  </g>
+
+  
+  <g id="field-ifg">
+    <rect x="1354" y="390" width="196" height="240" rx="12" fill="#edf3ee" stroke="#6b8277" stroke-width="3" stroke-dasharray="6,6"/>
+    <text x="1452" y="470" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#4a5a53" text-anchor="middle">
+      <tspan x="1452" dy="0">inter-frame</tspan>
+      <tspan x="1452" dy="36">gap</tspan>
+    </text>
+    <text x="1452" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#4a5a53" text-anchor="middle">12 B idle</text>
+  </g>
+
+  
+  <g id="frame-bracket">
+    
+    <path d="M 312 650 Q 312 670 327 670 L 818 670 Q 833 670 833 688 Q 833 670 848 670 L 1339 670 Q 1354 670 1354 650" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    
+    <text x="833" y="748" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Ethernet frame: 64 to 1518 B (1522 B with VLAN tag)</text>
+  </g>
+</svg>

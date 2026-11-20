@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "09",
+  "name": "n09-relay",
+  "title": "DHCP relay agent",
+  "spec": "Left to right: Client in a rack VLAN, a router/switch box labelled 'DHCP relay agent', a central DHCP server. Arrow 1 client to relay: 'DHCP broadcast (does not cross routers)'. Arrow 2 relay to server: 'unicast, relay adds its interface address in giaddr'. Arrow 3 server to client path back: 'server reads giaddr to pick the scope (subnet pool)'. Orange highlight on giaddr. Small options chip: 'option 3 router, 6 DNS, 51 lease time, 66/67 TFTP server and boot file (PXE)'. Monospace for giaddr and option numbers.",
+  "anchor": "### Relays, scopes and options",
+  "alt": "DHCP relay and giaddr",
+  "cap": "A relay agent turns a local broadcast into a unicast to a central server and tags it with giaddr so the server picks the right scope."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "09",
+  "name": "n09-pxe",
+  "title": "PXE boot of a bare-metal GPU node",
+  "spec": "Four numbered steps left to right with arrows. 1 'NIC firmware (PXE ROM or UEFI HTTP boot): DHCP DISCOVER, vendor class PXEClient, option 93 architecture'. 2 'DHCP server replies: address + next-server (TFTP) + filename (for example ipxe.efi)'. 3 'firmware downloads bootloader iPXE; script over HTTP fetches kernel, initrd, kickstart/autoinstall/cloud-init seed'. 4 'OS installer or provisioner (BCM, MAAS, Ironic) configures the node; then node's own DHCP client runs'. Orange note under step 1-2: 'Only one DHCP server may answer a subnet'. Monospace for PXEClient, ipxe.efi.",
+  "anchor": "### PXE boot of bare-metal GPU nodes",
+  "alt": "PXE boot steps",
+  "cap": "A bare-metal node gets its address, bootloader, kernel and installer one step at a time over DHCP, TFTP and HTTP."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "09",
+  "name": "n09-snatdnat",
+  "title": "SNAT versus DNAT",
+  "spec": "Two horizontal flows. Top row 'SNAT / PAT (outbound)': private host -> NAT box -> Internet; the NAT box rewrites the SOURCE address (and translated source port for PAT); use: egress to the Internet, MASQUERADE, Cloud NAT. Bottom row 'DNAT (inbound)': client from Internet -> NAT box -> inside server; the NAT box rewrites the DESTINATION; use: port forwarding, Kubernetes Services, Docker -p. Small chip for static NAT (1:1) fixed inside address to fixed outside address, elastic IPs. Orange highlight on 'NAT is not a firewall'. Green bar: 'If you see MASQUERADE in a rule, you are looking at PAT'.",
+  "anchor": "## 3. Types of NAT",
+  "alt": "SNAT and DNAT",
+  "cap": "SNAT rewrites the source on the way out and DNAT rewrites the destination on the way in."
+ }
+]

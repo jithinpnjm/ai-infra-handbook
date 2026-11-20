@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "29",
+  "name": "k29-webapp-fanout",
+  "title": "One short WebApp object becomes six Kubernetes resources",
+  "spec": "A left-to-right fan-out. On the far left, a small document card labelled WebApp (webapp-sample), the short request, with a note: one short object. An arrow from the card into a box labelled WebApp Operator, drawn as a gear with a watch-eye icon, with the note: watches for WebApp resources. From the operator a set of six arrows fan out to six child boxes stacked in a column on the right, each with a simple outline icon and a title and a short role line: Deployment (stateless front end); StatefulSet (relational database); ConfigMap (front end config file); Secret (credentials for the database); Service (routes traffic to the Deployment's backend Pods); Ingress (routing rules). Group the six child boxes inside one large green container labelled the long answer the operator writes. Orange highlight on the WebApp card with the note: the short request. Green takeaway bar: someone writes one short object, and the operator does the rest.",
+  "anchor": "### Kinds, resources and a WebApp example",
+  "alt": "A short WebApp object is watched by the operator, which creates a Deployment, StatefulSet, ConfigMap, Secret, Service and Ingress.",
+  "cap": "A WebApp operator turns one short WebApp object into six child resources that together run the app."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "29",
+  "name": "k29-owner-vs-finalizer",
+  "title": "Owner references clean up children, finalizers clean up outside the cluster",
+  "spec": "Two side-by-side panels. Left panel titled ownerReferences: in-cluster children. A CR box labelled GPUHealthPolicy being deleted, with an arrow labelled deleted into a garbage collector box. From the garbage collector, arrows to three child boxes labelled Deployment, Service and ConfigMap, each with a dashed strike-through, labelled removed automatically. A label under the panel: works even if the operator Pod is down. Right panel titled finalizers: external cleanup. A CR box with a marker labelled deletionTimestamp set and finalizer platform.example.com/cleanup present. Numbered steps with green number circles r=24: 1 the operator sees the deletion mark; 2 it cleans up the outside work, shown as small boxes labelled cordoned nodes, cloud bucket, DNS record; 3 it removes the finalizer, and the object disappears. Orange note under the right panel: the uninstall trap: if the operator is deleted first, nobody removes the finalizer, and the CR stays in Terminating. Green takeaway bar: delete CRs before you uninstall their operator.",
+  "anchor": "### Garbage collection, owner references and finalizers",
+  "alt": "Owner references let the garbage collector delete in-cluster children, while a finalizer makes the operator clean up external resources before the object is removed.",
+  "cap": "Owner references let the garbage collector remove in-cluster children, while finalizers hold deletion until the operator cleans up outside work."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "29",
+  "name": "k29-schema-gate",
+  "title": "The API server checks a custom resource before any controller sees it",
+  "spec": "A left-to-right flow. On the far left, a box labelled Apply manifest with a document icon. An arrow into a large box labelled API server schema check, drawn as a gate, with three stacked checks inside, each a rounded label with a numbered green circle r=24: 1 enum: deploymentTier must be dev, stg or prod; 2 default: webAppReplicas defaults to 2 when omitted; 3 pruning: undeclared fields are dropped. From the gate two outcome paths. Upper path, for the manifest with deploymentTier qa: a red-bordered box labelled Refused, nothing stored, with a note: the operator never hears about the request. Lower path, for a manifest that leaves out webAppReplicas: an arrow labelled stored in etcd with replicas set to 2, leading to a box labelled Operator sees a complete object. Orange note on the Refused box: the schema did its job before any controller ran. Green takeaway bar: a good schema removes work from the controller.",
+  "anchor": "### Schema and validation",
+  "alt": "The API server checks the enum, fills in defaults and prunes unknown fields before it stores a custom resource, and it refuses an invalid value outright.",
+  "cap": "The API server checks each custom resource against the schema, refusing invalid values and filling in defaults before any operator runs."
+ }
+]

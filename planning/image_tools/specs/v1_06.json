@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "06",
+  "name": "l06-passwd-line",
+  "title": "One line of /etc/passwd",
+  "spec": "Monospace line: alice:x:1042:1042:Alice Example,Room 12:/home/alice:/bin/bash. Seven callouts in order: login name; x password marker (hash is in /etc/shadow); UID 1042; GID 1042 of primary group; GECOS comment; home directory /home/alice; login shell /bin/bash. Orange note: an empty password field means no password is required, never expected.",
+  "anchor": "### `/etc/passwd`: the user table",
+  "alt": "A passwd line split into its seven colon-separated fields.",
+  "cap": "Each passwd line has seven fields: name, password marker, UID, GID, comment, home and shell."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "06",
+  "name": "l06-setuid-ids",
+  "title": "Real versus effective UID",
+  "spec": "Two-row diagram. Row 1: you run a normal program: ruid = you, euid = you. Row 2: you run a setuid program owned by root: ruid stays yours (green), euid becomes the file owner's (orange). Legend: euid is the identity used for permission checks (the actor); ruid is who started the process and who may signal it (the owner); saved UID lets euid switch back. Monospace: ps -eo pid,euser,ruser,comm.",
+  "anchor": "### Real, effective, saved (and filesystem) IDs",
+  "alt": "A setuid program keeps your real UID while its effective UID becomes the file owner.",
+  "cap": "The effective UID is used for permission checks while the real UID records who started the process."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "06",
+  "name": "l06-acl",
+  "title": "Beyond owner, group and other",
+  "spec": "Left box 'classic permissions': owner, group, other. Right box 'ACL adds named entries': u:alice:rw, u:bob:rw, g:readers:r. Between them a box 'mask caps effective permission of the extra entries'. Below: 'default ACL (setfacl -d) is inherited by new files and subdirectories'. Monospace chips: setfacl -m u:alice:rw mydir ; getfacl mydir ; ls -l shows a + at the end of the permissions. Orange highlight on the mask.",
+  "anchor": "## 4. Access control lists (ACLs)",
+  "alt": "ACLs add named user and group entries on top of owner, group and other, limited by a mask.",
+  "cap": "An ACL lets you grant specific users or groups access without changing the owner or group."
+ }
+]

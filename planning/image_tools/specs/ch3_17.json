@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "17",
+  "name": "s17-strtypes",
+  "title": "The three string types",
+  "spec": "Three boxes side by side. str: Unicode text, immutable (green). bytes: raw 8-bit values, immutable. bytearray: raw 8-bit values, mutable (orange). Under them two arrows between str and bytes: encode (str to bytes) and decode (bytes to str).",
+  "anchor": "### The three string types",
+  "alt": "str, bytes and bytearray",
+  "cap": "Python 3 has text (str), immutable bytes and mutable bytearray, and encoding converts between text and bytes."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "17",
+  "name": "s17-manage",
+  "title": "Attribute management techniques compared",
+  "spec": "A four-row table with columns technique and what it intercepts. property: one named attribute. descriptor: one attribute, reusable across classes (green). __getattr__: only attributes that are not found. __getattribute__: every attribute fetch (orange, slowest and riskiest).",
+  "anchor": "### Management techniques compared",
+  "alt": "Attribute management techniques",
+  "cap": "Properties, descriptors, __getattr__ and __getattribute__ differ in which attribute accesses they intercept."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "17",
+  "name": "s17-decoargs",
+  "title": "A decorator with arguments",
+  "spec": "Three nested rounded boxes from outside in: outer layer deco(arg) takes the decorator arguments ; middle layer decorator(func) takes the function ; inner layer wrapper(*args) runs on each call (green). Top code chip: @deco(3) above def f. Arrow caption: deco(3) returns the real decorator.",
+  "anchor": "### Adding decorator arguments",
+  "alt": "A decorator that takes arguments",
+  "cap": "A decorator with arguments has one more level: deco(arg) returns the decorator, which returns the wrapper."
+ }
+]

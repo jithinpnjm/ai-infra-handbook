@@ -14,7 +14,7 @@
   <rect width="1600" height="1060" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">OverlayFS: layers, copy-up and whiteouts</text>
 
-  <!-- Top: Merged view -->
+  
   <rect x="40" y="120" width="960" height="165" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="3.5"><path d="M72 168h18l6 8h24v26H72z"/></g>
   <text x="142" y="176" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">merged view (what the container sees as /)</text>
@@ -23,10 +23,10 @@
     <tspan x="142" dy="32">b.txt  → hidden (deleted via whiteout in upper)</tspan>
   </text>
 
-  <!-- Up arrows into merged -->
+  
   <path d="M520 336 V289" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Upper layer (RW) -->
+  
   <rect x="40" y="340" width="960" height="190" rx="18" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
   <text x="72" y="388" fill="#db8129" font-family="monospace" font-size="28" font-weight="700">upperdir= (read-write, starts empty) + workdir=</text>
   <rect x="72" y="414" width="430" height="90" rx="12" fill="#f5f8f5" stroke="#db8129" stroke-width="3"/>
@@ -37,7 +37,7 @@
   <text x="750" y="452" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">b.txt (char device 0/0)</text>
   <text x="750" y="486" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">Whiteout marker hides lower file</text>
 
-  <!-- Lower layers (RO) -->
+  
   <rect x="40" y="575" width="960" height="335" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="72" y="618" fill="#207448" font-family="monospace" font-size="25" font-weight="700">lowerdir=lower2:lower1 (read-only image layers)</text>
 
@@ -49,10 +49,10 @@
   <text x="100" y="820" fill="#303a36" font-family="monospace" font-size="25" font-weight="700">lower1 (base layer):     a.txt ("from layer 1")</text>
   <text x="100" y="856" fill="#303a36" font-family="sans-serif" font-size="24">Shared page cache across containers running the same image.</text>
 
-  <!-- Copy-up arrow from lower2 to upper -->
+  
   <path d="M287 646 V534" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#orange-arrow)"/>
 
-  <!-- Right side panel: Operational consequences -->
+  
   <rect x="1035" y="120" width="525" height="790" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="1068" y="172" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Why this matters in production</text>
 
@@ -85,7 +85,7 @@
     <tspan x="1094" dy="34" font-family="monospace">Needs d_type (XFS ftype=1).</tspan>
   </text>
 
-  <!-- Takeaway bar -->
+  
   <rect x="40" y="942" width="1520" height="80" rx="14" fill="#207448"/>
   <text x="800" y="992" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Never bake datasets or model weights into image layers; mount them as volumes so writes bypass OverlayFS.</text>
 </svg>

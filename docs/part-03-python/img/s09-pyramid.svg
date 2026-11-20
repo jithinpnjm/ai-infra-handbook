@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">The test pyramid for infrastructure code</title>
+  <desc id="svg-desc">The test pyramid for infrastructure code showing unit tests, integration tests, and end-to-end tests with rising cost and time.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1 1 L17 9 L1 17 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="88" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">The test pyramid for infrastructure code</text>
+
+  
+  <path d="M290 810 V160" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="155" y="495" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="700" fill="#303a36">cost and time</text>
+
+  
+  <rect x="690" y="160" width="560" height="190" rx="20" fill="#fbf3ea" stroke="#db8129" stroke-width="4"/>
+  
+  <g fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="942" y="180" width="56" height="46" rx="6"/>
+    <line x1="942" y1="194" x2="998" y2="194"/>
+    <circle cx="952" cy="187" r="2" fill="#db8129"/>
+    <circle cx="960" cy="187" r="2" fill="#db8129"/>
+    <circle cx="968" cy="187" r="2" fill="#db8129"/>
+    <path d="M956 210 h16 M956 217 h28" stroke-width="3"/>
+  </g>
+  <text x="970" y="278" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="700" fill="#303a36">End-to-end tests</text>
+  <text x="970" y="320" text-anchor="middle" font-family="sans-serif" font-size="26" fill="#303a36">(few, slow)</text>
+
+  
+  <rect x="545" y="390" width="850" height="190" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  
+  <g fill="none" stroke="#207448" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="958" cy="418" r="8" stroke-width="3.5"/>
+    <circle cx="958" cy="418" r="16" stroke-width="3.5"/>
+    <path d="M958 396v4 M958 436v4 M936 418h4 M976 418h4 M943 403l3 3 M970 430l3 3 M943 433l3-3 M970 406l3-3" stroke-width="3.5"/>
+    <circle cx="984" cy="424" r="5" stroke-width="3"/>
+    <circle cx="984" cy="424" r="11" stroke-width="3"/>
+    <path d="M984 408v3 M984 437v3 M968 424h3 M997 424h3 M973 413l2 2 M993 433l2 2 M973 435l2-2 M993 415l2-2" stroke-width="3"/>
+  </g>
+  <text x="970" y="508" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="700" fill="#303a36">Integration tests</text>
+  <text x="970" y="550" text-anchor="middle" font-family="sans-serif" font-size="26" fill="#303a36">(fewer, real dependencies)</text>
+
+  
+  <rect x="400" y="620" width="1140" height="190" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  
+  <g fill="none" stroke="#207448" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="944" y="640" width="52" height="48" rx="6" stroke-width="4"/>
+    <rect x="954" y="650" width="32" height="28" rx="3" stroke-width="3"/>
+    <path d="M954 634v6 M970 634v6 M986 634v6 M954 688v6 M970 688v6 M986 688v6 M938 654h6 M938 664h6 M938 674h6 M996 654h6 M996 664h6 M996 674h6" stroke-width="3"/>
+  </g>
+  <text x="970" y="738" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="700" fill="#303a36">Unit tests</text>
+  <text x="970" y="780" text-anchor="middle" font-family="sans-serif" font-size="26" fill="#303a36">(many, fast, no network)</text>
+</svg>

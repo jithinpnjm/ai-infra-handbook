@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "07",
+  "name": "d07-altitude-derating",
+  "title": "Maximum supply air temperature by site altitude",
+  "spec": "A horizontal three-step bar chart, one bar per altitude band, read left to right from sea level to the highest band. Band 1: 0 to 1,000 ft, supply temperature up to 35 C, bar full height. Band 2: 1,000 to 5,000 ft, up to 30 C, a shorter bar. Band 3: 5,000 to 10,000 ft, up to 25 C, the shortest bar, highlighted in orange with the note: the setpoint must drop below 25 C at these sites. Under the bars, a line for the maximum operating altitude of 3,048 m (10,000 ft). A side note: thinner air carries less heat per cubic foot, so the allowed temperature falls with altitude. Monospace for 0 to 1,000 ft, 1,000 to 5,000 ft, 5,000 to 10,000 ft, 35 C, 30 C and 25 C.",
+  "anchor": "### 1.1 Node specifications: size, weight, power, air, altitude and noise",
+  "alt": "Allowed supply temperature by altitude band",
+  "cap": "Altitude derating: the allowed supply air temperature falls from 35 C at sea level to 25 C above 5,000 feet."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "07",
+  "name": "d07-cable-limits",
+  "title": "Maximum cable length and the 90 percent design limit",
+  "spec": "A horizontal bar pair for each of three cable types, stacked. Row 1: passive DAC 100G, a full bar labelled max 5 m and a shorter bar inside it labelled design limit 4.5 m. Row 2: passive DAC 400G, full bar labelled max 3 m, inner bar labelled design limit 2.7 m. Row 3: active optical cable AOC, full bar labelled max 30 m, inner bar labelled design limit 27 m. A dashed vertical line at the design limit of each row. Orange highlight on the 400G row with the note: patch panels and extra switches are not allowed on InfiniBand. Below the chart a small note: keep every run under the design limit, counting vertical routing and bend radius. Monospace for DAC, AOC, 5 m, 4.5 m, 3 m, 2.7 m, 30 m and 27 m.",
+  "anchor": "### 5.1 Copper and optical cables, and the 90 percent length rule",
+  "alt": "Cable maximum lengths and 90 percent limits",
+  "cap": "Cable limits: plan every InfiniBand run under 90 percent of the maximum length for its cable type."
+ }
+]

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "15",
+  "name": "n15-attrs",
+  "title": "BGP path attribute categories",
+  "spec": "Four stacked rows with a category, meaning and examples: Well-known mandatory (must be understood and present in every UPDATE): ORIGIN, AS_PATH, NEXT_HOP; Well-known discretionary (understood, may be omitted): LOCAL_PREF, ATOMIC_AGGREGATE; Optional transitive (passed along if unknown): COMMUNITY, AGGREGATOR, Large Community; Optional non-transitive (dropped if not understood): MED, ORIGINATOR_ID, CLUSTER_LIST. Right side note chips: 'LOCAL_PREF: higher wins, default 100, travels only inside an AS'; 'MED: lower wins'. Monospace for attribute names.",
+  "anchor": "## 3. Messages, NLRI and path attributes",
+  "alt": "BGP attribute categories",
+  "cap": "Attribute categories decide what each router must understand and what it passes on."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "15",
+  "name": "n15-aspath",
+  "title": "AS_PATH loop prevention",
+  "spec": "Small triangle-plus-one topology: A (AS65000) advertises 2001:db8:100::/64 to B and C. B (AS65001) re-advertises it to D with path [65001, 65000]. D is AS65003. Each AS box shows the path stack it carries, with each hop prepending its own ASN. Orange note on a looped path: 'a router rejects any route that already contains its own ASN'. Top note: 'BGP has no split horizon; loops are still prevented'. Monospace for prefix and path lists.",
+  "anchor": "### Loop prevention without split horizon",
+  "alt": "AS_PATH loop prevention",
+  "cap": "Each AS prepends its number, and any router rejects a route that already carries its own."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "15",
+  "name": "n15-ebgpibgp",
+  "title": "eBGP versus iBGP",
+  "spec": "Two columns. eBGP: peers in different ASes, normally directly connected; next hop rewritten to the sender's address; local AS prepended to AS_PATH; TTL 1 by default. iBGP: peers in the same AS, usually loopback to loopback and multihop over the IGP; AS_PATH not modified; next hop not changed by default, so the IGP must reach the original eBGP next hop. Orange bottom note: 'Choose the session type first: the session comes up fine either way'.",
+  "anchor": "## 2. Sessions (peering)",
+  "alt": "eBGP versus iBGP",
+  "cap": "The session type decides the next hop, the AS_PATH and the TTL you must plan for."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "15",
+  "name": "n15-rr",
+  "title": "Full mesh versus route reflector",
+  "spec": "Two panels. Left 'iBGP full mesh': routers in a ring with all pairs connected; text '100 routers need 4,950 iBGP sessions'. Right 'Route reflector': one RR in the centre with client routers connected only to it; text 'two route reflectors serving the same hundred routers: 197 sessions' (green). Caveat strip in orange: 'RR picks best paths from its own IGP-cost view, which can hide path diversity'. Monospace commands row: 'neighbor X next-hop-self', 'update-source lo'.",
+  "anchor": "## 5. Advertisement rules, iBGP scaling and route reflectors",
+  "alt": "Full mesh versus route reflectors",
+  "cap": "A route reflector replaces thousands of iBGP sessions with a handful."
+ }
+]

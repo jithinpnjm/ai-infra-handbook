@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "23",
+  "name": "n23-natfirst",
+  "title": "NAT applies to the first packet only",
+  "spec": "Timeline of a flow through a Linux NAT gateway. Packet 1 goes through the nat table where the SNAT or DNAT rule matches, and the translation is written into conntrack (green). Packets 2..n skip the nat table: conntrack applies the stored translation automatically in both directions. A side box: 'Edit the NAT rule: existing flows keep the old translation until their entries are deleted or expire' (orange). Notes: 'snat to 203.0.113.9 = static address'; 'masquerade = interface address, flushes entries when the interface goes down'; 'about 64k ports per destination address and port: port exhaustion'. Monospace for rules.",
+  "anchor": "## 3. NAT in practice",
+  "alt": "NAT and conntrack",
+  "cap": "Only the first packet of a flow traverses the nat table, and conntrack applies the stored translation to the rest."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "23",
+  "name": "n23-states",
+  "title": "Conntrack states",
+  "spec": "A small state journey. A new visitor arrives: NEW (first packet of a flow, no reply seen) -> reply comes back -> ESTABLISHED (traffic seen in both directions). Side branches: RELATED (new flow related to an existing one, FTP data connection or ICMP error), INVALID (violates the state machine, out-of-window TCP, unsolicited ACK; usually drop, orange), UNTRACKED (exempted via raw/NOTRACK). Footer green bar: 'With conntrack, a rule that says allow established is enough'. Monospace for state names.",
+  "anchor": "### States",
+  "alt": "Conntrack states",
+  "cap": "A flow moves from NEW to ESTABLISHED once traffic is seen in both directions."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "23",
+  "name": "n23-exhaust",
+  "title": "Conntrack table full",
+  "spec": "Left: a table box labelled 'conntrack table: nf_conntrack_buckets (hash) and nf_conntrack_max (cap)' filled up; text 'table full: new connections dropped silently; dmesg: nf_conntrack: table full, dropping packet; conntrack -S counts insert_failed' (orange). Right: five numbered remedies in order: 1 find who creates the flows (conntrack -L, conntrack -E); 2 shorten timeouts (established default 5 days = 432,000 s, example 3600 s; time_wait 30 s); 3 raise nf_conntrack_max, buckets max/4 to max/8; 4 bypass with notrack in the raw hook; 5 move to an eBPF datapath. Green bar: 'Start with the first remedy, because it addresses the cause'.",
+  "anchor": "### Sizing, timeouts and exhaustion",
+  "alt": "Conntrack exhaustion",
+  "cap": "A full conntrack table drops new connections silently, and five remedies are applied in order."
+ }
+]

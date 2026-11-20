@@ -1,0 +1,82 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "04",
+  "name": "s04-attrsearch",
+  "title": "Attribute lookup climbs the class tree",
+  "spec": "A vertical chain of four boxes with upward arrows labelled not found, look next: instance (obj) at the bottom, class (Class), superclass (Base), object at the top. A side orange note: first match wins. A side grey note: no match anywhere raises AttributeError. Left code chip: obj.name.",
+  "anchor": "### Attribute search climbs a class tree",
+  "alt": "Attribute lookup climbs the class tree",
+  "cap": "Attribute search: Python looks in the instance, then the class, then each superclass, and the first match wins."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "04",
+  "name": "s04-assignstore",
+  "title": "Where an assignment stores an attribute",
+  "spec": "Two panels. Left panel code chip obj.x = 1 with arrow to a box instance obj containing x = 1 (only this object). Right panel code chip Class.x = 1 with arrow to a box Class containing x = 1 with arrows to the instances obj1 and obj2 labelled shared by every instance (orange).",
+  "anchor": "### Where an assignment stores an attribute",
+  "alt": "Instance versus class attribute assignment",
+  "cap": "Assignment through an instance stores on that instance, while assignment through the class is shared by all instances."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "04",
+  "name": "s04-mro",
+  "title": "The method resolution order",
+  "spec": "A diamond: class A at the top, classes B and C beneath it both pointing up to A, class D at the bottom pointing up to B and C, with code chip class D(B, C). Beside it an ordered list titled MRO: D, B, C, A, object with numbers 1 to 5. Orange note: super() calls the next class in this order.",
+  "anchor": "### Inheritance and `super()`",
+  "alt": "Method resolution order with super()",
+  "cap": "Inheritance: Python searches classes in the method resolution order, and super() moves to the next one."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "04",
+  "name": "s04-composition",
+  "title": "Is-a versus has-a",
+  "spec": "Two panels. Left panel header Inheritance (is-a): box Child with an arrow up to box Parent, note tightly coupled. Right panel header Composition (has-a, green): box Pipeline with two arrows to small boxes Client and Logger, note parts can be swapped. Bottom bar: prefer composition over inheritance.",
+  "anchor": "### Composition over inheritance",
+  "alt": "Inheritance versus composition",
+  "cap": "Composition: an object that has parts can swap them, while inheritance couples a child to its parent."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "04",
+  "name": "s04-abc",
+  "title": "Abstract base classes",
+  "spec": "Left box abstract class Provider with @abstractmethod fetch. Two boxes below pointing up with inherit arrows: class GoodProvider defines fetch (green, can be created) and class BadProvider forgets fetch (orange, TypeError when you create it). Note: the check happens at instantiation.",
+  "anchor": "### Abstract base classes",
+  "alt": "An abstract base class enforcing a method",
+  "cap": "Abstract base classes: a subclass that forgets an abstract method cannot be instantiated."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "04",
+  "name": "s04-protocol",
+  "title": "Protocols match by shape",
+  "spec": "Left box Protocol Reader requires read(). Right two boxes: class FileReader with read() (green, matches) and class Plain without read() (orange, does not match). No inheritance arrows from the class boxes. Comparison strip: ABC is by name (must inherit), Protocol is by shape (has the methods).",
+  "anchor": "### Protocols (structural typing)",
+  "alt": "Protocol structural typing",
+  "cap": "A Protocol is satisfied by any class that has the right methods, with no inheritance needed."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "04",
+  "name": "s04-dataclass",
+  "title": "What @dataclass writes for you",
+  "spec": "Left box: a short class with @dataclass and two fields host: str and port: int. Arrow to right box of three generated methods: __init__(host, port), __repr__, __eq__. Green note: less boilerplate, the same behaviour.",
+  "anchor": "## 3. Data class builders",
+  "alt": "What @dataclass generates",
+  "cap": "A dataclass generates __init__, __repr__ and __eq__ from the field list."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "04",
+  "name": "s04-typehints",
+  "title": "Type hints are checked before running",
+  "spec": "Left box: code with hints def start(port: int) -> bool. Two arrows. Top arrow to a green box static checker (mypy or pyright) reads the hints before the program runs and reports mismatches. Bottom arrow to an orange box at run time Python ignores the hints.",
+  "anchor": "## 4. Type hints and static checking",
+  "alt": "Static checking of type hints",
+  "cap": "Type hints are read by a static checker before running, and Python itself does not enforce them at run time."
+ }
+]

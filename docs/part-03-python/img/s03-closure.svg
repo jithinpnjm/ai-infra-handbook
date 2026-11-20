@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>A closure remembers its variables</title>
+  <desc>Visual infographic explaining how a closure remembers its variables: make_averager returns averager, which keeps the free variable series alive across calls.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A closure remembers its variables</text>
+
+  
+  <g id="left-box">
+    <rect x="60" y="135" width="350" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(207, 165)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <line x1="0" y1="18" x2="56" y2="18" />
+      <circle cx="12" cy="9" r="2.5" fill="#207448" />
+      <circle cx="22" cy="9" r="2.5" fill="#207448" />
+      <path d="M 16 34 L 10 40 L 16 46" />
+      <path d="M 40 34 L 46 40 L 40 46" />
+      <line x1="30" y1="30" x2="24" y2="50" />
+    </g>
+
+    
+    <text x="235" y="265" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">make_averager()</text>
+
+    
+    <rect x="85" y="315" width="300" height="350" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(115, 375)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="75" height="56" rx="6" fill="#e8f1ea" />
+      <rect x="83" y="0" width="75" height="56" rx="6" fill="#e8f1ea" />
+      <rect x="166" y="0" width="74" height="56" rx="6" fill="#e8f1ea" />
+      <circle cx="37" cy="28" r="4" fill="#207448" />
+      <circle cx="120" cy="28" r="4" fill="#207448" />
+      <circle cx="203" cy="28" r="4" fill="#207448" />
+    </g>
+
+    
+    <text x="235" y="525" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">series</text>
+  </g>
+
+  
+  <g id="arrow-returns">
+    <text x="490" y="235" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">returns</text>
+    <line x1="410" y1="260" x2="566" y2="260" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  </g>
+
+  
+  <g id="middle-box">
+    <rect x="570" y="135" width="460" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(772, 165)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <circle cx="28" cy="28" r="12" />
+      <path d="M 28 6 V 10 M 28 46 V 50 M 6 28 H 10 M 46 28 H 50" />
+      <path d="M 12 12 L 15 15 M 41 41 L 44 44 M 12 44 L 15 41 M 41 15 L 44 12" />
+    </g>
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="800" y="270" font-family="monospace">averager</tspan>
+      <tspan x="800" y="315">(inner function)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="415" x2="800" y2="495" stroke="#207448" stroke-width="4" stroke-dasharray="8 6" />
+
+  
+  <g id="cell-box">
+    <rect x="570" y="495" width="460" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(772, 515)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="44" rx="6" fill="#ffffff" />
+      <line x1="0" y1="22" x2="56" y2="22" />
+      <circle cx="14" cy="11" r="3" fill="#207448" />
+      <circle cx="28" cy="11" r="3" fill="#207448" />
+      <circle cx="42" cy="11" r="3" fill="#207448" />
+    </g>
+
+    
+    <text text-anchor="middle" fill="#303a36">
+      <tspan x="800" y="612" font-family="monospace" font-size="28" font-weight="bold">series</tspan>
+      <tspan x="800" y="652" font-family="sans-serif" font-size="24" font-weight="bold">(free variable, kept alive)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="1070" y="135" width="470" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(1277, 160)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="48" rx="8" />
+      <polyline points="14,16 26,24 14,32" />
+      <line x1="32" y1="32" x2="44" y2="32" />
+    </g>
+
+    
+    <g id="call-1">
+      <rect x="1090" y="235" width="430" height="125" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <circle cx="1122" cy="297" r="18" fill="#207448" />
+      <text x="1122" y="305" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      <text x="1155" y="306" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">averager(10)</text>
+      <rect x="1380" y="272" width="115" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="1437" y="306" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">10.0</text>
+    </g>
+
+    
+    <g id="call-2">
+      <rect x="1090" y="385" width="430" height="125" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <circle cx="1122" cy="447" r="18" fill="#207448" />
+      <text x="1122" y="455" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      <text x="1155" y="456" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">averager(11)</text>
+      <rect x="1380" y="422" width="115" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="1437" y="456" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">10.5</text>
+    </g>
+
+    
+    <g id="call-3">
+      <rect x="1090" y="535" width="430" height="125" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <circle cx="1122" cy="597" r="18" fill="#207448" />
+      <text x="1122" y="605" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      <text x="1155" y="606" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">averager(12)</text>
+      <rect x="1380" y="572" width="115" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="1437" y="606" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">11.0</text>
+    </g>
+  </g>
+
+  
+  <g id="orange-note">
+    <rect x="60" y="745" width="1480" height="115" rx="16" fill="#fff7f0" stroke="#db8129" stroke-width="3.5" />
+    
+    <g transform="translate(95, 775)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 10 6 H 34 L 46 18 V 46 H 10 Z" />
+      <path d="M 34 6 V 18 H 46" />
+      <line x1="18" y1="26" x2="38" y2="26" />
+      <line x1="18" y1="35" x2="32" y2="35" />
+    </g>
+    
+    <text x="820" y="813" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">the state survives after make_averager returns</text>
+  </g>
+</svg>

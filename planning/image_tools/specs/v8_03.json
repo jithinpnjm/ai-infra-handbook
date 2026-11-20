@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "03",
+  "name": "b03-gateway-order",
+  "title": "Where a node's default gateway comes from",
+  "spec": "A vertical decision chain of three boxes with arrows going down, each box a yes or no question with the answer on the side. Box 1: Does the category set a default gateway? Yes arrow goes right to a green end box: use the category gateway. No arrow goes down to Box 2: Does the network object have a gateway? Yes arrow goes right to a green end box: use the network gateway. No arrow goes down to Box 3: Is the gateway 0.0.0.0? Yes arrow goes right to an orange end box: DHCP on the head node hands out 10.141.255.254, the head node alias. Monospace for 0.0.0.0 and 10.141.255.254. Small note under the chain: the order is set by the code in bcm_netconf.default_gateway.",
+  "anchor": "### Four places an internal-network value can come from",
+  "alt": "The order for choosing a default gateway",
+  "cap": "Default gateway: the category wins, then the network gateway, and a 0.0.0.0 gateway falls back to the head node alias."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "03",
+  "name": "b03-mig-budget",
+  "title": "Why an over-long MIG profile list silently drops slices",
+  "spec": "Two horizontal bars of seven equal slots each, labelled GPU slices 1 to 7 along the top. Upper bar, labelled 5*1g.5gb,2g.10gb: five small slots marked 1g.5gb and then one wide slot spanning two slots marked 2g.10gb, all seven filled, green, with a tick and the text: fits, 7 of 7 slices. Lower bar, labelled 6*1g.5gb,2g.10gb: six small slots marked 1g.5gb filled green, then the seventh slot filled, and the 2g.10gb entry shown as a dashed grey outline sticking out past the end of the bar, with the note: needs 2 more slices, left unallocated, no error shown. Orange highlight on the dashed part. Monospace for the profile strings and the profile names.",
+  "anchor": "## 7. GPU settings (3.17)",
+  "alt": "Slice budget for MIG profile lists",
+  "cap": "MIG budget: a profile list needing more than seven GPU slices quietly loses the entries that do not fit."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "03",
+  "name": "b03-beyond-cmdaemon",
+  "title": "The order of preference for going beyond CMDaemon",
+  "spec": "A staircase of six steps rising from bottom left to top right, numbered 1 to 6 with number circles, each step a box with a title and one short line. Step 1 (bottom, green): Configure through CMDaemon in cmsh or Base View, CMDaemon tracks the state. Step 2: Use a different image for a category or a node. Step 3: Place files through the image. Step 4: Use FrozenFile to stop CMDaemon rewriting a file. Step 5: Use initialize and finalize scripts, which run at the initrd stage. Step 6 (top, orange): Use a shared directory for the software the nodes run. Left side arrow pointing up labelled: more of your own tracking at each step. Monospace for FrozenFile, initialize and finalize.",
+  "anchor": "## 8. Going beyond CMDaemon: the manual's order of preference",
+  "alt": "Six ways to go beyond CMDaemon in order",
+  "cap": "Beyond CMDaemon: start with CMDaemon settings and move down the list only when none fits, since each step adds your own tracking."
+ }
+]

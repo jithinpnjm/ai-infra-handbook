@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>A dotted package tree</title>
+  <desc>Directory tree of a dotted Python package showing dir0 on sys.path, nested packages dir1 and dir2, and three import styles with their behaviors.</desc>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A dotted package tree</text>
+
+  
+  <rect x="60" y="130" width="680" height="870" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="90" y="155" width="620" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(108, 170)">
+    <path d="M 4 14 L 18 14 L 24 22 L 48 22 C 50 22 52 24 52 26 L 52 46 C 52 48 50 50 48 50 L 4 50 C 2 50 0 48 0 46 L 0 18 C 0 16 2 14 4 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="180" y="210" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">dir0/ on sys.path</text>
+
+  
+  <path d="M 136 240 L 136 295 L 160 295" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="130" y="270" width="580" height="705" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(150, 285)">
+    <path d="M 4 14 L 18 14 L 24 22 L 48 22 C 50 22 52 24 52 26 L 52 46 C 52 48 50 50 48 50 L 4 50 C 2 50 0 48 0 46 L 0 18 C 0 16 2 14 4 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="220" y="325" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">dir1/</text>
+
+  
+  <path d="M 178 345 L 178 610" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 178 405 L 210 405" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 178 495 L 210 495" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 178 610 L 210 610" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="210" y="370" width="470" height="70" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(225, 377)">
+    <path d="M 12 4 L 32 4 L 44 16 L 44 48 C 44 50 42 52 40 52 L 12 52 C 10 52 8 50 8 48 L 8 8 C 8 6 10 4 12 4 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 32 4 L 32 16 L 44 16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="285" y="415" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">__init__.py</text>
+
+  
+  <rect x="210" y="460" width="470" height="90" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(225, 477)">
+    <path d="M 12 4 L 32 4 L 44 16 L 44 48 C 44 50 42 52 40 52 L 12 52 C 10 52 8 50 8 48 L 8 8 C 8 6 10 4 12 4 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 32 4 L 32 16 L 44 16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="285" y="498" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">mod.py</text>
+  <text x="285" y="534" font-family="monospace" font-size="24" fill="#207448">var = 'hack'</text>
+
+  
+  <rect x="210" y="570" width="470" height="380" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(230, 585)">
+    <path d="M 4 14 L 18 14 L 24 22 L 48 22 C 50 22 52 24 52 26 L 52 46 C 52 48 50 50 48 50 L 4 50 C 2 50 0 48 0 46 L 0 18 C 0 16 2 14 4 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="300" y="625" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">dir2/</text>
+
+  
+  <path d="M 258 645 L 258 835" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 258 700 L 290 700" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 258 835 L 290 835" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="290" y="665" width="365" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(305, 672)">
+    <path d="M 12 4 L 32 4 L 44 16 L 44 48 C 44 50 42 52 40 52 L 12 52 C 10 52 8 50 8 48 L 8 8 C 8 6 10 4 12 4 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 32 4 L 32 16 L 44 16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="365" y="710" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">__init__.py</text>
+
+  
+  <rect x="290" y="755" width="365" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(305, 805)">
+    <path d="M 12 4 L 32 4 L 44 16 L 44 48 C 44 50 42 52 40 52 L 12 52 C 10 52 8 50 8 48 L 8 8 C 8 6 10 4 12 4 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 32 4 L 32 16 L 44 16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="365" y="815" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">mod.py</text>
+  <text x="365" y="865" font-family="monospace" font-size="24" fill="#207448">var = 'code'</text>
+
+  
+
+  
+  <rect x="780" y="130" width="760" height="265" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(820, 160)">
+    <rect x="4" y="6" width="48" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 14 20 L 22 27 L 14 34 M 26 34 L 38 34" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="900" y="198" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">import dir1.mod</text>
+  <text x="820" y="295" font-family="sans-serif" font-size="26" fill="#303a36">runs dir1/__init__.py then dir1/mod.py</text>
+
+  
+  <rect x="780" y="432" width="760" height="265" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(820, 462)">
+    <circle cx="22" cy="22" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 32 32 L 48 48" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="22" cy="22" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="900" y="500" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">import dir1.dir2.mod</text>
+  <text x="820" y="597" font-family="sans-serif" font-size="26" fill="#303a36">reaches the nested mod</text>
+
+  
+  <rect x="780" y="735" width="760" height="265" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(820, 765)">
+    <rect x="4" y="6" width="48" height="42" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 16 34 L 38 18 M 38 18 L 26 18 M 38 18 L 38 30" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="900" y="803" font-family="monospace" font-size="30" font-weight="bold" fill="#db8129">from dir1.dir2 import mod</text>
+  <text x="820" y="900" font-family="sans-serif" font-size="26" fill="#303a36">shortens access</text>
+</svg>

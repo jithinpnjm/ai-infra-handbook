@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "s08-metrictypes",
+  "title": "Pick the metric type first",
+  "spec": "A table of four rows, left column the metric type as a green chip, right column what it answers. Counter: only goes up, query with rate(). Gauge: moves up and down, temperature or queue depth. Histogram: bucketed observations with _sum and _count, latency distributions, can be aggregated (orange highlight). Summary: quantiles computed on the client, cannot be aggregated across instances.",
+  "anchor": "### 4.1 Metric model essentials",
+  "alt": "The Prometheus metric types",
+  "cap": "Metric types: counter, gauge, histogram and summary each answer a different question."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "s08-cardinality",
+  "title": "Bounded labels versus cardinality explosion",
+  "spec": "Two panels. Left panel (green) Bounded labels: a metric name with labels host, gpu index, sensor and a small count of series. Right panel (orange) Unbounded labels: label user id, request id or timestamp, arrow to a growing pile of series labelled every new value makes a new series. Bottom bar: each unique label combination is its own time series.",
+  "anchor": "### 4.1 Metric model essentials",
+  "alt": "Label cardinality",
+  "cap": "Labels need a bounded set of values, because every unique combination becomes its own time series."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "s08-collector",
+  "title": "A custom collector reads at scrape time",
+  "spec": "A flow left to right: Prometheus ; GET /metrics every scrape interval ; exporter with a custom collector ; collect() reads the hardware now ; yields fresh metrics in the response. Orange note: no stale values are cached between scrapes. Green note: also expose an up metric and scrape_duration_seconds.",
+  "anchor": "### 4.3 The recommended way: a custom collector",
+  "alt": "A custom collector at scrape time",
+  "cap": "A custom collector gathers values when Prometheus scrapes, so the numbers are always fresh."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "s08-redfish",
+  "title": "The Redfish resource tree",
+  "spec": "A tree: root box /redfish/v1/ (service root) with branches to four boxes: Systems (power state, BIOS, processors, memory), Chassis (enclosure, thermal, power, sensors, GPUs), Managers (the BMC itself, network, logs), UpdateService (firmware inventory). A green note: follow @odata.id links, do not hard-code vendor paths. An orange note: actions are POST requests to Actions/... targets.",
+  "anchor": "### 5.1 Resource model",
+  "alt": "The Redfish resource tree",
+  "cap": "Redfish hangs everything off the service root, and resources link to each other with @odata.id."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "s08-paginate",
+  "title": "Walking every page",
+  "spec": "A horizontal chain of three page boxes: page 1, page 2, page 3, joined by arrows labelled next link. The last page box has no next link and an arrow to a green box done: all items collected. Orange note: stop only when there is no next page, not when a page looks short.",
+  "anchor": "### 3.4 Pagination and completeness",
+  "alt": "Following pagination to completion",
+  "cap": "Pagination: follow the next link until none is left, so the result is complete."
+ }
+]

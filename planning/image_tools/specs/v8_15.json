@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "15",
+  "name": "b15-psu-feeds",
+  "title": "Why PSU feed wiring decides how many servers a feed loss takes",
+  "spec": "Two side-by-side panels for comparison. Left panel titled Interleaved 3 plus 3, not recommended: a DGX B200 server drawn as a box with six small PSU squares, three wired to Feed A (PDU A) and three to Feed B (PDU B). Below, a red cross on PDU A with the note: one PDU fails, 3 of 6 PSUs remain, below the 5 needed, the server goes down, and every server in the rack does too. Right panel titled 6 to make 5: the same server with six PSU squares, each wired to its own independent feed, six separate feed boxes shown along the bottom. A single feed marked failed with a cross, with the note: 5 of 6 PSUs stay energized, the server keeps running. Orange highlight on the left panel's cross, with the note: never wire 3 plus 3. Monospace for PDU A, PDU B, 5 of 6 and 6 to make 5.",
+  "anchor": "## 5. Power and cooling: the DGX B200 numbers",
+  "alt": "Interleaved and six-to-make-five PSU wiring",
+  "cap": "PSU feeds: a DGX B200 needs five of six supplies, so an interleaved split loses the whole server on one feed failure."
+ }
+]

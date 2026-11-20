@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "08",
+  "name": "d08-blocking-ratio",
+  "title": "Compute leaves at 1 to 3 blocking versus non-blocking storage leaves",
+  "spec": "Two side-by-side leaf-switch panels for comparison. Left panel, labelled compute leaf SN5600D, 1:3 blocking: a box with 72 host ports drawn as small squares along the bottom, and 24 uplink ports along the top connected to the spine, with a bar chart beside it showing 24 uplinks against 72 downlinks, one third as tall. Note: 72 downlinks to 24 uplinks is 1:3 blocking, acceptable for bursty compute traffic. Right panel, labelled storage leaf, non-blocking: a box with 72 storage downlinks and 72 uplinks to the spine, two equal bars, with the note: 1:1, arrays are never limited by the leaf. Orange highlight on the left panel's uplink bar. Monospace for 24 x 400G, 72 x 400G, 1:3 and 1:1.",
+  "anchor": "### 4.1 Compute leaves at 1:3 and storage leaves that never block",
+  "alt": "Compute leaves blocking 1 to 3 versus non-blocking storage leaves",
+  "cap": "Blocking ratio: compute leaves carry 72 downlinks on 24 uplinks, while storage leaves match uplinks to downlinks so arrays are never limited."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "08",
+  "name": "d08-runai-split",
+  "title": "Where the Run:ai control plane and cluster components run",
+  "spec": "Two stacked panels with a connecting arrow between them. Top panel, labelled user-space Kubernetes cluster: the Run:ai control plane backend, with the note: central multi-cluster orchestration, tenant quotas, user interface and API. Bottom panel, labelled administrative Kubernetes infrastructure: the Run:ai cluster components, with the note: close to the DGX GB300 hardware and the hardware operators. A dashed arrow from the top panel down to the bottom panel labelled the backend manages cluster components. Orange highlight on the bottom panel's note about the hardware. Monospace for Run:ai, user-space Kubernetes and administrative Kubernetes.",
+  "anchor": "### 6.1 The NVIDIA Run:ai two-cluster split on BCM-managed SuperPODs",
+  "alt": "Run:ai control plane and cluster components on two clusters",
+  "cap": "Run:ai split: the control plane sits on the user-space cluster for central management, and its cluster components sit on the administrative cluster near the hardware."
+ }
+]

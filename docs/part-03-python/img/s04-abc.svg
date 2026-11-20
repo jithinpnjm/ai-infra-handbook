@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Abstract base classes</title>
+  <desc>Inheritance from an abstract base class: GoodProvider defines fetch and can be created; BadProvider forgets fetch and raises TypeError at instantiation.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="75" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold">Abstract base classes</text>
+
+  
+  <g id="abstract-class-provider">
+    <rect x="460" y="120" width="680" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(495, 145)">
+      <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8 6"/>
+      <path d="M 18 28 L 12 34 L 18 40 M 38 28 L 44 34 L 38 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 30 16 L 26 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="575" y="180" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold">abstract class Provider</text>
+    <text x="575" y="245" fill="#207448" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold">@abstractmethod fetch</text>
+  </g>
+
+  
+  <g id="inheritance-arrows">
+    
+    <path d="M 420 470 L 420 405 Q 420 395 430 395 L 800 395" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 1180 470 L 1180 405 Q 1180 395 1170 395 L 800 395" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <path d="M 800 395 L 800 312" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+    
+    
+    <rect x="730" y="345" width="140" height="42" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="374" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" text-anchor="middle">inherit</text>
+  </g>
+
+  
+  <g id="class-good-provider">
+    <rect x="80" y="470" width="680" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(115, 495)">
+      <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 16 28 L 24 36 L 40 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <text x="195" y="535" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold">class GoodProvider</text>
+    <text x="195" y="590" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="26">defines fetch</text>
+    
+    
+    <rect x="195" y="625" width="240" height="50" rx="10" fill="#207448"/>
+    <text x="315" y="658" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" text-anchor="middle">can be created</text>
+  </g>
+
+  
+  <g id="class-bad-provider">
+    <rect x="840" y="470" width="680" height="240" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(875, 495)">
+      <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#db8129" stroke-width="4"/>
+      <path d="M 18 18 L 38 38 M 38 18 L 18 38" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="955" y="535" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold">class BadProvider</text>
+    <text x="955" y="590" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="26">forgets fetch</text>
+    
+    
+    <rect x="955" y="625" width="420" height="50" rx="10" fill="#db8129"/>
+    <text x="1165" y="658" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" text-anchor="middle">TypeError when you create it</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="80" y="760" width="1440" height="80" rx="16" fill="#207448"/>
+    <text x="800" y="810" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" text-anchor="middle">Note: the check happens at instantiation</text>
+  </g>
+</svg>

@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Lookup order</title>
+  <desc>Flowchart illustrating Python attribute lookup order from obj.name to descriptor, instance dictionary, class attribute, __getattr__, or AttributeError.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <polygon points="0,3 16,9 0,15" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <polygon points="0,3 16,9 0,15" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Lookup order</text>
+
+  <!-- ==================== ARROWS ==================== -->
+  <!-- A -> B -->
+  <line x1="365" y1="170" x2="365" y2="230" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- B -> C (orange priority arrow) -->
+  <line x1="680" y1="285" x2="950" y2="285" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <text x="815" y="271" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">data descriptor</text>
+
+  <!-- B -> D -->
+  <line x1="365" y1="340" x2="365" y2="430" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="385" y="388" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">otherwise</text>
+
+  <!-- D -> E -->
+  <line x1="680" y1="480" x2="950" y2="480" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="815" y="466" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">yes</text>
+
+  <!-- D -> F -->
+  <line x1="365" y1="530" x2="365" y2="620" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="385" y="578" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  <!-- F -> G -->
+  <line x1="680" y1="675" x2="950" y2="675" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="815" y="661" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">yes</text>
+
+  <!-- F -> H -->
+  <line x1="365" y1="730" x2="365" y2="820" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="385" y="778" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  <!-- H -> I -->
+  <line x1="680" y1="870" x2="950" y2="870" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="815" y="856" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">yes</text>
+
+  <!-- H -> J -->
+  <line x1="365" y1="920" x2="365" y2="1010" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="385" y="968" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+
+  <!-- ==================== NODES ==================== -->
+
+  <!-- Node A: obj.name -->
+  <g id="node-A">
+    <rect x="155" y="90" width="420" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Object container with inner property dot -->
+    <rect x="175" y="102" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="203" cy="130" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <!-- Text -->
+    <text x="251" y="140" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">obj.name</text>
+  </g>
+
+  <!-- Node B: name found on type MRO? -->
+  <g id="node-B">
+    <rect x="50" y="230" width="630" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Magnifying glass for MRO lookup -->
+    <circle cx="95" cy="280" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="107" y1="292" x2="123" y2="308" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <!-- Text -->
+    <text x="146" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">name found on type MRO?</text>
+  </g>
+
+  <!-- Node C: descriptor.__get__ (wins over instance dict) -->
+  <g id="node-C">
+    <rect x="950" y="230" width="600" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Shield for priority / winning -->
+    <path d="M998 257 L1022 268 V288 C1022 302 998 311 998 311 C998 311 974 302 974 288 V268 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <!-- Text -->
+    <text x="1046" y="275" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">descriptor.__get__ <tspan x="1046" dy="37" font-family="sans-serif" font-size="24" font-weight="normal">(wins over instance dict)</tspan></text>
+  </g>
+
+  <!-- Node D: in instance __dict__? -->
+  <g id="node-D">
+    <rect x="50" y="430" width="630" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Table / key-value dict grid -->
+    <rect x="70" y="452" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="70" y1="471" x2="126" y2="471" stroke="#207448" stroke-width="4"/>
+    <line x1="70" y1="490" x2="126" y2="490" stroke="#207448" stroke-width="4"/>
+    <line x1="90" y1="452" x2="90" y2="508" stroke="#207448" stroke-width="4"/>
+    <!-- Text -->
+    <text x="146" y="491" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">in instance __dict__?</text>
+  </g>
+
+  <!-- Node E: return instance value -->
+  <g id="node-E">
+    <rect x="950" y="430" width="600" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Checkmark in circle -->
+    <circle cx="998" cy="480" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="986,480 995,489 1012,470" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Text -->
+    <text x="1046" y="491" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">return instance value</text>
+  </g>
+
+  <!-- Node F: non-data descriptor or plain class attr? -->
+  <g id="node-F">
+    <rect x="50" y="620" width="630" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Application window template -->
+    <rect x="70" y="647" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="70" y1="665" x2="126" y2="665" stroke="#207448" stroke-width="4"/>
+    <circle cx="84" cy="656" r="3" fill="#207448"/>
+    <circle cx="96" cy="656" r="3" fill="#207448"/>
+    <!-- Text -->
+    <text x="146" y="665" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">non-data descriptor or <tspan x="146" dy="37">plain class attr?</tspan></text>
+  </g>
+
+  <!-- Node G: descriptor.__get__ / class attr -->
+  <g id="node-G">
+    <rect x="950" y="620" width="600" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Gear for method/attr execution -->
+    <circle cx="998" cy="675" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M998 651 V657 M998 693 V699 M974 675 H980 M1016 675 H1022 M981 658 L985 662 M1011 688 L1015 692 M981 692 L985 688 M1011 662 L1015 658" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <!-- Text -->
+    <text x="1046" y="665" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">descriptor.__get__ / <tspan x="1046" dy="37" font-family="sans-serif">class attr</tspan></text>
+  </g>
+
+  <!-- Node H: __getattr__ defined? -->
+  <g id="node-H">
+    <rect x="50" y="820" width="630" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Branching switch / fork -->
+    <circle cx="84" cy="870" r="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="112" cy="854" r="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="112" cy="886" r="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M91 870 H98 L105 857 M98 870 L105 883" fill="none" stroke="#207448" stroke-width="4"/>
+    <!-- Text -->
+    <text x="146" y="881" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">__getattr__ defined?</text>
+  </g>
+
+  <!-- Node I: __getattr__(name) -->
+  <g id="node-I">
+    <rect x="950" y="820" width="600" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Terminal prompt >_ -->
+    <rect x="970" y="842" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="982,862 992,870 982,878" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="996" y1="878" x2="1012" y2="878" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <!-- Text -->
+    <text x="1046" y="881" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">__getattr__(name)</text>
+  </g>
+
+  <!-- Node J: AttributeError -->
+  <g id="node-J">
+    <rect x="155" y="1010" width="420" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Alert warning triangle -->
+    <polygon points="203,1031 227,1075 179,1075" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="203" y1="1046" x2="203" y2="1058" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="203" cy="1067" r="2" fill="#207448"/>
+    <!-- Text -->
+    <text x="251" y="1066" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">AttributeError</text>
+  </g>
+</svg>

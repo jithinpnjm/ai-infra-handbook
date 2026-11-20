@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "02",
+  "name": "b02-ip-offset",
+  "title": "Why the BMC needs an IP offset",
+  "spec": "Two horizontal rows of address boxes sharing one network, 10.141.0.0/16. Top row labelled boot interface (BOOTIF) with ten small boxes 10.141.0.1 to 10.141.0.10. Bottom row labelled bmc interface with offset 0.0.0.20 with ten small boxes 10.141.0.21 to 10.141.0.30. A green bracket or gap between the two rows, with the note: the offset moves the BMC sequence along the block so no address is claimed twice. Beside the first row a grey note: without the offset, both sequences start at .1 and collide on every address. Orange highlight on the gap between the two rows. Monospace for the addresses and the offset value.",
+  "anchor": "## 4. Names and addresses",
+  "alt": "Boot and BMC address ranges with an offset",
+  "cap": "IP offset: the BMC addresses start after the boot addresses, so the two interfaces never share an address."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "02",
+  "name": "b02-burn-split",
+  "title": "How a burn run uses the pre-install and post-install phases",
+  "spec": "A left-to-right flow of four steps with number circles 1 to 4 and arrows between them. Step 1: burn --config <name> -n node001..node064 start, reboot the node into the node-installer environment (RAM-based). Step 2: run every pre-install phase, destructive block-level disk and memory tests allowed, local drives not mounted as a root filesystem. Step 3: all pre-install phases pass, provision the full software image onto disk and boot the production kernel. Step 4: run every post-install phase with full driver support, examples hpl, GPU DCGM stress tests, InfiniBand bandwidth checks. Above step 4, a side container labelled stress phase with two parallel boxes: a timed stress test (hpl or memtester) and, beside it, a monitor marked endless equals 1 (mce_check, kmon), with the note: monitors stop when the last non-endless test in the phase finishes. Orange note on step 2: destructive tests are safe here because no running OS is on the drives.",
+  "anchor": "### 10.2 Designing a production burn-in gate with `burnconfigs`",
+  "alt": "The pre-install and post-install burn phases",
+  "cap": "Burn-in order: destructive tests run in the RAM-based installer before the image is provisioned, then full-stack tests run on the production kernel."
+ }
+]

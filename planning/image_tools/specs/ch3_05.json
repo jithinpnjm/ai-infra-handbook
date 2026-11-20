@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "s05-trycycle",
+  "title": "How try, except, else and finally run",
+  "spec": "A flowchart: box try body, then a diamond Exception raised? Yes goes to matching except block. No goes to else block. Both paths and the unhandled path join a box finally that always runs. After finally an arrow to continue. An orange note on finally: runs on success, on handled errors and on unhandled errors.",
+  "anchor": "### Mechanics",
+  "alt": "The try statement flow",
+  "cap": "Exception mechanics: finally runs whether the body succeeds, is handled, or fails unhandled."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "s05-logging",
+  "title": "Logger to handler to formatter",
+  "spec": "Left: a column of five level chips from low to high: DEBUG, INFO, WARNING, ERROR, CRITICAL, with a threshold line labelled records below the level are dropped. Right: a flow logger -> handler -> formatter -> destination (file, stream). Orange note: set the level once at start-up.",
+  "anchor": "## 2. Logging",
+  "alt": "How logging moves a record",
+  "cap": "Logging: a logger drops records below its level, then a handler and a formatter send the rest to a destination."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "s05-atomic",
+  "title": "Atomic file replace",
+  "spec": "A left-to-right flow of four boxes: write to a temp file in the same directory ; flush and fsync ; os.replace(temp, target) ; readers see old file or new file, never half a file (green). A grey crossed-out box below: writing the target directly can leave a half-written file.",
+  "anchor": "### Safe writes: atomic replace",
+  "alt": "Atomic replace for safe writes",
+  "cap": "Safe writes: write a temp file, then replace the target in one step so readers never see half a file."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "s05-subproc",
+  "title": "Safe subprocess defaults",
+  "spec": "Left code chip box: subprocess.run([\"ls\", \"-l\"], capture_output=True, text=True, timeout=30, check=True). Five green labelled pointers to its parts: argument list not a string ; capture_output gets stdout and stderr ; text=True decodes to str ; timeout stops hangs ; check=True raises on failure. An orange note: shell=True with user input invites injection.",
+  "anchor": "### Safe defaults",
+  "alt": "Safe defaults for subprocess.run",
+  "cap": "Safe subprocess defaults: pass an argument list, set a timeout, and raise on a non-zero exit."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "s05-signals",
+  "title": "Graceful shutdown on SIGTERM",
+  "spec": "A left-to-right flow of five steps: 1 SIGTERM arrives ; 2 handler sets a stop flag ; 3 the loop finishes the current item ; 4 cleanup closes files and connections ; 5 exit with status 0 (green). Under it, an orange note: the handler should only set a flag, not do the work.",
+  "anchor": "### Signals and graceful shutdown",
+  "alt": "Graceful shutdown with a signal handler",
+  "cap": "Graceful shutdown: the signal handler sets a flag, the loop finishes its item, then cleanup runs."
+ }
+]

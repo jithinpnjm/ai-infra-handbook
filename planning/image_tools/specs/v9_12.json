@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "12",
+  "name": "d12-zero-stages",
+  "title": "Per-GPU model memory for a 70B model at each ZeRO stage",
+  "spec": "A vertical bar chart with four bars from left to right, labelled DDP ZeRO-0, ZeRO-1, ZeRO-2 and ZeRO-3 slash FSDP. Bar heights to scale against a horizontal dashed line labelled 80 GB H100 memory. DDP bar: 1,120.0 GB, far above the line, marked does not fit. ZeRO-1 bar: 293.12 GB, above the line, marked does not fit. ZeRO-2 bar: 155.31 GB, above the line, marked does not fit. ZeRO-3 bar: 17.50 GB, below the line, green, marked fits with 62.5 GB left for activations. Under each bar a short label of what is sharded: nothing; optimizer states; optimizer and gradients; weights, gradients and optimizer. Orange highlight on the ZeRO-3 bar. Monospace for 1,120.0 GB, 293.12 GB, 155.31 GB, 17.50 GB and 80 GB.",
+  "anchor": "### 3.2 Why plain DDP runs out of memory, and what ZeRO changes",
+  "alt": "Per-GPU memory for a 70B model at each ZeRO stage",
+  "cap": "ZeRO stages: only full sharding of weights, gradients and optimizer state brings a 70B model under the 80 GB limit on 64 GPUs."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "12",
+  "name": "d12-gang-deadlock",
+  "title": "Two jobs deadlock on plain Kubernetes, but a gang scheduler admits one at a time",
+  "spec": "Two stacked panels for comparison. Top panel, labelled plain Kubernetes Jobs, deadlock: a cluster of four node boxes. Job A holds two nodes and job B holds the other two. Each job shows two pods waiting, pending for a node that never frees up. A circular arrow between job A and job B with the note: each waits for the other to release nodes. Under the panel a red note: all 64 GPUs held, no useful work, until the rendezvous times out after about 30 minutes. Bottom panel, labelled with a gang scheduler, Kueue, Volcano, PyTorchJob or Run:ai: the same four nodes, with job A admitted as a whole group onto all its nodes and job B queued outside until the gang fits. A green tick with the note: all pods start or none start. Orange highlight on the circular arrow in the top panel. Monospace for Kueue, Volcano, PyTorchJob and Run:ai.",
+  "anchor": "### 4.1 An Indexed Job, a headless Service and the flaw without gang scheduling",
+  "alt": "Deadlock between two partial jobs versus gang scheduling",
+  "cap": "Gang scheduling: the default scheduler can leave two jobs holding half the nodes each, while a gang scheduler admits a whole job or none of it."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "12",
+  "name": "d12-incident-phases",
+  "title": "Three time-bounded phases of a GPU failure response",
+  "spec": "A horizontal timeline with three phase blocks in sequence, left to right, each a box with a time limit above it. Phase 1 block, time limit 5 minutes or less, titled Initial response: confirm the fault with nvidia-smi, dmesg Xid or DCGM health watch; terminate the stalled synchronous job. Phase 2 block, time limit 15 minutes or less, titled Mitigation: GPU reset, OS reboot or Redfish power cycle; run dcgmi diag -r 2; if it passes resume from checkpoint; if not cordon the node, take a spare and resume. Phase 3 block, time limit 30 to 60 minutes, titled Recovery and post-incident: collect nvidia-bug-report.sh, nvsm dump health and BMC logs; dispatch hardware RMA for the cordoned node. A branch arrow from phase 2 going down to a side box labelled spare node, resume from checkpoint. Orange highlight on phase 1 with the note: one dead GPU blocks all 64 at the collective barrier. Monospace for nvidia-smi, dmesg, dcgmi diag -r 2 and nvsm dump health.",
+  "anchor": "### 5.3 The three-phase GPU failure incident response playbook",
+  "alt": "Three time-bounded phases of GPU failure response",
+  "cap": "Failure playbook: confirm and stop the stalled job within five minutes, try mitigation and a spare within fifteen, then collect evidence and open the RMA."
+ }
+]

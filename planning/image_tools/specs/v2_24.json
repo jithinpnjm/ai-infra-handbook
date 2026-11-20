@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "24",
+  "name": "n24-pbrfix",
+  "title": "Per-NIC routing table fix",
+  "spec": "Server with eth0 10.0.0.5/24 (gateway 10.0.0.1, management) and eth1 192.168.1.5/24 (storage, gateway 192.168.1.1). Left problem in orange: request comes in on eth1, reply leaves via the default route out of eth0 with the storage address as its source. Right fix in green: 'ip rule add from 192.168.1.5/32 lookup storage priority 1000' selects table 'storage' (200 storage in /etc/iproute2/rt_tables) which holds 'default via 192.168.1.1 dev eth1' and the connected route. Verification chip in monospace: 'ip route get 10.50.0.9 from 192.168.1.5 iif lo' shows via 192.168.1.1 dev eth1. Footer: 'also rp_filter 2, arp_ignore=1, arp_announce=2'.",
+  "anchor": "### Fixing multi-homed asymmetric routing",
+  "alt": "Policy routing fix",
+  "cap": "A rule that selects a per-NIC table by source address makes replies leave through the NIC they arrived on."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "24",
+  "name": "n24-vrf",
+  "title": "VRF on Linux",
+  "spec": "Two stacked routing-table boxes inside one Linux host. Box 1 'main table' with eth0. Box 2 'vrf-blue (table 10)' with eth2 10.9.0.5/24, drawn as a separate lane. Note: 'two VRFs can both use 10.9.0.0/24 without mixing' (second lane greyed). Commands in monospace: 'ip link add vrf-blue type vrf table 10', 'ip link set eth2 master vrf-blue', 'ip vrf exec vrf-blue ping 10.9.0.1'. Caveats strip in orange: 'services must start inside the VRF or be VRF-aware (tcp_l3mdev_accept, udp_l3mdev_accept, ip vrf exec)'; 'DNS and NTP resolvers must be reachable in the VRF'.",
+  "anchor": "## 2. VRF on Linux",
+  "alt": "VRF on Linux",
+  "cap": "A VRF gives a group of interfaces its own routing table so identical address ranges do not collide."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "24",
+  "name": "n24-rss",
+  "title": "Spreading a flow across queues and cores",
+  "spec": "Left to right: NIC with receive queues Q0 to Q3, each with its own interrupt (IRQ) pointing to a different CPU core (core 0 to 3). A flow's addresses and ports are hashed (Toeplitz) to pick one queue, so each flow stays on one core, keeping packet order and cache. Below: three options in a row: 'RSS: hardware, NIC hashes to N receive queues (ethtool -l eth0)'; 'RPS: software, steers to other CPUs after the interrupt'; 'XPS: maps CPUs to TX queues, avoids lock contention and cross-NUMA transmit'. Orange note: 'One core cannot process 100 Gb/s on its own'. Footer check: 'mpstat -P ALL 1: is one core at 100%?'.",
+  "anchor": "### 5.3 Queues, RSS, RPS, RFS, XPS",
+  "alt": "RSS RPS and XPS",
+  "cap": "Hardware queues and software steering spread traffic across cores while each flow stays on one core."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "24",
+  "name": "n24-offloads",
+  "title": "NIC offloads: which to keep",
+  "spec": "Table with columns Offload, What it does, Advice. Rows: Checksum offload: NIC computes/validates L4 checksums; capture on sender shows 'bad cksum' (benign). TSO/GSO: send 64 KB buffers, segmented into MTU-sized frames; big CPU saver, enable (green). GRO: merge received packets into larger skbs; may hurt forwarding, bridges, latency; disable on routers and VXLAN gateways (orange). LRO: hardware merge on receive; breaks forwarding, avoid on routers, bridges, hypervisors (orange). Flow control (802.3x pause): usually off in modern DCs, PFC instead. Command row in monospace: 'ethtool -k eth0', 'ethtool -K eth0 tso on gso on gro on lro off'.",
+  "anchor": "### 5.4 Offloads",
+  "alt": "NIC offloads",
+  "cap": "TSO and GSO save CPU, but GRO and LRO can break routers and bridges."
+ }
+]

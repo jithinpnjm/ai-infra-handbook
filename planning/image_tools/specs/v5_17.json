@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "17",
+  "name": "k17-lifetime-boxes",
+  "title": "Volume lifetime follows the box it lives in",
+  "spec": "Three nested rounded boxes drawn from the outside in. The largest outer box is labelled node. Inside it sits a middle box labelled pod. Inside the pod sits a small innermost box labelled container. Three volume markers show where each volume type lives. Marker 1, placed in the container box, labelled emptyDir (pod lifetime) with a note survives a container restart, lost when the pod is removed. Marker 2, placed on the node box edge, labelled hostPath or local PV (node lifetime) with a note tied to the node. Marker 3, drawn outside all three boxes on the right as a separate cylinder labelled PersistentVolumeClaim (independent of pod) with a bound PV cylinder behind it. A dashed arrow runs from the claim cylinder into the pod box with the label mounted into the pod, showing the claim outlives the pod. Step 1 circle beside the emptyDir marker, step 2 beside the claim. Orange highlight only on the claim cylinder, the only volume that outlives both the pod and the node. Icons: a window for the container, a box for the pod, a disk cylinder for storage. Green takeaway bar at the bottom: a volume lasts as long as the box it is tied to, so durable data belongs in a claim.",
+  "anchor": "## 1. Volume types at a glance",
+  "alt": "Volume lifetime nests inside the container, pod and node, while a PersistentVolumeClaim sits outside them and outlives the pod.",
+  "cap": "An emptyDir lasts only as long as its pod, a hostPath lasts as long as its node, and a PersistentVolumeClaim outlives both."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "17",
+  "name": "k17-csi-handoffs",
+  "title": "Seven hand-offs take one dynamic volume from claim to mount",
+  "spec": "A left-to-right swimlane with five vertical lanes, each headed by its name: PVC and PV (API objects), external-provisioner and PV controller (controller side), external-attacher (attach side), kubelet and CSI node plugin (node side), and container (pod). Step 1 arrow from the claim box in the PVC lane to the external-provisioner lane, labelled PVC created, the provisioner calls CreateVolume and then creates the PV with the volumeHandle. Step 2 arrow from the PV lane to the PV controller lane, labelled binds PVC to PV. Step 3 arrow from the API lane to the external-attacher lane, labelled VolumeAttachment created, then ControllerPublishVolume, with a status tag attached true. Step 4 arrow to the kubelet lane, labelled NodeStageVolume, with a sub-box inside showing blkid, mkfs if needed, mount at globalmount. Step 5 arrow to the container lane, labelled NodePublishVolume, with a bind mount from the staging path into the pod volume path. Step 6 loop arrow in the node lane labelled NodeGetVolumeStats feeds kubelet_volume_stats metrics. Step 7 return arrows in reverse order, labelled NodeUnpublishVolume, NodeUnstageVolume, ControllerUnpublishVolume, and DeleteVolume if the reclaim policy is Delete. Green step circles 1 to 7 on the arrows. Orange highlight only on step 3, the attach hand-off where a stuck pod most often waits. Icons: a disk cylinder for the PV, a gear for each controller, a window for the container. Green takeaway bar at the bottom: each component hands the volume to the next, so a stuck pod shows which hand-off did not happen.",
+  "anchor": "### Lifecycle for a dynamically provisioned volume",
+  "alt": "A dynamic volume passes from the provisioner to the PV controller, the attacher, the node plugin's stage and publish calls, and back down on teardown.",
+  "cap": "A dynamic volume passes through seven hand-offs, from CreateVolume and binding to the bind mount in the container and teardown."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "17",
+  "name": "k17-mount-stack",
+  "title": "The mount path from the disk to the container",
+  "spec": "A vertical stack of five horizontal layers drawn top to bottom, each a wide box with a label and a path in monospace. Layer 1 at the top labelled container, path /data, with a window icon. Arrow down labelled bind mount from the pod volume path. Layer 2 labelled pod volume path, monospace /var/lib/kubelet/pods/uid/volumes/kubernetes.io~csi/pv/mount, with a note NodePublishVolume creates it. Arrow down labelled bind mount from the staging path. Layer 3 labelled global staging path, monospace /var/lib/kubelet/plugins/kubernetes.io/csi/driver/hash/globalmount, with the note NodeStageVolume mounts it once per node. Arrow down labelled mount of the formatted device, with the note blkid, then mkfs if unformatted. Layer 4 labelled block device, monospace /dev/nvme1n1 or /dev/sdb, with the note ControllerPublishVolume attaches it to the node. Arrow down to Layer 5 at the bottom labelled cloud disk, drawn as a disk cylinder with the note backend volume at the provider. A small side tag on the layer 1 to 2 arrow labelled subPath narrows the bind to one subdirectory. Step numbers 1 to 4 next to layers 4, 3, 2, 1 going up the stack. Orange highlight only on the bind mount arrow between the staging path and the pod volume path, the place each pod gets its own view of the same bytes. Green takeaway bar at the bottom: every pod sees the same bytes because each bind mount points back to one global staging mount.",
+  "anchor": "## 4. Mount mechanics (what the kernel does)",
+  "alt": "A block device is formatted and mounted at a node staging path, then bind-mounted into each pod's volume path and the container.",
+  "cap": "A block device is mounted once per node at a staging path, and each pod gets a bind mount from that path into its container."
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "32",
+  "name": "k32-decision-pipeline",
+  "title": "Judge, Budget and Plan: from node verdicts to the nodes to act on",
+  "spec": "A left-to-right pipeline of four stages. Stage 1 on the far left is a stack of three small node cards labelled node A, node B and node C, inside a light green container labelled matched nodes. Each card has a short monospace line: node A with the note Unhealthy, node B with the note Pending and a WaitFor value, and node C with the note Healthy. An arrow from the container goes into Stage 2 box titled Judge(p, n, now) with the one-line note one pure verdict per node, no I/O. Stage 2 emits an arrow into Stage 3 box titled Budget(maxUnavailable, matched) with a small monospace note maxUnavailableNodes to a count, and beside it a note invalid or negative gives 0, missing gives all matched. Stage 3 emits an arrow into Stage 4 box titled Plan(verdicts, budget), drawn larger. Inside Plan, show a room calculation strip: budget minus already unschedulable nodes equals room, shown as a monospace line room = budget - unavailable. Below Plan, two outputs: a green box labelled act with the note candidates sorted by name, filled into the room, and an outlined box labelled blocked with the note extra candidates wait, BudgetExhausted event. Human maintenance cordons appear as a small grey chip labelled already unschedulable, with an arrow into the room calculation, labelled counts against the budget. Orange highlight on the blocked output with the note nothing is taken past the budget. Green takeaway bar at the bottom: Judge decides each node alone, Budget sets the ceiling, and Plan fills the room in name order.",
+  "anchor": "## The decision core (pure)",
+  "alt": "Judge classifies each node, Budget turns the budget into a count, and Plan fills the room left after unschedulable nodes, sending the rest to blocked.",
+  "cap": "Judge classifies each node, Budget turns the budget into a count, and Plan acts on candidates only within the room left after unschedulable nodes."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "32",
+  "name": "k32-window-timeline",
+  "title": "Waiting for a window without sleeping",
+  "spec": "A horizontal timeline from left to right along one axis labelled time. Three marked points on the axis. Point T0 labelled condition turns False, with a note LastTransitionTime is set. A shaded span from T0 to T0 plus 2m labelled unhealthyFor (2m) with the note Judge returns Pending and WaitFor. At the end of that span a point labelled T0 plus 2m, with the note Judge returns Unhealthy, the node is cordoned, and an arrow up from it to a small box labelled cordon patch with the three annotations platform.example.com/cordoned-by, platform.example.com/cordon-reason and platform.example.com/cordoned-at. Between T0 and T0 plus 2m, a curved dashed arrow from the timeline back to a box labelled Reconcile returns RequeueAfter, with the note the queue wakes the reconciler at the exact moment the window ends, and no sleep runs inside Reconcile. Later point T1 labelled condition turns True, with a shaded span from T1 to T1 plus 5m labelled healthyFor (5m) with the note Judge returns HealthyWaitFor until the span ends. At the end of that span a point labelled T1 plus 5m, with a note Judge returns Healthy, and the owned node is uncordoned. Number circles (r=24, green) at points 1 to 4 marking the order: 1 at T0, 2 at the requeue, 3 at T0 plus 2m, 4 at the uncordon. Orange highlight on the cordon step. A small note under the healthy span reads a flapping condition restarts the healthy window, as the chapter describes the healthy window as the hysteresis that stops flapping. Green takeaway bar at the bottom: the operator holds no timers, it asks the queue to call it back when the window ends.",
+  "anchor": "## The reconciler",
+  "alt": "A node cordons only after its unhealthy window passes, and the reconciler asks to be called back at that moment instead of sleeping.",
+  "cap": "The reconciler waits for a window by asking the queue to call it back at the exact moment the window ends, so it never sleeps."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "32",
+  "name": "k32-provenance-release",
+  "title": "Only the policy's own cordons are released",
+  "spec": "Two-part layout. Left part: a light green container labelled Nodes in the cluster with three node boxes in a row. Node gpu-01 shows a small person icon and a grey tag labelled no owner annotation, with the status line unschedulable true, and the note a human cordon. Node gpu-02 shows a tag labelled platform.example.com/cordoned-by: h100-pool and the status line unschedulable true. Right part: a vertical flow of three numbered steps with number circles r=24. Step 1 box labelled kubectl cordon gpu-01 with the note a human SRE cordons the node. Step 2 box labelled gpu-02 turns unhealthy with the note the policy h100-pool cordons it and writes its owner annotation. Step 3 box labelled kubectl delete gpuhealthpolicy h100-pool with the note the finalizer runs releaseAll. Below step 3, a decision diamond labelled cordoned-by equals h100-pool? with two arrows: yes goes to a green box labelled uncordon gpu-02, and no goes to a grey box labelled leave gpu-01 cordoned. Orange highlight on the no branch with the note the human cordon is never touched. Green takeaway bar at the bottom: the owner annotation is the proof of which cordon is ours.",
+  "anchor": "## Design decisions and why",
+  "alt": "On policy deletion, the operator uncordons only the nodes whose owner annotation names it, and leaves a human cordon in place.",
+  "cap": "When the policy is deleted, only nodes carrying its own owner annotation are uncordoned, and a human cordon stays in place."
+ }
+]

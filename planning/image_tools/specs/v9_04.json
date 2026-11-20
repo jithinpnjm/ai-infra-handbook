@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "04",
+  "name": "d04-coherence-boundary",
+  "title": "Which links are hardware cache-coherent and which are not",
+  "spec": "A two-part diagram. Left panel, labelled inside one Superchip: a Grace CPU box and a GPU box joined by a link labelled NVLink-C2C 900 GB/s, with a green tick and the label hardware cache-coherent, ATS unified virtual address space. Right panel, labelled across GPUs: several GPU boxes, four or more, joined through a central box labelled NVSwitch, with a link labelled shared global physical address space for peer-to-peer loads and stores, and a red-outlined note on each GPU cache: L1 and L2 not globally coherent across GPUs. Under the right panel a green box: use NCCL collectives or NVSHMEM barriers for ordering. Orange highlight on the right panel's GPU caches. Monospace for NVLink-C2C, NVSwitch, NCCL and NVSHMEM.",
+  "anchor": "### 3.2 What hardware cache coherence means and the crucial GPU-to-GPU boundary",
+  "alt": "Coherent CPU-GPU link versus non-coherent GPU-GPU caches",
+  "cap": "Coherence boundary: the CPU-to-GPU NVLink-C2C path is hardware coherent, but GPU caches across NVSwitch are not, so software must synchronize them."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "04",
+  "name": "d04-two-tier-memory",
+  "title": "Two memory tiers on a Grace Superchip and the prefetch between them",
+  "spec": "Two stacked horizontal bands, a fast tier on top and a roomy tier below, with a prefetch arrow between them. Top band labelled Tier 1, GPU HBM3 or HBM3e, 4.0 to 8.0 TB/s per GPU, with a small list of contents: hot working-set tensors, active layer weights, activations, active KV-cache blocks. Bottom band labelled Tier 2, Grace CPU LPDDR5X, about 500 GB/s, accessed at 450 GB/s per direction over NVLink-C2C, with contents: cold or overflow structures, unscheduled MoE expert weights, master FP32 weights, Adam momentum and variance, evicted KV-cache blocks. A curved arrow from the bottom band up to the top band labelled cudaMemPrefetchAsync on a secondary CUDA stream. Orange highlight on the top band with the note: HBM is roughly 16 to 32 times faster than LPDDR5X, so the hot data stays here. Monospace for cudaMemPrefetchAsync and the numbers.",
+  "anchor": "### 5.1 Two-tier memory placement: keeping hot tensors in HBM and cold overflow in LPDDR5X",
+  "alt": "Two memory tiers with prefetch between them",
+  "cap": "Two tiers: hot tensors stay in HBM, while cold overflow sits in Grace LPDDR5X and is prefetched into HBM before use."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "04",
+  "name": "d04-transfer-bars",
+  "title": "One pass over 1,200 GB on PCIe versus NVLink-C2C",
+  "spec": "Two horizontal bars on a shared time axis from 0 to 20 seconds. Top bar, labelled PCIe Gen5 x16 at 64 GB/s, extends to the full length marked 18.75 s, colour grey. Bottom bar, labelled NVLink-C2C at 450 GB/s, a much shorter bar marked 2.67 s, coloured green with an orange highlight. A bracket between the two bar ends labelled 7.03 times faster on the link. A small note under the bars: dataset 1,200 GB, one unidirectional pass, the GNN feature-table example. Monospace for 18.75 s, 2.67 s, 64 GB/s and 450 GB/s.",
+  "anchor": "### 3.3 Real-world impact: solving the 1.2 TB Graph Neural Network bottleneck",
+  "alt": "Transfer time for 1,200 GB over two links",
+  "cap": "Transfer time: moving 1,200 GB once takes 18.75 seconds over PCIe Gen5 x16 but 2.67 seconds over NVLink-C2C."
+ }
+]

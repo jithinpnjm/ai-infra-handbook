@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "14",
+  "name": "n14-drbdr",
+  "title": "Why OSPF elects a DR and BDR",
+  "spec": "Two panels with routers drawn as dots on one Ethernet segment. Left 'Full mesh': 4 routers with all 6 pairwise adjacency lines; caption '4 routers need 6 relationships, 10 routers need 45; n(n-1)/2'. Right 'DR and BDR': same 4 routers, one marked DR and one BDR (orange), other two connected only to the DR and BDR: each other router keeps just two. Footer: 'Election: highest priority, then highest router ID. Data-centre fabrics use ip ospf network point-to-point (no election)'. Monospace for the command.",
+  "anchor": "### Network types, DR and BDR",
+  "alt": "OSPF DR and BDR",
+  "cap": "Electing a DR and BDR cuts the number of adjacencies on a shared segment from n(n-1)/2 to two per router."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "14",
+  "name": "n14-cost",
+  "title": "OSPF cost and reference bandwidth",
+  "spec": "Formula in monospace at top: 'cost = reference bandwidth / interface bandwidth (minimum 1)'. Two rows. Row 'Default reference 100 Mb/s': 1G link cost 1, 100G link cost 1 (orange, both look identical, SPF cannot tell them apart). Row 'Reference raised to 400000 Mb/s': the two links get clearly different costs and SPF prefers the fast one (green). Side note: 'timers throttle spf 50 100 5000' = initial delay, hold time, maximum.",
+  "anchor": "### Cost, SPF and ECMP",
+  "alt": "OSPF cost reference bandwidth",
+  "cap": "With the default 100 Mb/s reference, a 1G and a 100G link have the same cost of 1."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "14",
+  "name": "n14-net",
+  "title": "IS-IS NET address anatomy",
+  "spec": "A single address strip in monospace '49.0001 . 1921.6800.1001 . 00' split into three labelled segments: '49.0001 = AFI + area (49 is the private AFI, 0001 is the area)', '1921.6800.1001 = System ID (6 bytes, unique within the domain)', '00 = N-selector (always 00 for a router)'. Below, three chips: 'Level 1: knows its own area', 'Level 2: backbone between areas', 'L1/L2: connects both (default)'. Orange note: 'Same area address means same area and flooding domain; mismatched areas form only Level 2 adjacencies'. Green bar: 'For a single-area data-centre underlay run everything as Level 2 only'.",
+  "anchor": "### NSAP/NET addressing",
+  "alt": "IS-IS NET address",
+  "cap": "A NET has an area part, a unique System ID and an N-selector of 00."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "14",
+  "name": "n14-choose",
+  "title": "OSPF or IS-IS",
+  "spec": "Comparison table, columns Consideration, Prefer OSPF, Prefer IS-IS. Rows: Familiarity (everywhere / strong in carriers, less in enterprise); IPv4+IPv6 (v2+v3 or AFs / one process carries both); Hierarchy (areas with ABRs / levels, boundary on links); Extensibility (LSA types / TLVs, easy); Adjacency independence from IP (needs IP / doesn't); MPLS TE and SR (supported / strong heritage). Green bar: 'Choose the one your organisation can operate'.",
+  "anchor": "## 6. OSPF versus IS-IS: choosing",
+  "alt": "OSPF versus IS-IS",
+  "cap": "Both converge in sub-second time with tuning and BFD, so pick the one your team can operate."
+ }
+]

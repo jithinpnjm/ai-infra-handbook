@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "02",
+  "name": "l02-command-anatomy",
+  "title": "Anatomy of a command line",
+  "spec": "Large monospace line: ls -l -a /var/log. Four labelled callouts with arrows: 'ls' command, '-l' option, '-a' option, '/var/log' argument (what to act on). Below, small list of conventions: -l short option, --all long option, -n 20 option with value, -- end of options with example rm -- -weird-file. Orange highlight on '--'.",
+  "anchor": "## 2. Anatomy of a command line",
+  "alt": "A command line split into command, options and argument.",
+  "cap": "A command line is a command, its options and its arguments."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "02",
+  "name": "l02-path-lookup",
+  "title": "How the shell finds a bare word",
+  "spec": "Vertical flow of four boxes, top to bottom, for typing python3: 'alias' then 'function' then 'builtin' then 'PATH directories searched in order'. Arrow out of the last box to 'program runs'. Side panel with monospace commands: type -a python3 (every way it could resolve, in order); command -v python3 (the one that will run). Orange note: wrong version runs, check PATH order or an alias first.",
+  "anchor": "### How the shell finds a program: `PATH`",
+  "alt": "A bare command name is looked up as alias, function, builtin and then each PATH directory.",
+  "cap": "The shell checks aliases, functions and builtins before searching PATH in order."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "02",
+  "name": "l02-chaining",
+  "title": "Combining commands",
+  "spec": "Table with two columns, Form and Runs the second command when. Rows: a ; b | always, after a ends ; a && b | a succeeded (status 0) ; a || b | a failed (status non-zero) ; a & b | a started in background, b runs immediately ; (a; b) | in a subshell ; { a; b; } | as a group in the current shell. Forms in monospace. Green bar example: mkdir -p build && cd build && cmake .. stops at the first failure.",
+  "anchor": "## 7. Exit status and combining commands",
+  "alt": "A table of the ways to chain commands and when the second one runs.",
+  "cap": "Operators decide whether the second command runs based on the first command's exit status."
+ }
+]

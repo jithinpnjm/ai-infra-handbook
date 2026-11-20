@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "19",
+  "name": "g19-graph-breaks",
+  "title": "A print and a tensor-valued if split one compiled function into three pieces",
+  "spec": "Two stacked panels showing the same toy function as a sequence of blocks. Top panel, labelled before, three subgraphs and two breaks: a green block labelled compiled subgraph 1 for the division, then an orange break marker labelled print, eager fallback, then a second green block labelled compiled subgraph 2, then a second orange break marker labelled if b.sum() less than 0, data-dependent branch, then a third green block labelled compiled subgraph 3 for the multiply. Bottom panel, labelled after, one graph with zero breaks: a single long green block labelled compiled graph, with the print guarded by is_compiling and the branch replaced by torch.where, drawn as one continuous bar. Orange highlight on the first break marker in the top panel with the note: the print silently splits the graph. Monospace for print, b.sum(), torch.where, is_compiling and 0 breaks.",
+  "anchor": "### 2.2 Diagnosing and eliminating graph breaks (`torch._dynamo.explain`, `torch.where`, `torch.cond`, and DDP/FSDP)",
+  "alt": "Graph breaks before and one graph after the fix",
+  "cap": "Graph breaks: a print and a tensor-valued if split the compiled function into fragments, while torch.where keeps it as one graph."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "19",
+  "name": "g19-bucket-padding",
+  "title": "Variable prompt lengths snap to a few fixed bucket sizes so the compiled graph is reused",
+  "spec": "A horizontal number line from 0 to 1,100 tokens with vertical tick marks for four bucket sizes: 256, 512, 768 and 1,024. Scattered dots above the line mark incoming prompt lengths, for example 230, 262, 300, 455, 520, 610, 780 and 1,000. Arrows drop each dot down to the nearest bucket tick above it, so the dots cluster onto four bucket points, each bucket labelled with its number of requests. Each bucket tick is drawn as a box labelled one compiled graph, reused. A caption line below reads padding adds dummy tokens to fill the bucket. Orange highlight on the bucket at 512 with the note: a length change inside a bucket reuses the same graph, while a length outside it recompiles. Monospace for 256, 512, 768, 1,024 and 1,100.",
+  "anchor": "### 2.1 Dynamic shapes: SymPy, `mark_dynamic`, and the bucket-padding rule",
+  "alt": "Prompt lengths padded onto fixed bucket sizes",
+  "cap": "Bucket padding: snapping variable lengths to a few fixed sizes reuses one compiled graph per bucket instead of recompiling for every length."
+ }
+]

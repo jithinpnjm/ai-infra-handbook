@@ -198,6 +198,10 @@ Every process except the very first is created this way, so processes form a **t
 
 ### Users, owners, and `root`
 
+![A process with a UID and GID and a file with owner and permission bits are compared by the kernel.](./img/l01-uid-gid.svg)
+
+*Figure 1.1.9. The kernel decides access by comparing the numeric IDs of the process with the owner, group and permission bits on the file.*
+
 Everything so far was about one program asking one machine for things. Linux adds a second question: who is asking? Linux is a multi-user system. Each user has a numeric **user ID**, or **UID**, and belongs to one or more groups, and each group has a numeric **group ID**, or **GID**. Every process runs *as* some UID and GID, and every file carries an owner and a group. The kernel makes access decisions by comparing these numbers with permission bits stored on files. The special account **root** has UID 0, and it bypasses most permission checks.
 
 Why have users at all? **Users exist to provide permissions and boundaries.** Every user-space process has an owner and is said to run as that user. A user can end or alter their own processes within limits, but cannot interfere with other users' processes, and users own files and choose whether to share them. Besides the accounts for human beings, a system runs several service accounts, covered in chapter 1.6. The one to know now is `root`, the **superuser**, because it is the exception to all of these rules: `root` can terminate or alter any process and read any file on the local system. That is why a person who can act as root is the system's administrator.
@@ -282,7 +286,7 @@ A **distribution**, or **distro** for short, bundles that kernel with a selectio
 
 ![Distributions: Linux is a kernel, not a system](./img/ch01-d4-luna.svg)
 
-*Figure 1.1.9. Distributions: Linux is a kernel, not a system.*
+*Figure 1.1.10. Distributions: Linux is a kernel, not a system.*
 
 ### 6.1 The Red Hat, Fedora, CentOS, and Amazon Linux branch
 
@@ -296,6 +300,10 @@ AWS also builds **Amazon Linux** in this family. It launched in September 2011 a
 Every distribution in this branch shares the **RPM** format, and its package files end in `.rpm`. The name comes from the original Red Hat Package Manager utility, `rpm`. While `rpm` installs individual package files, modern Red Hat derivatives use higher-level dependency resolvers that pull from online repositories. The first of these was `yum`, short for *Yellowdog Updater, Modified*, and today it is `dnf`, short for *Dandified YUM*.
 
 ### 6.2 The Debian and Ubuntu branch
+
+![Old programs run on new kernels, but newer glibc programs and kernel modules fail on mismatched systems.](./img/l01-asymmetry.svg)
+
+*Figure 1.1.11. Kernel and user space move independently, and the reverse direction fails in two ways.*
 
 The second lineage starts with **Debian GNU/Linux**, founded by Ian Murdock in 1993 and sponsored early on by the Free Software Foundation's GNU Project, from November 1994 through November 1995. Debian remains the only major Linux distribution governed entirely by a community project rather than a corporate parent. It also has a naming habit you will grow to like: every Debian release since version 1.1 in June 1996, code-named *Buzz*, is named after a *Toy Story* character. You will meet Debian 11.0 *Bullseye*, released in August 2021, and Debian 12 *Bookworm*. Debian maintains three branches: `unstable`, which is always named *Sid*, then `testing`, and finally `stable`. Packages mature through `unstable` and `testing` before they freeze into a rock-solid `stable` release. That patience makes Debian a favorite base for other distributions, including NVIDIA's Cumulus Linux on network switches.
 
@@ -324,7 +332,7 @@ Time to land the map on the machine you will actually work on: a server with GPU
 
 ![Putting a GPU node on the map](./img/ch01-d5-luna.svg)
 
-*Figure 1.1.10. Putting a GPU node on the map.*
+*Figure 1.1.12. Putting a GPU node on the map.*
 
 The table lists each component with its layer, its role, and the boundary where its failures show up, so when something breaks you know where to look first.
 
@@ -348,6 +356,10 @@ Use the map as a lookup table from now on. The notes below walk through the five
 **In one minute:** every GPU node splits into three parts: hardware; kernel space, home of `nvidia.ko`, `mlx5_core.ko`, namespaces, and cgroups; and user space, home of `libcuda.so`, PyTorch, `containerd`, `slurmd`, and `kubelet`. Containers bring their own user space, but they always share the host kernel. So when a container cannot see a GPU, check the host driver first.
 
 ## 8. How it fails: six classic confusions
+
+![A table mapping six classic failure symptoms to the system layer that causes them.](./img/l01-layer-failures.svg)
+
+*Figure 1.1.13. Before touching anything, ask which layer of the system the failure actually lives in.*
 
 Everything in this chapter pays off here. Each of the six stories below is a real incident pattern, born from mixing up the layers. Read them with one habit in mind: before you touch anything, ask which layer of the system the failure actually lives in.
 

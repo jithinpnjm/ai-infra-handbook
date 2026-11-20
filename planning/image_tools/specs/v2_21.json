@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "21",
+  "name": "n21-dos",
+  "title": "Four kinds of denial of service",
+  "spec": "Four-row table with columns Type, Mechanism, Mitigation. Volumetric: saturate bandwidth (UDP floods, DNS/NTP/memcached reflection) -> upstream scrubbing or anycast, BCP38, RTBH. Protocol/state exhaustion: SYN floods, connection table exhaustion, fragment attacks -> SYN cookies, connection limits, bigger tables, proxies. Application layer: HTTP floods, slow-loris, expensive queries -> rate limiting, WAF, caching, request cost limits. Control-plane: flood router CPUs with ICMP/ARP/routing packets -> CoPP, ICMP rate limiting, routing protocol authentication. Orange highlight on the line 'Inference APIs: one expensive prompt costs GPU seconds'. Green bar: 'Set your rate limits and quotas before traffic spikes, not during an attack'.",
+  "anchor": "## 6. Availability: denial of service",
+  "alt": "Types of denial of service",
+  "cap": "Each kind of denial of service exhausts a different resource and needs a different defence."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "21",
+  "name": "n21-l2sec",
+  "title": "Layer-2 attacks and their controls",
+  "spec": "Seven pairs, attack on the left, control on the right, joined by arrows: MAC flooding / CAM overflow -> port security (limit MACs per port), storm control; Rogue DHCP server -> DHCP snooping, IP source guard; ARP/ND spoofing -> Dynamic ARP Inspection, RA guard; Rogue switch / STP manipulation -> BPDU guard, root guard; VLAN hopping -> disable DTP, no VLAN 1 native, prune trunks; Unauthorised device attach -> 802.1X (EAP-TLS) or MAB; Link eavesdropping -> MACsec (802.1AE). Orange on DHCP snooping row with note 'trust only uplink and server ports'. Green bar: '802.1X decides which devices may attach; MACsec protects the link itself'.",
+  "anchor": "## 11. Layer-2 security",
+  "alt": "Layer 2 attacks and controls",
+  "cap": "Each layer 2 attack has a matching switch control."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "21",
+  "name": "n21-netpol",
+  "title": "Default deny, then allow the gateway",
+  "spec": "Kubernetes namespace box labelled 'inference'. Inside: a gateway pod (label app: gateway) and a Triton model server pod (label app: triton), plus another pod. Two policy layers: first 'default-deny: podSelector {} , policyTypes Ingress, Egress' shown as a closed outer wall; second 'allow-gateway-to-triton' shown as one green arrow from gateway to triton labelled 'TCP 8001'. Other arrows to triton are blocked (orange X). Footer: 'Allow DNS egress and metrics scraping when you enforce default-deny egress; a policy does nothing unless the CNI enforces it'. Monospace for labels and port.",
+  "anchor": "## 12. Zero trust and segmentation",
+  "alt": "Default-deny NetworkPolicy",
+  "cap": "A default-deny policy plus one allow rule lets only the gateway reach the Triton pod on TCP 8001."
+ }
+]

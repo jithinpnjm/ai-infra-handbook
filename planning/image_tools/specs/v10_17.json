@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "17",
+  "name": "g17-pdl-timeline",
+  "title": "Programmatic dependent launch lets the second kernel start before the first finishes",
+  "spec": "Two horizontal timeline bars on one shared time axis from 0 to 4.0 ms, with tick marks at 0, 1.6, 2.0, 3.6 and 4.0 ms. Top bar labelled standard stream serialization: kernel A main work block from 0 to 1.6 ms, kernel A epilogue block from 1.6 to 2.0 ms, then kernel B block from 2.0 to 4.0 ms, ending at 4.0 ms. Bottom bar labelled programmatic dependent launch: kernel A main block from 0 to 1.6 ms, kernel A epilogue block from 1.6 to 2.0 ms drawn with a hatched fill, and kernel B block starting at 1.6 ms and ending at 3.6 ms, overlapping the epilogue. A vertical marker at 1.6 ms labelled trigger, cudaTriggerProgrammaticLaunchCompletion. Orange highlight on the overlap window from 1.6 to 2.0 ms with the note: the second kernel starts early, so the stream saves 0.4 ms. Monospace for 1.6, 2.0, 3.6, 4.0 and cudaTriggerProgrammaticLaunchCompletion.",
+  "anchor": "### 6.1 Overlapping Kernel B's prologue with Kernel A's epilogue in the same stream",
+  "alt": "Serialized and overlapped kernel timelines with programmatic dependent launch",
+  "cap": "Dependent launch: the trigger lets the second kernel start while the first is still in its epilogue, which cuts 4.0 ms to 3.6 ms."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "17",
+  "name": "g17-legacy-wall",
+  "title": "One call on the legacy default stream stops every other stream",
+  "spec": "Two panels, each showing three horizontal lanes labelled stream 1, stream 2 and stream 0 legacy, sharing one time axis. Left panel, labelled legacy default stream: lanes stream 1 and stream 2 carry kernel and copy blocks running in parallel, and the lane for stream 0 legacy carries one small helper block. Vertical walls drawn in orange appear just before and just after the helper block, and every stream lane shows a gap at that moment, with the caption every blocking stream waits. Right panel, labelled explicit non-blocking streams: the same three lanes, the helper block now sits on its own lane, and the stream 1 and stream 2 blocks run unbroken without walls, caption no implicit barrier. Monospace for stream 0, cudaStreamNonBlocking and cudaStreamLegacy.",
+  "anchor": "### 3.1 Comparing Legacy Default Stream (`stream 0`), `PTDS`, and Explicit Non-Blocking Streams",
+  "alt": "Legacy default stream barrier versus non-blocking streams",
+  "cap": "Legacy barrier: one helper call on the default stream freezes every blocking stream, so explicit non-blocking streams keep running."
+ }
+]

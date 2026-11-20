@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "20",
+  "name": "n20-families",
+  "title": "Load balancing families by layer",
+  "spec": "Ladder of six rows from coarse to fine, each with the decision it makes and examples: DNS / GSLB: name resolution (Route 53, Cloud DNS routing policies); L3 ECMP / anycast: flow hash across equal-cost next hops (router ECMP, BGP-announced VIPs); L4: TCP/UDP connections, 5-tuple (IPVS/LVS, Maglev, Katran, HAProxy mode tcp); L7: HTTP/gRPC requests, headers, paths (HAProxy mode http, nginx, Envoy, ALB); Client-side: gRPC round_robin with xDS; In-cluster / mesh: kube-proxy, Cilium eBPF, Envoy sidecar. Arrow on the side: 'Lower layers decide faster but see less'. Orange on L4 row: 'cannot see requests inside a connection'.",
+  "anchor": "### Layers and families",
+  "alt": "Load balancer families",
+  "cap": "Lower-layer balancers decide faster but see less of each request."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "20",
+  "name": "n20-anycast",
+  "title": "Scaling the L4 tier with ECMP and anycast",
+  "spec": "Four numbered steps around one VIP. Step 1: each L4 node announces the VIP over BGP (FRR, BIRD or ExaBGP); the router sees N equal-cost next hops and spreads flows by 5-tuple hash. Step 2: a node fails or drains, BGP session drops (BFD under a second), router removes it, its flows are remapped. Step 3: surviving nodes get flows they hold no state for, so L4 balancers use Maglev-style consistent hashing on the 5-tuple. Step 4: L4 node forwards to backend by DSR, encapsulation, or proxying. Orange note under step 2: 'plain modulo hashing may rehash all flows'. Footer: 'Decide your failover budget first: BGP convergence sets how fast traffic moves'.",
+  "anchor": "## 4. ECMP, anycast and scaling out the L4 tier",
+  "alt": "ECMP and anycast L4 tier",
+  "cap": "Many L4 nodes announce the same VIP and the router spreads flows across them, with consistent hashing keeping connections intact."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "20",
+  "name": "n20-tlsplace",
+  "title": "Where TLS ends",
+  "spec": "Client on the left, load balancer in the middle, backends on the right, two rows. Row 1 'TLS termination at the LB': LB decrypts, can inspect and route at L7 (headers, WAF), then re-encrypts or sends plaintext to the backends. Row 2 'Passthrough': an L4 balancer routes on SNI and keeps the traffic encrypted. Below: client IP preservation chips: 'L7: X-Forwarded-For or Forwarded (trust only from known proxies)', 'L4: PROXY protocol v1 or v2', 'DSR and externalTrafficPolicy: Local avoid SNAT'. Green bar: 'Decide where TLS ends before anything else: it sets what the balancer can route on'.",
+  "anchor": "## 7. TLS, client identity and L4/L7 interplay",
+  "alt": "TLS termination versus passthrough",
+  "cap": "Where TLS ends decides what the balancer can read and route on."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "20",
+  "name": "n20-pinning",
+  "title": "Connection pinning with gRPC",
+  "spec": "Two panels with clients on the left and five backends on the right. Left 'L4 rule in front of gRPC port (per connection)': every client opened one long connection, so all its streams go to one backend; servers 1 and 2 are overloaded (orange) while 3 to 5 sit idle. Right 'L7 proxy or client-side balancing (per request)': requests spread evenly (green). Footer: 'Balance per request, not per connection; avoid pure L4 for multiplexed gRPC'. Monospace for grpc_pass.",
+  "anchor": "## 9. Load balancing for AI inference",
+  "alt": "gRPC connection pinning",
+  "cap": "An L4 balancer pins each long gRPC connection to one backend, so per-request balancing is needed."
+ }
+]

@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The disk grew: grow every layer</title>
+  <desc>Infographic illustrating the process of growing each layer after resizing a cloud disk: cloud disk resized in console, kernel rescan, partition, PV, and LV plus filesystem.</desc>
+
+  <defs>
+    <marker id="arrow-up" viewBox="0 0 18 16" refX="16" refY="8" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="16" orient="auto">
+      <path d="M 3,2 L 16,8 L 3,14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The disk grew: grow every layer</text>
+
+  
+  <g id="layer-5">
+    <rect x="140" y="120" width="1320" height="138" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="195" cy="160" r="24" fill="#207448" />
+    <text x="195" y="168" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 250,146 L 264,146 L 270,153 L 296,153 C 299,153 301,155 301,158 L 301,180 C 301,183 299,185 296,185 L 250,185 C 247,185 245,183 245,180 L 245,149 C 245,146 247,146 250,146 Z" />
+      <path d="M 258,162 L 258,176 M 258,169 L 272,169 M 258,176 L 272,176" />
+      <circle cx="276" cy="169" r="2" fill="#207448" />
+      <circle cx="276" cy="176" r="2" fill="#207448" />
+    </g>
+    
+    <text x="320" y="169" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">LV plus filesystem</text>
+    
+    <rect x="320" y="192" width="1100" height="50" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5" />
+    <text x="345" y="225" font-family="monospace" font-size="24" fill="#303a36">sudo lvextend -r -l +100%FREE /dev/myvg/mylv1</text>
+  </g>
+
+  
+  <line x1="800" y1="308" x2="800" y2="258" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+
+  
+  <g id="layer-4">
+    <rect x="140" y="308" width="1320" height="138" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="195" cy="348" r="24" fill="#207448" />
+    <text x="195" y="356" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="273" cy="333" rx="26" ry="9" />
+      <path d="M 247,333 V 348 C 247,353 259,357 273,357 C 287,357 299,353 299,348 V 333" />
+      <path d="M 247,348 V 363 C 247,368 259,372 273,372 C 287,372 299,368 299,363 V 348" />
+      <line x1="273" y1="337" x2="273" y2="353" />
+      <line x1="273" y1="357" x2="273" y2="368" />
+    </g>
+    
+    <text x="320" y="357" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">PV</text>
+    
+    <rect x="320" y="380" width="1100" height="50" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5" />
+    <text x="345" y="413" font-family="monospace" font-size="24" fill="#303a36">sudo pvresize /dev/sdb1</text>
+  </g>
+
+  
+  <line x1="800" y1="496" x2="800" y2="446" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+
+  
+  <g id="layer-3">
+    <rect x="140" y="496" width="1320" height="138" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="195" cy="536" r="24" fill="#207448" />
+    <text x="195" y="544" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="273" cy="522" rx="26" ry="10" />
+      <path d="M 247,522 V 550 C 247,556 259,560 273,560 C 287,560 299,556 299,550 V 522" />
+      <line x1="273" y1="532" x2="273" y2="560" />
+      <line x1="260" y1="530" x2="260" y2="556" stroke-dasharray="3,3" />
+      <line x1="286" y1="530" x2="286" y2="556" stroke-dasharray="3,3" />
+    </g>
+    
+    <text x="320" y="545" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">partition</text>
+    
+    <rect x="320" y="568" width="1100" height="50" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5" />
+    <text x="345" y="601" font-family="monospace" font-size="24" fill="#303a36">sudo growpart /dev/sdb 1</text>
+  </g>
+
+  
+  <line x1="800" y1="684" x2="800" y2="634" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+
+  
+  <g id="layer-2">
+    <rect x="140" y="684" width="1320" height="138" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="195" cy="724" r="24" fill="#207448" />
+    <text x="195" y="732" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="252" y="703" width="42" height="42" rx="6" />
+      <line x1="261" y1="697" x2="261" y2="703" />
+      <line x1="273" y1="697" x2="273" y2="703" />
+      <line x1="285" y1="697" x2="285" y2="703" />
+      <line x1="261" y1="745" x2="261" y2="751" />
+      <line x1="273" y1="745" x2="273" y2="751" />
+      <line x1="285" y1="745" x2="285" y2="751" />
+      <line x1="246" y1="714" x2="252" y2="714" />
+      <line x1="246" y1="724" x2="252" y2="724" />
+      <line x1="246" y1="734" x2="252" y2="734" />
+      <line x1="294" y1="714" x2="300" y2="714" />
+      <line x1="294" y1="724" x2="300" y2="724" />
+      <line x1="294" y1="734" x2="300" y2="734" />
+      <path d="M 279,720 A 7,7 0 1,0 280,727" stroke-width="3" />
+      <polyline points="280,717 280,721 276,721" stroke-width="3" />
+    </g>
+    
+    <text x="320" y="733" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">kernel rescan</text>
+    
+    <rect x="320" y="756" width="1100" height="50" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5" />
+    <text x="345" y="789" font-family="monospace" font-size="24" fill="#303a36">echo 1 | sudo tee /sys/class/block/sdb/device/rescan</text>
+  </g>
+
+  
+  <line x1="800" y1="872" x2="800" y2="822" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+
+  
+  <g id="layer-1">
+    <rect x="140" y="872" width="1320" height="138" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="2.5" />
+    
+    <circle cx="195" cy="912" r="24" fill="#207448" />
+    <text x="195" y="920" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 255,920 C 251,920 247,916 247,911 C 247,907 250,903 254,902 C 254,895 260,889 267,889 C 272,889 276,892 278,895 C 280,893 283,892 286,892 C 292,892 297,896 297,902 C 300,903 302,907 302,911 C 302,916 298,920 293,920 Z" />
+      <ellipse cx="273" cy="927" rx="20" ry="6" />
+      <path d="M 253,927 V 936 C 253,939 262,942 273,942 C 284,942 293,939 293,936 V 927" />
+    </g>
+    
+    <text x="320" y="921" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">cloud disk resized in console</text>
+    
+    <rect x="320" y="944" width="1100" height="50" rx="8" fill="#fef5ec" stroke="#db8129" stroke-width="2" />
+    <text x="870" y="977" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">the machine does not notice until you tell it.</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="140" y="1060" width="1320" height="70" rx="12" fill="#207448" />
+    <text x="800" y="1104" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">work up the stack one layer at a time.</text>
+  </g>
+</svg>

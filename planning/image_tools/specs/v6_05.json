@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "05",
+  "name": "h05-race-lost-update",
+  "title": "Two threads, one counter, one lost update",
+  "spec": "A horizontal timeline from left to right, time flowing rightward, with two thread lanes stacked vertically: Thread A on top, Thread B below. A shared memory cell drawn as a box in the middle of the figure, labelled shared counter, holding the old value. Step 1 (number circle 1): both threads read the shared counter at the same moment; two arrows leave the counter box, one into Thread A and one into Thread B, each labelled read the old value. Step 2 (number circle 2): each thread adds 1 in its own register, shown as a small box inside each lane labelled add one in register. Step 3 (number circle 3): both threads write back to the shared counter; two arrows point into the counter box, one from each lane, labelled write back. The second write overwrites the first. Orange highlight on the second write, labelled overwrites the other thread's update, one increment lost. Side panel at the right, titled no ordering between the accesses: a data race means two or more threads access one location at the same time, at least one writes, and nothing orders the accesses. Caption under the panel: the result depends on timing, and timing changes from run to run. Green takeaway bar at the bottom: use reduction(+ : var) for accumulations. Arrows must not cross each other; the two read arrows and the two write arrows are drawn on separate rows.",
+  "anchor": "### Data races and why \"it passed my test\" proves nothing",
+  "alt": "Two threads read the same counter, both add one, and the second write overwrites the first, losing an update.",
+  "cap": "Two threads that read and write one shared counter at the same time can overwrite each other's update, so an increment is lost."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "05",
+  "name": "h05-false-sharing",
+  "title": "Different elements, same cache line",
+  "spec": "Top panel titled Packed array: one wide grey memory strip labelled cache line, 64 bytes on x86 and Arm. Inside the strip, eight adjacent slots labelled packed[0] through packed[7], each one double, eight in a row. Below the strip, eight small green thread icons labelled Thread 0 to Thread 7, each with a short arrow pointing up to its own slot. Above the strip, a curved orange arrow loops labelled invalidates the line for the other cores, with the label the line bounces between cores. Caption: no data race, every thread writes a different index, yet the line bounces. Bottom panel titled Padded array: the same eight threads, but each slot sits in its own cache line, drawn as eight separate strips, each labelled padded slot with PAD = 16 doubles, 128 bytes per slot. A green check mark on this panel labelled no shared line, no bouncing. Plain note at the bottom: Apple M-series lines are 128 bytes, which holds 16 doubles. No takeaway bar.",
+  "anchor": "### False sharing across CPU cache lines",
+  "alt": "Adjacent per-thread array elements share one cache line, so each write invalidates the line for the other cores.",
+  "cap": "Threads writing to neighbouring elements of one cache line keep invalidating it for each other, which slows the loop even without a data race."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "05",
+  "name": "h05-first-touch",
+  "title": "First touch decides which socket holds the page",
+  "spec": "Two side-by-side scenes on a two-socket server. Each scene shows two socket blocks, Socket 0 on the left and Socket 1 on the right, each with its own RAM block beneath it and a cores block above it. A dashed link between the sockets labelled inter-socket bus, UPI or Infinity Fabric. Left scene titled Serial initialization: a single thread icon on Socket 0 labelled Thread 0 runs a serial fill loop; a stack of page blocks flows into Socket 0 RAM, all of them labelled first touch by Thread 0. Then 64 thread icons on Socket 1 run the parallel compute loop; their read arrows cross the inter-socket bus to Socket 0 RAM, drawn in orange, labelled every read crosses the bus, bandwidth halved. Right scene titled Parallel initialization with schedule(static): thread icons on both sockets each touch their own chunk; page blocks land in the RAM of the socket whose thread touched them, shown in green; the read arrows stay inside each socket and do not cross the bus. Caption under the right scene: the first thread to touch a page is the thread that will use it. Number circles 1 and 2 on the steps in the left scene. No takeaway bar.",
+  "anchor": "## 3. Affinity, NUMA first-touch page placement, and hybrid oversubscription",
+  "alt": "Serial initialization puts every page on one socket, while parallel initialization places each page on the socket of the thread that uses it.",
+  "cap": "Linux places each page on the NUMA node of the thread that first writes it, so a serial fill leaves the whole array on one socket."
+ }
+]

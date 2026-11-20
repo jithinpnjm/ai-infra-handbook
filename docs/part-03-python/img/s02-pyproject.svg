@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="960" viewBox="0 0 1600 960">
+  <title>What pyproject.toml declares</title>
+  <desc>Infographic showing configuration table headers declared in pyproject.toml and their purposes.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <text x="50" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">What pyproject.toml declares</text>
+
+  
+  <rect x="50" y="130" width="680" height="745" rx="16" fill="#1b2e25" />
+
+  
+  <g transform="translate(80, 155)">
+    
+    <path d="M 6 4 L 34 4 L 46 16 L 46 52 L 6 52 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 34 4 L 34 16 L 46 16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="14" y1="26" x2="38" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="14" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="14" y1="44" x2="28" y2="44" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="156" y="196" font-family="monospace" font-size="32" font-weight="bold" fill="#ffffff">pyproject.toml</text>
+
+  
+  
+  <rect x="75" y="220" width="630" height="120" rx="10" fill="#243d32" stroke="#375a4a" stroke-width="2" />
+  <text x="390" y="290" font-family="monospace" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">[build-system]</text>
+
+  
+  <rect x="75" y="385" width="630" height="120" rx="10" fill="#243d32" stroke="#375a4a" stroke-width="2" />
+  <text x="390" y="455" font-family="monospace" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">[project]</text>
+
+  
+  <rect x="75" y="550" width="630" height="120" rx="10" fill="#243d32" stroke="#375a4a" stroke-width="2" />
+  <text x="390" y="620" font-family="monospace" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">[project.scripts]</text>
+
+  
+  <rect x="75" y="715" width="630" height="120" rx="10" fill="#243d32" stroke="#375a4a" stroke-width="2" />
+  <text x="390" y="785" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">[project.entry-points."myops.plugins"]</text>
+
+  
+  
+  <line x1="730" y1="280" x2="830" y2="280" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="730" y1="445" x2="830" y2="445" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <line x1="730" y1="610" x2="830" y2="610" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="730" y1="775" x2="830" y2="775" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  
+  <rect x="830" y="220" width="720" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(860, 252)">
+    
+    <circle cx="28" cy="28" r="12" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 16 16 M 40 40 L 45 45 M 11 45 L 16 40 M 40 16 L 45 11" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="945" y="290" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">names the build backend</text>
+
+  
+  <rect x="830" y="385" width="720" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(860, 417)">
+    
+    <path d="M 28 4 L 50 16 L 28 28 L 6 16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 6 16 L 6 40 L 28 52 L 28 28" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 50 16 L 50 40 L 28 52" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="28" y1="28" x2="28" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="945" y="455" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">name, version, dependencies</text>
+
+  
+  <rect x="830" y="550" width="720" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(860, 582)">
+    
+    <rect x="4" y="6" width="48" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="4" />
+    <path d="M 12 28 L 20 34 L 12 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="24" y1="40" x2="36" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="945" y="620" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">creates the myops command</text>
+
+  
+  <rect x="830" y="715" width="720" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(860, 747)">
+    
+    <path d="M 10 14 L 22 14 C 22 8 34 8 34 14 L 46 14 L 46 24 C 52 24 52 36 46 36 L 46 48 L 34 48 C 34 42 22 42 22 48 L 10 48 L 10 36 C 16 36 16 24 10 24 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+  </g>
+  <text x="945" y="785" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">plugins found by importlib.metadata</text>
+</svg>

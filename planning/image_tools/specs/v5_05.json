@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "k05-conflict",
+  "title": "Two writers and a 409 Conflict",
+  "spec": "Swimlane diagram, time runs top to bottom. Three lanes with headers: Engineer A, API server (etcd), Engineer B. Both engineers first read the same ConfigMap at resourceVersion 5012 (two short arrows labelled read). Step 1: Engineer A saves; arrow from A to the API server labelled write at resourceVersion 5012, with a return arrow labelled stored, now 5013. Step 2: Engineer B saves; arrow from B to the API server labelled write at resourceVersion 5012. The API server box shows a red cross on the return arrow labelled 409 Conflict, the object has been modified. Step 3: Engineer B reads the new version, arrow labelled read latest, then reapplies the change and saves again, arrow labelled write at 5013, return labelled stored. Orange note on step 2: the server refuses to guess, so no edit is lost. Green takeaway bar: optimistic concurrency checks only at write time.",
+  "anchor": "## 3. resourceVersion, generation and concurrency",
+  "alt": "Two engineers read the same version, the second save is refused with 409 Conflict, and it retries on the latest version.",
+  "cap": "The API server refuses a write made against a stale resourceVersion, so a second save cannot silently erase the first."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "k05-raft-write",
+  "title": "How an etcd write reaches quorum",
+  "spec": "Left to right flow with numbered steps. Box 1: kube-apiserver sends a gRPC write (Put or Txn) to the etcd leader. Box 2: the leader appends the entry to its WAL with an fsync, then broadcasts AppendEntries to followers on port 2380. Box 3 (stacked, two follower boxes): each follower appends to its own WAL and calls fsync, then replies with an acknowledgment. Box 4: once a quorum has fsynced, the leader commits the entry and applies it to the bbolt B+tree. Box 5: success returns to kube-apiserver. Orange note on the fsync step: every write waits for a disk fsync on a majority, so a slow disk stalls the whole control plane. Green takeaway bar: the slowest disk on the majority sets the write latency.",
+  "anchor": "### Data model and Raft",
+  "alt": "A write goes to the etcd leader, is fsynced by a majority, then committed and applied.",
+  "cap": "Every etcd write waits for a disk fsync on a majority of members, so disk latency sets the speed of the whole control plane."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "k05-apf",
+  "title": "How API Priority and Fairness routes a request",
+  "spec": "Left to right flow. Box 1: a request, labelled from a client. Box 2: FlowSchema, labelled which requests belong here, matched by subject, verb and resource. Arrow to box 3: PriorityLevelConfiguration, labelled how much room and what happens with no room, with a share of concurrency and a queue count of 64. Box 4 below: a grid of 64 small queue cells, six highlighted and linked to a flow labelled one flow shuffle-sharded to 6 queues. The other 58 cells are grey and labelled clear for other tenants. An orange note on the full queue: when the queue is full the server rejects with 429, instead of making other callers wait. Number circles 1 match FlowSchema, 2 assign PriorityLevel, 3 queue or run. Green takeaway bar: a noisy tenant fills only its own queues.",
+  "anchor": "## 6. API Priority and Fairness (APF)",
+  "alt": "A request matches a FlowSchema, goes to a PriorityLevelConfiguration, and is queued in a few shuffle-sharded queues.",
+  "cap": "API Priority and Fairness routes each request to a priority level and shuffle-shards it into a few queues, so one noisy client cannot starve the rest."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "k05-compact-defrag",
+  "title": "Compaction frees space inside the file, defrag shrinks the file",
+  "spec": "Three stacked panels from top to bottom, each a bar representing the bbolt database file. Panel 1 labelled before: a full bar with old revisions shaded grey and current data in green. Step 1 arrow labelled etcdctl compact: the grey old revisions become free holes inside the bar, the file size is unchanged, and the label is the bar stays the same size. Step 2 arrow labelled etcdctl defrag, one member at a time: the bar is rewritten shorter, with no holes, labelled file on disk shrinks. Orange note on the middle panel: compaction alone does not shrink the file on disk. Green takeaway bar: compact, then defrag each member one at a time, then disarm the alarm if the quota was hit.",
+  "anchor": "### MVCC, revisions, compaction, defrag",
+  "alt": "Compaction frees old revisions inside the database file, and defragmentation rewrites the file smaller.",
+  "cap": "Compaction frees old revisions inside the etcd file, but only defragmentation shrinks the file on disk."
+ }
+]

@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Why sdX names are a trap</title>
+  <desc>Infographic demonstrating how Linux sdX disk drive device names shift dynamically after hardware failure and reboot, and why stable identifiers must be used instead.</desc>
+
+  <defs>
+    <style>
+      .title-text { font-family: system-ui, -apple-system, sans-serif; font-size: 48px; font-weight: bold; fill: #207448; }
+      .header-text { font-family: system-ui, -apple-system, sans-serif; font-size: 32px; font-weight: bold; fill: #303a36; }
+      .subheader-text { font-family: system-ui, -apple-system, sans-serif; font-size: 26px; font-weight: bold; fill: #db8129; }
+      .disk-name { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 30px; font-weight: bold; fill: #303a36; }
+      .disk-note { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; fill: #303a36; }
+      .arrow-text { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; font-weight: bold; fill: #db8129; }
+      .row-title { font-family: system-ui, -apple-system, sans-serif; font-size: 32px; font-weight: bold; fill: #207448; }
+      .item-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 24px; font-weight: bold; fill: #207448; }
+      .item-desc { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; fill: #303a36; }
+    </style>
+
+    <marker id="arrowhead-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="80" y="80" class="title-text">Why sdX names are a trap</text>
+
+  
+  <g transform="translate(80, 120)">
+    
+    <rect x="0" y="0" width="550" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="40" y="60" class="header-text">Before</text>
+
+    
+    <g transform="translate(30, 95)">
+      <rect x="0" y="0" width="490" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(30, 36)" stroke="#207448" stroke-width="4" fill="none">
+        <ellipse cx="28" cy="14" rx="24" ry="10" fill="#e8f1ea" />
+        <path d="M 4 14 v 30 c 0 6 11 10 24 10 s 24 -4 24 -10 v -30" />
+        <path d="M 4 29 c 0 6 11 10 24 10 s 24 -4 24 -10" />
+      </g>
+      <text x="115" y="74" class="disk-name">sda</text>
+    </g>
+
+    
+    <g transform="translate(30, 245)">
+      <rect x="0" y="0" width="490" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(30, 36)" stroke="#207448" stroke-width="4" fill="none">
+        <ellipse cx="28" cy="14" rx="24" ry="10" fill="#e8f1ea" />
+        <path d="M 4 14 v 30 c 0 6 11 10 24 10 s 24 -4 24 -10 v -30" />
+        <path d="M 4 29 c 0 6 11 10 24 10 s 24 -4 24 -10" />
+      </g>
+      <text x="115" y="74" class="disk-name">sdb</text>
+    </g>
+
+    
+    <g transform="translate(30, 395)">
+      <rect id="node-sdc" x="0" y="0" width="490" height="130" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      
+      <g transform="translate(30, 36)" stroke="#207448" stroke-width="4" fill="none">
+        <ellipse cx="28" cy="14" rx="24" ry="10" fill="#e8f1ea" />
+        <path d="M 4 14 v 30 c 0 6 11 10 24 10 s 24 -4 24 -10 v -30" />
+        <path d="M 4 29 c 0 6 11 10 24 10 s 24 -4 24 -10" />
+      </g>
+      <text x="115" y="74" class="disk-name">sdc</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(970, 120)">
+    
+    <rect x="0" y="0" width="550" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="40" y="56" class="header-text">After a reboot</text>
+    <text x="40" y="90" class="subheader-text">After sdb fails</text>
+
+    
+    <g transform="translate(30, 115)">
+      <rect x="0" y="0" width="490" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(30, 36)" stroke="#207448" stroke-width="4" fill="none">
+        <ellipse cx="28" cy="14" rx="24" ry="10" fill="#e8f1ea" />
+        <path d="M 4 14 v 30 c 0 6 11 10 24 10 s 24 -4 24 -10 v -30" />
+        <path d="M 4 29 c 0 6 11 10 24 10 s 24 -4 24 -10" />
+      </g>
+      <text x="115" y="74" class="disk-name">sda</text>
+    </g>
+
+    
+    <g transform="translate(30, 305)">
+      <rect id="node-sdb-new" x="0" y="0" width="490" height="130" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      
+      <g transform="translate(30, 36)" stroke="#207448" stroke-width="4" fill="none">
+        <ellipse cx="28" cy="14" rx="24" ry="10" fill="#e8f1ea" />
+        <path d="M 4 14 v 30 c 0 6 11 10 24 10 s 24 -4 24 -10 v -30" />
+        <path d="M 4 29 c 0 6 11 10 24 10 s 24 -4 24 -10" />
+      </g>
+      <text x="115" y="74">
+        <tspan class="disk-name">sdb</tspan>
+        <tspan dx="16" class="disk-note">(was sdc)</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <path d="M 600 580 C 785 580, 785 490, 988 490" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrowhead-orange)" />
+
+  
+  <g transform="translate(635, 435)">
+    <rect x="0" y="0" width="330" height="100" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="16" y="42" class="arrow-text">the name moved,</text>
+    <text x="16" y="74" class="arrow-text">nothing broke inside</text>
+    <text x="16" y="106" class="arrow-text" style="display:none;"></text>
+  </g>
+  
+  <g transform="translate(635, 435)">
+    <text x="16" y="36" class="arrow-text">the name moved,</text>
+    <text x="16" y="66" class="arrow-text">nothing broke inside</text>
+    <text x="16" y="96" class="arrow-text">the filesystem</text>
+  </g>
+
+  
+  <g transform="translate(80, 735)">
+    
+    <rect x="0" y="0" width="1440" height="345" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(40, 24)">
+      
+      <g stroke="#207448" stroke-width="4" fill="none">
+        <path d="M 28 4 L 48 12 C 48 34 38 48 28 54 C 18 48 8 34 8 12 Z" fill="#ffffff" />
+        <path d="M 22 28 L 26 34 L 35 22" />
+      </g>
+      <text x="68" y="40" class="row-title">Stable identifiers</text>
+    </g>
+
+    
+
+    
+    <g transform="translate(40, 95)">
+      <rect x="0" y="0" width="430" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="24" y="44" class="item-code">UUID=...</text>
+      <text x="24" y="78" class="item-desc">in fstab</text>
+    </g>
+
+    
+    <g transform="translate(505, 95)">
+      <rect x="0" y="0" width="430" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="24" y="58" class="item-code">/dev/mapper/vg-lv</text>
+    </g>
+
+    
+    <g transform="translate(970, 95)">
+      <rect x="0" y="0" width="430" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="20" y="42" class="item-code">/dev/disk/by-id</text>
+      <text x="20" y="78" class="item-desc">(physical drive by serial)</text>
+    </g>
+
+    
+    <g transform="translate(40, 215)">
+      <rect x="0" y="0" width="430" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="24" y="42" class="item-code">/dev/disk/by-path</text>
+      <text x="24" y="78" class="item-desc">(slot)</text>
+    </g>
+
+    
+    <g transform="translate(505, 215)">
+      <rect x="0" y="0" width="430" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="20" y="42" class="item-code">/dev/disk/by-uuid</text>
+      <text x="20" y="78" class="item-desc">(recommended fstab key)</text>
+    </g>
+
+    
+    <g transform="translate(970, 215)">
+      <rect x="0" y="0" width="430" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="20" y="42" class="item-desc">GPUs by UUID from</text>
+      <text x="20" y="78" class="item-code">nvidia-smi -L</text>
+    </g>
+  </g>
+</svg>

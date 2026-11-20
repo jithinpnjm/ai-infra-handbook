@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "13",
+  "name": "l13-cloud-grow",
+  "title": "The disk grew: grow every layer",
+  "spec": "Vertical stack of five layers with arrows pointing up, each with its command: cloud disk resized in console, then kernel rescan: echo 1 | sudo tee /sys/class/block/sdb/device/rescan ; partition: sudo growpart /dev/sdb 1 ; PV: sudo pvresize /dev/sdb1 ; LV plus filesystem: sudo lvextend -r -l +100%FREE /dev/myvg/mylv1. Green bar: work up the stack one layer at a time. Orange highlight on the first layer: the machine does not notice until you tell it.",
+  "anchor": "### Cloud pattern: the disk grew, grow everything above it",
+  "alt": "Growing a resized cloud disk requires growing the partition, PV, LV and filesystem in order.",
+  "cap": "Work up the stack one layer at a time: disk, partition, physical volume, then logical volume and filesystem."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "13",
+  "name": "l13-thin-pool",
+  "title": "Thin provisioning",
+  "spec": "One box 'thin pool tp (500G)' in the middle. Above it three virtual volumes, vol1 200G and two more, whose total size is larger than the pool (over-provisioning). Space used only as data is written. A cheap thin snapshot vol1snap, needs no size. Commands monospace: lvcreate -L 500G --thinpool tp myvg ; lvcreate -V 200G --thin -n vol1 myvg/tp ; lvs -a -o +data_percent,metadata_percent. Orange warning: a thin pool that reaches 100% data or metadata corrupts or blocks the volumes in it, watch Data% and Meta%.",
+  "anchor": "### Snapshots and thin provisioning",
+  "alt": "Several virtual volumes share one thin pool whose total size can be exceeded by the volumes.",
+  "cap": "A thin pool that reaches 100% corrupts or blocks the volumes in it, so monitor it."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "13",
+  "name": "l13-raid-choice",
+  "title": "Which RAID for what",
+  "spec": "Table with Purpose, Typical choice, Reason. Rows: Operating system | RAID 1 across two small drives | survive one drive failure ; Local scratch, dataset cache, image store, fast checkpoint staging | RAID 0 across NVMe or no RAID | maximum throughput, data is reproducible (orange: losing one drive loses the array) ; Valuable local data on a storage server | RAID 6 or 10, or erasure coding in Lustre, Ceph, GPFS | fault tolerance without a single controller as a point of failure ; Cloud | none, or RAID 0 of local SSDs | provider replicates the disk, local SSD is ephemeral. Green bar: for anything you cannot lose, choose a redundant level and keep a separate backup.",
+  "anchor": "### Which RAID for what (GPU nodes)",
+  "alt": "A table matching RAID levels to the job a volume does on a GPU node.",
+  "cap": "Match the RAID level to the job, and use RAID 0 only when the data can be rebuilt."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "13",
+  "name": "l13-multipath",
+  "title": "Multipath: one LUN, several paths",
+  "spec": "Left: a SAN LUN. Two HBAs and two switches giving four paths. Middle: OS sees four block devices sdb, sdc, sdd, sde (grey, component paths). Right: one green device built by multipathd, then LVM and filesystem on top. Rules in a list: build filesystems and LVM on the multipath device, never on a component path; exclude paths in the LVM filter; blacklist local disks and virtio disks. Monospace: multipath -ll.",
+  "anchor": "### Multipath",
+  "alt": "Several physical paths to one LUN appear as several block devices that multipath merges into one.",
+  "cap": "Always build filesystems and LVM on the multipath device, never on a component path."
+ }
+]

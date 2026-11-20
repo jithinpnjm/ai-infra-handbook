@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "14",
+  "name": "l14-grub-config",
+  "title": "Never edit grub.cfg",
+  "spec": "Left-to-right flow: /etc/default/grub (settings such as GRUB_CMDLINE_LINUX) plus /etc/grub.d/ scripts (00_header, 10_linux, 30_os-prober, 40_custom) into the generator grub-mkconfig, labelled sudo update-grub on Debian and Ubuntu and sudo grub2-mkconfig -o /boot/grub2/grub.cfg on RHEL with BIOS, producing grub.cfg in /boot/grub/ (orange: generated, your edits are overwritten). After: reboot, then cat /proc/cmdline to verify. Note: the scripts run in user space to generate the file, GRUB never runs them at boot.",
+  "anchor": "### GRUB configuration: do not edit `grub.cfg`",
+  "alt": "Settings and scripts feed a generator that writes grub.cfg, which you should never edit by hand.",
+  "cap": "grub.cfg is generated, so change /etc/default/grub or /etc/grub.d and regenerate."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "14",
+  "name": "l14-boot-symptoms",
+  "title": "Boot symptom to likely cause",
+  "spec": "Table with Symptom, Likely cause, First action. Rows: no bootable device | boot order or mode wrong, ESP or MBR damaged | efibootmgr, grub-install ; grub rescue> prompt | GRUB cannot find its prefix | ls, set prefix ; VFS: Unable to mount root fs on unknown-block(0,0) | no driver for root device or stale initramfs | boot older kernel, rebuild initramfs ; (initramfs) shell | root device not found in time | rootwait, check UUID ; emergency mode | fstab or fsck failed | journalctl -xb, fix /etc/fstab ; GPU missing after boot | DKMS failed or Secure Boot rejected module | dkms status, mokutil --sb-state. Footer: change one thing before you test again.",
+  "anchor": "## 7. Diagnosing and repairing boot problems",
+  "alt": "A table that maps common boot symptoms to their likely cause and first action.",
+  "cap": "Identify the failing boot stage first, then change only one thing before testing again."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "14",
+  "name": "l14-secure-boot",
+  "title": "The Secure Boot trust chain",
+  "spec": "Horizontal chain of boxes with arrows labelled verifies and runs: firmware (trusts vendor keys) then shim (Microsoft-signed) then GRUB then kernel then kernel modules. Beside the last box an orange callout: out-of-tree modules such as the NVIDIA driver built by DKMS must be signed, otherwise the kernel refuses with Required key not available or module verification failed and nvidia-smi fails. Below, three options: disable Secure Boot in firmware; enrol a MOK (mokutil --import) and sign modules; use distribution-signed or vendor-precompiled driver packages. Note: enrolment needs console interaction at next boot, so do it once in the image build.",
+  "anchor": "### Secure Boot",
+  "alt": "Each stage of the boot verifies the next, up to the kernel modules.",
+  "cap": "A signed chain from firmware to kernel modules means an unsigned GPU driver module will not load."
+ }
+]

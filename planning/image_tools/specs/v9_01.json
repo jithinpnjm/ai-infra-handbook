@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "01",
+  "name": "d01-selection-steps",
+  "title": "Five steps to choose an accelerator, hard limits first",
+  "spec": "A vertical flow of five numbered steps with downward arrows between them and number circles 1 to 5. Step 1: What is the main job? Pre-training, LoRA or full fine-tuning, real-time inference, batch inference, rendering. Step 2: How much memory does the job need? Apply the training multiplier or the inference KV-cache and safety-margin formula. Step 3: Is the bottleneck math or memory? Compute-bound prefill or bandwidth-bound decode. Step 4: How do the GPUs talk to each other? Tensor Parallelism needs AllReduce after every layer, SXM with NVLink for multi-GPU serving and multi-node training. Step 5 (orange): Remove any candidate that breaks a hard limit before any scoring: rack power ceiling, missing NVLink, no native FP8. Beside step 5, a grey note: a server that cannot be powered does not matter how well it scores. Monospace for FP8, NVLink, AllReduce, TTFT and ITL where used.",
+  "anchor": "### 1.3 The five-step selection scorecard and inference economics",
+  "alt": "Five steps to choose an accelerator",
+  "cap": "Accelerator selection: decide the job, size its memory, find the bottleneck, check the links, then drop candidates that break a hard limit before scoring."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "01",
+  "name": "d01-three-planes",
+  "title": "Three separate network planes on one DGX node",
+  "spec": "One large box labelled DGX node in the centre, with three labelled groups of ports leaving it to three separate switch boxes on the right, one above the other, each with a cable and no shared path. Plane 1, top: Compute fabric, East-West, 8 single-port ConnectX-7 NICs, 400 Gbps NDR InfiniBand or RoCEv2, to a box labelled compute switches, traffic: GPU-to-GPU NCCL collectives. Plane 2, middle: Storage and in-band management fabric, North-South, 2 dual-port BlueField-3 DPUs, to a box labelled storage and management network, traffic: parallel file system I/O, Slurm and Kubernetes control, NGC pulls, Prometheus, SSH. Plane 3, bottom: Out-of-band management, 1 GbE RJ45 BMC port, to a box labelled isolated management VLAN, traffic: Redfish, IPMI, KVM-over-IP, virtual media. Orange highlight on the rule label beside plane 2 with the text: never mix with East-West traffic. Monospace for ConnectX-7, BlueField-3, NCCL, Redfish and IPMI.",
+  "anchor": "### 4.2 Three physical network planes and the rail-optimized topology",
+  "alt": "Three network planes on a DGX node",
+  "cap": "Three planes: GPU collectives, storage and management, and out-of-band control each run on their own network so one cannot slow another."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "01",
+  "name": "d01-baseline-stages",
+  "title": "Five-stage baseline before a repaired DGX returns to service",
+  "spec": "A left-to-right flow of five boxes with arrows, each a numbered stage with a title and one check line. Stage 1: Out-of-band Redfish health, thermal and power check, PSU redundancy and wattage. Stage 2: Unified DGX Firmware Container check, show_version across BMC, BIOS, CPLDs, retimers, NVSwitches, GPU VBIOS and NICs. Stage 3: In-band GPU, NVLink, PCIe ACS, storage and kernel module baseline, 8 GPUs visible, 0 uncorrected ECC, nvidia_peermem and nvidia_fs loaded. Stage 4: NVSM chassis audit, DCGM Level 3 diagnostics, and InfiniBand rail check, 8 compute rails Active. Stage 5 (orange): Data-path throughput benchmarks, intra-node AllReduce and GPUDirect Storage read. A bracket above the flow labelled outside in. A small grey end label: then release to Slurm or Kubernetes. Monospace for show_version, nvsm show health, dcgmi diag -r 3, ibstat and all_reduce_perf.",
+  "anchor": "## Commands and configurations that matter",
+  "alt": "Five-stage baseline check for a DGX node",
+  "cap": "Node baseline: check the BMC, firmware, host and GPUs, chassis and fabric, then data-path bandwidth before release."
+ }
+]

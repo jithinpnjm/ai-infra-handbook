@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Dependency injection with Depends</title>
+  <desc>Visual explanation of FastAPI dependency injection using Depends</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="90" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Dependency injection with Depends</text>
+
+  
+  <rect x="80" y="180" width="420" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  
+  <circle cx="130" cy="230" r="24" fill="#207448" />
+  <text x="130" y="238" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  
+  <g transform="translate(262, 218)">
+    <rect x="0" y="0" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="3" />
+    <circle cx="10" cy="7" r="2.5" fill="#207448" />
+    <circle cx="18" cy="7" r="2.5" fill="#207448" />
+    <polyline points="20,32 14,36 20,40" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <polyline points="36,32 42,36 36,40" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="30" y1="30" x2="26" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <rect x="105" y="340" width="370" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="290" y="416" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="290" dy="0">def read(</tspan>
+    <tspan x="290" dy="44">db = Depends(get_db))</tspan>
+  </text>
+
+  
+  <line x1="500" y1="390" x2="578" y2="390" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="580" y="180" width="440" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  
+  <circle cx="630" cy="230" r="24" fill="#207448" />
+  <text x="630" y="238" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  
+  <g transform="translate(800, 241)">
+    <path d="M -4 -27 L 4 -27 L 5 -20 L 11 -17 L 17 -22 L 23 -16 L 18 -10 L 21 -4 L 28 -3 L 28 5 L 21 6 L 18 12 L 23 18 L 17 24 L 11 19 L 5 22 L 4 29 L -4 29 L -5 22 L -11 19 L -17 24 L -23 18 L -18 12 L -21 6 L -28 5 L -28 -3 L -21 -4 L -18 -10 L -23 -16 L -17 -22 L -11 -17 L -5 -20 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="0" cy="1" r="8" fill="none" stroke="#207448" stroke-width="4" />
+  </g>
+
+  
+  <text x="800" y="410" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">FastAPI calls get_db()</tspan>
+    <tspan x="800" dy="48">before the handler</tspan>
+  </text>
+
+  
+  <line x1="1020" y1="390" x2="1098" y2="390" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1100" y="180" width="420" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  
+  <circle cx="1150" cy="230" r="24" fill="#207448" />
+  <text x="1150" y="238" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  
+  <g transform="translate(1310, 222)">
+    <ellipse cx="0" cy="0" rx="26" ry="10" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M -26 0 L -26 36 A 26 10 0 0 0 26 36 L 26 0" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M -26 18 A 26 10 0 0 0 26 18" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+
+  
+  <text x="1310" y="410" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="1310" dy="0">the result is passed</tspan>
+    <tspan x="1310" dy="48">in as db</tspan>
+  </text>
+
+  
+  <rect x="160" y="670" width="1280" height="120" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+  
+  
+  <g transform="translate(230, 706)">
+    <path d="M 12 0 L 24 0 M 15 0 L 15 12 L 0 38 A 6 6 0 0 0 5 46 L 31 46 A 6 6 0 0 0 36 38 L 21 12 L 21 0" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="7" y1="30" x2="29" y2="30" stroke="#db8129" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="290" y="740" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    in tests, <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28">dependency_overrides</tspan> swaps in a fake
+  </text>
+</svg>

@@ -553,6 +553,10 @@ Sooner or later a nested function must change a name it can see but does not own
 
 ### nonlocal basics
 
+![nonlocal in a nested function](./img/s14-nonlocal.svg)
+
+*Figure 3.14.1. nonlocal lets an inner function rebind a variable of the enclosing function.*
+
 Earlier you saw that a nested function can reference a variable in an enclosing function, even after that function has returned. You can also change such a variable, as long as you declare it `nonlocal`. With this statement, a nested function gets both read and write access to names in enclosing functions. That makes closures more useful, because their state can change.
 
 The `nonlocal` statement works inside a `def` but not inside a `lambda`. It is similar in form and role to `global`. Both declare that a name will be changed in a scope outside the current function. The difference is the scope. `global` points at the module, while `nonlocal` points at an enclosing function. Also, `nonlocal` names must already exist in an enclosing function. They cannot be created by a first assignment inside the nested `def`.
@@ -678,6 +682,10 @@ These limits make sense once you see the problem. Python would not know which en
 Third, a `nonlocal` name can appear anywhere in the chain of enclosing functions, not only one level up. The closest match is used. This can matter in deeply nested code. Such code is rare, so the earlier section on arbitrary nesting covers the idea.
 
 ## State-retention options
+
+![State retention options](./img/s14-state.svg)
+
+*Figure 3.14.2. Closures, globals, function attributes, mutable objects and classes can all keep state between calls.*
 
 Many problems come down to one question: where should a function keep a value between calls? Python offers four answers, and each one trades a little clarity for a little power.
 
@@ -1506,6 +1514,10 @@ def process(*args, notify=False): …
 The section on the print emulator below shows a realistic version of this idea.
 
 ## Positional-only arguments
+
+![Argument kinds in a signature](./img/s14-argmodes.svg)
+
+*Figure 3.14.3. The slash and the star split a signature into positional-only, ordinary and keyword-only parameters.*
 
 Starting with Python 3.8, a function definition can include a `/` in its argument list. Every argument to the left of the slash must be passed by position. Keyword names are not allowed for them. Some built-in functions have worked this way for a long time, and their documentation shows the notation. Python made it available to function authors so library writers can hide argument names from callers.
 

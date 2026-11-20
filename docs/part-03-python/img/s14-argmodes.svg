@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Positional-only and keyword-only parameters</title>
+  <desc>Visual explanation of Python positional-only and keyword-only parameters separated by slash and star markers.</desc>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Positional-only and keyword-only parameters</text>
+
+  
+  <g id="signature-chip">
+    <rect x="80" y="120" width="1440" height="110" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(116, 147)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <line x1="0" y1="18" x2="56" y2="18" />
+      <circle cx="12" cy="9" r="2.5" fill="#207448" />
+      <circle cx="22" cy="9" r="2.5" fill="#207448" />
+      <polyline points="16,38 24,30 16,22" />
+      <line x1="28" y1="42" x2="42" y2="42" />
+    </g>
+
+    
+    <text x="200" y="188" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36">def f(a, b, /, c, *, d)</text>
+  </g>
+
+  
+  
+  <g id="zone-1">
+    <rect x="80" y="270" width="453" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(112, 300)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="10"/>
+      <line x1="38" y1="28" x2="18" y2="28"/>
+      <polyline points="26,20 18,28 26,36"/>
+    </g>
+    <text x="188" y="338" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Positional</text>
+    <text x="112" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="112" dy="0">a, b positional only</tspan>
+      <tspan x="112" dy="38">(before the slash)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="zone-2">
+    <rect x="573" y="270" width="454" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(605, 300)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="10"/>
+      <line x1="16" y1="22" x2="40" y2="22"/>
+      <polyline points="32,16 40,22 32,28"/>
+      <line x1="40" y1="34" x2="16" y2="34"/>
+      <polyline points="24,28 16,34 24,40"/>
+    </g>
+    <text x="681" y="338" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Flexible</text>
+    <text x="605" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="605" dy="0">c positional or keyword</tspan>
+      <tspan x="605" dy="38">(between)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="zone-3">
+    <rect x="1067" y="270" width="453" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(1099, 300)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="10"/>
+      <line x1="18" y1="28" x2="38" y2="28"/>
+      <polyline points="30,20 38,28 30,36"/>
+    </g>
+    <text x="1175" y="338" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Keyword</text>
+    <text x="1099" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1099" dy="0">d keyword only</tspan>
+      <tspan x="1099" dy="38">(after the star)</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="call-example-1">
+    <rect x="80" y="540" width="1440" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(112, 562)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="18,29 25,36 39,20"/>
+    </g>
+    <text x="190" y="602" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">f(1, 2, 3, d=4) works</text>
+  </g>
+
+  
+  <g id="call-example-2">
+    <rect x="80" y="670" width="1440" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(112, 692)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="18,29 25,36 39,20"/>
+    </g>
+    <text x="190" y="732" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">f(1, 2, c=3, d=4) works</text>
+  </g>
+
+  
+  <g id="call-example-3">
+    <rect x="80" y="800" width="1440" height="100" rx="16" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(112, 822)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <line x1="19" y1="19" x2="37" y2="37"/>
+      <line x1="37" y1="19" x2="19" y2="37"/>
+    </g>
+    <text x="190" y="862" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129">f(a=1, b=2, c=3, d=4) fails</text>
+  </g>
+</svg>

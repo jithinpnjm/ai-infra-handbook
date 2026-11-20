@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Beyond owner, group and other</title>
+  <desc>Visual explanation of classic permissions, ACL named entries, permission mask, inheritance, and inspection commands.</desc>
+
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Beyond owner, group and other</text>
+
+  
+  <g transform="translate(60, 120)">
+    <rect width="420" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(40, 32)">
+      <rect x="10" y="24" width="36" height="28" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M18 24 V 14 A 10 10 0 0 1 38 14 V 24" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="38" r="3" fill="#207448"/>
+    </g>
+    <text x="116" y="72" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">classic permissions</text>
+
+    
+    <rect x="36" y="120" width="348" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="166" font-family="sans-serif" font-size="28" fill="#303a36" text-anchor="middle">owner</text>
+
+    <rect x="36" y="216" width="348" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="262" font-family="sans-serif" font-size="28" fill="#303a36" text-anchor="middle">group</text>
+
+    <rect x="36" y="312" width="348" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="358" font-family="sans-serif" font-size="28" fill="#303a36" text-anchor="middle">other</text>
+  </g>
+
+  
+  <g transform="translate(520, 120)">
+    <rect width="560" height="420" rx="16" fill="#fff7ed" stroke="#db8129" stroke-width="4"/>
+    
+    
+    <g transform="translate(252, 40)">
+      <path d="M28 4 L50 14 V32 C50 46 28 54 28 54 C28 54 6 46 6 32 V14 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="16" y1="28" x2="40" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="280" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="280" dy="0">mask caps effective permission</tspan>
+      <tspan x="280" dy="48">of the extra entries</tspan>
+    </text>
+
+    <rect x="40" y="250" width="480" height="136" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <circle cx="90" cy="318" r="26" fill="#fff7ed" stroke="#db8129" stroke-width="3"/>
+    <path d="M80 318 L87 325 L100 311" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="136" y1="300" x2="480" y2="300" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="136" y1="336" x2="420" y2="336" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <g transform="translate(1120, 120)">
+    <rect width="420" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(24, 32)">
+      <circle cx="28" cy="18" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M10 48 C10 38 18 34 28 34 C38 34 46 38 46 48" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M38 20 A 8 8 0 0 1 48 28" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M46 36 C50 38 54 42 54 48" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="96" y="72" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">ACL adds named entries</text>
+
+    
+    <rect x="36" y="120" width="348" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="166" font-family="monospace" font-size="28" fill="#303a36" text-anchor="middle">u:alice:rw</text>
+
+    <rect x="36" y="216" width="348" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="262" font-family="monospace" font-size="28" fill="#303a36" text-anchor="middle">u:bob:rw</text>
+
+    <rect x="36" y="312" width="348" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="358" font-family="monospace" font-size="28" fill="#303a36" text-anchor="middle">g:readers:r</text>
+  </g>
+
+  
+  <g transform="translate(60, 570)">
+    <rect width="1480" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(48, 48)">
+      <path d="M8 12 L24 12 L30 20 L52 20 A 4 4 0 0 1 56 24 L56 46 A 4 4 0 0 1 52 50 L8 50 A 4 4 0 0 1 4 46 L4 16 A 4 4 0 0 1 8 12 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    <text x="130" y="93" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      default ACL (setfacl -d) is inherited by new files and subdirectories
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 750)">
+    
+    <rect x="0" y="0" width="460" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="230" y="100" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">setfacl -m u:alice:rw mydir</text>
+
+    
+    <rect x="490" y="0" width="280" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="630" y="100" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">getfacl mydir</text>
+
+    
+    <rect x="800" y="0" width="680" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="1140" y="100" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">ls -l shows a + at the end of the permissions</text>
+  </g>
+</svg>

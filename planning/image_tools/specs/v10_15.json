@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "15",
+  "name": "g15-cluster-reuse",
+  "title": "One HBM tile fetch shared across a cluster of thread blocks",
+  "spec": "A column chart with four columns left to right labelled single block, 2 by 2 cluster of 4, portable maximum of 8, and non-portable cluster of 16. Column heights show the HBM traffic relative to one block: 1, 1 over 4, 1 over 8 and 1 over 16, with values in monospace above each column: 1x, 4x less, 8x less, 16x less. Under each column a short caption: standard launch; portable on Hopper and Blackwell; default CUDA cluster ceiling; needs the non-portable attribute on Blackwell. A small inset diagram over the 2 by 2 column shows four SM squares around one shared tile arrow from HBM with fan-out lines into each square labelled multicast into DSMEM. Orange highlight on the 16 column with the note: bigger is only faster if the grid fills the cluster, so time 8 and 16 before keeping 16. Monospace for 4x, 8x, 16x and cudaFuncAttributeNonPortableClusterSizeAllowed.",
+  "anchor": "### 1.2 Tiling across SMs with Thread Block Clusters and TMA multicast",
+  "alt": "HBM traffic reduction by thread block cluster size",
+  "cap": "Cluster multicast: one TMA fetch can feed every block in a cluster, so HBM traffic falls with cluster size."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "15",
+  "name": "g15-tmem-budget",
+  "title": "How much of one SM's 256 KB Tensor Memory each tile uses",
+  "spec": "A horizontal bar chart with a single full-width reference bar labelled per-SM TMEM, 256 KB, 100 percent. Below it four bars, each drawn to scale against that reference: 256 by 512 FP16 tile at 256 KiB, drawn full width, 100 percent, marked one max tile; 256 by 256 FP32 accumulator at 256 KiB, full width, 100 percent; 256 by 256 NVFP4 tile at 32 KiB, one eighth of the width, 12.5 percent, marked up to eight tiles fit; 512 by 512 FP16 at 512 KiB, drawn extending past the reference bar, marked 200 percent, does not fit, with a red cross. Orange highlight on the 512 by 512 bar with the note: it overflows one SM's budget. Monospace for 256 KB, 256 KiB, 32 KiB, 512 KiB and 12.5%.",
+  "anchor": "### 3.2 Staging tiles through SMEM and per-SM TMEM",
+  "alt": "Tile sizes measured against the 256 KB per-SM Tensor Memory",
+  "cap": "Tensor Memory budget: two 16-bit or 32-bit tiles fill one SM's 256 KB, while an NVFP4 tile uses an eighth of it."
+ }
+]

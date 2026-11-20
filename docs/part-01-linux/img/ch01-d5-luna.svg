@@ -30,7 +30,7 @@
   <text class="band-label" x="70" y="525">KERNEL SPACE</text>
   <text class="band-label" x="70" y="1095">HARDWARE</text>
 
-  <!-- Connections, behind the node boxes -->
+  
   <path class="gpu-arrow" d="M1050 322 H1015"/>
   <path class="arrow" d="M1260 322 H1295"/>
   <path class="gpu-arrow" d="M910 405 V610"/>
@@ -42,7 +42,7 @@
   <path class="arrow" d="M420 980 V1170"/>
   <path class="arrow" d="M660 780 V1170"/>
 
-  <!-- USER SPACE -->
+  
   <rect class="box" x="70" y="240" width="210" height="165"/>
   <text class="title" x="175" y="278">
     <tspan x="175">Container</tspan><tspan x="175" dy="31">runtime</tspan>
@@ -86,7 +86,7 @@
     <tspan x="1400">libibverbs,</tspan><tspan x="1400" dy="28">UCX</tspan>
   </text>
 
-  <!-- KERNEL SPACE, upper row -->
+  
   <rect class="box" x="70" y="610" width="455" height="170"/>
   <text class="title" x="297.5" y="665">
     <tspan x="297.5">Namespaces</tspan><tspan x="297.5" dy="34">and cgroups</tspan>
@@ -116,7 +116,7 @@
     <tspan x="1400">mlx5_core,</tspan><tspan x="1400" dy="27">ib_core</tspan>
   </text>
 
-  <!-- KERNEL SPACE, lower row -->
+  
   <rect class="box" x="70" y="835" width="220" height="145"/>
   <text class="title" x="180" y="892">
     <tspan x="180">Memory</tspan><tspan x="180" dy="34">manager</tspan>
@@ -127,7 +127,7 @@
     <tspan x="420">NVMe &amp; FS</tspan><tspan x="420" dy="34">drivers</tspan>
   </text>
 
-  <!-- HARDWARE -->
+  
   <rect class="box" x="310" y="1170" width="220" height="145"/>
   <text class="title" x="420" y="1227">
     <tspan x="420">NVMe</tspan><tspan x="420" dy="34">drives</tspan>

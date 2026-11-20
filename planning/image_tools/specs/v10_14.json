@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "14",
+  "name": "g14-ilp-warps",
+  "title": "More independent operations per thread means fewer resident warps are needed",
+  "spec": "A column chart with four columns left to right labelled ILP 1, ILP 2, ILP 3 and ILP 4, showing the number of resident warps needed to keep one SM busy. Column heights: 48 warps for ILP 1, 32 for ILP 2, 24 for ILP 3, and 16 for ILP 4. Each column has a caption beneath with the share of the 64-warp SM it fills: 75 percent, 50 percent, 37.5 percent and 25 percent. A dashed horizontal line across the chart at 64 labelled full SM, 2,048 threads. The first column is grey and the last column is green. Orange highlight on the ILP 4 column with the note: 3 times fewer warps for the same throughput. Monospace for 48, 32, 24, 16, 64 and 2,048.",
+  "anchor": "### 4.1 How ILP hides latency within a single warp and cuts required occupancy",
+  "alt": "Warps needed to saturate an SM at ILP levels one to four",
+  "cap": "ILP trade: a thread with four independent operations in flight needs 16 warps to keep an SM busy, against 48 with no ILP."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "14",
+  "name": "g14-divergence-split",
+  "title": "A 16 versus 16 branch split runs as two serial passes, while a select runs once",
+  "spec": "Two stacked panels, each showing one warp of 32 lane squares in a row. Top panel, labelled divergent if else: a first pass row where lanes 0 to 15 are coloured green and lanes 16 to 31 are grey with the label masked off, then a second pass row where the colours swap, lanes 16 to 31 green and lanes 0 to 15 grey, with a bracket labelled two serial passes, 50 percent warp efficiency. Bottom panel, labelled predicated ternary select: one row where all 32 lanes are green in a single pass, with the label one pass, 99 percent warp efficiency. A timing bar to the right of each panel: top bar twice as long as bottom bar. Orange highlight on the grey masked lanes in the top panel with the note: half the crew idles on each pass. Monospace for if, else, 50 percent and 99 percent.",
+  "anchor": "### 3.1 How SIMT branch divergence serializes warps",
+  "alt": "Divergent branch passes versus one predicated pass",
+  "cap": "Divergence: when a warp splits 16 and 16 across an if-else, it runs both paths in turn, so the warp takes twice as long."
+ }
+]

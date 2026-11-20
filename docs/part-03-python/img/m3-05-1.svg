@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Mechanics</title>
+  <desc>Flowchart showing the mechanics of Python try, except, else, and finally execution blocks.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Mechanics</text>
+
+  
+
+  
+  <path d="M 670 200 L 670 260" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 480 356 L 480 410 L 270 410 L 270 460" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 860 356 L 860 410 L 1180 410 L 1180 460" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1030 570 L 1030 625 L 780 625 L 780 680" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1330 570 L 1330 625 L 1350 625 L 1350 680" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 270 590 L 270 890 L 320 890 L 320 920" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 680 860 L 680 920" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g transform="translate(375, 410)">
+    <rect x="-35" y="-18" width="70" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="0" y="8" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">No</text>
+  </g>
+
+  
+  <g transform="translate(1020, 410)">
+    <rect x="-35" y="-18" width="70" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="0" y="8" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Yes</text>
+  </g>
+
+  
+  <g transform="translate(905, 625)">
+    <rect x="-35" y="-18" width="70" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="0" y="8" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Yes</text>
+  </g>
+
+  
+  <g transform="translate(1340, 625)">
+    <rect x="-35" y="-18" width="70" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="0" y="8" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">No</text>
+  </g>
+
+  
+
+  
+  <g id="node-try">
+    <rect x="420" y="110" width="500" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(445, 127)">
+      <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="3" />
+      <circle cx="12" cy="9" r="3" fill="#207448" />
+      <circle cx="22" cy="9" r="3" fill="#207448" />
+      <path d="M 12 32 L 22 38 L 12 44" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="28" y1="44" x2="42" y2="44" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="525" y="166" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Execute try: block</text>
+  </g>
+
+  
+  <g id="node-check">
+    <rect x="420" y="260" width="500" height="96" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(445, 280)">
+      <rect x="4" y="4" width="48" height="48" rx="8" transform="rotate(45 28 28)" fill="none" stroke="#207448" stroke-width="4" />
+      <text x="28" y="38" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">?</text>
+    </g>
+    <text x="525" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Exception raised?</text>
+  </g>
+
+  
+  <g id="node-else">
+    <rect x="40" y="460" width="460" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(65, 497)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 16 28 L 24 36 L 40 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="145" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Run else: block</text>
+    <text x="145" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(only if try succeeded)</text>
+  </g>
+
+  
+  <g id="node-match">
+    <rect x="840" y="460" width="680" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(865, 487)">
+      <circle cx="16" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="44" cy="14" r="8" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="44" cy="42" r="8" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 24 28 L 36 14 M 24 28 L 36 42" fill="none" stroke="#207448" stroke-width="3.5" />
+    </g>
+    <text x="945" y="527" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Matches except Exc as var?</text>
+  </g>
+
+  
+  <g id="node-handler">
+    <rect x="490" y="680" width="580" height="180" rx="16" fill="#fdf7f0" stroke="#db8129" stroke-width="4" />
+    
+    <g transform="translate(515, 742)">
+      <path d="M 28 6 L 48 14 L 48 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 L 8 14 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+      <line x1="28" y1="20" x2="28" y2="30" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="28" cy="37" r="2" fill="#db8129" />
+    </g>
+    <text x="590" y="728" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Run except block</text>
+    <text x="590" y="774" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">(sys.exception() / var.__cause__)</text>
+    <text x="590" y="818" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">then auto-run: del var</text>
+  </g>
+
+  
+  <g id="node-finally-unwind">
+    <rect x="1110" y="680" width="450" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(1135, 742)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 28 40 L 28 16 M 18 24 L 28 14 L 38 24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="1210" y="728" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Run finally: block</text>
+    <text x="1210" y="774" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and propagate exception</text>
+    <text x="1210" y="812" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">upward</text>
+  </g>
+
+  
+  <g id="node-finally-ok">
+    <rect x="180" y="920" width="600" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(205, 957)">
+      <path d="M 12 50 L 12 10 L 44 22 L 12 34" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <text x="275" y="975" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Run finally: block</text>
+    <text x="275" y="1015" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and continue after try</text>
+  </g>
+</svg>

@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>cgroups v1 versus v2</title>
+  <desc>Visual comparison between cgroups v1 separate hierarchy per controller and cgroups v2 single unified hierarchy with internal process constraints and filesystem commands.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">cgroups v1 versus v2</text>
+
+  
+  <g id="panel-v1">
+    
+    <rect x="50" y="100" width="725" height="780" rx="16" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
+    
+    
+    <rect x="50" y="100" width="725" height="110" rx="16" fill="#e8f1ea"/>
+    <rect x="50" y="190" width="725" height="20" fill="#e8f1ea"/>
+
+    
+    <g transform="translate(75, 127)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="12" cy="12" r="8"/>
+      <circle cx="44" cy="12" r="8"/>
+      <circle cx="12" cy="44" r="8"/>
+      <circle cx="44" cy="44" r="8"/>
+      <path d="M12 20 v16 M44 20 v16"/>
+    </g>
+
+    <text x="150" y="148" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">v1</text>
+    <text x="150" y="188" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">separate trees per controller</text>
+
+    
+    <g transform="translate(80, 240)">
+      <rect x="0" y="0" width="665" height="115" rx="12" fill="#f5f8f5" stroke="#ccd9d0" stroke-width="2"/>
+      
+      <g transform="translate(24, 30)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <rect x="12" y="12" width="32" height="32" rx="4"/>
+        <path d="M20 4 v8 M28 4 v8 M36 4 v8 M20 44 v8 M28 44 v8 M36 44 v8 M4 20 h8 M4 28 h8 M4 36 h8 M44 20 h8 M44 28 h8 M44 36 h8"/>
+      </g>
+      <text x="105" y="68" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">/sys/fs/cgroup/cpu/</text>
+    </g>
+
+    
+    <g transform="translate(80, 380)">
+      <rect x="0" y="0" width="665" height="115" rx="12" fill="#f5f8f5" stroke="#ccd9d0" stroke-width="2"/>
+      
+      <g transform="translate(24, 30)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <rect x="6" y="14" width="44" height="28" rx="3"/>
+        <path d="M14 14 v-6 M22 14 v-6 M30 14 v-6 M38 14 v-6"/>
+        <circle cx="16" cy="28" r="3" fill="#207448"/>
+        <circle cx="28" cy="28" r="3" fill="#207448"/>
+        <circle cx="40" cy="28" r="3" fill="#207448"/>
+      </g>
+      <text x="105" y="68" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">/memory/</text>
+    </g>
+
+    
+    <g transform="translate(80, 520)">
+      <rect x="0" y="0" width="665" height="115" rx="12" fill="#f5f8f5" stroke="#ccd9d0" stroke-width="2"/>
+      
+      <g transform="translate(24, 30)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <ellipse cx="28" cy="14" rx="20" ry="8"/>
+        <path d="M8 14 v26 c0 4.4 9 8 20 8 s20 -3.6 20 -8 v-26"/>
+        <path d="M8 27 c0 4.4 9 8 20 8 s20 -3.6 20 -8"/>
+      </g>
+      <text x="105" y="68" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">/blkio/</text>
+    </g>
+
+    
+    <g transform="translate(80, 660)">
+      <rect x="0" y="0" width="665" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(24, 65)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <rect x="6" y="8" width="44" height="40" rx="4"/>
+        <path d="M6 20 h44 M16 14 h.01 M24 14 h.01"/>
+      </g>
+      <text x="105" y="80" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+        <tspan x="105" dy="0">a process can sit in a different group</tspan>
+        <tspan x="105" dy="42">in each tree</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="panel-v2">
+    
+    <rect x="825" y="100" width="725" height="780" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    
+    <rect x="825" y="100" width="725" height="110" rx="16" fill="#e8f1ea"/>
+    <rect x="825" y="190" width="725" height="20" fill="#e8f1ea"/>
+
+    
+    <g transform="translate(850, 127)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="10" r="7"/>
+      <circle cx="10" cy="46" r="7"/>
+      <circle cx="28" cy="46" r="7"/>
+      <circle cx="46" cy="46" r="7"/>
+      <path d="M28 17 v12 M28 29 L10 39 M28 29 L46 39 M28 29 v10"/>
+    </g>
+
+    <text x="925" y="148" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">v2</text>
+    <text x="925" y="188" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">one unified tree</text>
+
+    
+    <g transform="translate(855, 230)">
+      <rect x="0" y="0" width="665" height="120" rx="12" fill="#f5f8f5" stroke="#ccd9d0" stroke-width="2"/>
+      
+      <g transform="translate(24, 32)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M6 12 h16 l6 8 h22 v28 h-44 z"/>
+      </g>
+      <text x="105" y="70" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">one cgroup2 mount at /sys/fs/cgroup</text>
+    </g>
+
+    
+    <g transform="translate(855, 370)">
+      <rect x="0" y="0" width="665" height="120" rx="12" fill="#f5f8f5" stroke="#ccd9d0" stroke-width="2"/>
+      
+      <g transform="translate(24, 32)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <rect x="6" y="8" width="44" height="40" rx="4"/>
+        <path d="M6 20 h44 M28 28 v12 M22 34 h12"/>
+      </g>
+      <text x="105" y="70" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">a process is in exactly one cgroup</text>
+    </g>
+
+    
+    <g transform="translate(855, 510)">
+      <rect x="0" y="0" width="665" height="150" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+      
+      <g transform="translate(24, 47)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M28 6 L48 14 v16 c0 14 -20 22 -20 22 s-20 -8 -20 -22 V14 z"/>
+        <path d="M28 20 v12 M28 38 h.01"/>
+      </g>
+      <text x="105" y="64" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+        <tspan x="105" dy="0">no internal processes rule:</tspan>
+        <tspan x="105" dy="42">only leaf groups hold processes</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(855, 680)">
+      <rect x="0" y="0" width="665" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(24, 60)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M8 16 h40 M8 32 h40 M8 48 h40"/>
+        <circle cx="20" cy="16" r="5" fill="#e8f1ea"/>
+        <circle cx="36" cy="32" r="5" fill="#e8f1ea"/>
+        <circle cx="24" cy="48" r="5" fill="#e8f1ea"/>
+      </g>
+      <text x="105" y="75" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="105" dy="0">controllers enabled by writing +cpu +memory</tspan>
+        <tspan x="105" dy="40">to cgroup.subtree_control</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="panel-bottom" transform="translate(50, 910)">
+    <rect x="0" y="0" width="1500" height="250" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(35, 95)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="6" width="48" height="44" rx="4"/>
+      <path d="M14 20 l8 8 -8 8 M26 36 h14"/>
+    </g>
+
+    
+    <g transform="translate(120, 28)">
+      <rect x="0" y="0" width="1340" height="110" rx="10" fill="#f5f8f5" stroke="#ccd9d0" stroke-width="1.5"/>
+      <text x="24" y="46" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">stat -fc %T /sys/fs/cgroup/</text>
+      <text x="24" y="86" font-family="monospace" font-size="24" fill="#303a36">(cgroup2fs means pure v2; tmpfs means v1 or hybrid)</text>
+    </g>
+
+    
+    <g transform="translate(120, 154)">
+      <rect x="0" y="0" width="1340" height="70" rx="10" fill="#f5f8f5" stroke="#ccd9d0" stroke-width="1.5"/>
+      <text x="24" y="46" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">cat /proc/self/cgroup</text>
+    </g>
+  </g>
+</svg>

@@ -68,6 +68,10 @@ Exceptions do more than report errors. They play five common roles in ordinary P
 
 ### Mechanics
 
+![The try statement flow](./img/s05-trycycle.svg)
+
+*Figure 3.5.1. Exception mechanics: finally runs whether the body succeeds, is handled, or fails unhandled.*
+
 An **exception** is an object that represents an error or an unusual condition. When you raise one, Python unwinds the call stack, which is the chain of functions currently waiting on each other. It keeps unwinding until it finds a matching handler. If no handler exists, the program prints a traceback and exits with status 1.
 
 ```python
@@ -937,6 +941,10 @@ Conventional exit codes are worth knowing, because they are the only part of a f
 
 ## 2. Logging
 
+![How logging moves a record](./img/s05-logging.svg)
+
+*Figure 3.5.2. Logging: a logger drops records below its level, then a handler and a formatter send the rest to a destination.*
+
 A job fails halfway through a sweep of the fleet, and someone opens the terminal where it ran. The window is full of progress lines, the useful one has scrolled away, and the output was piped into a file that the next run overwrote. The normal output of a program is rarely enough at that moment. You need to know which host failed, when it failed and what the script was trying to do.
 
 That is the job of logging. Use `print` for program output. Use **`logging`** for diagnostics, which come with levels, destinations and structure.
@@ -1019,6 +1027,10 @@ p.walk()                       # 3.12+: like os.walk
 Prefer `pathlib` over string manipulation and `os.path`. A `Path` object knows how to join names, so you stop worrying about where the slashes go. Most standard functions accept `Path` objects directly, because they implement `os.PathLike`. `os.scandir` is the fast, low-level directory iterator behind `os.walk`, and it returns file type information without extra `stat` calls. When you work with millions of files on a parallel file system, minimise metadata operations. Avoid a `stat` per file where you can, batch the work, or use the file system's own tools.
 
 ### Safe writes: atomic replace
+
+![Atomic replace for safe writes](./img/s05-atomic.svg)
+
+*Figure 3.5.3. Safe writes: write a temp file, then replace the target in one step so readers never see half a file.*
 
 Writing a file in place can leave it truncated. That happens if the process crashes or the disk fills up, and readers may see partial content in the meantime. The safer pattern writes to a temporary file in the same directory, which keeps it on the same file system. It then flushes and fsyncs the file, and finally calls `os.replace()`, which performs an atomic rename. Readers see the old file or the new one, never a half-written mixture.
 
@@ -1157,6 +1169,10 @@ A cleanup script collects a file name from a directory listing and pastes it int
 
 ### Safe defaults
 
+![Safe defaults for subprocess.run](./img/s05-subproc.svg)
+
+*Figure 3.5.4. Safe subprocess defaults: pass an argument list, set a timeout, and raise on a non-zero exit.*
+
 ```python
 import subprocess, shlex
 
@@ -1284,6 +1300,10 @@ open("/proc/meminfo").read(); Path("/sys/class/net/eth0/speed").read_text(); Pat
 Reading `/proc` and `/sys` directly is cheap, and it needs no extra dependency. The values come back as text. Files can vanish when a process exits, so handle `FileNotFoundError` and `ProcessLookupError`. Containers see namespaced and cgroup-limited views, such as `/sys/fs/cgroup/...`. In that case, `psutil` totals may show the host rather than your limit, and a script can believe it has far more memory than it may use.
 
 ### Signals and graceful shutdown
+
+![Graceful shutdown with a signal handler](./img/s05-signals.svg)
+
+*Figure 3.5.5. Graceful shutdown: the signal handler sets a flag, the loop finishes its item, then cleanup runs.*
 
 ```python
 import signal, threading

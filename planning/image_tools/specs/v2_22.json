@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "n22-socketlife",
+  "title": "Life cycle of a TCP server socket",
+  "spec": "Vertical flow of calls in monospace: 'socket()' -> 'bind(addr:port)' -> 'listen(backlog)' -> loop: 'accept()' returns a NEW connected socket -> 'read/recv' and 'write/send' on it -> 'close'. Side notes: 'Sockets are file descriptors: /proc/<pid>/fd, limited by ulimit -n and fs.file-max'; 'Binding to 0.0.0.0 or :: listens on all addresses; the address you bind decides who can reach the service'. Right chips of socket types: SOCK_STREAM (TCP), SOCK_DGRAM (UDP), SOCK_RAW (ICMP tools), AF_PACKET (tcpdump). Orange highlight on accept() with note 'returns a new socket'.",
+  "anchor": "## 4. Sockets: how processes use the network",
+  "alt": "TCP server socket life cycle",
+  "cap": "A server calls socket, bind and listen, then accept returns a new connected socket for each client."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "n22-ssti",
+  "title": "Reading ss -ti output",
+  "spec": "The ss -ti example block in monospace in the centre: 'ESTAB 0 0 10.0.0.2:51234 10.0.0.5:443', 'cubic wscale:7,7 rto:204 rtt:0.31/0.12 mss:1448 pmtu:1500 cwnd:10 ssthresh:7 bytes_sent:2.1M bytes_acked:2.1M', 'bytes_retrans:12K segs_out:1500 segs_in:900 send 373Mbps pacing_rate 746Mbps delivery_rate 330Mbps', 'busy:2300ms rwnd_limited:100ms(4.3%) app_limited retrans:0/9 reordering:3 rcv_space:14480'. Callouts pointing at fields: cubic = congestion control; rtt:avg/var = round-trip time; cwnd and ssthresh = congestion window state; retrans:current/total = retransmits; delivery_rate = what the connection actually achieves, pacing_rate = what it is allowed. Orange highlight on rwnd_limited.",
+  "anchor": "### `ss -ti` fields",
+  "alt": "Fields of ss -ti",
+  "cap": "Each ss -ti field describes one aspect of how a single connection is performing."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "n22-checklist",
+  "title": "Top-down and bottom-up checklist",
+  "spec": "Two vertical ladders side by side with a shared 8-rung list. Top-down (application symptom to wire): 1 process listening 'ss -tulpn'; 2 connect test 'nc -zv host port', refusal versus timeout; 3 DNS 'getent hosts', 'dig'; 4 route and source 'ip route get <dst>', 'ip rule', rp_filter; 5 firewall 'nft list ruleset', conntrack; 6 neighbours 'ip neigh', 'arping'; 7 interface 'ip -s link', 'ethtool -S'; 8 capture packets at both ends. Bottom-up goes the other way: link up, speed and FEC, errors, ring buffers, IRQ and CPU. Orange bar: 'Application reports the failure: go top-down. Counters already rising: go bottom-up'.",
+  "anchor": "## 8. Putting it together: a top-down and bottom-up checklist",
+  "alt": "Top-down and bottom-up troubleshooting",
+  "cap": "Start at the application when it reports the failure, and at the hardware when counters are already rising."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "n22-netmanagers",
+  "title": "Who configures the network",
+  "spec": "Layered diagram. Top: cloud-init (generates Netplan, NM or networkd config from metadata). Middle: Netplan (YAML in /etc/netplan/*.yaml; netplan try/apply/generate) renders to either of two boxes: NetworkManager (/etc/NetworkManager/system-connections/, nmcli) or systemd-networkd (/etc/systemd/network/*.network, networkctl). Side: ifupdown (/etc/network/interfaces) on older Debian; udev .link files pin interface names (net.ifnames=0). Monospace for paths. Orange note: 'Manual ip changes are not persisted: after reboot config lost'.",
+  "anchor": "## 3. Persistent configuration: managers and files",
+  "alt": "Network configuration managers",
+  "cap": "Netplan and cloud-init are front ends that render configuration for NetworkManager or systemd-networkd."
+ }
+]

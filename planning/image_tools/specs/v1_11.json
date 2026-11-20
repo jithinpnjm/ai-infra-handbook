@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "11",
+  "name": "l11-lib-names",
+  "title": "Three names for one library",
+  "spec": "Three stacked rows, each a box with a role label. libfoo.so | linker name | used at BUILD time (-lfoo), usually a symlink, shipped in the -dev package. libfoo.so.1 | soname | recorded in programs that link against it (DT_NEEDED), the compatibility contract (orange). libfoo.so.1.2.3 | real name | the actual file. Arrows from linker name to soname to real name labelled symlinks. Note: the number in the soname is the ABI version, so a bug-fix release 1.2.4 can replace 1.2.3 without relinking. Names monospace.",
+  "anchor": "### Names: soname, real name, linker name",
+  "alt": "A shared library has a linker name, a soname and a real file name tied together by symlinks.",
+  "cap": "Programs record the soname, which is the compatibility contract, while the real name is the actual file."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "11",
+  "name": "l11-glibc-direction",
+  "title": "Binaries and glibc versions",
+  "spec": "Two hosts side by side. Left: build host with newer glibc, binary built there. Right: older distribution with older glibc. Arrow from left to right in orange with error text in monospace: version `GLIBC_2.34' not found (required by ./prog). Reverse arrow green: build on the oldest distribution you intend to support, runs on newer. Lower box with two commands: objdump -T ./prog | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1 (what the binary needs) ; ldd --version (what the system offers). Takeaway bar: binaries are forward-compatible with newer glibc, not backward.",
+  "anchor": "### Symbol versioning and glibc",
+  "alt": "A binary built against a newer glibc fails on an older system, but not the other way round.",
+  "cap": "Binaries are forward-compatible with newer glibc, not backward, so build on the oldest distribution you support."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "11",
+  "name": "l11-strace-reading",
+  "title": "Reading a strace by symptom",
+  "spec": "Table with Symptom, What to look for, Command. Rows: cannot find config | last failed openat before the error, ENOENT or EACCES | grep -n 'ENOENT\\|EACCES' /tmp/t.out ; which library loaded | openat lines for .so files | grep openat /tmp/t.out | grep '\\.so' ; hung | futex(..., FUTEX_WAIT...) waiting on a lock; epoll_wait or poll waiting for events | strace -p PID ; slow | counts per call type, many small reads or many failed stat | strace -c -f -p PID. Commands monospace. Orange note: strace stops the target at every system call, so it adds overhead.",
+  "anchor": "## 6. Watching a program: `strace` and `ltrace` in practice",
+  "alt": "A table that maps common symptoms to what to look for in a strace output.",
+  "cap": "Read a trace with one question in mind and use the matching filter or summary flag."
+ }
+]

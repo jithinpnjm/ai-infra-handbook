@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "k23-overprovision-preempt",
+  "title": "Warm buffer nodes hidden by negative-priority pause pods",
+  "spec": "Three stages drawn left to right, each a row of GPU node boxes with pods shown as small blocks. Stage 1, titled Steady state: a warm GPU node box holding a row of pause pods (grey blocks) labelled cluster-overprovisioner, value -10, reserving nearly all of the node. A label: pause pods consume no real resources. Stage 2, titled Traffic spike: a real production inference pod (green block, priority 0 or more) arrives, with an arrow into the same warm node. A numbered step 1 on the arrow: kube-scheduler preempts the pause pods, with a 0 s node wait. The pause pods are shown being pushed out in orange. Stage 3, titled Buffer rebuilt: the pause pods are now Pending (dashed grey outline), with an arrow from them to a Cluster Autoscaler box, which adds a new buffer node in the background, labelled a new node joins in the background. Number circles 1, 2, 3 on the three stages (r=24, green). Orange highlight on the pause pods preempted in stage 2. Under the stages, a small note: the real pod starts at once on the warm node, instead of waiting for a new node to boot. Green takeaway bar: pause pods hold a warm node so the next burst does not wait for a new one to boot.",
+  "anchor": "### Cluster overprovisioning",
+  "alt": "Low-priority pause pods hold a warm GPU node; a real pod preempts them and starts at once while the autoscaler rebuilds the buffer.",
+  "cap": "Low-priority placeholder pods hold a warm node, so a real pod can preempt them and start at once while a new buffer node boots in the background."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "k23-gang-atomic",
+  "title": "Pod-by-pod scale-up versus all-or-nothing capacity for a gang",
+  "spec": "Two horizontal lanes stacked, each showing a 16-node gang needing all of its nodes before training starts. Top lane, titled Reactive scale-up pod by pod: a row of 16 node slots, the first several filled with green boxes labelled worker pod waiting, and the rest empty and dashed. An orange note: the waiting pods hold the new nodes idle while the rest are still being provisioned. A label: the gang cannot start with only part of its nodes. A small clock icon with the label scale-up trickles in. Bottom lane, titled ProvisioningRequest with Kueue AdmissionCheck: a single arrow labelled 1 request capacity for all 16 pods at once, leading to a bar with 16 node slots all filled and marked reserved. Then an arrow labelled 2 workload admitted, leading to a row of 16 running worker pods (green). A label: all or none, the nodes are held for the job. Numbered circles 1 and 2 on the bottom lane (r=24, green). Icons: a gear for the autoscaler, a lock for reserved capacity. Green takeaway bar: book the whole crew before anyone gets into the boat.",
+  "anchor": "### Atomic capacity for multi-node jobs",
+  "alt": "Pod-by-pod scale-up fills nodes slowly and leaves partial capacity idle, while a ProvisioningRequest reserves all nodes before the gang starts.",
+  "cap": "A ProvisioningRequest reserves capacity for the whole gang at once, while pod-by-pod scale-up can leave some nodes idle until the rest arrive."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "k23-scale-down-window",
+  "title": "The scale-down stabilization window remembers the highest recent recommendation",
+  "spec": "A horizontal timeline from left to right labelled time, with a shaded rolling window of 600 seconds drawn as a band spanning the most recent ten minutes at the current moment. Above the timeline, a step line labelled desired replicas, rising to a high level during a busy period on the left, then dropping briefly during a dip in traffic in the middle, then recovering. A dashed horizontal line within the band marked stabilized value, the highest recommendation in the last 600 s, which stays high through the brief dip. Only at the right, after a sustained quiet period, does the stabilized value step down, shown with an orange arrow and label sustained quiet period lets the count fall. Small markers along the timeline: a brief dip labelled short dip, a long quiet span labelled sustained quiet. Numbered circles 1 and 2 at the two drops. Green takeaway bar: a brief dip does not remove replicas, only a sustained quiet period does.",
+  "anchor": "### Behaviour tuning",
+  "alt": "A scale-down window keeps the highest recent recommendation, so a brief dip keeps replicas while a sustained quiet period lets the count fall.",
+  "cap": "A scale-down stabilization window keeps the highest recent recommendation, so only a sustained quiet period lets replicas be removed."
+ }
+]

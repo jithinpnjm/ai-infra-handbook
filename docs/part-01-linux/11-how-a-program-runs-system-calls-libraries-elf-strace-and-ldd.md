@@ -247,6 +247,10 @@ Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. T
 
 ### Names: soname, real name, linker name
 
+![A shared library has a linker name, a soname and a real file name tied together by symlinks.](./img/l11-lib-names.svg)
+
+*Figure 1.11.6. Programs record the soname, which is the compatibility contract, while the real name is the actual file.*
+
 A shared library has three names, and symbolic links tie them together.
 
 ```text
@@ -258,6 +262,10 @@ libfoo.so.1.2.3    real name          the actual file
 The number in the soname is the ABI version. ABI stands for application binary interface, and the number changes when the library breaks compatibility. Programs record the **soname**. So a bug-fix release `1.2.4` can replace `1.2.3` without relinking anything. A rewrite becomes `libfoo.so.2` and installs alongside, so old programs keep using `.1`. The `ldconfig` tool creates the soname symlinks and the cache. That is why one machine can hold `libcudnn.so.8` and `libcudnn.so.9` side by side, and `libcudart.so.11.0` and `libcudart.so.12` too.
 
 ### Symbol versioning and glibc
+
+![A binary built against a newer glibc fails on an older system, but not the other way round.](./img/l11-glibc-direction.svg)
+
+*Figure 1.11.7. Binaries are forward-compatible with newer glibc, not backward, so build on the oldest distribution you support.*
 
 Within one soname, the GNU C library and libstdc++ attach **symbol versions** to their functions. Examples are `memcpy@GLIBC_2.14` and `GLIBCXX_3.4.30`. A newer library can then provide both new and old behaviour. At link time, the binary records the **minimum versions** it needs. You can read them with `readelf -V ./prog` or `objdump -T`. At run time, the loader refuses to start the program if the system library is older than required.
 
@@ -300,6 +308,10 @@ When an `import` fails, you find the `.so` file and run `ldd` on it. Start with 
 When a library will not load, check the search path before you reinstall anything.
 
 ## 6. Watching a program: `strace` and `ltrace` in practice
+
+![A table that maps common symptoms to what to look for in a strace output.](./img/l11-strace-reading.svg)
+
+*Figure 1.11.8. Read a trace with one question in mind and use the matching filter or summary flag.*
 
 When a program fails or hangs, and its logs say nothing useful, `strace` is usually the first tool to reach for. You can see the process in `ps`, but you get no error, no stack and no clue why it stopped moving. Chapter 1.8 introduced `strace` in section 3. It prints the system calls the program makes, one line per call, so the kernel boundary where it stopped becomes visible. Start with a broad trace, then narrow it down to the calls that matter. The commands below follow that routine.
 

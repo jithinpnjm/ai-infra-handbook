@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "l08-zombie-orphan",
+  "title": "Zombies and orphans",
+  "spec": "Two panels. Panel 1 Zombie: child process exits, releases memory and files, leaves a process-table entry holding the exit status until the parent calls wait(); label 'uses no CPU or memory, cannot be killed, fix is to make the parent wait()'. Panel 2 Orphan: parent exits before child, child is re-parented to PID 1 or a subreaper which must wait() for it (orange). Footer note: in a container, PID 1 that never reaps children leaves permanent zombies; fix with a tiny init such as tini.",
+  "anchor": "### Zombies and orphans",
+  "alt": "A zombie is an exited child waiting for its parent to collect the status, and an orphan is reparented to PID 1.",
+  "cap": "A zombie holds only a PID slot until the parent calls wait(), and orphans are adopted by PID 1."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "l08-load-average",
+  "title": "Reading the load average",
+  "spec": "Left: run queue box with tasks waiting for cores, plus a D-state (waiting for I/O) group that also counts. Right decision list: compare with nproc; load below the thread count means not all cores are busy; load stays above means tasks are queuing; high load with idle CPUs (orange) means tasks stuck waiting for I/O, check vmstat b column, wa, and iostat; high load with sluggish system points to memory pressure and swapping or I/O. Green bar: if you see a high load with idle CPUs, look at I/O first.",
+  "anchor": "### The run queue and the load average",
+  "alt": "Load average counts running, runnable and uninterruptible tasks, so compare it with CPU count and check I/O.",
+  "cap": "A high load with idle CPUs means many tasks are stuck waiting for I/O."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "l08-proc-pid",
+  "title": "What lives in /proc/PID",
+  "spec": "Central folder box /proc/PID with spokes to short labelled files: status (name, state, UIDs, VmRSS); cmdline; environ; cwd, exe, root (symlinks); fd/ (one symlink per open descriptor); maps and smaps (memory mappings); limits; io (read_bytes, write_bytes); wchan and stack (kernel function waiting in); cgroup; ns/. Monospace names. Separate small box: system-wide /proc/loadavg, /proc/meminfo, /proc/pressure/*. Orange note: reading these is how ps and top work.",
+  "anchor": "### `/proc`: the kernel's window on every process",
+  "alt": "Each process has a /proc directory whose files expose its state, memory, files and limits.",
+  "cap": "Reading /proc files is how ps and top work, and you can read them yourself."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "l08-hangup-remedies",
+  "title": "Keeping a job alive after disconnect",
+  "spec": "Top: SSH session drops, shell gets SIGHUP and forwards it to its jobs, job terminates (orange). Below: five remedies as boxes: tmux or screen; submit to the scheduler (sbatch, a Kubernetes Job); nohup ./run.sh > run.log 2>&1 &; disown -h after Ctrl-Z and bg; a systemd service or timer. Mark tmux as best for interactive, scheduler as right answer for anything that matters. Green bar: pick the remedy before you start the job, not after the connection drops.",
+  "anchor": "## 5. Shell job control",
+  "alt": "Dropping the SSH session sends SIGHUP to jobs, and five remedies keep work alive.",
+  "cap": "Choose tmux, the scheduler, nohup, disown or systemd before the connection drops."
+ }
+]

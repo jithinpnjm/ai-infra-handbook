@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>A lazy generator pipeline</title>
+  <desc>A horizontal pipeline of four boxes joined by arrows showing lazy evaluation with flat memory usage.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="16" markerHeight="16" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="90" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">A lazy generator pipeline</text>
+
+  
+  <g id="stage-1">
+    <rect x="50" y="200" width="330" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="215" cy="248" r="24" fill="#207448" />
+    <text x="215" y="256" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 193 302 L 223 302 L 237 316 L 237 356 L 193 356 Z" />
+      <path d="M 223 302 L 223 316 L 237 316" />
+      <line x1="203" y1="326" x2="217" y2="326" />
+      <line x1="203" y1="336" x2="227" y2="336" />
+      <line x1="203" y1="346" x2="223" y2="346" />
+    </g>
+    
+    <text x="215" y="420" font-family="sans-serif" text-anchor="middle">
+      <tspan x="215" dy="0" font-size="30" font-weight="bold" fill="#303a36">read lines</tspan>
+      <tspan x="215" dy="40" font-size="24" font-weight="normal" fill="#303a36"> (generator)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="380" y1="360" x2="440" y2="360" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="stage-2">
+    <rect x="440" y="200" width="330" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="605" cy="248" r="24" fill="#207448" />
+    <text x="605" y="256" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 583 304 L 627 304 L 613 328 L 613 354 L 597 354 L 597 328 Z" />
+      <line x1="589" y1="314" x2="621" y2="314" />
+      <line x1="595" y1="323" x2="615" y2="323" />
+      <line x1="605" y1="337" x2="605" y2="347" />
+    </g>
+    
+    <text x="605" y="420" font-family="sans-serif" text-anchor="middle">
+      <tspan x="605" dy="0" font-size="30" font-weight="bold" fill="#303a36">filter lines</tspan>
+      <tspan x="605" dy="40" font-size="24" font-weight="normal" fill="#303a36"> (generator)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="770" y1="360" x2="830" y2="360" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="stage-3">
+    <rect x="830" y="200" width="330" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="995" cy="248" r="24" fill="#207448" />
+    <text x="995" y="256" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="973" y="304" width="44" height="50" rx="4" />
+      <line x1="973" y1="318" x2="1017" y2="318" />
+      <line x1="995" y1="318" x2="995" y2="354" />
+      <line x1="980" y1="330" x2="988" y2="330" />
+      <line x1="1002" y1="330" x2="1010" y2="330" />
+      <line x1="980" y1="342" x2="988" y2="342" />
+      <line x1="1002" y1="342" x2="1010" y2="342" />
+    </g>
+    
+    <text x="995" y="420" font-family="sans-serif" text-anchor="middle">
+      <tspan x="995" dy="0" font-size="30" font-weight="bold" fill="#303a36">parse fields</tspan>
+      <tspan x="995" dy="40" font-size="24" font-weight="normal" fill="#303a36"> (generator)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1160" y1="360" x2="1220" y2="360" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="stage-4">
+    <rect x="1220" y="200" width="330" height="320" rx="16" fill="#fdf3e7" stroke="#db8129" stroke-width="3" />
+    
+    <circle cx="1385" cy="248" r="24" fill="#db8129" />
+    <text x="1385" y="256" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <path d="M 1405 306 L 1367 306 L 1385 329 L 1367 352 L 1405 352" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    
+    <text x="1385" y="420" font-family="sans-serif" text-anchor="middle">
+      <tspan x="1385" dy="0" font-size="30" font-weight="bold" fill="#303a36">sum</tspan>
+      <tspan x="1385" dy="40" font-size="24" font-weight="normal" fill="#303a36"> (consumer)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="note">
+    <rect x="380" y="580" width="840" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+    <text x="800" y="628" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">one item at a time flows through all stages</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="720" width="1500" height="90" rx="16" fill="#207448" />
+    <text x="800" y="776" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">memory stays flat however large the file is</text>
+  </g>
+</svg>

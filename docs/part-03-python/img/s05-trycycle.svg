@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>How try, except, else and finally run</title>
+  <desc>Flowchart showing the execution paths through try, except, else, and finally blocks.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How try, except, else and finally run</text>
+
+  
+  <g>
+    <rect x="600" y="110" width="400" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="635" y="137" width="46" height="56" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 648 157 L 655 165 L 648 173 M 668 157 L 661 165 L 668 173" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="790" y="176" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">try body</text>
+  </g>
+
+  
+  <line x1="800" y1="220" x2="800" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g>
+    <polygon points="800,300 1060,410 800,520 540,410" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 800 334 L 826 376 L 774 376 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="800" y1="348" x2="800" y2="361" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="800" cy="370" r="2.5" fill="#207448"/>
+    <text x="800" y="440" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Exception raised?</text>
+  </g>
+
+  
+  <path d="M 540 410 H 320 V 570" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="430" y="392" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Yes</text>
+
+  
+  <path d="M 1060 410 H 1250 V 570" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="1155" y="392" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">No</text>
+
+  
+  <line x1="800" y1="520" x2="800" y2="780" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="825" y="655" text-anchor="start" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">unhandled path</text>
+
+  
+  <g>
+    <rect x="80" y="570" width="480" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 115 605 L 155 605 C 155 633 135 647 135 653 C 135 647 115 633 115 605 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <text x="340" y="617" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="340" dy="0">matching</tspan>
+      <tspan x="340" dy="36">except block</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1040" y="570" width="480" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="1100" cy="625" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 1089 625 L 1097 633 L 1112 617" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1300" y="635" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">else block</text>
+  </g>
+
+  
+  <path d="M 320 680 V 730 H 620 V 780" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1250 680 V 730 H 980 V 780" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g>
+    <rect x="500" y="780" width="600" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="555" cy="840" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 555 824 L 555 840 L 567 848" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="785" y="832" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="785" dy="-8">finally</tspan>
+      <tspan x="785" dy="36">that always runs</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <line x1="1100" y1="840" x2="1140" y2="840" stroke="#db8129" stroke-width="3" stroke-dasharray="6,4"/>
+    <rect x="1140" y="775" width="420" height="130" rx="10" fill="#fffaf2" stroke="#db8129" stroke-width="3"/>
+    <text x="1350" y="818" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1350" dy="0">runs on success,</tspan>
+      <tspan x="1350" dy="32">on handled errors and</tspan>
+      <tspan x="1350" dy="32">on unhandled errors</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="900" x2="800" y2="980" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g>
+    <rect x="640" y="980" width="320" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="690" cy="1025" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 683 1013 L 701 1025 L 683 1037 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <text x="815" y="1035" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">continue</text>
+  </g>
+</svg>

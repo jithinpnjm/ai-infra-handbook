@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Shallow versus deep copy</title>
+  <desc>Visual comparison showing that shallow copy shares an inner list between outer lists while deep copy creates independent inner lists.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Shallow versus deep copy</text>
+
+  <g id="left-panel">
+    <rect x="60" y="110" width="710" height="745" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="415" y="165" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">Shallow copy</text>
+
+    <g id="left-outer-L">
+      <rect x="95" y="215" width="350" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(118, 242)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="52" height="52" rx="8"/>
+        <path d="M 18 16 H 12 V 40 H 18"/>
+        <path d="M 38 16 H 44 V 40 H 38"/>
+        <circle cx="28" cy="28" r="3" fill="#207448"/>
+      </g>
+      <text x="210" y="281" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#303a36">L</text>
+    </g>
+
+    <g id="left-outer-M">
+      <rect x="95" y="415" width="350" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(118, 442)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="36" height="36" rx="6"/>
+        <path d="M 18 42 H 46 C 49.3 42 52 39.3 52 36 V 16"/>
+        <line x1="12" y1="20" x2="28" y2="20"/>
+      </g>
+      <text x="195" y="481" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">M = L.copy()</text>
+    </g>
+
+    <g id="left-inner-shared">
+      <rect x="535" y="280" width="200" height="180" rx="14" fill="#fff5ec" stroke="#db8129" stroke-width="3"/>
+      <g transform="translate(607, 305)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="52" height="52" rx="8"/>
+        <path d="M 18 16 H 12 V 40 H 18"/>
+        <path d="M 38 16 H 44 V 40 H 38"/>
+        <circle cx="23" cy="28" r="2.5" fill="#db8129"/>
+        <circle cx="33" cy="28" r="2.5" fill="#db8129"/>
+      </g>
+      <text x="635" y="420" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#db8129">[2, 3]</text>
+    </g>
+
+    <path d="M 445 270 H 490 V 335 H 535" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+    <path d="M 445 470 H 490 V 405 H 535" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+
+    <g id="left-caption">
+      <rect x="95" y="650" width="640" height="145" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="415" y="712" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+        <tspan x="415" dy="0">changing the inner list</tspan>
+        <tspan x="415" dy="42">shows up in both</tspan>
+      </text>
+    </g>
+  </g>
+
+  <g id="right-panel">
+    <rect x="830" y="110" width="710" height="745" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1185" y="165" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">Deep copy</text>
+
+    <g id="right-outer-L">
+      <rect x="865" y="215" width="350" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(888, 242)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="52" height="52" rx="8"/>
+        <path d="M 18 16 H 12 V 40 H 18"/>
+        <path d="M 38 16 H 44 V 40 H 38"/>
+        <circle cx="28" cy="28" r="3" fill="#207448"/>
+      </g>
+      <text x="980" y="281" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#303a36">L</text>
+    </g>
+
+    <g id="right-inner-L">
+      <rect x="1310" y="200" width="195" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(1380, 218)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="52" height="52" rx="8"/>
+        <path d="M 18 16 H 12 V 40 H 18"/>
+        <path d="M 38 16 H 44 V 40 H 38"/>
+        <circle cx="23" cy="28" r="2.5" fill="#207448"/>
+        <circle cx="33" cy="28" r="2.5" fill="#207448"/>
+      </g>
+      <text x="1407" y="316" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#207448">[2, 3]</text>
+    </g>
+
+    <path d="M 1215 270 H 1310" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+
+    <g id="right-outer-N">
+      <rect x="865" y="415" width="350" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(888, 442)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="36" height="36" rx="6"/>
+        <path d="M 18 42 H 46 C 49.3 42 52 39.3 52 36 V 16"/>
+        <line x1="12" y1="20" x2="28" y2="20"/>
+      </g>
+      <text x="960" y="468" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">
+        <tspan x="960" dy="0">N =</tspan>
+        <tspan x="960" dy="30">copy.deepcopy(L)</tspan>
+      </text>
+    </g>
+
+    <g id="right-inner-N">
+      <rect x="1310" y="400" width="195" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(1380, 418)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="52" height="52" rx="8"/>
+        <path d="M 18 16 H 12 V 40 H 18"/>
+        <path d="M 38 16 H 44 V 40 H 38"/>
+        <circle cx="23" cy="28" r="2.5" fill="#207448"/>
+        <circle cx="33" cy="28" r="2.5" fill="#207448"/>
+      </g>
+      <text x="1407" y="516" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#207448">[2, 3]</text>
+    </g>
+
+    <path d="M 1215 470 H 1310" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+
+    <g id="right-caption">
+      <rect x="865" y="650" width="640" height="145" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="1185" y="733" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">fully independent</text>
+    </g>
+  </g>
+</svg>

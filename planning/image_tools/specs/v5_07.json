@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "k07-rollout-shift",
+  "title": "A Deployment rollout shifts replicas from the old ReplicaSet to the new one",
+  "spec": "Left to right, a sequence of four snapshot columns labelled 1 to 4 with a step number circle on each. Above the columns one box labelled Deployment kuard, the desired version. Each column shows two ReplicaSet bars stacked: a bar labelled NewReplicaSet (green) and a bar labelled OldReplicaSets (grey). Column 1: NewReplicaSet has 0 pods, OldReplicaSets has 3 pods. Column 2: NewReplicaSet grows to 1 pod, with a note line waits for new pod to report ready; OldReplicaSets drops to 2 pods. Column 3: NewReplicaSet has 2 pods, OldReplicaSets has 1 pod. Column 4: NewReplicaSet has 3 pods, OldReplicaSets has 0 pods, shown as 0 kept at zero with its template saved. Between each pair of columns, an arrow labelled repeat until the new ReplicaSet holds every replica. Under column 4, a small note labelled revisionHistoryLimit defaults to 10, old ReplicaSets are kept at 0 so you can roll back. Orange highlight only on the step-2 wait box, labelled waits for new pod to report ready. Green takeaway bar at the bottom: each revision is a saved snapshot of the pod template, and undo only changes replica counts.",
+  "anchor": "### Controlling Deployment rollouts: `change-cause`, `pause`, `resume`, `history`, and `undo --to-revision`",
+  "alt": "A Deployment rollout moves replicas from the old ReplicaSet to the new one in steps, with the old ones kept at zero.",
+  "cap": "During a rollout the new ReplicaSet grows one step at a time while the old ReplicaSet shrinks, and the old one stays at zero for rollback."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "k07-statefulset-identity",
+  "title": "Deployment replicas are interchangeable, StatefulSet replicas keep a name and a disk",
+  "spec": "Two side-by-side panels with a vertical divider. Left panel titled Deployment: a box labelled Service in front, with arrows fanning to three identical pod boxes labelled web-7d9f-a, web-7d9f-b and web-7d9f-c with random suffixes. Each pod has a small grey disk-free icon, and a label under the group reads any replica can serve any request, a replacement is just another copy. Right panel titled StatefulSet: a headless Service box labelled qdrant at the top, and three ordered pod boxes labelled qdrant-0, qdrant-1 and qdrant-2 in a row. Each pod has a green arrow down to its own disk cylinder labelled storage-qdrant-0, storage-qdrant-1 and storage-qdrant-2. Under each pod, a DNS label reads qdrant-0.qdrant.data.svc.cluster.local for the first pod only, with a note that the name stays with the replica. Orange note on the right panel: a replacement with an empty disk would be treated as a new member with no history. Green takeaway bar at the bottom: a StatefulSet pairs a stable name with a stable disk, which is what lets a database trust the replica.",
+  "anchor": "### StatefulSet example (vector database)",
+  "alt": "A Deployment's replicas are interchangeable, while each StatefulSet replica keeps its own name and its own storage.",
+  "cap": "Deployment pods are interchangeable copies, whereas each StatefulSet pod keeps a stable name and its own volume claim."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "k07-daemonset-reconcile",
+  "title": "A DaemonSet adds one Pod to each new node",
+  "spec": "Top part: a control box labelled DaemonSet fluentd, with the note desired state is a Pod on every node. Below it a horizontal row of three node boxes labelled node 1, node 2 and node 3, each containing one green pod box labelled fluentd. One single arrow labelled controller reconciles runs from the DaemonSet box to the row of nodes (one arrow to the group, not one per node). Lower part, a numbered sequence with step circles 1 to 3 running left to right: step 1, a new node joins the cluster, shown as a dashed node box labelled node 4 with no pod inside; step 2, the DaemonSet controller notices the missing Pod; step 3, a fluentd pod is added to the new node, shown as the same green pod box now inside node 4. Note beside the sequence: you take no action for the new node. Side note: the pod is placed by nodeName set by the DaemonSet, so the scheduler is skipped. Green takeaway bar at the bottom: a DaemonSet keeps one copy of a Pod on every node, including nodes added later.",
+  "anchor": "### DaemonSet scheduling and reconciliation",
+  "alt": "A DaemonSet controller adds one fluentd Pod to every node, including a node that joins the cluster later.",
+  "cap": "A DaemonSet places one Pod on every node and adds a Pod automatically when a new node joins."
+ }
+]

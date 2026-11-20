@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="960" viewBox="0 0 1600 960">
+  <title>Instance dictionary versus slots</title>
+  <desc>Visual comparison showing that a normal instance uses a per-instance dictionary that can grow new attributes, while an instance with slots has fixed slots, no dictionary, raises AttributeError on unknown attributes, and uses smaller memory.</desc>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Instance dictionary versus slots</text>
+
+  
+  <rect x="60" y="120" width="710" height="780" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(100, 150)">
+    <rect x="0" y="0" width="56" height="56" rx="8" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="4"/>
+    <circle cx="12" cy="9" r="3" fill="#207448"/>
+    <circle cx="24" cy="9" r="3" fill="#207448"/>
+  </g>
+  <text x="180" y="188" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Normal instance</text>
+
+  
+  <rect x="95" y="240" width="640" height="380" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="125" y="270" width="580" height="320" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(387, 296)">
+    <rect x="0" y="0" width="56" height="56" rx="8" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="30" x2="26" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="34" y1="30" x2="44" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="12" y1="42" x2="26" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="34" y1="42" x2="44" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="415" y="395" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="415" dy="0">per-instance <tspan font-family="monospace">__dict__</tspan> </tspan>
+    <tspan x="415" dy="44">that can grow new attributes</tspan>
+  </text>
+
+  
+  <rect x="95" y="645" width="640" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(140, 730)">
+    <rect x="0" y="0" width="56" height="56" rx="8" stroke="#207448" stroke-width="4" fill="none"/>
+    <polyline points="10,18 10,10 18,10" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <polyline points="38,10 46,10 46,18" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <polyline points="10,38 10,46 18,46" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <polyline points="38,46 46,46 46,38" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <line x1="16" y1="28" x2="40" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="16" x2="28" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="230" y="768" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">flexible, larger</text>
+
+
+  
+  <rect x="830" y="120" width="710" height="780" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(870, 150)">
+    <rect x="0" y="18" width="56" height="38" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+    <path d="M 14 18 L 14 12 A 14 14 0 0 1 42 12 L 42 18" stroke="#207448" stroke-width="4" fill="none"/>
+    <circle cx="28" cy="37" r="4" fill="#207448"/>
+  </g>
+  <text x="950" y="188" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">With __slots__ = ('x', 'y')</text>
+
+  
+  <rect x="865" y="240" width="640" height="380" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="895" y="265" width="580" height="150" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(930, 312)">
+    <rect x="0" y="0" width="56" height="56" rx="8" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="28" y1="0" x2="28" y2="56" stroke="#207448" stroke-width="4"/>
+    <circle cx="14" cy="28" r="5" fill="#207448"/>
+    <circle cx="42" cy="28" r="5" fill="#207448"/>
+  </g>
+  <text x="1015" y="348" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">fixed slots x and y</text>
+
+  
+  <rect x="895" y="440" width="580" height="150" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(930, 487)">
+    <circle cx="28" cy="28" r="26" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="10" y1="10" x2="46" y2="46" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1015" y="522" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">no <tspan font-family="monospace">__dict__</tspan></text>
+
+  
+  <rect x="865" y="645" width="640" height="110" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(895, 672)">
+    <path d="M 28 4 L 54 48 A 3 3 0 0 1 51 52 L 5 52 A 3 3 0 0 1 2 48 Z" stroke="#db8129" stroke-width="4" fill="none" stroke-linejoin="round"/>
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="42" r="2.5" fill="#db8129"/>
+  </g>
+  <text x="975" y="692" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">
+    <tspan x="975" dy="0">assigning another name </tspan>
+    <tspan x="975" dy="34">raises AttributeError</tspan>
+  </text>
+
+  
+  <rect x="865" y="775" width="640" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(895, 795)">
+    <rect x="8" y="8" width="40" height="40" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="16" y1="0" x2="16" y2="8" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="0" x2="28" y2="8" stroke="#207448" stroke-width="4"/>
+    <line x1="40" y1="0" x2="40" y2="8" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="48" x2="16" y2="56" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="48" x2="28" y2="56" stroke="#207448" stroke-width="4"/>
+    <line x1="40" y1="48" x2="40" y2="56" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="975" y="835" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">smaller memory</text>
+
+</svg>

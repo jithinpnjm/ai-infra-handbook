@@ -51,6 +51,10 @@ If one of these outcomes feels unfamiliar, read the matching section before you 
 
 ## 1. What a package is
 
+![A package holds a tree of files plus metadata that enables dependencies, verification and safe upgrades.](./img/l07-package-anatomy.svg)
+
+*Figure 1.7.1. The metadata is what lets the tool install dependencies, verify files and keep your edits.*
+
 Picture a node that needs a new encryption module the day before a demo. You could copy the files over by hand. But then nobody would know what they are, what they depend on, or how to remove them safely. A **package** solves that problem.
 
 A package is one file, usually a compressed archive, that holds a tree of files belonging to one piece of software. It also carries **metadata**, which describes the software. A web server, a single encryption module and a documentation set are each a package. The files are what gets copied to disk. The metadata is what lets a tool reason about them.
@@ -88,7 +92,7 @@ Think of the pair as a shop and its storeroom. The manager is the shopper who wo
 
 ![Two layers of package tools](./img/ch07-fig1-layers.jpg)
 
-*Figure 1.7.1. High-level tools resolve dependencies and download; low-level tools install one package file.*
+*Figure 1.7.2. High-level tools resolve dependencies and download; low-level tools install one package file.*
 
 ### The package database is precious
 
@@ -176,6 +180,10 @@ To control repositories for one command, without editing files, use `--enablerep
 Newer RHEL-family releases split content into **BaseOS** and **AppStream** repositories. They also add *modules*, which are streams of software versions, such as several Python or Node.js versions side by side. Modules and streams are an extra layer. You only need to know they exist, and you should check your distribution's current documentation for details.
 
 ### Verbs you need on both sides
+
+![A translation table of everyday package commands between the Debian and Red Hat families.](./img/l07-verbs.svg)
+
+*Figure 1.7.3. Most day-to-day package tasks have a matching command in each family.*
 
 Most day-to-day tasks have a matching command in each family. The table below lines them up.
 
@@ -285,7 +293,7 @@ The failure these rules prevent is concrete and common, and it starts with an up
 
 ![Holding, pinning and reproducibility](./img/ch07-d2-luna.svg)
 
-*Figure 1.7.2. Holding, pinning and reproducibility.*
+*Figure 1.7.4. Holding, pinning and reproducibility.*
 
 Chapter 1.22 develops DKMS and kernel modules in detail. The fix at the package layer is to hold the kernel and driver packages together, upgrade them in one controlled step, and test a rebooted canary node before you roll out the change.
 
@@ -313,7 +321,7 @@ You should not replace your distribution's packages with source builds wholesale
 
 ![Installing from source safely](./img/ch07-fig2-source.jpg)
 
-*Figure 1.7.3. Unpack, configure with a private prefix, build and install without touching the package manager's files.*
+*Figure 1.7.5. Unpack, configure with a private prefix, build and install without touching the package manager's files.*
 
 The costs are real. Building takes time. Custom installs **do not update themselves**, which is a security issue for anything network-facing. You may overwrite files the distribution owns. A typo in an option can leave a half-working build. So the rule is this: prefer the package, build from source into an isolated prefix when you need control, and turn the result into a package if you will deploy it to more than one machine.
 
@@ -323,7 +331,7 @@ Most C and C++ projects built with the GNU autotools follow four steps, and the 
 
 ![The standard sequence](./img/ch07-d3-luna.svg)
 
-*Figure 1.7.4. The standard sequence.*
+*Figure 1.7.6. The standard sequence.*
 
 **Unpack carefully.** Source archives come as .tar.gz, .tar.bz2 or .tar.xz files. Chapter 1.3 covered `tar`. Before you extract, list the contents with `tar tvf` or `tar ztvf`, for two reasons. The first is tidiness. A well-formed archive has everything under one top directory, such as `package-1.23/...`. Some archives instead spill their files straight into the current directory. Picture an engineer who unpacks an archive into a shared home directory and then cannot tell which files came from it. If the listing shows bare names such as `Makefile` and `main.c`, extract into a new, empty directory so you do not make a mess.
 
@@ -467,7 +475,7 @@ The diagram below follows one program from source text to a running process. Rea
 
 ![From source to executable](./img/ch07-d4-luna.svg)
 
-*Figure 1.7.5. From source to executable.*
+*Figure 1.7.7. From source to executable.*
 
 The source code is the human-written text, such as the .c and .cc files. A compiler translates it into object files, which end in .o. An object file holds binary code with loose ends. It refers to functions defined elsewhere, and it lacks the information the operating system needs to start it.
 
@@ -653,6 +661,10 @@ ldd /bin/bash
 The name on the left of the arrow is what the executable asked for. The path on the right is where the loader found it. A line that reads `libfoo.so.1 => not found` is your problem. Do not run `ldd` on untrusted binaries, because some implementations execute the program. Use `readelf -d prog | grep NEEDED` instead.
 
 ### The search order
+
+![The four places the dynamic loader searches, in order, for a shared library.](./img/l07-loader-search.svg)
+
+*Figure 1.7.8. The loader checks RPATH, LD_LIBRARY_PATH, the ld.so cache and then the default directories.*
 
 The loader searches in a fixed order, which `ld.so(8)` describes in detail. There are four steps.
 

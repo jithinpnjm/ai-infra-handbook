@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "12",
+  "name": "k12-path-precedence",
+  "title": "How the controller picks a backend when host and path rules overlap",
+  "spec": "Top to bottom. At the top, a request box labelled GET bandicoot.example.com/a/ with a small envelope icon. Arrow down to a gateway box labelled Ingress controller (proxy) with a step 1 circle and the note checks the Host header first. Arrow down to a rule table with three rows drawn as horizontal bars, each with a step number. Row 1: host bandicoot.example.com, path / (Prefix), backend bandicoot:8080, drawn in grey with the tag matches, shorter prefix. Row 2: host bandicoot.example.com, path /a/ (Prefix), backend alpaca:8080, drawn in green with the tag matches, longest prefix wins. Row 3, drawn faded: a host that does not match, labelled other host, not checked. Step 2 circle next to the matched rows with the label longest matching prefix wins. Arrow from row 2 down to a final box labelled alpaca:8080 receives GET /a/ unchanged, with a note that the path is not rewritten by default. Orange highlight only on the arrow to the final box. A small side panel labelled Exact beats Prefix, with a note: an Exact match outranks any Prefix match, whatever the YAML order. Green takeaway bar at the bottom: the host picks the building, then the most specific path picks the room, and the path reaches the backend as written.",
+  "anchor": "### Routing by path",
+  "alt": "The gateway checks the host, then picks the longest matching path prefix, and forwards the request path unchanged.",
+  "cap": "The controller matches the host first, then the longest matching path prefix, and forwards the path to the backend unchanged."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "12",
+  "name": "k12-gateway-roles",
+  "title": "Who owns each Gateway API object, and where ReferenceGrant fits",
+  "spec": "A layered diagram with three horizontal bands from top to bottom, each band labelled with a persona on its left edge. Top band, labelled Infrastructure provider: a box GatewayClass with the note names the controller implementation, shown as a template icon. Middle band, labelled Cluster operator, in namespace edge: a box Gateway public with listener https 443 and the note TLS certificate, allowed routes by namespace selector. Lower band, labelled Application developer, in namespace serving: a box HTTPRoute chat with a note hostnames, matches, filters, weighted backendRefs. Arrows: from the GatewayClass down to the Gateway labelled implements, from the Gateway down to the HTTPRoute labelled parentRefs attaches the route. From the HTTPRoute, an arrow goes to a Service box vllm-llama70b-v1 in namespace serving, drawn as same-namespace with no barrier. A second, cross-namespace target Service box in namespace ops is drawn to the right, with a dashed arrow from the HTTPRoute labelled blocked until granted. A ReferenceGrant box owned by the namespace owner of ops sits above that Service, with a green arrow from the ReferenceGrant to the dashed arrow, labelled permits HTTPRoute from serving. Orange highlight on the blocked dashed arrow until the grant exists. Green takeaway bar at the bottom: each persona edits only its own object, and a ReferenceGrant is the only way across a namespace boundary.",
+  "anchor": "## 3. Gateway API",
+  "alt": "GatewayClass, Gateway and HTTPRoute are owned by three different personas, and a ReferenceGrant lets a route reach a Service in another namespace.",
+  "cap": "Each Gateway API object has its own owner, and a ReferenceGrant is required before a route can reach a Service in another namespace."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "12",
+  "name": "k12-stream-timers",
+  "title": "The three timers that can cut off a streamed LLM answer",
+  "spec": "A horizontal pipeline from left to right with four boxes connected by arrows drawn as a long thin tube labelled token stream flowing from right to left. From left to right: a client box labelled client with SSE stream, a cloud load balancer box labelled cloud LB with a clock icon and the note idle timeout, a gateway box labelled gateway with a clock icon and the note proxy read timeout, and a model server box labelled vLLM pod, with the note generates tokens over minutes. Above the gateway box, a small box labelled proxy-buffering on holds tokens until the buffer fills. Each clock box has a numbered step circle 1, 2 and 3 in the order a long quiet pause hits them. Under the cloud LB box, the note default idle timeout differs by cloud, raise it for streams. Under the gateway box, the note default request timeout is short, raise it to 600s to 900s. Orange highlight on the proxy-buffering box with the note tokens arrive in one burst. A bottom callout labelled heartbeat, sent as an SSE comment every 15 seconds, drawn as a dotted line from the model server back to the client across the top. Green takeaway bar at the bottom: a long answer must get past every timer on its path, and buffering turns a stream into a single burst.",
+  "anchor": "## 6. Designing the edge for AI/LLM traffic",
+  "alt": "A streamed LLM answer must pass the cloud load balancer idle timeout, the gateway read timeout and proxy buffering without being cut or held back.",
+  "cap": "A streamed LLM answer can be cut or held back by the cloud load balancer idle timeout, the gateway read timeout, or proxy buffering."
+ }
+]

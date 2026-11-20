@@ -1,0 +1,62 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "06",
+  "name": "s06-gil",
+  "title": "The GIL lets one thread run Python at a time",
+  "spec": "Left: a small box labelled GIL (one token) held by Thread 1 with a solid arrow, Thread 2 waiting with a dashed arrow. Right two panels. Panel CPU-bound code: threads take turns, no speed-up (orange). Panel waiting on I/O: the lock is released while waiting, so threads overlap (green).",
+  "anchor": "### The Global Interpreter Lock",
+  "alt": "The Global Interpreter Lock",
+  "cap": "The GIL: one thread runs Python bytecode at a time, but threads overlap while they wait on I/O."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "06",
+  "name": "s06-choosemodel",
+  "title": "Choosing a concurrency model",
+  "spec": "A decision tree. Start: what is the work? Branch 1: CPU-bound goes to processes (multiprocessing, ProcessPoolExecutor). Branch 2: waiting on I/O, many connections and async libraries goes to asyncio. Branch 3: waiting on I/O with blocking libraries goes to threads (ThreadPoolExecutor). Green bar: measure before you choose.",
+  "anchor": "### Choosing a model",
+  "alt": "Choosing threads, processes or asyncio",
+  "cap": "Choosing a model: processes for CPU-bound work, asyncio for many async connections, threads for blocking I/O."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "06",
+  "name": "s06-queue",
+  "title": "A bounded queue gives backpressure",
+  "spec": "Left: two boxes Producer 1 and Producer 2 with arrows into a central box Queue(maxsize=N) drawn as a row of cells, some full. Right: two boxes Consumer 1 and Consumer 2 with arrows out. Orange note on the queue: when it is full, put() blocks the producers. Green note: memory use stays bounded.",
+  "anchor": "### Producer/consumer with a bounded queue",
+  "alt": "Producer consumer with a bounded queue",
+  "cap": "A bounded queue: when it fills, put() blocks the producers, so memory stays bounded."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "06",
+  "name": "s06-futures",
+  "title": "Executors and futures",
+  "spec": "A flow: your code ; executor.submit(fn, arg) ; returns a Future immediately ; worker thread runs fn ; future.result() gets the value or re-raises the exception. A second row note: as_completed(futures) yields futures as they finish (orange).",
+  "anchor": "### `concurrent.futures`",
+  "alt": "Executors and futures",
+  "cap": "concurrent.futures: submit returns a Future at once, and result() waits for the value or raises the error."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "06",
+  "name": "s06-asyncio",
+  "title": "How the asyncio event loop shares one thread",
+  "spec": "A central box event loop (one thread) with three task boxes around it: Task A, Task B, Task C. Arrows labelled await hands control back to the loop. A timeline strip under it: A runs, A awaits, B runs, B awaits, C runs, A resumes. Orange note: a blocking call stops every task.",
+  "anchor": "### Core concepts",
+  "alt": "The asyncio event loop",
+  "cap": "asyncio: tasks share one thread, and each await hands control back to the event loop."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "06",
+  "name": "s06-breaker",
+  "title": "A circuit breaker has three states",
+  "spec": "Three circles in a triangle: Closed (calls pass, green), Open (calls fail fast, orange), Half-open (one trial call). Arrows: Closed to Open labelled too many failures ; Open to Half-open labelled after a cool-down ; Half-open to Closed labelled trial succeeds ; Half-open to Open labelled trial fails.",
+  "anchor": "### Rate limiting and circuit breaking",
+  "alt": "Circuit breaker states",
+  "cap": "A circuit breaker stops calling a failing service, then probes it before trusting it again."
+ }
+]

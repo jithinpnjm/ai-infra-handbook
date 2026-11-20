@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "29",
+  "name": "n29-toolmap",
+  "title": "Which tool owns which job",
+  "spec": "Row of job boxes with the tools beneath each: 'Push config to existing devices' -> Ansible (agentless, YAML playbooks, idempotent modules), Nornir (Python framework, threaded runner); 'Provision cloud and controller resources' -> Terraform / OpenTofu (declarative, state, plan/apply); 'Review, test, deploy' -> Git + CI (GitHub Actions, GitLab CI, Jenkins); 'Verify before and after' -> Batfish, pyATS/Genie, Suzieq; 'Chain tickets to automation' -> StackStorm, n8n, Temporal, Airflow, ServiceNow Flow; 'Intent-based fabric operation' -> vendor controllers (Arista CloudVision, NVIDIA UFM/NetQ, Nokia EDA). Green bar: 'Write the job in one sentence; that points to one row'.",
+  "anchor": "### The tool landscape",
+  "alt": "Automation tool landscape",
+  "cap": "Each automation tool owns a different part of the change process."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "29",
+  "name": "n29-axes",
+  "title": "Axes for comparing automation tools",
+  "spec": "Four small two-ended sliders, each with examples at each end. Axis 1: configuration management (converge existing machines: Ansible, Nornir) versus provisioning (create and destroy resources: Terraform). Axis 2: declarative (end state, Terraform) versus imperative (steps, scripts). Axis 3: push (central control node: Ansible, Nornir, Terraform) versus pull (ZTP, on-box agents, GitOps pull). Axis 4: mutable (change devices in place, usual for networks) versus immutable (replace a node with a new image). Orange note: 'Declarative tools depend on trustworthy diffs'.",
+  "anchor": "### Axes for comparing them",
+  "alt": "Axes for comparing tools",
+  "cap": "Tools differ on configuration versus provisioning, declarative versus imperative, push versus pull and mutable versus immutable."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "29",
+  "name": "n29-ansible",
+  "title": "How an Ansible run works",
+  "spec": "Left to right: 'control node' box containing inventory (hosts) and playbook (tasks, each calls a module). Arrow to a leaf switch. Two paths: 'Linux servers: SSH, copy a small module to the target, run it there, remove it' and 'network devices: no Python on device, so network modules run on the control node and reach the device through a connection plugin'. Final step: check whether the device now matches (idempotent), summary of which hosts changed. Monospace: 'pip install ansible-core', 'ansible-galaxy collection install arista.eos cisco.ios ansible.netcommon'.",
+  "anchor": "### How it works",
+  "alt": "Ansible run",
+  "cap": "Ansible reads the inventory, runs each task's module and checks whether each device now matches."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "29",
+  "name": "n29-drift",
+  "title": "Terraform and configuration drift",
+  "spec": "Three panels in sequence. Panel 1 'Code says': Terraform resources google_compute_network, google_compute_subnetwork, google_compute_firewall (declarative, state recorded). Panel 2 'Someone adds a firewall rule in the console to fix something urgent' (orange, nobody writes it down): reality has drifted. Panel 3 'Months later a rebuild recreates the network from code and the rule is missing' (orange failure). Terraform bar in green: 'plan shows where reality has drifted from the code'. Footer: 'make no console-only changes'.",
+  "anchor": "## 4. Terraform / OpenTofu for network resources",
+  "alt": "Terraform drift",
+  "cap": "Terraform keeps a record of what should exist and shows where reality has drifted from it."
+ }
+]

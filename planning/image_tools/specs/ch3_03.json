@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "s03-dunder",
+  "title": "Syntax calls special methods",
+  "spec": "A two-column mapping, five rows, left column what you write in monospace, right column the special method Python calls in monospace, joined by a short arrow in each row: len(x) -> x.__len__() ; x[i] -> x.__getitem__(i) ; x + y -> x.__add__(y) ; for item in x -> x.__iter__() ; with x -> x.__enter__() and x.__exit__(). Bottom green bar: implement the method and your class works with the built-in syntax.",
+  "anchor": "## 1. The Python data model",
+  "alt": "Syntax maps to special methods",
+  "cap": "The data model: everyday syntax is a call to a special method on your object."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "s03-ctxmgr",
+  "title": "What a with block guarantees",
+  "spec": "A vertical timeline of three boxes with arrows: 1 __enter__ runs and its result is bound by as ; 2 the body of the with block runs ; 3 __exit__ runs, even if the body raised an error (orange). Left side a small code chip: with resource as r:",
+  "anchor": "### Context managers",
+  "alt": "The with block lifecycle",
+  "cap": "A context manager: __exit__ always runs, even when the body raises."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "s03-closure",
+  "title": "A closure remembers its variables",
+  "spec": "Left box make_averager() with a local list series. Arrow labelled returns to the middle box averager (inner function). A dotted line from averager to a small green cell box labelled series (free variable, kept alive). Right: three calls averager(10), averager(11), averager(12) with results 10.0, 10.5, 11.0. Orange note: the state survives after make_averager returns.",
+  "anchor": "### Closures (`make_averager`)",
+  "alt": "A closure keeps its free variable",
+  "cap": "A closure: the inner function keeps the variable it uses from the enclosing function alive between calls."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "s03-pipeline",
+  "title": "A lazy generator pipeline",
+  "spec": "A horizontal pipeline of four boxes joined by arrows: read lines (generator) ; filter lines (generator) ; parse fields (generator) ; sum (consumer, orange). Under the arrows a note: one item at a time flows through all stages. Under the pipeline a green bar: memory stays flat however large the file is.",
+  "anchor": "### Pipelines",
+  "alt": "A lazy generator pipeline",
+  "cap": "A generator pipeline: each stage pulls one item at a time from the stage before it, so memory stays flat."
+ }
+]

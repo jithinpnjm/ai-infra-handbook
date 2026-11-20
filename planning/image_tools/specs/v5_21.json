@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "21",
+  "name": "k21-admission-chain",
+  "title": "A request moves through admission before it reaches etcd",
+  "spec": "A left-to-right row of checkpoint boxes, each joined by an arrow, with a request badge entering on the far left. Box 1, labelled Authentication and RBAC, with a shield icon: confirms the caller may perform the action. Box 2, labelled Mutating controllers, with a gear icon: built-in Service Account controller runs first and sets the default ServiceAccount, adds ImagePullSecrets and the token volume. Box 3, labelled Mutating webhooks, with a window icon: external services that return JSON patches. Box 4, labelled Schema validation, with a check icon: the object must match the defined schema, and it sees the finished object. Box 5, labelled Validating controllers and webhooks, with a lock icon: they admit or reject but cannot change the object, for example NamespaceLifecycle, ResourceQuota, and validating webhooks, which all must allow the request. Box 6, labelled etcd, with a disk cylinder icon, at the far right. Number circles 1 to 5 on the boxes (r=24, green, white numbers) show the order. Under box 5, an orange note: one rejection is enough to deny the request. Under box 2 and box 3, small grey labels: can change the object. Under box 5, grey label: can only admit or reject. Green takeaway bar: mutation runs before validation, so validation sees the final object, and the request stops at the first deny.",
+  "anchor": "### How a request moves through admission",
+  "alt": "A request passes authentication and RBAC, then mutating controllers and webhooks, then schema validation, then validating checks, before it is stored in etcd.",
+  "cap": "A request is changed by mutating checks first, then validated, and any single rejection stops it before it reaches etcd."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "21",
+  "name": "k21-csr-paths",
+  "title": "Two kubelet certificate paths: auto-approved client, checked serving",
+  "spec": "Top: a single start box labelled Kubelet with bootstrap token, joined by a line with arrowhead to a box labelled CertificateSigningRequest, with a form icon. The CSR then splits into two lanes. Lane A, labelled Client certificate, kubernetes.io/kube-apiserver-client-kubelet: an arrow to a box labelled csrapproving in kube-controller-manager, marked Approved automatically, then an arrow to a box labelled Signer issues the client certificate, then a green end box labelled Node gets its client badge, with note: no human in the loop. Lane B, labelled Serving certificate, kubernetes.io/kubelet-serving: an arrow to a box labelled Checked by a person or approver, with a magnifier icon, labelled checks the SAN hostnames and IP addresses, then an arrow to a box labelled kubectl certificate approve or kubelet-csr-approver, then an arrow to an end box labelled Serving certificate issued. An orange note on lane B: not auto-approved, because the SAN values must be checked first. Under lane A, a small grey note: the node authenticates only as system:node. Green takeaway bar: client badges are auto-approved by pattern, serving certificates need their names checked.",
+  "anchor": "### Kubelet TLS bootstrapping and CSRs",
+  "alt": "A kubelet bootstrap token leads to a CSR; client certificates are approved automatically, while serving certificates wait for a check of their names.",
+  "cap": "Kubelet client certificates are approved automatically, but serving certificates wait for a check because their names must be correct."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "21",
+  "name": "k21-pod-identity-evolution",
+  "title": "From node-wide keys to per-pod short-lived tokens",
+  "spec": "Three columns drawn as stepped boxes, left to right, ordered from weakest to strongest, with an arrow between each column labelled fixes the problem before it. Column 1, titled kube2iam: a worker node box with a DaemonSet agent and an iptables redirect, pointing to the EC2 metadata API. A label: the node instance profile must assume every role any pod uses, so a container breakout compromises every role. Icon: an unlocked key. Column 2, titled kiam: a server-node box with a kiam server, a node DaemonSet agent, and a user pod with spec.nodeName set to a server node, with a dashed arrow that jumps past a scheduler box, labelled bypasses the scheduler. Orange highlight on the dashed arrow. Label: pods can reach the metadata endpoint and assume unauthorized roles. Column 3, titled IRSA: a pod box with a projected token file, labelled audience sts.amazonaws.com and expirationSeconds 86400. An arrow to an AWS STS box labelled sts:AssumeRoleWithWebIdentity. An arrow from IAM to a note labelled verifies the JWT against the cluster OIDC discovery and JWKS. Label: no metadata proxy and no shared key. A small webhook icon marked mutating webhook injects the token and the environment variables AWS_ROLE_ARN and AWS_WEB_IDENTITY_TOKEN_FILE. Green takeaway bar: each pod gets its own short-lived token, and no node holds a shared key.",
+  "anchor": "### Cloud metadata proxies (`kube2iam` / `kiam`) versus `IRSA`",
+  "alt": "kube2iam gives every node one powerful key, kiam can be bypassed with spec.nodeName, and IRSA gives each pod a short-lived token exchanged with STS.",
+  "cap": "IRSA gives each pod its own short-lived token exchanged with AWS STS, which removes the shared node-level key that the older proxies relied on."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "21",
+  "name": "k21-spire-attestation",
+  "title": "SPIRE attests the node first, then the workload",
+  "spec": "Top to bottom, two stages with an arrow between them. Stage 1, titled Node attestation: a box labelled spire-server, the central signing authority and registration store, with an arrow down to a box labelled spire-agent, a DaemonSet on every node. A label on the arrow reads k8s_psat platform evidence. Output arrow from spire-agent labelled X.509-SVID for the node. A dashed box shows the node entry guest list with three selectors: cluster name, namespace spire, service account spire-agent, must all match. Stage 2, titled Workload attestation: a box labelled Workload, with a process icon, connected by a Unix domain socket arrow labelled unix:///run/spire/sockets/agent.sock to the spire-agent. A small note: no secret is carried by the workload. The spire-agent inspects the caller's pod namespace, service account, pod labels and container image, and matches them against the registration entries with parent ID spiffe://.../nodes. Output arrow from the agent labelled X.509-SVID or JWT-SVID for service-a. Number circles 1 and 2 on the two stages. Orange note on the matching step: a pod with the right name but the wrong image gets nothing. Green takeaway bar: the node proves what it is with platform evidence, and the workload proves what it is with its pod metadata.",
+  "anchor": "### Cross-platform workload identity with `SPIFFE` and `SPIRE`",
+  "alt": "SPIRE attests the node with platform evidence first, then matches a workload's pod metadata through the node-local agent socket.",
+  "cap": "SPIRE first checks each node with platform evidence, then matches each workload's pod metadata before issuing its identity."
+ }
+]

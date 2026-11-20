@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1070" width="1600" height="1070">
+  <title>Mount propagation</title>
+  <desc>Visual infographic explaining Linux mount propagation types between host and namespace mounts: shared, slave, private, and unbindable, along with systemd default behavior warning and inspection command.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-green-start" viewBox="0 0 16 16" refX="2" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 14 3 L 2 8 L 14 13 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1070" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="85" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Mount propagation</text>
+
+  
+  <rect x="960" y="45" width="590" height="65" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="990" y="86" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">$</text>
+  <text x="1018" y="86" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">findmnt -o TARGET,PROPAGATION</text>
+
+  
+  <rect x="50" y="160" width="250" height="660" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="147" y="320" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="147" y1="348" x2="203" y2="348" stroke="#207448" stroke-width="3"/>
+  <circle cx="163" cy="334" r="3" fill="#207448"/>
+  <circle cx="175" cy="334" r="3" fill="#207448"/>
+  <circle cx="163" cy="362" r="3" fill="#207448"/>
+  <circle cx="175" cy="362" r="3" fill="#207448"/>
+  <text x="175" y="425" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">
+    <tspan x="175" dy="0">host</tspan>
+    <tspan x="175" dy="40">mount</tspan>
+  </text>
+
+  
+  <rect x="1300" y="160" width="250" height="660" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="1397" y="320" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8 4"/>
+  <rect x="1409" y="332" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="1425" y="425" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">
+    <tspan x="1425" dy="0">namespace</tspan>
+    <tspan x="1425" dy="40">mount</tspan>
+  </text>
+
+  
+
+  
+  <rect x="460" y="160" width="680" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 495 218 L 545 218 M 533 206 L 545 218 L 533 230" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 545 242 L 495 242 M 507 230 L 495 242 L 507 254" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="565" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">shared</text>
+  <text x="565" y="255" font-family="sans-serif" font-size="24" fill="#303a36">sends and receives events</text>
+
+  
+  <line x1="300" y1="227" x2="460" y2="227" stroke="#207448" stroke-width="4" marker-start="url(#arrow-green-start)" marker-end="url(#arrow-green)"/>
+  <line x1="1140" y1="227" x2="1300" y2="227" stroke="#207448" stroke-width="4" marker-start="url(#arrow-green-start)" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="460" y="335" width="680" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <line x1="495" y1="387" x2="495" y2="417" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 495 402 L 545 402 M 533 390 L 545 402 L 533 414" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="565" y="390" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">slave</text>
+  <text x="565" y="430" font-family="sans-serif" font-size="24" fill="#303a36">only receives</text>
+
+  
+  <line x1="300" y1="402" x2="460" y2="402" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="1140" y1="402" x2="1300" y2="402" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="460" y="510" width="680" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="501" y="582" width="38" height="28" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 510 582 L 510 570 C 510 559 530 559 530 570 L 530 582" fill="none" stroke="#207448" stroke-width="4"/>
+  <text x="565" y="565" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">private</text>
+  <text x="565" y="605" font-family="sans-serif" font-size="24" fill="#303a36">neither</text>
+
+  
+  <rect x="460" y="685" width="680" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="520" cy="752" r="20" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="506" y1="738" x2="534" y2="766" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="565" y="740" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">unbindable</text>
+  <text x="565" y="780" font-family="sans-serif" font-size="24" fill="#303a36">private and cannot be bind-mounted</text>
+
+  
+  <rect x="50" y="870" width="1500" height="140" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+  
+  <path d="M 113 905 L 141 955 L 85 955 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="113" y1="923" x2="113" y2="938" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="113" cy="947" r="2.5" fill="#db8129"/>
+  
+  <text x="175" y="925" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">systemd makes / shared by default, so a naive new mount namespace</tspan>
+    <tspan x="175" dy="36">can leak mounts back to the host; runtimes remount root as rslave or rprivate first</tspan>
+  </text>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "06",
+  "name": "g06-nvlink-ladder",
+  "title": "Per-GPU NVLink bandwidth across five generations against one PCIe slot",
+  "spec": "A vertical bar chart with five bars left to right, labelled NVLink 1.0 Pascal P100, NVLink 2.0 Volta V100, NVLink 3.0 Ampere A100, NVLink 4.0 Hopper H100 and H200, and NVLink 5.0 Blackwell B200 and B300. Bar heights show total bidirectional bandwidth per GPU: 160, 300, 600, 900 and 1,800 GB/s, with each value in monospace above its bar. A dashed horizontal line across the chart labelled PCIe Gen5 x16, 128 GB/s bidirectional, sits low, so the first bar barely clears it and the last bar is many times taller. Under each bar a small caption with the sub-link count and per-link speed: 4 links at 40 GB/s; 6 at 50; 12 at 50; 18 at 50; 18 at 100. Orange highlight on the NVLink 5.0 bar with the note: 11.25 times the first generation. Monospace for 160, 300, 600, 900, 1,800 and 128 GB/s.",
+  "anchor": "### 2.1 NVLink memory semantics and the five NVLink generations",
+  "alt": "Per-GPU NVLink bandwidth by generation against PCIe Gen5",
+  "cap": "NVLink ladder: each generation adds bandwidth per GPU, and NVLink 5 delivers about fourteen times one PCIe Gen5 x16 slot."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "06",
+  "name": "g06-coherence-boundary",
+  "title": "Which links keep caches coherent and which need a software fence",
+  "spec": "A diagram with three zones left to right. Zone 1 labelled inside one Blackwell package: two GPU die boxes joined by a wide link labelled NV-HBI, 10 TB/s, marked with a green tick and the word coherent. Zone 2 labelled CPU to GPU, Superchip: a Grace CPU box linked to a GPU box by a link labelled NVLink-C2C, 900 GB/s bidirectional, marked with a green tick and the word coherent. Zone 3 labelled GPU to GPU across the node or rack: several GPU boxes joined by a switch shape labelled NVLink and NVSwitch, marked with a grey dashed outline and the word not coherent across GPUs, with a small padlock-style label that reads needs barrier or fence from NCCL or NVSHMEM. Under zone 3 a path arrow crossing into PCIe and NIC, labelled explicit copy or GPUDirect RDMA. Orange highlight on zone 3 with the note: a write from GPU 0 does not invalidate GPU 1 L1 lines; add a fence. Monospace for NV-HBI, NVLink-C2C, NVLink, NVSwitch and PCIe.",
+  "anchor": "### 3.1 The four hardware interconnect scales: NV-HBI, NVLink-C2C, NVLink, and PCIe",
+  "alt": "Cache coherence across NV-HBI, NVLink-C2C and GPU-to-GPU NVLink",
+  "cap": "Coherence boundary: NV-HBI and NVLink-C2C keep caches consistent in hardware, but GPU-to-GPU NVLink needs a software barrier or fence."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "06",
+  "name": "g06-500mb-transfer",
+  "title": "The same 500 MB gradient buffer over NVLink versus a SYS PCIe path",
+  "spec": "Two horizontal bars on one time axis from 0 to 20 milliseconds. Top bar labelled NVLink 900 GB/s, short, about 0.56 ms, green, with the value in monospace at its end. Bottom bar labelled SYS path PCIe, 28 GB/s, long, about 17.86 ms, grey, with the value in monospace at its end and the note about 32 times longer. A small label between the two bar ends reads same 500 MB payload. A tiny inset above the bars shows the two routes as paths: the NVLink route is one short arrow between GPU 0 and GPU 1; the SYS route climbs to a CPU root complex, crosses a UPI or xGMI link, and descends to the other GPU. Orange highlight on the SYS bar with the note: the slowdown comes from the wire, not from the GPU kernel. Monospace for 500 MB, 900 GB/s, 28 GB/s, 0.56 ms and 17.86 ms.",
+  "anchor": "### 1.3 Reading the `nvidia-smi topo -m` path hierarchy and the 500 MB worked comparison",
+  "alt": "500 MB transfer time on NVLink versus SYS PCIe",
+  "cap": "Path cost: the same 500 MB buffer takes about 0.56 ms over NVLink but about 18 ms over a cross-socket SYS path."
+ }
+]

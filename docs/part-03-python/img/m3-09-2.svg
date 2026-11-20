@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>Pipeline architecture</title>
+  <desc>CI/CD pipeline architecture showing workflow from push or PR through linting, unit tests, coverage, integration tests, container build, and signed publishing.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Pipeline architecture</text>
+
+  
+  
+  <path d="M 395 280 H 445" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 785 280 H 835" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1175 280 H 1225" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1005 410 V 465 Q 1005 485 985 485 H 635 Q 615 485 615 505 V 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 785 690 H 835" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1175 690 H 1225" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-A">
+    <rect x="55" y="150" width="340" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="210" cy="188" r="6"/>
+      <circle cx="210" cy="226" r="6"/>
+      <circle cx="240" cy="188" r="6"/>
+      <path d="M 210 194 V 220"/>
+      <path d="M 240 194 V 204 Q 240 216 226 216 H 216"/>
+    </g>
+    <text x="225" y="300" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Push / PR</text>
+  </g>
+
+  
+  <g id="node-B">
+    <rect x="445" y="150" width="340" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 600 184 Q 592 184 592 194 Q 592 204 586 204 Q 592 204 592 214 Q 592 224 600 224"/>
+      <path d="M 630 184 Q 638 184 638 194 Q 638 204 644 204 Q 638 204 638 214 Q 638 224 630 224"/>
+      <path d="M 607 204 L 613 210 L 625 196"/>
+    </g>
+    <text x="615" y="270" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="615" dy="0">Lint + format</tspan>
+      <tspan x="615" dy="36">+ types</tspan>
+    </text>
+    <text x="615" y="356" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(fast, fail early)</text>
+  </g>
+
+  
+  <g id="node-C">
+    <rect x="835" y="150" width="340" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 999 184 H 1011 V 194 L 1025 220 A 5 5 0 0 1 1021 226 H 989 A 5 5 0 0 1 985 220 L 999 194 Z"/>
+      <path d="M 993 213 H 1017"/>
+      <circle cx="1002" cy="205" r="2" fill="#207448"/>
+      <circle cx="1008" cy="201" r="1.5" fill="#207448"/>
+    </g>
+    <text x="1005" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Unit tests</text>
+    <text x="1005" y="332" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1005" dy="0">(matrix: Python</tspan>
+      <tspan x="1005" dy="32">3.10-3.12, OS)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-G">
+    <rect x="1225" y="150" width="340" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 1380 184 H 1402 L 1412 194 V 226 H 1380 Z"/>
+      <path d="M 1402 184 V 194 H 1412"/>
+      <path d="M 1388 218 V 211"/>
+      <path d="M 1396 218 V 203"/>
+      <path d="M 1404 218 V 207"/>
+    </g>
+    <text x="1395" y="290" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1395" dy="0">Coverage +</tspan>
+      <tspan x="1395" dy="36">artefacts</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-D">
+    <rect x="445" y="560" width="340" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 615 593 L 638 605 L 615 617 L 592 605 Z"/>
+      <path d="M 592 605 V 631 L 615 643 V 617"/>
+      <path d="M 638 605 V 631 L 615 643"/>
+      <path d="M 602 612 V 634"/>
+      <path d="M 628 634 V 612"/>
+    </g>
+    <text x="615" y="682" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="615" dy="0">Integration</tspan>
+      <tspan x="615" dy="36">tests</tspan>
+    </text>
+    <text x="615" y="768" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(containers, kind)</text>
+  </g>
+
+  
+  <g id="node-E">
+    <rect x="835" y="560" width="340" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 985 607 L 1005 596 L 1025 607 L 1025 633 L 1005 644 L 985 633 Z"/>
+      <path d="M 985 607 L 1005 617 L 1025 607"/>
+      <path d="M 1005 617 V 644"/>
+      <path d="M 975 621 H 1035" stroke-dasharray="4 3"/>
+    </g>
+    <text x="1005" y="682" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">Build wheel /</tspan>
+      <tspan x="1005" dy="36">image</tspan>
+    </text>
+    <text x="1005" y="768" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">+ SBOM + scan</text>
+  </g>
+
+  
+  <g id="node-F">
+    <rect x="1225" y="560" width="340" height="260" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+    
+    <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 1378 615 L 1395 596 H 1413 V 614 L 1396 631 A 4 4 0 0 1 1390 631 L 1378 619 A 3 3 0 0 1 1378 615 Z"/>
+      <circle cx="1406" cy="603" r="3" fill="#db8129"/>
+      <path d="M 1385 623 H 1397 V 633 H 1385 Z"/>
+      <path d="M 1388 623 V 619 A 3 3 0 0 1 1394 619 V 623"/>
+    </g>
+    <text x="1395" y="685" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Publish on tag</text>
+    <text x="1395" y="742" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1395" dy="0">(trusted publishing,</tspan>
+      <tspan x="1395" dy="32">signed)</tspan>
+    </text>
+  </g>
+</svg>

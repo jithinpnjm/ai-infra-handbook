@@ -45,7 +45,7 @@
     <rect x="1240" y="1010" width="330" height="150" rx="18"/>
   </g>
 
-  <!-- local-fs.target: disk -->
+  
   <g transform="translate(102 177)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <ellipse cx="28" cy="10" rx="24" ry="9"/>
     <path d="M4 10v30c0 5 11 9 24 9s24-4 24-9V10"/>
@@ -56,14 +56,14 @@
     <tspan x="180">local-fs.</tspan><tspan x="180" dy="36">target</tspan>
   </text>
 
-  <!-- swap.target: exchange arrows -->
+  
   <g transform="translate(102 397)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M7 17h39l-9-9M46 17l-9 9"/>
     <path d="M49 39H10l9 9M10 39l9-9"/>
   </g>
   <text x="180" y="410" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">swap.target</text>
 
-  <!-- sysinit.target: gear -->
+  
   <g transform="translate(522 277)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="28" cy="28" r="12"/>
     <circle cx="28" cy="28" r="4"/>
@@ -73,7 +73,7 @@
     <tspan x="600">sysinit.</tspan><tspan x="600" dy="36">target</tspan>
   </text>
 
-  <!-- sockets.target: socket -->
+  
   <g transform="translate(102 637)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M17 8v18a11 11 0 0 0 22 0V8"/>
     <path d="M17 8v9M39 8v9M28 37v12M18 49h20"/>
@@ -82,14 +82,14 @@
     <tspan x="180">sockets.</tspan><tspan x="180" dy="36">target</tspan>
   </text>
 
-  <!-- timers.target: clock -->
+  
   <g transform="translate(102 867)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="28" cy="29" r="23"/>
     <path d="M28 14v16l11 7M20 3h16"/>
   </g>
   <text x="180" y="880" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">timers.target</text>
 
-  <!-- basic.target: gear -->
+  
   <g transform="translate(522 727)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="28" cy="28" r="12"/>
     <circle cx="28" cy="28" r="4"/>
@@ -99,7 +99,7 @@
     <tspan x="600">basic.</tspan><tspan x="600" dy="36">target</tspan>
   </text>
 
-  <!-- multi-user.target: users -->
+  
   <g transform="translate(922 727)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="20" cy="17" r="9"/>
     <circle cx="39" cy="20" r="7"/>
@@ -109,7 +109,7 @@
     <tspan x="1000">multi-user.</tspan><tspan x="1000" dy="36">target</tspan>
   </text>
 
-  <!-- graphical.target: window -->
+  
   <g transform="translate(1262 442)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="4" y="6" width="48" height="42" rx="4"/>
     <path d="M4 17h48M13 12h1M20 12h1M27 12h1"/>
@@ -118,7 +118,7 @@
     <tspan x="1340">graphical.</tspan><tspan x="1340" dy="36">target</tspan><tspan x="1340" dy="36">(default</tspan><tspan x="1340" dy="36">on</tspan><tspan x="1340" dy="36">desktops)</tspan>
   </text>
 
-  <!-- sshd, containerd, kubelet, slurmd, nvidia-*, ...: services -->
+  
   <g transform="translate(1262 747)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="28" cy="28" r="10"/>
     <circle cx="28" cy="28" r="3"/>
@@ -128,7 +128,7 @@
     <tspan x="1340">sshd,</tspan><tspan x="1340" dy="34">containerd,</tspan><tspan x="1340" dy="34">kubelet,</tspan><tspan x="1340" dy="34">slurmd,</tspan><tspan x="1340" dy="34">nvidia-*,</tspan><tspan x="1340" dy="34">...</tspan>
   </text>
 
-  <!-- network-online.target: network -->
+  
   <g transform="translate(102 1057)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="28" cy="10" r="6"/>
     <circle cx="9" cy="43" r="6"/>
@@ -139,7 +139,7 @@
     <tspan x="180">network-</tspan><tspan x="180" dy="36">online.target</tspan>
   </text>
 
-  <!-- nvidia-fabricmanager: chip -->
+  
   <g transform="translate(522 1057)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="12" y="12" width="32" height="32" rx="4"/>
     <path d="M20 20h16v16H20zM20 3v9M28 3v9M36 3v9M20 44v9M28 44v9M36 44v9M3 20h9M3 28h9M3 36h9M44 20h9M44 28h9M44 36h9"/>
@@ -148,14 +148,14 @@
     <tspan x="600">nvidia-</tspan><tspan x="600" dy="36">fabricmanager</tspan>
   </text>
 
-  <!-- containerd: containers -->
+  
   <g transform="translate(902 1057)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M8 15l20-10 20 10-20 11zM8 15v25l20 11 20-11V15M28 26v25"/>
     <path d="M18 10l20 11"/>
   </g>
   <text x="980" y="1080" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">containerd</text>
 
-  <!-- kubelet: hexagonal node -->
+  
   <g transform="translate(1262 1057)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M28 4l22 13v26L28 56 6 43V17z"/>
     <circle cx="28" cy="30" r="8"/>

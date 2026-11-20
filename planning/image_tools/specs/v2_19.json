@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "19",
+  "name": "n19-markings",
+  "title": "Where QoS markings live",
+  "spec": "Stack of header strips each showing its QoS field: IPv4/IPv6 header: ToS or Traffic Class byte = DSCP (6 bits, 64 values: CS0..CS7, AF11..AF43, EF=46, DF=0) + ECN (2 bits); Ethernet 802.1Q tag: PCP (3 bits, 0 to 7) + DEI; MPLS: traffic class (3 bits); Layer 4: ports, RoCEv2 on UDP 4791. Right side example plan in orange: 'RoCE data class DSCP 26 mapped to priority 3', 'CNP class DSCP 48 to strict-priority or high-weight queue'. Footer: 're-mark untrusted markings at the edge'. Monospace for DSCP values.",
+  "anchor": "### Classification and marking",
+  "alt": "QoS marking fields",
+  "cap": "DSCP, PCP and MPLS traffic class each carry the class a packet belongs to at a different layer."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "19",
+  "name": "n19-policeshape",
+  "title": "Policer versus shaper",
+  "spec": "Two panels with the same bursty traffic curve crossing a rate line. Left 'Policer (the bouncer)': traffic above the committed rate is dropped or remarked; token bucket measures CIR and burst size. Right 'Shaper (the queue marshal)': excess is buffered and released at the configured rate; smooths bursts but adds delay and needs buffer space. Footer: 'The burst size, the bucket depth, matters as much as the rate: a deep bucket lets a short burst through, a shallow one clips it'.",
+  "anchor": "### Policing and shaping",
+  "alt": "Policing versus shaping",
+  "cap": "A policer drops or remarks excess traffic, while a shaper buffers it and releases it at the configured rate."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "19",
+  "name": "n19-congestionpoints",
+  "title": "Where congestion appears in a fabric",
+  "spec": "Small leaf-spine-super-spine drawing with numbered markers: 1 Leaf downlink (leaf to server): incast; 2 Local leaf switching: two servers sending to a third on the same leaf; 3 Leaf to spine uplink: hash collisions put elephant flows on one uplink; 4 Spine to leaf downlink: flows from several leaves converge on one link; 5 Spine to super-spine: same effects plus oversubscription; 6 Microbursts: sub-millisecond bursts invisible to average counters (orange). Footer: 'Find out which point is actually congested before tuning load balancing'.",
+  "anchor": "## 3. Data-centre congestion points",
+  "alt": "Congestion points in a Clos fabric",
+  "cap": "Congestion can appear at every tier of a 1:1 fabric, from the leaf downlink to microbursts."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "19",
+  "name": "n19-dcqcn",
+  "title": "DCQCN threshold ladder",
+  "spec": "A vertical queue-depth axis in KB with markers bottom to top: XON 50 KB; Kmin 100 KB (ECN marking starts); Kmax 500 KB with Pmax 0.20 (marking probability tops out); XOFF 1000 KB (PFC pause). Left bracket 'ECN: early, flow-level signal, egress queue thresholds: switch marks, receiver sends CNP, sender reduces rate' (green). Upper bracket 'PFC: last-resort safety net, ingress buffer thresholds' (orange). Footer: 'ECN acts first and PFC is the backstop; XON sits below XOFF'.",
+  "anchor": "## 7. DCQCN: ECN and PFC together",
+  "alt": "DCQCN thresholds",
+  "cap": "ECN marking starts well below the PFC XOFF level so senders slow down before any pause."
+ }
+]

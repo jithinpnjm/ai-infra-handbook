@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>The loop else clause</title>
+  <desc>Flowchart showing the execution flow of a for loop with an else clause.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The loop else clause</text>
+
+  
+  <rect x="220" y="170" width="400" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+  
+  <path d="M 405 210 A 18 18 0 1 1 435 225" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <polyline points="436,215 436,227 424,227" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="420" y="280" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">for item in items</text>
+
+  
+  <path d="M 420 320 L 420 458" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <polygon points="420,460 610,580 420,700 230,580" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  
+  <polygon points="422,518 410,538 420,538 418,554 432,532 423,532" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <text x="420" y="610" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">break reached?</text>
+
+  
+  <path d="M 230 580 L 100 580 L 100 245 L 218 245" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow-green)" />
+  <text x="165" y="560" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">No</text>
+
+  
+  <path d="M 620 245 L 1058 245" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <text x="840" y="220" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">until the items run out</text>
+
+  
+  <rect x="1060" y="160" width="460" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+  
+  <circle cx="1290" cy="215" r="18" fill="none" stroke="#207448" stroke-width="4" />
+  <polyline points="1281,215 1287,222 1301,208" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1290" y="280" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">else block runs</text>
+
+  
+  <path d="M 610 580 L 1058 580" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  <text x="840" y="555" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">Yes</text>
+
+  
+  <rect x="1060" y="490" width="460" height="180" rx="16" fill="#fef6ee" stroke="#db8129" stroke-width="3.5" />
+  
+  <path d="M 1278 550 L 1278 522 L 1302 522 L 1302 550" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+  <path d="M 1288 536 L 1312 536 M 1305 529 L 1312 536 L 1305 543" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1290" y="590" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="1290" dy="0">leave the loop,</tspan>
+    <tspan x="1290" dy="38">else block skipped</tspan>
+  </text>
+
+  
+  <rect x="100" y="780" width="1420" height="86" rx="16" fill="#207448" />
+  <text x="810" y="834" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">else means no break happened</text>
+</svg>

@@ -16,7 +16,7 @@
   <rect x="40" y="135" width="1520" height="615" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <text x="75" y="185" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Each GPU / login / management node</text>
 
-  <!-- Connections -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M480 315 H510 V355 H555" marker-end="url(#arrow-green)"/>
     <path d="M480 545 H510 V455 H555" marker-end="url(#arrow-green)"/>
@@ -28,7 +28,7 @@
   <path d="M1280 710 V824 H295 V850" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
   <text x="640" y="800" fill="#303a36" font-family="monospace" font-size="24">TCP+TLS / HTTP / Kafka</text>
 
-  <!-- Applications, services -->
+  
   <rect x="80" y="220" width="400" height="190" rx="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="99" y="278" width="56" height="44" rx="4"/>
@@ -43,7 +43,7 @@
     <tspan x="175" dy="30">files)</tspan>
   </text>
 
-  <!-- kernel -->
+  
   <rect x="80" y="455" width="400" height="180" rx="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="99" y="511" width="56" height="56" rx="8"/>
@@ -56,7 +56,7 @@
     <tspan x="175" dy="30">MCE)</tspan>
   </text>
 
-  <!-- journald / rsyslog -->
+  
   <rect x="555" y="320" width="390" height="170" rx="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="601" cy="405" r="24"/>
@@ -68,7 +68,7 @@
     <tspan x="650" dy="38">rsyslog</tspan>
   </text>
 
-  <!-- Container logs -->
+  
   <rect x="555" y="545" width="390" height="165" rx="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M575 584 H609 L627 602 V661 H575 Z"/>
@@ -80,7 +80,7 @@
     <tspan x="645" dy="30">containerd)</tspan>
   </text>
 
-  <!-- Agent -->
+  
   <rect x="1040" y="320" width="470" height="390" rx="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="1080" cy="374" r="22"/>
@@ -97,7 +97,7 @@
     <tspan x="1125" dy="30">cluster)</tspan>
   </text>
 
-  <!-- Optional queue/broker -->
+  
   <rect x="70" y="850" width="450" height="210" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M91 909 C91 900 109 894 127 894 C145 894 163 900 163 909 V950 C163 959 145 965 127 965 C109 965 91 959 91 950 Z"/>
@@ -109,7 +109,7 @@
     <tspan x="180" dy="30">(Kafka, Redis)</tspan>
   </text>
 
-  <!-- Store -->
+  
   <rect x="575" y="850" width="450" height="210" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M596 907 C596 898 614 892 632 892 C650 892 668 898 668 907 V951 C668 960 650 966 632 966 C614 966 596 960 596 951 Z"/>
@@ -122,7 +122,7 @@
     <tspan x="685" dy="30">ClickHouse / S3 archive</tspan>
   </text>
 
-  <!-- Query + dashboards -->
+  
   <rect x="1080" y="850" width="450" height="210" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="1100" y="900" width="58" height="48" rx="4"/>

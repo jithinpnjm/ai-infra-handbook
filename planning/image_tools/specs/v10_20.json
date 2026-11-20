@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "20",
+  "name": "g20-async-projection",
+  "title": "A host range looks short because the GPU finishes its kernels later",
+  "spec": "Two horizontal lanes on one shared time axis. Top lane labelled CPU host thread: a short bracket labelled forward NVTX range, about 0.5 ms wide, with small launch ticks inside it, marking the host returning early. Bottom lane labelled GPU stream: a much longer run of kernel blocks starting at the same moment as the range and finishing well after the range closes, the kernels drawn in sequence with small gaps. A dashed vertical line at the end of the CPU range labelled range pop, host returns. Between the dashed line and the end of the GPU blocks a bracket labelled GPU still working, invisible to a host timer. A caption at the bottom reads Nsight Systems projects the GPU blocks back onto the range to show the true GPU time of the phase. Orange highlight on the bracket after the dashed line with the note: a plain CPU timer reads only the short launch window. Monospace for NVTX, forward and range_pop.",
+  "anchor": "### 2.2 Step 2 — System timeline and NVTX GPU projection with Nsight Systems",
+  "alt": "Short host NVTX range against a longer GPU kernel run",
+  "cap": "Async projection: a host range closes as soon as the launches are queued, so only the GPU projection shows the real time the phase spent on the device."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "20",
+  "name": "g20-step-breakdown",
+  "title": "Where the 24 ms training step goes: compute, gradient sync, and other work",
+  "spec": "A single horizontal stacked bar representing the 24.0 ms step drawn at full width, divided into four segments from left to right: forward 10.5 ms in dark green, backward 9.0 ms in lighter green, all-reduce 4.0 ms in orange, and other 0.5 ms in grey, with each segment labelled with its name, its time in monospace, and its share in percent: 43.8, 37.5, 16.7 and 2.1. A bracket over the first two segments labelled compute, 19.5 ms, 81.3 percent. A bracket over the orange segment labelled waiting on gradient sync, one sixth of the step. A tick mark at the far right labelled total 24.0 ms. Orange highlight on the all-reduce segment with the note: this is time the GPUs spend waiting for each other rather than doing math. Monospace for 24.0 ms, 10.5 ms, 9.0 ms, 4.0 ms and 0.5 ms.",
+  "anchor": "### 4.2 Continuous Benchmarking (TorchBench, PyTorch HUD `>= 5%` rule) and MLPerf Logging",
+  "alt": "Forward, backward, all-reduce and other shares of a 24 ms step",
+  "cap": "Step budget: compute is most of the 24 ms step, but the all-reduce segment is time the GPUs spend waiting on each other."
+ }
+]

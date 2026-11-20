@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "33",
+  "name": "k33-node-operand-gating",
+  "title": "Node labels decide which operand DaemonSets land on a node",
+  "spec": "Left-to-right layout. On the far left, a node box titled GPU node with a small chip icon, containing three label chips stacked vertically: nvidia.com/gpu.present=true at the top, then nvidia.com/gpu.workload.config with the value container, then nvidia.com/gpu.deploy.operands=false drawn as a grey chip with a note that it switches all operands off. Add a fourth optional chip nvidia.com/gpu.deploy.dcgm-exporter=false, drawn grey with the note disables only that operand. An arrow from the node box goes right into a column labelled gpuStateLabels table in state_manager.go. Inside the column two rows. Row one, labelled container, lists the matching deploy labels as a monospace chip reading driver, container-toolkit, device-plugin, dcgm, dcgm-exporter, gpu-feature-discovery and operator-validator, each set to true. Row two, labelled vm-passthrough, lists sandbox-validator, vfio-manager and sandbox-device-plugin set to true, and the container labels set to false. Each row has an arrow into a column of DaemonSet boxes on the right, one per operand, labelled driver DaemonSet, container toolkit DaemonSet, device plugin DaemonSet and dcgm-exporter DaemonSet, each with the note selected by its nodeSelector. Only the container row arrows reach these DaemonSets, drawn in green. The vm-passthrough row points to a separate box labelled VFIO and sandbox plugin pods, drawn with a dashed border. Orange highlight on the operands=false chip with the note removes every GPU Operator pod from that node. Green takeaway bar at the bottom: a DaemonSet runs only where its nodeSelector label matches, like a name tag on a door.",
+  "anchor": "## 5. Node gating and the validator chain",
+  "alt": "A node's workload config and deploy labels select which operand DaemonSets run on it, and an operands false label removes them all.",
+  "cap": "A node's deploy labels decide which operand DaemonSets run there, so a container node and a passthrough node get different sets of pods."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "33",
+  "name": "k33-upgrade-states",
+  "title": "A driver upgrade moves one node through labelled states",
+  "spec": "A vertical state chain on the left half of the figure, drawn top to bottom, with each state a rounded box containing its label in monospace. The top box is titled nvidia.com/gpu-driver-upgrade-state above the chain. States in order, each linked to the next by a down arrow: upgrade-required (note: driver pod revision hash differs from the target DaemonSet revision), cordon-required (note: node is cordoned), wait-for-jobs (note: waits for running GPU jobs, up to a timeout), pod-deletion or drain (note: GPU pods evicted and operator pods holding /dev/nvidia* stopped), pod-restart (note: OnDelete driver pod is deleted so the new one starts), validation (note: validator pod must pass on the new driver), uncordon. From uncordon, two branches: an arrow to done, drawn green, and a dashed arrow from validation to failed in grey. Number circles r=24 at the steps 1 to 7 along the chain. On the right side, a side box titled Limits with the note a maximum number of parallel upgrades and an unavailability budget, linked by a thin line to the top of the chain. Orange highlight on the pod-restart box with the note the OnDelete strategy means the operator, not the DaemonSet controller, restarts the driver. Green takeaway bar at the bottom: each node holds one label that tells you exactly where its upgrade is stuck.",
+  "anchor": "## 6. Drivers: DaemonSet vs NVIDIADriver CRD, and upgrades",
+  "alt": "A driver upgrade moves each node through a fixed series of labelled states, from upgrade-required through validation to done or failed.",
+  "cap": "Each node moves through a fixed series of upgrade labels, so reading the label tells you where a stuck driver upgrade has stopped."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "33",
+  "name": "k33-wait-compare",
+  "title": "Two ways a node can make later operands wait",
+  "spec": "A two-column comparison with a header row. Left column titled GPU Operator: validator files and init containers. Right column titled Network Operator: mofed.wait label and nodeSelector. Each column has the same three stacked rows. Row 1 titled Who waits: left shows the downstream pod, drawn as a box inside the node, with the note it waits inside the node in an init loop; right shows the scheduler, drawn outside the node, with the note it simply does not place the pod. Row 2 titled The signal: left shows a file under /run/nvidia/validations, for example driver-ready and toolkit-ready, written by the validator; right shows a node label network.nvidia.com/operator.mofed.wait, set to true while the OFED pod is not ready and flipped to false once it is ready. Row 3 titled What you see with kubectl get pods: left shows the pod in Init:0/1 right on the node; right shows no pod on the node until the label flips to false. Between the columns, a thin vertical divider with a small label both solve the same per-node dependency problem. Orange highlight on the right column row 3 with the note the pod does not appear at all. Green takeaway bar at the bottom: one waits at the node, the other waits at the scheduler, and both wait for the driver on the same node.",
+  "anchor": "### Wait labels: dependency ordering without the controller waiting",
+  "alt": "The GPU Operator makes pods wait inside the node using marker files, while the Network Operator makes pods wait at the scheduler using a node label.",
+  "cap": "The GPU Operator makes downstream pods wait inside the node using marker files, while the Network Operator keeps them off the node with a label."
+ }
+]

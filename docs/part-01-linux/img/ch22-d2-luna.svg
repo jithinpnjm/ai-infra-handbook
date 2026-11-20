@@ -14,7 +14,7 @@
   <rect width="1600" height="1320" fill="#f5f8f5"/>
   <text x="800" y="70" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Troubleshooting flow: "the node has no GPUs"</text>
 
-  <!-- Row 1: Start -> lspci -> Hardware/firmware -->
+  
   <rect x="40" y="110" width="380" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
     <rect x="64" y="152" width="44" height="44" rx="5"/>
@@ -35,7 +35,7 @@
   <text x="584" y="162" fill="#303a36" font-family="monospace" font-size="25" font-weight="700">lspci | grep -i nvidia</text>
   <text x="584" y="198" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">shows the devices?</text>
 
-  <!-- Q1 no -> Hardware/firmware -->
+  
   <path d="M960 175 H1066" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <text x="1013" y="160" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">no</text>
 
@@ -50,7 +50,7 @@
     <tspan x="1156" dy="31" font-weight="400">BIOS</tspan>
   </text>
 
-  <!-- Q1 yes -> Q2 lsmod -->
+  
   <path d="M730 240 V296" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <text x="762" y="276" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">yes</text>
 
@@ -62,7 +62,7 @@
   <text x="598" y="352" fill="#303a36" font-family="monospace" font-size="25" font-weight="700">lsmod | grep nvidia</text>
   <text x="598" y="388" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">loaded?</text>
 
-  <!-- Left branch: Q2 no -> Q3 modprobe (Left column) -->
+  
   <path d="M520 360 H320 V436" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <text x="420" y="346" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">no</text>
 
@@ -73,16 +73,16 @@
   <text x="142" y="486" fill="#303a36" font-family="monospace" font-size="26" font-weight="700">modprobe nvidia:</text>
   <text x="142" y="520" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">what error?</text>
 
-  <!-- Left column 5 modprobe branches (clean horizontal forks from left spine at x=75) -->
+  
   <path d="M75 550 V1205" fill="none" stroke="#207448" stroke-width="3.5"/>
-  <!-- 5 horizontal arrows to 5 error rows -->
+  
   <path d="M75 645 H126" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M75 785 H126" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M75 925 H126" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M75 1065 H126" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M75 1205 H126" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
 
-  <!-- M1 -->
+  
   <rect x="130" y="585" width="660" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <text x="155" y="622" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700">"Module not found"</text>
   <text x="155" y="658" fill="#303a36" font-family="sans-serif" font-size="24">
@@ -90,7 +90,7 @@
     <tspan x="155" dy="30">package for uname -r; depmod -a</tspan>
   </text>
 
-  <!-- M2 -->
+  
   <rect x="130" y="725" width="660" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <text x="155" y="762" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700">"Invalid module format"</text>
   <text x="155" y="798" fill="#303a36" font-family="sans-serif" font-size="24">
@@ -98,17 +98,17 @@
     <tspan x="155" dy="30">another kernel</tspan>
   </text>
 
-  <!-- M3 -->
+  
   <rect x="130" y="865" width="660" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <text x="155" y="902" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700">"Key was rejected / Required key"</text>
   <text x="155" y="942" fill="#303a36" font-family="sans-serif" font-size="24">Secure Boot: sign module, enrol MOK</text>
 
-  <!-- M4 -->
+  
   <rect x="130" y="1005" width="660" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <text x="155" y="1042" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700">"No such device / nouveau bound"</text>
   <text x="155" y="1082" fill="#303a36" font-family="sans-serif" font-size="24">Blacklist nouveau, rebuild initramfs, reboot</text>
 
-  <!-- M5 -->
+  
   <rect x="130" y="1145" width="660" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <text x="155" y="1182" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700">"Unknown symbol"</text>
   <text x="155" y="1218" fill="#303a36" font-family="sans-serif" font-size="24">
@@ -116,7 +116,7 @@
     <tspan x="155" dy="30">or kernel/driver mismatch</tspan>
   </text>
 
-  <!-- Right branch: Q2 yes -> Q4 nvidia-smi error text? -->
+  
   <path d="M940 360 H1190 V436" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <text x="1065" y="346" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">yes</text>
 
@@ -126,13 +126,13 @@
   </g>
   <text x="1004" y="505" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">nvidia-smi error text?</text>
 
-  <!-- Right column 3 nvidia-smi branches (clean spine at x=935) -->
+  
   <path d="M935 550 V1060" fill="none" stroke="#207448" stroke-width="3.5"/>
   <path d="M935 665 H986" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M935 865 H986" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M935 1060 H986" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
 
-  <!-- V -->
+  
   <rect x="990" y="590" width="570" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <text x="1015" y="630" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700">"Driver/library version mismatch"</text>
   <text x="1015" y="668" fill="#303a36" font-family="sans-serif" font-size="24">
@@ -140,7 +140,7 @@
     <tspan x="1015" dy="32">reload modules or reboot</tspan>
   </text>
 
-  <!-- D -->
+  
   <rect x="990" y="790" width="570" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <text x="1015" y="830" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700">"no devices found / Xid in dmesg"</text>
   <text x="1015" y="868" fill="#303a36" font-family="monospace" font-size="24">
@@ -148,7 +148,7 @@
     <tspan x="1015" dy="32" font-family="sans-serif">firmware; power; Xid decode</tspan>
   </text>
 
-  <!-- F -->
+  
   <rect x="990" y="990" width="570" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <text x="1015" y="1030" fill="#db8129" font-family="sans-serif" font-size="24" font-weight="700">"works, but multi-GPU job fails"</text>
   <text x="1015" y="1068" fill="#303a36" font-family="sans-serif" font-size="24">

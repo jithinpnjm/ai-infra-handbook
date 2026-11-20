@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a strace by symptom</title>
+  <desc>Visual infographic table mapping strace symptoms to what to look for and exact commands.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Reading a strace by symptom</text>
+
+  
+  <g id="table-headers">
+    <rect x="40" y="115" width="275" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="177" y="150" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Symptom</text>
+
+    <rect x="330" y="115" width="615" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="637" y="150" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">What to look for</text>
+
+    <rect x="960" y="115" width="580" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1250" y="150" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Command</text>
+  </g>
+
+  
+  <g id="row-1">
+    <rect x="40" y="185" width="1520" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 52 185 H 315 V 365 H 52 A 12 12 0 0 1 40 353 V 197 A 12 12 0 0 1 52 185 Z" fill="#e8f1ea" />
+
+    
+    <g transform="translate(0, 0)">
+      <path d="M 160 205 L 184 205 L 196 217 L 196 248 A 3 3 0 0 1 193 251 L 157 251 A 3 3 0 0 1 154 248 L 154 211 A 3 3 0 0 1 157 205 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 184 205 L 184 217 L 196 217" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <circle cx="172" cy="232" r="8" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="178" y1="238" x2="186" y2="246" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="177" y="295" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="177" dy="0">cannot find</tspan>
+      <tspan x="177" dy="36">config</tspan>
+    </text>
+
+    
+    <text x="355" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="355" dy="0">last failed openat before the error,</tspan>
+      <tspan x="355" dy="36">ENOENT or EACCES</tspan>
+    </text>
+
+    
+    <rect x="975" y="235" width="550" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1000" y="283" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">grep -n &apos;ENOENT\|EACCES&apos; /tmp/t.out</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="40" y="405" width="1520" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 52 405 H 315 V 585 H 52 A 12 12 0 0 1 40 573 V 417 A 12 12 0 0 1 52 405 Z" fill="#e8f1ea" />
+
+    
+    <g transform="translate(0, 0)">
+      <line x1="151" y1="471" x2="204" y2="471" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <rect x="156" y="429" width="12" height="42" rx="2" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="156" y1="439" x2="168" y2="439" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <rect x="172" y="423" width="12" height="48" rx="2" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="172" y1="435" x2="184" y2="435" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 188 471 L 198 431 L 208 434 L 198 471 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="177" y="515" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="177" dy="0">which library</tspan>
+      <tspan x="177" dy="36">loaded</tspan>
+    </text>
+
+    
+    <text x="355" y="503" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">openat lines for .so files</text>
+
+    
+    <rect x="975" y="455" width="550" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="995" y="503" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">grep openat /tmp/t.out | grep &apos;\.so&apos;</text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="40" y="625" width="1520" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 52 625 H 315 V 825 H 52 A 12 12 0 0 1 40 813 V 637 A 12 12 0 0 1 52 625 Z" fill="#e8f1ea" />
+
+    
+    <g transform="translate(0, 0)">
+      <rect x="157" y="674" width="41" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 166 674 V 663 A 11.5 11.5 0 0 1 189 663 V 674" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="177.5" cy="687" r="3" fill="#207448" />
+      <line x1="177.5" y1="690" x2="177.5" y2="696" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="177" y="750" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">hung</text>
+
+    
+    <text x="355" y="694" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="355" dy="0">futex(..., FUTEX_WAIT...)</tspan>
+      <tspan x="355" dy="36">waiting on a lock;</tspan>
+      <tspan x="355" dy="36">epoll_wait or poll waiting for events</tspan>
+    </text>
+
+    
+    <rect x="975" y="685" width="550" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1000" y="733" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">strace -p PID</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="40" y="865" width="1520" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 52 865 H 315 V 1045 H 52 A 12 12 0 0 1 40 1033 V 877 A 12 12 0 0 1 52 865 Z" fill="#e8f1ea" />
+
+    
+    <g transform="translate(0, 0)">
+      <circle cx="177.5" cy="918" r="23" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="177.5" cy="918" r="2.5" fill="#207448" />
+      <line x1="177.5" y1="918" x2="168" y2="907" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="177.5" y1="918" x2="191" y2="911" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="173" y1="891" x2="182" y2="891" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="177" y="990" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">slow</text>
+
+    
+    <text x="355" y="942" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="355" dy="0">counts per call type,</tspan>
+      <tspan x="355" dy="36">many small reads or many failed stat</tspan>
+    </text>
+
+    
+    <rect x="975" y="915" width="550" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1000" y="963" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">strace -c -f -p PID</text>
+  </g>
+
+  
+  <g id="orange-note">
+    <rect x="40" y="1085" width="1520" height="75" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="2.5" />
+    
+    <circle cx="75" cy="1122" r="16" fill="none" stroke="#db8129" stroke-width="3" />
+    <line x1="75" y1="1114" x2="75" y2="1124" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <circle cx="75" cy="1130" r="1.5" fill="#db8129" />
+    
+    <text x="110" y="1130" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">strace stops the target at every system call, so it adds overhead.</text>
+  </g>
+</svg>

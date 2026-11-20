@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "04",
+  "name": "g04-bit-fields",
+  "title": "How sign, exponent and mantissa bits split each number format",
+  "spec": "Six horizontal bars stacked vertically, one per format, each drawn to the same width so the bit counts can be compared. Rows from top to bottom: FP32 with 1 sign, 8 exponent and 23 mantissa bits; TF32 with 1 sign, 8 exponent and 10 mantissa bits, marked 19 active bits inside a 32-bit word; FP16 with 1 sign, 5 exponent and 10 mantissa bits; BF16 with 1 sign, 8 exponent and 7 mantissa bits; FP8 E4M3 with 1 sign, 4 exponent and 3 mantissa bits; NVFP4 with 1 sign, 2 exponent and 1 mantissa bit. Each segment is labelled with its field name in a small caption and its bit count in monospace. Exponent segments are one colour and mantissa segments a lighter shade, with the sign bit as a thin marker. A bracket on the right of the FP16 and BF16 rows labelled same 16 bits, different split. Orange highlight on the BF16 exponent segment with the note: 8 exponent bits match FP32, so no GradScaler is needed. Monospace for 1, 8, 23, 10, 5, 7, 4, 3, 2 and 1 bit counts.",
+  "anchor": "### 2.1 Bit layouts: Sign, Exponent, and Mantissa",
+  "alt": "Sign, exponent and mantissa bits for common formats",
+  "cap": "Bit layouts: the exponent sets how large a number can be, the mantissa sets how finely it is resolved, and BF16 keeps FP32's exponent."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "04",
+  "name": "g04-footprint",
+  "title": "The same 4096 by 4096 matrix shrinks by half at each precision step",
+  "spec": "A column chart with four bars of decreasing height, left to right: FP32 at 67.1 MB, labelled 524,288 cache lines; FP16 and BF16 at 33.6 MB, labelled 262,144 cache lines; FP8 and INT8 at 16.8 MB, labelled 131,072 cache lines; NVFP4 at 8.4 MB, labelled 65,536 cache lines. Each bar has a short note beneath it giving values per 128-byte line: 32, 64, 128 and 256. Arrows between bars show each step halves the bytes and the line count. The baseline bar is grey and the NVFP4 bar is green. Orange highlight on the FP8 to NVFP4 step arrow with the note: each halving also halves the traffic to HBM for the same weights. Monospace for 67.1 MB, 33.6 MB, 16.8 MB, 8.4 MB and the cache line counts.",
+  "anchor": "### 2.2 Why lowering precision wins twice: compute TFLOPS and 128-byte cache-line density",
+  "alt": "Matrix footprint and cache lines at four precisions",
+  "cap": "Footprint: each halving of the bits per number halves the bytes moved for the same [4096, 4096] matrix."
+ }
+]

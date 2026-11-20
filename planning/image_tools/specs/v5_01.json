@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "k01-whiteout-layers",
+  "title": "Deleting a file in a later layer hides it",
+  "spec": "Three stacked layer sheets, bottom to top. Layer 1 (bottom) holds config.yaml with one setting (old). Layer 2 holds config.yaml with the changed setting (new). Layer 3 (top) holds a whiteout marker that deletes config.yaml. Left side of the figure: the merged view. Step 1 shows config.yaml with the new setting because the top layer wins. Step 2 shows the file gone after the whiteout. Under the stack, a green note: layers 1 and 2 still hold their copies on disk and in the registry. Orange note on the bottom layer: deleting a file later does not make the image smaller.",
+  "anchor": "### Overlay filesystems: how layers stack",
+  "alt": "Three stacked layers where a later layer changes a file and a whiteout hides it, while the earlier copies stay in the image.",
+  "cap": "Each layer is additive, so a later delete only hides a file and the earlier bytes stay in the image."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "k01-pull-cache",
+  "title": "A pull-through cache takes the load off the registry",
+  "spec": "Two-panel comparison, left and right. Left panel titled without a cache: many nodes (labelled nodes) all send arrows directly to one box labelled central registry, under the heading 500 nodes pull a 20 GB image at once. Right panel titled with a pull-through cache: many nodes send arrows to one box labelled cache inside the cluster network. A single arrow from the cache to the central registry labelled first node that asks makes the cache fetch the image. Orange note on the cache arrow: the rest are served from the warehouse. Green takeaway bar at the bottom: a local cache restocks from the central registry once.",
+  "anchor": "## 4. Registries and distribution",
+  "alt": "Without a cache, every node pulls from the central registry; with a pull-through cache, only the cache pulls from it.",
+  "cap": "A pull-through cache inside the cluster fetches each image once, so the central registry is not overloaded by every node."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "k01-multistage",
+  "title": "Multi-stage build keeps the compiler out of the image",
+  "spec": "Left to right: a box builder stage (golang toolchain, compilers, build tools) with a step box inside it labelled go build. An arrow labelled COPY --from=build carries only the compiled binary across. Right: a box deploy stage (slim distroless base, nonroot user) that receives only the binary. Above the builder box a grey crossed-out item list labelled toolchain and build tools, with an orange crossed-out arrow showing they do not reach the final image. Number circles 1 build stage, 2 copy only the binary, 3 deploy stage. Green takeaway bar: the final image holds only the program, not the build tools.",
+  "anchor": "### Build image versus runtime image",
+  "alt": "A builder stage compiles the program, and only the compiled binary is copied into a slim final stage.",
+  "cap": "A multi-stage build compiles in a large stage and copies only the finished binary into a slim runtime stage."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "k01-userns-map",
+  "title": "Root inside the container is an ordinary user outside",
+  "spec": "Left box: a container process labelled runs as UID 0 inside the container, shown with a root badge. Right box: the host, showing the same process as an unprivileged user ID from a subordinate range, labelled regular account range. Between them a mapping table with two rows: container UID 0 maps to host UID in the subordinate range. A central green box labelled kernel translates the ID on every check. Orange note: root inside the container has no power over files and processes outside it. Grey note under the host box: /etc/subuid and /etc/subgid define the range.",
+  "anchor": "## 5. Rootless containers and security basics",
+  "alt": "A process that is root inside a container maps to an unprivileged user ID on the host.",
+  "cap": "In rootless mode, the kernel maps root inside the container to an unprivileged user on the host."
+ }
+]

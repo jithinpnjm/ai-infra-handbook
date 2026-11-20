@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "11",
+  "name": "g11-index-map",
+  "title": "How a thread finds its element from its block and its seat",
+  "spec": "A grid of small squares drawn as rows, each row labelled as one thread block, with block numbers 0 to 3 on the left and the seat numbers 0 to 7 across the top of the first row, drawn as a short illustration of a few threads, not all 256. The row for blockIdx.x equals 3 is highlighted. In that row, a single square at seat threadIdx.x equals 5 is outlined in orange. Above the row a bracket spans a block of 256 cells labelled blockDim.x equals 256 seats per row. Next to the highlighted cell, a formula callout reads idx equals 3 times 256 plus 5, equals 773. Lighter earlier rows are drawn with their cells labelled from 0 to 255, 256 to 511 and 512 to 767 to show the offset. Monospace for blockIdx.x, blockDim.x, threadIdx.x, 773 and 256.",
+  "anchor": "### 2.2 1D indexing, ceiling division, and the two boundary bugs",
+  "alt": "Global index from block number and seat number",
+  "cap": "Global index: each thread adds its block offset to its seat number, so every thread in the grid gets a unique element."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "11",
+  "name": "g11-um-cliff",
+  "title": "Unified Memory throughput falls off a cliff once the working set exceeds VRAM",
+  "spec": "A line chart with working set size as a percentage of a 40 GB GPU on the horizontal axis, from 0 to 120 percent, and effective throughput in GB per second on the vertical axis, from 0 to 130. The line stays high and nearly flat from 60 percent at about 118 GB per second, through 90 percent at about 104 GB per second. A vertical dashed line at 100 percent is labelled physical HBM capacity, 40 GB. The line then drops steeply just past 100 percent, reaching about 9 GB per second at 110 percent, marked with a point. Three labelled dots on the flat part: 24 GB at 60 percent, 36 GB at 90 percent. An orange highlight on the falling segment with the note: pages are evicted and faulted back over PCIe on every pass. Monospace for 40 GB, 118 GB/s, 104 GB/s, 9 GB/s and 110%.",
+  "anchor": "### 3.3 Unified Memory, prefetching, and the oversubscription cliff",
+  "alt": "Unified Memory throughput against working set size",
+  "cap": "Oversubscription cliff: throughput holds while the working set fits in VRAM, then collapses once pages must thrash across PCIe."
+ }
+]

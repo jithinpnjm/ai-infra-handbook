@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Binaries and glibc versions</title>
+  <desc>Visual explanation of glibc forward compatibility and backward incompatibility across distributions.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 18 14" refX="16" refY="7" markerWidth="18" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 1 L 16 7 L 0 13 z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 18 14" refX="16" refY="7" markerWidth="18" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 1 L 16 7 L 0 13 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Binaries and glibc versions</text>
+
+  
+  <rect x="60" y="130" width="430" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(247, 150)">
+    <rect x="4" y="2" width="48" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="4" y1="19" x2="52" y2="19" stroke="#207448" stroke-width="3"/>
+    <line x1="4" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="3"/>
+    <circle cx="14" cy="10.5" r="3" fill="#207448"/>
+    <circle cx="14" cy="27.5" r="3" fill="#207448"/>
+    <circle cx="14" cy="44.5" r="3" fill="#207448"/>
+  </g>
+
+  
+  <text x="275" y="242" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="275" dy="0">build host with</tspan>
+    <tspan x="275" dy="38">newer glibc</tspan>
+  </text>
+
+  
+  <rect x="95" y="335" width="360" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(115, 352)">
+    <rect x="4" y="2" width="40" height="52" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 2 L 28 16 L 44 16" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="26" x2="32" y2="26" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="36" x2="28" y2="36" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="180" y="392" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">binary built there</text>
+
+  
+  <rect x="1110" y="130" width="430" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1297, 150)">
+    <rect x="4" y="2" width="48" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="4" y1="19" x2="52" y2="19" stroke="#207448" stroke-width="3"/>
+    <line x1="4" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="3"/>
+    <circle cx="14" cy="10.5" r="3" fill="#207448"/>
+    <circle cx="14" cy="27.5" r="3" fill="#207448"/>
+    <circle cx="14" cy="44.5" r="3" fill="#207448"/>
+  </g>
+
+  
+  <text x="1325" y="242" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1325" dy="0">older distribution</tspan>
+    <tspan x="1325" dy="38">with older glibc</tspan>
+  </text>
+
+  
+  <rect x="1145" y="335" width="360" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1297, 352)">
+    <ellipse cx="28" cy="12" rx="24" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 4 12 L 4 44 C 4 50 52 50 52 44 L 52 12" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 4 28 C 4 34 52 34 52 28" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <rect x="530" y="165" width="540" height="85" rx="8" fill="#fff5ed" stroke="#db8129" stroke-width="2"/>
+  <text x="800" y="200" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+    <tspan x="800" dy="0">version `GLIBC_2.34&apos; not found</tspan>
+    <tspan x="800" dy="32">(required by ./prog)</tspan>
+  </text>
+  <path d="M 490 265 L 1108 265" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="520" y="315" width="560" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="347" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="800" dy="0">build on the oldest distribution</tspan>
+    <tspan x="800" dy="30">you intend to support, runs on newer</tspan>
+  </text>
+  <path d="M 1110 405 L 492 405" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="60" y="490" width="1480" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="90" y="520" width="1420" height="150" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(115, 538)">
+    <rect x="4" y="4" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="3"/>
+    <path d="M 14 32 L 22 37 L 14 42" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="26" y1="42" x2="38" y2="42" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="185" y="565" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">(what the binary needs)</text>
+  <rect x="185" y="585" width="1295" height="65" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="210" y="626" font-family="monospace" font-size="24" fill="#303a36">objdump -T ./prog | grep -o &apos;GLIBC_[0-9.]*&apos; | sort -Vu | tail -1</text>
+
+  
+  <rect x="90" y="690" width="1420" height="150" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(115, 708)">
+    <rect x="4" y="4" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="3"/>
+    <circle cx="28" cy="34" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="33" y1="39" x2="40" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="185" y="735" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">(what the system offers)</text>
+  <rect x="185" y="755" width="1295" height="65" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="210" y="796" font-family="monospace" font-size="24" fill="#303a36">ldd --version</text>
+
+  
+  <rect x="60" y="890" width="1480" height="75" rx="10" fill="#207448"/>
+  <text x="800" y="937" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">binaries are forward-compatible with newer glibc, not backward</text>
+</svg>

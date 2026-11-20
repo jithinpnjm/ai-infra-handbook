@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "03",
+  "name": "d03-rack-elevation",
+  "title": "Two-node rack elevation under the 18 kW limit",
+  "spec": "A tall narrow rack drawing in side view, with units labelled on the left edge in RU numbers, showing only the items the source lists and leaving the other units as plain blank space with no label. Items from top to bottom: RU 1-2, Top-of-Rack compute switch, 32x 400G, Feeds A and B. RU 3-4, Out-of-band management switch, 48x 1G, Feed A. RU 6-9, HGX server node 1, 82 kg, 7.9 kW, Feeds A and B. RU 10-11, a hatched 3U service and thermal gap. RU 12-15, HGX server node 2, 82 kg, 7.9 kW, Feeds A and B. RU 20-22, storage leaf switch, 24x 200G, Feeds A and B. A side panel on the right with a horizontal bar gauge: total load 16.4 kW against an 18.0 kW rack limit, 1.6 kW headroom. Orange highlight on the gauge headroom. Monospace for RU numbers and the kW values.",
+  "anchor": "### 5.3 Worked 18 kW rack elevation, power derating, and single-feed survival test",
+  "alt": "Rack elevation for two HGX nodes under an 18 kW limit",
+  "cap": "Rack elevation: two 7.9 kW nodes plus switches fit under the 18 kW rack limit, with 1.6 kW of headroom."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "03",
+  "name": "d03-airflow-shadowing",
+  "title": "Why the rear GPU row breathes pre-heated air",
+  "spec": "A side view of an air-cooled HGX chassis with air arrows. Left edge: cold intake air at 18 degrees C from the cold aisle, arrows entering the front. Front row box labelled GPUs 0 to 3, each dumping up to 700 W of heat, with a warm-air arrow leaving it. Warm air then flows into a rear row box labelled GPUs 4 to 7, marked with a red outline and the note: breathes pre-heated exhaust. A grey dashed bypass duct labelled OEM internal baffles, which in a poor design is missing, drawn going around the front row directly to the rear row. Orange highlight on the rear row with the note: thermal slowdown, SW Thermal Slowdown Active. A bottom note: synchronous training runs at the speed of the slowest GPU. Monospace for GPUs 0 to 3, GPUs 4 to 7 and SW Thermal Slowdown: Active.",
+  "anchor": "### 5.1 Airflow shadowing and Closed-Loop Liquid Cooling (CLLC)",
+  "alt": "Airflow shadowing on the rear GPU row",
+  "cap": "Airflow shadowing: the front GPUs heat the air that reaches the rear GPUs, so the rear row throttles without proper baffles."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "03",
+  "name": "d03-xid79-escalation",
+  "title": "Escalating an Xid 79 fault to the OEM, not NVIDIA",
+  "spec": "A top-to-bottom flow with three numbered steps and a branch at the top. Top box: Xid 79, GPU has fallen off the bus, on an OEM server. An arrow down to a crossed-out side box: do not open an RMA with NVIDIA for a replacement GPU, the OEM holds the hardware warranty. Step 1: run nvidia-bug-report.sh on the host to capture kernel, driver and Xid state. Step 2: export the OEM BMC hardware diagnostic bundle, from Lenovo XClarity, Dell SupportAssist or HPE Active Health System. Step 3: open a severity-one hardware ticket with OEM Premier Support, attaching both bundles, and ask for both a replacement PCIe riser cable and an SXM GPU FRU. Orange highlight on step 3 with the note: bringing both parts avoids a second visit. Monospace for nvidia-bug-report.sh and the bundle names.",
+  "anchor": "### 3.3 How to escalate `Xid 79` (`GPU has fallen off the bus`) on an OEM server",
+  "alt": "Escalation path for an Xid 79 fault on an OEM server",
+  "cap": "Xid 79 escalation: collect the driver and BMC evidence, then open the ticket with the OEM, which dispatches the parts."
+ }
+]

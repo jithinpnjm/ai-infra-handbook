@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "k11-ndots-walk",
+  "title": "Why one external hostname costs several DNS lookups with ndots 5",
+  "spec": "A vertical list of five lookup rows, top to bottom, each row a horizontal bar with a step number circle on the left (1 to 5) and a result tag on the right. Above the list, a banner box labelled Pod in namespace ml asks for api.example.com, with a small magnifier icon and the note this name has 2 dots, fewer than ndots 5, so search domains are tried first. Row 1: query box labelled api.example.com.ml.svc.cluster.local, result tag NXDOMAIN in grey. Row 2: query box labelled api.example.com.svc.cluster.local, result tag NXDOMAIN in grey. Row 3: query box labelled api.example.com.cluster.local, result tag NXDOMAIN in grey. Row 4: query box labelled api.example.com.<node-search>, with the note once for each node search domain, result tag NXDOMAIN in grey. Row 5: query box labelled api.example.com. with the trailing dot, result tag answer in green, the only row that gets an answer. A bracket to the right of rows 1 to 4 labelled wasted lookups, drawn in orange. Under the list, a counter box labelled 8 or more queries for one hostname, with a note that each query is sent as both A and AAAA. Green takeaway bar at the bottom: a trailing dot on an external name skips the search list.",
+  "anchor": "### The ndots:5 problem",
+  "alt": "A name with fewer than five dots is tried against each search domain first, so one external lookup costs several failed queries before the answer.",
+  "cap": "A name with fewer than five dots is tried against each search domain first, so one external lookup can cost several wasted queries."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "k11-conntrack-race",
+  "title": "How parallel A and AAAA queries race in conntrack and cause a 5-second stall",
+  "spec": "Left to right in a flow with numbered step circles 1 to 4. Left box: a pod with a glibc resolver box labelled one UDP socket, with two arrows leaving it at the same time labelled A query and AAAA query, both to the same source IP and port. Step 1 arrow to a netfilter box labelled conntrack with two side-by-side insertion slots. Step 2 box labelled kube-proxy DNAT to a CoreDNS pod chosen by KUBE-SVC, with the note the two packets may go to different CoreDNS pods. Step 3: the second insertion collides with the first, drawn as a red-orange X on one arrow labelled insert_failed, the packet is silently dropped. Step 4: a clock icon on the pod side labelled waits for default 5 s timeout, then retries. Below the flow, a second row with a green fix path: three small boxes labelled NodeLocal DNSCache removes the DNAT with a NOTRACK note, single-request-reopen separates the two queries, and TCP to DNS avoids the UDP path. Orange highlight only on the collision X. Green takeaway bar at the bottom: two parallel queries on one socket can collide in the kernel, and the lost packet costs a timeout.",
+  "anchor": "### The conntrack/UDP race and 5-second delays",
+  "alt": "Parallel A and AAAA queries from one socket race the conntrack DNAT insertion, so one packet is dropped and the client waits for its timeout.",
+  "cap": "Parallel A and AAAA queries from one socket can collide in conntrack, so one packet is dropped and the client waits five seconds."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "k11-rendezvous-deadlock",
+  "title": "How a headless Service without publishNotReadyAddresses deadlocks a training rendezvous",
+  "spec": "A circular loop diagram with four labelled boxes placed at the four corners of a square and arrows running clockwise between them, with the arrows numbered 1 to 4. Top-left box labelled trainer-0 not Ready, with a clock icon and the note it starts only after rendezvous. Top-right box labelled CoreDNS publishes no A record for trainer-0 while it is not ready. Bottom-right box labelled worker ranks get NXDOMAIN for trainer-0.trainer. Bottom-left box labelled trainer-0 never receives connections, so it never becomes Ready. Arrows: 1 from top-left to top-right, 2 from top-right to bottom-right, 3 from bottom-right to bottom-left, 4 from bottom-left back to top-left, all four drawn in grey except the closing arrow 4, drawn in orange and labelled the deadlock. Centre of the loop, a small box labelled deadlock, the job hangs. Beside the loop, a separate green fix box labelled publishNotReadyAddresses: true on the headless Service, with an arrow from it into the CoreDNS box labelled publishes the record while not ready, which breaks the loop. Small side note: rendezvous endpoint trainer-0.trainer:29500. Green takeaway bar at the bottom: DNS answers only for pods that are ready, so a worker that waits for its peers before it is ready can wait forever.",
+  "anchor": "## 5. DNS-based discovery for distributed AI workloads",
+  "alt": "Workers cannot resolve the rendezvous pod until it is ready, and it cannot become ready until they connect, which deadlocks the job.",
+  "cap": "Workers cannot resolve the rendezvous pod until it is ready, so the job deadlocks unless the headless Service publishes not-ready addresses."
+ }
+]

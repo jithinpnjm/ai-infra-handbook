@@ -169,6 +169,10 @@ Three practical consequences follow, and you will meet all of them.
 
 ### Zombies and orphans
 
+![A zombie is an exited child waiting for its parent to collect the status, and an orphan is reparented to PID 1.](./img/l08-zombie-orphan.svg)
+
+*Figure 1.8.3. A zombie holds only a PID slot until the parent calls wait(), and orphans are adopted by PID 1.*
+
 When a process exits, it releases its memory and files. The kernel keeps a small **process-table entry**, though, and that entry holds the exit status until the **parent** collects it with `wait()`. Until then the process is a **zombie** (state `Z`, shown as `<defunct>`).
 
 A zombie consumes **no CPU and no memory**. It holds only a PID slot, and you can see it in `ps` if you look. You **cannot kill it**, because it is already dead. The fix is to make the parent call `wait()`. You can also restart or terminate the parent. The zombie is then adopted by PID 1, which reaps it. A few zombies are harmless. Thousands of them can exhaust the PID table.
@@ -194,13 +198,17 @@ Every task is in exactly one state at any moment, and the kernel writes that sta
 
 ![Process states in ps](./img/ch08-fig2-states.jpg)
 
-*Figure 1.8.3. The five process states you will see in the ps STAT column.*
+*Figure 1.8.4. The five process states you will see in the ps STAT column.*
 
 **The `D` state causes the worst cluster days.** A process in `D` is waiting on a kernel operation that has not returned. The usual causes are a hung NFS, Lustre or GPFS mount, a failing disk, or a driver waiting for a GPU that has fallen off the bus.
 
 You cannot kill it. `kill -9` is ignored until the I/O completes, and the process still counts in the load average. Fix the underlying cause first. Restore the server, fix the mount, reset the GPU or reboot. To see what the process is waiting for, read `cat /proc/<pid>/stack` (as root) or `/proc/<pid>/wchan`.
 
 ### The run queue and the load average
+
+![Load average counts running, runnable and uninterruptible tasks, so compare it with CPU count and check I/O.](./img/l08-load-average.svg)
+
+*Figure 1.8.5. A high load with idle CPUs means many tasks are stuck waiting for I/O.*
 
 Here is a scene that confuses almost everyone the first time. A node reports a load average of 90, dashboards turn red, and the CPUs sit idle. Nothing is computing, yet the machine looks busy. To understand how that is possible, you need to know what the number actually counts.
 
@@ -328,6 +336,10 @@ fuser -vn tcp 8080              # which process is listening on TCP port 8080
 ```
 
 ### `/proc`: the kernel's window on every process
+
+![Each process has a /proc directory whose files expose its state, memory, files and limits.](./img/l08-proc-pid.svg)
+
+*Figure 1.8.6. Reading /proc files is how ps and top work, and you can read them yourself.*
 
 `/proc` is a virtual filesystem (chapter 1.10). Each process has a directory, `/proc/<pid>`. Reading these files is how `ps` and `top` work. You can read them yourself when the tools are missing, as in a stripped container, or when you need more detail.
 
@@ -497,7 +509,7 @@ A killed process gets no chance to clean up. That can leave lock files, half-wri
 
 ![How signals reach a process](./img/ch08-d4-luna.svg)
 
-*Figure 1.8.4. How signals reach a process, dispositions, and why D state delays SIGKILL.*
+*Figure 1.8.7. How signals reach a process, dispositions, and why D state delays SIGKILL.*
 
 ### Stopping, continuing and processes that resist
 
@@ -543,6 +555,10 @@ If you hit a crash and want to debug it, you can ask for a core file. Core files
 On a shared cluster, keep core dumps off by default, and turn them on only when you are debugging a specific crash.
 
 ## 5. Shell job control
+
+![Dropping the SSH session sends SIGHUP to jobs, and five remedies keep work alive.](./img/l08-hangup-remedies.svg)
+
+*Figure 1.8.8. Choose tmux, the scheduler, nohup, disown or systemd before the connection drops.*
 
 You have seen this happen, or you will. You start a long command over SSH, the VPN hiccups, the session drops, and the job dies with the terminal. Or you press Ctrl-Z in front of a long task, and the shell says `Stopped`. Both events come from the same small mechanism, and once you can see it, you can also outwit it.
 

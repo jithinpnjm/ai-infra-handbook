@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Layered reachability checklist</title>
+  <desc>Numbered ladder of eight reachability steps from bottom to top with commands and diagnostic highlights</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Layered reachability checklist</text>
+
+  <rect x="44" y="115" width="16" height="1035" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="1540" y="115" width="16" height="1035" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="60" y="115" width="1480" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="106" cy="160" r="24" fill="#207448"/>
+    <text x="106" y="168" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">8</text>
+    <g transform="translate(148, 134)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="8" width="40" height="26" rx="4"/>
+      <line x1="14" y1="16" x2="20" y2="21"/>
+      <line x1="20" y1="21" x2="14" y2="26"/>
+      <line x1="24" y1="26" x2="34" y2="26"/>
+      <line x1="26" y1="34" x2="26" y2="42"/>
+      <line x1="16" y1="42" x2="36" y2="42"/>
+    </g>
+    <text x="220" y="170" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">other end</text>
+    <rect x="630" y="132" width="250" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="648" y="167" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">tcpdump <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">on B</tspan></text>
+  </g>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="60" y="250" width="1480" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="106" cy="295" r="24" fill="#207448"/>
+    <text x="106" y="303" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+    <g transform="translate(148, 269)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="8" width="40" height="36" rx="5"/>
+      <line x1="6" y1="19" x2="46" y2="19"/>
+      <circle cx="13" cy="14" r="1.5" fill="#207448"/>
+      <circle cx="20" cy="14" r="1.5" fill="#207448"/>
+      <circle cx="27" cy="14" r="1.5" fill="#207448"/>
+      <line x1="14" y1="28" x2="28" y2="28"/>
+      <line x1="14" y1="36" x2="38" y2="36"/>
+    </g>
+    <text x="220" y="305" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">application</text>
+    <rect x="630" y="267" width="160" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="648" y="302" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">curl -v</text>
+  </g>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="60" y="385" width="1480" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="106" cy="430" r="24" fill="#207448"/>
+    <text x="106" y="438" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    <g transform="translate(148, 404)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="9" width="40" height="34" rx="4"/>
+      <line x1="6" y1="26" x2="46" y2="26"/>
+      <line x1="26" y1="9" x2="26" y2="43"/>
+      <path d="M 11 15 L 16 15"/>
+      <path d="M 41 37 L 36 37"/>
+    </g>
+    <text x="220" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">large packets</text>
+    <rect x="630" y="402" width="550" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="648" y="437" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ping -M do -s 1472 B, tracepath B</text>
+  </g>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="60" y="520" width="1480" height="90" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="3"/>
+    <circle cx="106" cy="565" r="24" fill="#db8129"/>
+    <text x="106" y="573" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    <g transform="translate(148, 539)" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="14" width="26" height="24" rx="4"/>
+      <line x1="32" y1="20" x2="44" y2="20"/>
+      <line x1="32" y1="32" x2="44" y2="32"/>
+      <circle cx="19" cy="26" r="4"/>
+    </g>
+    <text x="220" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">port</text>
+    <rect x="320" y="537" width="220" height="56" rx="8" fill="#ffeacc" stroke="#db8129" stroke-width="1.5"/>
+    <text x="340" y="572" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">nc -zv B 443</text>
+    <rect x="565" y="537" width="885" height="56" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="585" y="572" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">refused (RST) and timeout (drop) point to different places</text>
+  </g>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="60" y="655" width="1480" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="106" cy="700" r="24" fill="#207448"/>
+    <text x="106" y="708" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(148, 674)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="14" cy="36" r="3" fill="#207448"/>
+      <path d="M 24 36 A 10 10 0 0 0 14 26"/>
+      <path d="M 33 36 A 19 19 0 0 0 14 17"/>
+      <path d="M 42 36 A 28 28 0 0 0 14 8"/>
+    </g>
+    <text x="220" y="710" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">ICMP</text>
+    <rect x="630" y="672" width="560" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="648" y="707" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ping -c3 B, traceroute -n B <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">or</tspan> mtr</text>
+  </g>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="60" y="790" width="1480" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="106" cy="835" r="24" fill="#207448"/>
+    <text x="106" y="843" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(148, 809)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="26" y1="8" x2="26" y2="44"/>
+      <path d="M 16 13 L 34 13 L 42 19 L 34 25 L 16 25 Z"/>
+      <path d="M 36 29 L 18 29 L 10 35 L 18 41 L 36 41 Z"/>
+    </g>
+    <text x="220" y="845" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">route</text>
+    <rect x="630" y="807" width="310" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="648" y="842" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ip route get &lt;B&gt;</text>
+  </g>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="60" y="925" width="1480" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="106" cy="970" r="24" fill="#207448"/>
+    <text x="106" y="978" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(148, 944)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="26" cy="26" r="18"/>
+      <line x1="14" y1="26" x2="38" y2="26"/>
+      <line x1="26" y1="14" x2="26" y2="38"/>
+      <circle cx="8" cy="8" r="3" fill="#207448"/>
+      <circle cx="44" cy="44" r="3" fill="#207448"/>
+      <line x1="10" y1="10" x2="16" y2="16"/>
+      <line x1="36" y1="36" x2="42" y2="42"/>
+    </g>
+    <text x="220" y="980" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">gateway and neighbour</text>
+    <rect x="630" y="942" width="410" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="648" y="977" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ping &lt;gateway&gt;, ip neigh</text>
+  </g>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="60" y="1060" width="1480" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="106" cy="1105" r="24" fill="#207448"/>
+    <text x="106" y="1113" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(148, 1079)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="12" width="40" height="30" rx="5"/>
+      <polygon points="16,12 20,6 32,6 36,12"/>
+      <line x1="16" y1="24" x2="16" y2="34"/>
+      <line x1="22" y1="24" x2="22" y2="34"/>
+      <line x1="28" y1="24" x2="28" y2="34"/>
+      <line x1="34" y1="24" x2="34" y2="34"/>
+    </g>
+    <text x="220" y="1115" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">interface and address</text>
+    <rect x="630" y="1077" width="220" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="648" y="1112" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ip -br addr</text>
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "04",
+  "name": "l04-regex-map",
+  "title": "Regex metacharacters",
+  "spec": "Grid of labelled cells, monospace pattern then meaning: . any single character; * zero or more of the preceding item; + one or more (extended); ? zero or one (extended); ^ start of line; $ end of line; [abc] one of the set; [^abc] not in the set; {n,m} n to m repetitions; \\. a literal dot. Orange note: . matches exactly one arbitrary character, and .* is greedy.",
+  "anchor": "## 2. Regular expressions from scratch",
+  "alt": "A grid of common regular expression metacharacters and what each matches.",
+  "cap": "Most characters match themselves, and a small set of metacharacters carries special meaning."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "04",
+  "name": "l04-bre-ere",
+  "title": "BRE versus ERE",
+  "spec": "Two columns. Left, BRE (default in grep and sed): + ? | () { } are literal text unless preceded by a backslash. Right, ERE (grep -E, sed -E, awk): the same characters are operators straight away, a literal plus needs a backslash. Bottom row of tools: GNU grep -P enables Perl-compatible expressions, not on macOS grep. Green bar: use -E unless you have a reason not to.",
+  "anchor": "## 2. Regular expressions from scratch",
+  "alt": "Basic and extended regular expressions treat plus, question mark, pipe, parentheses and braces oppositely.",
+  "cap": "BRE treats those characters as literal unless escaped, while ERE treats them as operators."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "04",
+  "name": "l04-sed-substitute",
+  "title": "Anatomy of sed substitute",
+  "spec": "Large monospace line: sed 's/old/new/g' file. Labels: s substitute command, old pattern, new replacement, g all matches on each line (without g only the first), file input. Below three small rows: sed -E 's/step=([0-9]+)/STEP:\\1/' file with note \\1 is the first capture group; sed 's|/usr/local|/opt|g' file other delimiter; sed -n '10,20p' file prints lines 10 to 20. Orange note: sed writes to standard output, -i edits the file in place.",
+  "anchor": "## 5. `sed`: edit a stream",
+  "alt": "The parts of a sed substitute command with a few variations.",
+  "cap": "sed applies an edit to each line as it passes through and does not change the file unless asked."
+ }
+]

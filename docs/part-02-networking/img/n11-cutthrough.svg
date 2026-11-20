@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Store-and-forward versus cut-through</title>
+  <desc>Visual comparison between store-and-forward switching and cut-through switching timelines for a frame passing through a network switch.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <g id="header">
+    <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Store-and-forward versus cut-through</text>
+    <text x="800" y="105" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="600" fill="#207448">Two timelines of one frame through a switch</text>
+  </g>
+
+  
+  <g id="store-and-forward-panel" transform="translate(50, 130)">
+    <rect width="1500" height="390" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(40, 25)">
+      
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <path d="M 12 20 L 44 20 M 36 14 L 44 20 L 36 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 44 36 L 12 36 M 20 30 L 12 36 L 20 42" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="76" y="40" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Store-and-forward</text>
+    </g>
+
+    
+    <g transform="translate(60, 100)">
+      
+      <rect x="0" y="10" width="600" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <path d="M 40 10 L 40 52 M 520 10 L 520 52" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" />
+      
+      
+      <rect x="620" y="8" width="50" height="46" rx="6" fill="#207448" />
+      <path d="M 633 31 L 642 40 L 657 22" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+      
+      <path d="M 670 31 L 730 31 L 730 85 L 750 85" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+      
+      <rect x="760" y="64" width="600" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <path d="M 800 64 L 800 106 M 1280 64 L 1280 106" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" />
+    </g>
+
+    
+    <g transform="translate(60, 240)">
+      
+      <rect x="0" y="0" width="680" height="116" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="44" cy="58" r="24" fill="#207448" />
+      <text x="44" y="66" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      <text x="88" y="46" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="88" dy="0">receive the whole frame, verify FCS,</tspan>
+        <tspan x="88" dy="32">then forward</tspan>
+      </text>
+
+      
+      <rect x="710" y="0" width="670" height="116" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="754" cy="58" r="24" fill="#207448" />
+      <text x="754" y="66" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      <text x="798" y="46" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="798" dy="0">latency grows with frame size</tspan>
+        <tspan x="798" dy="32">(9000-byte jumbo on 10 Gb/s needs 7.2 us to serialise)</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="cut-through-panel" transform="translate(50, 545)">
+    <rect width="1500" height="405" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(40, 25)">
+      
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <path d="M 16 16 L 30 28 L 16 40 Z" fill="#207448" />
+      <path d="M 28 16 L 42 28 L 28 40 Z" fill="#207448" />
+      <text x="76" y="40" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Cut-through</text>
+    </g>
+
+    
+    <g transform="translate(60, 95)">
+      
+      <rect x="0" y="10" width="600" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <rect x="0" y="10" width="130" height="42" rx="6" fill="#207448" opacity="0.15" />
+      <path d="M 130 10 L 130 52 M 520 10 L 520 52" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" />
+
+      
+      <path d="M 130 31 L 180 31 L 180 85 L 200 85" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+      
+      <rect x="210" y="64" width="600" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <path d="M 250 64 L 250 106 M 730 64 L 730 106" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" />
+    </g>
+
+    
+    <g transform="translate(60, 225)">
+      
+      <rect x="0" y="0" width="680" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="44" cy="37" r="20" fill="#207448" />
+      <text x="44" y="44" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      <text x="80" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">starts forwarding as soon as the destination header is read</text>
+
+      
+      <rect x="710" y="0" width="670" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="754" cy="37" r="20" fill="#207448" />
+      <text x="754" y="44" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      <text x="790" y="45" font-family="sans-serif" font-size="24" fill="#303a36">latency roughly constant, hundreds of nanoseconds</text>
+
+      
+      <rect x="0" y="90" width="1380" height="70" rx="10" fill="#fff7f0" stroke="#db8129" stroke-width="2.5" />
+      
+      <path d="M 38 108 L 56 116 L 56 130 C 56 142 46 150 38 154 C 30 150 20 142 20 130 L 20 116 Z" fill="none" stroke="#db8129" stroke-width="2.5" />
+      <text x="38" y="139" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">!</text>
+      <text x="76" y="134" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">cost: corrupt frames may get through, the last hop's FCS check drops them</text>
+    </g>
+  </g>
+
+  
+  <g id="footer-panel" transform="translate(50, 975)">
+    <rect width="1500" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(35, 20)">
+      <rect x="0" y="0" width="700" height="60" rx="8" fill="#e8f1ea" />
+      <text x="350" y="39" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">Serialization delay = frame bits / link rate</text>
+    </g>
+
+    
+    <g transform="translate(765, 20)">
+      <rect x="0" y="0" width="700" height="60" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="350" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Note: port-to-port latency typically 300 ns to 1 us</text>
+    </g>
+  </g>
+</svg>

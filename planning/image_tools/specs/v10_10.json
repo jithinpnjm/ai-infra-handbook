@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "10",
+  "name": "g10-nvlink-domains",
+  "title": "Three NVLink domain shapes: a private pair, an 8-GPU switch mesh, and a rack crossbar",
+  "spec": "Three panels side by side, left to right, each with a title. Left panel, labelled 2-GPU PCIe bridge pair: two GPU boxes joined directly by one bridge line, with no switch between them, and a small note labelled no fabric manager needed, the GPU driver trains the link. Middle panel, labelled 8-GPU HGX baseboard: eight GPU boxes in a row along the bottom, four switch boxes labelled NVSwitch across the top, and lines from every GPU to every switch, with a small note labelled needs host nvidia-fabricmanager.service. Right panel, labelled 72-GPU NVL72 rack: a grid of GPU boxes shown as a compact block, a row of nine switch trays labelled eighteen NVSwitch ASICs, and a note labelled NVOS and NMX-M manage the trays. Orange highlight on the middle panel's switch row with the note: empty switch tables route nothing until the fabric manager programs them. Monospace for NVSwitch, 18, 4, 72 and nvidia-fabricmanager.service.",
+  "anchor": "### 1.1 What is an NVLink domain, and why does NVSwitch require a Fabric Manager?",
+  "alt": "Three NVLink domain layouts from bridge pair to rack",
+  "cap": "NVLink domains: a bridge pair needs no control daemon, but an NVSwitch mesh stays dark until the fabric manager programs its routes."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "10",
+  "name": "g10-numa-strand",
+  "title": "Why the eighth pod cannot fit on NUMA node 1",
+  "spec": "Two horizontal bars, one per NUMA node, drawn on a shared scale of 64 CPU cores each. Top bar labelled NUMA 0, 64 cores and 4 GPUs: fully filled with four blocks of 16 cores, each block paired with one GPU icon, with the caption 4 pods, 64 of 64 cores used. Bottom bar labelled NUMA 1, 64 cores and 4 GPUs: two small grey blocks at the left labelled OS and DaemonSet, 2 cores reserved, then three blocks of 16 cores each with one GPU, then a remaining free segment of 14 cores drawn with a dashed outline and a fourth GPU icon with no pod beside it. A bracket labelled 14 free cores is less than 16 requested sits over the free segment. Orange highlight on the 14-core dashed segment with the note: the one GPU is stranded, so the eighth pod gets a TopologyAffinityError. Monospace for 64, 16, 14, 2 and 4.",
+  "anchor": "### 4.1 Kubernetes Topology Manager (`single-numa-node`) and the `16-Core → 12-Core` fix",
+  "alt": "NUMA 1 cores and GPU stranded after three pods",
+  "cap": "NUMA strand: reserved OS cores leave 14 free cores on NUMA 1, one short of the 16 a pod asks for, so one GPU sits idle."
+ }
+]

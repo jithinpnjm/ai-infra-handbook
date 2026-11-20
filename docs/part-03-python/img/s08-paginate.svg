@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="title desc">
+  <title id="title">Walking every page</title>
+  <desc id="desc">A horizontal chain of three page boxes joined by next link arrows, leading to all items collected, with a rule to stop only when no next page exists.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  <text x="800" y="92" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Walking every page</text>
+
+  <line x1="280" y1="350" x2="450" y2="350" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="365" y="322" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">next link</text>
+
+  <line x1="670" y1="350" x2="840" y2="350" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="755" y="322" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">next link</text>
+
+  <line x1="1060" y1="350" x2="1190" y2="350" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g id="node-page-1">
+    <rect x="60" y="180" width="220" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="170" cy="234" r="24" fill="#207448" />
+    <text x="170" y="243" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(142, 282)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 2 L 34 2 L 52 20 L 52 62 L 4 62 Z" />
+      <path d="M 34 2 L 34 20 L 52 20" />
+      <line x1="14" y1="32" x2="40" y2="32" stroke-width="3.5" />
+      <line x1="14" y1="42" x2="40" y2="42" stroke-width="3.5" />
+      <line x1="14" y1="52" x2="30" y2="52" stroke-width="3.5" />
+    </g>
+
+    <text x="170" y="412" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">page 1</text>
+  </g>
+
+  <g id="node-page-2">
+    <rect x="450" y="180" width="220" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="560" cy="234" r="24" fill="#207448" />
+    <text x="560" y="243" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(532, 282)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 2 L 34 2 L 52 20 L 52 62 L 4 62 Z" />
+      <path d="M 34 2 L 34 20 L 52 20" />
+      <line x1="14" y1="32" x2="40" y2="32" stroke-width="3.5" />
+      <line x1="14" y1="42" x2="40" y2="42" stroke-width="3.5" />
+      <line x1="14" y1="52" x2="30" y2="52" stroke-width="3.5" />
+    </g>
+
+    <text x="560" y="412" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">page 2</text>
+  </g>
+
+  <g id="node-page-3">
+    <rect x="840" y="180" width="220" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="950" cy="234" r="24" fill="#207448" />
+    <text x="950" y="243" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(922, 282)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 2 L 34 2 L 52 20 L 52 62 L 4 62 Z" />
+      <path d="M 34 2 L 34 20 L 52 20" />
+      <line x1="14" y1="32" x2="40" y2="32" stroke-width="3.5" />
+      <line x1="14" y1="42" x2="40" y2="42" stroke-width="3.5" />
+      <line x1="14" y1="52" x2="30" y2="52" stroke-width="3.5" />
+    </g>
+
+    <text x="950" y="412" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">page 3</text>
+  </g>
+
+  <g id="node-done">
+    <rect x="1190" y="180" width="350" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <g transform="translate(1335, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="30" cy="30" r="28" stroke-width="4" />
+      <polyline points="18,30 27,39 43,21" stroke-width="4.5" />
+    </g>
+
+    <text x="1365" y="370" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="1365" dy="0" font-size="32" font-weight="bold" fill="#207448">done:</tspan>
+      <tspan x="1365" dy="44" font-size="26" font-weight="bold" fill="#303a36">all items collected</tspan>
+    </text>
+  </g>
+
+  <g id="note-orange">
+    <rect x="60" y="620" width="1480" height="140" rx="16" fill="#fff7ed" stroke="#db8129" stroke-width="3.5" />
+    
+    <g transform="translate(100, 662)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="26" />
+      <line x1="28" y1="14" x2="28" y2="30" stroke-width="4.5" />
+      <circle cx="28" cy="41" r="2.5" fill="#db8129" stroke="none" />
+    </g>
+
+    <text x="185" y="702" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">stop only when there is no next page, not when a page looks short</text>
+  </g>
+</svg>

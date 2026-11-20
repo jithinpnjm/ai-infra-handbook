@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Socket activation</title>
+  <desc>Visual infographic explaining systemd socket activation across a three-step timeline, connection handoff, and the socket-to-service link rule.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Socket activation</text>
+
+  
+  <g transform="translate(60, 120)">
+    <rect width="440" height="450" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <circle cx="52" cy="52" r="24" fill="#207448" />
+    <text x="52" y="61" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(96, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <rect x="18" y="14" width="6" height="12" rx="2" fill="#207448" />
+      <rect x="32" y="14" width="6" height="12" rx="2" fill="#207448" />
+      <path d="M 16 26 H 40 V 34 C 40 39 35 43 28 43 C 21 43 16 39 16 34 Z" />
+      <line x1="28" y1="43" x2="28" y2="52" />
+    </g>
+
+    
+    <text x="32" y="132" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="32" dy="0">systemd holds</tspan>
+      <tspan x="32" dy="38">the socket</tspan>
+    </text>
+    <text x="32" y="234" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="32" dy="0">(<tspan font-family="monospace">echo.socket</tspan>,</tspan>
+      <tspan x="32" dy="38"><tspan font-family="monospace">ListenStream=22222</tspan>)</tspan>
+      <tspan x="32" dy="50">while no service runs.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="500" y1="345" x2="548" y2="345" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(550, 120)">
+    <rect width="350" height="450" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <circle cx="52" cy="52" r="24" fill="#207448" />
+    <text x="52" y="61" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(96, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="32" rx="4" />
+      <line x1="18" y1="48" x2="38" y2="48" />
+      <line x1="28" y1="40" x2="28" y2="48" />
+      <polyline points="16,20 22,24 16,28" stroke-width="3" />
+      <line x1="26" y1="28" x2="36" y2="28" stroke-width="3" />
+    </g>
+
+    
+    <text x="32" y="146" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="32" dy="0">a client</tspan>
+      <tspan x="32" dy="40">connects.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="900" y1="345" x2="948" y2="345" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(950, 120)">
+    <rect width="590" height="450" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <circle cx="52" cy="52" r="24" fill="#207448" />
+    <text x="52" y="61" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(96, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14" />
+      <circle cx="28" cy="28" r="5" stroke-width="3" />
+      <path d="M28 4 v6 M28 46 v6 M4 28 h6 M46 28 h6 M11 11 l4.2 4.2 M41 41 l4.2 4.2 M11 45 l4.2 -4.2 M41 15 l4.2 -4.2" stroke-width="4.5" />
+    </g>
+
+    
+    <text x="32" y="132" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="32" dy="0">systemd starts the service</tspan>
+    </text>
+    <text x="32" y="174" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="32" dy="0">(<tspan font-family="monospace">echo@.service</tspan>) and hands it</tspan>
+      <tspan x="32" dy="36">the connection.</tspan>
+    </text>
+
+    
+    <line x1="32" y1="236" x2="558" y2="236" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.4" />
+    <text x="32" y="276" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="32" dy="0">With <tspan font-family="monospace">Accept=true</tspan>, systemd</tspan>
+      <tspan x="32" dy="36">accepts each connection and</tspan>
+      <tspan x="32" dy="36">starts a new instance named</tspan>
+      <tspan x="32" dy="36"><tspan font-family="monospace">echo@&lt;n&gt;-...</tspan> per connection.</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 620)">
+    <rect width="1480" height="96" rx="16" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+
+    
+    <g transform="translate(32, 20)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="38" rx="6" />
+      <polyline points="14,20 22,25 14,30" />
+      <line x1="26" y1="32" x2="38" y2="32" />
+    </g>
+
+    
+    <text x="110" y="58" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#db8129">ss -ltnp</tspan>
+      <tspan font-family="sans-serif"> shows systemd as the listener, not the daemon.</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 756)">
+    <rect width="1480" height="84" rx="16" fill="#207448" />
+    <text x="740" y="52" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#ffffff">
+      <tspan font-weight="bold">Link rule:</tspan>
+      <tspan> </tspan>
+      <tspan font-family="monospace" font-weight="bold">echo.socket</tspan>
+      <tspan> activates </tspan>
+      <tspan font-family="monospace" font-weight="bold">echo.service</tspan>
+      <tspan> by name.</tspan>
+    </text>
+  </g>
+</svg>

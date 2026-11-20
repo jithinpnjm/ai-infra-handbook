@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "n30-workflow",
+  "title": "The incident workflow",
+  "spec": "Seven numbered steps down the page: 1 stabilise and scope (who is affected, since when, what changed, name an incident lead); 2 define the symptom in measurable terms (example: rank 37 to rank 112 all-reduce latency rose from 1.2 ms to 40 ms starting 02:13); 3 form hypotheses, rank by likelihood and cost of testing; 4 half-split along the signal path and collect evidence; 5 manipulate to confirm the cause, simplify; 6 apply the immediate fix, verify with the purpose metric; 7 permanent fix and learning. Side notes: 'bottom-up when many things fail or after a hardware change', 'top-down when only one application misbehaves'. Orange highlight on step 2.",
+  "anchor": "## 4. A practical workflow",
+  "alt": "Troubleshooting workflow",
+  "cap": "Define the symptom in measurable terms and gather evidence before changing anything."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "n30-kit",
+  "title": "What the diagnostic kit collects",
+  "spec": "A central box 'netdiag.sh: read-only collector, output tarball attached to the ticket' with eight grouped branches, each with example commands in monospace: system (date, uname, uptime); addresses and routes (ip -br addr, ip route show table all, ip rule, ip neigh); sockets (ss -s, ss -tanpi); counters (nstat -az, /proc/net/softnet_stat, /proc/net/dev); NIC (ethtool -S, -k, -g, -m); firewall (nft list ruleset, iptables-save, conntrack -S, tc -s qdisc); DNS (resolv.conf, resolvectl status); kernel logs, RDMA and GPU (dmesg, ibstat, rdma link, nvidia-smi topo -m). Green bar: 'Attach the archive to the ticket before anyone changes the node'.",
+  "anchor": "## 5. The diagnostic kit",
+  "alt": "Diagnostic kit contents",
+  "cap": "One scripted collector gathers the same evidence from any node in under a minute."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "n30-pfcstorm",
+  "title": "Case 8: the PFC storm",
+  "spec": "A chain of four switches or ports, left to right, each sending pause frames backwards (arrows pointing right to left). Timeline strip: job runs fine for five minutes, then throughput falls to zero. Facts: ib_write_bw passes when idle; ethtool -S shows rx_pause rising by millions per second; ECN thresholds were set too high, so buffers filled before ECN or CNP could slow the sender. Resolution box in green: lower ECN thresholds below the PFC threshold, verify DCQCN on the NICs, enable the PFC watchdog, find any stuck endpoint. Bar: 'ECN must act well before PFC'.",
+  "anchor": "### Case 8: PFC storm collapses an NCCL job",
+  "alt": "PFC storm case",
+  "cap": "A pause storm spreads backwards through the fabric until throughput drops to zero, and early ECN marking prevents it."
+ }
+]

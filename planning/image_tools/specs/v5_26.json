@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "26",
+  "name": "k26-pod-namespaces",
+  "title": "Which namespaces a pod shares and which each container keeps",
+  "spec": "One large rounded box labelled Pod. Inside it, at the top, a small box labelled pause container with a lock icon, and a wide green band spanning the full width of the pod labelled shared: net, ipc, uts, with the pause container drawn as the holder of that band. Below the band, two side-by-side container boxes, each with a window icon: left box labelled container 1, right box labelled container 2. Each container box has two private chips labelled mnt and pid. A small arrow from each container chip to the shared band labelled joins. Numbered notes, each a green circle r=24 with a white number: 1 the pause container creates the shared namespaces and holds them open; 2 each container gets its own mnt namespace; 3 each container usually gets its own pid namespace. Orange note on the pid chip: PID 1 ignores SIGTERM unless a handler is installed. Green takeaway bar: the pause container holds the shared view open while each container keeps its own filesystem view.",
+  "anchor": "## 2. Namespaces in depth",
+  "alt": "A pod's containers share net, ipc and uts namespaces held open by the pause container, while each container keeps its own mnt and usually its own pid namespace.",
+  "cap": "The pause container holds the net, ipc and uts namespaces open, so the containers in a pod share them while each keeps its own mount namespace."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "26",
+  "name": "k26-cpu-throttle-period",
+  "title": "Eight threads drain a 2-CPU quota in 25 ms, then stall for 75 ms",
+  "spec": "A horizontal timeline for one 100 ms CFS period, with tick marks at 0 ms, 25 ms, 50 ms, 75 ms and 100 ms on an axis labelled wall-clock time within one period. Label above the axis: cpu.max 200000 100000, a quota of 200 ms per 100 ms period. Eight thin horizontal lanes labelled thread 1 to thread 8, each with a green bar from 0 ms to 25 ms, so the lanes stack like parallel work. A counter box at the 25 ms point labelled quota used: 8 x 25 ms = 200 ms. From 25 ms to 100 ms a grey hatched band across all eight lanes labelled throttled 75 ms, all threads stalled. Numbered steps: 1 eight threads wake and run in parallel; 2 the quota is spent at 25 ms; 3 the cgroup stalls every thread for the remaining 75 ms. Orange note at the grey band: average CPU looks low, yet tail latency spikes and probes time out. Green takeaway bar: a limit counts CPU time across all threads, not cores at each instant.",
+  "anchor": "## 3. cgroups v2 in depth",
+  "alt": "Eight parallel threads use the whole 200 ms quota in 25 ms of a 100 ms period, and the cgroup then stalls them for the remaining 75 ms.",
+  "cap": "Eight threads on a 2-CPU limit spend the 200 ms quota in 25 ms, so the cgroup stalls them for the rest of the 100 ms period."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "26",
+  "name": "k26-overlay-copy-up",
+  "title": "How overlayfs copies a whole file up before a write",
+  "spec": "A left-to-right flow with a stacked-layers drawing on the left and steps on the right. Left: three stacked horizontal sheets. The bottom sheet, the largest, is labelled lowerdir, read-only image layers, with a disk icon. The middle sheet, labelled upperdir, writable container layer, sits above it. A thin sheet labelled workdir, scratch space sits beside them. On top of the stack, a merged box labelled container rootfs, the view the process sees. Right side, three numbered steps with number circles r=24: 1 a process opens an existing multi-GB file from lowerdir for writing; 2 overlayfs copies the entire file up into upperdir inside the open call; 3 only then can the first small write proceed. Orange note beside step 2: it is like photocopying a whole book before you underline one word. Dashed arrow from upperdir to the rootfs labelled the copy the process now writes to. Green takeaway bar: keep datasets and checkpoints on volumes, not in the container layer.",
+  "anchor": "## 5. Filesystems, mounts and block I/O",
+  "alt": "A write to an image file in overlayfs first copies the whole file from the read-only lowerdir into the upperdir.",
+  "cap": "Writing to an existing file in the image layer makes overlayfs copy the whole file up into the writable layer first."
+ }
+]

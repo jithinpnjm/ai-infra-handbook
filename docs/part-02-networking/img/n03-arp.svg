@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>ARP request and reply</title>
+  <desc>Visual infographic explaining ARP request broadcast and ARP reply unicast with 28-byte packet fields</desc>
+
+  <defs>
+    <marker id="arrow-solid" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-dashed" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="60" y="65" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#303a36">ARP request and reply</text>
+
+  
+  <path d="M 1430 240 L 1430 140 L 1120 140" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 500 140 L 160 140 L 160 226" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-solid)" />
+
+  
+  <rect x="500" y="90" width="620" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="542" cy="140" r="24" fill="#207448" />
+  <text x="542" y="148" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="585" y="128" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">ARP reply, unicast:</text>
+  <text x="585" y="165" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace" font-weight="bold">203.0.113.12</tspan> is at B's MAC</text>
+
+  
+  <rect x="50" y="240" width="220" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <rect x="132" y="262" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="160" y1="300" x2="160" y2="314" stroke="#207448" stroke-width="4" />
+  <line x1="146" y1="314" x2="174" y2="314" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="160" y="358" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Host A</text>
+  <text x="160" y="405" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">203.0.113.10</text>
+
+  
+  <path d="M 270 345 L 290 345" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 690 345 L 710 345" fill="none" stroke="#207448" stroke-width="4" />
+
+  
+  <rect x="290" y="270" width="400" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="328" cy="308" r="24" fill="#207448" />
+  <text x="328" y="316" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="365" y="316" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">ARP request, broadcast:</text>
+  <text x="312" y="358" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">who has <tspan font-family="ui-monospace, monospace" font-weight="bold">203.0.113.12</tspan>?</text>
+  <text x="312" y="396" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">tell <tspan font-family="ui-monospace, monospace" font-weight="bold">203.0.113.10</tspan></text>
+
+  
+  <rect x="710" y="240" width="200" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <rect x="782" y="265" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 792 280 L 828 280 M 822 274 L 828 280 L 822 286" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 828 290 L 792 290 M 798 284 L 792 290 L 798 296" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="810" y="365" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Switch</text>
+
+  
+  <path d="M 910 345 L 1316 345" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-solid)" />
+
+  
+  <rect x="1330" y="240" width="220" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <rect x="1412" y="262" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="1440" y1="300" x2="1440" y2="314" stroke="#207448" stroke-width="4" />
+  <line x1="1426" y1="314" x2="1454" y2="314" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="1440" y="358" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Host B</text>
+  <text x="1440" y="405" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">203.0.113.12</text>
+
+  
+  <path d="M 810 440 L 810 526" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8,6" marker-end="url(#arrow-dashed)" />
+
+  
+  <rect x="700" y="540" width="220" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <rect x="782" y="555" width="56" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="810" y1="591" x2="810" y2="603" stroke="#207448" stroke-width="4" />
+  <line x1="796" y1="603" x2="824" y2="603" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="810" y="650" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Host C</text>
+
+  
+  <rect x="50" y="730" width="1500" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="80" y="775" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">28-byte packet fields</text>
+
+  
+  
+  <rect x="80" y="805" width="330" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="245" y="848" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">hardware type</text>
+  <text x="245" y="888" font-family="system-ui, sans-serif" font-size="24" fill="#207448" text-anchor="middle">(Ethernet=1)</text>
+
+  
+  <rect x="425" y="805" width="330" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="590" y="848" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">protocol type</text>
+  <text x="590" y="888" font-family="system-ui, sans-serif" font-size="24" fill="#207448" text-anchor="middle">(IPv4=0x0800)</text>
+
+  
+  <rect x="770" y="805" width="160" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="850" y="868" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">HLEN 6</text>
+
+  
+  <rect x="945" y="805" width="160" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1025" y="868" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">PLEN 4</text>
+
+  
+  <rect x="1120" y="805" width="400" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1320" y="848" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">opcode</text>
+  <text x="1320" y="888" font-family="system-ui, sans-serif" font-size="24" fill="#207448" text-anchor="middle">(1=request, 2=reply)</text>
+
+  
+  
+  <rect x="80" y="940" width="320" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="240" y="1008" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">sender MAC</text>
+
+  
+  <rect x="415" y="940" width="260" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="545" y="1008" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">sender IP</text>
+
+  
+  <rect x="690" y="940" width="570" height="120" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="4" />
+  <text x="975" y="988" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">target MAC</text>
+  <text x="975" y="1028" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">(00:00:.. in request)</text>
+
+  
+  <rect x="1275" y="940" width="245" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1397" y="1008" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">target IP</text>
+</svg>

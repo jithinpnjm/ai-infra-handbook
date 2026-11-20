@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "05",
+  "name": "d05-power-path",
+  "title": "How facility power reaches the chips in an NVL72 rack",
+  "spec": "A left-to-right flow of four boxes with arrows. Box 1: Facility power, 415 V three-phase AC, arriving from the building. Box 2: Power shelves, pwr-01 to pwr-08, six 5.5 kW power supplies per shelf, up to 33 kW each, converting AC to DC. Box 3: DC busbar along the rack and DC power connectors at the rear of each compute tray, blind-mated. Box 4: Compute trays, with a note that the switch trays are powered in the same rack. Above box 2 a small side box with the note: larger internal energy storage smooths millisecond load spikes, and rear RJ45 ports handle hardware power brakes. Under the flow, a grey equation line: 8 shelves times 33 kW equals 264 kW installed, against a 130 to 150 kW draw. Orange highlight on box 2. Monospace for 415 V, pwr-01 to pwr-08, DC busbar and 264 kW.",
+  "anchor": "### 3.2 How power reaches the chips: AC to DC",
+  "alt": "Power path from facility AC to the compute trays",
+  "cap": "Power path: the power shelves convert facility AC to DC, which reaches the compute trays over the rack busbar, with spare shelf capacity for headroom."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "05",
+  "name": "d05-cooling-loop",
+  "title": "Two separate cooling loops with a CDU between them",
+  "spec": "A horizontal layout with two loops separated by a central box. Left side: a loop labelled rack coolant loop, sealed, touching the electronics, with cold plates on the Grace Blackwell Superchips and NVSwitch chips, connected by hoses and manifolds with quick-disconnect couplings, and a pump. Centre box labelled CDU, Coolant Distribution Unit, moves heat from the rack loop to the facility loop. Right side: a loop labelled facility water loop, carrying the heat to the building, typically supplied at 20 to 30 degrees C, and a note for warm-water designs at 30 in and 45 out for evaporative towers. Under the CDU a small grey note: first-pass sizing 150 to 200 litres per minute with a 10 to 12 degree rise for about 130 kW. A separate air-cooled band labelled residual heat into room air, with the note: the reference architecture says hybrid cooling, so ask NVIDIA for the exact split. Orange highlight on the CDU. Monospace for CDU, 20 to 30 C and 150 to 200 L/min.",
+  "anchor": "### 3.3 Cooling: hybrid, not fully liquid",
+  "alt": "Rack coolant loop, CDU and facility water loop",
+  "cap": "Cooling: the sealed rack loop cools the chips, a CDU moves the heat to the facility water loop, and some residual heat still goes to room air."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "05",
+  "name": "d05-failure-domains",
+  "title": "What one failed switch tray or compute tray takes down",
+  "spec": "A two-panel comparison. Left panel, labelled switch tray failure: a column of 18 small horizontal bars labelled NVLink planes 1 to 18, with two bars crossed out and marked removed, and the rest green. Beside it, a single GPU row showing 16 of 18 links, with the note: every GPU loses 2 of 18 links, bandwidth drops from 1.8 TB/s to 1.6 TB/s. Right panel, labelled compute tray failure: a rack of 18 tray slots, one tray marked failed with a red outline, with its 4 GPUs and its Linux instance removed, the other 68 GPUs marked as keeping all 18 links. Orange highlight on the left panel's crossed-out bars. Monospace for 16 of 18, 1.8 TB/s, 1.6 TB/s, 68 GPUs.",
+  "anchor": "## 6. Failure domains and NVLink partitions",
+  "alt": "Failure effect of a switch tray versus a compute tray",
+  "cap": "Failure domains: a switch tray failure costs every GPU two of its eighteen links, while a compute tray failure removes only its own four GPUs."
+ }
+]

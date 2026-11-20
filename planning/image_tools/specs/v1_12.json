@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "l12-attach-paths",
+  "title": "How storage is attached",
+  "spec": "Five rows from simple to shared, each a box with a one-line note: Disk devices (JBOD) the OS sees each disk, easiest to observe; RAID controller or software groups disks into one virtual disk, hardware RAID hides physical disks from the OS; Storage arrays and SANs behind controllers with big caches, attach by FC, SAS or iSCSI, often multipath; NAS over NFS, SMB/CIFS or iSCSI, the network becomes part of the I/O path; Local NVMe in GPU servers for scratch data, caches, fast checkpoints, belongs to that one machine (orange: on the cloud an instance restart can lose it).",
+  "anchor": "### How storage is attached",
+  "alt": "Five ways a disk can reach a system and what each one changes about what you can see.",
+  "cap": "How storage is attached decides what you can see and what you can control."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "l12-fs-types",
+  "title": "Choosing a filesystem type",
+  "spec": "Table with Type, Character, Note for AI nodes. Rows: ext4 | Linux default for years | reliable general purpose ; XFS | allocation groups for parallel allocation, online grow, cannot shrink | default on RHEL family, big files and parallel I/O ; btrfs | copy-on-write, subvolumes, snapshots | use with care for databases ; ZFS | volume manager plus filesystem, ARC cache | out-of-tree, memory-hungry ARC ; tmpfs | in memory | /run, /dev/shm ; overlayfs | lower read-only layers plus upper writable | container root filesystems ; NFS, Lustre, GPFS, BeeGFS, CephFS | network and parallel | shared datasets and checkpoints. Footer: the kernel VFS layer lets them all coexist under one tree.",
+  "anchor": "### Filesystem types",
+  "alt": "A comparison table of the common Linux filesystem types and where each fits.",
+  "cap": "The VFS layer lets many different filesystems coexist under one directory tree."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "l12-atomic-replace",
+  "title": "Replacing a file safely",
+  "spec": "Four numbered boxes in a row with arrows: 1 write a temporary file in the same directory; 2 fsync it; 3 rename() it over the target; 4 fsync the directory. Above, orange contrast: a normal write() copies data into the page cache and returns, the data is not durable yet; flusher threads write dirty pages later. Note below: even then, a device write cache can still hold data. Code names in monospace.",
+  "anchor": "### Write-back caching and durability",
+  "alt": "The four-step pattern for replacing a file atomically and durably.",
+  "cap": "A normal write is not durable until flushed, so careful code writes, fsyncs, renames and fsyncs the directory."
+ }
+]

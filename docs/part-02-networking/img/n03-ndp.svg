@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>IPv6 Neighbor Discovery</title>
+  <desc>Visual infographic explaining the IPv6 Neighbor Discovery sequence between a new host and a router, along with ICMPv6 types and multicast behavior.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#303a36">IPv6 Neighbor Discovery</text>
+
+  
+  <rect x="40" y="110" width="940" height="950" rx="16" fill="#ffffff" stroke="#d2dfd6" stroke-width="2" />
+
+  
+  <rect x="90" y="130" width="300" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="115" y="146" width="44" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="137" y1="176" x2="137" y2="188" stroke="#207448" stroke-width="3.5" />
+  <line x1="125" y1="188" x2="149" y2="188" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <text x="270" y="183" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36">new host</text>
+
+  
+  <rect x="630" y="130" width="300" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <ellipse cx="665" cy="162" rx="26" ry="14" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 639 162 v 14 c 0 7.7 11.6 14 26 14 s 26 -6.3 26 -14 v -14" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 655 162 l 20 0 M 670 157 l 5 5 l -5 5" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="800" y="183" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36">router</text>
+
+  
+  <line x1="240" y1="214" x2="240" y2="1030" stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.35" />
+  <line x1="780" y1="214" x2="780" y2="1030" stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.35" />
+
+  
+  <rect x="70" y="240" width="600" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <circle cx="112" cy="282" r="24" fill="#207448" />
+  <text x="112" y="291" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="150" y="291" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 1</text>
+  
+  <rect x="590" y="260" width="50" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 602 298 v 12 M 615 298 v 12 M 628 298 v 12" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  
+  <text x="96" y="338" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="96" dy="0">form link-local address</tspan>
+    <tspan x="96" dy="32">fe80::/64 + interface ID</tspan>
+  </text>
+
+  
+  <rect x="70" y="420" width="760" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <circle cx="112" cy="462" r="24" fill="#207448" />
+  <text x="112" y="471" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="150" y="471" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 2</text>
+  
+  <path d="M 755 440 l 24 -9 l 24 9 v 20 c 0 16 -12 28 -24 33 c -12 -5 -24 -17 -24 -33 z" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 767 460 l 8 8 l 16 -16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <text x="96" y="518" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="96" dy="0">DAD: NS sent from :: for the address;</tspan>
+    <tspan x="96" dy="32">any NA back means duplicate</tspan>
+  </text>
+
+  
+  <circle cx="112" cy="612" r="24" fill="#207448" />
+  <text x="112" y="621" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="150" y="621" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+
+  
+  <rect x="290" y="642" width="440" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="510" y="671" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">RS (type 133) to ff02::2</text>
+  <line x1="240" y1="696" x2="770" y2="696" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="235" y="726" width="550" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="510" y="756" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="510" dy="0">RA (type 134):</tspan>
+    <tspan x="510" dy="30">prefix, gateway lifetime, flags</tspan>
+  </text>
+  <line x1="780" y1="812" x2="250" y2="812" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="70" y="855" width="810" height="150" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="815" cy="910" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 815 888 v 6 M 815 926 v 6 M 793 910 h 6 M 831 910 h 6 M 800 895 l 4 4 M 826 921 l 4 4 M 800 925 l 4 -4 M 826 899 l 4 -4" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  
+  <text x="96" y="915" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="96" dy="0">SLAAC builds global address if A flag set;</tspan>
+    <tspan x="96" dy="36">M flag = use DHCPv6</tspan>
+  </text>
+
+  
+  <rect x="1010" y="110" width="550" height="570" rx="16" fill="#ffffff" stroke="#d2dfd6" stroke-width="2" />
+
+  
+  <rect x="1010" y="110" width="550" height="80" rx="16" fill="#e8f1ea" />
+  <rect x="1010" y="160" width="550" height="30" fill="#e8f1ea" />
+  
+  <rect x="1040" y="128" width="42" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="1040" y1="144" x2="1082" y2="144" stroke="#207448" stroke-width="3" />
+  <line x1="1054" y1="128" x2="1054" y2="172" stroke="#207448" stroke-width="2.5" />
+  <text x="1100" y="163" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">ICMPv6 types</text>
+
+  
+  <rect x="1035" y="210" width="500" height="56" rx="8" fill="#f5f8f5" stroke="#d2dfd6" stroke-width="1.5" />
+  <text x="1055" y="247" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">133 RS</text>
+
+  <rect x="1035" y="280" width="500" height="56" rx="8" fill="#f5f8f5" stroke="#d2dfd6" stroke-width="1.5" />
+  <text x="1055" y="317" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">134 RA</text>
+
+  <rect x="1035" y="350" width="500" height="98" rx="8" fill="#f5f8f5" stroke="#d2dfd6" stroke-width="1.5" />
+  <text x="1055" y="390" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1055" dy="0">135 NS (to solicited-node</tspan>
+    <tspan x="1055" dy="34">multicast ff02::1:ffXX:XXXX)</tspan>
+  </text>
+
+  <rect x="1035" y="462" width="500" height="56" rx="8" fill="#f5f8f5" stroke="#d2dfd6" stroke-width="1.5" />
+  <text x="1055" y="499" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">136 NA</text>
+
+  <rect x="1035" y="532" width="500" height="56" rx="8" fill="#f5f8f5" stroke="#d2dfd6" stroke-width="1.5" />
+  <text x="1055" y="569" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">137 Redirect</text>
+
+  
+  <rect x="1010" y="720" width="550" height="340" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="1065" cy="775" r="24" fill="none" stroke="#db8129" stroke-width="3.5" />
+  <line x1="1048" y1="758" x2="1082" y2="792" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 1102 760 c 10 10 10 20 0 30" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 1114 750 c 16 16 16 34 0 50" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+
+  
+  <text x="1045" y="855" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#db8129">
+    <tspan x="1045" dy="0">No broadcast:</tspan>
+    <tspan x="1045" dy="42">solicited-node multicast</tspan>
+    <tspan x="1045" dy="42">reaches only matching hosts</tspan>
+  </text>
+</svg>

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "l09-run-source",
+  "title": "Run, source or exec",
+  "spec": "Table with How, What happens, Variables visible afterwards. Rows: ./script.sh | new child process | No ; source script.sh or . script.sh | current shell executes the commands | Yes (green highlight) ; exec ./script.sh | replaces the current shell | shell no longer exists ; bash -x script.sh | run with tracing | No. Commands in monospace. Note: a child cannot change its parent's environment.",
+  "anchor": "### Run, source, or exec",
+  "alt": "Running, sourcing and exec differ in whether the script's variables survive in your shell.",
+  "cap": "Only sourcing leaves the script's variables in your current shell."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "l09-args",
+  "title": "The three argument loops",
+  "spec": "Script called as: script 'abc 123' qwe. Three rows each showing loop and output: for a in \"$@\" gives [abc 123] [qwe] (green, correct); for a in $@ gives [abc] [123] [qwe] (orange, broken); for a in \"$*\" gives [abc 123 qwe] one word. Loops in monospace. Note: \"$*\" joins with the first character of IFS.",
+  "anchor": "### `$@` versus `$*`",
+  "alt": "Three ways of looping over arguments and what each one produces.",
+  "cap": "Quoted dollar-at keeps each argument as one word, while the other forms split or join them."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "l09-subshell",
+  "title": "Subshell versus group",
+  "spec": "Two panels. Left (commands ) subshell: child copy of the shell, example myvar=10 then ( myvar=20 ); echo gives 10, changes vanish. Right { commands; } current shell: myvar=30 then echo gives 30; note the spaces and semicolon; use for one redirection: { echo a; echo b; } > file. Footer orange: each stage of a pipeline runs in its own subshell, so echo hi | read x; echo \"$x\" prints nothing. Code in monospace.",
+  "anchor": "### Grouping and subshells",
+  "alt": "A subshell discards its changes, while a brace group runs in the current shell.",
+  "cap": "Changes made inside a subshell vanish when it ends, but a brace group changes the current shell."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "l09-retry",
+  "title": "Retry with backoff",
+  "spec": "Loop diagram: run command; success then done; failure then 'attempts left?' If no, 'failed after n attempts' exit 1 (orange). If yes, sleep delay then delay doubles, back to run. Side box monospace: retry 5 2 curl -fsS https://example.com/file -o /tmp/file ; timeout 30 ssh -o ConnectTimeout=5 -o BatchMode=yes node01 true. Green bar: always put a timeout on anything that can block.",
+  "anchor": "### Retries and timeouts",
+  "alt": "A retry loop that sleeps with a doubling delay until the attempts run out.",
+  "cap": "Retries with a growing delay and a timeout keep scripts from hanging or failing on transient errors."
+ }
+]

@@ -70,6 +70,10 @@ Before you put a script into cron or Slurm, switch every path in it to an absolu
 
 ## 2. The standard layout: where things live
 
+![The root directory with its standard subdirectories and what each one holds.](./img/l03-fhs-tree.svg)
+
+*Figure 1.3.2. The Filesystem Hierarchy Standard tells you where each kind of file lives on every Linux machine.*
+
 You log into an unfamiliar GPU node and someone asks where the Slurm configuration lives. You could search the whole disk and hope. You could also learn the layout once and know the answer on every machine you ever touch. That is what the standard behind this section gives you.
 
 The Filesystem Hierarchy Standard, or FHS, describes where each directory of a Linux system belongs. The Linux Foundation maintains it at `https://refspecs.linuxfoundation.org/fhs.shtml`. You now know how to examine files, change directories and read manual pages, so you are ready to explore the system. The FHS tells you where to look before you search.
@@ -162,6 +166,10 @@ Make `file` your first step with any unknown file.
 
 ### Reading a long listing column by column
 
+![One ls -l line with each column labelled.](./img/l03-ls-columns.svg)
+
+*Figure 1.3.3. Each column of a long listing answers one question about the file.*
+
 A long listing packs a lot into each line, so it helps to know what each column answers. Think of each line as a short sentence about one file. Here is a home directory from a typical Linux system, with the `total` line at the top.
 
 ```
@@ -199,7 +207,7 @@ A **directory** is a special file that holds a simple table. Each entry maps a n
 
 ![A directory entry maps a name to an inode, and the inode holds the metadata and data block pointers.](./img/ch03-fig1-inode.jpg)
 
-*Figure 1.3.2. The name lives in the directory; everything else about the file lives in the inode.*
+*Figure 1.3.4. The name lives in the directory; everything else about the file lives in the inode.*
 
 You can look at the inode yourself with these commands. The `ls -li` output shows the inode number in its first column.
 
@@ -279,7 +287,7 @@ Notice the row for a deleted original, because it decides most real incidents. A
 
 ![A hard link is a second name for one inode, and a symbolic link is a small file that names a path.](./img/ch03-fig2-links.jpg)
 
-*Figure 1.3.3. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
+*Figure 1.3.5. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
 
 ### The atomic "latest" pattern
 
@@ -294,7 +302,7 @@ The `-f` flag replaces an existing link. `-n` treats an existing directory symli
 
 ![A temporary symlink is created, then renamed over latest in one atomic step.](./img/ch03-fig3-atomic-latest.jpg)
 
-*Figure 1.3.4. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
+*Figure 1.3.6. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
 
 Before you point a `latest` link at a new checkpoint, use this two-step swap so readers never find it missing.
 
@@ -446,6 +454,10 @@ Most filesystem failures look like something other than a filesystem problem. Th
 **Symptom:** `ln` or `mv` fails with EXDEV. Or a tool that renames files to publish them suddenly copies everything and runs slowly. **Cause:** the source and destination sit on different filesystems. That can happen at a mount boundary, on a different volume, or in an overlay. Inode links and atomic rename are impossible across filesystems. **Diagnose:** run `df path1 path2`, or `stat -c %d path` to see the device number. **Fix:** write the temporary file on the same filesystem as the final path. You can also use symlinks instead of hard links, or accept a copy.
 
 ### 4. The disk is full, but `du` cannot find the files: deleted but still open
+
+![A deleted file that a process still holds open keeps using disk space that du cannot see.](./img/l03-deleted-open.svg)
+
+*Figure 1.3.7. df counts the space while a process holds the file open, but du no longer finds the name.*
 
 **Symptom:** `df` shows 95% used, but `du -sh /*` totals much less. **Cause:** a large log or temporary file was deleted while a process still had it open. The data is kept until that process closes the file or exits. The name is gone, but the space is not. **Diagnose:** run `sudo lsof +L1`, which lists open files with a link count below 1. Or run `ls -l /proc/<pid>/fd | grep deleted`. **Fix:** restart the process, or signal it to reopen its log. `logrotate` with `copytruncate` or `postrotate` handles this properly. You can also truncate the file through its descriptor with `: > /proc/<pid>/fd/<n>`.
 

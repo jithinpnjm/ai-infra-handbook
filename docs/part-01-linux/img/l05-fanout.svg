@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Running one command on many nodes</title>
+  <desc>Visual comparison showing a terminal fanning out commands across cluster nodes, gathering identical outputs into one line, and highlighting an outlier node.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Running one command on many nodes</text>
+
+  <g id="box-terminal">
+    <rect x="60" y="240" width="300" height="280" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(182, 290)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="44" rx="6"/>
+      <line x1="0" y1="14" x2="56" y2="14"/>
+      <circle cx="10" cy="7" r="2" fill="#207448"/>
+      <circle cx="18" cy="7" r="2" fill="#207448"/>
+      <circle cx="26" cy="7" r="2" fill="#207448"/>
+      <path d="M 12 24 L 20 29 L 12 34"/>
+      <line x1="24" y1="34" x2="36" y2="34"/>
+    </g>
+    <text x="210" y="415" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">your terminal</text>
+  </g>
+
+  <g id="fan-out-arrows" fill="none" stroke="#207448" stroke-width="3.5">
+    <path d="M 360 320 C 450 320, 490 188, 580 188" marker-end="url(#arrow)"/>
+    <path d="M 360 360 C 450 360, 490 324, 580 324" marker-end="url(#arrow)"/>
+    <path d="M 360 400 C 450 400, 490 460, 580 460" marker-end="url(#arrow)"/>
+    <path d="M 360 440 C 450 440, 490 596, 580 596" marker-end="url(#arrow)"/>
+  </g>
+
+  <g id="column-nodes">
+    <g id="node-gpu01">
+      <rect x="580" y="140" width="240" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <g transform="translate(604, 164)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="4" width="52" height="40" rx="4"/>
+        <line x1="8" y1="16" x2="24" y2="16"/>
+        <line x1="8" y1="24" x2="24" y2="24"/>
+        <line x1="8" y1="32" x2="24" y2="32"/>
+        <circle cx="36" cy="24" r="3" fill="#207448"/>
+        <circle cx="44" cy="24" r="2" fill="#207448"/>
+      </g>
+      <text x="735" y="199" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">gpu01</text>
+    </g>
+
+    <g id="node-gpu02">
+      <rect x="580" y="276" width="240" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <g transform="translate(604, 300)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="4" width="52" height="40" rx="4"/>
+        <line x1="8" y1="16" x2="24" y2="16"/>
+        <line x1="8" y1="24" x2="24" y2="24"/>
+        <line x1="8" y1="32" x2="24" y2="32"/>
+        <circle cx="36" cy="24" r="3" fill="#207448"/>
+        <circle cx="44" cy="24" r="2" fill="#207448"/>
+      </g>
+      <text x="735" y="335" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">gpu02</text>
+    </g>
+
+    <g id="node-ellipsis">
+      <rect x="580" y="412" width="240" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <g transform="translate(604, 436)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="4" width="52" height="40" rx="4"/>
+        <line x1="8" y1="16" x2="24" y2="16"/>
+        <line x1="8" y1="24" x2="24" y2="24"/>
+        <line x1="8" y1="32" x2="24" y2="32"/>
+        <circle cx="36" cy="24" r="3" fill="#207448"/>
+        <circle cx="44" cy="24" r="2" fill="#207448"/>
+      </g>
+      <text x="735" y="471" text-anchor="middle" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36">...</text>
+    </g>
+
+    <g id="node-gpu16">
+      <rect x="580" y="548" width="240" height="96" rx="14" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+      <g transform="translate(604, 572)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="4" width="52" height="40" rx="4"/>
+        <line x1="8" y1="16" x2="24" y2="16"/>
+        <line x1="8" y1="24" x2="24" y2="24"/>
+        <line x1="8" y1="32" x2="24" y2="32"/>
+        <circle cx="36" cy="24" r="3" fill="#db8129"/>
+        <circle cx="44" cy="24" r="2" fill="#db8129"/>
+      </g>
+      <text x="735" y="607" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">gpu16</text>
+    </g>
+  </g>
+
+  <g id="gathering-connections" fill="none" stroke="#207448" stroke-width="3">
+    <line x1="820" y1="188" x2="880" y2="188"/>
+    <line x1="820" y1="324" x2="880" y2="324"/>
+    <line x1="820" y1="460" x2="880" y2="460"/>
+    <line x1="880" y1="188" x2="880" y2="460"/>
+    <path d="M 880 324 L 980 324" stroke-width="3.5" marker-end="url(#arrow)"/>
+  </g>
+
+  <g id="outlier-connection" fill="none">
+    <path d="M 820 596 L 980 596" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+  </g>
+
+  <g id="right-panels">
+    <g id="gathered-box">
+      <rect x="980" y="140" width="560" height="368" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <g transform="translate(1232, 205)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="2" width="48" height="50" rx="5"/>
+        <line x1="14" y1="15" x2="42" y2="15"/>
+        <line x1="14" y1="25" x2="42" y2="25"/>
+        <line x1="14" y1="37" x2="42" y2="37" stroke-width="6"/>
+      </g>
+      <text x="1260" y="324" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="1260" dy="0">identical outputs</tspan>
+        <tspan x="1260" dy="44">gathered into one line</tspan>
+      </text>
+    </g>
+
+    <g id="outlier-box">
+      <rect x="980" y="548" width="560" height="96" rx="14" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+      <g transform="translate(1010, 568)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="28,4 52,46 4,46"/>
+        <line x1="28" y1="18" x2="28" y2="30"/>
+        <circle cx="28" cy="39" r="2.5" fill="#db8129"/>
+      </g>
+      <text x="1100" y="608" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">one outlier node</text>
+    </g>
+  </g>
+
+  <g id="tool-chips">
+    <g id="chip-pdsh">
+      <rect x="60" y="704" width="720" height="64" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="420" y="744" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">pdsh -w gpu[01-16] with dshbak -c</text>
+    </g>
+
+    <g id="chip-clush">
+      <rect x="820" y="704" width="720" height="64" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="1180" y="744" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">clush -w gpu[01-16] -b</text>
+    </g>
+
+    <g id="chip-srun">
+      <rect x="60" y="808" width="720" height="64" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="420" y="848" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">srun -N16 --ntasks-per-node=1 hostname</text>
+    </g>
+
+    <g id="chip-ansible">
+      <rect x="820" y="808" width="720" height="64" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="1180" y="848" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ansible gpu -m shell</text>
+    </g>
+  </g>
+
+  <g id="note-box">
+    <rect x="60" y="912" width="1480" height="70" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(490, 924)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="23" cy="23" r="17"/>
+      <line x1="23" y1="21" x2="23" y2="32"/>
+      <circle cx="23" cy="14" r="2" fill="#207448"/>
+    </g>
+    <text x="545" y="955" font-size="26" fill="#303a36">
+      <tspan font-family="sans-serif" font-weight="bold" fill="#207448">Note: </tspan>
+      <tspan font-family="sans-serif">node ranges like </tspan>
+      <tspan font-family="monospace" font-weight="bold">gpu[01-16]</tspan>
+    </text>
+  </g>
+</svg>

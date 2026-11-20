@@ -12,10 +12,10 @@
 
   <text x="800" y="100" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">CPU basics</text>
 
-  <!-- Socket 0 container -->
+  
   <rect x="60" y="160" width="1080" height="780" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
 
-  <!-- Socket icon -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="100" y="184" width="48" height="48" rx="6"/>
     <path d="M112 184v-10 M124 184v-10 M136 184v-10 M112 232v10 M124 232v10 M136 232v10 M100 196h-10 M100 208h-10 M100 220h-10 M148 196h10 M148 208h10 M148 220h10"/>
@@ -23,10 +23,10 @@
   </g>
   <text x="174" y="221" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Socket 0 (NUMA node 0)</text>
 
-  <!-- Grouping relation: Local DRAM to Socket 0 -->
+  
   <path d="M1140 260 H1260" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
 
-  <!-- Local DRAM node -->
+  
   <rect x="1260" y="170" width="290" height="180" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <ellipse cx="1312" cy="226" rx="28" ry="10"/>
@@ -34,7 +34,7 @@
   </g>
   <text x="1355" y="257" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Local DRAM</text>
 
-  <!-- Core 0 container -->
+  
   <rect x="100" y="300" width="610" height="420" rx="20" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="126" y="316" width="48" height="48" rx="6"/>
@@ -43,7 +43,7 @@
   </g>
   <text x="194" y="352" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Core 0</text>
 
-  <!-- HW thread 0 node -->
+  
   <rect x="115" y="400" width="170" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="176" y="426" width="48" height="48" rx="6"/>
@@ -56,7 +56,7 @@
     <tspan x="200" dy="38">(CPU 0)</tspan>
   </text>
 
-  <!-- HW thread 1 node -->
+  
   <rect x="320" y="400" width="170" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="381" y="426" width="48" height="48" rx="6"/>
@@ -69,7 +69,7 @@
     <tspan x="405" dy="38">(CPU 64)</tspan>
   </text>
 
-  <!-- L1i/L1d + L2 node -->
+  
   <rect x="525" y="400" width="170" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="586" y="426" width="48" height="48" rx="6"/>
@@ -81,7 +81,7 @@
     <tspan x="610" dy="38">+ L2</tspan>
   </text>
 
-  <!-- Core 1 container -->
+  
   <rect x="750" y="300" width="340" height="430" rx="20" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="780" y="316" width="48" height="48" rx="6"/>
@@ -90,7 +90,7 @@
   </g>
   <text x="848" y="352" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Core 1</text>
 
-  <!-- CPU 1 node -->
+  
   <rect x="815" y="400" width="210" height="145" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="896" y="410" width="48" height="48" rx="6"/>
@@ -99,10 +99,10 @@
   </g>
   <text x="920" y="510" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">CPU 1</text>
 
-  <!-- CPU 1 to CPU 65 grouping relation -->
+  
   <path d="M920 545 V575" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
 
-  <!-- CPU 65 node -->
+  
   <rect x="815" y="575" width="210" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="896" y="582" width="48" height="48" rx="6"/>
@@ -111,7 +111,7 @@
   </g>
   <text x="920" y="680" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">CPU 65</text>
 
-  <!-- Shared L3 node -->
+  
   <rect x="350" y="770" width="500" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="390" y="811" width="48" height="48" rx="6"/>
@@ -120,10 +120,10 @@
   </g>
   <text x="470" y="852" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Shared L3</text>
 
-  <!-- Socket 0 <--> Socket 1 -->
+   Socket 1 -->
   <path d="M1140 650 H1260" fill="none" stroke="#db8129" stroke-width="5" stroke-linecap="round" marker-start="url(#orange-arrow)" marker-end="url(#orange-arrow)"/>
 
-  <!-- Socket 1 container -->
+  
   <rect x="1260" y="520" width="290" height="260" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="1381" y="552" width="48" height="48" rx="6"/>

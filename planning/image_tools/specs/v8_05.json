@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "05",
+  "name": "b05-commit-cycle",
+  "title": "The cmsh commit cycle",
+  "spec": "A left-to-right flow with three boxes and a decision. Box 1: Make the change locally with set, add, clear, append, removefrom or remove. Note under box 1: nothing reaches CMDaemon yet, the prompt shows asterisks. Box 2: modified, lists objects with uncommitted changes: + new, - to be removed, blank changed. Diamond: Does the list look right? No arrow goes down to a grey box: refresh, which undoes the local changes. Yes arrow goes right to Box 3: commit, sends the changes to CMDaemon. Under box 3, a green note: commit -w waits for background work such as cloning an image. Orange highlight on box 2 with the note: check modified before every commit. Small warning under the commit box: a commit also runs any pending remove, even one queued in another mode. Monospace for the commands.",
+  "anchor": "## 5. The commit model: the habit that matters most",
+  "alt": "The cmsh change, check and commit cycle",
+  "cap": "Commit cycle: stage the change, check modified, then commit, or refresh to throw the staged change away."
+ }
+]

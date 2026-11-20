@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Extended unpacking</title>
+  <desc>Visual infographic explaining Python extended unpacking with first, *middle, and last assigned from a five-element list.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Extended unpacking</text>
+
+  
+  <g transform="translate(340, 125)">
+    <rect x="0" y="0" width="920" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="25" y="17" width="56" height="56" rx="8" fill="#ffffff" />
+      <rect x="37" y="29" width="32" height="32" rx="4" fill="#e8f1ea" />
+      <line x1="41" y1="9" x2="41" y2="17" />
+      <line x1="53" y1="9" x2="53" y2="17" />
+      <line x1="65" y1="9" x2="65" y2="17" />
+      <line x1="41" y1="73" x2="41" y2="81" />
+      <line x1="53" y1="73" x2="53" y2="81" />
+      <line x1="65" y1="73" x2="65" y2="81" />
+      <line x1="17" y1="33" x2="25" y2="33" />
+      <line x1="17" y1="45" x2="25" y2="45" />
+      <line x1="17" y1="57" x2="25" y2="57" />
+      <line x1="81" y1="33" x2="89" y2="33" />
+      <line x1="81" y1="45" x2="89" y2="45" />
+      <line x1="81" y1="57" x2="89" y2="57" />
+    </g>
+    <text x="115" y="56" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#303a36">first, *middle, last = [1, 2, 3, 4, 5]</text>
+  </g>
+
+  
+  <g id="cells-list">
+    
+    <rect x="350" y="280" width="900" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="530" y="280" width="540" height="100" fill="#e8f1ea" />
+
+    
+    <line x1="530" y1="280" x2="530" y2="380" stroke="#207448" stroke-width="3" />
+    <line x1="710" y1="280" x2="710" y2="380" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+    <line x1="890" y1="280" x2="890" y2="380" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+    <line x1="1070" y1="280" x2="1070" y2="380" stroke="#207448" stroke-width="3" />
+
+    
+    <text x="440" y="344" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">1</text>
+    <text x="620" y="344" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">2</text>
+    <text x="800" y="344" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">3</text>
+    <text x="980" y="344" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">4</text>
+    <text x="1160" y="344" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">5</text>
+  </g>
+
+  
+  <g id="brackets" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <path d="M 370 405 Q 370 425 405 425 Q 440 425 440 445 Q 440 425 475 425 Q 510 425 510 405" stroke="#207448" stroke-width="3.5" />
+
+    
+    <path d="M 550 405 Q 550 425 675 425 Q 800 425 800 445 Q 800 425 925 425 Q 1050 425 1050 405" stroke="#207448" stroke-width="4" />
+
+    
+    <path d="M 1090 405 Q 1090 425 1125 425 Q 1160 425 1160 445 Q 1160 425 1195 425 Q 1230 425 1230 405" stroke="#207448" stroke-width="3.5" />
+  </g>
+
+  
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <path d="M 440 445 V 500 H 290 V 555" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <path d="M 800 445 V 555" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <path d="M 1160 445 V 500 H 1310 V 555" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  
+  <g id="node-first">
+    <rect x="130" y="570" width="320" height="210" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="262" y="598" width="56" height="56" rx="10" />
+      <circle cx="290" cy="626" r="10" fill="#207448" />
+    </g>
+    <text x="290" y="710" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">first = 1</text>
+  </g>
+
+  
+  <g id="node-middle">
+    <rect x="510" y="570" width="580" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="772" y="596" width="56" height="56" rx="10" fill="#ffffff" />
+      <line x1="791" y1="596" x2="791" y2="652" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" />
+      <line x1="809" y1="596" x2="809" y2="652" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" />
+    </g>
+    <text x="800" y="694" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">middle = [2, 3, 4]</text>
+    <text x="800" y="740" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">the star collects the rest as a list</text>
+  </g>
+
+  
+  <g id="node-last">
+    <rect x="1150" y="570" width="320" height="210" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1282" y="598" width="56" height="56" rx="10" />
+      <circle cx="1310" cy="626" r="10" fill="#207448" />
+    </g>
+    <text x="1310" y="710" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">last = 5</text>
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "n06-window",
+  "title": "The sliding window",
+  "spec": "A long strip of byte numbers 1 to 40 drawn as cells, with a frame (window) sliding in three steps stacked vertically. Step 1: receiver advertises window 20; sender sends bytes 1 to 10. Step 2: receiver acknowledges 10 and advertises 30; sender may send up to byte 40, sends bytes 11 to 15. Step 3: receiver acknowledges 15 and advertises 40. Cells coloured: acknowledged (green), in flight (light), may send (outline). Orange note: 'If the application reads slowly the window shrinks to zero; sender sends window probes'. Footer: sender may have at most min(rwnd, cwnd) in flight.",
+  "anchor": "## 6. Flow control: the sliding window",
+  "alt": "The sliding window",
+  "cap": "The window slides forward as ACKs arrive, letting the sender keep many segments in flight."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "n06-bdp",
+  "title": "Bandwidth-delay product",
+  "spec": "Left: a pipe drawn as a rectangle, width labelled bandwidth, length labelled RTT, volume labelled BDP = bandwidth x RTT. Right: table with columns Path, Bandwidth, RTT, BDP: Same rack 100 Gb/s 20 us 250 KB; Same DC 100 Gb/s 100 us 1.25 MB; Metro 10 Gb/s 2 ms 2.5 MB; Cross-continent 10 Gb/s 70 ms 87.5 MB (orange); Intercontinental 10 Gb/s 180 ms 225 MB. Footer: 'a 4 MB window over a 70 ms RTT tops out at about 457 Mb/s on a 10 Gb/s path'. Green bar: 'A window that fills a rack-local path falls far short on a long one'.",
+  "anchor": "### Bandwidth-delay product and buffers",
+  "alt": "Bandwidth-delay product",
+  "cap": "The amount of data needed in flight to fill a path grows with bandwidth and distance."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "n06-loss",
+  "title": "Two ways TCP notices loss",
+  "spec": "Two side-by-side panels. Panel 1 'RTO (slow path)': sender sends segment, timer runs, no ACK, retransmit and the RTO doubles (exponential backoff), formula in monospace 'RTO = SRTT + 4 x RTTVAR', minimum 200 ms. Panel 2 'Fast retransmit (cheap)': receiver repeats ACK for last in-order byte (duplicate ACKs), after three duplicate ACKs sender retransmits at once and enters fast recovery (halves its window). Under both a green strip: 'SACK tells the sender exactly what arrived'. Orange note: 'Reordering looks like loss: duplicate ACKs'.",
+  "anchor": "## 5. Reliability: ACKs, retransmission and the RTO",
+  "alt": "RTO and fast retransmit",
+  "cap": "A lost segment is detected either by a timer expiring or by three duplicate ACKs."
+ }
+]

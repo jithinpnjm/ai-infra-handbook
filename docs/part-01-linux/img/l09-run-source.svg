@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Run, source or exec</title>
+  <desc>Visual comparison table explaining the differences in process execution, environment inheritance, and variable visibility between running, sourcing, and execing shell scripts.</desc>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Run, source or exec</text>
+
+  
+  <g id="table-header">
+    <rect x="60" y="125" width="1480" height="96" rx="14" fill="#207448"/>
+    <text x="280" y="182" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">How</text>
+    <text x="770" y="182" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">What happens</text>
+    <text x="1290" y="165" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">
+      <tspan x="1290" dy="0">Variables visible</tspan>
+      <tspan x="1290" dy="34">afterwards</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-1">
+    <rect x="60" y="261" width="1480" height="124" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <line x1="500" y1="261" x2="500" y2="385" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1040" y1="261" x2="1040" y2="385" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <g transform="translate(90, 295)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="14" r="7"/>
+      <circle cx="40" cy="42" r="7"/>
+      <circle cx="16" cy="42" r="7"/>
+      <path d="M 16 21 v 14 M 16 24 c 0 10 24 6 24 11"/>
+    </g>
+
+    <text x="170" y="332" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">./script.sh</text>
+    <text x="530" y="332" font-family="sans-serif" font-size="26" fill="#303a36">new child process</text>
+
+    
+    <rect x="1225" y="297" width="130" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1290" y="333" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">No</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="60" y="425" width="1480" height="124" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <line x1="500" y1="425" x2="500" y2="549" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1040" y1="425" x2="1040" y2="549" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <g transform="translate(90, 459)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="8"/>
+      <polyline points="14,24 22,30 14,36"/>
+      <line x1="26" y1="36" x2="38" y2="36"/>
+    </g>
+
+    <text x="170" y="478" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="170" dy="0">source script.sh</tspan>
+      <tspan x="170" dy="32">or . script.sh</tspan>
+    </text>
+    <text x="530" y="478" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="530" dy="0">current shell executes</tspan>
+      <tspan x="530" dy="32">the commands</tspan>
+    </text>
+
+    
+    <rect x="1225" y="461" width="130" height="52" rx="10" fill="#207448"/>
+    <text x="1290" y="497" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Yes</text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="60" y="589" width="1480" height="124" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <line x1="500" y1="589" x2="500" y2="713" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1040" y1="589" x2="1040" y2="713" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <g transform="translate(90, 623)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 18 h 28 M 32 10 l 8 8 l -8 8"/>
+      <path d="M 44 38 h -28 M 24 46 l -8 -8 l 8 -8"/>
+    </g>
+
+    <text x="170" y="660" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">exec ./script.sh</text>
+    <text x="530" y="660" font-family="sans-serif" font-size="26" fill="#303a36">replaces the current shell</text>
+
+    
+    <rect x="1110" y="625" width="360" height="52" rx="10" fill="#db8129"/>
+    <text x="1290" y="660" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">shell no longer exists</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="60" y="753" width="1480" height="124" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <line x1="500" y1="753" x2="500" y2="877" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1040" y1="753" x2="1040" y2="877" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <g transform="translate(90, 787)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="14"/>
+      <line x1="32" y1="32" x2="48" y2="48" stroke-width="5"/>
+      <line x1="14" y1="22" x2="30" y2="22" stroke-width="3"/>
+    </g>
+
+    <text x="170" y="824" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">bash -x script.sh</text>
+    <text x="530" y="824" font-family="sans-serif" font-size="26" fill="#303a36">run with tracing</text>
+
+    
+    <rect x="1225" y="789" width="130" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1290" y="825" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">No</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="917" width="1480" height="80" rx="14" fill="#207448"/>
+    <text x="800" y="966" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Note: a child cannot change its parent's environment.</text>
+  </g>
+</svg>

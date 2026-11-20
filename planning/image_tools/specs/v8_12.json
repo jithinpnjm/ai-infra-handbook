@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "12",
+  "name": "b12-failover-timeline",
+  "title": "A head-node failover from the crash to ACTIVE",
+  "spec": "A horizontal timeline with time markers on the axis: T equals 0 s, T equals 1 to 5 s, T equals 5 s, T equals 10 s, then a later segment for the quorum window, then BECOMEACTIVE, then ACTIVE. Above the axis at T equals 0 s: head1 panics, the kernel halts. Below the axis: a bracket from 0 to 10 s, the passive head head2 polls head1 once a second over internalnet ping, failoverping and status on port 8081. At T equals 5 s a small warning marker: Warn time, head1 has stopped answering. At T equals 10 s a marker Dead time: head2 moves to FENCING and starts the quorum poll, a window of Quorum time 60 s. Next a marker STONITH: head2 powers off head1 through its BMC or PDU, then polls power status until OFF. Next marker BECOMEACTIVE: prefailover script, mount script for shared NAS, shared internal and external virtual IPs come up, gratuitous ARP sent. Last marker ACTIVE: nfs-server, slurmdbd and the User Portal start. A green side note at T equals 0 s: running Slurm and Kubernetes jobs keep running on the compute nodes. Orange highlight on the STONITH marker with the note: no proof of power-off, no failover. Monospace for FENCING, FENCING, BECOMEACTIVE, ACTIVE, and the commands.",
+  "anchor": "### 10.1 Deep dive: Anatomy of a head-node failover from second `0` to `ACTIVE`",
+  "alt": "Timeline of a head-node failover",
+  "cap": "Failover timeline: the passive head waits for dead time and quorum, proves the old head is off, then takes over the shared storage and addresses."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "12",
+  "name": "b12-failover-decision",
+  "title": "What the passive head does for each kind of outage",
+  "spec": "A top box labelled Active head stops answering, with a decision chain going down. Diamond 1: Are ping, failoverping and status all NOT OK? No branch goes right to a grey box: mostly dead, alert the administrator, no automatic action, failover by hand with cmha makeactive. Yes branch goes down to Diamond 2: Does power control work, and is disableautomaticfailover no? No branch goes right to a grey box: manual failover, administrator confirms the old head is off. Yes branch goes down to Diamond 3: Does quorum confirm that more than half the nodes cannot reach the active head? No branch goes right to a box: no STONITH, stop. Yes branch goes down to a green box: STONITH powers off the active head, power status shows OFF, then BECOMEACTIVE. Side panel labelled not failovers: a graceful reboot or shutdown of the active head is treated as intentional, use cmha makeactive on the passive head. Orange highlight on the STONITH green box. Monospace for ping, failoverping, status, cmha makeactive and disableautomaticfailover.",
+  "anchor": "## 5. Automatic or manual failover",
+  "alt": "Decision path for head failover",
+  "cap": "Failover decision: automatic failover needs all three checks down, working power control and quorum, otherwise an administrator decides."
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "13",
+  "name": "g13-tile-reuse",
+  "title": "One staged tile serves many threads, instead of every thread fetching its own copy",
+  "spec": "Two side-by-side panels. Left panel, labelled naive kernel: a grid of small square cells representing one row of matrix A, with a bundle of arrows from many threads each reaching back to the same HBM box at the bottom, drawn as many separate arrows, labelled every thread fetches from HBM, about 32 times per value. Right panel, labelled tiled kernel: the same group of threads drawn above a small shared memory box labelled one 32 by 32 tile in shared memory; a single arrow runs from HBM into the tile box, and short arrows fan out from the tile to the threads, labelled each value loaded once and reused. Orange highlight on the tile box in the right panel with the note: one global load now feeds 32 multiply-accumulates. Monospace for 32 by 32, HBM and shared memory.",
+  "anchor": "### 3.1 Tiling matrix multiplication in shared memory",
+  "alt": "Naive per-thread HBM fetches versus one shared tile",
+  "cap": "Tile reuse: staging a tile in shared memory means one slow fetch feeds many threads, which cuts HBM traffic by about eightfold."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "13",
+  "name": "g13-residency-budget",
+  "title": "Registers per thread decide how many 1,024-thread blocks fit on one SM",
+  "spec": "A horizontal stacked bar chart comparing three cases. Each bar is a full SM register file of 65,536 registers, drawn as a long bar split into equal blocks of 1,024 threads. Top bar labelled 12 registers per thread: 12,288 registers per block, two blocks fill 24,576 registers, the bar shows two filled blocks and empty space, with the thread ceiling of 2,048 threads marked as a second line that caps the residency at two blocks. Middle bar labelled 22 registers per thread: 22,528 registers per block, two blocks fill 45,056 registers, the bar shows two filled blocks with a grey remainder, the caption 2 blocks, 2,048 threads. Bottom bar labelled above 32 registers per thread: one block uses more than half of the register file and only one block fits, the bar shows one filled block and a large empty remainder, caption 1 block, 50 percent occupancy. Orange highlight on the bottom bar with the note: crossing 32 registers per thread halves residency. Monospace for 65,536, 12,288, 22,528, 2,048 and 32.",
+  "anchor": "### 3.2 Why you cannot blindly grow tiles forever: The `64 × 64` register budget",
+  "alt": "Register file split into resident blocks at three register counts",
+  "cap": "Register budget: a 1,024-thread block that needs more than 32 registers per thread cuts an SM from two resident blocks to one."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "13",
+  "name": "g13-butterfly",
+  "title": "Five halving steps fold 32 lane values into lane zero",
+  "spec": "A diagram with 32 lane columns drawn across the top, labelled lane 0 to lane 31, with starting values shown as the one-based lane numbers 1 to 32. Below, five rows, one per step, labelled offset 16, offset 8, offset 4, offset 2 and offset 1. Each row shows arrows from a higher lane down to a lower lane at the given offset, with the lower lane's cell updated by a plus sign. Row 1 shows lanes 0 to 15 each picking up the value from lane plus 16. Row 2 shows lanes 0 to 7 picking up from lane plus 8, and so on. A final box at the bottom left labelled lane 0 holds the sum, 528, with the caption no shared memory and no barrier. Orange highlight on the final lane 0 box with the note: 1 plus 2 plus up to 32 equals 528 in five register steps. Monospace for offset 16, 8, 4, 2, 1, lane 0 and 528.",
+  "anchor": "### 4.1 Intra-warp register reductions with `__shfl_down_sync`",
+  "alt": "Five butterfly steps summing 32 lanes into lane zero",
+  "cap": "Warp butterfly: each step halves the offset, so lane zero collects the sum of all 32 lanes in five register-to-register steps."
+ }
+]

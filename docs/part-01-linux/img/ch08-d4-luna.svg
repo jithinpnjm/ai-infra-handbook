@@ -14,7 +14,7 @@
   <rect width="1600" height="980" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">How signals reach a process</text>
 
-  <!-- Sender -->
+  
   <rect x="40" y="135" width="375" height="230" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5"><rect x="64" y="164" width="44" height="32" rx="4"/><path d="M64 174h44"/></g>
   <text x="124" y="188" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">Signal source</text>
@@ -26,7 +26,7 @@
 
   <path d="M415 250 H466" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Kernel signal delivery -->
+  
   <rect x="470" y="135" width="400" height="230" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
     <rect x="486" y="160" width="42" height="42" rx="5"/><rect x="497" y="171" width="20" height="20"/>
@@ -40,7 +40,7 @@
     <tspan x="486" dy="30" font-weight="700">directly (cannot be caught).</tspan>
   </text>
 
-  <!-- Top-right: 3 dispositions -->
+  
   <path d="M870 190 H925 V165 H976" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M870 250 H976" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M870 310 H925 V375 H976" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
@@ -57,7 +57,7 @@
   <text x="1006" y="366" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">3. Catch with handler (SIGTERM, SIGHUP)</text>
   <text x="1006" y="402" fill="#303a36" font-family="sans-serif" font-size="24">Flush buffers, save checkpoint, clean lock files</text>
 
-  <!-- Lower section: Escalation vs D-state trap -->
+  
   <rect x="40" y="480" width="740" height="320" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="72" y="528" fill="#207448" font-family="sans-serif" font-size="29" font-weight="700">Escalation order: SIGTERM before SIGKILL</text>
   <rect x="72" y="556" width="310" height="110" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
@@ -75,7 +75,7 @@
     <tspan x="72" dy="34">orphaned children, and GPU memory for the driver to reclaim.</tspan>
   </text>
 
-  <!-- Right bottom: D state warning -->
+  
   <rect x="820" y="480" width="740" height="320" rx="18" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
   <g fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round">
     <path d="M876 508l24 44h-48z"/><path d="M876 526v12 M876 544v2"/>
@@ -88,7 +88,7 @@
     <tspan x="854" dy="42">• Fix the underlying mount/disk/driver, or reboot.</tspan>
   </text>
 
-  <!-- Takeaway bar -->
+  
   <rect x="40" y="840" width="1520" height="96" rx="14" fill="#207448"/>
   <text x="800" y="898" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="27" font-weight="700">Use signal names (SIGTERM, SIGHUP, SIGKILL) in scripts; use kill -- -PGID to signal a whole process group.</text>
 </svg>

@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "11",
+  "name": "d11-power-tiers",
+  "title": "Three tiers that carry power from the facility to the node",
+  "spec": "A left-to-right chain of three large boxes with arrows, each box a tier. Box 1: Tier 1, utility or UPS feed and branch breakers, three-phase 208, 380, 400 or 415 V circuits, derated to 80 percent of nameplate for continuous load. Box 2: Tier 2, smart rack PDUs, metered per-phase inlets, locking per-receptacle outlets, exporting PowerWatts and LineInputVoltage telemetry, with remote outlet switching for an AC power cycle. Box 3: Tier 3, node power supplies or rack power shelves, DGX H100 six 3.3 kW supplies, DGX B200 five of six, GB300 eight 33 kW shelves. Under box 1 a small formula line: nameplate kW equals square root of 3 times volts times amps times power factor over 1,000, then 0.80 for continuous. Orange highlight on box 1's 80 percent derating with the note: the breaker is never run at its limit for long hours. Monospace for 80 percent, sqrt(3), PowerWatts and LineInputVoltage.",
+  "anchor": "### 2.1 The three tiers of data center power distribution and 80% breaker derating",
+  "alt": "Three tiers from facility circuit to node power supply",
+  "cap": "Power tiers: facility circuits are derated to 80 percent, smart PDUs meter each feed, and node supplies must keep enough units energized."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "11",
+  "name": "d11-airflow-direction",
+  "title": "Front-to-back airflow passes cold air over the optics first",
+  "spec": "Two side-view panels for comparison, each a switch box with a row of optical ports on its front edge and a fan at one end. Left panel, labelled front-to-back, recommended: cold aisle air arrows enter at the front port panel and pass over the optics first, then across the switch ASIC and power supplies, leaving as hot exhaust at the rear into the hot aisle. A green tick with the note: optics get the coolest air. Right panel, labelled back-to-front, not chosen: air enters at the rear power supplies and exits at the front port panel, so the pre-heated air reaches the optics last, with a red note: optics run hotter and need larger heatsinks. Orange highlight on the optics in the right panel. A small note below both: never mix airflow directions in one rack. Monospace for OSFP and front-to-back.",
+  "anchor": "### 3.3 Choosing fan airflow direction: Front-to-Back vs Back-to-Front vs Bidirectional",
+  "alt": "Front-to-back and back-to-front switch airflow",
+  "cap": "Airflow direction: front-to-back airflow reaches the front-panel optics with cold air, while back-to-front airflow heats them last."
+ }
+]

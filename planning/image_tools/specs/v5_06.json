@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "k06-deploy-chain",
+  "title": "Deployment, ReplicaSets and Pods during a rollout",
+  "spec": "Three rows from top to bottom. Top row: one box labelled Deployment web, which decides which version should exist. Middle row: two ReplicaSet boxes side by side, labelled web-old-hash with the old pod template hash and web-new-hash with the new one. The old box has a shrinking count of replicas and the new box a growing count, with an arrow between them labelled shift replicas by maxSurge and maxUnavailable. Bottom row: pod boxes under each ReplicaSet, the old ones marked running on the old version and the new ones marked running on the new version. Under the middle row a small note: the old ReplicaSet is kept at zero replicas, which makes kubectl rollout undo work. Orange note: the ReplicaSet controller never talks to a node; it only writes Pod objects. Green takeaway bar: each link has one job.",
+  "anchor": "### Deployment → ReplicaSet → Pod",
+  "alt": "A Deployment owns one ReplicaSet per pod template hash, and replicas shift from the old ReplicaSet to the new one.",
+  "cap": "A Deployment shifts replicas from the old ReplicaSet to the new one, and keeps the old one so a rollback is fast."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "k06-quarantine",
+  "title": "Removing a label orphans a pod and triggers a replacement",
+  "spec": "Two-state figure, left to right with an arrow labelled kubectl label pod web-xxxx app- between them. Left state, labelled before: a ReplicaSet box with replicas 3 and an ownership line to three pod boxes, all labelled app=web, one of them marked misbehaving. Right state, labelled after: the ReplicaSet still shows replicas 3, with an ownership line to two pod boxes labelled app=web and a new pod box labelled replacement created. The misbehaving pod sits outside the ReplicaSet, with no ownership line, labelled orphaned, still running, ready for kubectl exec. Number circles 1 remove the label, 2 controller sees no match and releases the pod, 3 controller creates a new pod. Orange note on the orphaned pod: it is isolated for debugging, not deleted. Green takeaway bar: removing the label is a debugging trick that keeps the service at full capacity.",
+  "anchor": "### ownerReferences and adoption",
+  "alt": "Removing the app label from a misbehaving pod orphans it, and the ReplicaSet creates a replacement.",
+  "cap": "Removing a pod's matching label orphans it for debugging, and the ReplicaSet creates a replacement so capacity stays full."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "k06-lease",
+  "title": "Lease timings for leader election",
+  "spec": "A horizontal timeline with three marked intervals along one axis. Interval 1 labelled retryPeriod 2 s: standby candidates try to acquire or renew the Lease, shown as small ticks. Interval 2 labelled renewDeadline 10 s: the active leader must renew by this point or it gives up. Interval 3 labelled leaseDuration 15 s: after this the Lease expires and a standby takes over. Above the timeline a green box labelled active leader holds the Lease, updating holderIdentity and renewTime. Below, an orange note: a leader that cannot renew exits on purpose, so two leaders never run at once. Green takeaway bar: failover takes roughly 15 to 30 seconds.",
+  "anchor": "## 5. Leader election and HA",
+  "alt": "A leader renews a Lease every few seconds, and a standby takes over after the lease duration expires.",
+  "cap": "Leader election uses a Lease with a 15 second duration, so a standby takes over shortly after the leader stops renewing."
+ }
+]

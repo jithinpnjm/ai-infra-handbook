@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "k16-config-doors",
+  "title": "Three ways into one ConfigMap, and which ones pick up a change",
+  "spec": "One ConfigMap box at the centre labelled trainer-config (ConfigMap) with keys LOG_LEVEL and hparams.yaml inside it. Three doors drawn as arrows fanning out to the right, one to each consumer box inside a single trainer container box. Door 1, top arrow labelled envFrom or env, leads to a box labelled environment variables with the note read at container start. Door 2, middle arrow labelled volumeMount, leads to a box labelled file at /etc/trainer/hparams.yaml read-only. Door 3, bottom arrow labelled subPath, leads to a box labelled single file bind mount. A small status tag on each door: Door 1 tagged no update while running in orange-free grey, Door 2 tagged updates in about 1 to 2 minutes via the ..data symlink swap in green, Door 3 tagged never updates in grey. Step 1 circle on the ConfigMap box, step 2 circle beside the volume door. Under the trainer box, a short note: to pick up an env change, start a new container. Orange highlight only on the subPath door's never updates tag, since it is the trap. Icon of a gear for the container box, a disk cylinder for the ConfigMap, a window for the trainer. Green takeaway bar at the bottom: env values are fixed at start, volumes refresh in place, and subPath never sees a change.",
+  "anchor": "## 1. ConfigMaps",
+  "alt": "A ConfigMap reaches a container through env vars, a directory volume, or a subPath mount, and only the directory volume picks up changes.",
+  "cap": "Environment variables and subPath mounts keep the old value, while a directory volume mount picks up a ConfigMap change."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "k16-tokenreview",
+  "title": "A receiving service checks a pod token with TokenReview",
+  "spec": "A left-to-right swimlane with three vertical lanes, each headed by the participant name: Pod (caller), Receiving service, Kubernetes API server. Message 1, arrow from Pod lane to Receiving service lane, labelled sends its ServiceAccount token. Message 2, arrow from Receiving service lane to Kubernetes API server lane, labelled POST TokenReview with the token in spec.token, drawn in monospace. Message 3, arrow back from API server lane to Receiving service lane, labelled status authenticated true and user system:serviceaccount:default:default. Each message is numbered with a green step circle. Below the last arrow, a note box in the receiving service lane: the username prefix shows a ServiceAccount, then namespace, then account name. Orange highlight only on message 2, the TokenReview call. Icon of a window on the Pod lane, a gear on the receiving service lane, and a lock on the API server lane. Green takeaway bar at the bottom: the receiver does not trust the token blindly, it asks the API server whether the token is genuine and whose account it belongs to.",
+  "anchor": "### Service Account tokens and TokenReview",
+  "alt": "A pod sends its ServiceAccount token to a receiving service, which posts a TokenReview to the API server and gets back the authenticated user.",
+  "cap": "A receiving service asks the API server through TokenReview whether a pod's ServiceAccount token is genuine and whose account it is."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "k16-two-phase-rotation",
+  "title": "Two-phase rotation: add the new credential before removing the old one",
+  "spec": "A horizontal sequence of four stages left to right, each a rounded box with a numbered step circle. Stage 1 box labelled old credential only, with a key icon and a note consumers use the old value. Stage 2 box labelled add new credential, both work, with two key icons side by side and a note old and new both valid for a while. Stage 3 box labelled switch consumers over, with an arrow fanning from the store to each consumer box (consumer A, consumer B, consumer C) and the note every consumer moves to the new value. Stage 4 box labelled remove old credential, with the old key icon crossed out and the new key icon remaining. Arrows between stages. Above stage 3, a small warning note in orange: if you remove the old credential first, any consumer you forgot to update fails at once. Under the sequence, a bar labelled reload: file mounts refresh through the kubelet but the app must re-read them, environment variables need a pod restart. Green takeaway bar at the bottom: add the new credential first, move every consumer, then remove the old one.",
+  "anchor": "### Rotation",
+  "alt": "Two-phase rotation adds the new credential, moves each consumer over, and only then removes the old credential.",
+  "cap": "Two-phase rotation adds the new credential first, moves every consumer, and removes the old one last."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "k16-impersonate-sudo",
+  "title": "A sudo-style impersonation rule keeps daily work read-only",
+  "spec": "A central layout with three bindings and an operator. Left side: an operator box labelled john, member of group ops-team, with a kubectl icon. Three binding cards in the middle column, each drawn as a link from the group or user to a role. Card 1 cluster-admin-view: ops-team group bound to the view ClusterRole. Card 2 cluster-admin-crb: synthetic user cluster-admin bound to the cluster-admin ClusterRole, with the note no human logs in as this user. Card 3 cluster-admin-impersonate: ops-team group bound to the cluster-admin-impersonator ClusterRole with verbs impersonate on users, resourceNames cluster-admin. Right side, two result rows as a short command story. Row A, default path: kubectl get configmaps returns no resources found (allowed, read-only). Row B, write without elevation: kubectl create configmap returns Forbidden, user john cannot create. Row C, elevated: kubectl --as=cluster-admin create configmap returns configmap created, drawn with the flag --as=cluster-admin in monospace. Step 1 circle on card 1, step 2 circle on card 3, step 3 circle on row C. Below, an audit note: the audit log records both john and the impersonated cluster-admin. Orange highlight only on the --as=cluster-admin flag. Icon of a shield for the cluster-admin user and a lock on the impersonate card. Green takeaway bar at the bottom: daily work runs with reader rights, and a deliberate command raises the rights for one action.",
+  "anchor": "### Least-privilege admin elevation via RBAC `impersonate` (`sudo`-style workflow)",
+  "alt": "An ops-team operator reads by default, is refused a write, and gains cluster-admin rights for one command with --as=cluster-admin.",
+  "cap": "Operators get read-only rights by default and raise to cluster-admin for one command with the impersonation flag, which the audit log records."
+ }
+]

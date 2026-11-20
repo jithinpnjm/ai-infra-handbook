@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "27",
+  "name": "k27-keyless-signing",
+  "title": "Keyless signing: OIDC token, Fulcio certificate, Rekor log",
+  "spec": "A left-to-right flow of four boxes joined by numbered arrows. Box 1 on the far left, labelled CI job (GitHub Actions workflow), with a gear icon. Box 2 labelled OIDC provider (token.actions.githubusercontent.com) with a lock icon. Box 3 labelled Fulcio, the certificate authority, with a certificate icon. Box 4 on the far right labelled Rekor, the transparency log, with a ledger icon. Arrow 1 from the CI job to the OIDC provider labelled short-lived OIDC token. Arrow 2 from the CI job to Fulcio labelled public key plus token, returning a short-lived certificate bound to the workflow identity, valid about 10 minutes. Arrow 3 from the CI job to Rekor labelled signature and certificate recorded. Number circles r=24 green with white numbers 1, 2, 3 on the arrows. Under the CI job a small box labelled cosign signs the image digest with an ephemeral key, which is discarded after signing. Orange note on the discard box: no long-lived signing key exists to steal. No takeaway bar.",
+  "anchor": "## 2. Frameworks and standards",
+  "alt": "A CI job gets a short-lived OIDC token, Fulcio issues a short-lived certificate for it, and the signature is recorded in the Rekor transparency log.",
+  "cap": "Keyless signing uses a short-lived OIDC token and a Fulcio certificate, and records the signature in the Rekor log."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "27",
+  "name": "k27-admission-two-checks",
+  "title": "Admission checks who built the image and where it came from",
+  "spec": "Left-to-right flow. On the far left, a box labelled Pod create request with a window icon. An arrow into a large box labelled Admission (Kyverno verifyImages) with a shield icon. From the admission box two parallel arrows lead to two check panels stacked vertically. Top panel, numbered 1 with a green number circle r=24, titled Who built it: a signature and provenance from the GitHub workflow identity, with the note for Pods in production namespaces. Bottom panel, numbered 2, titled Where it came from: image from registry.example.com or nvcr.io, with the note for every Pod. Both panels have arrows going right into a decision box labelled Both pass? Yes arrow leads to a green box labelled Pod is admitted. No arrow leads to a red-bordered box labelled Pod is rejected. Orange note beside the two panels: a policy that answers only one of these questions leaves a gap. No takeaway bar.",
+  "anchor": "### Admission-time enforcement in Kubernetes",
+  "alt": "Admission checks the signature and provenance of the builder identity for production Pods, and checks that every image comes from an approved registry.",
+  "cap": "Admission enforcement asks who built each image and where it came from, and rejects the Pod unless both checks pass."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "27",
+  "name": "k27-pickle-vs-safetensors",
+  "title": "Why a pickle checkpoint runs code on load and safetensors does not",
+  "spec": "Two side-by-side panels. Left panel titled pickle (.pt, .bin, .pkl): a stack of small blocks showing a serialized object stream, with one block labelled __reduce__ naming an arbitrary callable, and a red arrow from that block to a box labelled code runs at torch.load. Under it a small note: the instant torch.load unpickles the file. Right panel titled safetensors (model.safetensors): two stacked blocks, the top labelled JSON header with the entries tensor names, dtypes, shapes and byte offsets, the bottom labelled raw flat tensor bytes. A green arrow from the file to a box labelled weights mapped straight to memory, zero copy. Under the right panel a note: runs no code. Between the two panels a middle row labelled weights_only=True, which restricts the unpickler to tensor data. Numbered steps with green number circles r=24: 1 the file is read; 2 the loader decides what runs; 3 the weights load. Orange note on the left panel: loading a pickle is the same as running a program you have not read. Green takeaway bar: a model file is code in disguise, so prefer safetensors.",
+  "anchor": "## 8. Model and data supply chain",
+  "alt": "A pickle checkpoint can run code the moment torch.load reads it, while safetensors stores a JSON header and raw tensor bytes and runs no code.",
+  "cap": "A pickle checkpoint can run code when torch.load reads it, while a safetensors file holds only a header and raw tensor bytes."
+ }
+]

@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "04",
+  "name": "h04-eager-deadlock",
+  "title": "Two blocking sends wait for each other",
+  "spec": "Two vertical swimlanes side by side, each headed by its participant name: Rank 0 on the left, Rank 1 on the right. Time runs top to bottom, with a small time axis label on the far left. Top band, a light grey box across both lanes labelled small message, eager protocol: MPI_Send returns at once, a note with a green check. Below it a divider labelled larger message, rendezvous protocol. In the lower band: Rank 0 lane shows a box MPI_Send to Rank 1, with a horizontal arrow from the Rank 0 lane to the Rank 1 lane labelled header, then a box beneath reading blocked until Rank 1 calls MPI_Recv. Rank 1 lane shows a box MPI_Send to Rank 0, with a horizontal arrow from the Rank 1 lane to the Rank 0 lane labelled header, then a box beneath reading blocked until Rank 0 calls MPI_Recv. Both arrows are horizontal and drawn on separate rows so they do not cross. Neither lane has a MPI_Recv box below its blocked send. Orange highlight on the two blocked boxes, labelled deadlock, forever. Caption at the bottom of the lanes: the code did not change, the data got bigger, and that was enough to expose the bug. Above the rendezvous band, a short note: a tiny 1 KB array uses eager. Green takeaway bar at the bottom: Never write symmetric blocking MPI_Send pairs that rely on eager buffering.",
+  "anchor": "## 2. Point-to-point communication: eager vs. rendezvous and deadlocks",
+  "alt": "Two ranks that both call blocking MPI_Send wait for each other forever once the message exceeds the eager limit.",
+  "cap": "Two ranks that both send before receiving work with small messages, but deadlock once the messages pass the rendezvous threshold."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "04",
+  "name": "h04-debug-ladder",
+  "title": "The four-layer ladder for a hung job",
+  "spec": "A vertical ladder of four wide rungs, stacked top to bottom, numbered 1 to 4 in number circles in time order, with arrows running down the left side between rungs labelled walk in order, start at the top. Each rung is a light green panel with an icon on the left and a title, plus one line of checks. Rung 1 title: Layer 1, process launch, exit codes, and OS limits. Icon: a gear or a terminal. Checks line: count processes on every node, check ulimit -l is unlimited, decode exit codes 137, 139 and 143. Rung 2 title: Layer 2, rendezvous. Icon: a handshake or two nodes linked. Checks line: confirm processes found each other's IP addresses, set NCCL_SOCKET_IFNAME, check the firewall allows the ephemeral port range. Rung 3 title: Layer 3, NCCL initialization. Icon: a chip with a network line. Checks line: NCCL_DEBUG=INFO, confirm the log says Using network IB, NCCL_RUN_DIAGNOSTICS=1, ncclras on port 28028 for a MISMATCH row. Rung 4 title: Layer 4, physical fabric health. Icon: a cable or switch. Checks line: ibstat, sudo sminfo, perfquery -x for rising error counters, RoCE PFC pause counters. Orange highlight on rung 1, labelled a missing memlock limit looks like a switch problem, so start at the top. Right-side note beside rung 4: the bottom layers are the most expensive to check. Green takeaway bar at the bottom: Walk the 4-layer debugging ladder in strict order.",
+  "anchor": "## 10. Troubleshooting guide: the 4-layer ladder and real init hangs",
+  "alt": "Hung multi-node jobs are diagnosed in four layers: process launch and limits, rendezvous, NCCL initialization, and physical fabric health.",
+  "cap": "A hung multi-node job is diagnosed by checking four layers in order, from process launch and limits down to the physical fabric."
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "k25-capture-points",
+  "title": "Where to capture packets on the path between two pods",
+  "spec": "A left-to-right path across two node-sized panels. Left panel labelled Node A holds a client pod box with a window icon, labelled client pod, and a small pipe-shaped box labelled client veth attached to its edge. Right panel labelled Node B holds a server pod box with a window icon, labelled server pod, and a pipe-shaped box labelled server veth on its edge. Between the two panels a horizontal link labelled node uplink. A single arrow runs from the client pod through client veth, node uplink and server veth to the server pod, labelled packets. Three numbered capture markers, each a green circle r=24 with a white number, sit on the path: 1 at client veth, 2 at node uplink, 3 at server veth. Each marker has a short label under it with the source wording: capture here. Orange note under marker 2 and the node uplink: running tcpdump only on the node's primary interface misses the veth and bridge hops. Green takeaway bar: capture at each hop, so you see where the packets disappear.",
+  "anchor": "### 3.3 Networking tools",
+  "alt": "Packets from a client pod cross its veth, the node uplink and the server veth, and captures at each point show where they vanish.",
+  "cap": "Capturing packets at the client veth, the node uplink and the server veth shows the hop where traffic disappears."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "k25-nsenter-room",
+  "title": "Host tools working inside a pod's network namespace",
+  "spec": "Two stacked panels on a left-to-right layout. Top panel labelled Node (host): a box labelled host tools with small icons for tcpdump, ip, ss and curl, each icon with its name under it. A dashed green arrow labelled nsenter -t PID -n leads from host tools into a large rounded room on the right labelled pod network namespace. Inside the room a small box labelled pod app and a box labelled pod eth0. Bottom panel labelled Pod image: a small box labelled app image with the note: no tcpdump, ip or ss needed inside the image, drawn with a grey strike-through on those three names. Numbered steps inside the top panel: 1 find the PID with crictl inspect; 2 run host tools with nsenter -n. Orange note on the pod image panel: the host binaries stay under your control, not the app team's. Green takeaway bar: the room is the pod's network, and your tools come from the host.",
+  "anchor": "### 3.2 Namespaces: nsenter, lsns, unshare",
+  "alt": "Host tools run through nsenter -n inside the pod's network namespace, so the pod image needs no debugging tools.",
+  "cap": "The nsenter command runs the node's own tools inside a pod's network namespace, so the pod image needs none of them."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "k25-oom-scope",
+  "title": "Container limit versus node memory: two different OOM kills",
+  "spec": "Two side-by-side panels titled by scope. Left panel titled Container limit: a dashed rounded box labelled memory limit (the cgroup ceiling) containing a filled green bar that reaches the top of the box, labelled container working set. Beside the box, a line labelled node memory: plenty free, drawn as a large light green block with white space. A label on the left panel: CONSTRAINT_MEMCG, the container hit its own ceiling, and an arrow labelled oom_kill pointing to a red-bordered box labelled container killed. Right panel titled Whole node: a large box labelled node memory with every container bar below its own dashed limit, and the bars together filling the node. A label: CONSTRAINT_NONE, the node ran short while every container stayed under its limit. Below it a red-bordered box labelled node-level kill. Under the right panel, a short fix row with three small boxes: reserve system memory; reduce workers; enforce Guaranteed QoS. Orange note on the left panel: a pod can be killed while the node still has free memory. Green takeaway bar: separate the container's limit from the node's use before you change anything.",
+  "anchor": "### 4.6 OOM and eviction",
+  "alt": "A container can hit its own memory limit while the node has memory free, and a node can run short while each container stays under its limit.",
+  "cap": "A container OOM kill comes from its own memory limit, while a node-level kill means the whole host ran out of memory."
+ }
+]

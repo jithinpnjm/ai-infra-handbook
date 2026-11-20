@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Executors and futures</title>
+  <desc>Visual explanation of executors and futures flow and as_completed</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Executors and futures</text>
+
+  
+
+  
+  <rect x="45" y="140" width="200" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  
+  <circle cx="103" cy="205" r="24" fill="#207448"/>
+  <text x="103" y="214" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(155, 177)">
+    <rect x="0" y="0" width="56" height="46" rx="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 18 24 L 12 30 L 18 36 M 38 24 L 44 30 L 38 36 M 30 22 L 26 38" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  
+  <text x="145" y="325" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">your code</text>
+
+  
+  <line x1="245" y1="300" x2="280" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="280" y="140" width="270" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  
+  <circle cx="373" cy="205" r="24" fill="#207448"/>
+  <text x="373" y="214" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(457, 205)">
+    <circle cx="0" cy="0" r="14" stroke="#207448" stroke-width="4" fill="none"/>
+    <path d="M 0 -24 L 0 -18 M 0 18 L 0 24 M -24 0 L -18 0 M 18 0 L 24 0 M -17 -17 L -13 -13 M 13 13 L 17 17 M -17 17 L -13 13 M 13 -13 L 17 -17" stroke="#207448" stroke-width="4.5" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="5" fill="#207448"/>
+  </g>
+  
+  <text x="415" y="308" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">executor.<tspan x="415" dy="42">submit(fn, arg)</tspan></text>
+
+  
+  <line x1="550" y1="300" x2="585" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="585" y="140" width="280" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  
+  <circle cx="683" cy="205" r="24" fill="#207448"/>
+  <text x="683" y="214" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(767, 205)">
+    <circle cx="0" cy="0" r="22" stroke="#207448" stroke-width="4" fill="none"/>
+    <polyline points="0,-12 0,0 10,0" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <line x1="0" y1="-22" x2="0" y2="-27" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="-6" y1="-27" x2="6" y2="-27" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  
+  <text x="725" y="308" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">returns a Future<tspan x="725" dy="42">immediately</tspan></text>
+
+  
+  <line x1="865" y1="300" x2="900" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="900" y="140" width="240" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  
+  <circle cx="978" cy="205" r="24" fill="#207448"/>
+  <text x="978" y="214" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(1040, 185)">
+    <rect x="0" y="0" width="40" height="40" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+    <rect x="10" y="10" width="20" height="20" rx="3" fill="#207448" fill-opacity="0.25"/>
+    <line x1="12" y1="-6" x2="12" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="20" y1="-6" x2="20" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="28" y1="-6" x2="28" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="12" y1="40" x2="12" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="20" y1="40" x2="20" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="28" y1="40" x2="28" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="-6" y1="12" x2="0" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="-6" y1="20" x2="0" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="-6" y1="28" x2="0" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="40" y1="12" x2="46" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="40" y1="20" x2="46" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="40" y1="28" x2="46" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  
+  <text x="1020" y="308" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">worker thread<tspan x="1020" dy="42">runs fn</tspan></text>
+
+  
+  <line x1="1140" y1="300" x2="1175" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1175" y="140" width="380" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  
+  <circle cx="1323" cy="205" r="24" fill="#207448"/>
+  <text x="1323" y="214" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g transform="translate(1407, 205)">
+    <path d="M 0 -24 L 22 -16 C 22 8 0 24 0 24 C 0 24 -22 8 -22 -16 Z" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none"/>
+    <polyline points="-9,0 -2,7 10,-5" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  
+  <text x="1365" y="294" text-anchor="middle" fill="#303a36">
+    <tspan x="1365" font-family="monospace" font-size="24" font-weight="bold">future.result()</tspan>
+    <tspan x="1365" dy="40" font-family="sans-serif" font-size="24">gets the value or</tspan>
+    <tspan x="1365" dy="38" font-family="sans-serif" font-size="24">re-raises the exception</tspan>
+  </text>
+
+  
+
+  
+  <rect x="120" y="550" width="1360" height="230" rx="18" fill="#fef8f2" stroke="#db8129" stroke-width="4"/>
+
+  
+  <g transform="translate(800, 610)">
+    <path d="M -22 0 A 22 22 0 1 1 22 0" stroke="#db8129" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M 22 0 A 22 22 0 0 1 -20 9" stroke="#db8129" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <polyline points="14,-9 23,0 14,9" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="0" cy="0" r="6" fill="#db8129"/>
+  </g>
+
+  
+  <text x="800" y="682" text-anchor="middle">
+    <tspan x="800" font-family="monospace" font-size="30" font-weight="bold" fill="#db8129">as_completed(futures)</tspan>
+    <tspan x="800" dy="48" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">yields futures as they finish</tspan>
+  </text>
+</svg>

@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>From abstract list to exact lock</title>
+  <desc>From abstract list to exact lock: A horizontal flow of four boxes joined by three arrows: requirements.in (abstract list), pip-compile --generate-hashes, requirements.txt (hashed lock), pip-sync (environment matches the lock exactly). Under it two small panels: Library: abstract ranges like requests&gt;=2.28,&lt;3 ; Application: pinned lock with hashes (orange).</desc>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="76" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">From abstract list to exact lock</text>
+
+  
+  <rect x="55" y="172" width="320" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="215" cy="172" r="24" fill="#207448"/>
+  <text x="215" y="181" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(187, 208)">
+    <rect x="4" y="2" width="48" height="52" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="14" y1="16" x2="42" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="14" y1="28" x2="42" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="14" y1="40" x2="30" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  <text x="215" y="320" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">requirements.in</text>
+  <text x="215" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">abstract list</text>
+
+  
+  <line x1="375" y1="337" x2="411" y2="337" stroke="#207448" stroke-width="4"/>
+  <polygon points="425,337 411,330 411,344" fill="#207448"/>
+
+  
+  <rect x="425" y="172" width="355" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="602.5" cy="172" r="24" fill="#207448"/>
+  <text x="602.5" y="181" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(574.5, 208)">
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="28" r="6" fill="#207448"/>
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 15 15 M 41 41 L 45 45 M 11 45 L 15 41 M 41 15 L 45 11" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  <text x="602.5" y="325" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="602.5" dy="0">pip-compile</tspan>
+    <tspan x="602.5" dy="42">--generate-hashes</tspan>
+  </text>
+
+  
+  <line x1="780" y1="337" x2="816" y2="337" stroke="#207448" stroke-width="4"/>
+  <polygon points="830,337 816,330 816,344" fill="#207448"/>
+
+  
+  <rect x="830" y="172" width="335" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="997.5" cy="172" r="24" fill="#207448"/>
+  <text x="997.5" y="181" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(969.5, 208)">
+    <rect x="6" y="22" width="44" height="32" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 16 22 V 14 A 12 12 0 0 1 40 14 V 22" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="35" r="3" fill="#207448"/>
+    <line x1="28" y1="38" x2="28" y2="45" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  
+  <text x="997.5" y="320" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">requirements.txt</text>
+  <text x="997.5" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">hashed lock</text>
+
+  
+  <line x1="1165" y1="337" x2="1201" y2="337" stroke="#207448" stroke-width="4"/>
+  <polygon points="1215,337 1201,330 1201,344" fill="#207448"/>
+
+  
+  <rect x="1215" y="172" width="330" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="1380" cy="172" r="24" fill="#207448"/>
+  <text x="1380" y="181" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(1352, 208)">
+    <path d="M 12 16 A 18 18 0 0 1 44 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polyline points="40,10 46,20 36,22" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 44 40 A 18 18 0 0 1 12 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polyline points="16,46 10,36 20,34" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <text x="1380" y="320" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">pip-sync</text>
+  <text x="1380" y="375" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1380" dy="0">environment matches</tspan>
+    <tspan x="1380" dy="36">the lock exactly</tspan>
+  </text>
+
+  
+  <rect x="55" y="570" width="720" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(387, 598)">
+    <path d="M 8 46 V 12 A 18 18 0 0 1 28 16 A 18 18 0 0 1 48 12 V 46 A 18 18 0 0 0 28 42 A 18 18 0 0 0 8 46 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="16" x2="28" y2="42" stroke="#207448" stroke-width="4"/>
+  </g>
+  
+  <text x="415" y="695" text-anchor="middle">
+    <tspan x="415" dy="0" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Library: </tspan>
+    <tspan x="415" dy="48" font-family="sans-serif" font-size="24" fill="#303a36">abstract ranges like <tspan font-family="monospace" font-weight="bold">requests&gt;=2.28,&lt;3</tspan></tspan>
+  </text>
+
+  
+  <rect x="825" y="570" width="720" height="250" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  
+  <g transform="translate(1157, 598)">
+    <rect x="4" y="4" width="48" height="46" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="4" y1="16" x2="52" y2="16" stroke="#db8129" stroke-width="3"/>
+    <circle cx="12" cy="10" r="2" fill="#db8129"/>
+    <circle cx="19" cy="10" r="2" fill="#db8129"/>
+    
+    <rect x="20" y="28" width="16" height="14" rx="3" fill="none" stroke="#db8129" stroke-width="3"/>
+    <path d="M 23 28 V 23 A 5 5 0 0 1 33 23 V 28" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  
+  <text x="1185" y="695" text-anchor="middle">
+    <tspan x="1185" dy="0" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Application: </tspan>
+    <tspan x="1185" dy="48" font-family="sans-serif" font-size="24" fill="#303a36">pinned lock with hashes</tspan>
+  </text>
+</svg>

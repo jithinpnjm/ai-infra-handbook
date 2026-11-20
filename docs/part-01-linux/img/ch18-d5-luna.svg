@@ -25,7 +25,7 @@
   <rect class="bg" x="0" y="0" width="1600" height="1270"/>
   <text class="title" x="800" y="64" text-anchor="middle">Troubleshooting</text>
 
-  <!-- Cards -->
+  
   <rect class="card" x="560" y="100" width="480" height="130" rx="18"/>
   <rect class="card" x="560" y="285" width="480" height="165" rx="18"/>
   <rect class="card" x="40" y="500" width="480" height="220" rx="18"/>
@@ -37,7 +37,7 @@
   <rect class="card" x="560" y="990" width="480" height="230" rx="18"/>
   <rect class="card" x="1080" y="990" width="480" height="230" rx="18"/>
 
-  <!-- Connectors -->
+  
   <path class="main-connector" d="M800 230 V285"/>
   <path class="connector" d="M650 450 V478 H280 V500"/>
   <path class="connector" d="M800 450 V500"/>
@@ -48,7 +48,7 @@
   <path class="connector" d="M800 940 V990"/>
   <path class="connector" d="M980 940 V960 H1320 V990"/>
 
-  <!-- Icons -->
+  
   <g class="icon" transform="translate(580 137)">
     <path d="M28 3 L53 48 H3 Z"/>
     <path d="M28 17 V32 M28 40 V41"/>
@@ -97,20 +97,20 @@
     <path d="M26 16 H34 M15 27 L25 36 M45 27 L35 36"/>
   </g>
 
-  <!-- Symptom -->
+  
   <text class="body" x="660" y="151">
     <tspan x="660" dy="0">Symptom: slow / latency</tspan>
     <tspan x="660" dy="32">spikes / jitter</tspan>
   </text>
 
-  <!-- CPU decision -->
+  
   <text x="660" y="337">
     <tspan class="strong" x="660" dy="0">CPU saturated?</tspan>
     <tspan class="mono" x="660" dy="34">mpstat, runqlat,</tspan>
     <tspan class="mono" x="660" dy="30">PSI cpu</tspan>
   </text>
 
-  <!-- Single-thread bottleneck -->
+  
   <text x="140" y="538">
     <tspan class="body" x="140" dy="0">Single-thread</tspan>
     <tspan class="body" x="140" dy="29">bottleneck or IRQs:</tspan>
@@ -119,21 +119,21 @@
     <tspan class="mono" x="140" dy="29">RPS/RSS, pin IRQs</tspan>
   </text>
 
-  <!-- Profile -->
+  
   <text class="body" x="660" y="542">
     <tspan x="660" dy="0">Profile (perf, flame</tspan>
     <tspan x="660" dy="30">graph); is IPC low</tspan>
     <tspan x="660" dy="30">(memory-bound) or high?</tspan>
   </text>
 
-  <!-- Cgroup decision -->
+  
   <text x="1180" y="542">
     <tspan class="strong" x="1180" dy="0">In a cgroup with</tspan>
     <tspan class="strong" x="1180" dy="34">cpu.max?</tspan>
     <tspan class="mono" x="1180" dy="32">cat cpu.stat</tspan>
   </text>
 
-  <!-- Quota throttling -->
+  
   <text class="body" x="140" y="805">
     <tspan x="140" dy="0">Quota throttling:</tspan>
     <tspan x="140" dy="30">raise/remove limit,</tspan>
@@ -141,7 +141,7 @@
     <tspan class="mono" x="140" dy="30">GOMAXPROCS/OMP</tspan>
   </text>
 
-  <!-- Steal time or clocks decision -->
+  
   <text x="660" y="797">
     <tspan class="strong" x="660" dy="0">Steal time or</tspan>
     <tspan class="strong" x="660" dy="34">low clocks?</tspan>
@@ -149,21 +149,21 @@
     <tspan class="mono" x="660" dy="29">dmesg thermal</tspan>
   </text>
 
-  <!-- Noisy neighbour -->
+  
   <text class="body" x="140" y="1030">
     <tspan x="140" dy="0">Noisy neighbour /</tspan>
     <tspan x="140" dy="30">over-committed host:</tspan>
     <tspan x="140" dy="30">move or resize</tspan>
   </text>
 
-  <!-- Governor and power -->
+  
   <text class="body" x="660" y="1030">
     <tspan x="660" dy="0">Governor, power cap,</tspan>
     <tspan x="660" dy="30">thermal throttling,</tspan>
     <tspan x="660" dy="30">C-states</tspan>
   </text>
 
-  <!-- Migration and NUMA -->
+  
   <text x="1180" y="1021">
     <tspan class="body" x="1180" dy="0">Migration/NUMA:</tspan>
     <tspan class="mono" x="1180" dy="29">perf stat</tspan>
@@ -174,7 +174,7 @@
     <tspan class="body" x="1180" dy="28">pressure?</tspan>
   </text>
 
-  <!-- Connector labels -->
+  
   <rect x="350" y="448" width="250" height="30" rx="8" fill="#f5f8f5"/>
   <text class="edge-label" x="475" y="471" text-anchor="middle">yes, some CPUs hot</text>
   <rect x="815" y="448" width="175" height="30" rx="8" fill="#f5f8f5"/>

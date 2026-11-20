@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "28",
+  "name": "n28-evolution",
+  "title": "How device management interfaces evolved",
+  "spec": "Timeline left to right with six markers: 1990s SNMP (UDP 161/162; good for monitoring, poor for configuration); 1990s to now SSH/Telnet CLI screen scraping (unstructured text, fragile parsing, no transactions); 2006+ NETCONF (RFC 6241, XML over SSH port 830, transactional, YANG); 2016+ gRPC/gNMI (OpenConfig, HTTP/2 + Protocol Buffers, streaming telemetry); 2017+ RESTCONF (RFC 8040, HTTP + JSON/XML on YANG); now Linux NOS (SONiC, Cumulus, FRR). Each marker has a strength chip (green) and a weakness chip (orange). Orange note: 'A script parsing the fourth column of a CLI table breaks silently when a vendor adds a column'.",
+  "anchor": "## 2. The evolution of device management interfaces",
+  "alt": "Evolution of management interfaces",
+  "cap": "Each generation of device interface reacted to the weaknesses of the one before it."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "28",
+  "name": "n28-modeldriven",
+  "title": "NETCONF, RESTCONF and gNMI compared",
+  "spec": "Three-column comparison table with rows: Encoding: XML / JSON or XML / JSON, JSON_IETF or PROTO (protobuf); Transport: SSH (TLS) / HTTP(S) / gRPC over HTTP/2 + TLS; Transaction scope: network-wide capable (lock, candidate, commit) / single target, single shot / single target, Set atomic per request; Streaming telemetry: notifications (limited) / SSE (limited) / native Subscribe (sample, on-change); Tooling: ncclient / curl, requests / gNMIc, pygnmi, Telegraf; Best for: configuration with transactions / simple CRUD / high-rate telemetry. Green bar: 'Choose NETCONF when you need transactions, and gNMI for high-rate telemetry'.",
+  "anchor": "### Comparing the model-driven protocols",
+  "alt": "Model-driven protocol comparison",
+  "cap": "NETCONF suits transactional configuration, RESTCONF suits simple web tooling and gNMI suits streaming telemetry."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "28",
+  "name": "n28-sdnmodels",
+  "title": "Four SDN control plane models",
+  "spec": "Four rows from left (all on device) to right (all central), as a slider: Distributed: control plane runs on the forwarding devices (OSPF/IS-IS/BGP everywhere); Augmented: distributed stays, off-box processes influence the RIB (PCE, BGP controllers, Fibbing, I2RS); Hybrid: centralised control plane runs in parallel with the distributed one (controller speaking BGP/OpenFlow alongside OSPF); Replace: no distributed control plane, controller programs the FIB directly (classic OpenFlow, P4Runtime). A bar below: 'a control plane supplies topology, reachability and policy'. Orange note: 'what happens when the controller or its connectivity fails?'.",
+  "anchor": "### Four models of interaction",
+  "alt": "SDN interaction models",
+  "cap": "The four models differ mainly in where the control plane runs."
+ }
+]

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Type hints are checked before running</title>
+  <desc>Diagram showing that static type checkers read type hints before the program runs to report mismatches, while Python ignores type hints at run time.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="10" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="10" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="60" y="110" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Type hints are checked before running</text>
+
+  
+  <g id="left-box">
+    <rect x="60" y="200" width="560" height="580" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 104 236 L 138 236 L 156 254 L 156 288 L 104 288 Z" />
+      <path d="M 138 236 L 138 254 L 156 254" />
+      <path d="M 120 264 L 114 271 L 120 278" stroke-width="3" />
+      <path d="M 140 264 L 146 271 L 140 278" stroke-width="3" />
+      <line x1="133" y1="262" x2="127" y2="280" stroke-width="3" />
+    </g>
+
+    <text x="175" y="272" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">code with hints</text>
+
+    
+    <rect x="90" y="360" width="500" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="120" cy="390" r="6" fill="#207448" opacity="0.3" />
+    <circle cx="140" cy="390" r="6" fill="#207448" opacity="0.3" />
+    <circle cx="160" cy="390" r="6" fill="#207448" opacity="0.3" />
+
+    <text x="120" y="480" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">def start(port: int) -&gt; bool</text>
+  </g>
+
+  
+  <path d="M 620 440 C 690 440, 700 330, 756 330" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 620 500 C 690 500, 700 650, 756 650" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="top-box">
+    <rect x="760" y="200" width="780" height="260" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="828" cy="256" r="18" />
+      <line x1="841" y1="269" x2="856" y2="284" />
+      <path d="M 820 256 L 826 262 L 837 250" stroke-width="3.5" />
+    </g>
+
+    <text x="880" y="272" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">static checker (mypy or pyright)</text>
+    
+    <text x="800" y="348" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="800" dy="0">reads the hints before the program runs</tspan>
+      <tspan x="800" dy="38">and reports mismatches</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-box">
+    <rect x="760" y="520" width="780" height="260" rx="20" fill="#fdf8f3" stroke="#db8129" stroke-width="3.5" />
+
+    
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="828" cy="580" r="24" />
+      <polygon points="822,568 838,580 822,592" fill="#db8129" stroke="#db8129" stroke-width="2" />
+    </g>
+
+    <text x="880" y="592" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">at run time</text>
+
+    <text x="800" y="672" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Python ignores the hints</text>
+  </g>
+</svg>

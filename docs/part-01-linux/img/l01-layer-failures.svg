@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Which layer does the failure live in</title>
+  <desc>A troubleshooting table showing symptoms, failure layers, and first check commands across Linux system layers.</desc>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which layer does the failure live in</text>
+
+  
+  
+  <rect x="50" y="100" width="690" height="65" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="395" y="143" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Symptom</text>
+
+  
+  <rect x="760" y="100" width="450" height="65" rx="10" fill="#db8129" stroke="#db8129" stroke-width="2"/>
+  <text x="985" y="143" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Layer</text>
+
+  
+  <rect x="1230" y="100" width="320" height="65" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1390" y="143" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">First check</text>
+
+  
+  
+  <rect x="50" y="185" width="690" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  
+  <g>
+    <rect x="85" y="220" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="93" y1="212" x2="93" y2="220" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="105" y1="212" x2="105" y2="220" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="117" y1="212" x2="117" y2="220" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="93" y1="260" x2="93" y2="268" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="105" y1="260" x2="105" y2="268" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="117" y1="260" x2="117" y2="268" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="77" y1="228" x2="85" y2="228" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="77" y1="240" x2="85" y2="240" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="77" y1="252" x2="85" y2="252" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="125" y1="228" x2="133" y2="228" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="125" y1="240" x2="133" y2="240" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="125" y1="252" x2="133" y2="252" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <rect x="97" y="232" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="155" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">nvidia-smi fails after kernel update</text>
+  
+  <rect x="760" y="185" width="450" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="985" y="248" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#207448">kernel modules</text>
+  
+  <rect x="1230" y="185" width="320" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <rect x="1250" y="210" width="280" height="60" rx="8" fill="#f0f5f1" stroke="#b6d0bf" stroke-width="1.5"/>
+  <text x="1390" y="248" text-anchor="middle" font-family="'SF Mono', 'Fira Code', 'Roboto Mono', Menlo, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">uname -r</text>
+
+  
+  
+  <rect x="50" y="315" width="690" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  
+  <g>
+    <rect x="81" y="344" width="48" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="81" y1="358" x2="129" y2="358" stroke="#207448" stroke-width="4"/>
+    <circle cx="91" cy="351" r="2" fill="#207448"/>
+    <circle cx="98" cy="351" r="2" fill="#207448"/>
+    <circle cx="105" cy="351" r="2" fill="#207448"/>
+    <line x1="91" y1="372" x2="105" y2="372" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="91" y1="384" x2="119" y2="384" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="155" y="378" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">GLIBC_2.xx not found</text>
+  
+  <rect x="760" y="315" width="450" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="985" y="378" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#207448">user-space libraries</text>
+  
+  <rect x="1230" y="315" width="320" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <rect x="1250" y="340" width="280" height="60" rx="8" fill="#f0f5f1" stroke="#b6d0bf" stroke-width="1.5"/>
+  <text x="1390" y="378" text-anchor="middle" font-family="'SF Mono', 'Fira Code', 'Roboto Mono', Menlo, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">ldd ./binary</text>
+
+  
+  
+  <rect x="50" y="445" width="690" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  
+  <g>
+    <ellipse cx="105" cy="481" rx="24" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 81,500 A 24 8 0 0 0 129,500" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 81,481 L 81,519 A 24 8 0 0 0 129,519 L 129,481" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="155" y="508" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">kill -9 has no effect, state D</text>
+  
+  <rect x="760" y="445" width="450" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="985" y="508" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#207448">kernel waiting on hardware</text>
+  
+  <rect x="1230" y="445" width="320" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <rect x="1250" y="470" width="280" height="60" rx="8" fill="#f0f5f1" stroke="#b6d0bf" stroke-width="1.5"/>
+  <text x="1390" y="508" text-anchor="middle" font-family="'SF Mono', 'Fira Code', 'Roboto Mono', Menlo, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">dmesg</text>
+
+  
+  
+  <rect x="50" y="575" width="690" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  
+  <g>
+    <circle cx="105" cy="630" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="105" cy="630" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="105" y1="606" x2="105" y2="614" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <line x1="105" y1="646" x2="105" y2="654" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <line x1="81" y1="630" x2="89" y2="630" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <line x1="121" y1="630" x2="129" y2="630" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <line x1="88" y1="613" x2="94" y2="619" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <line x1="116" y1="641" x2="122" y2="647" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <line x1="88" y1="647" x2="94" y2="641" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <line x1="116" y1="619" x2="122" y2="613" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <text x="155" y="638" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">Out of memory: Killed process</text>
+  
+  <rect x="760" y="575" width="450" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="985" y="638" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#207448">kernel OOM killer</text>
+  
+  <rect x="1230" y="575" width="320" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <rect x="1250" y="600" width="280" height="60" rx="8" fill="#f0f5f1" stroke="#b6d0bf" stroke-width="1.5"/>
+  <text x="1390" y="638" text-anchor="middle" font-family="'SF Mono', 'Fira Code', 'Roboto Mono', Menlo, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">memory.max</text>
+
+  
+  
+  <rect x="50" y="705" width="690" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  
+  <g>
+    <path d="M 105,733 L 128,742 C 128,765 105,787 105,787 C 105,787 82,765 82,742 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 97,758 L 103,764 L 115,752" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="155" y="768" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">ENOENT versus EACCES</text>
+  
+  <rect x="760" y="705" width="450" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="985" y="768" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#207448">system call return code</text>
+  
+  <rect x="1230" y="705" width="320" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <rect x="1250" y="730" width="280" height="60" rx="8" fill="#f0f5f1" stroke="#b6d0bf" stroke-width="1.5"/>
+  <text x="1390" y="768" text-anchor="middle" font-family="'SF Mono', 'Fira Code', 'Roboto Mono', Menlo, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">strace</text>
+</svg>

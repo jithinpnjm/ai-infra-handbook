@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "05",
+  "name": "g05-roofline-plot",
+  "title": "The roofline: a slanted memory limit meeting a flat compute limit",
+  "spec": "A log-log chart with the horizontal axis labelled arithmetic intensity in FLOPs per byte and the vertical axis labelled attainable TFLOPS. A slanted grey line rises from the lower left, labelled slanted roof, memory bandwidth bound, P equals I times B. A flat dark line runs across the top, labelled flat roof, peak compute. The two lines meet at a vertical dashed line labelled ridge point, I ridge equals peak compute over bandwidth. Three marked points sit on the chart: a small dot far left on the slanted roof labelled vector add, 0.083 FLOPs per byte, with a leader line; a dot on the slanted roof labelled batch 1 decode, 1.0 FLOPs per byte; a dot on the flat roof right of the ridge labelled batch 512 prefill, 409.6 FLOPs per byte. Small arrows from the left dots point up toward the slanted roof and from the right dot along the flat roof. Orange highlight on the batch 1 decode dot with the note: adding compute raises the flat roof, which this point never reaches. Monospace for 0.083, 1.0 and 409.6 and for the ridge value 295.2.",
+  "anchor": "### 1.1 Arithmetic Intensity, Machine Balance, and the Ridge Point",
+  "alt": "Roofline chart with memory and compute limits",
+  "cap": "Roofline: kernels left of the ridge are limited by memory bandwidth, and kernels right of it are limited by peak compute."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "05",
+  "name": "g05-strided-roof",
+  "title": "Using one value per cache line lowers the slanted roof",
+  "spec": "A log-log style chart with the same two axes as a roofline, arithmetic intensity on the horizontal axis and attainable TFLOPS on the vertical axis. Two slanted lines start from the same origin. The upper grey line is labelled coalesced, full 8.0 TB/s, U cache equals 1. The lower green line is labelled strided, 1 of 8 values used, U cache equals 0.125, effective 1.0 TB/s, and it is one eighth the slope of the upper line. A flat line at the top labelled peak compute, 80 TFLOPS for scalar FP32. The two slanted lines hit the flat line at different points: the upper at a ridge of 10 FLOPs per byte and the lower at a ridge of 80 FLOPs per byte, marked with two short vertical dashed lines and labels. A horizontal arrow between the two ridges labelled ridge moves 8 times right. Orange highlight on the lower green line with the note: same kernel math, fewer useful bytes per trip. Monospace for 8.0 TB/s, 1.0 TB/s, 0.125, 10 and 80.",
+  "anchor": "### 1.3 How uncoalesced or strided cache usage lowers the slanted roof",
+  "alt": "Slanted roof lowered when only one value per cache line is used",
+  "cap": "Strided access: using one value in eight lowers the memory slope eightfold, so the ridge point moves eight times further right."
+ }
+]

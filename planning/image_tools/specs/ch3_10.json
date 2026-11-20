@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "10",
+  "name": "s10-ndarray",
+  "title": "What a NumPy array is",
+  "spec": "Left: a long row of memory cells labelled one block of typed memory. Right: a metadata box with three rows dtype (bytes per element), shape (elements per axis), strides (bytes to step per axis). Arrow from metadata to the block labelled how to read it. Bottom: orange note transpose changes only the metadata, so it is nearly free. Green note: changing the dtype forces a copy.",
+  "anchor": "## 1. NumPy: the array model",
+  "alt": "A NumPy array is memory plus metadata",
+  "cap": "A NumPy array is a block of typed memory plus dtype, shape and strides that say how to read it."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "10",
+  "name": "s10-columnar",
+  "title": "Row storage versus columnar storage",
+  "spec": "Two panels with a small table of columns host, gpu, temp. Left panel Row storage: values stored record by record. Right panel Columnar (Parquet, Arrow): values stored column by column, with an arrow showing a query reads only the temp column (green). Bottom bar: columnar files read less data and compress better.",
+  "anchor": "### Columnar formats: Parquet and Arrow",
+  "alt": "Row versus columnar storage",
+  "cap": "Columnar formats let a query read only the columns it needs."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "10",
+  "name": "s10-trainloop",
+  "title": "One training step",
+  "spec": "A cycle of five boxes with arrows: 1 forward pass builds the graph, 2 loss, 3 loss.backward() fills gradients, 4 optimizer.step() updates weights, 5 optimizer.zero_grad() clears gradients, back to 1. Orange note on 5: gradients accumulate unless cleared.",
+  "anchor": "### 3.2 Autograd and modules",
+  "alt": "The PyTorch training step",
+  "cap": "Autograd: the forward pass records a graph, backward fills gradients, and the optimizer updates the weights."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "10",
+  "name": "s10-memory",
+  "title": "Where training memory goes",
+  "spec": "A stacked bar of four segments labelled per parameter: weights 2 bytes in bf16 plus a 4-byte fp32 master copy ; gradients 2 to 4 bytes ; optimiser states 8 bytes (two fp32 moments) ; total about 16 bytes per parameter before activations. Right side worked example: 7 billion parameters x 16 B = 112 GB, more than one 80 GB GPU (orange). Note: this is why FSDP and ZeRO shard.",
+  "anchor": "### 3.3 Where the memory goes",
+  "alt": "Training memory per parameter",
+  "cap": "Training memory: about 16 bytes per parameter before activations, which is why large models need sharding."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "10",
+  "name": "s10-dataload",
+  "title": "Keep the GPU fed",
+  "spec": "Two timelines stacked. Top timeline Slow loader: GPU busy, GPU idle waiting for data, GPU busy, GPU idle (orange gaps). Bottom timeline Workers and prefetch: loading overlaps with GPU compute so the GPU stays busy (green). Bottom bar: data loading is usually the real bottleneck.",
+  "anchor": "### 3.5 Data loading: usually the real bottleneck",
+  "alt": "Overlapping data loading with GPU work",
+  "cap": "Data loading: worker processes and prefetching overlap input work with GPU compute so the GPU does not idle."
+ }
+]

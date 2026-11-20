@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "16",
+  "name": "g16-dsmem-cluster",
+  "title": "A cluster leader loads a tile once and its neighbours read it over the SM-to-SM network",
+  "spec": "A diagram of four square blocks arranged in a row inside one dashed outline labelled thread block cluster on one GPC. The leftmost block is labelled rank 0, leader, and holds a box labelled tile A and tile B in its shared memory. A thick arrow runs from HBM at the bottom into the leader box, labelled one load per cluster. Three thinner arrows run horizontally from the leader's box to the boxes of ranks 1, 2 and 3, labelled read over DSMEM, cluster map shared rank. A horizontal bar across the top of the outline labelled cluster sync with two small tick marks, one before the reads and one after. Orange highlight on the thick HBM arrow with the note: three neighbours skip three separate HBM loads. Monospace for rank 0, rank 1, cluster.sync() and DSMEM.",
+  "anchor": "### 4.2 Distributed Shared Memory versus hardware Scratch Memory",
+  "alt": "Cluster leader tile shared to neighbour blocks over DSMEM",
+  "cap": "Cluster sharing: one leader fetches the tile from HBM, and the other blocks in the cluster read it from distributed shared memory."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "16",
+  "name": "g16-coop-clamp",
+  "title": "A cooperative grid must fit on the GPU at once, so the launch size is clamped",
+  "spec": "A horizontal bar chart on one scale of blocks from 0 to 4,000. Top bar labelled unclamped grid for N equals 1,000,000 at 256 threads per block, length 3,907 blocks, drawn in grey, extending past a vertical dashed line. The dashed line is labelled maxCoopGrid equals 4 times 132 equals 528 blocks. Second bar labelled clamped grid, length 528 blocks, drawn in green and ending exactly at the dashed line. A bracket beyond the dashed line on the top bar labelled 3,379 blocks that cannot co-reside, so grid dot sync would never complete. A small note under the second bar reads a grid-stride loop covers the remaining elements. Orange highlight on the part of the top bar beyond the dashed line with the note: launch fails with cudaErrorCooperativeLaunchTooLarge. Monospace for 3,907, 528, 4, 132 and 256.",
+  "anchor": "### 3.3 Cooperative Groups and grid-wide synchronization",
+  "alt": "Unclamped cooperative grid compared with the co-resident limit",
+  "cap": "Cooperative clamp: a grid that synchronises with grid.sync() must fit on the GPU at once, so the block count is capped and a grid-stride loop covers the rest."
+ }
+]

@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "09",
+  "name": "b09-etcd-odd",
+  "title": "Why etcd uses an odd number of nodes",
+  "spec": "Two horizontal rows side by side for comparison. Row 1 labelled 3 etcd nodes: three small circles labelled etcd, one crossed out as failed, two remaining with a green tick, text beside: quorum holds, survives one failure. Row 2 labelled 4 etcd nodes: four small circles labelled etcd, one crossed out as failed, three remaining with a green tick, text beside: survives one failure, the extra node adds cost and coordination work. A bracket under both rows with the heading: the same tolerance for one failure. Orange highlight on the extra fourth node in row 2 with the note: adds no failure tolerance. Small monospace label for etcd. A grey note at the bottom: quorum is the majority of members that must agree before a change is saved.",
+  "anchor": "## 1. The reference architecture (4.1)",
+  "alt": "Three and four etcd nodes compared",
+  "cap": "Odd etcd count: four nodes tolerate no more failures than three, so the extra node adds cost without adding safety."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "09",
+  "name": "b09-worker-upgrade",
+  "title": "Order of a Kubernetes upgrade across control plane and workers",
+  "spec": "A top-to-bottom flow in two lanes. Top lane labelled control plane nodes: box 1 first control plane node: kubeadm upgrade plan, then kubeadm upgrade apply version. Box 2: other control plane nodes: kubeadm upgrade node. Arrow down to the bottom lane. Bottom lane labelled worker nodes, one at a time, with a repeating loop of six small boxes in order: kubectl drain --ignore-daemonsets, imageupdate -w --wait, kubeadm upgrade node, systemctl daemon-reload, systemctl restart kubelet, kubectl uncordon. A loop arrow back from the last box to the first labelled next worker. At the end a box: update the Kubernetes version recorded in BCM, because BCM does not update that record itself. Orange highlight on the imageupdate box with the note: update the image too, or a reboot brings back the old version. Monospace for all the commands.",
+  "anchor": "## 8. Upgrades, Edge, and Cluster API (CAPI)",
+  "alt": "Order of a Kubernetes upgrade",
+  "cap": "Kubernetes upgrade: upgrade the control plane first, then drain, update and uncordon each worker one at a time."
+ }
+]

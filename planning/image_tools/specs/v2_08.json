@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "n08-records",
+  "title": "DNS record types",
+  "spec": "Table with three columns Type, Question it answers, Example (monospace). Rows: A IPv4 address 'gpu01 IN A 10.20.0.45'; AAAA IPv6 address 'gpu01 IN AAAA 2001:db8::45'; CNAME alias 'www IN CNAME lb.example.com.'; NS name servers 'example.com. IN NS ns1.example.com.'; MX mail exchanger 'IN MX 10 mail.example.com.'; PTR reverse mapping '45.0.20.10.in-addr.arpa. IN PTR gpu01.example.com.'; SRV service location '_etcd-server-ssl._tcp IN SRV 0 5 2380 etcd1'; CAA which CAs may issue 'IN CAA 0 issue \"letsencrypt.org\"'. Orange note on CNAME: 'not allowed at the zone apex'.",
+  "anchor": "## 3. Resource records",
+  "alt": "DNS record types",
+  "cap": "Each record type answers a different question about a name."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "n08-ndots",
+  "title": "ndots and search domain expansion",
+  "spec": "Left: a pod's resolv.conf in monospace: 'search my-ns.svc.cluster.local svc.cluster.local cluster.local dc1.example.com', 'nameserver 10.96.0.10', 'options ndots:5'. Right: a lookup of api.example.com (2 dots, fewer than 5) producing a vertical list of tried names in order: api.example.com.my-ns.svc.cluster.local, then ...svc.cluster.local, then ...cluster.local, then ...dc1.example.com, finally the name itself (orange for the failing wasted ones). Bottom fixes row: 'FQDN with trailing dot', 'dnsConfig.options ndots: 1 or 2', 'NodeLocal DNSCache'.",
+  "anchor": "## 6. DNS in Kubernetes and containers",
+  "alt": "ndots search expansion in a pod",
+  "cap": "A name with fewer dots than ndots is tried through every search domain before the real name."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "n08-5sec",
+  "title": "The random 5-second delay",
+  "spec": "Sequence between pod and CoreDNS via node conntrack: pod sends two UDP queries, A and AAAA, from the same source port within microseconds; the AAAA query is lost in conntrack (orange X, race on same-5-tuple UDP flows through NAT); resolver waits 5 s (glibc timeout) then retries and the call stalls. Side fixes in monospace: 'single-request-reopen', 'use-vc', NodeLocal DNSCache, kernel upgrade. Green bar: 'Match the number of seconds to a timer and you will find the layer'.",
+  "anchor": "## 11. Case study: \"random 5-second delays\" in a GPU inference cluster",
+  "alt": "DNS 5-second stall",
+  "cap": "Two parallel UDP queries can race in conntrack, so one is lost and the resolver waits for its 5 second timeout."
+ }
+]

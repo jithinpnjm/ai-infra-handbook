@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>How storage is attached</title>
+  <desc>Infographic showing five storage attachment tiers from simple to shared: Disk devices (JBOD), RAID controller or software, Storage arrays and SANs, NAS, and Local NVMe in GPU servers.</desc>
+
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How storage is attached</text>
+
+  
+  <g id="row-1">
+    <rect x="80" y="125" width="1440" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(115, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="18" rx="24" ry="10"/>
+      <path d="M 4 18 v 38 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10 v -38"/>
+      <path d="M 4 37 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10"/>
+      <path d="M 4 56 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10"/>
+    </g>
+    
+    <text x="205" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Disk devices (JBOD)</text>
+    <text x="205" y="235" font-family="sans-serif" font-size="24" fill="#303a36">the OS sees each disk, easiest to observe</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="80" y="315" width="1440" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(115, 345)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="60" rx="6"/>
+      <line x1="6" y1="28" x2="50" y2="28"/>
+      <line x1="6" y1="48" x2="50" y2="48"/>
+      <circle cx="16" cy="18" r="3" fill="#207448"/>
+      <circle cx="16" cy="38" r="3" fill="#207448"/>
+      <circle cx="16" cy="58" r="3" fill="#207448"/>
+      <line x1="28" y1="18" x2="42" y2="18"/>
+      <line x1="28" y1="38" x2="42" y2="38"/>
+      <line x1="28" y1="58" x2="42" y2="58"/>
+    </g>
+    
+    <text x="205" y="368" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">RAID controller or software</text>
+    <text x="205" y="425" font-family="sans-serif" font-size="24" fill="#303a36">groups disks into one virtual disk, hardware RAID hides physical disks from the OS</text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="80" y="505" width="1440" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(115, 535)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="64" rx="4"/>
+      <line x1="4" y1="26" x2="52" y2="26"/>
+      <line x1="4" y1="46" x2="52" y2="46"/>
+      <circle cx="14" cy="16" r="3" fill="#207448"/>
+      <circle cx="22" cy="16" r="3" fill="#207448"/>
+      <circle cx="14" cy="36" r="3" fill="#207448"/>
+      <circle cx="22" cy="36" r="3" fill="#207448"/>
+      <circle cx="14" cy="56" r="3" fill="#207448"/>
+      <circle cx="22" cy="56" r="3" fill="#207448"/>
+      <line x1="32" y1="16" x2="44" y2="16"/>
+      <line x1="32" y1="36" x2="44" y2="36"/>
+      <line x1="32" y1="56" x2="44" y2="56"/>
+    </g>
+    
+    <text x="205" y="558" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Storage arrays and SANs</text>
+    <text x="205" y="615" font-family="sans-serif" font-size="24" fill="#303a36">behind controllers with big caches, attach by FC, SAS or iSCSI, often multipath</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="80" y="695" width="1440" height="155" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(115, 725)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="8" width="36" height="40" rx="4"/>
+      <line x1="10" y1="26" x2="46" y2="26"/>
+      <circle cx="18" cy="17" r="2.5" fill="#207448"/>
+      <circle cx="18" cy="35" r="2.5" fill="#207448"/>
+      <line x1="28" y1="48" x2="28" y2="66"/>
+      <line x1="6" y1="66" x2="50" y2="66"/>
+      <circle cx="6" cy="66" r="3" fill="#207448"/>
+      <circle cx="50" cy="66" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="205" y="748" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">NAS</text>
+    <text x="205" y="805" font-family="sans-serif" font-size="24" fill="#303a36">over NFS, SMB/CIFS or iSCSI, the network becomes part of the I/O path</text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="80" y="885" width="1440" height="185" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(115, 915)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="14" width="44" height="48" rx="4"/>
+      <rect x="16" y="24" width="16" height="16" rx="2"/>
+      <line x1="14" y1="62" x2="14" y2="68"/>
+      <line x1="22" y1="62" x2="22" y2="68"/>
+      <line x1="30" y1="62" x2="30" y2="68"/>
+      <line x1="38" y1="62" x2="38" y2="68"/>
+    </g>
+    
+    <text x="205" y="938" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Local NVMe in GPU servers</text>
+    <text x="205" y="990" font-family="sans-serif" font-size="24" fill="#303a36">for scratch data, caches, fast checkpoints, belongs to that one machine</text>
+    
+    <g transform="translate(205, 1014)">
+      <rect x="0" y="0" width="530" height="38" rx="8" fill="#db8129" fill-opacity="0.15"/>
+      <text x="14" y="26" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">on the cloud an instance restart can lose it</text>
+    </g>
+  </g>
+</svg>

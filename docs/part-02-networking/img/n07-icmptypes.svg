@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 990" width="1600" height="990">
+  <title>ICMP types you must not block</title>
+  <desc>Visual reference of critical IPv4 and ICMPv6 types that must not be blocked in firewalls, highlighting Path MTU Discovery dependencies.</desc>
+
+  
+  <rect width="1600" height="990" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">ICMP types you must not block</text>
+
+  
+  <rect x="60" y="115" width="710" height="725" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(85, 133)">
+    <rect x="0" y="8" width="56" height="38" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="27" x2="56" y2="27" stroke="#207448" stroke-width="3"/>
+    <circle cx="14" cy="18" r="3.5" fill="#207448"/>
+    <circle cx="28" cy="18" r="3.5" fill="#207448"/>
+    <circle cx="42" cy="18" r="3.5" fill="#207448"/>
+    <line x1="16" y1="46" x2="16" y2="54" stroke="#207448" stroke-width="3"/>
+    <line x1="40" y1="46" x2="40" y2="54" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="160" y="173" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">IPv4</text>
+  <line x1="60" y1="202" x2="770" y2="202" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+
+  
+  <rect x="80" y="218" width="670" height="66" rx="10" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="105" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">0 Echo reply (ping response)</text>
+
+  
+  <rect x="80" y="298" width="670" height="152" rx="10" fill="#fff7ee" stroke="#db8129" stroke-width="3"/>
+  <rect x="80" y="298" width="10" height="152" rx="4" fill="#db8129"/>
+  <text x="105" y="338" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">3 Destination unreachable</text>
+  <text x="105" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(code 3 port,</text>
+  <text x="105" y="422" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">code 4 fragmentation needed and DF set)</text>
+
+  
+  <rect x="80" y="464" width="670" height="66" rx="10" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="105" y="506" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">5 Redirect</text>
+
+  
+  <rect x="80" y="544" width="670" height="66" rx="10" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="105" y="586" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">8 Echo request</text>
+
+  
+  <rect x="80" y="624" width="670" height="96" rx="10" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="105" y="662" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">11 Time exceeded</text>
+  <text x="105" y="700" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#506159">(TTL expired, traceroute)</text>
+
+  
+  <rect x="80" y="734" width="670" height="66" rx="10" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="105" y="776" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">12 Parameter problem</text>
+
+  
+  <line x1="750" y1="398" x2="850" y2="398" stroke="#db8129" stroke-width="3" stroke-dasharray="8,6"/>
+
+  
+  <rect x="830" y="115" width="710" height="725" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(855, 133)">
+    <circle cx="28" cy="27" r="25" fill="none" stroke="#207448" stroke-width="4"/>
+    <ellipse cx="28" cy="27" rx="13" ry="25" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="3" y1="27" x2="53" y2="27" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="930" y="173" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">ICMPv6</text>
+  <line x1="830" y1="202" x2="1540" y2="202" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+
+  
+  <rect x="850" y="218" width="670" height="66" rx="10" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="875" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">1 Destination unreachable</text>
+
+  
+  <rect x="850" y="298" width="670" height="152" rx="10" fill="#fff7ee" stroke="#db8129" stroke-width="3"/>
+  <rect x="850" y="298" width="10" height="152" rx="4" fill="#db8129"/>
+  <text x="875" y="344" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">2 Packet Too Big</text>
+  
+  <rect x="875" y="372" width="550" height="56" rx="8" fill="#db8129"/>
+  <text x="1150" y="408" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Path MTU Discovery depends on these</text>
+
+  
+  <rect x="850" y="464" width="670" height="66" rx="10" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="875" y="506" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">3 Time exceeded</text>
+
+  
+  <rect x="850" y="544" width="670" height="66" rx="10" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="875" y="586" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">128/129 Echo request/reply</text>
+
+  
+  <rect x="850" y="624" width="670" height="66" rx="10" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="875" y="666" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">133 to 137 neighbour discovery</text>
+
+  
+  <rect x="60" y="870" width="1480" height="74" rx="12" fill="#207448"/>
+  <g transform="translate(82, 884)">
+    <path d="M 23 2 L 41 9 L 41 23 C 41 35 23 44 23 44 C 23 44 5 35 5 23 L 5 9 Z" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round"/>
+    <polyline points="14,23 20,29 32,17" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="142" y="917" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Before you block any ICMP type, check which of the types above it would break</text>
+</svg>

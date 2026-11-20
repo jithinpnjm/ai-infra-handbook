@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "11",
+  "name": "n11-cutthrough",
+  "title": "Store-and-forward versus cut-through",
+  "spec": "Two timelines of one frame through a switch. Top 'Store-and-forward': receive the whole frame, verify FCS, then forward; latency grows with frame size (9000-byte jumbo on 10 Gb/s needs 7.2 us to serialise). Bottom 'Cut-through': starts forwarding as soon as the destination header is read; latency roughly constant, hundreds of nanoseconds; cost: corrupt frames may get through, the last hop's FCS check drops them (orange). Footer formula in monospace: 'Serialization delay = frame bits / link rate'. Note: port-to-port latency typically 300 ns to 1 us.",
+  "anchor": "### Cut-through versus store-and-forward, and buffers",
+  "alt": "Cut-through versus store-and-forward",
+  "cap": "Store-and-forward checks the whole frame first, while cut-through starts sending after the destination header."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "11",
+  "name": "n11-portmodes",
+  "title": "Access, trunk and native VLAN ports",
+  "spec": "A switch in the middle. Left: three hosts on access ports labelled 'Access: one VLAN, frames leave untagged'. Right: trunk link to a second switch labelled 'Trunk: multiple VLANs with 802.1Q tags (allowed list)', with one VLAN on it shown untagged and labelled 'Native (untagged) VLAN'. Orange warning: 'Mismatched native VLANs leak traffic across VLANs and trigger STP warnings'. Bottom practices strip: 'do not use VLAN 1', 'prune trunks', 'black-hole VLAN for unused ports'.",
+  "anchor": "### Port types",
+  "alt": "VLAN port modes",
+  "cap": "Access ports carry one untagged VLAN, trunks carry many tagged VLANs, and the native VLAN is the one sent untagged."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "11",
+  "name": "n11-intervlan",
+  "title": "Inter-VLAN routing",
+  "spec": "Panel A 'Router-on-a-stick': one trunk from a switch to a router with sub-interfaces eth0.10 and eth0.20, each holding the gateway IP of its VLAN. Panel B 'SVI / IRB': an interface per VLAN on an L3 switch. Panel C 'Data centre': VLAN gateway moves to the leaf switch; VLANs rarely extend beyond a rack or pair of leaves; stretch with EVPN/VXLAN (chapter 2.17). Monospace for sub-interface names. Orange note: 'A VLAN is a closed broadcast domain, so different VLANs need an L3 gateway'.",
+  "anchor": "### Inter-VLAN routing",
+  "alt": "Inter-VLAN routing options",
+  "cap": "Hosts in different VLANs reach each other only through a layer 3 gateway, built as sub-interfaces, SVIs or on the leaf."
+ }
+]

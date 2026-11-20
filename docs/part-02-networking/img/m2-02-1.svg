@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 950" width="1600" height="950">
+  <title>The DoD / TCP/IP model (4 layers)</title>
+  <desc>Visual diagram of the four layers of the TCP/IP (DoD) model: Application, Transport, Internet, and Link layers.</desc>
+
+  
+  <rect width="1600" height="950" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The DoD / TCP/IP model (4 layers)</text>
+
+  
+  <rect x="100" y="115" width="1400" height="780" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="140" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">TCP/IP (DoD) model</text>
+
+  
+  <g id="node-application">
+    <rect x="140" y="185" width="1320" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(180, 228)">
+      <rect x="0" y="0" width="50" height="48" rx="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="0" y1="14" x2="50" y2="14" stroke="#207448" stroke-width="2.5"/>
+      <circle cx="9" cy="7" r="2.5" fill="#207448"/>
+      <circle cx="16" cy="7" r="2.5" fill="#207448"/>
+      <circle cx="23" cy="7" r="2.5" fill="#207448"/>
+      <path d="M 14 26 L 21 31 L 14 36" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <line x1="26" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    
+    <text x="270" y="236" font-family="sans-serif">
+      <tspan x="270" font-size="30" font-weight="bold" fill="#207448">Application:</tspan>
+      <tspan x="270" dy="40" font-size="25" fill="#303a36">HTTP, DNS, SSH, TLS, NFS, gRPC</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="320" x2="800" y2="365" stroke="#207448" stroke-width="4"/>
+
+  
+  <g id="node-transport">
+    <rect x="140" y="365" width="1320" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(180, 408)">
+      <rect x="0" y="8" width="10" height="34" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <rect x="40" y="8" width="10" height="34" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <line x1="14" y1="18" x2="34" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 29 13 L 34 18 L 29 23" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <line x1="16" y1="32" x2="36" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 21 27 L 16 32 L 21 37" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    
+    <text x="270" y="416" font-family="sans-serif">
+      <tspan x="270" font-size="30" font-weight="bold" fill="#207448">Transport:</tspan>
+      <tspan x="270" dy="40" font-size="25" fill="#303a36">TCP, UDP (ports; reliability, flow control)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="500" x2="800" y2="545" stroke="#207448" stroke-width="4"/>
+
+  
+  <g id="node-internet">
+    <rect x="140" y="545" width="1320" height="135" rx="12" fill="#fff9f3" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(181, 588)">
+      <circle cx="24" cy="24" r="23" stroke="#db8129" stroke-width="3.5" fill="none"/>
+      <line x1="1" y1="24" x2="47" y2="24" stroke="#db8129" stroke-width="2.5"/>
+      <ellipse cx="24" cy="24" rx="12" ry="23" stroke="#db8129" stroke-width="2.5" fill="none"/>
+      <line x1="24" y1="1" x2="24" y2="47" stroke="#db8129" stroke-width="2.5"/>
+    </g>
+    
+    <text x="270" y="596" font-family="sans-serif">
+      <tspan x="270" font-size="30" font-weight="bold" fill="#db8129">Internet:</tspan>
+      <tspan x="270" dy="40" font-size="25" fill="#303a36">IPv4, IPv6, ICMP (addresses, routing, fragmentation)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="680" x2="800" y2="725" stroke="#207448" stroke-width="4"/>
+
+  
+  <g id="node-link">
+    <rect x="140" y="725" width="1320" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(180, 768)">
+      <rect x="7" y="10" width="36" height="28" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+      <path d="M 17 10 L 17 4 L 33 4 L 33 10" stroke="#207448" stroke-width="3" fill="none"/>
+      <line x1="15" y1="20" x2="15" y2="30" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="21" y1="20" x2="21" y2="30" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="27" y1="20" x2="27" y2="30" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="33" y1="20" x2="33" y2="30" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M 25 38 L 25 48" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    
+    <text x="270" y="776" font-family="sans-serif">
+      <tspan x="270" font-size="30" font-weight="bold" fill="#207448">Link (network access):</tspan>
+      <tspan x="270" dy="40" font-size="25" fill="#303a36">Ethernet, Wi-Fi, PPP; physical signalling</tspan>
+    </text>
+  </g>
+</svg>

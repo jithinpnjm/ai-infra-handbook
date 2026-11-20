@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "02",
+  "name": "d02-topo-symbols",
+  "title": "The topology symbols from fastest path to slowest",
+  "spec": "A vertical ladder of five rungs from top to bottom, each rung a horizontal bar with the symbol at the left and a short path description, and an arrow on the left side running down labelled slower path. Rung 1 (green, top): NV18, 18 bonded NVLink links through the NVSwitch chips, 900 GB/s per GPU, best GPU-to-GPU path. Rung 2: PIX, at most one PCIe switch, GPU to mlx5 or NVMe, 64 GB/s each way. Rung 3: PXB, several PCIe switches with no host bridge, slightly more latency than PIX. Rung 4: PHB or NODE, same socket through the CPU root complex, degraded, NCCL may turn off GPUDirect RDMA. Rung 5 (orange, bottom): SYS, across the UPI link between sockets, worst host path. A grey side note at the bottom: SYS does not mean NVLink is down. Monospace for NV18, PIX, PXB, PHB, NODE, SYS and NCCL.",
+  "anchor": "### 5.1 Decoding the topology matrix symbols",
+  "alt": "Topology matrix symbols from fastest to slowest",
+  "cap": "Topology symbols: NV18 is the fastest GPU path, and SYS, which crosses the socket link, is the slowest host path."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "02",
+  "name": "d02-sys-misbinding",
+  "title": "A GPU paired with a NIC on the far socket",
+  "spec": "Two stacked horizontal path diagrams for comparison. Top panel, labelled healthy pairing: GPU 0 on CPU socket 0 goes to PCIe switch 0 and then to mlx5_0 on the same switch, a short path marked PIX with a green tick and the note: never leaves the switch. Bottom panel, labelled mis-binding from NCCL_IB_HCA: GPU 0 on socket 0 goes up through switch 0 to CPU 0, across the Intel UPI link to CPU 1, down through switch 3 to mlx5_6, marked SYS with an orange highlight on the UPI link. Under the bottom panel, a note: each hop adds delay and shares a link with other traffic, so the whole collective slows to match. Monospace for GPU 0, mlx5_0, mlx5_6, NCCL_IB_HCA, PIX, SYS, UPI.",
+  "anchor": "### 5.2 Real-world failure: the `GPU 0` to `mlx5_6` (`SYS`) mis-binding",
+  "alt": "Healthy and mis-bound GPU to NIC paths",
+  "cap": "Mis-binding: a GPU paired with a NIC on the other socket sends every packet across the CPU socket link."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "02",
+  "name": "d02-numa-ranks",
+  "title": "Which local ranks belong to which NUMA node",
+  "spec": "Two large side-by-side boxes, labelled CPU socket 0 (NUMA node 0) on the left and CPU socket 1 (NUMA node 1) on the right, each containing its own cores, its own 1 TB DDR5, and its devices. Left box holds cores 0-55, GPUs 0 to 3, mlx5_0 to mlx5_3, and nvme0 to nvme3, with a bracket labelled local ranks 0 to 3. Right box holds cores 56-111, GPUs 4 to 7, mlx5_4 to mlx5_7, and nvme4 to nvme7, with a bracket labelled local ranks 4 to 7. Between the two boxes a narrow dashed link labelled UPI, with a red cross and the note: keep kernel launches and host copies off this link. Orange highlight on the UPI link. Small monospace command at the bottom: numactl --hardware. Monospace for the core ranges and device names.",
+  "anchor": "### 3.1 Dual Intel Xeon Platinum 8480C and NUMA split",
+  "alt": "Ranks pinned to the NUMA node that owns their GPU",
+  "cap": "NUMA pinning: ranks 0 to 3 stay on socket 0 and ranks 4 to 7 stay on socket 1, so launches never cross the socket link."
+ }
+]

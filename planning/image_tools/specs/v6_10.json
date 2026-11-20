@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "h10-task-remap",
+  "title": "A job sees its GPUs renumbered from zero",
+  "spec": "Three columns from left to right. Left column: a node box titled gpu node with eight small GPU boxes in one row, labelled /dev/nvidia0 through /dev/nvidia7. Only /dev/nvidia3 and /dev/nvidia7 are filled green and marked allocated; the other six are light grey with a small padlock icon, and a bracket under the grey boxes reads hidden by ConstrainDevices=yes. A caption under the node box reads the cgroup exposes /dev/nvidia3 and /dev/nvidia7. Middle column: a single box labelled SLURM_JOB_GPUS=3,7, with an arrow from the green GPUs into it. Right column: two task boxes stacked vertically with a note that they run with --gpus-per-task=1. Task 0 box reads CUDA_VISIBLE_DEVICES=0 and below it a small label reads physical GPU 3. Task 1 box reads CUDA_VISIBLE_DEVICES=1 and below it a small label reads physical GPU 7. Thin arrows run from the middle box to each task box, labelled relative to the job. Number circles are not used. Orange highlight on the relative-to-the-job label, the single most important point. Green takeaway bar at the bottom reads The job sees a renumbered world, so scripts should follow the renumbering, not the physical labels.",
+  "anchor": "### What the job sees",
+  "alt": "Allocated GPUs 3 and 7 appear inside the job as CUDA_VISIBLE_DEVICES 0 and 1, one for each task.",
+  "cap": "Inside a job, the allocated GPUs are renumbered from zero, so physical GPU 3 can appear as device 0."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "h10-numa-binding",
+  "title": "GPU and CPU binding on a two-socket node",
+  "spec": "A two-socket node drawn as one wide outline. Left half: a box titled Socket 0, NUMA 0, with a label Cores=0-31 and a row of four GPU boxes labelled GPU 0, GPU 1, GPU 2, GPU 3. Right half: a box titled Socket 1, NUMA 1, with a label Cores=32-63 and a row of four GPU boxes labelled GPU 4, GPU 5, GPU 6, GPU 7. Below the node, a row of three option cards side by side, each with a small outline icon. Card 1 title: --gpu-bind=closest. Text: each task is bound to the nearest GPU, with CPUs from the same NUMA node. Card 2 title: --gres-flags=enforce-binding. Text: CPUs come only from the cores bound to the job's GPUs, and the job may wait longer. Card 3 title: --gres-flags=disable-binding. Text: any core on the node can be used, for a job that wants more CPUs than its GPUs have bound to them. A thin dashed line from card 1 points to the socket that holds the chosen GPU. The card 2 border is orange as the single most important item. Below the cards, a small note reads check the layout with nvidia-smi topo -m. Green takeaway bar at the bottom reads Bind when ranks need their GPUs close to their CPUs, and confirm the layout first.",
+  "anchor": "## 3. Binding GPUs to tasks and CPUs",
+  "alt": "On a two-socket node, GPUs 0 to 3 sit on socket 0 with cores 0 to 31, and GPUs 4 to 7 sit on socket 1 with cores 32 to 63.",
+  "cap": "On a two-socket node, each GPU has a local socket, so binding keeps a rank's CPUs and GPU on the same side."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "h10-sharing-spectrum",
+  "title": "Sharing one GPU trades isolation for density",
+  "spec": "A horizontal arrow across the top of the figure, labelled more isolation on the left and more density on the right. Above the arrow, a separate box at the far left labelled Whole GPU, the default for training, with a note never share, and an icon of one full GPU block. Below the arrow, three cards placed left to right in increasing density order: card 1 MIG (Multi-Instance GPU) with an icon of a GPU split into blocks, note hardware partitioned, strong isolation, static layout, no NVLink across slices. Card 2 MPS (Multi-Process Service) with an icon of several small processes on one GPU, note several processes share one GPU, a percentage of GPU resources each, no memory isolation, trusted users only. Card 3 Sharding with an icon of a clock dividing time into slices, note takes turns on a GPU, does not fence processes or constrain device memory by default. Each card has a bold title and a short line of text, with the same size boxes. The card 2 box has the orange highlight as the single most important item for shared work. Green takeaway bar at the bottom reads Each sharing method trades isolation for density, so choose by what the workload can tolerate.",
+  "anchor": "## 5. Sharing a GPU: MIG, MPS and sharding",
+  "alt": "Whole GPUs, MIG, MPS and sharding sit on a spectrum from strong isolation to high density.",
+  "cap": "Each way of sharing a GPU gives up some isolation to fit more jobs on one device."
+ }
+]

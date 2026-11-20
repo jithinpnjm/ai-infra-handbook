@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "09",
+  "name": "d09-leaf-placement",
+  "title": "Where the compute leaf switches sit in an eight-rack row",
+  "spec": "A top-down plan of a row of eight compute racks drawn as a line of eight labelled boxes, racks 1 to 8, with three alternative placements shown in three bands. Band 1, labelled ToR, top of rack: one small leaf box sitting on top of each compute rack, with the note: switch heat goes into every compute rack, longest span 8 racks. Band 2, labelled MoR, middle of row: a dedicated network rack placed between racks 4 and 5, with lines fanning to all 8 racks, with the note: shortest span, 6 racks, switches out of compute racks. Band 3, labelled EoR, end of row: a dedicated network rack placed after rack 8 at the far end, with lines fanning to all 8 racks, with the note: longest span, 10 racks. Orange highlight on the MoR band with the note: keeps active optical cables under the 27 m limit. Monospace for ToR, MoR, EoR and the rack numbers 1 to 8.",
+  "anchor": "### 2.2 Physical placement of Compute Leaf switches: ToR vs MoR vs EoR",
+  "alt": "Top-of-rack, middle-of-row and end-of-row leaf placement",
+  "cap": "Leaf placement: middle-of-row gives the shortest cable span, while end-of-row gives the longest and top-of-rack adds heat to every compute rack."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "09",
+  "name": "d09-hash-collision",
+  "title": "Why five-tuple hashing piles elephant flows onto one spine link",
+  "spec": "A left-to-right diagram. Left: several elephant flows drawn as thick arrows, labelled RoCEv2 flows on UDP port 4791 with one-to-one address pairs, entering a box labelled leaf switch running static five-tuple hash. Right: four spine links drawn as parallel lanes leaving the box. Lane 1 is marked saturated at 100 percent with the flows stacked into it and packet drops. Lanes 2 to 4 are marked under 15 percent utilization and idle. Orange highlight on the saturated lane with the note: the hash is working as designed, it simply has too few values to spread the flows. Under the diagram, a green box: enable DLB, GLB or sDLB, plus DCQCN ECN and PFC. Monospace for UDP 4791, five-tuple hash, 100 percent and under 15 percent.",
+  "anchor": "### 3.1 Why five-tuple hashing fails for RoCEv2",
+  "alt": "Elephant flows colliding on one spine link under static hashing",
+  "cap": "Hash collision: RoCEv2 flows have little header variety, so static hashing can stack them on one spine link while the others sit idle."
+ }
+]

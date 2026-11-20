@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Why OSPF elects a DR and BDR</title>
+  <desc>Comparison of full mesh OSPF adjacencies versus DR and BDR design on a multiaccess Ethernet segment.</desc>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why OSPF elects a DR and BDR</text>
+
+  
+  <rect x="60" y="130" width="710" height="660" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(100, 165)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="12" y1="28" x2="28" y2="12" />
+    <line x1="28" y1="12" x2="44" y2="28" />
+    <line x1="44" y1="28" x2="28" y2="44" />
+    <line x1="28" y1="44" x2="12" y2="28" />
+    <line x1="12" y1="28" x2="44" y2="28" />
+    <line x1="28" y1="12" x2="28" y2="44" />
+    <circle cx="12" cy="28" r="4" fill="#207448" />
+    <circle cx="28" cy="12" r="4" fill="#207448" />
+    <circle cx="44" cy="28" r="4" fill="#207448" />
+    <circle cx="28" cy="44" r="4" fill="#207448" />
+  </g>
+  <text x="175" y="205" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Full mesh</text>
+
+  
+  <line x1="110" y1="480" x2="720" y2="480" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  <line x1="110" y1="465" x2="110" y2="495" stroke="#207448" stroke-width="6" stroke-linecap="round" />
+  <line x1="720" y1="465" x2="720" y2="495" stroke="#207448" stroke-width="6" stroke-linecap="round" />
+
+  
+  <path d="M 180 460 Q 260 400 340 460" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 340 460 Q 420 400 500 460" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 500 460 Q 580 400 660 460" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 180 460 Q 340 320 500 460" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 180 460 Q 420 240 660 460" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 340 500 Q 500 600 660 500" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+
+  
+  <circle cx="180" cy="480" r="20" fill="#ffffff" stroke="#207448" stroke-width="5" />
+  <circle cx="180" cy="480" r="8" fill="#207448" />
+
+  <circle cx="340" cy="480" r="20" fill="#ffffff" stroke="#207448" stroke-width="5" />
+  <circle cx="340" cy="480" r="8" fill="#207448" />
+
+  <circle cx="500" cy="480" r="20" fill="#ffffff" stroke="#207448" stroke-width="5" />
+  <circle cx="500" cy="480" r="8" fill="#207448" />
+
+  <circle cx="660" cy="480" r="20" fill="#ffffff" stroke="#207448" stroke-width="5" />
+  <circle cx="660" cy="480" r="8" fill="#207448" />
+
+  
+  <rect x="90" y="680" width="650" height="85" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="415" y="716" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="415" dy="0">4 routers need 6 relationships,</tspan>
+    <tspan x="415" dy="32">10 routers need 45; n(n-1)/2</tspan>
+  </text>
+
+  
+  <rect x="830" y="130" width="710" height="660" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(870, 165)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="28" cy="28" r="9" />
+    <circle cx="10" cy="14" r="4" fill="#207448" />
+    <circle cx="46" cy="14" r="4" fill="#207448" />
+    <circle cx="10" cy="42" r="4" fill="#207448" />
+    <circle cx="46" cy="42" r="4" fill="#207448" />
+    <line x1="20" y1="22" x2="14" y2="17" />
+    <line x1="36" y1="22" x2="42" y2="17" />
+    <line x1="20" y1="34" x2="14" y2="39" />
+    <line x1="36" y1="34" x2="42" y2="39" />
+  </g>
+  <text x="945" y="205" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">DR and BDR</text>
+
+  
+  <line x1="880" y1="480" x2="1490" y2="480" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  <line x1="880" y1="465" x2="880" y2="495" stroke="#207448" stroke-width="6" stroke-linecap="round" />
+  <line x1="1490" y1="465" x2="1490" y2="495" stroke="#207448" stroke-width="6" stroke-linecap="round" />
+
+  
+  <path d="M 950 456 Q 1030 400 1110 456" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 950 456 Q 1110 320 1270 460" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 950 456 Q 1190 240 1430 460" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+
+  
+  <path d="M 1110 504 Q 1190 565 1270 500" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 1110 504 Q 1270 625 1430 500" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+
+  
+  
+  <rect x="906" y="456" width="88" height="48" rx="14" fill="#207448" stroke="#ffffff" stroke-width="3" />
+  <text x="950" y="490" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">DR</text>
+
+  
+  <rect x="1061" y="456" width="98" height="48" rx="14" fill="#db8129" stroke="#ffffff" stroke-width="3" />
+  <text x="1110" y="490" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">BDR</text>
+
+  
+  <circle cx="1270" cy="480" r="20" fill="#ffffff" stroke="#207448" stroke-width="5" />
+  <circle cx="1270" cy="480" r="8" fill="#207448" />
+
+  
+  <circle cx="1430" cy="480" r="20" fill="#ffffff" stroke="#207448" stroke-width="5" />
+  <circle cx="1430" cy="480" r="8" fill="#207448" />
+
+  
+  <rect x="860" y="680" width="650" height="85" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1185" y="733" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">each other router keeps just two</text>
+
+  
+  <rect x="60" y="820" width="1480" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="858" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Election: highest priority, then highest router ID.</tspan>
+  </text>
+  <text x="800" y="895" text-anchor="middle" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif">Data-centre fabrics use </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold" fill="#207448">ip ospf network point-to-point</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> (no election)</tspan>
+  </text>
+</svg>

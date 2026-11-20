@@ -180,6 +180,10 @@ A login fails and the server says no. Resist the urge to change settings at rand
 
 ## 4. Copying files: `scp`, `sftp`, `rsync` and cloud tools
 
+![A goal-to-tool table for copying files over SSH and the network.](./img/l05-copy-tools.svg)
+
+*Figure 1.5.5. A one-off copy suits scp, while a directory you keep in step suits rsync.*
+
 You have a directory to move, and a choice to make. Do you want one copy, or two trees kept in step? The answer decides the tool. SSH includes two built-in file transfer protocols, `scp` and `sftp`. They pair with `rsync`, and with ad-hoc HTTP or FUSE tools. Brian Ward's *How Linux Works* summarizes when to pick each tool.
 
 | Goal / Scenario | Tool | Notes |
@@ -265,11 +269,15 @@ Once you are inside tmux, every command is a keystroke that follows the prefix `
 
 ![tmux detach and reattach](./img/ch05-fig3-tmux.jpg)
 
-*Figure 1.5.5. tmux keeps a session alive on the server: detach, lose the connection, reattach later.*
+*Figure 1.5.6. tmux keeps a session alive on the server: detach, lose the connection, reattach later.*
 
 Two cautions apply. First, tmux protects you from a dropped connection. It does not protect you from the machine rebooting or the job being preempted. For production batch work on a cluster, submit a batch job to the scheduler with `sbatch`, covered in chapter 6.11, instead of leaving something running in tmux on a login node. Login nodes are shared, and long CPU-heavy processes there are usually forbidden. Second, `nohup cmd &` and `disown` are lighter options for fire-and-forget background commands, and chapter 1.8 covers them. They give you no way to reattach, though.
 
 ## 6. Running commands on many nodes
+
+![One terminal fans a command out to many nodes and the identical outputs are grouped.](./img/l05-fanout.svg)
+
+*Figure 1.5.7. A healthy fleet prints one grouped line, so an outlier node stands out.*
 
 Clusters have hundreds of nodes, so logging in to each one to check is not a plan. Suppose you want the GPU count on every node. You can ask all of them at once. Here are the main options, from simplest to most capable.
 
@@ -319,6 +327,10 @@ Before you edit a production file, copy it, review the change with `diff -u`, an
 
 ## 8. Out-of-band access: when SSH is not available
 
+![The BMC gives a second way into a server when SSH and the operating system are unavailable.](./img/l05-bmc.svg)
+
+*Figure 1.5.8. The BMC has its own network port and works even when the main system is powered off.*
+
 Sometimes SSH cannot help you. The operating system may have crashed, the network configuration may be broken, or a node may refuse to boot. At that point no login, no tunnel and no key will get you in. Servers ship with a second way in for exactly this moment. The name for it is out-of-band access, because the path sits outside the normal login path.
 
 Servers have a separate management computer, the **BMC (baseboard management controller)**. It has its own network port and IP address, and it works even when the main system is powered off. Through it you can power-cycle the server, read hardware sensors and logs, update firmware, and open a virtual keyboard-video-mouse, called iKVM. You can also connect to the machine's serial console over the network, which is called serial-over-LAN, or SOL. The classic interface is IPMI. The modern one is Redfish, covered in Part 7.
@@ -332,6 +344,10 @@ ipmitool -I lanplus -H bmc-gpu01 -U admin -E chassis power cycle         # hard 
 Large clusters centralise this work. They use console servers, such as `conman`, and cluster managers, such as BCM, which chapter 8 covers. Two rules govern BMC security. First, the BMC network must be isolated and heavily protected, because a compromised BMC compromises the machine below the operating system. Second, credentials must never appear on command lines where other users can see them in `ps`. Keep the BMC network isolated, and keep its passwords off the command line.
 
 ## 9. AI-infrastructure patterns
+
+![From laptop through a bastion and login node to a compute node using srun or salloc.](./img/l05-hpc-path.svg)
+
+*Figure 1.5.9. On an HPC cluster you reach a compute node through Slurm rather than by logging in directly.*
 
 Most remote work on an AI cluster follows a handful of patterns. Each one comes with a rule you should know before you start.
 

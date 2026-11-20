@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "06",
+  "name": "b06-directory-options",
+  "title": "Three ways to get POSIX users onto the cluster",
+  "spec": "Three side-by-side columns, each a panel with a title and a small diagram. Column 1 titled 1. BCM standalone OpenLDAP (default): one box Head node OpenLDAP as the primary authority, with an arrow to a row of compute node boxes, label cmsh user and group modes manage users. Column 2 titled 2. Direct external LDAP or AD: a box Corporate LDAP or Active Directory on the far side, with arrows going straight to compute and login node boxes, labelled sssd or nslcd on each node, no head node in the lookup path. Column 3 titled 3. OpenLDAP syncrepl consumer on head node: a box Corporate LDAP as provider, a dashed arrow labelled syncrepl rid=2 to the head node OpenLDAP replica, then arrows from the head node to compute nodes, labelled local UID lookups. Orange highlight on column 3 with the note: lookups stay inside the cluster. Monospace for sssd.conf, nslcd, syncrepl and rid=2.",
+  "anchor": "### 9.2 Enterprise identity architectures: Local LDAP vs Direct External LDAP vs `syncrepl`",
+  "alt": "Three directory architectures for cluster users",
+  "cap": "Directory options: the local LDAP is simplest, direct external LDAP centralises users, and syncrepl keeps job lookups local."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "06",
+  "name": "b06-rotation-order",
+  "title": "Order of steps for a full credential rotation",
+  "spec": "A vertical sequence of four boxes with downward arrows and number circles 1 to 4. Box 1: Revoke or expire the management certificate in cert mode, the access someone may be using right now (highlight in orange). Box 2: Rotate the four core passwords with cm-change-passwd, on the active head node and then the passive head node, then push the new image hash to nodes with updateprovisioners and imageupdate -w. Box 3: Rotate the OpenLDAP root password if directory administration was exposed, follow Appendix I (note: cm-change-passwd does not touch it). Box 4: Rotate the out-of-band BMC passwords with bmcsettings, commit, then check credentialsoverview --inverse for outliers. Right side note: work top to bottom, closing the live door first. Monospace for the commands.",
+  "anchor": "### 9.4 Step-by-step incident response: Revoking compromised credentials and rotating cluster secrets",
+  "alt": "Four-step credential rotation order",
+  "cap": "Rotation order: revoke live access first, then the four admin passwords, the LDAP root password, and the BMC credentials."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "06",
+  "name": "b06-login-boundaries",
+  "title": "Three places that enforce the login boundary",
+  "spec": "Three stacked horizontal bands, each a panel with a machine name and a lock icon. Band 1: Head node, edit /etc/ssh/sshd_config, AllowUsers root or AllowGroups, PasswordAuthentication no. Band 2: Regular GPU compute nodes, set usernodelogin onlywhenjob on compute categories, with a note: a researcher can SSH to the node only while holding an active Slurm job on it, via pam_bright.so. Band 3: Dedicated login nodes, set usernodelogin always in a login category, with cgroup or limits.conf resource limits and no route to bmcnet 10.148.0.0/16. Orange highlight on band 2. Monospace for the file path, the setting values, pam_bright.so and 10.148.0.0/16.",
+  "anchor": "### 9.5 Hardening SSH and login-node boundaries (`usernodelogin` and `AllowUsers`)",
+  "alt": "Login boundaries on head, compute and login nodes",
+  "cap": "Login boundaries: the head node, compute nodes and login nodes each have their own SSH rule."
+ }
+]

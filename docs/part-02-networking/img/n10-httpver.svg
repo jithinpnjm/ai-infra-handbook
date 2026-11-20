@@ -1,0 +1,211 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>HTTP/1.1, HTTP/2 and HTTP/3</title>
+  <desc>Visual comparison of HTTP/1.1, HTTP/2, and HTTP/3 network protocols, multiplexing architecture, and connection reuse benefits.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">HTTP/1.1, HTTP/2 and HTTP/3</text>
+
+  
+  <g id="col-http1">
+    
+    <rect x="60" y="95" width="460" height="525" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(85, 115)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="12" y1="18" x2="44" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="12" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="12" y1="38" x2="30" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="160" y="153" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">HTTP/1.1</text>
+    <line x1="76" y1="185" x2="504" y2="185" stroke="#207448" stroke-width="1.5" stroke-opacity="0.4"/>
+
+    
+    <rect x="76" y="195" width="428" height="86" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="95" cy="238" r="5" fill="#207448"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="114" y="233">persistent connections</tspan>
+      <tspan x="114" y="265">(keep-alive)</tspan>
+    </text>
+
+    
+    <rect x="76" y="293" width="428" height="58" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="95" cy="322" r="5" fill="#207448"/>
+    <text x="114" y="330" font-family="sans-serif" font-size="24" fill="#303a36">Host header</text>
+
+    
+    <rect x="76" y="363" width="428" height="58" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="95" cy="392" r="5" fill="#207448"/>
+    <text x="114" y="400" font-family="sans-serif" font-size="24" fill="#303a36">over TCP</text>
+
+    
+    <rect x="76" y="433" width="428" height="86" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="95" cy="476" r="5" fill="#207448"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="114" y="471">one connection per request</tspan>
+      <tspan x="114" y="503">in HTTP/1.0</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-http2">
+    
+    <rect x="570" y="95" width="460" height="525" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(595, 115)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M12 18h16l12 10h4" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="12" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M12 38h16l12-10" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="670" y="153" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">HTTP/2 (RFC 9113)</text>
+    <line x1="586" y1="185" x2="1014" y2="185" stroke="#207448" stroke-width="1.5" stroke-opacity="0.4"/>
+
+    
+    <rect x="586" y="195" width="428" height="86" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="605" cy="238" r="5" fill="#207448"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="624" y="233">many streams multiplexed</tspan>
+      <tspan x="624" y="265">over one TCP connection</tspan>
+    </text>
+
+    
+    <rect x="586" y="293" width="428" height="58" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="605" cy="322" r="5" fill="#207448"/>
+    <text x="624" y="330" font-family="sans-serif" font-size="24" fill="#303a36">binary frames</text>
+
+    
+    <rect x="586" y="363" width="428" height="58" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="605" cy="392" r="5" fill="#207448"/>
+    <text x="624" y="400" font-family="sans-serif" font-size="24" fill="#303a36">HPACK header compression</text>
+
+    
+    <rect x="586" y="433" width="428" height="58" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="605" cy="462" r="5" fill="#207448"/>
+    <text x="624" y="470" font-family="sans-serif" font-size="24" fill="#303a36">flow control per stream</text>
+  </g>
+
+  
+  <g id="col-http3">
+    
+    <rect x="1080" y="95" width="460" height="525" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1105, 115)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M28 10l16 6v14c0 10-7 17-16 20-9-3-16-10-16-20V16l16-6z" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M28 20v14m-5-6h10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="1180" y="153" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">HTTP/3 (RFC 9114)</text>
+    <line x1="1096" y1="185" x2="1524" y2="185" stroke="#207448" stroke-width="1.5" stroke-opacity="0.4"/>
+
+    
+    <rect x="1096" y="195" width="428" height="54" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="1115" cy="222" r="5" fill="#207448"/>
+    <text x="1134" y="230" font-family="sans-serif" font-size="24" fill="#303a36">runs on QUIC over UDP</text>
+
+    
+    <rect x="1096" y="259" width="428" height="114" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="1115" cy="295" r="5" fill="#207448"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1134" y="293">independent streams so a</tspan>
+      <tspan x="1134" y="325">lost packet on one stream</tspan>
+      <tspan x="1134" y="357">does not block others</tspan>
+    </text>
+
+    
+    <rect x="1096" y="383" width="428" height="54" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="1115" cy="410" r="5" fill="#207448"/>
+    <text x="1134" y="418" font-family="sans-serif" font-size="24" fill="#303a36">faster handshakes</text>
+
+    
+    <rect x="1096" y="447" width="428" height="54" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="1115" cy="474" r="5" fill="#207448"/>
+    <text x="1134" y="482" font-family="sans-serif" font-size="24" fill="#303a36">connections can migrate</text>
+
+    
+    <rect x="1096" y="511" width="428" height="54" rx="8" fill="#ffffff" stroke="#c5dac9" stroke-width="1.5"/>
+    <circle cx="1115" cy="538" r="5" fill="#207448"/>
+    <text x="1134" y="546" font-family="sans-serif" font-size="24" fill="#303a36">TLS 1.3 built in</text>
+  </g>
+
+  
+  <g id="drawing-http1">
+    <rect x="60" y="635" width="460" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="290" y="675" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">several roads</text>
+
+    
+    <rect x="86" y="705" width="408" height="58" rx="8" fill="#e4ede6" stroke="#7aa288" stroke-width="2"/>
+    <line x1="96" y1="734" x2="484" y2="734" stroke="#ffffff" stroke-width="3" stroke-dasharray="10 10"/>
+    <rect x="150" y="718" width="60" height="32" rx="6" fill="#207448"/>
+
+    
+    <rect x="86" y="780" width="408" height="58" rx="8" fill="#e4ede6" stroke="#7aa288" stroke-width="2"/>
+    <line x1="96" y1="809" x2="484" y2="809" stroke="#ffffff" stroke-width="3" stroke-dasharray="10 10"/>
+    <rect x="330" y="793" width="60" height="32" rx="6" fill="#207448"/>
+
+    
+    <rect x="86" y="855" width="408" height="58" rx="8" fill="#e4ede6" stroke="#7aa288" stroke-width="2"/>
+    <line x1="96" y1="884" x2="484" y2="884" stroke="#ffffff" stroke-width="3" stroke-dasharray="10 10"/>
+    <rect x="230" y="868" width="60" height="32" rx="6" fill="#207448"/>
+  </g>
+
+  
+  <g id="drawing-http2">
+    <rect x="570" y="635" width="460" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="675" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">one road with many lanes</text>
+
+    
+    <rect x="596" y="705" width="408" height="208" rx="12" fill="#e4ede6" stroke="#207448" stroke-width="3"/>
+    
+    <line x1="606" y1="774" x2="994" y2="774" stroke="#ffffff" stroke-width="4" stroke-dasharray="16 12"/>
+    
+    <line x1="606" y1="844" x2="994" y2="844" stroke="#ffffff" stroke-width="4" stroke-dasharray="16 12"/>
+
+    
+    <rect x="650" y="722" width="52" height="36" rx="6" fill="#207448"/>
+    <rect x="810" y="722" width="52" height="36" rx="6" fill="#207448"/>
+
+    
+    <rect x="730" y="792" width="52" height="36" rx="6" fill="#207448"/>
+    <rect x="890" y="792" width="52" height="36" rx="6" fill="#207448"/>
+
+    
+    <rect x="630" y="862" width="52" height="36" rx="6" fill="#207448"/>
+    <rect x="790" y="862" width="52" height="36" rx="6" fill="#207448"/>
+  </g>
+
+  
+  <g id="drawing-http3">
+    <rect x="1080" y="635" width="460" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1310" y="675" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">many lanes over UDP</text>
+
+    
+    <rect x="1106" y="705" width="408" height="42" rx="6" fill="#e4ede6" stroke="#7aa288" stroke-width="2"/>
+    <rect x="1170" y="712" width="48" height="28" rx="4" fill="#207448"/>
+
+    <rect x="1106" y="753" width="408" height="42" rx="6" fill="#e4ede6" stroke="#7aa288" stroke-width="2"/>
+    <rect x="1320" y="760" width="48" height="28" rx="4" fill="#207448"/>
+
+    <rect x="1106" y="801" width="408" height="42" rx="6" fill="#e4ede6" stroke="#7aa288" stroke-width="2"/>
+    <rect x="1240" y="808" width="48" height="28" rx="4" fill="#207448"/>
+
+    
+    <rect x="1106" y="855" width="408" height="58" rx="8" fill="#cde2d3" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1106" y1="875" x2="1514" y2="875" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 6" stroke-opacity="0.6"/>
+    <line x1="1106" y1="895" x2="1514" y2="895" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 6" stroke-opacity="0.6"/>
+  </g>
+
+  
+  <g id="orange-note">
+    <rect x="60" y="985" width="1480" height="75" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    <text x="800" y="1032" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Reuse connections: saves the TCP and TLS handshake costs, 1 RTT + 1 RTT</text>
+  </g>
+</svg>

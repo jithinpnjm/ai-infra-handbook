@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "h07-munge-credential",
+  "title": "How munge proves who sent a request",
+  "spec": "Two node boxes side by side with a gap between them. The left box is titled Submitting node and holds a small user icon labelled user alice. The right box is titled Controller node and holds a box labelled slurmctld. Each node box contains a box labelled munged. Step 1: inside the left box, an arrow runs from the user into munged, labelled ask for a credential. Step 2: munged encodes a short credential holding the numeric UID and GID, drawn as a small token card with a clock icon labelled validity window, five minutes by default. Step 3: a green arrow labelled credential sent with the request crosses the gap from the left munged to the right munged. Step 4: inside the right box, munged decodes the credential, and an arrow leads out from it to a result box labelled numeric UID and GID reported back. Below both node boxes sits one wide key box labelled /etc/munge/munge.key, with a note beside it reading same key on every node. Two dotted lines run from the key box up into each munged box. Orange highlight on the key box, the single most important item. Number circles 1 to 4 mark the steps in time order. Green takeaway bar at the bottom: This is how Slurm can trust user 1042 sent this without passwords.",
+  "anchor": "## 6. Authentication: munge, and its successor",
+  "alt": "Munge encodes a credential on the sending node and the controller decodes it with the same shared key.",
+  "cap": "Munge lets the controller trust a user ID because every node decodes the same credential with one shared key."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "h07-bringup-order",
+  "title": "First bring-up order for a new Slurm cluster",
+  "spec": "A left-to-right chain of eight numbered step boxes, arranged in two rows of four with an arrow from the end of row one down to the start of row two. Each box has a green number circle with its step number 1 to 8 and a small outline icon, then a bold title and a short line of text. Step 1, title Users and time: create the slurm and munge users with fixed, identical UIDs on all nodes; confirm chrony is synchronised. Step 2, title Munge: create the key on one node, copy it to all nodes with mode 0400 and owner munge, then test with munge -n | unmunge. Step 3, title Database: install MariaDB, create the slurm_acct_db database and the slurm user. Step 4, title slurmdbd: write slurmdbd.conf with mode 600 and owner slurm, start it, and read its log because it creates the tables on first start. Step 5, title Controller: put slurm.conf in /etc/slurm, create the state and log directories owned by slurm, start slurmctld. Step 6, title Compute nodes: start slurmd on each node, copy the config or use configless mode. Step 7, title Accounting hierarchy: run the sacctmgr commands. Step 8, title Verify: run sinfo, scontrol ping, and sacct. Each arrow goes from one step to the next, and every step is drawn in the same size box. Above the row of boxes, a short orange note reads each step depends on the one before it. Green takeaway bar at the bottom reads Order matters when you bring a cluster up for the first time.",
+  "anchor": "## 11. Bringing it up, and verifying",
+  "alt": "Eight numbered steps bring up a Slurm cluster in order, from users and munge through the database and daemons to verification.",
+  "cap": "A first Slurm install works in eight ordered steps, and each one depends on the step before it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "h07-upgrade-order",
+  "title": "Upgrade order: database, controller, then nodes",
+  "spec": "A horizontal chain of three large boxes left to right with arrows between them. Box 1 titled slurmdbd, with a small database cylinder icon, labelled database first. Box 2 titled slurmctld, with a gear icon, labelled controller second. Box 3 titled slurmd and clients, with a server icon, labelled nodes last. Number circles 1, 2 and 3 sit on the boxes in time order. Above the chain, a box with a shield icon lists the two steps before you start: take a database backup, copy StateSaveLocation. Beneath the chain, a note reads stay within the supported compatibility window. Orange highlight on the arrow between box 2 and box 3. Green takeaway bar at the bottom reads Reversing that order is how a rolling upgrade turns into a stuck cluster.",
+  "anchor": "### Versions and upgrades",
+  "alt": "Slurm upgrades go in order: slurmdbd first, then slurmctld, then slurmd and the clients.",
+  "cap": "Upgrade slurmdbd first, then slurmctld, then the compute nodes and clients, so no daemon meets a message it cannot read."
+ }
+]

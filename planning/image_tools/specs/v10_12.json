@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "12",
+  "name": "g12-engine-lanes",
+  "title": "Three hardware engines can work on three different batches at the same time",
+  "spec": "Two stacked timeline panels sharing one time axis running left to right with no numbers. Top panel labelled one batch at a time: three lanes, H2D copy engine, SM compute, D2H copy engine, with blocks for batch 0, batch 1 and batch 2 placed one after another so that only one lane is busy at a time and the other lanes sit empty. Bottom panel labelled overlapped with pinned memory and separate streams: the same three lanes, but blocks are staggered so that in one time window the H2D lane carries batch 2 input, the SM lane carries batch 1 compute, and the D2H lane carries batch 0 output, shown with a dashed vertical guide across all three lanes. Each block is labelled with its batch number. Orange highlight on the vertical guide in the bottom panel with the note: three engines busy at once is device concurrency. Monospace for H2D, D2H, SM and batch 0, 1 and 2.",
+  "anchor": "### 1.1 Host asynchrony vs device concurrency and 3-way hardware engine overlap",
+  "alt": "Sequential batches versus three overlapped hardware engines",
+  "cap": "Overlap: when batches sit on separate streams, the copy engines and the SMs can each work on a different batch at the same moment."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "12",
+  "name": "g12-slot-ring",
+  "title": "A two-slot ring where each slot must be waited on, collected and refilled in order",
+  "spec": "A circular diagram with two slot boxes, slot 0 and slot 1, placed opposite each other on a ring, with an arrow showing chunk numbers alternating between them, labelled chunk mod 2. Around slot 0 a numbered sequence of arrows reads: one wait on the slot completion event, two collect the finished output to the host array, three refill the new input, four copy host to device, five run the kernel, six copy device to host, seven record the completion event. The same sequence is shown with a smaller label around slot 1 pointing to the same loop. A small side note on the ring reads never reuse a slot until its event has fired. Orange highlight on the step one wait arrow with the note: skipping this wait gives a race, and output at index 4194305 can be corrupted. Monospace for slot 0, slot 1, chunk mod 2 and the step names.",
+  "anchor": "### 3.2 Double-buffered pipeline ownership in `overlap_pipeline.cu`",
+  "alt": "Two-slot ring with wait, collect and refill order",
+  "cap": "Slot ownership: wait for the completion event, collect the old output, then refill, so no slot is overwritten while it still holds data."
+ }
+]

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "16",
+  "name": "s16-bound",
+  "title": "Bound methods carry the instance",
+  "spec": "Left: code chip bob.give_raise(0.1). Arrow to a bound method box holding two things: the instance bob and the function give_raise. Right: the same call written as Person.give_raise(bob, 0.1), the explicit form, labelled same result (green). Orange note: self is the instance passed as the first argument.",
+  "anchor": "### Method objects: bound or not",
+  "alt": "Bound methods",
+  "cap": "A bound method pairs the function with its instance, so obj.method() passes self automatically."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "16",
+  "name": "s16-delegation",
+  "title": "Inheritance versus delegation",
+  "spec": "Two panels. Left panel Inheritance (is-a): class Manager points up to class Person. Right panel Delegation (like-a): class Wrapper holds an attribute pointing at a wrapped object and forwards calls to it, through __getattr__ (green). Bottom bar: inherit to specialise, delegate to wrap.",
+  "anchor": "### Delegation: the like-a relationship",
+  "alt": "Inheritance versus delegation",
+  "cap": "Inheritance specialises a class, while delegation wraps another object and forwards calls to it."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "16",
+  "name": "s16-methodkinds",
+  "title": "Instance, class and static methods",
+  "spec": "Three rows: a code chip and a statement of what it receives. Plain method def m(self): receives the instance ; @classmethod def c(cls): receives the class ; @staticmethod def s(): receives nothing extra (green). Orange note: use classmethod for per-class data and alternative constructors.",
+  "anchor": "### Static method alternatives",
+  "alt": "Instance, class and static methods",
+  "cap": "A method receives the instance, the class or nothing, depending on how it is declared."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "16",
+  "name": "s16-slots",
+  "title": "Instance dictionary versus slots",
+  "spec": "Two panels. Left panel Normal instance: object box with a per-instance __dict__ that can grow new attributes (flexible, larger). Right panel With __slots__ = ('x', 'y'): object box with fixed slots x and y, no __dict__, and assigning another name raises AttributeError (orange), smaller memory (green).",
+  "anchor": "### Slots: attribute declarations",
+  "alt": "Instance dictionary versus __slots__",
+  "cap": "__slots__ replaces the per-instance dictionary with fixed slots, trading flexibility for memory."
+ }
+]

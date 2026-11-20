@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "35",
+  "name": "k35-geodns-anycast",
+  "title": "GeoDNS hands out a regional address, anycast shares one address everywhere",
+  "spec": "A two-panel comparison, left and right, with a header row. Left panel titled GeoDNS. At the top a user box labelled user with a phone icon, an arrow down to a box labelled recursive DNS resolver (ISP cache), then an arrow down to a box labelled DNS answer: regional cluster IP. From the DNS answer, three arrows fan out to three regional cluster boxes labelled cluster US, cluster EU and cluster Asia, with one cluster box drawn with a dashed grey outline and the note removed from DNS but still cached. A small note box beside the resolver reads caches may ignore the short TTL and keep old answers, and another note reads the location seen is the resolver, not the user. Right panel titled Anycast. One virtual address box labelled one global IP advertised with BGP at the top, with three edge location boxes labelled edge location A, edge location B and edge location C beneath it, each with an arrow from the same address. A single user box at the bottom left with one arrow to the nearest edge location, drawn as a solid green arrow. A note reads routing picks the closest by network performance, and another reads the balancer health-checks clusters and routes each HTTP request to a healthy one. Orange highlight on the dashed grey cluster box in the GeoDNS panel with the note the failed cluster keeps receiving traffic from stale caches. Green takeaway bar at the bottom: GeoDNS answers a name, anycast answers one address that routing steers.",
+  "anchor": "### User traffic: GeoDNS and anycast",
+  "alt": "GeoDNS returns a regional IP that caches can keep stale, while anycast advertises one virtual IP from many locations and routing picks the nearest.",
+  "cap": "GeoDNS returns a regional address that caches can keep stale, while anycast advertises one virtual address from many places and routing picks the nearest."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "35",
+  "name": "k35-gitops-fanout",
+  "title": "A label on a new cluster is enough for the ApplicationSet to deploy to it",
+  "spec": "A left-to-right flow in four stages. Stage 1 on the far left is a column of three registered cluster boxes labelled gpu-west, cpu-dev and gpu-east, where gpu-east is the new cluster and is highlighted green with a label chip gpu: true. Each box has a small cluster icon. Stage 2 is a filter box titled clusters generator with a monospace line selector matchLabels gpu: true, drawn as a funnel. The cpu-dev box has a dashed arrow ending at a grey X labelled not matched. Stage 3 is a template box titled ApplicationSet template with the monospace line name gpu-stack-{{name}} and the line server {{server}}, drawn as a stamp that is pressed once per matched cluster. Stage 4 is a column of Application boxes: gpu-stack-gpu-west and gpu-stack-gpu-east, each with an arrow pointing into a cluster box below labelled namespace gpu-system, with the monospace path clusters/{{metadata.labels.env}}/gpu-stack in a small note. Orange highlight on the gpu-east label chip with the note nobody logged in to the cluster. Under the flow a dashed return arrow from the stage 4 gpu-stack-gpu-east box back to stage 1, labelled if the label is removed, the generator stops producing it, and whether resources are removed depends on sync settings. Green takeaway bar at the bottom: the label does the work, and one template makes one Application per matching cluster.",
+  "anchor": "## 4. Configuration delivery with GitOps",
+  "alt": "An ApplicationSet with a clusters generator makes one Application per cluster that carries the matching label, so a new labelled cluster is deployed automatically.",
+  "cap": "An ApplicationSet produces one Application for each cluster that carries the matching label, so labelling a new cluster is enough to deploy to it."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "35",
+  "name": "k35-rings",
+  "title": "Rings spread a change from a canary to all production, with a pause switch",
+  "spec": "A horizontal sequence of four ring shapes drawn as nested or stepped boxes from left to right, each ring labelled by its name: ring 0 canary (note mirrors production hardware), ring 1 dev and staging, ring 2 prod ring 1 (note low-risk, the fewest users touched), ring 3 prod ring 2 (note the rest of production). Between each pair of rings a right arrow labelled soak time, with a small clock icon, meaning the change is watched before the next ring starts. Number circles r=24 green on each ring: 1 to 4. Above the rings, one long box at the top labelled pre-flight checks in CI, with three small items: API deprecation scan, Helm chart diff and admission policy tests, and a synthetic GPU job on the canary, drawn as a bar above ring 0. Below the rings a row of stop boxes: a rollback box labelled Git revert or node pool blue/green. Orange highlight on a global pause switch box placed at the bottom right, with a dashed arrow up into the arrow between ring 1 and ring 2 labelled stops the next ring before it starts. Green takeaway bar at the bottom: each ring must hold through its soak before the next one gets the change.",
+  "anchor": "## 9. Upgrades and change management",
+  "alt": "A fleet change moves through rings from canary to production, with a soak time between rings and a global pause switch that stops the next ring.",
+  "cap": "A fleet change moves ring by ring, from a canary to production, and each ring must hold through its soak time before the next one gets the change."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "35",
+  "name": "k35-mgmt-autoscaler",
+  "title": "A management cluster that the workload cluster's autoscaler depends on",
+  "spec": "Two layouts side by side. Left layout titled Central management cluster. A top box labelled management cluster with Cluster API controllers inside, with three arrows down to three box labelled workload cluster A, workload cluster B and workload cluster C. Inside the workload cluster A box, a small box labelled Cluster Autoscaler with a dashed arrow pointing up to the management cluster, labelled node provisioning lives in the management cluster. A grey warning chip reads if the management cluster is unavailable during a busy period, scaling stops and the workload waits. Right layout titled Self-contained Cluster API. A workload cluster box containing a Cluster Autoscaler box, a Cluster API box with the note Cluster and Machine resources live here, and a local arrow between them. A smaller box beside it labelled management cluster, with a dashed arrow into the workload cluster labelled create and delete clusters only. Orange highlight on the dashed arrow in the left layout, with the note the autoscaler depends on the management cluster. Green takeaway bar at the bottom: keep routine work such as autoscaling inside the workload cluster, and use the management cluster only to create and delete clusters.",
+  "anchor": "### Cluster federation and management clusters",
+  "alt": "A central management cluster provisions workload clusters, and running the Cluster API components inside each workload cluster keeps autoscaling working without it.",
+  "cap": "Running Cluster API inside each workload cluster keeps autoscaling working when the central management cluster is unavailable."
+ }
+]

@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "07",
+  "name": "g07-vram-gate",
+  "title": "Required VRAM for a 70B FP16 service against three candidate configurations",
+  "spec": "A horizontal bar chart on one shared scale of GB from 0 to 320. A dashed vertical line at 271 GB labelled required, weights plus KV cache times 1.2. Three bars, top to bottom: 1 times L40S PCIe at 48 GB, drawn short and grey, ending well left of the line and marked with a cross and fails G2; 4 times H100 SXM5 at 320 GB, drawn green and ending just right of the line, marked passes G1 to G5 and viable; 2 times H200 SXM at 282 GB, drawn green and ending just right of the line, marked winner with half the cards. A stacked bar sits above the three bars and is labelled requirement breakdown: weights 140 GB, KV cache for 64 users 85.9 GB, then the overhead to reach 271 GB. Orange highlight on the H200 bar with the note: same users, half the GPUs. Monospace for 140, 85.9, 271, 48, 320 and 282.",
+  "anchor": "### 5.3 Worked example: Sizing an inference cluster for Llama-3 70B",
+  "alt": "Required VRAM against three candidate GPU configurations",
+  "cap": "Memory gate: a 70B FP16 service needs about 271 GB, so one 48 GB card fails and two H200s beat four H100s."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "07",
+  "name": "g07-superchip-tiers",
+  "title": "A Grace Hopper superchip has two memory pools with very different speeds",
+  "spec": "A side-by-side layout with two large blocks connected by a link. Left block, labelled Grace CPU LPDDR5X: a wide block labelled up to 480 GB, with a thin arrow labelled about 500 GB/s, shaded grey and labelled holds embedding tables and cold data. Right block, labelled Hopper GPU HBM3: a smaller block labelled 96 GB, with a thick arrow labelled about 4 TB/s, shaded green and labelled holds hot weights and active KV cache. The two blocks are joined by a band labelled NVLink-C2C, 900 GB/s bidirectional, 450 GB/s per direction, marked hardware cache coherent. A bracket above both blocks reads one coherent address space, 576 GB total. Orange highlight on the thin grey arrow with the note: about ten times slower than on-package HBM, so keep hot data in HBM and prefetch cold layers. Monospace for 480 GB, 500 GB/s, 96 GB, 900 GB/s and 576 GB.",
+  "anchor": "### 4.2 Grace Superchips: GH200 and GB200",
+  "alt": "Grace LPDDR5X and Hopper HBM tiers on one coherent address space",
+  "cap": "Superchip tiers: the big CPU memory pool is coherent and reachable over C2C, but it is far slower than the GPU's own HBM."
+ }
+]

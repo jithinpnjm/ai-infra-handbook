@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "20",
+  "name": "l20-build-ladder",
+  "title": "What each step adds",
+  "spec": "Vertical ladder of steps, each a box with what it adds: Step 1 root filesystem (base); Step 2 plain chroot, only a different filesystem view; Step 3 unshare with PID, mount, UTS, IPC and net namespaces; Step 4 OverlayFS layers plus pivot_root; Step 5 cgroup limits for CPU, memory and PIDs; Step 6 veth pair, bridge and NAT; Step 7 drop privileges. Right column of the real-container check Step 8 compare with docker run, orange. Commands monospace: chroot, unshare, pivot_root, cgroup.",
+  "anchor": "## Step 1. Root filesystem",
+  "alt": "The lab builds a container by adding a filesystem, namespaces, layers, limits, networking and reduced privilege.",
+  "cap": "Each step adds one kernel feature until the result matches a real container."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "20",
+  "name": "l20-lab-network",
+  "title": "Lab network: bridge, veth and NAT",
+  "spec": "Diagram. Host box containing bridge br-lab with IP 10.77.0.1/24. A veth pair: vethh0 on the host attached to br-lab, vethc0 moved into the container network namespace and renamed eth0 with 10.77.0.2/24 and default route via 10.77.0.1. Host uplink on the right via iptables NAT rule MASQUERADE for 10.77.0.0/24 to the Internet. Commands monospace: ip link add vethh0 type veth peer name vethc0 ; sysctl -w net.ipv4.ip_forward=1. Test: ping -c2 10.77.0.1 and ping -c2 8.8.8.8.",
+  "anchor": "## Step 6. Networking",
+  "alt": "A bridge, a veth pair and a NAT rule connect the container namespace to the host and the Internet.",
+  "cap": "One end of the veth pair stays on the host bridge and the other becomes eth0 inside the container."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "20",
+  "name": "l20-enter-sh",
+  "title": "Inside enter.sh",
+  "spec": "Numbered vertical flow of the script's actions: mount --make-rprivate /; bind-mount /lab/merged onto itself; cd /lab/merged; mount proc, sysfs (read-only), tmpfs for dev, mknod for null, zero, urandom, tty; mount tmpfs on tmp; pivot_root . oldroot; umount -l /oldroot and rmdir; hostname container1; exec /bin/sh. Top box above flow: overlay mount lowerdir=/lab/base, upperdir=/lab/upper, workdir=/lab/work onto /lab/merged. Orange highlight on pivot_root. Commands monospace.",
+  "anchor": "## Step 4. Layers with OverlayFS and a proper root switch",
+  "alt": "The overlay mount and the enter.sh steps that switch the container's root with pivot_root.",
+  "cap": "The script makes mounts private, builds the root, pivots into it and detaches the old root."
+ }
+]

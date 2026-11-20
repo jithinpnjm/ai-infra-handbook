@@ -3769,6 +3769,10 @@ This feature is mostly useful in larger projects with several programmers, and o
 
 ### Method objects: bound or not
 
+![Bound methods](./img/s16-bound.svg)
+
+*Figure 3.16.1. A bound method pairs the function with its instance, so obj.method() passes self automatically.*
+
 A method is an object in its own right, and that fact unlocks several designs. Methods, and bound methods in particular, make many design goals easy in Python. We met bound methods briefly when we studied `__call__` in Chapter 30. The full story is more general and flexible than it first seems.
 
 Chapter 19 showed that functions are normal objects. Methods are objects too. You can assign them to names, pass them to functions, and store them in data structures. Like functions, modules, and classes, methods are first-class objects. A class's methods can be reached from an instance or from the class itself, so there are two flavors.
@@ -5659,6 +5663,10 @@ TypeError: Hack.printNumInstances() takes 0 positional arguments but 1 was given
 Calls through the class succeed. Calls through an instance fail, because Python passes the instance to a method that has no argument to receive it. If you call `self`-less methods only through classes, you already have a static method in practice. To call them through instances as well, you need a different design or a way to mark the method as special.
 
 ### Static method alternatives
+
+![Instance, class and static methods](./img/s16-methodkinds.svg)
+
+*Figure 3.16.2. A method receives the instance, the class or nothing, depending on how it is declared.*
 
 You can sometimes avoid marking the method at all. If you only need functions that read class data, use ordinary functions outside the class. Then no instance is expected. The next example shows this.
 

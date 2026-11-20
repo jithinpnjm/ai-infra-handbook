@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Is-a versus has-a</title>
+  <desc>Visual comparison of inheritance (is-a), where Child is tightly coupled to Parent, versus composition (has-a), where Pipeline holds interchangeable parts Client and Logger that can be swapped, with the design principle to prefer composition over inheritance.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Is-a versus has-a</text>
+
+  
+  <g id="left-panel">
+    
+    <rect x="60" y="105" width="710" height="670" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="100" y="135" width="630" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="415" y="178" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">Inheritance (is-a)</text>
+
+    
+    <g id="box-parent">
+      <rect x="195" y="230" width="440" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(225, 257)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="48" height="48" rx="8" />
+        <line x1="4" y1="20" x2="52" y2="20" />
+        <line x1="20" y1="20" x2="20" y2="52" />
+        <line x1="28" y1="32" x2="44" y2="32" />
+        <line x1="28" y1="42" x2="40" y2="42" />
+      </g>
+      <text x="315" y="296" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Parent</text>
+    </g>
+
+    
+    <path d="M 305 530 L 305 342" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
+
+    
+    <g id="note-tightly-coupled">
+      <rect x="355" y="405" width="260" height="60" rx="12" fill="#fff5ea" stroke="#db8129" stroke-width="3" />
+      <text x="485" y="443" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">tightly coupled</text>
+    </g>
+
+    
+    <g id="box-child">
+      <rect x="195" y="530" width="440" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(225, 557)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="10" y="10" width="42" height="42" rx="8" />
+        <polyline points="18 4 18 10 4 10" />
+        <line x1="22" y1="26" x2="40" y2="26" />
+        <line x1="22" y1="36" x2="34" y2="36" />
+      </g>
+      <text x="315" y="596" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Child</text>
+    </g>
+  </g>
+
+  
+  <g id="right-panel">
+    
+    <rect x="830" y="105" width="710" height="670" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="870" y="135" width="630" height="64" rx="12" fill="#207448" stroke="#207448" stroke-width="2" />
+    <text x="1185" y="178" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">Composition (has-a)</text>
+
+    
+    <g id="box-pipeline">
+      <rect x="965" y="230" width="440" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(995, 257)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="8" width="48" height="40" rx="8" />
+        <circle cx="16" cy="28" r="6" />
+        <circle cx="40" cy="28" r="6" />
+        <line x1="22" y1="28" x2="34" y2="28" />
+        <polyline points="30 24 34 28 30 32" />
+      </g>
+      <text x="1085" y="296" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Pipeline</text>
+    </g>
+
+    
+    <path d="M 1045 340 L 1045 478" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
+    <path d="M 1325 340 L 1325 478" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
+
+    
+    <g id="box-client">
+      <rect x="915" y="480" width="260" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(1017, 496)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="48" height="34" rx="6" />
+        <line x1="16" y1="44" x2="40" y2="44" />
+        <line x1="28" y1="40" x2="28" y2="44" />
+        <polyline points="14 18 20 23 14 28" />
+        <line x1="24" y1="28" x2="34" y2="28" />
+      </g>
+      <text x="1045" y="580" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Client</text>
+    </g>
+
+    
+    <g id="box-logger">
+      <rect x="1195" y="480" width="260" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(1297, 496)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 10 4 L 36 4 L 46 14 L 46 48 L 10 48 Z" />
+        <polyline points="36 4 36 14 46 14" />
+        <line x1="18" y1="24" x2="38" y2="24" />
+        <line x1="18" y1="32" x2="38" y2="32" />
+        <line x1="18" y1="40" x2="30" y2="40" />
+      </g>
+      <text x="1325" y="580" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Logger</text>
+    </g>
+
+    
+    <g id="note-parts-swapped">
+      <rect x="985" y="650" width="400" height="60" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="1185" y="688" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">parts can be swapped</text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="60" y="805" width="1480" height="65" rx="12" fill="#207448" />
+    <text x="800" y="847" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">prefer composition over inheritance</text>
+  </g>
+</svg>

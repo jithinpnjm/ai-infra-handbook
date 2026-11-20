@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>Anatomy of an HTTP exchange</title>
+  <desc>Visual breakdown of an HTTP exchange showing stacked request and response structures alongside status code classes.</desc>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Anatomy of an HTTP exchange</text>
+
+  
+  <g id="request-box">
+    
+    <rect x="40" y="120" width="920" height="360" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="65" y="142" width="56" height="46" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="65" y1="158" x2="121" y2="158" stroke="#207448" stroke-width="3"/>
+    <circle cx="76" cy="150" r="2.5" fill="#207448"/>
+    <circle cx="85" cy="150" r="2.5" fill="#207448"/>
+    <circle cx="94" cy="150" r="2.5" fill="#207448"/>
+    <path d="M 78 173 L 86 178 L 78 183" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <line x1="91" y1="183" x2="104" y2="183" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text x="135" y="176" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Request</text>
+    
+    
+    <rect x="270" y="146" width="230" height="38" rx="19" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="385" y="172" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">client to server</text>
+
+    
+    <rect x="65" y="206" width="870" height="64" rx="8" fill="#fef5ed" stroke="#db8129" stroke-width="2.5"/>
+    <rect x="65" y="206" width="8" height="64" rx="4" fill="#db8129"/>
+    <text x="90" y="246" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">GET /v1/models HTTP/1.1</text>
+    
+    
+    <rect x="520" y="218" width="395" height="40" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="717" y="245" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">first line: method + target</text>
+
+    
+    <rect x="65" y="286" width="870" height="174" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="90" y="332" font-family="monospace" font-size="24" fill="#303a36">Host: api.example.com</text>
+    <text x="90" y="382" font-family="monospace" font-size="24" fill="#303a36">Accept: application/json</text>
+    <text x="90" y="432" font-family="monospace" font-size="24" fill="#303a36">Authorization: Bearer eyJ...</text>
+  </g>
+
+  
+  <g id="first-line-note">
+    <rect x="290" y="498" width="420" height="44" rx="22" fill="#db8129"/>
+    <text x="500" y="528" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">read the first line first</text>
+  </g>
+
+  
+  <g id="response-box">
+    
+    <rect x="40" y="560" width="920" height="360" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="65" y="582" width="56" height="46" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="65" y1="605" x2="121" y2="605" stroke="#207448" stroke-width="3"/>
+    <circle cx="108" cy="594" r="3" fill="#207448"/>
+    <circle cx="108" cy="616" r="3" fill="#207448"/>
+    <line x1="77" y1="594" x2="96" y2="594" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="77" y1="616" x2="96" y2="616" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text x="135" y="616" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Response</text>
+
+    
+    <rect x="65" y="646" width="870" height="64" rx="8" fill="#fef5ed" stroke="#db8129" stroke-width="2.5"/>
+    <rect x="65" y="646" width="8" height="64" rx="4" fill="#db8129"/>
+    <text x="90" y="686" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">HTTP/1.1 200 OK</text>
+
+    
+    <rect x="520" y="658" width="395" height="40" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="717" y="685" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">first line: status</text>
+
+    
+    <rect x="65" y="726" width="870" height="174" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="90" y="772" font-family="monospace" font-size="24" fill="#303a36">Content-Type: application/json</text>
+    <text x="90" y="822" font-family="monospace" font-size="24" fill="#303a36">Content-Length: 142</text>
+    <text x="90" y="872" font-family="monospace" font-size="24" fill="#303a36">Cache-Control: max-age=60</text>
+  </g>
+
+  
+  <g id="status-classes-box">
+    
+    <rect x="1000" y="120" width="560" height="800" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="1030" y="142" width="56" height="48" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="1044" y1="158" x2="1072" y2="158" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="1044" y1="168" x2="1072" y2="168" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="1044" y1="178" x2="1064" y2="178" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text x="1102" y="176" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">status classes</text>
+
+    
+    <rect x="1030" y="212" width="500" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="1030" y="212" width="10" height="66" rx="5" fill="#207448"/>
+    <text x="1058" y="253" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">1xx informational</text>
+
+    
+    <rect x="1030" y="294" width="500" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="1030" y="294" width="10" height="66" rx="5" fill="#207448"/>
+    <text x="1058" y="335" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">2xx success</text>
+
+    
+    <rect x="1030" y="376" width="500" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="1030" y="376" width="10" height="66" rx="5" fill="#207448"/>
+    <text x="1058" y="417" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">3xx redirection</text>
+
+    
+    <rect x="1030" y="458" width="500" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="1030" y="458" width="10" height="66" rx="5" fill="#207448"/>
+    <text x="1058" y="499" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">4xx client error</text>
+
+    
+    <rect x="1030" y="540" width="500" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="1030" y="540" width="10" height="66" rx="5" fill="#207448"/>
+    <text x="1058" y="581" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">5xx server error</text>
+
+    
+    <rect x="1030" y="632" width="500" height="268" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="1066" cy="672" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1066" y="680" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">i</text>
+    
+    <text x="1055" y="736" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1055" dy="0">A 502, 503 or 504</tspan>
+      <tspan x="1055" dy="44">from a load balancer</tspan>
+      <tspan x="1055" dy="44">points to the upstream</tspan>
+    </text>
+  </g>
+</svg>

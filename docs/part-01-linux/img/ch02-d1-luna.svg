@@ -22,7 +22,7 @@
     <rect x="1100" y="760" width="440" height="260" rx="24"/>
   </g>
 
-  <!-- You type on keyboard -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="195" y="220" width="70" height="48" rx="7"/>
     <path d="M205 232h8m8 0h8m8 0h8m8 0h8m-48 12h8m8 0h8m8 0h8m8 0h8m-48 12h38"/>
@@ -32,7 +32,7 @@
     <tspan x="230" dy="42">on keyboard</tspan>
   </text>
 
-  <!-- Terminal emulator window, fonts -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="577" y="215" width="76" height="58" rx="6"/>
     <path d="M578 231h74m-61 15 10 8-10 8m18 0h20"/>
@@ -44,7 +44,7 @@
     <tspan x="615" dy="40" font-size="24" font-weight="400">window, fonts</tspan>
   </text>
 
-  <!-- Shell: bash, zsh reads and parses line -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="1232" y="215" width="76" height="58" rx="6"/>
     <path d="M1233 231h74m-61 15 10 8-10 8m18 0h20"/>
@@ -56,7 +56,7 @@
     <tspan x="1270" dy="40" font-size="24" font-weight="400">reads and parses line</tspan>
   </text>
 
-  <!-- Program: ls -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="242" y="795" width="76" height="58" rx="6"/>
     <path d="M243 811h74m-61 15 10 8-10 8m18 0h20"/>
@@ -65,7 +65,7 @@
   </g>
   <text x="280" y="900" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Program: ls</text>
 
-  <!-- Program: python3 -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="762" y="795" width="76" height="58" rx="6"/>
     <path d="M763 811h74m-61 15 10 8-10 8m18 0h20"/>
@@ -74,7 +74,7 @@
   </g>
   <text x="800" y="900" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Program: python3</text>
 
-  <!-- Builtins: cd, export -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="1320" cy="824" r="31"/>
     <circle cx="1320" cy="824" r="11"/>
@@ -82,7 +82,7 @@
   </g>
   <text x="1320" y="900" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Builtins: cd, export</text>
 
-  <!-- Connections -->
+  
   <path d="M400 320 H440" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
   <path d="M790 330 H1030" fill="none" stroke="#db8129" stroke-width="5" marker-start="url(#arrow-orange)" marker-end="url(#arrow-orange)"/>
   <rect x="806" y="270" width="208" height="42" rx="10" fill="#f5f8f5"/>

@@ -48,6 +48,10 @@ When you finish this chapter, you should be able to do the following.
 
 ## 1. The Python data model
 
+![Syntax maps to special methods](./img/s03-dunder.svg)
+
+*Figure 3.3.1. The data model: everyday syntax is a call to a special method on your object.*
+
 Suppose you write a small class and then find that `len()` and `for` refuse to work with it. A list answers `len()` in an instant; your class crashes. Neither piece of code is wrong on its own, so something must be wrong between them. That something is the data model, and it is the subject of this section.
 
 When you write `len(x)`, `x[i]`, `for a in x`, `x + y`, `with x:` or `print(x)`, Python does not search your object for built-in behaviour. It calls special methods on the object's type. These include `type(x).__len__(x)`, `__getitem__`, `__iter__`, `__add__`, `__enter__`/`__exit__` and `__str__`. Their names start and end with double underscores, which is why people call them dunder methods: dunder is short for double underscore.
@@ -138,6 +142,10 @@ len(f), f[0], f[-1], f[1:], "gpu02" in f, list(reversed(f)), f.index("gpu03")
 Only `__len__` and `__getitem__` were needed, and `Fleet` still gained index, count, iteration, `in` and `reversed` along the way. This is the essence of duck typing with protocols. The `collections.abc.Collection` hierarchy unifies `Iterable` (which needs `__iter__`), `Sized` (which needs `__len__`) and `Container` (which needs `__contains__`). `Sequence`, `Mapping` and `Set` specialise those. Anything with the right methods plugs in.
 
 ### Context managers
+
+![The with block lifecycle](./img/s03-ctxmgr.svg)
+
+*Figure 3.3.2. A context manager: __exit__ always runs, even when the body raises.*
 
 ```python
 from contextlib import contextmanager
@@ -335,6 +343,10 @@ The `operator` module gives you fast key and extraction functions without writin
 
 ### Closures (`make_averager`), decorators at import time, `@cache`, and `@singledispatch`
 
+![A closure keeps its free variable](./img/s03-closure.svg)
+
+*Figure 3.3.3. A closure: the inner function keeps the variable it uses from the enclosing function alive between calls.*
+
 Decorators are the first place where this idea pays off, and there is one subtlety to see early. Function decorators run at import time. The decorator call happens when the `def` statement executes, while the decorated function itself runs only when you call it later. A module that prints from inside its decorator shows this when you import it: the print lands during `import`, before any call. A stack such as `@alpha` above `@beta` is the same as `alpha(beta(f))`.
 
 Variable scope has a trap, and you can see it in the bytecode with `dis.dis`. In `def f2(a): print(a); print(b); b = 9`, CPython sees the assignment to `b` and treats `b` as a local variable. It compiles the reads as `LOAD_FAST` instead of `LOAD_GLOBAL`, so the first `print(b)` raises `UnboundLocalError`. A closure is a function that keeps access to free variables from an enclosing function, even after the outer function has returned. The `Averager` class and the `make_averager` function in the code file compare the two approaches.
@@ -517,6 +529,10 @@ Classic coroutines use `send()`, `throw()` and `close()`. Take `def gen(): for i
 A generator expression, such as `(f(x) for x in xs)`, is an anonymous one-shot generator. You can leave out its parentheses when it is the only argument, as in `sum(x ** 2 for x in range(3))`. You must keep them when more arguments follow, as in `sorted((x ** 2 for x in range(3)), reverse=True)`. An exception raised inside a generator travels to the consumer. A `StopIteration` raised inside a generator is converted to `RuntimeError` under PEP 479, so use `return` to stop early.
 
 ### Pipelines
+
+![A lazy generator pipeline](./img/s03-pipeline.svg)
+
+*Figure 3.3.4. A generator pipeline: each stage pulls one item at a time from the stage before it, so memory stays flat.*
 
 A pipeline chains generators together so that each stage handles one item at a time. The whole chain runs in constant memory, and you can test each stage on its own. The example below counts the top IP addresses behind 5xx errors in a set of compressed nginx logs.
 

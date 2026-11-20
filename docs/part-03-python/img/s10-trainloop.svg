@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>One training step</title>
+  <desc>A cycle of five steps in one training step: forward pass builds the graph, loss, loss.backward() fills gradients, optimizer.step() updates weights, optimizer.zero_grad() clears gradients, with a note that gradients accumulate unless cleared.</desc>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#303a36">One training step</text>
+
+  
+  <rect x="80" y="160" width="440" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <circle cx="140" cy="216" r="24" fill="#207448"/>
+  <text x="140" y="225" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="400" y1="202" x2="436" y2="210"/>
+    <line x1="400" y1="216" x2="436" y2="210"/>
+    <line x1="400" y1="216" x2="436" y2="230"/>
+    <line x1="400" y1="230" x2="436" y2="230"/>
+    <circle cx="396" cy="202" r="5" fill="#207448"/>
+    <circle cx="396" cy="216" r="5" fill="#207448"/>
+    <circle cx="396" cy="230" r="5" fill="#207448"/>
+    <circle cx="440" cy="210" r="5" fill="#207448"/>
+    <circle cx="440" cy="230" r="5" fill="#207448"/>
+  </g>
+
+  
+  <text x="300" y="325" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fill="#303a36">
+    <tspan x="300" font-size="30" font-weight="bold">forward pass</tspan>
+    <tspan x="300" dy="44" font-size="24">builds the graph</tspan>
+  </text>
+
+  
+  <line x1="520" y1="310" x2="562" y2="310" stroke="#207448" stroke-width="4"/>
+  <polygon points="562,301 580,310 562,319" fill="#207448"/>
+
+  
+  <rect x="580" y="160" width="440" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <circle cx="640" cy="216" r="24" fill="#207448"/>
+  <text x="640" y="225" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="940" cy="216" r="24"/>
+    <circle cx="940" cy="216" r="12"/>
+    <line x1="940" y1="186" x2="940" y2="198"/>
+    <line x1="940" y1="234" x2="940" y2="246"/>
+    <line x1="910" y1="216" x2="922" y2="216"/>
+    <line x1="958" y1="216" x2="970" y2="216"/>
+    <circle cx="940" cy="216" r="3" fill="#207448"/>
+  </g>
+
+  
+  <text x="800" y="345" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="bold" fill="#303a36">loss</text>
+
+  
+  <line x1="1020" y1="310" x2="1062" y2="310" stroke="#207448" stroke-width="4"/>
+  <polygon points="1062,301 1080,310 1062,319" fill="#207448"/>
+
+  
+  <rect x="1080" y="160" width="440" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <circle cx="1140" cy="216" r="24" fill="#207448"/>
+  <text x="1140" y="225" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 1464 232 C 1464 204 1442 196 1424 196 L 1414 196"/>
+    <polyline points="1424,186 1410,196 1424,206"/>
+    <polygon points="1436,216 1456,216 1446,236" stroke-width="3"/>
+  </g>
+
+  
+  <text x="1300" y="325" text-anchor="middle" fill="#303a36">
+    <tspan x="1300" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold">loss.backward()</tspan>
+    <tspan x="1300" dy="44" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24">fills gradients</tspan>
+  </text>
+
+  
+  <line x1="1300" y1="460" x2="1300" y2="562" stroke="#207448" stroke-width="4"/>
+  <polygon points="1291,562 1300,580 1309,562" fill="#207448"/>
+
+  
+  <rect x="860" y="580" width="660" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <circle cx="920" cy="636" r="24" fill="#207448"/>
+  <text x="920" y="645" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="1456" cy="636" r="10"/>
+    <path d="M 1452 612 L 1460 612 L 1462 618 L 1468 620 L 1473 616 L 1479 622 L 1475 627 L 1477 633 L 1483 635 L 1483 643 L 1477 645 L 1475 651 L 1479 656 L 1473 662 L 1468 658 L 1462 660 L 1460 666 L 1452 666 L 1450 660 L 1444 658 L 1439 662 L 1433 656 L 1437 651 L 1435 645 L 1429 643 L 1429 635 L 1435 633 L 1437 627 L 1433 622 L 1439 616 L 1444 620 L 1450 618 Z"/>
+  </g>
+
+  
+  <text x="1190" y="730" text-anchor="middle" fill="#303a36">
+    <tspan x="1190" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold">optimizer.step()</tspan>
+    <tspan x="1190" dy="44" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24">updates weights</tspan>
+  </text>
+
+  
+  <line x1="860" y1="740" x2="758" y2="740" stroke="#207448" stroke-width="4"/>
+  <polygon points="758,731 740,740 758,749" fill="#207448"/>
+
+  
+  <rect x="80" y="580" width="660" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <circle cx="140" cy="636" r="24" fill="#207448"/>
+  <text x="140" y="645" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 686 630 A 20 20 0 1 0 682 648"/>
+    <polyline points="686,618 688,632 674,632"/>
+    <ellipse cx="666" cy="636" rx="6" ry="9" stroke-width="3"/>
+  </g>
+
+  
+  <text x="410" y="700" text-anchor="middle" fill="#303a36">
+    <tspan x="410" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold">optimizer.zero_grad()</tspan>
+    <tspan x="410" dy="40" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24">clears gradients</tspan>
+  </text>
+
+  
+  <rect x="115" y="785" width="590" height="64" rx="10" fill="#db8129"/>
+  <text x="410" y="826" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">gradients accumulate unless cleared</text>
+
+  
+  <line x1="300" y1="580" x2="300" y2="478" stroke="#207448" stroke-width="4"/>
+  <polygon points="291,478 300,460 309,478" fill="#207448"/>
+</svg>

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>Attribute lookup climbs the class tree</title>
+  <desc>Infographic illustrating how attribute lookup moves vertically up the class hierarchy from instance to object.</desc>
+
+  <defs>
+    <marker id="arrow-up" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Attribute lookup climbs the class tree</text>
+
+  
+  <rect x="80" y="730" width="300" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <text x="230" y="792" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">obj.name</text>
+
+  
+  
+  <rect x="440" y="160" width="540" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+  
+  <circle cx="510" cy="204" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="500" y1="216" x2="488" y2="228" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="484" cy="231" r="5" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="510" y1="218" x2="510" y2="230" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="510" cy="234" r="5" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="520" y1="216" x2="532" y2="228" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="536" cy="231" r="5" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="575" y="222" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">object</text>
+
+  
+  <line x1="710" y1="350" x2="710" y2="260" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+
+  
+  <rect x="440" y="350" width="540" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+  
+  <line x1="486" y1="424" x2="534" y2="424" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="492" y1="384" x2="528" y2="384" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="497" y1="384" x2="497" y2="424" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="523" y1="384" x2="523" y2="424" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <text x="575" y="412" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">superclass (Base)</text>
+
+  
+  <line x1="710" y1="540" x2="710" y2="450" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+
+  
+  <rect x="440" y="540" width="540" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+  
+  <rect x="486" y="566" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="486" y1="582" x2="534" y2="582" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="496" y1="596" x2="516" y2="596" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="496" y1="604" x2="524" y2="604" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="575" y="602" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">class (Class)</text>
+
+  
+  <line x1="710" y1="730" x2="710" y2="640" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+
+  
+  <rect x="440" y="730" width="540" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+  
+  <polygon points="510,758 532,770 510,782 488,770" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <line x1="488" y1="770" x2="488" y2="794" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="532" y1="770" x2="532" y2="794" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="510" y1="782" x2="510" y2="806" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <polyline points="488,794 510,806 532,794" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <text x="575" y="792" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">instance (obj)</text>
+
+  
+  <path d="M 995 305 L 1025 305 L 1025 495 L 1055 495 L 1025 495 L 1025 685 L 995 685" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="995" y1="495" x2="1025" y2="495" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+  
+  <rect x="1060" y="455" width="460" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="1290" y="506" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">not found, look next</text>
+
+  
+  <rect x="1060" y="160" width="460" height="120" rx="16" fill="#f0f2f1" stroke="#7a8581" stroke-width="3" />
+  <text x="1290" y="212" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1290" dy="0">no match anywhere</tspan>
+    <tspan x="1290" dy="34">raises AttributeError</tspan>
+  </text>
+
+  
+  <rect x="1060" y="660" width="460" height="110" rx="16" fill="#fff7ed" stroke="#db8129" stroke-width="4" />
+  <text x="1290" y="727" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">first match wins</text>
+</svg>

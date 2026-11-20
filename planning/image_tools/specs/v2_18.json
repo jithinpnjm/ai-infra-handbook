@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "18",
+  "name": "n18-sizing",
+  "title": "Sizing a 3-stage fabric",
+  "spec": "Left: formulas for R-port switches at 1:1: 'spines = R/2', 'max leaves = R', 'max servers = R x R/2 = R^2/2'. Right: worked example with 64-port 400G switches: each leaf 32 downlinks + 32 uplinks, 32 spines, up to 64 leaves, up to 2,048 endpoint ports = 256 servers with eight GPUs each. Small leaf-spine drawing with a leaf split into 'half down to servers / half up to spines'. Orange note: 'beyond R^2/2 endpoints, build pods: 5-stage reaches R^3/4 (65,536 for R = 64)'.",
+  "anchor": "### Sizing a 3-stage fabric",
+  "alt": "Fabric sizing arithmetic",
+  "cap": "With R-port switches a 1:1 three-stage fabric reaches R squared over two endpoints."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "18",
+  "name": "n18-fivestage",
+  "title": "Scaling table: 3-stage to 5-stage",
+  "spec": "Table with columns Config, GPUs, Leaves, Spines, Super-spines, Oversubscription. Rows: 1 row (one rail group) 256 / 8 / 4 / none / 1:1; 2 rows 512 / 16 / 8 / none / 1:1; 8 rows (3-stage, 64-port) 2,048 / 64 / 32 / none / 1:1; 5-stage 1K-GPU blocks 2,048 / 64 / 64 / 32 / 1:1; 5-stage 4 blocks 4,096 / 128 / 128 / 32 / 2:1 at super-spine; 5-stage 8 blocks 8,192 / 256 / 256 / 32 / 4:1 at super-spine (orange). Divider line between the 3-stage rows and 5-stage rows labelled 'add pods and super-spines'.",
+  "anchor": "### Five-stage fabrics",
+  "alt": "Fabric size scaling table",
+  "cap": "Growing beyond one three-stage build needs super-spines or oversubscription of the upper tier."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "18",
+  "name": "n18-oversub",
+  "title": "Oversubscription ratios",
+  "spec": "Leaf switch drawn with server-facing ports below and uplinks above, two worked cases. Case 1: d downlinks and u uplinks gives ratio d:u; 48 downlinks and 16 uplinks = 3:1. Case 2: ToR with 320 Gb/s of server ports and 180 Gb/s of uplinks = 1.78:1. Definition line: 'oversubscription = bandwidth offered to endpoints over bandwidth into the fabric (worst-case contention)'. Orange note: 'Non-blocking and non-contending are different; packet-switched fabrics cannot be truly non-blocking because of incast'.",
+  "anchor": "### Oversubscription and contention",
+  "alt": "Oversubscription ratios",
+  "cap": "Oversubscription is the ratio of server bandwidth to uplink bandwidth at a tier."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "18",
+  "name": "n18-failure",
+  "title": "Capacity left after a spine fails",
+  "spec": "Bar comparison. Formula in monospace: 'capacity kept = (S-1)/S of uplink capacity'. Two bars: S = 32 spines, one down: 96.9% (green, almost full); S = 4 spines, one down: 75% (orange). Small leaf with its uplinks, one greyed out. Footer: 'A 1:1 design stays oversubscribed until the failure is repaired' and bar 'Work out what survives losing one spine, one leaf and one rail group'.",
+  "anchor": "### Capacity under failure",
+  "alt": "Capacity under spine failure",
+  "cap": "The fewer spines a fabric has, the bigger the capacity loss when one spine fails."
+ }
+]

@@ -78,6 +78,14 @@ Before you write any pipeline, run its first stage alone and confirm the output 
 
 ## 2. Regular expressions from scratch
 
+![Basic and extended regular expressions treat plus, question mark, pipe, parentheses and braces oppositely.](./img/l04-bre-ere.svg)
+
+*Figure 1.4.3. BRE treats those characters as literal unless escaped, while ERE treats them as operators.*
+
+![A grid of common regular expression metacharacters and what each matches.](./img/l04-regex-map.svg)
+
+*Figure 1.4.4. Most characters match themselves, and a small set of metacharacters carries special meaning.*
+
 Suppose you want every line that begins with a date, or every line that mentions `ERROR` or `FATAL`. A plain word search cannot describe a request like that. You need a way to describe the *shape* of the text rather than one exact piece of text.
 
 A **regular expression**, or regex for short, is that description. It is a compact pattern that stands for a whole set of strings, the way a dress pattern stands for a family of dresses rather than one finished dress. `grep`, `sed`, `awk`, `less`, `vim`, Prometheus, Python and nearly every tool you use understand some dialect of it. Learn the core once, and you will recognise it everywhere.
@@ -234,6 +242,10 @@ Test each stage of a combined pipeline on a small file before you run it on the 
 
 ## 5. `sed`: edit a stream
 
+![The parts of a sed substitute command with a few variations.](./img/l04-sed-substitute.svg)
+
+*Figure 1.4.5. sed applies an edit to each line as it passes through and does not change the file unless asked.*
+
 Suppose a config file has a debug flag set to the wrong value on many lines. You do not want to open an editor and change each one by hand. `sed`, the stream editor, applies editing commands to each input line as it passes through, and its most used command is substitute.
 
 ```bash
@@ -293,7 +305,7 @@ When a field carries units, strip them before you do any arithmetic on it.
 
 ![How awk splits a line into fields](./img/ch04-fig2-awk-v2.jpg)
 
-*Figure 1.4.3. How awk reads a line: fields, NF, NR and `pattern { action }`.*
+*Figure 1.4.6. How awk reads a line: fields, NF, NR and `pattern { action }`.*
 
 ## 7. Fan-out: `find`, `xargs`, and parallelism
 
@@ -322,7 +334,7 @@ For any fan-out job, start with `-print0` and `-0`, so that odd file names canno
 
 ![xargs fan-out](./img/ch04-fig3-xargs.jpg)
 
-*Figure 1.4.4. Fan-out with find -print0 and xargs -0.*
+*Figure 1.4.7. Fan-out with find -print0 and xargs -0.*
 
 ## 8. Comparing files and handling structured text
 

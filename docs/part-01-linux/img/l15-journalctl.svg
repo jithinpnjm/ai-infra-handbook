@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>Filtering the journal</title>
+  <desc>Visual guide to common journalctl filtering commands and journal storage behavior.</desc>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Filtering the journal</text>
+
+  
+  <g transform="translate(60, 100)">
+    <rect width="710" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 16 16 A 20 20 0 1 0 40 16"/>
+      <line x1="28" y1="8" x2="28" y2="28"/>
+    </g>
+    <text x="105" y="52" font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace" font-size="30px" font-weight="bold" fill="#207448">journalctl -b</text>
+    <text x="105" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">this boot (-b -1 previous boot)</text>
+  </g>
+
+  
+  <g transform="translate(830, 100)">
+    <rect width="710" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="14" y="24" width="28" height="22" rx="4"/>
+      <path d="M 20 24 V 16 A 8 8 0 0 1 36 16 V 24"/>
+    </g>
+    <text x="105" y="52" font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace" font-size="30px" font-weight="bold" fill="#207448">journalctl -u sshd</text>
+    <text x="105" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">by unit</text>
+  </g>
+
+  
+  <g transform="translate(60, 245)">
+    <rect width="710" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polyline points="8,28 18,28 23,12 33,44 38,28 48,28"/>
+    </g>
+    <text x="105" y="52" font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace" font-size="30px" font-weight="bold" fill="#207448">journalctl -u kubelet -f</text>
+    <text x="105" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">follow</text>
+  </g>
+
+  
+  <g transform="translate(830, 245)">
+    <rect width="710" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="16" y="16" width="24" height="24" rx="3"/>
+      <line x1="8" y1="22" x2="16" y2="22"/>
+      <line x1="8" y1="34" x2="16" y2="34"/>
+      <line x1="40" y1="22" x2="48" y2="22"/>
+      <line x1="40" y1="34" x2="48" y2="34"/>
+      <line x1="22" y1="8" x2="22" y2="16"/>
+      <line x1="34" y1="8" x2="34" y2="16"/>
+      <line x1="22" y1="40" x2="22" y2="48"/>
+      <line x1="34" y1="40" x2="34" y2="48"/>
+    </g>
+    <text x="105" y="52" font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace" font-size="30px" font-weight="bold" fill="#207448">journalctl -k</text>
+    <text x="105" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">kernel messages</text>
+  </g>
+
+  
+  <g transform="translate(60, 390)">
+    <rect width="710" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 28 8 L 48 46 L 8 46 Z"/>
+      <line x1="28" y1="20" x2="28" y2="32"/>
+      <line x1="28" y1="39" x2="28" y2="41"/>
+    </g>
+    <text x="105" y="52" font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace" font-size="30px" font-weight="bold" fill="#207448">journalctl -p err</text>
+    <text x="105" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">priority err and worse</text>
+  </g>
+
+  
+  <g transform="translate(830, 390)">
+    <rect width="710" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="20"/>
+      <polyline points="28,16 28,28 38,28"/>
+    </g>
+    <text x="105" y="52" font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace" font-size="30px" font-weight="bold" fill="#207448">journalctl --since yesterday</text>
+    <text x="105" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">time window</text>
+  </g>
+
+  
+  <g transform="translate(60, 535)">
+    <rect width="710" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="12" y="8" width="32" height="40" rx="3"/>
+      <line x1="18" y1="18" x2="38" y2="18"/>
+      <line x1="18" y1="26" x2="38" y2="26"/>
+      <line x1="18" y1="34" x2="38" y2="34"/>
+    </g>
+    <text x="105" y="52" font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace" font-size="30px" font-weight="bold" fill="#207448">journalctl -n 100 --no-pager</text>
+    <text x="105" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">last lines</text>
+  </g>
+
+  
+  <g transform="translate(830, 535)">
+    <rect width="710" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <ellipse cx="28" cy="14" rx="18" ry="6"/>
+      <path d="M 10 14 V 38 C 10 44 46 44 46 38 V 14"/>
+      <path d="M 10 26 C 10 32 46 32 46 26"/>
+    </g>
+    <text x="105" y="52" font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace" font-size="30px" font-weight="bold" fill="#207448">journalctl --vacuum-size=2G</text>
+    <text x="105" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">trim old logs</text>
+  </g>
+
+  
+  <g transform="translate(60, 690)">
+    <rect width="1480" height="175" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(32, 59)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 8 14 L 22 14 L 28 22 L 48 22 A 3 3 0 0 1 51 25 L 51 44 A 3 3 0 0 1 48 47 L 8 47 A 3 3 0 0 1 5 44 L 5 17 A 3 3 0 0 1 8 14 Z"/>
+      <line x1="5" y1="22" x2="48" y2="22"/>
+    </g>
+    <text x="115" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="25px" fill="#303a36">
+      <tspan x="115" dy="0">default <tspan font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace">Storage=auto</tspan> writes to <tspan font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace">/var/log/journal</tspan> only if that directory exists,</tspan>
+      <tspan x="115" dy="44">otherwise in memory under <tspan font-family="'SF Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, Consolas, monospace">/run/log/journal</tspan>.</tspan>
+    </text>
+  </g>
+</svg>

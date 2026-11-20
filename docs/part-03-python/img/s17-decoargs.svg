@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>A decorator with arguments</title>
+  <desc>Visual explanation of a Python decorator with arguments showing three nested layers: outer deco(arg), middle decorator(func), and inner wrapper(*args).</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A decorator with arguments</text>
+
+  
+  <g transform="translate(80, 140)">
+    
+    <rect x="0" y="0" width="380" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(30, 47)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="46" height="56" rx="6"/>
+      <path d="M 12 16 L 34 16"/>
+      <path d="M 12 28 L 34 28"/>
+      <path d="M 12 40 L 24 40"/>
+    </g>
+
+    
+    <text x="100" y="65" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">@deco(3)</text>
+    <text x="100" y="115" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#303a36">def f</text>
+  </g>
+
+  
+  <g>
+    
+    <path d="M 460 215 L 530 215 L 530 380 L 600 380" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+
+    
+    <rect x="490" y="155" width="490" height="48" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="2"/>
+    <text x="735" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">deco(3) returns the real decorator</text>
+  </g>
+
+  
+  
+  <g transform="translate(80, 320)">
+    
+    <rect x="0" y="0" width="1440" height="580" rx="28" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(40, 32)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="16"/>
+      <path d="M 28 4 L 28 12 M 28 44 L 28 52 M 4 28 L 12 28 M 44 28 L 52 28 M 11 11 L 17 17 M 39 39 L 45 45 M 11 45 L 17 39 M 39 17 L 45 11"/>
+    </g>
+
+    
+    <text x="116" y="68" font-family="ui-monospace, monospace" font-size="32" font-weight="bold" fill="#207448">deco(arg)</text>
+    <text x="320" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">takes the decorator arguments</text>
+
+    
+    <g transform="translate(60, 110)">
+      
+      <rect x="0" y="0" width="1320" height="430" rx="24" fill="#f5f8f5" stroke="#207448" stroke-width="3" stroke-dasharray="10 6"/>
+
+      
+      <g transform="translate(36, 28)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="0" width="56" height="46" rx="6"/>
+        <path d="M 0 14 L 56 14"/>
+        <circle cx="10" cy="7" r="1.5" fill="#207448"/>
+        <circle cx="18" cy="7" r="1.5" fill="#207448"/>
+      </g>
+
+      
+      <text x="112" y="62" font-family="ui-monospace, monospace" font-size="32" font-weight="bold" fill="#207448">decorator(func)</text>
+      <text x="400" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">takes the function</text>
+
+      
+      <g transform="translate(60, 100)">
+        
+        <rect x="0" y="0" width="1200" height="290" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+
+        
+        <g transform="translate(40, 38)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="28" cy="28" r="26"/>
+          <polyline points="28,12 28,28 40,36"/>
+        </g>
+
+        
+        <text x="116" y="74" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#207448">wrapper(*args)</text>
+        <text x="420" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">runs on each call</text>
+
+        
+        <rect x="40" y="120" width="1120" height="130" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <text x="80" y="195" font-family="ui-monospace, monospace" font-size="26" fill="#303a36"># decorated function execution body</text>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "12",
+  "name": "n12-lacp",
+  "title": "LACP modes and timers",
+  "spec": "Left: a 3x3 matrix of the two ends' modes. Rows end A, columns end B: active/active bundle forms quickly (green); active/passive bundle forms, active speaks first (green); passive/passive nothing negotiates, each waits for the other (orange). Right: two timer cards: slow = hello every 30 s, timeout after 90 s; fast = hello every 1 s, timeout after 3 s. Note: 'static on mode creates a bundle without LACP'. Footer: frames flow only on members in the 'collecting/distributing' state.",
+  "anchor": "## 2. Link aggregation and LACP",
+  "alt": "LACP modes and timers",
+  "cap": "At least one end must be active for LACP to form a bundle, and fast timers detect failures in 3 seconds."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "12",
+  "name": "n12-bondmodes",
+  "title": "Linux bonding modes",
+  "spec": "Table with columns Mode, Name (monospace), Behaviour, Switch support: 0 balance-rr per-packet round robin, static bundle, reordering risk; 1 active-backup one active member, none needed (orange as practical choice 1); 2 balance-xor hash of MAC or xmit_hash_policy, static bundle; 3 broadcast all members, rare; 4 802.3ad LACP (orange, practical choice 2), LACP on the switch; 5 balance-tlb none; 6 balance-alb none. Footer green bar: 'For servers two modes are practical: active-backup and LACP'.",
+  "anchor": "## 3. Linux bonding",
+  "alt": "Linux bonding modes",
+  "cap": "Mode 1 active-backup and mode 4 LACP are the two practical choices for servers."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "12",
+  "name": "n12-resilient",
+  "title": "Modulo versus resilient hashing",
+  "spec": "Two panels with four path boxes each. Left 'Plain hash mod N': one path fails, N changes, 75% of all flows move to a different path (orange), even though only a quarter were on the failed path. Right 'Resilient hashing': only the 25% on the failed path move, the three healthy paths keep every flow (green). Footer: 'nothing on healthy paths is reordered or reset'. Side note: ECMP paths need not connect the same two devices.",
+  "anchor": "## 5. Routed parallel links: ECMP",
+  "alt": "Plain versus resilient ECMP hashing",
+  "cap": "Resilient hashing moves only the flows from the failed path instead of reshuffling almost all flows."
+ }
+]

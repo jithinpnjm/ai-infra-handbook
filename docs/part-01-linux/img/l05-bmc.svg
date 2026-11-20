@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Out-of-band access</title>
+  <desc>Comparison of two access paths into a server: standard in-band SSH over the OS network which is blocked when the OS has crashed or the network is broken, and out-of-band BMC (baseboard management controller) with its own network port and IP address which works even when the main system is powered off.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Out-of-band access</text>
+  <text x="800" y="120" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Two paths into one server</text>
+
+  <g id="top-path">
+    <rect x="70" y="160" width="1460" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    <g id="node-ssh">
+      <rect x="100" y="190" width="430" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(130, 272)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="0" width="56" height="46" rx="6" />
+        <line x1="0" y1="14" x2="56" y2="14" />
+        <circle cx="10" cy="7" r="2" fill="#207448" />
+        <circle cx="18" cy="7" r="2" fill="#207448" />
+        <path d="M 12 26 L 22 32 L 12 38" />
+        <line x1="26" y1="38" x2="40" y2="38" />
+      </g>
+      <text x="210" y="280" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+        <tspan x="210" dy="0">SSH over the</tspan>
+        <tspan x="210" dy="40">OS network</tspan>
+      </text>
+    </g>
+
+    <line x1="530" y1="365" x2="1030" y2="365" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    <g id="callout-blocked">
+      <rect x="560" y="190" width="440" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(585, 235)" stroke="#303a36" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="22" stroke="#303a36" />
+        <line x1="8" y1="8" x2="40" y2="40" stroke="#303a36" />
+      </g>
+      <text x="655" y="242" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="655" dy="0" font-weight="bold">blocked when the OS has</tspan>
+        <tspan x="655" dy="34" font-weight="bold">crashed or the network</tspan>
+        <tspan x="655" dy="34" font-weight="bold">is broken</tspan>
+      </text>
+    </g>
+
+    <g id="node-os">
+      <rect x="1040" y="190" width="460" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(1075, 272)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="0" width="56" height="46" rx="6" />
+        <line x1="12" y1="46" x2="4" y2="54" />
+        <line x1="44" y1="46" x2="52" y2="54" />
+        <line x1="4" y1="54" x2="52" y2="54" />
+        <rect x="10" y="10" width="36" height="24" rx="2" />
+      </g>
+      <text x="1155" y="300" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">operating system</text>
+    </g>
+  </g>
+
+  <g id="bottom-path">
+    <rect x="70" y="470" width="1460" height="385" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="3.5" />
+
+    <g id="bmc-box">
+      <rect x="100" y="500" width="700" height="325" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+      <g transform="translate(130, 526)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="8" width="40" height="40" rx="6" />
+        <line x1="18" y1="0" x2="18" y2="8" />
+        <line x1="28" y1="0" x2="28" y2="8" />
+        <line x1="38" y1="0" x2="38" y2="8" />
+        <line x1="18" y1="48" x2="18" y2="56" />
+        <line x1="28" y1="48" x2="28" y2="56" />
+        <line x1="38" y1="48" x2="38" y2="56" />
+        <line x1="0" y1="18" x2="8" y2="18" />
+        <line x1="0" y1="28" x2="8" y2="28" />
+        <line x1="0" y1="38" x2="8" y2="38" />
+        <line x1="48" y1="18" x2="56" y2="18" />
+        <line x1="48" y1="28" x2="56" y2="28" />
+        <line x1="48" y1="38" x2="56" y2="38" />
+      </g>
+      <text x="210" y="545" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="210" dy="0">BMC (baseboard</tspan>
+        <tspan x="210" dy="38">management controller)</tspan>
+      </text>
+
+      <rect x="130" y="635" width="640" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="450" y="678" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">with its own network port and IP address</text>
+
+      <rect x="130" y="725" width="640" height="70" rx="10" fill="#fdf2e7" stroke="#db8129" stroke-width="2" />
+      <text x="450" y="768" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">works even when the main system is powered off</text>
+    </g>
+
+    <g id="commands-box">
+      <rect x="830" y="500" width="670" height="325" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+      <rect x="860" y="525" width="610" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="890" y="577" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">ipmitool ... chassis power status</text>
+
+      <rect x="860" y="630" width="610" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="890" y="682" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">sol activate</text>
+
+      <rect x="860" y="735" width="610" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="890" y="787" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">chassis power cycle</text>
+    </g>
+  </g>
+
+  <g id="takeaway-bar">
+    <rect x="70" y="885" width="1460" height="75" rx="16" fill="#207448" />
+    <g transform="translate(100, 898)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 L 6 12 C 6 28 24 42 24 42 C 24 42 42 28 42 12 Z" />
+      <path d="M 24 16 L 24 28" />
+      <circle cx="24" cy="32" r="1.5" fill="#ffffff" />
+    </g>
+    <text x="800" y="932" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Note: BMC network must be isolated.</text>
+  </g>
+</svg>

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "29",
+  "name": "l29-two-crypto",
+  "title": "Two kinds of cryptography in SSH",
+  "spec": "Two columns. Left Asymmetric (public-key): a key pair, what one key encrypts only the other can decrypt, used for identity and key exchange, slower. Right Symmetric: one shared secret key encrypts and decrypts, fast so it carries the bulk of the data, key replaced periodically during a long connection (limits data per key). Middle arrow: Diffie-Hellman family key exchange sets up the shared key. Bottom: server has a host key pair; client shows its fingerprint on first connection; save and restore /etc/ssh/ssh_host_* when reimaging. Monospace names.",
+  "anchor": "### Two kinds of cryptography",
+  "alt": "Public-key cryptography handles identity and key exchange, and symmetric encryption protects the session.",
+  "cap": "SSH uses each kind of cryptography for the job it does best."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "29",
+  "name": "l29-forwarding-kinds",
+  "title": "Four kinds of forwarding",
+  "spec": "Four cards. Environment variables: SendEnv LANG LC_* on the client and AcceptEnv LANG LC_* on the server, both must agree. Port forwarding: ssh -L 8080:192.168.0.10:80 your.server.address then browse localhost:8080. X11 forwarding: remote graphical program displays on your local X server, needs xauth on both ends. Agent forwarding (orange): exposes your local agent, not the keys, anyone with root on that machine can use it while you are connected, prefer ProxyJump. Top note: everything travels inside the single encrypted SSH connection.",
+  "anchor": "## 5. Forwarding: environment, ports, X11 and agent",
+  "alt": "Environment, port, X11 and agent forwarding all ride inside one SSH connection.",
+  "cap": "Forwarding sends extra traffic through the single encrypted SSH connection."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "29",
+  "name": "l29-restricted-key",
+  "title": "Restricting a key",
+  "spec": "One long monospace authorized_keys line: from=\"10.0.0.0/8\",command=\"/usr/local/bin/status-only\",no-port-forwarding,no-pty ssh-ed25519 AAAA... monitor@mgmt. Callouts: from works only from the management subnet; command runs only one command; no-port-forwarding; no-pty; the key itself at the end. Green bar: give monitoring a narrow capability instead of a shell.",
+  "anchor": "### Restrict what a key may do",
+  "alt": "Options placed before a key in authorized_keys limit where it may connect from and what it may run.",
+  "cap": "A key limited to one command from one subnet is worth far less to an attacker than a general key."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "29",
+  "name": "l29-ipmi-tools",
+  "title": "Managing the machine behind the machine",
+  "spec": "Layer diagram. Bottom: BMC (management controller) with its own network access, works when the main system is hung or powered off. Above it four tool chips in monospace: ipmitool (lan print, sdr list, sol activate; leave with ~. or ~~. inside SSH); sol (serial-over-LAN, needs a getty on the serial port); conman (keeps many consoles open and logged); powerman (power control, no consoles). Side: modules ipmi_devintf, ipmi_si, ipmi_msghandler for the local controller. Orange security box: put controllers on a dedicated management network or VLAN, never expose a BMC to the internet.",
+  "anchor": "## 10. IPMI: managing the machine behind the machine",
+  "alt": "The BMC with the tools used to reach its console, sensors and power control.",
+  "cap": "IPMI reaches the hardware even when the operating system is down, so isolate it on a management network."
+ }
+]

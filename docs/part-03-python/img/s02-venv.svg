@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>One environment per project</title>
+  <desc>Visual infographic comparing isolated virtual environments for Project A and Project B with System Python and illustrating best practices</desc>
+
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">One environment per project</text>
+
+  
+  <g id="col-project-a">
+    
+    <rect x="60" y="110" width="460" height="745" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    
+    <path d="M 60 126 A 16 16 0 0 1 76 110 L 504 110 A 16 16 0 0 1 520 126 L 520 195 L 60 195 Z" fill="#e8f1ea"/>
+    <line x1="60" y1="195" x2="520" y2="195" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(130, 152)">
+      <rect x="-24" y="-18" width="48" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="-24" y1="-8" x2="24" y2="-8" stroke="#207448" stroke-width="4"/>
+      <circle cx="-16" cy="-13" r="2.5" fill="#207448"/>
+      <circle cx="-8" cy="-13" r="2.5" fill="#207448"/>
+    </g>
+    
+    <text x="290" y="164" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#303a36">Project A</text>
+
+    
+    <rect x="85" y="215" width="410" height="615" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <g transform="translate(150, 258)">
+      <rect x="-20" y="-10" width="40" height="30" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M -11 -10 V -18 C -11 -25 11 -25 11 -18 V -10" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="0" cy="5" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="290" y="268" text-anchor="middle" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">.venv</text>
+
+    
+    <rect x="110" y="305" width="360" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(165, 352)">
+      <rect x="-22" y="-18" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M -13 -8 L -5 0 L -13 8" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="-1" y1="8" x2="11" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="295" y="362" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">python</text>
+
+    
+    <rect x="110" y="420" width="360" height="385" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(160, 465)">
+      <rect x="-20" y="-14" width="40" height="30" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M -20 -4 L 0 5 L 20 -4" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="0" y1="5" x2="0" y2="16" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <text x="300" y="475" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">site-packages</text>
+
+    
+    <rect x="135" y="525" width="310" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <g transform="translate(290, 610)">
+      <rect x="-22" y="-22" width="44" height="44" rx="4" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <rect x="-11" y="-11" width="22" height="22" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      
+      <line x1="-31" y1="-11" x2="-22" y2="-11" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-31" y1="0" x2="-22" y2="0" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-31" y1="11" x2="-22" y2="11" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="22" y1="-11" x2="31" y2="-11" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="22" y1="0" x2="31" y2="0" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="22" y1="11" x2="31" y2="11" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-11" y1="-31" x2="-11" y2="-22" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="0" y1="-31" x2="0" y2="-22" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="11" y1="-31" x2="11" y2="-22" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-11" y1="22" x2="-11" y2="31" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="0" y1="22" x2="0" y2="31" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="11" y1="22" x2="11" y2="31" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    
+    <text x="290" y="720" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">library version 1</text>
+  </g>
+
+  
+  <g id="col-project-b">
+    
+    <rect x="570" y="110" width="460" height="745" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    
+    <path d="M 570 126 A 16 16 0 0 1 586 110 L 1014 110 A 16 16 0 0 1 1030 126 L 1030 195 L 570 195 Z" fill="#e8f1ea"/>
+    <line x1="570" y1="195" x2="1030" y2="195" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(640, 152)">
+      <rect x="-24" y="-18" width="48" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="-24" y1="-8" x2="24" y2="-8" stroke="#207448" stroke-width="4"/>
+      <circle cx="-16" cy="-13" r="2.5" fill="#207448"/>
+      <circle cx="-8" cy="-13" r="2.5" fill="#207448"/>
+    </g>
+    
+    <text x="800" y="164" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#303a36">Project B</text>
+
+    
+    <rect x="595" y="215" width="410" height="615" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <g transform="translate(660, 258)">
+      <rect x="-20" y="-10" width="40" height="30" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M -11 -10 V -18 C -11 -25 11 -25 11 -18 V -10" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="0" cy="5" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="800" y="268" text-anchor="middle" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">.venv</text>
+
+    
+    <rect x="620" y="305" width="360" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(675, 352)">
+      <rect x="-22" y="-18" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M -13 -8 L -5 0 L -13 8" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="-1" y1="8" x2="11" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="805" y="362" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">python</text>
+
+    
+    <rect x="620" y="420" width="360" height="385" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(670, 465)">
+      <rect x="-20" y="-14" width="40" height="30" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M -20 -4 L 0 5 L 20 -4" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="0" y1="5" x2="0" y2="16" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <text x="810" y="475" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">site-packages</text>
+
+    
+    <rect x="645" y="525" width="310" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <g transform="translate(800, 610)">
+      <rect x="-22" y="-22" width="44" height="44" rx="4" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <rect x="-11" y="-11" width="22" height="22" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      
+      <line x1="-31" y1="-11" x2="-22" y2="-11" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-31" y1="0" x2="-22" y2="0" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-31" y1="11" x2="-22" y2="11" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="22" y1="-11" x2="31" y2="-11" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="22" y1="0" x2="31" y2="0" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="22" y1="11" x2="31" y2="11" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-11" y1="-31" x2="-11" y2="-22" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="0" y1="-31" x2="0" y2="-22" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="11" y1="-31" x2="11" y2="-22" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-11" y1="22" x2="-11" y2="31" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="0" y1="22" x2="0" y2="31" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="11" y1="22" x2="11" y2="31" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    
+    <text x="800" y="720" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">library version 2</text>
+  </g>
+
+  
+  <g id="col-system-python">
+    
+    <rect x="1080" y="110" width="460" height="745" rx="16" fill="#eef2ef" stroke="#db8129" stroke-width="4"/>
+    
+    
+    <path d="M 1080 126 A 16 16 0 0 1 1096 110 L 1524 110 A 16 16 0 0 1 1540 126 L 1540 195 L 1080 195 Z" fill="#dfe5e1"/>
+    <line x1="1080" y1="195" x2="1540" y2="195" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(1140, 152)">
+      <rect x="-24" y="-20" width="48" height="40" rx="4" fill="none" stroke="#505a56" stroke-width="4"/>
+      <line x1="-24" y1="-7" x2="24" y2="-7" stroke="#505a56" stroke-width="3"/>
+      <line x1="-24" y1="6" x2="24" y2="6" stroke="#505a56" stroke-width="3"/>
+      <circle cx="14" cy="-14" r="2" fill="#505a56"/>
+      <circle cx="14" cy="-1" r="2" fill="#505a56"/>
+      <circle cx="14" cy="13" r="2" fill="#505a56"/>
+    </g>
+    
+    <text x="1330" y="164" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#303a36">System Python</text>
+
+    
+    <rect x="1105" y="215" width="410" height="615" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+
+    
+    <rect x="1130" y="360" width="360" height="330" rx="12" fill="#fdf6ee" stroke="#db8129" stroke-width="2"/>
+    
+    
+    <g transform="translate(1310, 450)">
+      <path d="M 0 -28 L 30 22 L -30 22 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="0" y1="-9" x2="0" y2="6" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="0" cy="14" r="2.5" fill="#db8129"/>
+    </g>
+
+    
+    <text x="1310" y="555" text-anchor="middle" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#db8129">
+      <tspan x="1310" dy="0">never</tspan>
+      <tspan x="1310" dy="38">sudo pip install</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="60" y="885" width="1480" height="65" rx="10" fill="#207448"/>
+    <text x="800" y="926" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">recreate a broken environment rather than repair it</text>
+  </g>
+</svg>

@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Containers, VMs and lighter options</title>
+  <desc>A comparative table showing Kernel, Isolation, Start time, and GPU access across Hardware VM, Container, MicroVM, and gVisor.</desc>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Containers, VMs and lighter options</text>
+
+  
+  
+  <rect x="296" y="115" width="304" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(420, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="34" rx="4"/>
+    <line x1="12" y1="40" x2="44" y2="40"/>
+    <line x1="20" y1="46" x2="36" y2="46"/>
+    <circle cx="16" cy="23" r="3" fill="#207448"/>
+    <line x1="26" y1="23" x2="42" y2="23"/>
+  </g>
+  <text x="448" y="222" font-family="sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#207448">Hardware VM</text>
+  <text x="448" y="258" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">(KVM/QEMU)</text>
+
+  
+  <rect x="616" y="115" width="304" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(740, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 14 L28 4 L48 14 L48 40 L28 50 L8 40 Z"/>
+    <line x1="28" y1="4" x2="28" y2="50"/>
+    <line x1="8" y1="14" x2="28" y2="24"/>
+    <line x1="48" y1="14" x2="28" y2="24"/>
+  </g>
+  <text x="768" y="240" font-family="sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#207448">Container</text>
+
+  
+  <rect x="936" y="115" width="304" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1060, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="38" rx="4"/>
+    <path d="M28 14 L20 28 L27 28 L25 40 L35 25 L29 25 Z" fill="#207448"/>
+  </g>
+  <text x="1088" y="212" font-family="sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#207448">MicroVM</text>
+  <text x="1088" y="244" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">
+    <tspan x="1088" dy="0">(Firecracker,</tspan>
+    <tspan x="1088" dy="28">Kata)</tspan>
+  </text>
+
+  
+  <rect x="1256" y="115" width="304" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1380, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 6 L46 14 L46 28 C46 40 28 50 28 50 C28 50 10 40 10 28 L10 14 Z"/>
+    <line x1="20" y1="28" x2="36" y2="28"/>
+    <line x1="28" y1="20" x2="28" y2="36"/>
+  </g>
+  <text x="1408" y="240" font-family="sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#207448">gVisor</text>
+
+  
+  
+  <rect x="40" y="305" width="240" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 345)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="12"/>
+    <path d="M26 4 L26 10 M26 42 L26 48 M4 26 L10 26 M42 26 L48 26 M10 10 L15 15 M37 37 L42 42 M10 42 L15 37 M37 15 L42 10"/>
+  </g>
+  <text x="130" y="382" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Kernel</text>
+
+  
+  <rect x="296" y="305" width="304" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="448" y="378" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">own guest</text>
+
+  
+  <rect x="616" y="305" width="304" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="768" y="378" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">shared host</text>
+
+  
+  <rect x="936" y="305" width="304" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1088" y="378" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">own minimal guest</text>
+
+  
+  <rect x="1256" y="305" width="304" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1408" y="352" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">
+    <tspan x="1408" dy="0">Go kernel</tspan>
+    <tspan x="1408" dy="30">intercepting</tspan>
+    <tspan x="1408" dy="30">syscalls</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="455" width="240" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 482)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="24" width="36" height="26" rx="4"/>
+    <path d="M16 24 L16 14 C16 8 36 8 36 14 L36 24"/>
+  </g>
+  <text x="130" y="520" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Isolation</text>
+
+  
+  <rect x="296" y="455" width="304" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="448" y="519" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">strong</text>
+
+  
+  <rect x="616" y="455" width="304" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="768" y="519" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">weaker</text>
+
+  
+  <rect x="936" y="455" width="304" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1088" y="519" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">strong</text>
+
+  
+  <rect x="1256" y="455" width="304" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1408" y="519" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">medium</text>
+
+  
+  
+  <rect x="40" y="580" width="240" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 610)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="20"/>
+    <polyline points="26,14 26,26 34,26"/>
+  </g>
+  <text x="122" y="647" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Start time</text>
+
+  
+  <rect x="296" y="580" width="304" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="448" y="646" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">seconds</text>
+
+  
+  <rect x="616" y="580" width="304" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="768" y="646" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">milliseconds</text>
+
+  
+  <rect x="936" y="580" width="304" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1088" y="632" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">
+    <tspan x="1088" dy="0">about 100 to</tspan>
+    <tspan x="1088" dy="30">200 ms</tspan>
+  </text>
+
+  
+  <rect x="1256" y="580" width="304" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1408" y="646" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">milliseconds</text>
+
+  
+  
+  <rect x="40" y="710" width="240" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 750)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="10" width="36" height="34" rx="4"/>
+    <line x1="16" y1="44" x2="16" y2="50"/>
+    <line x1="24" y1="44" x2="24" y2="50"/>
+    <line x1="32" y1="44" x2="32" y2="50"/>
+    <rect x="16" y="18" width="20" height="18" rx="2"/>
+  </g>
+  <text x="120" y="787" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">GPU access</text>
+
+  
+  <rect x="296" y="710" width="304" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="448" y="767" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">
+    <tspan x="448" dy="0">passthrough or</tspan>
+    <tspan x="448" dy="30">vGPU/MIG</tspan>
+  </text>
+
+  
+  <rect x="616" y="710" width="304" height="135" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+  <text x="768" y="767" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#db8129">
+    <tspan x="768" dy="0">native driver via</tspan>
+    <tspan x="768" dy="30">device nodes</tspan>
+  </text>
+
+  
+  <rect x="936" y="710" width="304" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1088" y="767" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">
+    <tspan x="1088" dy="0">possible but</tspan>
+    <tspan x="1088" dy="30">complex</tspan>
+  </text>
+
+  
+  <rect x="1256" y="710" width="304" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1408" y="783" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">limited</text>
+
+  
+  <rect x="40" y="875" width="1520" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="922" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle" fill="#ffffff">decide early whether the isolation needs a hardware boundary.</text>
+</svg>

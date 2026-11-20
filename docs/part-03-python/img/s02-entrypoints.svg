@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>How plugins are discovered</title>
+  <desc>Four-step flow diagram showing how plugins are discovered from pyproject.toml declaration, installation into package metadata, discovery via entry_points, and loading with failure isolation.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 14 8 L 2 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="95" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">How plugins are discovered</text>
+
+  
+  <g id="step1">
+    <rect x="55" y="170" width="335" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="105" cy="225" r="24" fill="#207448"/>
+    <text x="105" y="234" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="142" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 1</text>
+    
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 295 200 H 323 L 337 214 V 250 H 295 Z"/>
+      <path d="M 323 200 V 214 H 337"/>
+      <line x1="305" y1="226" x2="319" y2="226"/>
+      <line x1="305" y1="236" x2="327" y2="236"/>
+    </g>
+
+    
+    <line x1="80" y1="275" x2="365" y2="275" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="222" y="335" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">pyproject.toml</text>
+    <text x="222" y="385" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">declares</text>
+    <text x="222" y="435" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">gpu =</text>
+    <text x="222" y="485" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">myops.plugins.</text>
+    <text x="222" y="535" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">gpu:Plugin</text>
+  </g>
+
+  
+  <line x1="390" y1="380" x2="440" y2="380" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="step2">
+    <rect x="440" y="170" width="335" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="490" cy="225" r="24" fill="#207448"/>
+    <text x="490" y="234" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="527" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 2</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polygon points="700,202 724,214 700,226 676,214"/>
+      <polyline points="676,214 676,238 700,250 700,226"/>
+      <polyline points="724,214 724,238 700,250"/>
+      <line x1="688" y1="208" x2="712" y2="220"/>
+    </g>
+
+    
+    <line x1="465" y1="275" x2="750" y2="275" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="607" y="370" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">installation</text>
+    <text x="607" y="430" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">records it in</text>
+    <text x="607" y="490" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">package metadata</text>
+  </g>
+
+  
+  <line x1="775" y1="380" x2="825" y2="380" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="step3">
+    <rect x="825" y="170" width="335" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="875" cy="225" r="24" fill="#207448"/>
+    <text x="875" y="234" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="912" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="1075" cy="220" r="17"/>
+      <line x1="1088" y1="233" x2="1103" y2="248"/>
+      <line x1="1070" y1="220" x2="1080" y2="220"/>
+      <line x1="1075" y1="215" x2="1075" y2="225"/>
+    </g>
+
+    
+    <line x1="850" y1="275" x2="1135" y2="275" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="992" y="340" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">entry_points(</text>
+    <text x="992" y="390" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">group=</text>
+    <text x="992" y="440" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">"myops.plugins")</text>
+    <text x="992" y="505" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">discovers it</text>
+  </g>
+
+  
+  <line x1="1160" y1="380" x2="1210" y2="380" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="step4">
+    <rect x="1210" y="170" width="335" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="1260" cy="225" r="24" fill="#207448"/>
+    <text x="1260" y="234" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="1297" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 4</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1454" y="214" width="32" height="24" rx="4"/>
+      <line x1="1462" y1="202" x2="1462" y2="214"/>
+      <line x1="1478" y1="202" x2="1478" y2="214"/>
+      <line x1="1470" y1="238" x2="1470" y2="250"/>
+    </g>
+
+    
+    <line x1="1235" y1="275" x2="1520" y2="275" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="1377" y="390" font-family="monospace" font-size="25" fill="#303a36" text-anchor="middle">ep.load()</text>
+    <text x="1377" y="450" font-family="sans-serif" font-size="25" fill="#303a36" text-anchor="middle">then register</text>
+  </g>
+
+  
+  <g id="orangeNote">
+    <path d="M 1226 640 H 1362 L 1377.5 624 L 1393 640 H 1529 A 16 16 0 0 1 1545 656 V 764 A 16 16 0 0 1 1529 780 H 1226 A 16 16 0 0 1 1210 764 V 656 A 16 16 0 0 1 1226 640 Z" fill="#fff9f2" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+    <text x="1377" y="698" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">load lazily,</text>
+    <text x="1377" y="742" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">isolate failures</text>
+  </g>
+</svg>

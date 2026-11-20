@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Everything is an object</title>
+  <desc>Diagram showing Python names referencing integer objects in memory, where y references int 10 and x references int 11 after x = x + 1.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 14" refX="17" refY="7" markerWidth="18" markerHeight="14" orient="auto" markerUnits="userSpaceOnUse">
+      <polygon points="0,1 17,7 0,13" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 14" refX="17" refY="7" markerWidth="18" markerHeight="14" orient="auto" markerUnits="userSpaceOnUse">
+      <polygon points="0,1 17,7 0,13" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="88" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Everything is an object</text>
+
+  
+  <rect x="80" y="150" width="460" height="670" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="120" y="215" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">names</text>
+
+  
+  <rect x="120" y="260" width="380" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(160, 342)">
+    <path d="M 6 18 L 18 6 H 48 C 51.3 6 54 8.7 54 12 V 44 C 54 47.3 51.3 50 48 50 H 18 L 6 38 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="20" cy="28" r="5" fill="#207448"/>
+  </g>
+  <text x="250" y="375" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="#303a36">y</text>
+
+  
+  <rect x="120" y="540" width="380" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(160, 622)">
+    <path d="M 6 18 L 18 6 H 48 C 51.3 6 54 8.7 54 12 V 44 C 54 47.3 51.3 50 48 50 H 18 L 6 38 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="20" cy="28" r="5" fill="#207448"/>
+  </g>
+  <text x="250" y="655" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="#303a36">x</text>
+
+  
+  <rect x="1060" y="150" width="460" height="670" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1100" y="215" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">objects</text>
+
+  
+  <rect x="1100" y="260" width="380" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1140, 342)">
+    <polygon points="28,6 50,18 28,30 6,18" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <polyline points="6,18 6,38 28,50 50,38 50,18" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="30" x2="28" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1230" y="375" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="#303a36">int 10</text>
+
+  
+  <rect x="1100" y="540" width="380" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1140, 622)">
+    <polygon points="28,6 50,18 28,30 6,18" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <polyline points="6,18 6,38 28,50 50,38 50,18" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="30" x2="28" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1230" y="655" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="#303a36">int 11</text>
+
+  
+   o10 -->
+  <line x1="500" y1="370" x2="1100" y2="370" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+   o11 -->
+  <line x1="500" y1="650" x2="1100" y2="650" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <rect x="650" y="586" width="280" height="46" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="790" y="618" text-anchor="middle" font-family="SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace" font-size="26" font-weight="bold" fill="#db8129">after x = x + 1</text>
+</svg>

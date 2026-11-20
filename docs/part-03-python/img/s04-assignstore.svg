@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Where an assignment stores an attribute</title>
+  <desc>Visual comparison showing that assigning to obj.x stores an attribute only in that specific instance obj, whereas assigning to Class.x stores it on the Class itself, shared by every instance such as obj1 and obj2.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Where an assignment stores an attribute</text>
+
+  
+  <g id="left-panel">
+    
+    <rect x="60" y="105" width="710" height="745" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g id="code-chip-obj">
+      <rect x="255" y="145" width="320" height="76" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(275, 155)">
+        <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+        <path d="M 14 20 L 26 28 L 14 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <line x1="30" y1="36" x2="42" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      </g>
+      <text x="355" y="193" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">obj.x = 1</text>
+    </g>
+
+    
+    <path d="M 415 221 L 415 318" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
+
+    
+    <g id="box-instance-obj">
+      <rect x="155" y="320" width="520" height="470" rx="16" fill="#ffffff" stroke="#207448" stroke-width="4" />
+
+      
+      <g transform="translate(235, 355)">
+        <path d="M 28 4 L 52 16 L 28 28 L 4 16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+        <path d="M 4 16 L 4 40 L 28 52 L 28 28" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+        <path d="M 52 16 L 52 40 L 28 52" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      </g>
+      <text x="310" y="396" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">instance obj</text>
+
+      
+      <rect x="195" y="470" width="440" height="260" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" />
+
+      
+      <g transform="translate(255, 515)">
+        <rect x="0" y="0" width="320" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+        <text x="160" y="55" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">x = 1</text>
+      </g>
+
+      
+      <text x="415" y="665" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">(only this object)</text>
+    </g>
+  </g>
+
+  
+  <g id="right-panel">
+    
+    <rect x="830" y="105" width="710" height="745" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g id="code-chip-class">
+      <rect x="1015" y="145" width="340" height="76" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(1035, 155)">
+        <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+        <path d="M 14 20 L 26 28 L 14 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <line x1="30" y1="36" x2="42" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      </g>
+      <text x="1115" y="193" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">Class.x = 1</text>
+    </g>
+
+    
+    <path d="M 1185 221 L 1185 288" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
+
+    
+    <g id="box-class">
+      <rect x="945" y="290" width="480" height="215" rx="16" fill="#ffffff" stroke="#207448" stroke-width="4" />
+
+      
+      <g transform="translate(1065, 310)">
+        <rect x="4" y="4" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+        <line x1="4" y1="20" x2="52" y2="20" stroke="#207448" stroke-width="4" />
+        <line x1="20" y1="20" x2="20" y2="52" stroke="#207448" stroke-width="4" />
+      </g>
+      <text x="1145" y="352" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Class</text>
+
+      
+      <g transform="translate(1025, 395)">
+        <rect x="0" y="0" width="320" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+        <text x="160" y="49" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">x = 1</text>
+      </g>
+    </g>
+
+    
+    <g id="shared-pill">
+      <rect x="995" y="550" width="380" height="52" rx="26" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      <text x="1185" y="586" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">shared by every instance</text>
+    </g>
+
+    
+    
+    <path d="M 1085 505 L 1085 540 L 980 540 L 980 658" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+
+    
+    <path d="M 1285 505 L 1285 540 L 1390 540 L 1390 658" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+
+    
+    <g id="box-obj1">
+      <rect x="865" y="660" width="230" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(952, 680)">
+        <path d="M 28 4 L 52 16 L 28 28 L 4 16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+        <path d="M 4 16 L 4 40 L 28 52 L 28 28" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+        <path d="M 52 16 L 52 40 L 28 52" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      </g>
+      <text x="980" y="780" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">obj1</text>
+    </g>
+
+    
+    <g id="box-obj2">
+      <rect x="1275" y="660" width="230" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(1362, 680)">
+        <path d="M 28 4 L 52 16 L 28 28 L 4 16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+        <path d="M 4 16 L 4 40 L 28 52 L 28 28" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+        <path d="M 52 16 L 52 40 L 28 52" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      </g>
+      <text x="1390" y="780" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">obj2</text>
+    </g>
+  </g>
+</svg>

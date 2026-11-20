@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Dijkstra on a small diamond</title>
+  <desc>Visual explanation of Dijkstra algorithm on a diamond graph with ECMP</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="60" y="85" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Dijkstra on a small diamond</text>
+
+  
+  <rect x="60" y="150" width="650" height="712" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  
+  <line x1="340" y1="302" x2="210" y2="438" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <line x1="430" y1="302" x2="560" y2="438" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <line x1="210" y1="574" x2="340" y2="710" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  
+  <line x1="560" y1="574" x2="430" y2="710" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  
+  <rect x="110" y="330" width="140" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="180" y="360" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">cost 10</text>
+
+  
+  <rect x="520" y="330" width="140" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="590" y="360" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">cost 10</text>
+
+  
+  <rect x="110" y="620" width="140" height="44" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="180" y="650" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">cost 10</text>
+
+  
+  <rect x="520" y="620" width="140" height="44" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="590" y="650" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">cost 10</text>
+
+  
+  <rect x="315" y="166" width="140" height="136" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="385" cy="214" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <path d="M 372 208 L 398 208 M 393 204 L 398 208 L 393 212" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 398 220 L 372 220 M 377 216 L 372 220 L 377 224" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="385" y="276" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">A</text>
+
+  
+  <rect x="100" y="438" width="140" height="136" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="170" cy="486" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <path d="M 157 480 L 183 480 M 178 476 L 183 480 L 178 484" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 183 492 L 157 492 M 162 488 L 157 492 L 162 496" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="170" y="548" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">B</text>
+
+  
+  <rect x="530" y="438" width="140" height="136" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="600" cy="486" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <path d="M 587 480 L 613 480 M 608 476 L 613 480 L 608 484" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 613 492 L 587 492 M 592 488 L 587 492 L 592 496" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="600" y="548" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">C</text>
+
+  
+  <rect x="315" y="710" width="140" height="136" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="385" cy="758" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <path d="M 372 752 L 398 752 M 393 748 L 398 752 L 393 756" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 398 764 L 372 764 M 377 760 L 372 764 L 377 768" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="385" y="820" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">D</text>
+
+  
+  
+  <g>
+    <rect x="750" y="150" width="790" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="810" cy="230" r="24" fill="#207448" />
+    <text x="810" y="238" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="860" y="218" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="860" dy="0">root A in the tree at cost 0,</tspan>
+      <tspan x="860" dy="36">all others infinity</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="750" y="334" width="790" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="810" cy="414" r="24" fill="#207448" />
+    <text x="810" y="422" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="860" y="402" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="860" dy="0">closest nodes B and C join</tspan>
+      <tspan x="860" dy="36">the tree at cost 10</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="750" y="518" width="790" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="810" cy="598" r="24" fill="#207448" />
+    <text x="810" y="606" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="860" y="586" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="860" dy="0">relax neighbours: D is reached</tspan>
+      <tspan x="860" dy="36">through both B and C</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="750" y="702" width="790" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="810" cy="782" r="24" fill="#207448" />
+    <text x="810" y="790" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="860" y="770" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="860" dy="0">install the lowest-cost next hops,</tspan>
+      <tspan x="860" dy="36">including every equal-cost one for ECMP</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="60" y="920" width="1480" height="80" rx="16" fill="#207448" />
+  <text x="800" y="970" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Every router computes from an identical database, so the results are loop-free</text>
+</svg>

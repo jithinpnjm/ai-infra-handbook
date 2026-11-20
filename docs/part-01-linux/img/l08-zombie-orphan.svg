@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Zombies and orphans</title>
+  <desc>Visual infographic explaining zombie processes, orphan processes, and container init reaping</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 18 9 L 0 16 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 18 9 L 0 16 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#207448">Zombies and orphans</text>
+
+  
+  <g id="panel-zombie">
+    <rect x="50" y="110" width="720" height="760" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="410" y="170" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="36px" font-weight="bold" fill="#207448">Zombie</text>
+
+    
+    <rect x="85" y="210" width="650" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="130" cy="258" r="24" fill="#207448" />
+    <text x="130" y="266" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(180, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="48" height="52" rx="6" />
+      <path d="M 26 28 L 42 28 M 34 20 L 42 28 L 34 36" />
+    </g>
+    
+    <text x="255" y="266" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#303a36">child process exits</text>
+
+    
+    <line x1="410" y1="306" x2="410" y2="346" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="85" y="348" width="650" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="130" cy="396" r="24" fill="#207448" />
+    <text x="130" y="404" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(180, 368)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="40" height="40" rx="4" />
+      <path d="M 16 2 M 26 2 M 36 2 M 16 50 M 26 50 M 36 50 M 2 16 M 2 26 M 2 36 M 50 16 M 50 26 M 50 36" />
+    </g>
+    
+    <text x="255" y="404" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#303a36">releases memory and files</text>
+
+    
+    <line x1="410" y1="444" x2="410" y2="484" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="85" y="486" width="650" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="130" cy="561" r="24" fill="#207448" />
+    <text x="130" y="569" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(180, 533)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="44" height="48" rx="6" />
+      <line x1="14" y1="18" x2="38" y2="18" />
+      <line x1="14" y1="28" x2="38" y2="28" />
+      <line x1="14" y1="38" x2="28" y2="38" />
+    </g>
+    
+    <text x="255" y="545" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="255" dy="0">leaves a process-table entry</tspan>
+      <tspan x="255" dy="34">holding the exit status</tspan>
+      <tspan x="255" dy="34">until the parent calls <tspan font-family="ui-monospace, monospace" font-weight="bold">wait()</tspan></tspan>
+    </text>
+
+    
+    <rect x="85" y="666" width="650" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-dasharray="8 6" stroke-width="3" />
+    
+    <g transform="translate(115, 723)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 8 16 L 8 32 C 8 44 28 52 28 52 C 28 52 48 44 48 32 L 48 16 Z" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <circle cx="28" cy="42" r="2" fill="#207448" />
+    </g>
+    <text x="195" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="195" dy="0">uses no CPU or memory,</tspan>
+      <tspan x="195" dy="36">cannot be killed,</tspan>
+      <tspan x="195" dy="36">fix is to make the parent <tspan font-family="ui-monospace, monospace" font-weight="bold">wait()</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-orphan">
+    <rect x="830" y="110" width="720" height="760" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="1190" y="170" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="36px" font-weight="bold" fill="#207448">Orphan</text>
+
+    
+    <rect x="865" y="270" width="650" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="910" cy="330" r="24" fill="#207448" />
+    <text x="910" y="338" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(960, 302)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="14" r="8" />
+      <path d="M 6 36 C 6 28 26 28 26 36" />
+      <line x1="28" y1="20" x2="42" y2="34" />
+      <line x1="42" y1="20" x2="28" y2="34" />
+    </g>
+    
+    <text x="1035" y="338" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#303a36">parent exits before child</text>
+
+    
+    <line x1="1190" y1="390" x2="1190" y2="470" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="865" y="472" width="650" height="230" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    
+    <circle cx="910" cy="587" r="24" fill="#db8129" />
+    <text x="910" y="595" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(960, 559)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="12" />
+      <path d="M 28 6 L 28 16 M 28 40 L 28 50 M 6 28 L 16 28 M 40 28 L 50 28 M 12 12 L 20 20 M 36 36 L 44 44 M 12 44 L 20 36 M 36 20 L 44 12" />
+    </g>
+    
+    <text x="1035" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="25px" font-weight="bold" fill="#303a36">
+      <tspan x="1035" dy="0">child is re-parented to</tspan>
+      <tspan x="1035" dy="38"><tspan font-family="ui-monospace, monospace" fill="#db8129">PID 1</tspan> or a subreaper</tspan>
+      <tspan x="1035" dy="38">which must <tspan font-family="ui-monospace, monospace">wait()</tspan> for it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer-note">
+    <rect x="50" y="895" width="1500" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 930)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="48" height="40" rx="6" />
+      <path d="M 14 18 L 22 18 M 28 18 L 36 18 M 14 28 L 22 28 M 28 28 L 36 28 M 4 22 L 52 22" />
+    </g>
+    
+    <text x="165" y="948" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="165" dy="0">in a container, <tspan font-family="ui-monospace, monospace" font-weight="bold">PID 1</tspan> that never reaps children leaves permanent zombies;</tspan>
+      <tspan x="165" dy="36">fix with a tiny init such as <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">tini</tspan>.</tspan>
+    </text>
+  </g>
+</svg>

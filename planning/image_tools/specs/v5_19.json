@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "19",
+  "name": "k19-checkpoint-drain",
+  "title": "Draining a node that runs a training job",
+  "spec": "A left-to-right row of four numbered steps joined by arrows, drawn as four lanes of work. Step 1 box, labelled Platform marks the job as needing a checkpoint, with a flag icon. Step 2 box, labelled Job writes its state to shared storage and says it is done, with a disk cylinder icon for shared storage. Step 3 box, labelled Platform drains the node, so the pods stop and release the hardware, with a gear icon. Step 4 box, labelled Job scheduler starts the job again on a healthy node, and the job loads the checkpoint it just wrote, with a clock or restart icon. Number circles 1 to 4 (r=24, green, white numbers) sit on the step boxes. Under step 2 and step 4, a small note reads checkpoint. Orange note under the whole row: the job loses only the work done since its last checkpoint. Green takeaway bar: checkpoint first, drain second, restart on a healthy node.",
+  "anchor": "### Draining and maintenance",
+  "alt": "Four steps move a training job off a node being drained: checkpoint, save state, drain, and restart from the checkpoint elsewhere.",
+  "cap": "A training job is checkpointed before its node is drained, so it restarts elsewhere and loses only recent work."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "19",
+  "name": "k19-capi-pivot",
+  "title": "Hub-and-spoke autoscaling versus a pivoted workload cluster",
+  "spec": "Two side-by-side panels. Left panel titled Hub and spoke: a box at the top labelled Management cluster, containing the Cluster and MachineDeployment objects. A downward arrow from it into a lower box labelled Workload cluster, which contains Cluster Autoscaler. The arrow is orange and labelled needs the management cluster to scale out during peak load. Right panel titled Pivoted (self-contained): a box labelled Workload cluster that contains three items: Cluster API controllers, its own Cluster and Machine resources, and Cluster Autoscaler. A dashed arrow from a smaller box labelled Management cluster points into the workload cluster and is labelled start cluster creation and deletion. A label inside the right panel reads day-to-day autoscaling and local controller lookups stay on the local API server. Gear icons for controllers, a window icon for the autoscaler. Green takeaway bar: keep the scale-out loop local, and let the hub only start and delete clusters.",
+  "anchor": "## 8. Cluster API and fleet operations (brief)",
+  "alt": "In a hub-and-spoke layout the workload cluster depends on a management cluster to scale out; in a pivoted layout the controllers run inside the workload cluster.",
+  "cap": "A pivoted Cluster API setup lets the workload cluster scale on its own, while the management cluster only starts and deletes clusters."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "19",
+  "name": "k19-etcd-scale",
+  "title": "Worker node count sets when etcd moves to dedicated machines",
+  "spec": "A horizontal scale line from left to right labelled worker nodes, with three marked points: 50 at the first mark, 200 at the second. Segment one, from 0 to 50, shaded light green, labelled colocated etcd is fine: kubeadm runs it as static pods, saving management overhead and infrastructure cost. Segment two, from 50 to 200, shaded pale orange, labelled consider dedicated etcd machines, because etcd competes with kube-apiserver, kube-scheduler and kube-controller-manager for resources. Segment three, past 200, labelled plan for dedicated etcd clusters from the start. Under the segment three, a box of three requirements with icons: fast local disks for etcd, low-latency links within the region, and no load balancer between kube-apiserver and etcd. An arrow beside the last requirement points from kube-apiserver to etcd, crossed out with an orange mark, labelled connects to each member directly. Green takeaway bar: the bigger the cluster, the earlier etcd needs its own machines.",
+  "anchor": "### Dedicated versus colocated etcd and node pool sizing ratios",
+  "alt": "Colocated etcd is fine up to 50 worker nodes, dedicated etcd is considered past 50, and planned from the start past 200.",
+  "cap": "Etcd can run on the control-plane machines for small clusters, but it moves to dedicated machines as the worker count passes 50 and 200."
+ }
+]

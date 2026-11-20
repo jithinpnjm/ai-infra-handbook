@@ -80,6 +80,10 @@ Before you pick a shebang, check which shell your target machines actually provi
 
 ### Run, source, or exec
 
+![Running, sourcing and exec differ in whether the script's variables survive in your shell.](./img/l09-run-source.svg)
+
+*Figure 1.9.1. Only sourcing leaves the script's variables in your current shell.*
+
 There are four common ways to launch a script, and they differ in one question that matters more than the rest: do the variables the script sets survive afterwards? The table answers that question for each way.
 
 | How | What happens | Variables set in the script visible afterwards? |
@@ -105,7 +109,7 @@ You type a command that looks right, and it misbehaves. The cause is usually exp
 
 ![Quoting and expansion: the heart of shell](./img/ch09-d1-luna.svg)
 
-*Figure 1.9.1. Quoting and expansion: the heart of shell.*
+*Figure 1.9.2. Quoting and expansion: the heart of shell.*
 
 Read the diagram from top to bottom. Each box is one step the shell takes before the program receives its arguments. The classic trap shows the danger. Say the current directory has files `r.input` and `r.output`. The unquoted pattern `r.*t` is a glob, so it matches those two files, and `grep` runs on the wrong arguments.
 
@@ -145,6 +149,10 @@ rm -rf "${dir:?dir is unset or empty}"/*     # aborts instead
 Make it a habit to double-quote every expansion, such as `"$var"`, `"$(cmd)"` and `"$@"`. Skip the quotes only when you have a specific reason. There are two exceptions. One is when you want splitting, such as a variable that holds a list of options, where an array usually serves better. The other is when you want globbing. ShellCheck flags the rest with `SC2086`.
 
 ### `$@` versus `$*`
+
+![Three ways of looping over arguments and what each one produces.](./img/l09-args.svg)
+
+*Figure 1.9.3. Quoted dollar-at keeps each argument as one word, while the other forms split or join them.*
 
 The difference between `$@` and `$*` catches people who pass arguments along to other programs. The loop below shows all three forms, called as `script 'abc 123' qwe`.
 
@@ -412,7 +420,7 @@ When you trap `INT` or `TERM`, you **must** include an explicit `exit` inside th
 
 ![Strict mode and trap cleanup](./img/ch09-fig1-strict.jpg)
 
-*Figure 1.9.2. Strict mode makes a script fail loudly, and an EXIT trap cleans up after it.*
+*Figure 1.9.4. Strict mode makes a script fail loudly, and an EXIT trap cleans up after it.*
 
 ### Here documents and here strings
 
@@ -529,6 +537,10 @@ The option string lists single-letter options. A colon after a letter means that
 
 ### Grouping and subshells
 
+![A subshell discards its changes, while a brace group runs in the current shell.](./img/l09-subshell.svg)
+
+*Figure 1.9.5. Changes made inside a subshell vanish when it ends, but a brace group changes the current shell.*
+
 - `(commands )` runs in a **subshell**, a child copy of the shell. Changes to variables, the working directory and options vanish when it ends. Use it to run `uglyprogram` inside `uglydir`, or with a temporary `PATH`, without touching your parent shell: `(cd uglydir; uglyprogram)` or `(PATH=/usr/confusing:$PATH; uglyprogram)`. For a single command, prefixing `PATH=/usr/confusing:$PATH uglyprogram` avoids the subshell.
 - `{ commands; }` runs in the **current shell**. Note the spaces and the semicolon. Use it to group commands under one redirection, as in `{ echo a; echo b; } > file`.
 - Each stage of a pipeline runs in its own subshell. In bash, the exception is `shopt -s lastpipe` in a non-interactive script. That is why `echo hi | read x; echo "$x"` prints nothing. *How Linux Works* Section 11.11 has a classic idiom that combines a pipeline and a subshell. It copies a directory tree `orig` into `target` while preserving ownership and permissions: `tar cf - orig | (cd target; tar xvf -)`, or `tar xpf -`. Always check first that `target` exists and is not the same inode as `orig`, using `[ -d orig -a ! orig -ef target ]`.
@@ -612,6 +624,10 @@ An **idempotent** script can run twice and leave the same result as running it o
 Here are some habits that make a script idempotent. Use `mkdir -p`, `ln -sfn`, and `grep -qxF "$line" file || echo "$line" >> file`. Check before you act, as in `id user >/dev/null 2>&1 || useradd user`. Write to a temporary file, then **`mv` it into place**. A rename is atomic, so readers never see half a file. Finally, make destructive operations opt-in with `--apply`, and make a dry run the default.
 
 ### Retries and timeouts
+
+![A retry loop that sleeps with a doubling delay until the attempts run out.](./img/l09-retry.svg)
+
+*Figure 1.9.6. Retries with a growing delay and a timeout keep scripts from hanging or failing on transient errors.*
 
 External commands fail transiently. A package mirror, a metadata service or a flaky NFS server can each fail for a moment. A retry helper handles those cases.
 

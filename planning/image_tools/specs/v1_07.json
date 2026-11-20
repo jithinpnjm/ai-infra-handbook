@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "07",
+  "name": "l07-package-anatomy",
+  "title": "What is inside a package",
+  "spec": "One large box labelled 'package (one file)'. Inside two parts: 'tree of files' and 'metadata' listing: name, version, architecture; dependencies; file checksums; marked configuration files; maintainer scripts; signature. Each metadata item with a short arrow to what it enables: searching and refusing the wrong architecture; tool installs everything else needed; verify nothing altered; upgrades keep your edits; creates user or enables service; proof it came from the repository owner.",
+  "anchor": "## 1. What a package is",
+  "alt": "A package holds a tree of files plus metadata that enables dependencies, verification and safe upgrades.",
+  "cap": "The metadata is what lets the tool install dependencies, verify files and keep your edits."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "07",
+  "name": "l07-verbs",
+  "title": "Same task, two families",
+  "spec": "Table with Task, Debian family, Red Hat family. Rows: refresh metadata | sudo apt update | sudo dnf makecache ; install | sudo apt install pkg1 pkg2 | sudo dnf install pkg1 pkg2 ; remove | sudo apt remove pkg | sudo dnf remove pkg ; upgrade | sudo apt upgrade | sudo dnf upgrade ; search | apt search word | dnf search word ; show details | apt show pkg | dnf info pkg ; which version would be used | apt policy pkg | dnf list --showduplicates pkg. All commands monospace. Debian column and Red Hat column in two shades of green.",
+  "anchor": "### Verbs you need on both sides",
+  "alt": "A translation table of everyday package commands between the Debian and Red Hat families.",
+  "cap": "Most day-to-day package tasks have a matching command in each family."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "07",
+  "name": "l07-loader-search",
+  "title": "How the loader finds a library",
+  "spec": "Numbered vertical list of four search steps with arrows downward: 1 the executable's embedded RPATH or RUNPATH; 2 the LD_LIBRARY_PATH environment variable; 3 the cache /etc/ld.so.cache built from /etc/ld.so.conf (rebuilt by sudo ldconfig); 4 default directories /lib and /usr/lib. Side box: ldd /bin/bash shows what the program asked for on the left of the arrow and where it was found on the right; 'libfoo.so.1 => not found' is the problem (orange). Names in monospace.",
+  "anchor": "### The search order",
+  "alt": "The four places the dynamic loader searches, in order, for a shared library.",
+  "cap": "The loader checks RPATH, LD_LIBRARY_PATH, the ld.so cache and then the default directories."
+ }
+]

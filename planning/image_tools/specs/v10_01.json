@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "01",
+  "name": "g01-goodput",
+  "title": "Achieved useful work versus the speed-of-light ceiling",
+  "spec": "Two horizontal bars side by side for two cases, each on a shared scale. Case 1, labelled 8-GPU node: a full-length grey bar labelled speed of light, 12,000 tokens per second (8 GPUs at 1,500 each), and a shorter green bar inside it labelled achieved useful work, 10,000 tokens per second, with the caption 83.3 percent goodput. Case 2, labelled cluster at scale: a full-length grey bar labelled ideal, 1,000 samples per second, and a short green bar labelled achieved, 300 samples per second, with the caption 30 percent goodput, and a hatched orange segment in the unused part labelled 70 percent wasted capacity. Orange highlight on the wasted segment. Monospace for 12,000, 10,000, 1,000 and 300.",
+  "anchor": "### 5.1 Measuring Goodput versus Speed of Light",
+  "alt": "Goodput as achieved work over the speed-of-light ceiling",
+  "cap": "Goodput: divide the useful rate by the hardware ceiling, so a node can show full utilization and still deliver only 30 percent of its capacity."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "01",
+  "name": "g01-warp-lanes",
+  "title": "Why batch size 31 and 33 waste SIMT lanes",
+  "spec": "Three rows of 32-lane warp blocks drawn as small squares, one row per case. Row 1, labelled batch 32: one full warp of 32 green squares, with the caption 32 active, 0 idle, 100 percent lane efficiency. Row 2, labelled batch 31: one warp of 32 squares, 31 green and 1 grey, with the caption 1 idle, 96.88 percent. Row 3, labelled batch 33: two warps of 32 squares each, 33 green in total and 31 grey, with a bracket over the second warp labelled a second warp is allocated for one extra item. Orange highlight on the grey squares in row 3 with the note: pad batch sizes to a multiple of 8 or 32. Monospace for batch 31, batch 33, 32 lanes and 96.88 percent.",
+  "anchor": "### 2.3 SIMT warps, zero-cost context switching, and batch-size alignment",
+  "alt": "Warp lane use for batch sizes 32, 31 and 33",
+  "cap": "Warp alignment: a batch of 33 needs a second 32-lane warp, leaving 31 lanes idle, so pad sizes to a multiple of 32."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "01",
+  "name": "g01-pinned-staging",
+  "title": "Pageable copies take an extra staging hop before the DMA",
+  "spec": "Two stacked flow paths from host memory to GPU memory. Top path, labelled pageable malloc memory: an array in pageable host RAM, arrow to a CPU copy into a temporary pinned staging buffer labelled extra copy, then arrow across PCIe by DMA to GPU memory, with an orange highlight on the extra copy box. Bottom path, labelled pinned memory cudaMallocHost or pin_memory=True: the array sits directly in pinned host memory and goes straight across PCIe by DMA to GPU memory, no extra copy. A note at the far right: PCIe Gen3 x16 pinned reaches about 11.6 GB/s, about 72 percent of the 15.75 GB/s ceiling. Monospace for malloc, cudaMallocHost, pin_memory=True and DMA.",
+  "anchor": "### 2.4 Calculating theoretical peak FLOPs, memory bandwidth, and PCIe overhead",
+  "alt": "Pageable and pinned host-to-GPU copy paths",
+  "cap": "Pinned memory: a pageable buffer needs an extra CPU copy before the DMA, while pinned memory transfers directly."
+ }
+]

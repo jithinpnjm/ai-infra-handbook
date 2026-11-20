@@ -52,6 +52,10 @@ If any prerequisite feels unfamiliar, go back to that chapter before you start t
 
 ## 1. Architecture: from WSGI to ASGI
 
+![Client to ASGI server to FastAPI](./img/s07-asgi.svg)
+
+*Figure 3.7.1. ASGI architecture: the server hands each request to the app, and async handlers let waiting requests share a worker.*
+
 Start with a scene you will meet in your first month. A health endpoint was meant to be three lines that return `{"status": "ok"}`. Then someone added a version stamp that reads a config file, and then a database ping so the dashboard shows green only when the database is reachable. Now every node in the fleet calls the endpoint every few seconds, and the dashboard starts timing out while the CPU on that pod barely moves.
 
 Nothing in that endpoint is slow. Every request is simply waiting, and waiting is the whole story of this section. The way a server model handles waiting decides how much traffic one process can carry.
@@ -158,6 +162,10 @@ That is routing in one incident. A route is a rule that says which function answ
 
 ### Path, query, header, cookie, form and body
 
+![Path, query, header, cookie and body](./img/s07-params.svg)
+
+*Figure 3.7.2. Request parameters: the same request carries data in the path, query string, headers, cookies and body.*
+
 A request can carry its input in several places: the URL path, the query string, headers, cookies, a form or a JSON body. You declare each input as a function parameter, and FastAPI finds the right source for it. That is the whole trick, and it is worth reading the code below slowly once.
 
 ```python
@@ -197,6 +205,10 @@ Decide which of your routes create resources, because those are the ones that ne
 
 ### Request and response models
 
+![Request and response models](./img/s07-models.svg)
+
+*Figure 3.7.3. Pydantic models validate incoming data and filter outgoing data.*
+
 Pydantic models define the schema of your API, and a schema is simply a description of what the data must look like. Keep three kinds of model apart: input, stored and output. In this chapter, `NodeIn`, `NodeDB` and `NodeOut` play those three roles. The book uses the same idea in chapter 3 with `Todo`, `TodoItem` and `class TodoItems(BaseModel): todos: List[TodoItem]`. Its route is declared as `@todo_router.get("/todo", response_model=TodoItems)`, so `retrieve_todo()` returns only the `TodoItem` descriptions and hides the internal `id` fields.
 
 The separation protects you in two ways. Clients cannot set server-controlled fields, such as `id`, `owner` or timestamps, and secrets never leak into a response. This is called mass-assignment protection, and the name describes the attack well: a client sends a field it has no business setting, and a careless server accepts it. The `response_model` filters and validates what you return. Options such as `response_model_exclude_none=True` and `response_model_by_alias` control the output further. To serialise ORM objects, set `model_config = {"from_attributes": True}`.
@@ -229,6 +241,10 @@ class JobOut(BaseModel):
 You can annotate a return type directly, as in `-> JobOut`, and FastAPI uses it as the response model. When you need custom behaviour, return `JSONResponse`, `PlainTextResponse`, `StreamingResponse`, `FileResponse` or `RedirectResponse`. `ORJSONResponse` and `UJSONResponse` offer faster JSON.
 
 ## 4. Dependency injection
+
+![How Depends works](./img/s07-depends.svg)
+
+*Figure 3.7.4. Dependency injection: FastAPI calls the dependency and passes the result to your handler.*
 
 By the third resource you add, the same four lines sit at the top of every handler: read the settings, open a database session, check the API key, find the current user. The code works, and it is one careless copy away from a handler that forgets the key check.
 
@@ -272,6 +288,10 @@ A dependency added through `dependencies=[...]` runs without injecting a value. 
 
 ### Lifespan: startup and shutdown
 
+![Application lifespan](./img/s07-lifespan.svg)
+
+*Figure 3.7.5. Lifespan: code before the yield runs at startup and code after it runs at shutdown.*
+
 Load your model and open your HTTP client before the first request. Close them cleanly on shutdown. Doing this at startup means the first real user does not pay for the work, and doing it at shutdown means no connection is left half open.
 
 ```python
@@ -297,6 +317,10 @@ The older `@app.on_event("startup")` hooks are deprecated in favour of lifespan.
 Move expensive setup into lifespan, so it runs once per process rather than once per request.
 
 ## 5. Errors, validation and middleware
+
+![Middleware, validation and the handler](./img/s07-middleware.svg)
+
+*Figure 3.7.6. A request passes through middleware and validation before the handler, and errors become clean responses.*
 
 A client asks for a node that was decommissioned last month. The response is a 500 with a Python traceback, the dashboard shows a blank panel, and the only way to find that request in the logs is to guess the timestamp. Nobody learns anything, and the operator has to reproduce the problem from scratch.
 
@@ -475,6 +499,10 @@ A user submits a multi-day training job and the browser waits. The job will not 
 That is the general problem. A client submits a training job, and the API has to answer long before the job finishes. How you hand the work off decides whether it survives a restart.
 
 ### Background tasks and queues
+
+![Background tasks versus queues](./img/s07-background.svg)
+
+*Figure 3.7.7. Background tasks suit small jobs, and a queue with a worker suits heavy or durable work.*
 
 `BackgroundTasks` runs a function after the response is sent, in the same process. It suits quick, fire-and-forget work, such as sending a notification. Its work is lost on a restart, so it is unsuitable for long or critical jobs. The distinction is not about size. It is about what you are willing to lose.
 

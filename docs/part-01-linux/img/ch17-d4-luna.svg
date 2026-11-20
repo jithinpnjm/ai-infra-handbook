@@ -14,7 +14,7 @@
 
   <text x="80" y="82" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">How Linux frees memory</text>
 
-  <!-- Free pages -->
+  
   <rect x="60" y="105" width="1480" height="110" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
     <path d="M91 133h35l17 17v39H91z"/>
@@ -23,10 +23,10 @@
   </g>
   <text x="170" y="173" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Free pages above 'high' watermark: all fine</text>
 
-  <!-- Arrow: Free pages to kswapd -->
+  
   <path d="M800 215V255" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
-  <!-- kswapd -->
+  
   <rect x="200" y="255" width="1200" height="135" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="270" cy="322" r="24"/>
@@ -38,13 +38,13 @@
     <tspan x="330" dy="38">kswapd wakes (background reclaim)</tspan>
   </text>
 
-  <!-- Branches from kswapd to reclaim actions -->
+  
   <path d="M800 390V430M245 430H1045" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
   <path d="M245 430V470" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
   <path d="M645 430V470" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
   <path d="M1045 430V470" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
 
-  <!-- Reclaim page cache -->
+  
   <rect x="60" y="470" width="370" height="300" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
     <path d="M209 493h35l17 17v35h-52z"/>
@@ -60,7 +60,7 @@
     <tspan x="245" dy="36">first)</tspan>
   </text>
 
-  <!-- Swap out cold anonymous pages -->
+  
   <rect x="460" y="470" width="370" height="300" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
     <rect x="617" y="493" width="56" height="56" rx="5"/>
@@ -75,7 +75,7 @@
     <tspan x="645" dy="36">vm.swappiness)</tspan>
   </text>
 
-  <!-- Reap/shrink kernel caches -->
+  
   <rect x="860" y="470" width="370" height="300" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="1045" cy="521" r="23"/>
@@ -89,7 +89,7 @@
     <tspan x="1045" dy="36">inodes)</tspan>
   </text>
 
-  <!-- Direct reclaim branch -->
+  
   <path d="M1400 322H1530V790H900V820" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
   <text x="1245" y="590" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">
     <tspan x="1245" dy="0">allocation</tspan>
@@ -97,7 +97,7 @@
     <tspan x="1245" dy="32">below 'min'</tspan>
   </text>
 
-  <!-- Direct reclaim -->
+  
   <rect x="60" y="820" width="940" height="140" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="92" y="852" width="56" height="49" rx="4"/>
@@ -110,12 +110,12 @@
     <tspan x="170" dy="36">reclaims synchronously -&gt; latency stalls</tspan>
   </text>
 
-  <!-- Direct reclaim to OOM killer -->
+  
   <path d="M530 960V1080" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
   <rect x="560" y="982" width="390" height="42" rx="4" fill="#f5f8f5"/>
   <text x="570" y="1012" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">nothing left to reclaim</text>
 
-  <!-- OOM killer -->
+  
   <rect x="60" y="1080" width="940" height="100" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M92 1102h34l16 16v40H92z"/>

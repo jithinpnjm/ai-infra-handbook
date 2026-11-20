@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "27",
+  "name": "l27-cloud-gpu-diffs",
+  "title": "Why a cloud GPU node differs",
+  "spec": "Four boxes around a centre box 'cloud GPU node': Noisy neighbours (shared CPU caches, memory bandwidth, NIC; shows as %steal and latency outliers); Virtual topology (the NUMA layout and PCIe tree the provider presents; flat view stops NCCL choosing best paths); Passthrough and SR-IOV (whole GPU passed through, NIC as virtual function; provider sets bandwidth caps, MTU, counters); Nested virtualisation (two layers of exits; often disabled on GPU types). Green bar: if a workload is slower in the cloud, check these four before you blame the software.",
+  "anchor": "### Why a cloud GPU node behaves differently",
+  "alt": "Noisy neighbours, virtual topology, passthrough limits and nested virtualisation explain most cloud surprises.",
+  "cap": "Check these four differences before blaming the software for a slower cloud GPU node."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "27",
+  "name": "l27-gpu-options",
+  "title": "Where to run a GPU workload",
+  "spec": "Table with Option, Pro, Con. Rows: GPU VM with passthrough | provisioning API, snapshots, tenant isolation, near-native GPU | hypervisor overhead on I/O unless offloaded ; Bare-metal instances | full topology and NIC/GPU control, no hypervisor, InfiniBand | longer provisioning, you own more of the stack ; Containers on VMs or bare metal | fast start, reproducibility | shared kernel, visibility limits ; MIG / vGPU slices | many small tenants on one GPU | no NCCL across MIG instances ; MicroVMs/Kata | strong isolation | GPU support complexity. Orange mark on Containers: almost all AI workloads run on top of one of the others.",
+  "anchor": "### VM, bare metal or container for GPUs?",
+  "alt": "Five ways to run GPU workloads compared by their pros and cons.",
+  "cap": "Each option trades control for convenience, so read the cons column as carefully as the pros."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "27",
+  "name": "l27-limits-use",
+  "title": "Software limits under USE",
+  "spec": "Table with Resource, Utilisation, Saturation. Rows: CPU quota | cpu.stat usage_usec vs cpu.max | nr_throttled, throttled_usec, PSI cpu ; Memory limit | memory.current vs memory.max | memory.events (high, max), PSI memory; errors oom_kill, exit 137 ; Disk I/O limit | io.stat vs io.max | io.pressure, latency growth ; PIDs | pids.current vs pids.max | fork failures, Resource temporarily unavailable ; VM vCPUs | guest CPU utilisation | %steal, run queue. Orange note: utilisation is measured against the limit, not against the physical resource. Names monospace.",
+  "anchor": "## 5. Resource controls under the USE method",
+  "alt": "Each software limit paired with the signals that show whether it is binding.",
+  "cap": "Utilisation is measured against the limit, not the physical resource, which is what makes the table useful in a shared cloud."
+ }
+]

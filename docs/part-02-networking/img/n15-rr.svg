@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Full mesh versus route reflector</title>
+  <desc>Visual comparison between iBGP full mesh scaling requirements and route reflector hub-and-spoke topology with operational commands and path diversity caveat.</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Full mesh versus route reflector</text>
+
+  
+  <rect x="50" y="105" width="720" height="675" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(195, 130)">
+    <circle cx="28" cy="8" r="6" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <circle cx="8" cy="46" r="6" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <circle cx="48" cy="46" r="6" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="14" x2="11" y2="41" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="14" x2="45" y2="41" stroke="#207448" stroke-width="3"/>
+    <line x1="14" y1="46" x2="42" y2="46" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="430" y="168" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">iBGP full mesh</text>
+
+  
+  
+  <g stroke="#207448" stroke-width="2.5" stroke-opacity="0.5">
+    <line x1="410" y1="240" x2="549" y2="320"/>
+    <line x1="410" y1="240" x2="549" y2="480"/>
+    <line x1="410" y1="240" x2="410" y2="560"/>
+    <line x1="410" y1="240" x2="271" y2="480"/>
+    <line x1="410" y1="240" x2="271" y2="320"/>
+    <line x1="549" y1="320" x2="549" y2="480"/>
+    <line x1="549" y1="320" x2="410" y2="560"/>
+    <line x1="549" y1="320" x2="271" y2="480"/>
+    <line x1="549" y1="320" x2="271" y2="320"/>
+    <line x1="549" y1="480" x2="410" y2="560"/>
+    <line x1="549" y1="480" x2="271" y2="480"/>
+    <line x1="549" y1="480" x2="271" y2="320"/>
+    <line x1="410" y1="560" x2="271" y2="480"/>
+    <line x1="410" y1="560" x2="271" y2="320"/>
+    <line x1="271" y1="480" x2="271" y2="320"/>
+  </g>
+
+  
+  <g>
+    
+    <circle cx="410" cy="240" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 400 240 L 420 240 M 415 235 L 420 240 L 415 245 M 410 230 L 410 250 M 405 235 L 410 230 L 415 235" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="549" cy="320" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 539 320 L 559 320 M 554 315 L 559 320 L 554 325 M 549 310 L 549 330 M 544 315 L 549 310 L 554 315" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="549" cy="480" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 539 480 L 559 480 M 554 475 L 559 480 L 554 485 M 549 470 L 549 490 M 544 475 L 549 470 L 554 475" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="410" cy="560" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 400 560 L 420 560 M 415 555 L 420 560 L 415 565 M 410 550 L 410 570 M 405 555 L 410 550 L 415 555" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="271" cy="480" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 261 480 L 281 480 M 276 475 L 281 480 L 276 485 M 271 470 L 271 490 M 266 475 L 271 470 L 276 475" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="271" cy="320" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 261 320 L 281 320 M 276 315 L 281 320 L 276 325 M 271 310 L 271 330 M 266 315 L 271 310 L 276 315" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+
+  
+  <rect x="80" y="640" width="660" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="410" y="705" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">100 routers need 4,950 iBGP sessions</text>
+
+
+  
+  <rect x="830" y="105" width="720" height="675" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(985, 130)">
+    <circle cx="28" cy="28" r="8" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="4" x2="28" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="40" x2="28" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="4" y1="28" x2="16" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="40" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1225" y="168" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Route reflector</text>
+
+  
+  <g stroke="#207448" stroke-width="4">
+    <line x1="1190" y1="400" x2="1190" y2="240"/>
+    <line x1="1190" y1="400" x2="1329" y2="320"/>
+    <line x1="1190" y1="400" x2="1329" y2="480"/>
+    <line x1="1190" y1="400" x2="1190" y2="560"/>
+    <line x1="1190" y1="400" x2="1051" y2="480"/>
+    <line x1="1190" y1="400" x2="1051" y2="320"/>
+  </g>
+
+  
+  <g>
+    
+    <circle cx="1190" cy="240" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 1180 240 L 1200 240 M 1195 235 L 1200 240 L 1195 245 M 1190 230 L 1190 250 M 1185 235 L 1190 230 L 1195 235" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="1329" cy="320" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 1319 320 L 1339 320 M 1334 315 L 1339 320 L 1334 325 M 1329 310 L 1329 330 M 1324 315 L 1329 310 L 1334 315" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="1329" cy="480" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 1319 480 L 1339 480 M 1334 475 L 1339 480 L 1334 485 M 1329 470 L 1329 490 M 1324 475 L 1329 470 L 1334 475" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="1190" cy="560" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 1180 560 L 1200 560 M 1195 555 L 1200 560 L 1195 565 M 1190 550 L 1190 570 M 1185 555 L 1190 550 L 1195 555" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="1051" cy="480" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 1041 480 L 1061 480 M 1056 475 L 1061 480 L 1056 485 M 1051 470 L 1051 490 M 1046 475 L 1051 470 L 1056 475" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <circle cx="1051" cy="320" r="28" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <path d="M 1041 320 L 1061 320 M 1056 315 L 1061 320 L 1056 325 M 1051 310 L 1051 330 M 1046 315 L 1051 310 L 1056 315" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+
+  
+  <circle cx="1190" cy="400" r="42" fill="#ffffff" stroke="#207448" stroke-width="5"/>
+  <circle cx="1190" cy="400" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <path d="M 1162 400 L 1218 400 M 1210 393 L 1218 400 L 1210 407 M 1170 393 L 1162 400 L 1170 407" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 1190 372 L 1190 428 M 1183 380 L 1190 372 L 1197 380 M 1183 420 L 1190 428 L 1197 420" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  
+  <rect x="860" y="640" width="660" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1190" y="682" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="1190" dy="0">two route reflectors serving the same</tspan>
+    <tspan x="1190" dy="36">hundred routers: 197 sessions</tspan>
+  </text>
+
+
+  
+  <rect x="50" y="805" width="1500" height="95" rx="14" fill="#fff9f3" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(80, 824)">
+    <polygon points="28,4 52,48 4,48" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="41" r="2.5" fill="#db8129"/>
+  </g>
+  <text x="835" y="862" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">RR picks best paths from its own IGP-cost view, which can hide path diversity</text>
+
+
+  
+  
+  <rect x="50" y="925" width="720" height="115" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(85, 954)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    <path d="M 14 20 L 24 28 L 14 36 M 28 36 L 42 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="445" y="992" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">neighbor X next-hop-self</text>
+
+  
+  <rect x="830" y="925" width="720" height="115" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(865, 954)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    <path d="M 14 20 L 24 28 L 14 36 M 28 36 L 42 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1225" y="992" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">update-source lo</text>
+</svg>

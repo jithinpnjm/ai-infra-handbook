@@ -14,12 +14,12 @@
   <rect width="1600" height="1060" fill="#f5f8f5"/>
   <text x="800" y="76" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">From source to executable</text>
 
-  <!-- Row 1: main.c -> expanded source -> main.o -->
+  
   <rect x="40" y="180" width="240" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <path d="M72 220h28l10 10v36H72z M100 220v10h10 M82 242h20 M82 254h20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
   <text x="132" y="254" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">main.c</text>
 
-  <!-- Edge 1: preprocessor -->
+  
   <path d="M280 245 H616" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
   <text x="448" y="160" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
     <tspan x="448" dy="0">preprocessor (cpp)</tspan>
@@ -34,7 +34,7 @@
     <tspan x="710" dy="34">source</tspan>
   </text>
 
-  <!-- Edge 2: compiler -->
+  
   <path d="M910 245 H1226" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <text x="1068" y="220" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">compiler (cc -c)</text>
 
@@ -43,7 +43,7 @@
   <text x="1324" y="238" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">main.o</text>
   <text x="1324" y="274" fill="#303a36" font-family="sans-serif" font-size="24">object file</text>
 
-  <!-- Row 2: aux.c -> aux.o -->
+  
   <rect x="40" y="380" width="240" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <path d="M72 420h28l10 10v36H72z M100 420v10h10 M82 442h20 M82 454h20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
   <text x="132" y="454" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">aux.c</text>
@@ -55,7 +55,7 @@
   <text x="710" y="438" fill="#303a36" font-family="monospace" font-size="28" font-weight="700">aux.o</text>
   <text x="710" y="474" fill="#303a36" font-family="sans-serif" font-size="24">object file</text>
 
-  <!-- Row 3: static library -->
+  
   <rect x="40" y="575" width="350" height="165" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5">
     <ellipse cx="94" cy="635" rx="26" ry="10"/>
@@ -65,7 +65,7 @@
   <text x="142" y="658" fill="#303a36" font-family="monospace" font-size="24">libfoo.a</text>
   <text x="142" y="694" fill="#303a36" font-family="sans-serif" font-size="24">(code copied in)</text>
 
-  <!-- Linker (ld) -->
+  
   <rect x="740" y="570" width="380" height="175" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
     <circle cx="806" cy="656" r="22"/>
@@ -75,12 +75,12 @@
   <text x="860" y="646" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">linker (ld)</text>
   <text x="860" y="688" fill="#303a36" font-family="sans-serif" font-size="25">resolves symbols</text>
 
-  <!-- Arrows into linker -->
+  
   <path d="M1390 310 V520 H980 V566" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <path d="M765 510 V540 H860 V566" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <path d="M390 658 H736" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Executable -->
+  
   <rect x="1220" y="585" width="330" height="145" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round">
     <rect x="1250" y="630" width="46" height="36" rx="5"/>
@@ -91,7 +91,7 @@
 
   <path d="M1120 658 H1216" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Row 4: shared library + running process -->
+  
   <rect x="440" y="820" width="440" height="190" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5">
     <ellipse cx="496" cy="885" rx="26" ry="10"/>
@@ -104,10 +104,10 @@
     <tspan x="546" dy="30">recorded)</tspan>
   </text>
 
-  <!-- dashed shared lib -> linker -->
+  
   <path d="M660 820 V785 H930 V749" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
 
-  <!-- running process -->
+  
   <rect x="1220" y="850" width="330" height="145" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round">
     <rect x="1250" y="896" width="46" height="36" rx="5"/>
@@ -118,7 +118,7 @@
     <tspan x="1318" dy="34">process</tspan>
   </text>
 
-  <!-- executable -> running process -->
+  
   <path d="M1385 730 V846" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <text x="1405" y="778" fill="#303a36" font-family="sans-serif" font-size="24">
     <tspan x="1405" dy="0">at run time:</tspan>
@@ -126,6 +126,6 @@
     <tspan x="1405" dy="28" font-family="monospace">libbar.so</tspan>
   </text>
 
-  <!-- dashed shared lib -> running process -->
+  
   <path d="M880 922 H1216" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
 </svg>

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "25",
+  "name": "l25-six-questions",
+  "title": "Six questions for every result",
+  "spec": "Six numbered boxes in two rows of three: 1 Why not double? What is the limiter; 2 Did it break limits? check against known maxima; 3 Did it error? errors skew results; 4 Does it reproduce? repeat, look at variation, test other instances; 5 Does it matter? is the workload relevant to production; 6 Did it even happen? was the operation performed rather than blocked, cached or optimised away. Green bar: a number you cannot answer these questions about is a hypothesis, not a result.",
+  "anchor": "### The checklist",
+  "alt": "Six questions to ask of any benchmark result before accepting it.",
+  "cap": "Each question catches a different way a benchmark result can mislead you."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "25",
+  "name": "l25-ramp-knee",
+  "title": "Ramping load and the knee",
+  "spec": "Chart with load on the x axis (clients, threads or QPS added in steps). Two curves: throughput rising then flattening, latency percentiles flat then bending upward. Mark the knee where the curve bends in orange. Label: report the highest load with acceptable latency, not the highest throughput. Note: hold each level long enough to settle.",
+  "anchor": "### Ramping load and acceptable latency",
+  "alt": "Throughput and latency plotted against stepped load, with the knee marked.",
+  "cap": "The result is the highest load whose latency is still acceptable, not the highest throughput."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "25",
+  "name": "l25-sanity-math",
+  "title": "Sanity-check arithmetic",
+  "spec": "Worked rows: Claim 50,000 NFS IOPS of 8 KiB over one 1 GbE link: 50,000 x 8 KiB = 400,000 KB/s, about 3.2 Gbit/s, more than 1 Gbit/s, verdict impossible, client cache measured (orange). Claim 350 MB/s over 1 GbE: 350 x 8 = 2.8 Gbit/s, bogus, about 119 MB/s is the real ceiling. Claim 400 Gb/s NIC delivers 55 GB/s per direction: 400 Gb/s = 50 GB/s raw, above line rate. Footer: check bits against bytes, GiB against GB, one direction against both, per GPU against aggregate.",
+  "anchor": "### Sanity-check arithmetic you should do instantly",
+  "alt": "Quick arithmetic shows when a claimed number exceeds a physical limit.",
+  "cap": "Do the arithmetic with units and treat any number above a physical limit as a measurement error."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "25",
+  "name": "l25-passive-active",
+  "title": "Passive versus active benchmarking",
+  "spec": "Two panels. Left Passive (anti-method, orange): run the tool with various options, make slides, hand over; results may be buggy or limited by the tool or an unrelated component such as a congested network or a single thread. Right Active (core method, green): analyse the system with observability tools while the benchmark runs, to confirm what is tested and what limits it. Example below: throughput plateaus at 700 samples/s while server resources are idle, so check the load generator, which was single-threaded.",
+  "anchor": "## 4. Methodology",
+  "alt": "Passive benchmarking reads a report afterwards, while active benchmarking watches the system during the run.",
+  "cap": "Active benchmarking confirms what is tested and what limits it while the benchmark runs."
+ }
+]

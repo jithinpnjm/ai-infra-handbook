@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Graceful shutdown on SIGTERM</title>
+  <desc>A left-to-right flow of five steps for graceful shutdown on SIGTERM with a key rule for signal handlers.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="16" refY="8" markerWidth="16" markerHeight="16" orient="auto">
+      <path d="M 0 2 L 16 8 L 0 14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="95" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Graceful shutdown on SIGTERM</text>
+
+  
+  <rect x="40" y="160" width="272" height="470" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="176" cy="215" r="24" fill="#207448" />
+  <text x="176" y="224" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 160 307 C 160 293 166 281 176 281 C 186 281 192 293 192 307 L 198 314 L 154 314 Z" />
+    <path d="M 171 318 C 172 322 174 324 176 324 C 178 324 180 322 181 318" />
+    <path d="M 152 284 C 150 288 149 293 149 298" />
+    <path d="M 200 284 C 202 288 203 293 203 298" />
+  </g>
+  <text x="176" y="415" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="176" dy="0">SIGTERM</tspan>
+    <tspan x="176" dy="42">arrives</tspan>
+  </text>
+
+  
+  <line x1="312" y1="395" x2="352" y2="395" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="352" y="160" width="272" height="470" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="488" cy="215" r="24" fill="#207448" />
+  <text x="488" y="224" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="472" y1="270" x2="472" y2="322" />
+    <line x1="464" y1="322" x2="480" y2="322" />
+    <path d="M 472 272 L 508 272 L 496 287 L 508 302 L 472 302 Z" />
+  </g>
+  <text x="488" y="415" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="488" dy="0">handler sets</tspan>
+    <tspan x="488" dy="42">a stop flag</tspan>
+  </text>
+
+  
+  <line x1="624" y1="395" x2="664" y2="395" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="664" y="160" width="272" height="470" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="800" cy="215" r="24" fill="#207448" />
+  <text x="800" y="224" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 818 285 A 20 20 0 1 0 820 305" />
+    <polyline points="812 276 820 285 829 278" />
+    <polyline points="792 295 798 301 809 289" />
+  </g>
+  <text x="800" y="395" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">the loop</tspan>
+    <tspan x="800" dy="42">finishes the</tspan>
+    <tspan x="800" dy="42">current item</tspan>
+  </text>
+
+  
+  <line x1="936" y1="395" x2="976" y2="395" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="976" y="160" width="272" height="470" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1112" cy="215" r="24" fill="#207448" />
+  <text x="1112" y="224" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 1098 272 L 1118 272 L 1128 282 L 1128 318 L 1098 318 Z" />
+    <polyline points="1118 272 1118 282 1128 282" />
+    <line x1="1106" y1="294" x2="1120" y2="294" />
+    <line x1="1106" y1="304" x2="1120" y2="304" />
+  </g>
+  <text x="1112" y="380" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1112" dy="0">cleanup</tspan>
+    <tspan x="1112" dy="40">closes files</tspan>
+    <tspan x="1112" dy="40">and</tspan>
+    <tspan x="1112" dy="40">connections</tspan>
+  </text>
+
+  
+  <line x1="1248" y1="395" x2="1288" y2="395" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1288" y="160" width="272" height="470" rx="16" ry="16" fill="#dcfce7" stroke="#207448" stroke-width="4" />
+  <circle cx="1424" cy="215" r="24" fill="#207448" />
+  <text x="1424" y="224" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 1424 320 L 1404 320 L 1404 272 L 1424 272" />
+    <line x1="1412" y1="296" x2="1444" y2="296" />
+    <polyline points="1436 288 1444 296 1436 304" />
+  </g>
+  <text x="1424" y="415" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1424" dy="0">exit with</tspan>
+    <tspan x="1424" dy="42">status 0</tspan>
+  </text>
+
+  
+  <rect x="140" y="690" width="1320" height="120" rx="16" ry="16" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+  <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 200 725 L 223 765 A 2 2 0 0 1 221 768 L 179 768 A 2 2 0 0 1 177 765 Z" />
+    <line x1="200" y1="738" x2="200" y2="752" />
+    <circle cx="200" cy="760" r="1.5" fill="#db8129" />
+  </g>
+  <text x="250" y="759" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">the handler should only set a flag, not do the work</text>
+</svg>

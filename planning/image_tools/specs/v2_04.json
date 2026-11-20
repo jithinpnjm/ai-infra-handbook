@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "n04-ipv6struct",
+  "title": "Structure of an IPv6 address",
+  "spec": "One long bar split into three segments: 'site prefix 48 bits' + 'subnet ID 16 bits' + 'interface ID 64 bits'. Beneath, the example 2001:0db8:0a0b | 12f0 | 0000:0000:0000:8b6e aligned to the segments (monospace). A bracket over the first two segments 'first 64 bits = the /64 subnet prefix'. Below, nested boxes: ISP/cloud /32 contains site /48 contains 65,536 /64 subnets. Orange note: 'Almost every subnet is a /64'.",
+  "anchor": "### Structure and the /64 convention",
+  "alt": "Structure of an IPv6 address",
+  "cap": "A global IPv6 address is a site prefix, a subnet ID and a 64-bit interface ID, and subnets are almost always /64."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "n04-ipv6types",
+  "title": "Reading IPv6 address prefixes",
+  "spec": "Table with two columns, prefix (monospace) and meaning, rows: '::1/128' loopback; '2000::/3' global unicast (begins with 2 or 3); 'fd00::/8' unique local (ULA, private); 'fe80::/10' link-local, valid on one link only; 'ff00::/8' multicast (ff02::1 all nodes, ff02::2 all routers); '2001:db8::/32' documentation; '::ffff:0:0/96' IPv4-mapped; '64:ff9b::/96' NAT64. Orange highlight on the line 'There is no broadcast in IPv6'.",
+  "anchor": "### Address types",
+  "alt": "IPv6 address types",
+  "cap": "The first digits of an IPv6 address tell you its type, and multicast replaces broadcast."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "n04-ipv4hdr",
+  "title": "The IPv4 header",
+  "spec": "A 32-bit-wide grid, four columns of 8 bits, rows: Row1 Version | IHL | DSCP | ECN | Total Length; Row2 Identification | Flags | Fragment Offset; Row3 TTL | Protocol | Header Checksum; Row4 Source Address; Row5 Destination Address; Row6 Options (rare). Side notes: 'IHL 5 = 20 bytes', 'TTL drops by one at each router', 'Flags: DF and MF'. Orange highlight on Protocol with note '6 = TCP'. Monospace for field names.",
+  "anchor": "### IPv4 header (20 bytes minimum)",
+  "alt": "IPv4 header fields",
+  "cap": "The IPv4 header is 20 bytes minimum, with fragmentation fields, TTL and a protocol field."
+ }
+]

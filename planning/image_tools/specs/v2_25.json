@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "25",
+  "name": "n25-netns",
+  "title": "What a network namespace owns",
+  "spec": "A host box containing two namespace boxes side by side, 'red' and 'default'. Inside each a stack of items: own interfaces, own IP addresses, own routing tables, own ARP and ND neighbour tables, own netfilter rules, own conntrack table, own /proc/net. Callout: 'two containers can both serve on port 8080: each has its own port space'. Monospace commands under 'red': 'ip netns add red', 'ip netns exec red ip link' (only a down loopback at first), 'ip -n red link set lo up'. Orange note: 'nsenter -t <pid> -n ip addr enters a container namespace by PID'.",
+  "anchor": "## 1. Network namespaces",
+  "alt": "What a network namespace holds",
+  "cap": "A network namespace is a complete independent copy of the network stack, so each container has its own ports, routes and firewall."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "25",
+  "name": "n25-dockermodes",
+  "title": "Docker network modes",
+  "spec": "Table with columns Mode, Behaviour, Use. bridge (default docker0): private subnet, veth per container, NAT outbound, -p publishes via DNAT. host (--network host): shares the host namespace, no isolation, no NAT, best performance, ports conflict (use: NCCL/HPC containers). none: only loopback. container:NAME: shares another container's namespace (sidecars; how a Kubernetes pod works). overlay: VXLAN across Docker hosts (Swarm). macvlan / ipvlan: container on the physical network. Orange highlight on host row. Monospace for flags.",
+  "anchor": "## 3. Docker networking",
+  "alt": "Docker network modes",
+  "cap": "Docker offers six network modes, from the default bridge to sharing the host namespace."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "25",
+  "name": "n25-cniadd",
+  "title": "What happens when a pod starts: CNI ADD",
+  "spec": "Numbered steps flowing left to right. 1 'containerd or CRI-O creates the pod sandbox: a network namespace, usually held by the pause container'. 2 'runtime reads /etc/cni/net.d/*.conflist and runs the plugin from /opt/cni/bin/ with CNI_COMMAND=ADD'. 3 'plugin creates a veth or macvlan, moves one end into the namespace, calls an IPAM plugin for an address (host-local, dhcp)'. 4 'on pod delete the runtime calls DEL; .conflist chains plugins in order: bridge, portmap, bandwidth, tuning'. Monospace for paths and variables. Orange on the IPAM box.",
+  "anchor": "### How it works",
+  "alt": "CNI ADD sequence",
+  "cap": "The runtime calls the CNI plugin, which wires the interface into the pod namespace and asks IPAM for an address."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "25",
+  "name": "n25-crossnode",
+  "title": "Pod to pod across nodes",
+  "spec": "Two nodes, node 1 with pod A 10.244.1.5 and node 2 with pod B in 10.244.2.0/24. Top path 'Overlay (VXLAN, IPIP, Geneve)': packet leaves pod A through its veth, node route says 10.244.2.0/24 goes via a tunnel device (flannel.1, tunl0 or vxlan.calico), the packet is wrapped in an outer packet to node 2 which unwraps it. Bottom path 'Routed (no encapsulation)': node 1 holds route '10.244.2.0/24 via <node2 IP>' installed by static config, BIRD or the CNI daemon; needs L2 adjacency for host-gw or BGP-learned pod prefixes. Note: cloud CNIs use VPC subnet addresses routed natively. Orange tag: 'Kubernetes: pods reach all pods without NAT'.",
+  "anchor": "### Different nodes",
+  "alt": "Pod to pod across nodes",
+  "cap": "Cross-node pod traffic either rides inside an overlay tunnel or follows plain routes to the other node."
+ }
+]

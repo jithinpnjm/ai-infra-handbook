@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-venv",
+  "title": "One environment per project",
+  "spec": "Three columns. Column 1 (header Project A): a box .venv containing python and site-packages, with a chip library version 1. Column 2 (header Project B): a box .venv containing python and site-packages, with a chip library version 2. Column 3 (header System Python, grey, in orange outline as the warning): a box with the note never sudo pip install. Bottom green bar: recreate a broken environment rather than repair it.",
+  "anchor": "## 3. Virtual environments",
+  "alt": "One virtual environment per project",
+  "cap": "One environment per project: each .venv has its own python and site-packages, so two library versions do not clash."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-choosetool",
+  "title": "Pick the tool for the situation",
+  "spec": "A two-column table, six rows, left column Situation, right column Tool in monospace. Rows: Quick script with a few dependencies = python -m venv + pip (or uv); Application, reproducible deployment = pip-tools or uv lock + hashes; Library you publish = pyproject.toml + Hatch/Flit/setuptools; Global CLI tools = pipx / uv tool; Heavy native scientific stack, HPC = conda/mamba, or Lmod + venv; Multi-version testing = tox / nox / CI matrix. Orange highlight on the second row. Bottom bar: a published library gets ranges, a deployed application gets a lockfile.",
+  "anchor": "### Choosing",
+  "alt": "Choosing a packaging tool by situation",
+  "cap": "Choosing a tool: match your situation to a row. A published library gets ranges, a deployed application gets a lockfile."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-piptools",
+  "title": "From abstract list to exact lock",
+  "spec": "A horizontal flow of four boxes joined by three arrows: requirements.in (abstract list), pip-compile --generate-hashes, requirements.txt (hashed lock), pip-sync (environment matches the lock exactly). Under it two small panels: Library: abstract ranges like requests>=2.28,<3 ; Application: pinned lock with hashes (orange).",
+  "anchor": "### Declaring dependencies: libraries vs applications",
+  "alt": "From requirements.in to a hashed lock",
+  "cap": "Declaring dependencies: pip-compile turns an abstract list into a hashed lock, and pip-sync makes the environment match it."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-pyproject",
+  "title": "What pyproject.toml declares",
+  "spec": "A tall dark panel on the left titled pyproject.toml with four stacked table headers in monospace: [build-system], [project], [project.scripts], [project.entry-points.\"myops.plugins\"]. To the right of each header a green note: names the build backend; name, version, dependencies; creates the myops command; plugins found by importlib.metadata.",
+  "anchor": "### `pyproject.toml`",
+  "alt": "The main tables in pyproject.toml",
+  "cap": "pyproject.toml: four tables cover the build backend, project metadata, command launchers and plugin entry points."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-build",
+  "title": "Build, check, publish, install",
+  "spec": "Left box: source (src/myops). Arrow labelled python -m build to two boxes: sdist myops-0.3.1.tar.gz (needs compilers, slower) and wheel myops-0.3.1-py3-none-any.whl (prebuilt zip, no build step, fast, green). Both go through twine check to twine upload to a private index, and then pip install. Keep it a simple left-to-right flow.",
+  "anchor": "### Building, installing, publishing",
+  "alt": "From source to wheel and sdist",
+  "cap": "Building and publishing: python -m build makes an sdist and a wheel, and a wheel installs without a build step."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-entrypoints",
+  "title": "How plugins are discovered",
+  "spec": "Four steps left to right: 1 pyproject.toml declares gpu = myops.plugins.gpu:Plugin ; 2 installation records it in package metadata ; 3 entry_points(group=\"myops.plugins\") discovers it ; 4 ep.load() then register. Orange note under step 4: load lazily, isolate failures.",
+  "anchor": "## 6. Plugins and entry points",
+  "alt": "Entry point plugin discovery",
+  "cap": "Entry points: an installed package advertises a plugin, and the core discovers, loads and registers it without edits."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-gpucheck",
+  "title": "Check the stack from the bottom up",
+  "spec": "Four stacked layers, bottom to top: host driver (check with nvidia-smi), CUDA runtime inside the wheel (torch.version.cuda), PyTorch wheel (cu121 index), your code (torch.cuda.is_available()). A side orange panel: driver must be new enough for the wheel's CUDA runtime. A grey note: avoid pip install at job start.",
+  "anchor": "## 7. Python packaging on GPU and ML systems",
+  "alt": "Checking a GPU Python stack",
+  "cap": "GPU packaging: the host driver must be new enough for the CUDA runtime in the wheel, so check from the driver upward."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-multistage",
+  "title": "Multi-stage image build",
+  "spec": "Two boxes left to right. Left box (header build stage, python:3.12-slim AS build): create venv /opt/venv, pip install --require-hashes, pip install --no-deps . . Arrow labelled COPY --from=build /opt/venv. Right box (header final stage, python:3.12-slim): PATH=/opt/venv/bin, USER 10001, ENTRYPOINT myops. Green note: build tools stay behind in the build stage.",
+  "anchor": "## 8. Containers and system integration",
+  "alt": "A multi-stage Dockerfile",
+  "cap": "Multi-stage build: dependencies are installed in a build stage, then only the virtual environment is copied into the final image."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-dotted",
+  "title": "A dotted package tree",
+  "spec": "A tree on the left: dir0/ on sys.path, containing dir1/ with __init__.py and mod.py (var = 'hack'), and inside dir1/ a dir2/ with __init__.py and mod.py (var = 'code'). On the right three green rows: import dir1.mod runs dir1/__init__.py then dir1/mod.py ; import dir1.dir2.mod reaches the nested mod ; from dir1.dir2 import mod shortens access.",
+  "anchor": "### Dotted package walkthrough",
+  "alt": "Dotted package walkthrough tree",
+  "cap": "A dotted package tree: each dot in an import names a folder, and each folder's __init__.py runs on the way in."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "s02-fourmodels",
+  "title": "Four import models",
+  "spec": "A 4-row table. Row 1: Basic module = import module. Row 2: Regular package = import folder.folder.module, has __init__.py. Row 3: Package-relative = from . import module. Row 4 (orange): Namespace package = folders without __init__.py, merged by PEP 420.",
+  "anchor": "### Four import models",
+  "alt": "Four import models",
+  "cap": "Python's four import models, from a basic module to a PEP 420 namespace package."
+ }
+]

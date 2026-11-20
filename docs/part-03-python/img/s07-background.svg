@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Respond first, work after</title>
+  <desc>Visual comparison between background tasks running in the same process after response is sent for small jobs, and queue and worker architecture for heavy or durable work.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Respond first, work after</text>
+
+  
+  <g id="panel-background-task">
+    <rect x="80" y="105" width="690" height="710" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="120" y="125" width="610" height="65" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="425" y="168" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">Background task</text>
+
+    
+    <g id="step1-response">
+      <rect x="120" y="230" width="610" height="165" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+      <circle cx="170" cy="312" r="24" fill="#db8129" />
+      <text x="170" y="321" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+      <g transform="translate(225, 284)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 6 28 L 50 6 L 30 50 L 22 30 Z" />
+        <line x1="50" y1="6" x2="22" y2="30" />
+      </g>
+
+      <text x="310" y="322" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">response is sent</text>
+    </g>
+
+    
+    <path d="M 425 395 L 425 438" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="step2-process">
+      <rect x="120" y="440" width="610" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <circle cx="170" cy="535" r="24" fill="#207448" />
+      <text x="170" y="544" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+      <g transform="translate(225, 507)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="12" y="12" width="32" height="32" rx="4" />
+        <line x1="20" y1="4" x2="20" y2="12" />
+        <line x1="28" y1="4" x2="28" y2="12" />
+        <line x1="36" y1="4" x2="36" y2="12" />
+        <line x1="20" y1="44" x2="20" y2="52" />
+        <line x1="28" y1="44" x2="28" y2="52" />
+        <line x1="36" y1="44" x2="36" y2="52" />
+        <line x1="4" y1="20" x2="12" y2="20" />
+        <line x1="4" y1="28" x2="12" y2="28" />
+        <line x1="4" y1="36" x2="12" y2="36" />
+        <line x1="44" y1="20" x2="52" y2="20" />
+        <line x1="44" y1="28" x2="52" y2="28" />
+        <line x1="44" y1="36" x2="52" y2="36" />
+        <circle cx="28" cy="28" r="6" />
+      </g>
+
+      <text x="310" y="518" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="310" dy="0">then the task runs</tspan>
+        <tspan x="310" dy="42">in the same process</tspan>
+      </text>
+    </g>
+
+    
+    <rect x="170" y="675" width="510" height="65" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="425" y="716" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">for small jobs</text>
+  </g>
+
+  
+  <g id="panel-queue-worker">
+    <rect x="830" y="105" width="690" height="710" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="870" y="125" width="610" height="65" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1175" y="168" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">Queue and worker</text>
+
+    
+    <g id="step1-queue">
+      <rect x="870" y="230" width="610" height="165" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <circle cx="920" cy="312" r="24" fill="#207448" />
+      <text x="920" y="321" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+      <g transform="translate(975, 284)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="8" width="48" height="10" rx="3" />
+        <rect x="4" y="23" width="48" height="10" rx="3" />
+        <rect x="4" y="38" width="48" height="10" rx="3" />
+        <line x1="12" y1="13" x2="28" y2="13" />
+        <line x1="12" y1="28" x2="28" y2="28" />
+        <line x1="12" y1="43" x2="28" y2="43" />
+      </g>
+
+      <text x="1060" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="1060" dy="0">handler puts a job</tspan>
+        <tspan x="1060" dy="42">on a queue</tspan>
+      </text>
+    </g>
+
+    
+    <path d="M 1175 395 L 1175 438" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="step2-worker">
+      <rect x="870" y="440" width="610" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <circle cx="920" cy="535" r="24" fill="#207448" />
+      <text x="920" y="544" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+      <g transform="translate(975, 507)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="12" />
+        <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" />
+      </g>
+
+      <text x="1060" y="518" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="1060" dy="0">a separate worker</tspan>
+        <tspan x="1060" dy="42">runs it</tspan>
+      </text>
+    </g>
+
+    
+    <rect x="920" y="675" width="510" height="65" rx="12" fill="#207448" stroke="#207448" stroke-width="2" />
+    <text x="1175" y="716" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">for heavy or durable work</text>
+  </g>
+</svg>

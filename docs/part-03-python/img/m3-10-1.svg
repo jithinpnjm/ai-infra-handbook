@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>Tensors and devices</title>
+  <desc>Visual infographic explaining tensor data flow from storage through host DRAM and PCIe/NVLink DMA into GPU HBM and execution steps.</desc>
+
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Tensors and devices</text>
+
+  
+  <rect x="250" y="100" width="1100" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="305" cy="160" r="24" fill="#207448"/>
+  <text x="305" cy="160" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="380" cy="144" rx="24" ry="8" fill="#e8f1ea"/>
+    <path d="M 356,144 v 14 a 24,8 0 0 0 48,0 v -14"/>
+    <path d="M 356,158 v 14 a 24,8 0 0 0 48,0 v -14"/>
+  </g>
+
+  <text x="440" y="146" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Storage:</text>
+  <text x="440" y="184" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="25" fill="#303a36">Parquet / WebDataset / np.memmap</text>
+
+  
+  <line x1="380" y1="220" x2="380" y2="334" stroke="#207448" stroke-width="4"/>
+  <polygon points="369,334 380,350 391,334" fill="#207448"/>
+
+  
+  <rect x="450" y="245" width="660" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="475" y="278" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" fill="#303a36">DataLoader num_workers=8</text>
+  <text x="475" y="308" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" fill="#303a36">(OMP_NUM_THREADS=1)</text>
+
+  
+  <rect x="250" y="350" width="1100" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="305" cy="410" r="24" fill="#207448"/>
+  <text x="305" cy="410" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="354" y="394" width="52" height="30" rx="3" fill="#e8f1ea"/>
+    <line x1="363" y1="424" x2="363" y2="430"/>
+    <line x1="371" y1="424" x2="371" y2="430"/>
+    <line x1="380" y1="424" x2="380" y2="430"/>
+    <line x1="389" y1="424" x2="389" y2="430"/>
+    <line x1="397" y1="424" x2="397" y2="430"/>
+    <rect x="360" y="400" width="9" height="16" rx="1" fill="#207448"/>
+    <rect x="375" y="400" width="9" height="16" rx="1" fill="#207448"/>
+    <rect x="390" y="400" width="9" height="16" rx="1" fill="#207448"/>
+  </g>
+
+  <text x="440" y="396" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host DRAM: Pinned Memory</text>
+  <text x="440" y="434" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="25" fill="#303a36">(pin_memory=True, /dev/shm)</text>
+
+  
+  <line x1="380" y1="470" x2="380" y2="584" stroke="#db8129" stroke-width="4"/>
+  <polygon points="369,584 380,600 391,584" fill="#db8129"/>
+
+  
+  <rect x="450" y="495" width="660" height="80" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <text x="475" y="528" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#db8129">PCIe / NVLink-C2C DMA</text>
+  <text x="475" y="558" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" fill="#303a36">to(dev, non_blocking=True)</text>
+
+  
+  <rect x="250" y="600" width="1100" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="305" cy="665" r="24" fill="#207448"/>
+  <text x="305" cy="665" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="356" y="641" width="48" height="48" rx="4" fill="#e8f1ea"/>
+    <rect x="367" y="652" width="26" height="26" rx="2" fill="#207448" opacity="0.25"/>
+    <rect x="372" y="657" width="16" height="16" rx="1" fill="#207448"/>
+    <rect x="360" y="645" width="5" height="9" rx="1" fill="#207448"/>
+    <rect x="360" y="676" width="5" height="9" rx="1" fill="#207448"/>
+    <rect x="395" y="645" width="5" height="9" rx="1" fill="#207448"/>
+    <rect x="395" y="676" width="5" height="9" rx="1" fill="#207448"/>
+  </g>
+
+  <text x="440" y="650" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU HBM: Weights (2B) + Grads (2B)</text>
+  <text x="440" y="690" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="25" fill="#303a36">+ FP32 Adam (12B) = 16B/param + Activations</text>
+
+  
+  <line x1="380" y1="730" x2="380" y2="844" stroke="#207448" stroke-width="4"/>
+  <polygon points="369,844 380,860 391,844" fill="#207448"/>
+
+  
+  <rect x="450" y="755" width="660" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="475" y="788" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Async CUDA Kernels</text>
+  <text x="475" y="818" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" fill="#303a36">(torch.autocast bf16, torch.compile)</text>
+
+  
+  <rect x="250" y="860" width="1100" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="305" cy="920" r="24" fill="#207448"/>
+  <text x="305" cy="920" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="380" cy="920" r="22" stroke-dasharray="24 10" fill="#e8f1ea"/>
+    <polygon points="398,908 406,920 392,920" fill="#207448"/>
+    <circle cx="380" cy="920" r="7" fill="#207448"/>
+  </g>
+
+  <text x="440" y="928" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="26" font-weight="bold" fill="#303a36">Forward -&gt; Backward -&gt; clip_grad_norm_ -&gt; opt.step()</text>
+</svg>

@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Reading curl -w timing</title>
+  <desc>Visual infographic explaining curl -w timing metrics, cumulative timestamps from the start, and formulas for calculating phase durations.</desc>
+
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading curl -w timing</text>
+
+  
+  <g id="orange-note">
+    <rect x="500" y="88" width="600" height="50" rx="14" fill="#fff6ee" stroke="#db8129" stroke-width="3"/>
+    <text x="800" y="122" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">All values count from the start</text>
+  </g>
+
+  
+
+  
+  <g id="tick-namelookup">
+    <text x="290" y="195" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">time_namelookup</text>
+    <line x1="290" y1="212" x2="290" y2="345" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="290" cy="212" r="4" fill="#207448"/>
+  </g>
+
+  
+  <g id="tick-connect">
+    <text x="540" y="274" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">time_connect</text>
+    <line x1="540" y1="290" x2="540" y2="345" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="540" cy="290" r="4" fill="#207448"/>
+  </g>
+
+  
+  <g id="tick-appconnect">
+    <text x="755" y="182" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="755" dy="0">time_appconnect</tspan>
+      <tspan x="755" dy="32" font-family="sans-serif">(TLS done)</tspan>
+    </text>
+    <line x1="780" y1="228" x2="780" y2="345" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="780" cy="228" r="4" fill="#207448"/>
+  </g>
+
+  
+  <g id="tick-pretransfer">
+    <text x="812" y="274" text-anchor="start" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">time_pretransfer</text>
+    <line x1="800" y1="290" x2="800" y2="345" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="800" cy="290" r="4" fill="#207448"/>
+  </g>
+
+  
+  <g id="tick-starttransfer">
+    <text x="1310" y="182" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1310" dy="0">time_starttransfer</tspan>
+      <tspan x="1310" dy="32" font-family="sans-serif">(first byte)</tspan>
+    </text>
+    <line x1="1310" y1="228" x2="1310" y2="345" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="1310" cy="228" r="4" fill="#207448"/>
+  </g>
+
+  
+  <g id="tick-total">
+    <text x="1540" y="274" text-anchor="end" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">time_total</text>
+    <line x1="1550" y1="290" x2="1550" y2="345" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="1550" cy="290" r="4" fill="#207448"/>
+  </g>
+
+  
+  <g id="timeline-bar">
+    
+    <rect x="50" y="345" width="230" height="52" rx="10" fill="#207448"/>
+    
+    <rect x="300" y="345" width="230" height="52" rx="10" fill="#268252"/>
+    
+    <rect x="550" y="345" width="230" height="52" rx="10" fill="#207448"/>
+    
+    <rect x="800" y="345" width="500" height="52" rx="10" fill="#268252"/>
+    
+    <rect x="1320" y="345" width="230" height="52" rx="10" fill="#207448"/>
+  </g>
+
+  
+  <g id="brackets" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <path d="M 58 410 v 10 H 157 l 8 8 l 8 -8 H 272 v -10"/>
+
+    
+    <path d="M 308 410 v 10 H 407 l 8 8 l 8 -8 H 522 v -10"/>
+
+    
+    <path d="M 558 410 v 10 H 657 l 8 8 l 8 -8 H 772 v -10"/>
+
+    
+    <path d="M 808 410 v 10 H 1042 l 8 8 l 8 -8 H 1292 v -10"/>
+
+    
+    <path d="M 1328 410 v 10 H 1427 l 8 8 l 8 -8 H 1542 v -10"/>
+  </g>
+
+  
+  
+  <g id="panel-dns">
+    <rect x="50" y="445" width="230" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(137, 468)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <ellipse cx="28" cy="28" rx="12" ry="24"/>
+      <line x1="4" y1="28" x2="52" y2="28"/>
+      <line x1="8" y1="16" x2="48" y2="16"/>
+      <line x1="8" y1="40" x2="48" y2="40"/>
+    </g>
+    <text x="165" y="580" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">DNS =</text>
+    <text x="165" y="645" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">namelookup</text>
+  </g>
+
+  
+  <g id="panel-tcp">
+    <rect x="300" y="445" width="230" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(387, 468)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="14" cy="16" r="8"/>
+      <circle cx="42" cy="40" r="8"/>
+      <path d="M 20 22 L 36 34"/>
+      <path d="M 8 36 L 20 44"/>
+      <path d="M 36 12 L 48 20"/>
+    </g>
+    <text x="415" y="575" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">TCP =</text>
+    <text x="415" y="630" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">connect minus</text>
+    <text x="415" y="675" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">namelookup</text>
+  </g>
+
+  
+  <g id="panel-tls">
+    <rect x="550" y="445" width="230" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(637, 468)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="22" width="40" height="30" rx="6"/>
+      <path d="M 16 22 V 14 A 12 12 0 0 1 40 14 V 22"/>
+      <circle cx="28" cy="35" r="3" fill="#207448"/>
+      <line x1="28" y1="38" x2="28" y2="44"/>
+    </g>
+    <text x="665" y="575" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">TLS =</text>
+    <text x="665" y="630" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">appconnect</text>
+    <text x="665" y="675" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">minus connect</text>
+  </g>
+
+  
+  <g id="panel-request">
+    <rect x="800" y="445" width="500" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(1022, 468)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="20" rx="4"/>
+      <circle cx="12" cy="16" r="2" fill="#207448"/>
+      <circle cx="20" cy="16" r="2" fill="#207448"/>
+      <line x1="32" y1="16" x2="44" y2="16"/>
+      <circle cx="28" cy="40" r="14"/>
+      <polyline points="28 32 28 40 34 40"/>
+    </g>
+    <text x="1050" y="565" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1050" dy="0">request + server time</tspan>
+      <tspan x="1050" dy="38">+ first byte =</tspan>
+    </text>
+    <text x="1050" y="662" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      starttransfer minus pretransfer
+    </text>
+  </g>
+
+  
+  <g id="panel-transfer">
+    <rect x="1320" y="445" width="230" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(1407, 468)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 36 V 48 H 50 V 36"/>
+      <line x1="28" y1="8" x2="28" y2="38"/>
+      <polyline points="16 26 28 38 40 26"/>
+    </g>
+    <text x="1435" y="575" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">transfer =</text>
+    <text x="1435" y="630" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">total minus</text>
+    <text x="1435" y="675" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">starttransfer</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="800" width="1500" height="76" rx="14" fill="#207448"/>
+    <text x="800" y="848" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Start with the largest phase, since that is where the time went</text>
+  </g>
+</svg>

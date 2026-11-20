@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "13",
+  "name": "b13-rollout-patterns",
+  "title": "Two rollout patterns: in-place sync or category switch",
+  "spec": "Two horizontal lanes, each a left-to-right flow, stacked. Top lane labelled Pattern A: user-space updates, no kernel reboot needed. Boxes in order: 1 clone the production image, 2 lock the image and update it in a chroot, 3 updateprovisioners, 4 imageupdate -n node001 dry run and synclog, 5 imageupdate -n node001 -w on the canary, 6 roll out in waves. Bottom lane labelled Pattern B: kernel, driver and OFED changes, reboot needed. Boxes in order: 1 clone the production image to a v2 image and make the kernel and driver updates there, 2 create a canary category pointing at the v2 image and reboot one idle node, 3 validate GPUDirect RDMA and all_reduce_perf, 4 point the production category at v2, 5 chained drain: powerreset then undrain across nodes. A side note on the bottom lane in grey: no in-place sync on a running node, the loaded kernel modules and files on disk would no longer match. Orange highlight on the box that says imageupdate -w in the top lane's step 5 with the note: never use -w for kernel or driver changes. Monospace for commands.",
+  "anchor": "### 10.1 Deep dive: Managing software-image lifecycles without breaking running jobs",
+  "alt": "Two rollout patterns for image changes",
+  "cap": "Rollout patterns: user-space changes sync in place after a canary, while kernel and driver changes switch the category and reboot nodes."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "13",
+  "name": "b13-dr-bundle",
+  "title": "What goes in the off-cluster recovery bundle",
+  "spec": "Five boxes arranged in a row on the left, each labelled with a number and an item: 1 the latest CMDaemon MySQL dump, plus slurm_acct_db, Keycloak and Harbor databases. 2 images: tarballs or rsync mirrors of /cm/images and /cm/node-installer. 3 configuration outside the database: cmd.conf, named.conf.include, excludelistnormal, excludelistfailover, custom scripts, TLS and CA keys. 4 the BCM license file and its bound head-node MAC addresses. 5 the written Day-0 installation parameters: topology, subnets with IP offsets, disk layout XMLs. All five arrows flow to one large box on the right labelled external backup target, with the note: outside the cluster's own /cm/shared NAS. Below the target box, a green box: rehearse a restore in a lab, for example gunzip of the dump into mysql. Orange highlight on box 4 with the note: a restore onto different hardware can fail the license check. Monospace for file paths and the commands.",
+  "anchor": "### 10.2 End-to-end bare-metal disaster recovery rehearsal",
+  "alt": "Five items in an off-cluster recovery bundle",
+  "cap": "Recovery bundle: five kinds of artifact, stored off the cluster, are what a rebuild needs."
+ }
+]

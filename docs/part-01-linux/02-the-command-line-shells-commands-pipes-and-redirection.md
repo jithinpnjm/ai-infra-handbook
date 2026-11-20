@@ -66,6 +66,10 @@ A leading `$` marks a command to type as a normal user. A leading `#` marks one 
 
 ## 2. Anatomy of a command line
 
+![A command line split into command, options and argument.](./img/l02-command-anatomy.svg)
+
+*Figure 1.2.2. A command line is a command, its options and its arguments.*
+
 Say you copy a command from a colleague's note and it does something slightly different from what the note described. The answer often sits in the shape of the line itself. When you type a line, the shell first splits it into **words** at the spaces. The first word is the **command**, and the rest are its **arguments**. An argument that starts with `-` is usually an **option**, also called a flag or switch. Options change what the program does.
 
 ```bash
@@ -91,11 +95,15 @@ Between the moment you press Enter and the moment a program starts, the shell do
 
 ![What the shell does with a line](./img/ch02-d2-luna.svg)
 
-*Figure 1.2.2. What the shell does with a line.*
+*Figure 1.2.3. What the shell does with a line.*
 
 The sequence has a consequence that surprises many people. **The program never sees your wildcards, variables, or quotes. It only sees the final result.** When you type `ls *.txt`, the *shell* replaces `*.txt` with the list of matching names before `ls` starts. You can check this yourself. `echo *.txt` prints the names the shell produced, because `echo` receives them as ordinary arguments. Use `echo` or `printf '%s\n'` as a free preview tool whenever you are unsure what a line will expand to.
 
 ### How the shell finds a program: `PATH`
+
+![A bare command name is looked up as alias, function, builtin and then each PATH directory.](./img/l02-path-lookup.svg)
+
+*Figure 1.2.4. The shell checks aliases, functions and builtins before searching PATH in order.*
 
 Suppose two versions of `python3` live on the machine and the wrong one keeps starting. That is not a Python problem. When you type a bare word such as `python3`, the shell first checks for an alias, a function, or a builtin, in that order. If none of them matches, it searches the directories in the environment variable **`PATH`** from left to right and takes the first match. These commands let you inspect that lookup.
 
@@ -264,7 +272,7 @@ The most important rule in shell scripting is this: **double-quote your variable
 
 ![Infographic titled Quoting decides what the program receives. With file set to my report.txt, an unquoted dollar-file is split on whitespace into three arguments, which is wrong. A double-quoted dollar-file is kept whole as two arguments, which is correct. Single quotes keep everything literal, double quotes expand variables without splitting, and a backslash escapes one character.](./img/ch02-fig1-quoting.jpg)
 
-*Figure 1.2.3. Quoting decides what the program receives. An unquoted variable is split on whitespace, while a double-quoted variable reaches the program as one argument.*
+*Figure 1.2.5. Quoting decides what the program receives. An unquoted variable is split on whitespace, while a double-quoted variable reaches the program as one argument.*
 
 ### Special characters: the names to know
 
@@ -319,7 +327,7 @@ Keeping errors in a *separate* stream was a deliberate design choice, and it mat
 
 ![Standard streams, redirection and pipes](./img/ch02-d3-luna.svg)
 
-*Figure 1.2.4. Standard streams, redirection and pipes.*
+*Figure 1.2.6. Standard streams, redirection and pipes.*
 
 These are the redirection operators. Each one tells the shell where a descriptor should point before the program starts.
 
@@ -342,7 +350,7 @@ The table leaves out two points. First, **`>` destroys the previous contents of 
 
 ![Infographic titled Streams, redirection and pipes. A program reads standard input as file descriptor 0 from the keyboard and writes standard output as descriptor 1 and standard error as descriptor 2 to the terminal. With cmd > out.txt 2>&1 both end up in the file. With cmd 2>&1 > out.txt the errors still reach the screen. A pipe turns the standard output of one command into the standard input of the next.](./img/ch02-fig2-streams.jpg)
 
-*Figure 1.2.5. Every process has three streams, the shell rewires them before the program starts, and the order of redirections decides where errors end up.*
+*Figure 1.2.7. Every process has three streams, the shell rewires them before the program starts, and the order of redirections decides where errors end up.*
 
 Four tools pair naturally with redirection and pipes.
 
@@ -364,6 +372,10 @@ Quoting the delimiter (`'EOF'`) stops the shell from expanding `$` and backticks
 Before you pipe a command, decide which stream you need, and redirect the other one.
 
 ## 7. Exit status and combining commands
+
+![A table of the ways to chain commands and when the second one runs.](./img/l02-chaining.svg)
+
+*Figure 1.2.8. Operators decide whether the second command runs based on the first command's exit status.*
 
 Suppose a job script runs three steps, the middle one fails, and the script still reports success. The culprit is not the script's logic but the way it reads exit statuses. When a process ends, it hands a small integer back to its parent. That number is the **exit status**, also called the exit code. By convention, **0 means success**, and any other value means failure. The shell stores the status of the last command in `$?`.
 
@@ -406,7 +418,7 @@ Check the status of every critical stage, not only the final one.
 
 ![Infographic titled Exit status. A child process hands an exit status to the shell, available as dollar-question-mark. Common codes are 0 for success, 1 generic error, 2 misuse of a command, 126 found but not executable and 127 command not found. A code of 128 plus N means killed by signal N: 130 for SIGINT 2, 137 for SIGKILL 9, often OOMKilled, and 143 for SIGTERM 15. The operators && and || run the second command on success or failure, and a pipeline reports only the last command status.](./img/ch02-fig3-exit-status.jpg)
 
-*Figure 1.2.6. The exit status is the number a finished process hands back to its parent, and 128 plus N means it was killed by signal N.*
+*Figure 1.2.9. The exit status is the number a finished process hands back to its parent, and 128 plus N means it was killed by signal N.*
 
 ## 8. Environment variables, `PATH` and startup files
 
@@ -425,7 +437,7 @@ Notice what the child sees in that block. It prints `[$name] [$CUDA_VISIBLE_DEVI
 
 ![Infographic titled Shell variables and the environment. A plain shell variable named name stays in the shell. CUDA_VISIBLE_DEVICES, once exported, is inherited by the child process. NCCL_DEBUG=INFO before a command sets a variable for that one command only. Steps: a plain assignment stays in the shell, export puts the variable into the environment, and every child process inherits the environment.](./img/ch02-fig4-environment.jpg)
 
-*Figure 1.2.7. A plain assignment never leaves the shell that made it, while an exported variable is copied into the environment that every child process inherits.*
+*Figure 1.2.10. A plain assignment never leaves the shell that made it, while an exported variable is copied into the environment that every child process inherits.*
 
 Some variables matter throughout this book. `PATH` drives command lookup. `HOME`, `USER` and `PWD` describe you and your location. `LANG` and `LC_ALL` set the locale and sorting order, and `EDITOR` picks your editor. You will also set AI-specific variables again and again: `CUDA_VISIBLE_DEVICES`, `NCCL_DEBUG`, `NCCL_SOCKET_IFNAME`, `OMP_NUM_THREADS`, and `LD_LIBRARY_PATH`. Remember this rule. An environment variable set in your terminal does not exist inside a Slurm job, a systemd service, or a container, unless it is passed along explicitly. Many "works interactively, fails in the job" mysteries come down to this rule.
 
@@ -460,7 +472,7 @@ Pay close attention to how bash handles login shells. It first executes `/etc/pr
 
 ![Infographic titled Which startup file runs. A login shell, such as an SSH login, reads /etc/profile and then only the first file it finds among .bash_profile, .bash_login and .profile. An interactive non-login shell, such as a new terminal window, reads .bashrc. A non-interactive shell, such as scripts, cron and Slurm batch steps, reads nothing by default. .bash_profile should source .bashrc.](./img/ch02-fig5-startup-files.jpg)
 
-*Figure 1.2.8. Which startup file bash reads depends on how the shell was started.*
+*Figure 1.2.11. Which startup file bash reads depends on how the shell was started.*
 
 In bash, you can choose among `.bash_profile`, `.profile`, `.bash_login` and `.bashrc`. Which one should hold your command path? The path starts with `/usr/local/bin:/usr/bin:/bin`, adds `$HOME/bin` or `$HOME/.local/bin`, and then includes `/usr/local/sbin:/usr/sbin:/sbin` for utilities such as `sysctl`, `fdisk` and `lsmod`. Where should the manual page path (`MANPATH`), the prompt (`PS1`), aliases, `EDITOR` (`vi`, `emacs`, or `nano`), `PAGER` (`less`) and the permissions mask (`umask 022`) go? Put your main configuration in `~/.bashrc`. Then have `~/.bash_profile` source `~/.bashrc`, so login and non-login interactive shells share one setup. One file to edit, one place to look when something is missing.
 

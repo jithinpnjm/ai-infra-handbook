@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "21",
+  "name": "g21-xid-cascade",
+  "title": "A three-line Xid cascade read in order, from precursor to bus loss",
+  "spec": "A horizontal timeline with three event markers placed along a time axis labelled 14:21:52 to 14:22:03, spanning about 11 seconds. First marker at the left end, labelled Xid 92, high single-bit ECC error rate, tier 1 precursor, drawn in a light colour. Second marker about six seconds later, labelled Xid 45, preemptive cleanup due to previous errors, tier 1 symptom, drawn in a light colour with a leader line pointing back to the Xid 92 marker with the note: a symptom of the earlier fault. Third marker at the right end, five seconds after the second, labelled Xid 79, GPU has fallen off the bus, tier 3, drawn in a dark colour, followed by a small box labelled RmInitAdapter failed. Above the timeline a bracket labelled 6 seconds and a second bracket labelled 5 seconds. Orange highlight on the Xid 79 marker with the note: drain and cordon the node now. Monospace for Xid 92, Xid 45, Xid 79 and RmInitAdapter failed.",
+  "anchor": "### 3.2 Reading multi-Xid cascades and asymmetric Xid 74 NVLink counters",
+  "alt": "Xid 92 then 45 then 79 cascade on one GPU",
+  "cap": "Xid cascade: a tier 1 precursor and a cleanup event come before the tier 3 bus loss, so the first line is the one to chase."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "21",
+  "name": "g21-error-budget",
+  "title": "A 7.3-hour monthly error budget, spent down to 1.3 hours",
+  "spec": "A single horizontal bar representing the full monthly error budget of 7.3 hours drawn at full width, divided into segments from left to right in order of how they were spent: firmware upgrade 1.5 hours, unplanned GPU failure 2.0 hours, network maintenance 2.0 hours, thermal incident 0.5 hours, and a final remaining segment of 1.3 hours. Each spent segment is drawn in a different muted tone and labelled with its name and hours in monospace. The remaining 1.3 hours segment is drawn with a dashed outline and labelled remaining, triggers deployment freeze. A bracket above the first four segments labelled used, 6.0 hours. A marker at the boundary between used and remaining labelled 82 percent spent. Orange highlight on the remaining segment with the note: below this line, non-emergency rollouts pause until next month. Monospace for 7.3, 1.5, 2.0, 0.5, 6.0 and 1.3.",
+  "anchor": "### 4.2 Safe GPU node draining and Cluster Health SLIs, SLOs, and Error Budgets",
+  "alt": "Monthly error budget spent across four incidents",
+  "cap": "Error budget: the 99.0 percent target allows 7.3 hours a month, and 6.0 hours already spent leaves 1.3 hours before the freeze."
+ }
+]

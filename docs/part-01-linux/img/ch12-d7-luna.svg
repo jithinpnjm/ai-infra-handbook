@@ -11,7 +11,7 @@
   <rect width="1600" height="920" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">MBR versus GPT on disk</text>
 
-  <!-- Lane 1: MBR -->
+  
   <rect x="40" y="120" width="1520" height="310" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="72" y="168" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">MBR ("msdos" label) — BIOS boot, 2 TiB limit (32-bit sectors), no backup</text>
 
@@ -43,7 +43,7 @@
 
   <text x="72" y="395" fill="#303a36" font-family="sans-serif" font-size="24">Single copy in Sector 0 with no checksums; overwriting Sector 0 destroys the partition table.</text>
 
-  <!-- Lane 2: GPT -->
+  
   <rect x="40" y="465" width="1520" height="320" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <text x="72" y="513" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">GPT (GUID Partition Table) — UEFI/BIOS, 128 partitions default, CRC + backup</text>
 
@@ -84,7 +84,7 @@
 
   <text x="72" y="746" fill="#303a36" font-family="sans-serif" font-size="24">Partitions align to 1 MiB (2048 sectors) for SSD/NVMe erase-block and RAID stripe boundaries.</text>
 
-  <!-- Takeaway bar -->
+  
   <rect x="40" y="815" width="1520" height="75" rx="14" fill="#207448"/>
   <text x="800" y="862" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Use GPT for all new disks; run partprobe or partx if the kernel reports device busy after editing.</text>
 </svg>

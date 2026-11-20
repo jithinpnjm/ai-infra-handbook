@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "k09-cgroup-tree",
+  "title": "Where a pod sits in the cgroup tree depends on its QoS class",
+  "spec": "A tree drawn top to bottom with folder-style boxes linked by lines. Root box at the top labelled /sys/fs/cgroup. Below it two branches: a box labelled system.slice with the note OS services, including kubelet.service and containerd.service, and a box labelled user.slice on the far right. The main branch is a large box labelled kubepods.slice with the note all pods; memory.max equals node allocatable for pods. Under kubepods.slice three columns, left to right. Column 1: a box labelled kubepods-pod uid slice with the note Guaranteed pods sit directly here, with a child box cri-containerd id scope labelled container. Column 2: a box labelled kubepods-burstable.slice with a child box kubepods-burstable-pod uid slice and a dotted child for container. Column 3: a box labelled kubepods-besteffort.slice with a child box kubepods-besteffort-pod uid slice and a dotted child for container. Use a green outline for the Guaranteed column and a grey outline for the other two. Orange highlight on the Guaranteed column label, with the note the path tells you the QoS class at a glance. Side note at the bottom: cgroupsPerQOS true builds these slices, and the kubelet sets cpu.weight from requests. Green takeaway bar at the bottom: the path to a pod's cgroup shows its QoS class immediately.",
+  "anchor": "### The hierarchy (cgroup v2, systemd driver)",
+  "alt": "The kubelet places Guaranteed, Burstable and BestEffort pods in separate cgroup slices under kubepods.slice.",
+  "cap": "The kubelet places each pod under kubepods.slice in a slice that matches its QoS class, so the path shows the class."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "k09-eviction-order",
+  "title": "Which pods the kubelet evicts first under memory pressure",
+  "spec": "A vertical funnel or staircase with two tiers, read top to bottom, with step numbers 1 to 4 on the left. Top banner box labelled MemoryPressure: node signal below threshold, with a small gauge icon. Tier 1 band (orange-bordered, the first to go): box labelled Pods using more than their request, including BestEffort (request 0) and Burstable pods over their request. Inside the band, a small arrow labelled 1 lowest PriorityClass first, then 2 largest usage over request. Tier 2 band (green-bordered): box labelled Pods within their request, Burstable pods within request. Inside, a small arrow labelled lowest PriorityClass first, then lowest usage. Bottom protected box, drawn with a shield icon and a lock style outline, labelled Guaranteed pods and critical pods (system-node-critical, system-cluster-critical, static pods), with the note evicted last, only if system daemons are the problem. Arrow on the left side running downward labelled evicted first to evicted last. A small output box at the bottom labelled Phase Failed, Reason Evicted, then the owning controller recreates the pod elsewhere. Green takeaway bar at the bottom: the kubelet frees memory from pods that borrowed past their requests before touching pods the node promised memory to.",
+  "anchor": "## 6. Node-pressure eviction",
+  "alt": "Under memory pressure the kubelet evicts pods above their requests first, and Guaranteed and critical pods last.",
+  "cap": "Under memory pressure the kubelet evicts pods that exceed their requests first, and Guaranteed and critical pods last."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "k09-startup-gate",
+  "title": "A startup probe holds the other two probes back until the server is up",
+  "spec": "A horizontal timeline from left to right with an axis labelled time after container start. Starting at the left, a bar labelled startupProbe window spanning about 300 seconds, drawn as a shaded green block with step circles showing periodSeconds 10 and failureThreshold 30 as tick marks. Above the bar, a dashed note: liveness and readiness probes are not run during this window. At the right end of the startup bar, a checkpoint marker labelled startupProbe succeeds. After it, two lanes start: an upper lane labelled livenessProbe, checks every 10 seconds, with the note three failures restart the container, and a lower lane labelled readinessProbe, checks every 5 seconds, with the note failure removes the pod from Service endpoints. Orange highlight on a failure exit drawn at the end of the startup bar labelled startupProbe never succeeds, the kubelet kills the container and restartPolicy decides next. Small icons: a clock for timer, a window for application. Green takeaway bar at the bottom: the startup probe covers the slow start alone and then steps aside.",
+  "anchor": "### A startup probe sized for a model load",
+  "alt": "A startup probe gives a slow model server up to 300 seconds, while the liveness and readiness probes wait until it succeeds.",
+  "cap": "The startup probe gives a slow server a long window to start, and the liveness and readiness probes wait until it succeeds."
+ }
+]

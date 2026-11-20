@@ -37,29 +37,29 @@
   </g>
 
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Git configuration document -->
+    
     <path d="M88 163 H119 L132 176 V211 H88 Z"/>
     <path d="M119 163 V176 H132 M98 185 H122 M98 194 H122 M98 203 H116"/>
-    <!-- Image build cube -->
+    
     <path d="M968 178 L996 162 L1024 178 L996 194 Z"/>
     <path d="M968 178 V208 L996 224 L1024 208 V178 M996 194 V224"/>
     <path d="M982 170 L1010 186"/>
-    <!-- Canary node chip -->
+    
     <rect x="968" y="438" width="48" height="48" rx="5"/>
     <rect x="980" y="450" width="24" height="24" rx="3"/>
     <path d="M978 430 V438 M990 430 V438 M1002 430 V438 M1014 430 V438 M978 486 V494 M990 486 V494 M1002 486 V494 M1014 486 V494 M960 448 H968 M960 460 H968 M960 472 H968 M960 484 H968 M1016 448 H1024 M1016 460 H1024 M1016 472 H1024 M1016 484 H1024"/>
-    <!-- Rollout fleet racks -->
+    
     <rect x="88" y="750" width="48" height="14" rx="3"/>
     <rect x="88" y="773" width="48" height="14" rx="3"/>
     <rect x="88" y="796" width="48" height="14" rx="3"/>
     <path d="M98 757 H100 M98 780 H100 M98 803 H100 M108 757 H128 M108 780 H128 M108 803 H128"/>
-    <!-- Rejected image shield -->
+    
     <path d="M968 748 L992 740 L1016 748 V772 C1016 790 1006 803 992 812 C978 803 968 790 968 772 Z"/>
     <path d="M982 762 L1002 782 M1002 762 L982 782"/>
-    <!-- Health checks magnifier -->
+    
     <circle cx="112" cy="1055" r="20"/>
     <path d="M127 1070 L142 1085 M102 1055 L109 1062 L122 1046"/>
-    <!-- Repair wrench -->
+    
     <path d="M1006 965 A19 19 0 0 0 981 989 L968 1002 L984 1018 L997 1005 A19 19 0 0 0 1021 980 L1009 992 L998 981 Z"/>
   </g>
 

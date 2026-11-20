@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Lifespan: startup and shutdown</title>
+  <desc>A horizontal timeline in three zones: Startup (code before yield: open pools, load model), Serving requests (yield), Shutdown (code after yield: close pools). Runs once per process.</desc>
+  <defs>
+    <marker id="timeline-arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="95" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Lifespan: startup and shutdown</text>
+
+  
+  <line x1="520" y1="440" x2="576" y2="440" stroke="#207448" stroke-width="4" marker-end="url(#timeline-arrow)"/>
+  <line x1="1020" y1="440" x2="1076" y2="440" stroke="#207448" stroke-width="4" marker-end="url(#timeline-arrow)"/>
+
+  
+  <g id="zone-startup">
+    <rect x="80" y="150" width="440" height="570" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <circle cx="130" cy="205" r="24" fill="#207448"/>
+    <text x="130" y="213" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+    
+    <g transform="translate(272, 177)">
+      <path d="M 14 14 A 20 20 0 1 0 42 14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="2" x2="28" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="300" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">Startup</text>
+
+    
+    <rect x="105" y="315" width="390" height="375" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="120" y="335" width="360" height="335" rx="12" fill="#f5f8f5"/>
+    <text x="300" y="490" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="300" dy="0">code before yield:</tspan>
+      <tspan x="300" dy="42">open pools, load model</tspan>
+    </text>
+  </g>
+
+  
+  <g id="zone-serving">
+    <rect x="580" y="150" width="440" height="570" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    
+    <circle cx="630" cy="205" r="24" fill="#207448"/>
+    <text x="630" y="213" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    
+    <g transform="translate(772, 177)">
+      <rect x="4" y="6" width="48" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="4"/>
+      <circle cx="12" cy="12" r="2" fill="#207448"/>
+      <circle cx="18" cy="12" r="2" fill="#207448"/>
+      <circle cx="24" cy="12" r="2" fill="#207448"/>
+      <path d="M 14 30 L 22 36 L 14 42" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="28" y1="42" x2="42" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="800" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">Serving requests</text>
+
+    
+    <rect x="605" y="315" width="390" height="375" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="620" y="335" width="360" height="335" rx="12" fill="#f5f8f5"/>
+    
+    
+    <rect x="680" y="455" width="240" height="95" rx="16" fill="#db8129"/>
+    <text x="800" y="515" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle">yield</text>
+  </g>
+
+  
+  <g id="zone-shutdown">
+    <rect x="1080" y="150" width="440" height="570" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    
+    <circle cx="1130" cy="205" r="24" fill="#207448"/>
+    <text x="1130" y="213" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+    
+    <g transform="translate(1272, 177)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="19" y="19" width="18" height="18" rx="3" fill="#207448"/>
+    </g>
+
+    
+    <text x="1300" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">Shutdown</text>
+
+    
+    <rect x="1105" y="315" width="390" height="375" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="1120" y="335" width="360" height="335" rx="12" fill="#f5f8f5"/>
+    <text x="1300" y="490" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1300" dy="0">code after yield:</tspan>
+      <tspan x="1300" dy="42">close pools</tspan>
+    </text>
+  </g>
+
+  
+  <g id="green-note">
+    <rect x="80" y="760" width="1440" height="76" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="808" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">runs once per process</text>
+  </g>
+</svg>

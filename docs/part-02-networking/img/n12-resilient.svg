@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Modulo versus resilient hashing</title>
+  <desc>Comparison between plain hash modulo N where link failure triggers massive flow churn and resilient hashing where healthy paths preserve their flows.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Modulo versus resilient hashing</text>
+
+  
+  <g id="left-panel">
+    
+    <rect x="40" y="120" width="740" height="790" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(85, 175)">
+      <rect x="-24" y="-24" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="-14" y1="-8" x2="14" y2="-8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="-14" y1="8" x2="14" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="-14" cy="-8" r="3" fill="#207448"/>
+      <circle cx="14" cy="8" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="135" y="185" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Plain hash mod N</text>
+
+    
+    <rect x="70" y="235" width="680" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(105, 265)">
+      <line x1="-18" y1="0" x2="18" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="-18" cy="0" r="5" fill="#207448"/>
+      <circle cx="18" cy="0" r="5" fill="#207448"/>
+    </g>
+    <rect x="140" y="255" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="280" y="255" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="420" y="255" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="560" y="255" width="120" height="20" rx="4" fill="#e8f1ea"/>
+
+    
+    <rect x="70" y="305" width="680" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(105, 335)">
+      <line x1="-18" y1="0" x2="18" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="-18" cy="0" r="5" fill="#207448"/>
+      <circle cx="18" cy="0" r="5" fill="#207448"/>
+    </g>
+    <rect x="140" y="325" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="280" y="325" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="420" y="325" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="560" y="325" width="120" height="20" rx="4" fill="#e8f1ea"/>
+
+    
+    <rect x="70" y="375" width="680" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(105, 405)">
+      <line x1="-18" y1="0" x2="18" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="-18" cy="0" r="5" fill="#207448"/>
+      <circle cx="18" cy="0" r="5" fill="#207448"/>
+    </g>
+    <rect x="140" y="395" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="280" y="395" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="420" y="395" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="560" y="395" width="120" height="20" rx="4" fill="#e8f1ea"/>
+
+    
+    <rect x="70" y="445" width="680" height="60" rx="8" fill="#fcf4ed" stroke="#db8129" stroke-width="2" stroke-dasharray="6 4"/>
+    <g transform="translate(105, 475)">
+      <line x1="-16" y1="-12" x2="16" y2="12" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <line x1="16" y1="-12" x2="-16" y2="12" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="410" y="485" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">one path fails</text>
+
+    
+    <rect x="70" y="525" width="680" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(115, 560)">
+      <circle cx="0" cy="0" r="15" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="0" y1="-22" x2="0" y2="-15" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="15" x2="0" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="-22" y1="0" x2="-15" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="15" y1="0" x2="22" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="410" y="570" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">N changes</text>
+
+    
+    <rect x="70" y="615" width="680" height="270" rx="12" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(410, 665)">
+      <path d="M 0,-24 L 26,20 L -26,20 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="6" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="0" cy="13" r="2.5" fill="#db8129"/>
+    </g>
+    <text x="410" y="730" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129" text-anchor="middle">75% of all flows move to a different path</text>
+    <text x="410" y="810" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">even though only a quarter were on the failed path</text>
+  </g>
+
+  
+  <g id="right-panel">
+    
+    <rect x="820" y="120" width="740" height="790" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(865, 175)">
+      <path d="M 0,-24 L 20,-16 C 20,8 12,20 0,26 C -12,20 -20,8 -20,-16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    </g>
+    
+    <text x="915" y="185" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Resilient hashing</text>
+
+    
+    <rect x="850" y="235" width="680" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(885, 265)">
+      <line x1="-18" y1="0" x2="18" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="-18" cy="0" r="5" fill="#207448"/>
+      <circle cx="18" cy="0" r="5" fill="#207448"/>
+    </g>
+    <rect x="920" y="255" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="1060" y="255" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="1200" y="255" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="1340" y="255" width="120" height="20" rx="4" fill="#e8f1ea"/>
+
+    
+    <rect x="850" y="305" width="680" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(885, 335)">
+      <line x1="-18" y1="0" x2="18" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="-18" cy="0" r="5" fill="#207448"/>
+      <circle cx="18" cy="0" r="5" fill="#207448"/>
+    </g>
+    <rect x="920" y="325" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="1060" y="325" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="1200" y="325" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="1340" y="325" width="120" height="20" rx="4" fill="#e8f1ea"/>
+
+    
+    <rect x="850" y="375" width="680" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(885, 405)">
+      <line x1="-18" y1="0" x2="18" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="-18" cy="0" r="5" fill="#207448"/>
+      <circle cx="18" cy="0" r="5" fill="#207448"/>
+    </g>
+    <rect x="920" y="395" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="1060" y="395" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="1200" y="395" width="120" height="20" rx="4" fill="#e8f1ea"/>
+    <rect x="1340" y="395" width="120" height="20" rx="4" fill="#e8f1ea"/>
+
+    
+    <rect x="850" y="445" width="680" height="60" rx="8" fill="#f5f7f5" stroke="#75887b" stroke-width="2" stroke-dasharray="6 4"/>
+    <g transform="translate(885, 475)">
+      <line x1="-16" y1="-12" x2="16" y2="12" stroke="#75887b" stroke-width="4" stroke-linecap="round"/>
+      <line x1="16" y1="-12" x2="-16" y2="12" stroke="#75887b" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="1190" y="484" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">only the 25% on the failed path move</text>
+
+    
+    <rect x="850" y="525" width="680" height="360" rx="12" fill="#eaf4ed" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(1190, 630)">
+      <path d="M 0,-26 L 22,-18 C 22,10 14,24 0,28 C -14,24 -22,10 -22,-18 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M -9,1 L -3,7 L 11,-7" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="1190" y="745" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">the three healthy paths keep every flow</text>
+  </g>
+
+  
+  <g id="side-note">
+    <rect x="40" y="935" width="1520" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(80, 975)">
+      <circle cx="-16" cy="12" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="16" cy="12" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="0" cy="-14" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="-12" y1="8" x2="-4" y2="-8" stroke="#207448" stroke-width="3"/>
+      <line x1="12" y1="8" x2="4" y2="-8" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="135" y="984" font-family="sans-serif" font-size="26" fill="#303a36">ECMP paths need not connect the same two devices.</text>
+  </g>
+
+  
+  <g id="footer-takeaway">
+    <rect x="40" y="1045" width="1520" height="90" rx="12" fill="#207448"/>
+    <g transform="translate(80, 1090)">
+      <circle cx="0" cy="0" r="22" fill="none" stroke="#ffffff" stroke-width="4"/>
+      <path d="M -10,0 L -2,8 L 12,-6" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="135" y="1100" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">nothing on healthy paths is reordered or reset</text>
+  </g>
+</svg>

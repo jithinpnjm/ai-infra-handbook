@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "14",
+  "name": "s14-nonlocal",
+  "title": "nonlocal rebinds an enclosing variable",
+  "spec": "Two panels. Left panel Without nonlocal: outer() with count = 0 and inner() doing count += 1 which creates a local name so it fails with UnboundLocalError (orange). Right panel With nonlocal count: inner() rebinds the count of outer(), so it works (green). Bottom note: nonlocal names an enclosing function variable, global names a module variable.",
+  "anchor": "### nonlocal basics",
+  "alt": "nonlocal in a nested function",
+  "cap": "nonlocal lets an inner function rebind a variable of the enclosing function."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "14",
+  "name": "s14-argmodes",
+  "title": "Positional-only and keyword-only parameters",
+  "spec": "One signature chip across the top: def f(a, b, /, c, *, d). Below it a bar split into three coloured zones with labels: a, b positional only (before the slash) ; c positional or keyword (between) ; d keyword only (after the star). Under the zones three call examples: f(1, 2, 3, d=4) works (green) ; f(1, 2, c=3, d=4) works ; f(a=1, b=2, c=3, d=4) fails (orange).",
+  "anchor": "## Positional-only arguments",
+  "alt": "Argument kinds in a signature",
+  "cap": "The slash and the star split a signature into positional-only, ordinary and keyword-only parameters."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "14",
+  "name": "s14-state",
+  "title": "Ways to keep state between calls",
+  "spec": "A five-row table, left column option, right column one short trait. Nonlocals in a closure: private to the function. Globals: shared by the whole module (orange, easy to misuse). Function attributes: attached to the function object. Mutable objects in an enclosing scope: a list or dict mutated in place. Classes: instance attributes plus methods, the most explicit choice (green).",
+  "anchor": "## State-retention options",
+  "alt": "State retention options",
+  "cap": "Closures, globals, function attributes, mutable objects and classes can all keep state between calls."
+ }
+]

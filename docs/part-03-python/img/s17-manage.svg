@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 970" width="1600" height="970">
+  <title>Attribute management techniques compared</title>
+  <desc>A four-row table comparing Python attribute management techniques and what each intercepts.</desc>
+
+  
+  <rect width="1600" height="970" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="85" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Attribute management techniques compared</text>
+
+  
+  <g>
+    
+    <rect x="80" y="130" width="440" height="60" rx="8" fill="#207448"/>
+    <text x="120" y="171" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">technique</text>
+
+    
+    <rect x="540" y="130" width="980" height="60" rx="8" fill="#207448"/>
+    <text x="580" y="171" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">what it intercepts</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="80" y="214" width="440" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="119" y="284" width="48" height="20" rx="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="153" cy="294" r="8" fill="#207448" stroke="#207448" stroke-width="2"/>
+    
+    <text x="200" y="304" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">property</text>
+
+    
+    <rect x="540" y="214" width="980" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="580" y="304" font-family="sans-serif" font-size="28" fill="#303a36">one named attribute</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="80" y="398" width="440" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="119" y="454" width="30" height="30" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="135" y="470" width="30" height="30" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <text x="200" y="488" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">descriptor</text>
+
+    
+    <rect x="540" y="398" width="980" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="580" y="488" font-family="sans-serif" font-size="28" fill="#303a36">one attribute, reusable across classes</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="80" y="582" width="440" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="138" cy="657" r="16" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="6 3"/>
+    <line x1="150" y1="669" x2="167" y2="686" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="200" y="672" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">__getattr__</text>
+
+    
+    <rect x="540" y="582" width="980" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="580" y="672" font-family="sans-serif" font-size="28" fill="#303a36">only attributes that are not found</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="80" y="766" width="440" height="164" rx="10" fill="#fff7ee" stroke="#db8129" stroke-width="3"/>
+    
+    <polygon points="121,824 165,824 149,850 149,868 137,864 137,850" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    
+    <text x="200" y="860" font-family="monospace" font-size="30" font-weight="bold" fill="#db8129">__getattribute__</text>
+
+    
+    <rect x="540" y="766" width="980" height="164" rx="10" fill="#fff7ee" stroke="#db8129" stroke-width="3"/>
+    <text x="580" y="836" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">every attribute fetch</text>
+
+    
+    <rect x="580" y="860" width="300" height="46" rx="23" fill="#fdeee0" stroke="#db8129" stroke-width="2"/>
+    <text x="730" y="892" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">slowest and riskiest</text>
+  </g>
+</svg>

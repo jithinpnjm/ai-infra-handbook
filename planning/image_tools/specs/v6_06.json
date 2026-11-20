@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "06",
+  "name": "h06-loader-order",
+  "title": "Where the dynamic loader looks for a shared library",
+  "spec": "A vertical stack of five search-location boxes, numbered 1 to 5 in order, each box with a short arrow pointing down to the next, and a small label on each arrow reading not found, keep searching. Box 1 title: DT_RPATH embedded in the binary, used only if DT_RUNPATH is absent. Box 2 title: LD_LIBRARY_PATH environment variable, directories searched left to right. Box 3 title: DT_RUNPATH embedded in the binary at link time, set with -Wl,-rpath. Box 4 title: /etc/ld.so.cache, built by ldconfig from /etc/ld.so.conf. Box 5 title: default OS directories, /lib64 and /usr/lib64. A green stop marker at the bottom right labelled first match wins. Left side of the stack: a small icon of a binary file, labelled ELF binary needs libmpi.so, libcudart.so, libstdc++.so. Box 2 is highlighted in orange, with a callout arrow to the right: an old copy in LD_LIBRARY_PATH wins over the newer copy named by RUNPATH. Right side panel, titled tools to see the search: ldd ./myapp, readelf -d ./myapp grep -i path, LD_DEBUG=libs ./myapp, shown as three small monospace lines. Green takeaway bar at the bottom with the sentence: Know the order and you can predict which copy will load.",
+  "anchor": "## 1. The problem: how Linux finds binaries and shared libraries",
+  "alt": "The dynamic loader searches five locations in a fixed order, and the first match wins.",
+  "cap": "The dynamic loader checks five locations in a fixed order, so an old LD_LIBRARY_PATH copy can win over a newer RUNPATH copy."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "06",
+  "name": "h06-minicluster-sequence",
+  "title": "Eleven steps from the control node to the cloned fleet",
+  "spec": "A left-to-right flow of eleven numbered step cards, arranged in three phase bands labelled from top to bottom or left to right: Phase A, build the reference node (steps 1 to 5); Phase B, test the minicluster (steps 6 to 10); Phase C, clone the fleet (step 11). Number circles 1 to 11 in time order, with arrows between consecutive cards. Step 1: Install the control (head) server. Step 2: Install and configure the network file system server, set exports and run exportfs -av. Step 3: Install the first reference compute node. Step 4: Install the communication software stack, OFED with memlock unlimited. Step 5: Install the second compute node. Step 6: Assemble a minicluster from the control node and the two compute nodes. Step 7: Install compilers and test packages onto the shared file system tree. Step 8: Benchmark the communication equipment between the two compute nodes. Step 9: Install and configure Slurm. Step 10: Run end-to-end task completion tests. Step 11: Clone the verified reference compute node to the remaining compute nodes. Under step 11, a warning box in orange with two bullets: replace /dev/disk/by-id references with generic device names such as /dev/sda1, and clear the MAC bindings in 70-persistent-net.rules. A small icon on each card: a server rack, a folder, a chip, a network cable, a gear, a checkmark. Caption under phase B: testing the minicluster catches most problems while it is still one machine to fix. Green takeaway bar at the bottom: build and test on the minicluster before you clone anything.",
+  "anchor": "## 4. Node setup, minicluster staging, and the shared software tree (*Supercomputers for Linux Sysadmins* Chapter 24)",
+  "alt": "A minicluster deployment runs eleven steps from the control server through testing to cloning the reference node.",
+  "cap": "The eleven-step minicluster sequence builds a reference node, tests it on a small cluster, and only then clones it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "06",
+  "name": "h06-opt-apps-layout",
+  "title": "One read-only software tree, split by CPU baseline",
+  "spec": "Top banner: a wide light green bar labelled /opt/apps, exported read-only to all login and compute nodes, with a small padlock icon and the word read-only. Below the banner, two side-by-side subtree panels, each with a folder icon. Left panel labelled x86-64-v3, the AVX2 baseline subtree, containing two stacked boxes: gcc/15.1.0 and openmpi/5.0.7-gcc15. Right panel labelled x86-64-v4, the AVX-512 baseline subtree, shown as an empty or lightly drawn panel to show the second baseline. Beneath both panels, a wide box labelled cuda/12.6.0, CUDA toolkits, userspace nvcc and libcudart, spanning both. Below all of that, a separate grey bar labelled /opt/modulefiles, Lmod Core, Compiler and MPI hierarchy per architecture, with an arrow from it up to the subtrees. Orange highlight on the padlock, labelled read-only mount stops accidental edits by a running job. Plain label on the left: a node with a newer CPU still runs the build for the baseline it matches. No takeaway bar.",
+  "anchor": "### Designing the shared `/opt/apps` software tree",
+  "alt": "The shared software tree is organized by CPU baseline, with CUDA and the module files alongside.",
+  "cap": "The shared software tree is split by CPU baseline and mounted read-only, so a newer node still runs the build it matches."
+ }
+]

@@ -198,6 +198,10 @@ This code treats the list like a stack, a pile you take items from at one end. T
 
 ### Extended-unpacking assignments
 
+![Extended unpacking with a star](./img/s13-unpack.svg)
+
+*Figure 3.13.1. A starred target collects whatever the other targets did not take, as a list.*
+
 The previous section showed how to use manual slicing to make sequence assignment more general. Later versions of Python made this easier. A starred target, written `*X`, can appear on the left of the equals sign. It matches the iterable on the right more generally. The starred name is assigned a list of every item that no other target took.
 
 This is especially handy for splitting a sequence into its front and its rest, as in the loop above.
@@ -2030,6 +2034,10 @@ A preview: `input` also raises an exception at end-of-file. That happens when a 
 
 ### Loop else
 
+![Loop else versus break](./img/s13-loopelse.svg)
+
+*Figure 3.13.2. The else block of a loop runs only when the loop ends without hitting break.*
+
 When you combine `break` with the loop `else` clause, you often avoid the search flags used in other languages. The `break` skips the `else` on the way out of the loop. This abstract outline shows the pattern.
 
 ```text
@@ -2568,6 +2576,10 @@ The `range` solution may not be ideal either. A list comprehension likely runs f
 Comprehensions get a full treatment later in this handbook.
 
 ### Parallel traversals with zip
+
+![How zip pairs items](./img/s13-zip.svg)
+
+*Figure 3.13.3. zip walks several sequences in step and stops at the shortest one.*
 
 The `range` function lets a `for` walk sequences without covering all of them. The built-in `zip` function lets a `for` visit multiple sequences in parallel. The sequences are not visited at the same moment. They are walked during the same loop. `zip` takes one or more sequences or other iterables. It returns tuples that pair up the items at the same positions.
 

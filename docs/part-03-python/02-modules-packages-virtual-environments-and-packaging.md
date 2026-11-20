@@ -369,6 +369,10 @@ The fix is to put both folders under a common `root/` on `sys.path`. Then each f
 
 ### Dotted package walkthrough (`dir0/dir1/dir2/mod.py`), `__init__.py` roles, and `__main__.py`
 
+![Dotted package walkthrough tree](./img/s02-dotted.svg)
+
+*Figure 3.2.14. A dotted package tree: each dot in an import names a folder, and each folder's __init__.py runs on the way in.*
+
 The book's nested package gives us a small tree to walk through. Four files matter. `dir0/dir1/mod.py` sets `var = 'hack'` and prints `Loading dir1.mod`. `dir0/dir1/dir2/mod.py` sets `var = 'code'` and prints `Loading dir1.dir2.mod`. `dir1/__init__.py` sets `var = 'Python'` and prints `Running dir1.__init__.py`. And `dir1/dir2/__init__.py` sets `var = 3.12` and prints `Running dir1.dir2.__init__.py`.
 
 Importing a root package does not load its submodules. A folder's module object does not check the file system when you read an attribute. So `import dir1`, followed by `dir1.dir2.mod.var`, raises `AttributeError: module 'dir1' has no attribute 'dir2'`. You need the full dotted import, `import dir1.dir2.mod`. On the first import, that runs `dir1/__init__.py`, then `dir1/dir2/__init__.py`, then `dir1/dir2/mod.py`.
@@ -385,7 +389,7 @@ What `__main__.py` can import depends on how you launch it, and this is the most
 
 ![Which import styles work in __main__.py for each launch command](./img/p02-mainlaunch.jpg)
 
-*Figure 3.2.14. Which import styles work in dir1/__main__.py for each way of launching it.*
+*Figure 3.2.15. Which import styles work in dir1/__main__.py for each way of launching it.*
 
 If `dir1/__main__.py` contains a plain `import mod`, then `python3 dir1` and `python3 dir1/__main__.py` both succeed. The home directory is `dir1/`, so `mod` is found. But `python3 -m dir1` fails with `ModuleNotFoundError: No module named 'mod'`. Absolute imports skip the enclosing package.
 
@@ -394,6 +398,10 @@ If `dir1/__main__.py` uses a relative import, `from . import mod`, the outcome f
 If `dir1/__main__.py` uses the full package path, `import dir1.mod` or `from dir1 import mod`, and the container directory is on `sys.path` through `export PYTHONPATH=.`, then all four launch commands work. Those are `python3 dir1`, `python3 dir1/__main__.py`, `python3 -m dir1` and `python3 -m dir1.__main__`.
 
 ### Four import models, PEP 420 namespace packages (`__path__`), and the 4-step search algorithm
+
+![Four import models](./img/s02-fourmodels.svg)
+
+*Figure 3.2.16. Python's four import models, from a basic module to a PEP 420 namespace package.*
 
 Python has four import models, which developed over time. Basic modules use `import module`. Basic, or regular, packages use `import folder.folder.module`, with an `__init__.py` file. Package-relative imports use `from . import module`. Namespace packages, defined by PEP 420, use `import anyfolder.anyfolder.module` with no `__init__.py`, and they can span several directories. These four models explain most of the import errors you will meet.
 
@@ -427,13 +435,17 @@ A split-directory demo shows the namespace case. The file `ns/part1/sub/mod1.py`
 
 For example, set `export PYTHONPATH=ns/part1:ns/part2`, then run `import sub.mod1` and `import sub.mod2`. Python builds one virtual namespace package called `sub`. It is shown as `<module 'sub' (namespace) from ['.../ns/part1/sub', '.../ns/part2/sub']>`. Adding `from . import mod2` inside `ns/part1/sub/mod1.py` reaches across the folder boundary into `ns/part2/sub/mod2.py`.
 
+![Two folders without __init__.py merge into one namespace package](./img/s02-nspkg.svg)
+
+*Figure 3.2.17. Two folders, one package: with no __init__.py, Python merges both sub directories into one namespace package.*
+
 ### Circular (`recursive`) imports: why `import recur1` fails while `import recur2` succeeds
 
 Two modules can import each other without looping forever. The trick is the order in which Python builds them. Python adds the new module object to `sys.modules` before it runs the file's top-level statements. The problem is that a circular `from` import can catch a module only partly built. The book uses two files to show it.
 
 ![Why import recur1 fails while import recur2 first works](./img/p02-circular.jpg)
 
-*Figure 3.2.15. Why import recur1 fails: Y = 2 has not run when recur2 asks for it. Importing recur2 first works.*
+*Figure 3.2.18. Why import recur1 fails: Y = 2 has not run when recur2 asks for it. Importing recur2 first works.*
 
 `recur1.py` sets `X = 1`, then runs `import recur2`, then sets `Y = 2`. `recur2.py` runs `from recur1 import X` and then `from recur1 import Y`.
 
@@ -470,6 +482,10 @@ myops/
 The src layout puts the package under `src/`. Tests can import `myops` only after you install it with `pip install -e .`. That step catches packaging mistakes, such as missing files or wrong imports. A flat layout hides those mistakes, because the project root is already on `sys.path`. If you want packaging errors to show up during testing, the src layout is the one to use.
 
 ## 3. Virtual environments
+
+![One virtual environment per project](./img/s02-venv.svg)
+
+*Figure 3.2.19. One environment per project: each .venv has its own python and site-packages, so two library versions do not clash.*
 
 Picture two projects on one machine. One needs one version of a library, and the other needs a different version. Without a virtual environment, both share the same installed packages, and one of them breaks.
 
@@ -533,6 +549,10 @@ The pip resolver has used backtracking since version 20.3. It searches for one s
 
 ### Declaring dependencies: libraries vs applications
 
+![From requirements.in to a hashed lock](./img/s02-piptools.svg)
+
+*Figure 3.2.20. Declaring dependencies: pip-compile turns an abstract list into a hashed lock, and pip-sync makes the environment match it.*
+
 Libraries and applications need different kinds of declarations, and swapping them causes trouble in both directions. A library declares abstract, compatible ranges, such as `requests>=2.28,<3`. A range lets the library sit alongside other packages that also depend on requests. An application or deployment needs a concrete lockfile instead. The lockfile lists exact versions of everything, including transitive dependencies, along with hashes. Every machine then installs the same bits.
 
 ```bash
@@ -561,6 +581,10 @@ Use one tool per environment. That is the rule to remember. Mixing pip and conda
 
 ### Choosing
 
+![Choosing a packaging tool by situation](./img/s02-choosetool.svg)
+
+*Figure 3.2.21. Choosing a tool: match your situation to a row. A published library gets ranges, a deployed application gets a lockfile.*
+
 The table maps common situations to a tool, so start with your situation rather than with a tool you have heard about.
 
 | Situation | Tool |
@@ -579,6 +603,10 @@ Notice that a published library gets ranges, while a deployed application gets a
 You have a tool that works on your laptop. Then a colleague wants it, and then a whole cluster wants it, and emailing a folder stops being an option. Packaging is how a folder of code becomes something another machine can install, version and trust.
 
 ### `pyproject.toml`
+
+![The main tables in pyproject.toml](./img/s02-pyproject.svg)
+
+*Figure 3.2.22. pyproject.toml: four tables cover the build backend, project metadata, command launchers and plugin entry points.*
 
 Every packaged project declares its build in a `pyproject.toml` file. The standard for this file, set by PEP 517, 518 and 621, names the build backend and the project metadata. A build backend is the tool that turns your source folder into a distributable file. The example below is a complete tool.
 
@@ -656,6 +684,10 @@ Check the tags of every wheel you plan to ship against the machines that will in
 
 ## 6. Plugins and entry points
 
+![Entry point plugin discovery](./img/s02-entrypoints.svg)
+
+*Figure 3.2.23. Entry points: an installed package advertises a plugin, and the core discovers, loads and registers it without edits.*
+
 Suppose your tool needs a new collector, such as one for GPUs. You do not want to edit the core every time. Entry points solve that problem. They let an installed distribution advertise its components to other programs, without any hard-coded imports. An entry point is a name plus a path to code, recorded in a package's metadata, where other programs can look it up. pytest plugins, Ansible and Click commands, and Prometheus collectors all work this way.
 
 ```python
@@ -669,6 +701,10 @@ print(version("myops"), metadata("myops")["Summary"])
 The loop discovers each plugin in the `myops.plugins` group, loads it, and registers it. Define a small base class or Protocol (chapter 3.4) for plugins. Load them lazily, and isolate failures, so that one broken plugin does not crash the host. Document the entry-point group name as part of the public API.
 
 ## 7. Python packaging on GPU and ML systems
+
+![Checking a GPU Python stack](./img/s02-gpucheck.svg)
+
+*Figure 3.2.24. GPU packaging: the host driver must be new enough for the CUDA runtime in the wheel, so check from the driver upward.*
 
 A training container can build without error and still fail on the first GPU call, with a message that the driver is too old. The notes below cover the packaging causes, and they show you how to check each one.
 
@@ -697,6 +733,10 @@ If your cluster is offline or air-gapped, build a wheelhouse with `pip download 
 Check the driver and the CUDA runtime first, because a mismatch there breaks the install on every node.
 
 ## 8. Containers and system integration
+
+![A multi-stage Dockerfile](./img/s02-multistage.svg)
+
+*Figure 3.2.25. Multi-stage build: dependencies are installed in a build stage, then only the virtual environment is copied into the final image.*
 
 Your service works on your laptop, and now it has to become an image that a cluster can pull. A multi-stage Dockerfile is the usual starting point for a Python service. Multi-stage means the file has more than one `FROM` line, and only the last one becomes the image you ship. The first stage builds the virtual environment. The second stage copies only that environment into a clean runtime image.
 

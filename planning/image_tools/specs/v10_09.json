@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "09",
+  "name": "g09-forward-compat",
+  "title": "How the compat driver directory wins the library search over the host driver",
+  "spec": "A left-to-right flow in two columns. Left column labelled inside the container image: a box for the application and CUDA runtime libcudart pointing to a search list box labelled LD_LIBRARY_PATH with two entries in order, first usr local cuda compat and second the host mount. Right column labelled on the host: a box labelled host driver libcuda.so.1, version 450 family, and a box labelled host kernel module nvidia.ko, version 450. The compat entry in the search list is highlighted and has an arrow to a box labelled compat libcuda.so.535, newer user-mode driver, which in turn has an arrow to the host kernel module nvidia.ko through the ioctl boundary. A dashed grey arrow from the host libcuda.so.1 box is labelled loaded second, skipped. Orange highlight on the compat entry in the search list with the note: the first match wins, so put the compat directory first. Monospace for LD_LIBRARY_PATH, libcuda.so.1, libcudart, nvidia.ko and usr/local/cuda/compat.",
+  "anchor": "### 2.3 The three driver and CUDA compatibility rules (`evaluate_driver_cuda_compatibility`)",
+  "alt": "Dynamic linker picks compat libcuda before the host copy",
+  "cap": "Forward compatibility: the dynamic linker loads the first libcuda it finds, so the compat directory must come before the host mount."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "09",
+  "name": "g09-pid-trap",
+  "title": "The same GPU process has two different process IDs, one per namespace",
+  "spec": "A split diagram with two panels sharing one GPU drawn at the bottom. Top-left panel labelled host PID namespace: a process box labelled python3 with PID 2051234, and an arrow to the host proc directory showing a valid entry. Top-right panel labelled container PID namespace: the same process drawn as a box labelled python3 with PID 1 inside the container, and a dashed box labelled proc 2051234 not present in this container. Both panels have arrows down to a shared GPU box labelled 40 GB in use, same memory. Below the GPU box, a result line in two parts: on the host, nvidia-smi lists PID 2051234; in the container, nvidia-smi prints no running processes found, while the memory row still shows 40000 MiB. Orange highlight on the empty process list in the container panel with the note: the memory is used, only the name lookup fails. Monospace for PID 2051234, PID 1, /proc, 40000 MiB and no running processes found.",
+  "anchor": "### 3.2 Why `nvidia-smi` inside a container shows an empty process list (the PID namespace trap)",
+  "alt": "Host and container views of one GPU process",
+  "cap": "PID namespace trap: the memory line is accurate inside the pod, but the process name cannot be resolved there."
+ }
+]

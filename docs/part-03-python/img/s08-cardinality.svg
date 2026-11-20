@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Bounded labels versus cardinality explosion</title>
+  <desc>Infographic showing bounded labels yielding a small count of series versus unbounded labels causing a growing pile of series.</desc>
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1 1 L17 9 L1 17 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Bounded labels versus cardinality explosion</text>
+
+  <g id="left-panel">
+    <rect x="60" y="130" width="710" height="700" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="415" y="185" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Bounded labels</text>
+
+    <g id="left-node-1">
+      <rect x="100" y="220" width="630" height="220" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+      <g transform="translate(387, 240)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 6 28 L 28 6 L 50 6 L 50 28 L 28 50 Z"/>
+        <circle cx="38" cy="18" r="4" fill="#207448"/>
+      </g>
+      <text x="415" y="340" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="415" dy="0">a metric name with labels</tspan>
+        <tspan x="415" dy="42" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">host, gpu index, sensor</tspan>
+      </text>
+    </g>
+
+    <g id="left-node-2">
+      <rect x="100" y="540" width="630" height="250" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+      <g transform="translate(387, 560)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="52" height="44" rx="6"/>
+        <path d="M 10 36 L 22 22 L 32 28 L 44 16"/>
+        <circle cx="44" cy="16" r="3.5" fill="#207448"/>
+      </g>
+      <text x="415" y="640" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">a small count of series</text>
+      <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <path d="M 150 690 H 220 L 250 675 L 290 690 H 380 L 410 675 H 500 L 530 690 H 680"/>
+        <path d="M 150 725 H 260 L 290 710 L 330 725 H 440 L 470 710 H 560 L 590 725 H 680"/>
+        <path d="M 150 760 H 190 L 220 745 L 260 760 H 360 L 390 745 H 480 L 510 760 H 680"/>
+      </g>
+    </g>
+  </g>
+
+  <g id="right-panel">
+    <rect x="830" y="130" width="710" height="700" rx="20" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    <text x="1185" y="185" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#db8129">Unbounded labels</text>
+
+    <g id="right-node-1">
+      <rect x="870" y="220" width="630" height="220" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+      <g transform="translate(1157, 240)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="18" r="14"/>
+        <path d="M 8 50 C 8 36 17 32 28 32 C 39 32 48 36 48 50"/>
+        <circle cx="44" cy="44" r="10" fill="#db8129" stroke="none"/>
+        <line x1="44" y1="38" x2="44" y2="45" stroke="#ffffff" stroke-width="2.5"/>
+        <circle cx="44" cy="49" r="1" fill="#ffffff"/>
+      </g>
+      <text x="1185" y="340" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="1185" dy="0">label user id,</tspan>
+        <tspan x="1185" dy="40">request id or timestamp</tspan>
+      </text>
+    </g>
+
+    <path d="M 1040 440 V 540" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+    <text x="1080" y="478" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">
+      <tspan x="1080" dy="0">every new value</tspan>
+      <tspan x="1080" dy="32">makes a new series</tspan>
+    </text>
+
+    <g id="right-node-2">
+      <rect x="870" y="540" width="630" height="250" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+      <g transform="translate(1157, 560)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 6 22 L 28 10 L 50 22 L 28 34 Z"/>
+        <path d="M 6 34 L 28 46 L 50 34"/>
+        <path d="M 6 46 L 28 58 L 50 46"/>
+        <line x1="28" y1="0" x2="28" y2="7"/>
+        <line x1="44" y1="3" x2="39" y2="9"/>
+        <line x1="12" y1="3" x2="17" y2="9"/>
+      </g>
+      <text x="1185" y="640" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">a growing pile of series</text>
+      <g stroke="#db8129" stroke-width="2" opacity="0.75" fill="none" stroke-linecap="round">
+        <path d="M 910 675 H 960 L 980 667 L 1020 675 H 1100 L 1130 663 H 1220 L 1260 675 H 1460"/>
+        <path d="M 910 688 H 940 L 970 696 L 1010 682 H 1080 L 1110 694 H 1200 L 1240 682 H 1460"/>
+        <path d="M 910 701 H 980 L 1010 691 L 1050 705 H 1140 L 1170 693 H 1250 L 1290 705 H 1460"/>
+        <path d="M 910 714 H 930 L 960 724 L 1000 708 H 1090 L 1120 720 H 1210 L 1250 708 H 1460"/>
+        <path d="M 910 727 H 970 L 1000 717 L 1040 733 H 1130 L 1160 721 H 1240 L 1280 733 H 1460"/>
+        <path d="M 910 740 H 950 L 980 748 L 1020 734 H 1110 L 1140 746 H 1230 L 1270 734 H 1460"/>
+        <path d="M 910 753 H 990 L 1020 743 L 1060 757 H 1150 L 1180 745 H 1260 L 1300 757 H 1460"/>
+        <path d="M 910 766 H 935 L 965 776 L 1005 760 H 1095 L 1125 772 H 1215 L 1255 760 H 1460"/>
+      </g>
+    </g>
+  </g>
+
+  <g id="takeaway-bar">
+    <rect x="60" y="870" width="1480" height="80" rx="16" fill="#207448"/>
+    <text x="800" y="920" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">each unique label combination is its own time series</text>
+  </g>
+</svg>

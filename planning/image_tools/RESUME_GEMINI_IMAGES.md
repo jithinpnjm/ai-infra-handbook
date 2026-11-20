@@ -52,3 +52,12 @@ Owner checked Vol 1 and Vol 2: images were at RANDOM topics only. Every subtopic
 - Prompts drafted but NOT generated (resend after reset): (a) namespace package: 'Two folders, one package' (ns/part1/sub/mod1.py + ns/part2/sub/mod2.py -> sub namespace package, PYTHONPATH=ns/part1:ns/part2); (b) 'The src layout' tree + pip install -e . ; 
 - Next in ch3.2: run `python3 planning/image_tools/audit_coverage.py part-03-python 02` for the remaining queue (dotted package walkthrough/__init__ roles, four import models, venv, pip, conda, pyproject, build/publish, native ext, entry points, GPU/ML packaging, containers, troubleshooting). Then ch3.3-3.17.
 - Per-batch routine: reload 3 tabs, send prompts sequentially (JS send method), wait ~40s, grab (tab-1, tab-2, seed), decode_latest.sh names in grab order, Read each, insert_fig.py, renumber_part.py.
+
+## OWNER DIRECTION 2026-11-20 (supersedes "image under every subtopic")
+- Add images only where they genuinely explain a concept. Do NOT push for one per subtopic.
+- Order: finish ch3.3-3.17 first, THEN revisit Vol 1 and Vol 2.
+- Two sources, NO overlap/duplication of the same concept:
+  1. SVG via `google/gemini-3.7-flash` in opencode (text model; cannot make raster images). Tools: `svg_gen.py`, `svg_batch.py specs/chX.json N`, `svg_apply.py specs/chX.json` (inserts after the heading, then renumbers). Specs in `planning/image_tools/specs/ch3_NN.json` (anchor = heading text). View PNGs in /tmp/svgcheck/NAME.png (Chrome render) before applying; delete bad svg and re-run.
+  2. Gemini web app raster illustrations for general/conceptual pictures. Owner prefers these where useful. Only add one on a heading NOT already covered by an SVG (run `audit_coverage.py part NN` AFTER applying SVGs), and skip it if the SVG already explains the concept.
+- Gemini web daily limit resets ~8:43 AM; verify before relying on it.
+- Gemini cost tracking: run python3 planning/image_tools/gemini_cost.py (today's google/* tokens + estimated cost from opencode stats; logged to planning/ledgers/gemini_cost.csv, auto-snapshot every 30 min while a background loop runs). Estimated, not the Google bill; Gemini web app images are not billed here.

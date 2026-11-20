@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "16",
+  "name": "n16-valley",
+  "title": "Why all spines share one ASN",
+  "spec": "Leaf-spine slice with leaf3, spine1, spine2, leaf2 (spine1 and spine2 same ASN, shown in the same colour). Path arrows: route starts at leaf3, goes up to spine1, down to leaf2 where a failed link (orange X) leaves only one remaining path, then leaf2 passes the route up to spine2: spine2 sees its own ASN already in the path and rejects it (green check on the rejection). Second small panel 'different spine ASNs: no repeated ASN, the valley path is installed, forwarding becomes suboptimal and latency rises' in orange. Note: per-rack leaf ASN 65101, 65102.",
+  "anchor": "### ASN allocation",
+  "alt": "Shared spine ASN safety net",
+  "cap": "Giving all spines one ASN makes eBGP loop prevention reject valley paths after multiple failures."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "16",
+  "name": "n16-unnumbered",
+  "title": "BGP unnumbered step by step",
+  "spec": "Two switches cabled together, no IP typed on either end. Numbered steps: 1 'each interface gets an automatic link-local address fe80::/64'; 2 'each side sends IPv6 Router Advertisements and Neighbour Discovery; FRR learns the neighbour link-local address and MAC'; 3 'TCP session starts to port 179'; 4 'OPEN carries Extended Next Hop Encoding capability (RFC 8950), so IPv4 routes work on a link with no IPv4 address'. Config chip in monospace: 'neighbor swp1 interface remote-as external'. Orange side stat: '32 leaves x 16 spines = 512 links to address by hand'.",
+  "anchor": "## 2. BGP unnumbered (RFC 5549 / RFC 8950)",
+  "alt": "BGP unnumbered",
+  "cap": "Link-local IPv6 addresses and the extended next hop capability remove the need for a subnet on every link."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "16",
+  "name": "n16-blackhole",
+  "title": "The Clos black-hole caveat",
+  "spec": "Fabric drawing: border at the top, four spines, leaf3 at the bottom. Every spine advertises aggregate 10.10.0.0/16. A broken link (orange X) between leaf3 and spine2. The border sees one covering route from all spines and sprays the client's flows across all four, including spine2, which still advertises the aggregate but cannot reach leaf3, so those packets are dropped (orange). Rules strip: 'do not summarise where a specific route is needed for correctness', 'summarise only toward the outside, at the border or WAN'.",
+  "anchor": "### The Clos black-hole caveat",
+  "alt": "Aggregation black hole",
+  "cap": "An aggregate advertised by a spine that has lost its path keeps attracting traffic it cannot deliver."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "16",
+  "name": "n16-addpath",
+  "title": "ADD-PATH",
+  "spec": "Two panels. Left 'Default': two border leaves announce the same destination to a spine; the spine's best-path rule picks one winner and tells the leaf only about that one; the second path sits idle (orange). Right 'ADD-PATH': the spine advertises every working path to the leaf, so the leaf can use both (green). Side analogy chip: 'dispatch board lists only the fastest route'.",
+  "anchor": "### ADD-PATH",
+  "alt": "ADD-PATH",
+  "cap": "ADD-PATH lets a speaker advertise all good paths instead of only its single best path."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "16",
+  "name": "n16-ucmp",
+  "title": "Weighted ECMP with link bandwidth",
+  "spec": "Two panels. Left 'Plain ECMP': one leaf with four next-hop links of different capacity, each receiving an equal quarter of the traffic (orange on the narrow link). Right 'Link Bandwidth Extended Community': advertising router encodes link speed in the community; the receiver assigns weights proportional to capacity (weighted ECMP, also called UCMP) (green). Footer: 'if a spine loses a link to the super-spine, it advertises reduced capacity and leaves send proportionally less through it'.",
+  "anchor": "### Link Bandwidth Extended Community and weighted ECMP",
+  "alt": "Weighted ECMP",
+  "cap": "The link bandwidth community lets receivers split traffic in proportion to each path's capacity."
+ }
+]

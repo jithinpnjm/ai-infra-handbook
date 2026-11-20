@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "n26-capturepoints",
+  "title": "Where to capture",
+  "spec": "A path diagram: client -> client NIC -> switch (SPAN mirror/TAP) -> server NIC -> host bridge/veth -> container namespace. Numbered capture points: 1 on the host interface (post-GRO RX, pre-offload TX; offload artefacts); 2 'tcpdump -i any' (cooked SLL headers, loses VLAN and ordering details; not for exact timing); 3 inside a container namespace 'nsenter -t PID -n tcpdump'; 4 host side of bridge or veth, compare both ends; 5 switch port mirror (SPAN), ERSPAN or TAP: the truth source for the wire, mirrored traffic can be dropped under congestion; 6 kernel tracepoints pwru, kfree_skb for drop locations. Orange highlight on point 5. Green bar: 'Ask which packets you must see, then pick the closest point that sees them'.",
+  "anchor": "### Capture points",
+  "alt": "Packet capture points",
+  "cap": "Each capture point shows a different slice of the traffic, so choose the closest point that sees what you need."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "n26-readcapture",
+  "title": "Reading a tcpdump trace",
+  "spec": "The tcpdump excerpt in monospace, with brackets grouping lines: lines 1-2 'arp who-has mikado.example.com tell duplex.example.com' / 'arp reply mikado.example.com is-at 0:2:2d:b:ee:4e' = hosts finding each other's link address (green); lines 3-5 'S' / 'S ... ack 3200063166' / '. ack 1' = TCP three-way handshake (SYN, SYN-ACK, ACK); then 'P 1:427(426)' request and 'P 1:773(772)' response with '. ack' lines; last two lines '9 packets received by filter', '0 packets dropped by kernel' = summary (orange). Hostnames duplex.example.com.48455 and mikado.example.com.www.",
+  "anchor": "### What tcpdump shows on the wire",
+  "alt": "Annotated tcpdump output",
+  "cap": "The trace starts with ARP, then a TCP handshake, then the request and response, and ends with a filter summary."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "n26-filters",
+  "title": "Building capture filters",
+  "spec": "Table of primitives in monospace with meaning: tcp = TCP packets; udp = UDP packets; ip = IPv4; ip6 = IPv6; port <port> = TCP and/or UDP to or from the port; host <host> = to or from the host; net <network> = to or from the network. Row of operators: and (both true), or (either true), ! (negates), parentheses to group. Two example commands below: 'sudo tcpdump tcp' (only TCP packets) and 'sudo tcpdump udp or port 80 or port 443' (UDP plus any packet on port 80 or 443). Footer: 'Read pcap-filter(7) for the full primitives list'.",
+  "anchor": "### Primitives and operators",
+  "alt": "tcpdump filter primitives",
+  "cap": "Filters are built from primitives such as tcp, host and port, joined with and, or and not."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "n26-workflow",
+  "title": "Capture-driven troubleshooting workflow",
+  "spec": "Seven numbered steps in a loop-shaped list: 1 state the question precisely; 2 choose capture points (client, server, both sides of a firewall, NAT or load balancer, switch mirror); 3 write the narrowest filter (ring buffer if intermittent); 4 reproduce the problem and note times; 5 open the files together and align by time, compare what left A with what arrived at B; 6 confirm with counters and BPF tools (nstat, ss -ti, tcpretrans, tcpdrop, conntrack); 7 fix and capture again to verify. Orange example chip: 'SYN at the server with no SYN-ACK back suggests a server firewall or a full listen queue'. Green bar: 'A capture aimed at one question often answers it in a minute'.",
+  "anchor": "## 7. A capture-driven troubleshooting workflow",
+  "alt": "Capture workflow",
+  "cap": "A fixed seven-step sequence turns a vague problem into a capture that answers one question."
+ }
+]

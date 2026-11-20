@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Redistribution loop and the tag fix</title>
+  <desc>Visual infographic explaining routing redistribution loops between protocols and how route tags prevent them.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Redistribution loop and the tag fix</text>
+
+  
+  <g id="panel-loop">
+    <rect x="50" y="110" width="725" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="412" y="158" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Loop</text>
+
+    
+    <g transform="translate(120, 240)">
+      <rect width="585" height="95" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(45, 20)" stroke="#207448" stroke-width="3.5" fill="#e8f1ea" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M 18 42 C 10 42 4 36 4 28 C 4 20 10 15 18 16 C 21 8 30 5 38 9 C 43 4 52 6 56 12 C 63 12 68 18 68 26 C 68 34 62 42 54 42 Z" />
+      </g>
+      <text x="350" y="58" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">protocol X</text>
+    </g>
+
+    
+    <path d="M 590 240 L 590 200 L 485 200" fill="none" stroke="#db8129" stroke-width="4" />
+    <path d="M 125 200 L 90 200 L 90 285 L 110 285" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="135" y="174" width="340" height="52" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="165" cy="200" r="16" fill="#db8129" />
+    <text x="165" y="208" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <text x="325" y="208" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">N now looks like a new route</text>
+
+    
+    <line x1="230" y1="335" x2="230" y2="376" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="75" y="380" width="310" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="108" cy="420" r="18" fill="#207448" />
+    <text x="108" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <text x="235" y="412" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="235" dy="0">A injects prefix N</tspan>
+      <tspan x="235" dy="28">from X into Y</tspan>
+    </text>
+
+    
+    <line x1="230" y1="460" x2="230" y2="496" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(105, 500)">
+      <rect width="250" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(40, 27)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="24" fill="#e8f1ea" />
+        <line x1="14" y1="28" x2="42" y2="28" />
+        <polyline points="19,23 14,28 19,33" />
+        <polyline points="37,23 42,28 37,33" />
+        <line x1="28" y1="14" x2="28" y2="42" />
+        <polyline points="23,19 28,14 33,19" />
+        <polyline points="23,37 28,42 33,37" />
+      </g>
+      <text x="170" y="65" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">A</text>
+    </g>
+
+    
+    <line x1="230" y1="610" x2="230" y2="776" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(465, 500)">
+      <rect width="250" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(40, 27)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="24" fill="#e8f1ea" />
+        <line x1="14" y1="28" x2="42" y2="28" />
+        <polyline points="19,23 14,28 19,33" />
+        <polyline points="37,23 42,28 37,33" />
+        <line x1="28" y1="14" x2="28" y2="42" />
+        <polyline points="23,19 28,14 33,19" />
+        <polyline points="23,37 28,42 33,37" />
+      </g>
+      <text x="170" y="65" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">B</text>
+    </g>
+
+    
+    <line x1="590" y1="500" x2="590" y2="345" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <line x1="590" y1="780" x2="590" y2="739" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="400" y="650" width="360" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="432" cy="690" r="18" fill="#207448" />
+    <text x="432" y="698" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <text x="590" y="682" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="590" dy="0">B hears N from Y and</tspan>
+      <tspan x="590" dy="28">injects it back into X</tspan>
+    </text>
+
+    
+    <line x1="590" y1="650" x2="590" y2="618" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(120, 780)">
+      <rect width="585" height="95" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(45, 20)" stroke="#207448" stroke-width="3.5" fill="#e8f1ea" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M 18 42 C 10 42 4 36 4 28 C 4 20 10 15 18 16 C 21 8 30 5 38 9 C 43 4 52 6 56 12 C 63 12 68 18 68 26 C 68 34 62 42 54 42 Z" />
+      </g>
+      <text x="350" y="58" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">protocol Y</text>
+    </g>
+  </g>
+
+  
+  <g id="panel-tag-fix">
+    <rect x="825" y="110" width="725" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1187" y="158" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Tag fix</text>
+
+    
+    <g transform="translate(895, 240)">
+      <rect width="585" height="95" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(45, 20)" stroke="#207448" stroke-width="3.5" fill="#e8f1ea" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M 18 42 C 10 42 4 36 4 28 C 4 20 10 15 18 16 C 21 8 30 5 38 9 C 43 4 52 6 56 12 C 63 12 68 18 68 26 C 68 34 62 42 54 42 Z" />
+      </g>
+      <text x="350" y="58" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">OSPF</text>
+    </g>
+
+    
+    <line x1="995" y1="335" x2="995" y2="486" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(870, 490)">
+      <rect width="250" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(100, 16)" stroke="#207448" stroke-width="3.5" fill="#e8f1ea" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 8 6 L 30 6 L 44 20 L 22 42 L 8 28 Z" />
+        <circle cx="16" cy="14" r="3" fill="#207448" />
+      </g>
+      <text x="125" y="98" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">set tag 1001</text>
+    </g>
+
+    
+    <line x1="995" y1="620" x2="995" y2="776" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(1150, 470)">
+      <rect width="380" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(165, 14)" stroke="#207448" stroke-width="3.5" fill="#e8f1ea" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 25 4 L 45 10 C 45 28 25 42 25 42 C 25 42 5 28 5 10 Z" />
+        <line x1="14" y1="17" x2="36" y2="29" stroke-width="3" />
+      </g>
+      <text x="190" y="96" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+        <tspan x="190" dy="0">route-map BGP-TO-OSPF</tspan>
+        <tspan x="190" dy="32">deny 5, match tag 1001</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="1340" y1="780" x2="1340" y2="636" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <line x1="1290" y1="630" x2="1390" y2="630" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+
+    
+    <line x1="1340" y1="470" x2="1340" y2="390" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" opacity="0.4" />
+    <line x1="1320" y1="390" x2="1360" y2="390" stroke="#207448" stroke-width="5" stroke-linecap="round" opacity="0.5" />
+
+    
+    <g transform="translate(895, 780)">
+      <rect width="585" height="95" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(45, 20)" stroke="#207448" stroke-width="3.5" fill="#e8f1ea" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M 18 42 C 10 42 4 36 4 28 C 4 20 10 15 18 16 C 21 8 30 5 38 9 C 43 4 52 6 56 12 C 63 12 68 18 68 26 C 68 34 62 42 54 42 Z" />
+      </g>
+      <text x="350" y="58" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">BGP</text>
+    </g>
+  </g>
+
+  
+  <g id="footer-chips">
+    
+    <rect x="50" y="975" width="440" height="60" rx="12" fill="#207448" />
+    <text x="270" y="1013" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">keep redistribution one way</text>
+
+    
+    <rect x="520" y="975" width="650" height="60" rx="12" fill="#207448" />
+    <text x="845" y="1013" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">send defaults down and aggregates up</text>
+
+    
+    <rect x="1200" y="975" width="350" height="60" rx="12" fill="#207448" />
+    <text x="1375" y="1013" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">route tags</text>
+  </g>
+</svg>

@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "32",
+  "name": "n32-equivalents",
+  "title": "AWS, Azure and GCP building blocks",
+  "spec": "Table with columns Building block, AWS, Azure, GCP and rows: Virtual network: VPC regional / VNet regional / VPC global with regional subnets (orange); Instance firewall: security group / network security group / VPC firewall rule; Outbound NAT: NAT gateway / NAT Gateway or Azure Firewall / Cloud NAT on a Cloud Router; Private access: PrivateLink / Private Link / Private Google Access, Private Service Connect; VPC to VPC: Peering, Transit Gateway / VNet peering, Virtual WAN / VPC Network Peering, Network Connectivity Center; Hybrid: Site-to-Site VPN, Direct Connect / VPN Gateway, ExpressRoute / HA VPN, Cloud Interconnect; GPU fabric: EFA / ND-series with InfiniBand / GPUDirect-TCPX and TCPXO then RoCE. Green bar: 'Map each building block to its equivalent first'.",
+  "anchor": "## 4. AWS and Azure in one table",
+  "alt": "Cloud building blocks compared",
+  "cap": "Each cloud has an equivalent for every networking building block, with different names."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "32",
+  "name": "n32-nat",
+  "title": "Cloud NAT and Private Google Access",
+  "spec": "A VM with no external IP in a subnet, two outbound paths. Path 1 'Cloud NAT': VM -> Cloud Router + Cloud NAT (regional, software-defined) -> Internet, for example to pull a package; each VM gets a minimum number of ports (dynamic port allocation); orange note 'port exhaustion: dropped connections, OUT_OF_RESOURCES log entries; fix with more IPs or ports, pooling'. Path 2 'Private Google Access': VM -> restricted.googleapis.com or private.googleapis.com VIPs -> Cloud Storage, BigQuery, Artifact Registry, with internal IPs only. Monospace: 'gcloud compute routers create nat-router', 'gcloud compute routers nats create nat-config'.",
+  "anchor": "### Outbound access: Cloud NAT and Private Google Access",
+  "alt": "Cloud NAT and Private Google Access",
+  "cap": "Cloud NAT gives private VMs Internet egress, while Private Google Access reaches Google APIs over internal IPs."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "32",
+  "name": "n32-connect",
+  "title": "Ways to connect networks on GCP",
+  "spec": "A central VPC with six connection options radiating out, each with a one-line note: VPC Network Peering (private, non-transitive, no overlapping ranges); Shared VPC (host project shares subnets with service projects); Cloud VPN / HA VPN (IPsec over the Internet, 99.99% SLA with proper topology, BGP via Cloud Router); Cloud Interconnect (Dedicated 10/100 Gb/s or Partner 50 Mb/s to 50 Gb/s, VLAN attachments); Cross-Cloud Interconnect (link to AWS, Azure, OCI); Network Connectivity Center (hub-and-spoke, transitive connectivity, orange). Green bar: 'Peering adds no gateways but does not carry traffic through a middle network; NCC solves that'.",
+  "anchor": "### Connecting networks",
+  "alt": "GCP network connection options",
+  "cap": "Each option trades bandwidth, isolation and transitivity, and NCC is the hub that provides transitive connectivity."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "32",
+  "name": "n32-lbtypes",
+  "title": "GCP load balancer types",
+  "spec": "Six-row table with Type, Layer, Scope, Typical use: Global external Application LB: L7 HTTP(S), Envoy-based, global anycast IP, public web/API/inference endpoints, Cloud CDN, Cloud Armor; Regional external/internal Application LB: L7, regional, internal microservices; External proxy Network LB: L4 proxy, global or regional, TCP/SSL; External passthrough Network LB: L4 pass-through (Maglev-based, DSR), regional, UDP and preserve source IP; Internal passthrough Network LB: L4, regional, internal TCP/UDP; Cross-region internal Application LB: L7, multi-region internal. Orange note: 'For streaming inference raise the backend service timeout; the default is 30 s'.",
+  "anchor": "### Load balancing",
+  "alt": "GCP load balancer types",
+  "cap": "GCP load balancers differ by layer and scope, from global L7 to regional L4 passthrough."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "32",
+  "name": "n32-gpuvm",
+  "title": "GCP GPU VM networking generations",
+  "spec": "Three columns left to right as generations. A3 (8-GPU H100): multiple NICs including gVNIC, GPUDirect-TCPX (TCP-based GPUDirect path, NCCL plugin). A3 Mega: nine physical NICs, up to 1,800 Gbps, GPUDirect-TCPXO adds offload, NCCL plugin plus fastrak receive-data-path manager sidecar, compact placement policies. A3 Ultra and A4: RoCE on ConnectX-7 NICs, ten physical NICs, up to 3,600 Gbps, dedicated RDMA VPC networks. Shared requirements bar: multiple VPC networks (management VPC plus data VPCs), GPU NIC MTU 8244 or the documented jumbo value. Orange note: 'Read the provider's current guide; exact flags change between generations'.",
+  "anchor": "### GCP GPU VM generations",
+  "alt": "GCP GPU VM generations",
+  "cap": "Newer GCP GPU VM families move from TCP-based GPUDirect to RoCE with more NICs and bandwidth."
+ }
+]

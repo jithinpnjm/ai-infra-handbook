@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "03",
+  "name": "g03-latency-ladder",
+  "title": "Each step out the memory hierarchy holds more and answers more slowly",
+  "spec": "A vertical staircase of seven horizontal bands, widest and fastest at the top and narrowest and slowest at the bottom, with the bands stacked from registers at the top down to HBM global memory and the host link at the bottom. Each band is labelled with its tier name and a monospace cycle figure: Registers about 1 cycle; Shared memory and L1 about 20 to 30 cycles; TMEM about 10 cycles; Constant cache about 1 cycle on broadcast; L2 cache about 200 cycles; Local memory, which goes through L1, L2 and HBM; HBM global memory about 800 cycles. A thin arrow along the left edge labelled faster at the top and more capacity at the bottom. A second thin arrow along the right edge labelled bigger at the bottom. Each band carries a short capacity tag: 256 KB per SM for registers, 256 KB per SM for shared and L1, 50 MB for L2 on H100, 80 to 288 GB for HBM. Orange highlight on the HBM band with the note: about 800 cycles, so a warp that waits here needs other warps to hide the stall. Monospace for cycle counts and capacity values.",
+  "anchor": "### 1.1 Architectural map from Registers and TMEM to L2, HBM3e, and Host RAM",
+  "alt": "Latency and capacity of each GPU memory tier",
+  "cap": "Memory ladder: each tier down holds far more data but answers far more slowly, so the GPU hides the slowest stalls by switching warps."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "03",
+  "name": "g03-coalesce-sectors",
+  "title": "How 32 threads reading neighboring floats share a few cache sectors",
+  "spec": "Two stacked rows, each showing one warp of 32 thread squares above a strip of 32-byte memory sectors. Row 1, labelled aligned contiguous, stride 1: the 32 thread squares map in order onto four sectors that sit on one 128-byte cache line, with each sector filled green, and the caption 4 sectors, 100 percent load efficiency. Row 2, labelled stride 2 or scattered: the same 32 thread squares each point to a different sector, spread across eight or more sector boxes, most of which are mostly grey because only a few bytes in each are used, with the caption 8 sectors at stride 2, 50 percent efficiency. Orange highlight on the grey unused bytes in row 2 with the note: the extra bytes cross the HBM bus and are thrown away. Monospace for 128 B, 32 B, stride 2 and 4 sectors.",
+  "anchor": "### 3.1 128-byte cache-line coalescing and AoS versus SoA",
+  "alt": "Sectors fetched for contiguous and strided warp loads",
+  "cap": "Coalescing: neighboring threads that read neighboring floats share a few sectors, while strided reads waste most of the bytes they fetch."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "03",
+  "name": "g03-tma-pipeline",
+  "title": "Two shared-memory buffers let the copy of the next tile overlap the math on this one",
+  "spec": "A timeline with two horizontal lanes and time running left to right across five steps. Lane 1 labelled TMA copy engine: a block labelled load tile 1 into buffer A, then a block labelled load tile 2 into buffer B, then a block labelled load tile 3 into buffer A. Lane 2 labelled SM warps compute: a block labelled wait, then a block labelled compute on buffer A while B loads, then a block labelled compute on buffer B while A loads. The compute blocks overlap the copy blocks in time, shown by vertical dashed guide lines. A small legend below: two shared-memory buffers, ping and pong. Orange highlight on the first wait block with the note: only the first tile is exposed; later copies hide behind compute. Monospace for buffer A, buffer B, tile 1, tile 2 and tile 3.",
+  "anchor": "### 3.3 Read-Only Data Cache and Tensor Memory Accelerator",
+  "alt": "Ping-pong TMA copies overlapping warp compute",
+  "cap": "Double buffering: while the warps compute on one tile, the TMA engine fills the other buffer, so most of the HBM wait is hidden."
+ }
+]

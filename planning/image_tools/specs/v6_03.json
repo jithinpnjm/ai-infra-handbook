@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "03",
+  "name": "h03-amdahl-floor",
+  "title": "The serial slice does not shrink",
+  "spec": "Two horizontal bars stacked vertically, each bar representing the total work T(1) as one full-width block. Top bar labelled 1 processor. Bottom bar labelled 1,024 processors. Each bar has a thin orange block on its left labelled serial, 1 - p = 0.01, which is the same width in both bars. The rest of each bar is a green parallel block labelled parallel, p = 0.99. In the top bar the green block is one solid piece. In the bottom bar the green block is split into 1,024 thin vertical slices, drawn as a fine comb, labelled split across 1,024 processors. Beside the bottom bar, a short label: the orange serial slice still takes the same time on every processor count. A result line under the bars: Amdahl speedup on 1,024 processors: 91.2x, under 9% efficiency. Second line: ceiling as n grows: 1 / (1 - p) = 100x. Plain caption beneath, in one sentence: a fixed serial section sets a floor under the whole run. Orange used only on the serial slice. No takeaway bar.",
+  "anchor": "## 2. Amdahl's law (strong scaling)",
+  "alt": "A fixed serial slice stays the same width however many processors split the parallel part, so speedup tops out at 100x for p = 0.99.",
+  "cap": "The serial share of a program stays the same size however many processors split the parallel part, which caps the speedup."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "03",
+  "name": "h03-halo-exchange",
+  "title": "Halo exchange between neighbouring blocks",
+  "spec": "A 2 by 2 grid of four large green square blocks, each labelled rank 0, rank 1, rank 2, rank 3 in its corner. Inside each block, a lighter interior area labelled interior compute, d cubed points, and a thin border strip around the edge labelled halo, ghost cells. Between neighbouring blocks, double-headed arrows across the shared edges, each labelled halo swap. Each block has arrows to its neighbours on each side, so each rank swaps with its neighbours. A callout at one block: in 3D each rank has 6 neighbours across 6 faces, surface 6 times d squared. Second panel to the right, titled shrinking blocks under strong scaling: the same grid cut into many smaller squares, the interior areas become smaller and the halo border becomes a larger share of each block. Orange highlight on the halo border in the second panel, labelled communication share grows. Formula line at the bottom: communication-to-computation ratio = 6 / d. Plain caption: as the blocks shrink, the edges become a bigger share of each block. No takeaway bar.",
+  "anchor": "## 9. Load balance, domain decomposition, and halo exchanges",
+  "alt": "Each rank swaps halo cells with its neighbours, and shrinking blocks make the halo a larger share of each block.",
+  "cap": "Each rank swaps border cells with its neighbours, and as blocks shrink the border becomes a bigger share of the work."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "03",
+  "name": "h03-ring-allreduce",
+  "title": "Ring AllReduce: a relay in two phases",
+  "spec": "A large circle of eight green GPU nodes labelled GPU 0 to GPU 7, arranged around a ring, with arrows around the ring in one direction, each arrow passing one chunk to the next GPU. Two labelled phases shown as two concentric arcs or two stacked rows beside the ring. Phase 1, title: ReduceScatter. Each GPU sends and receives one chunk at a time, and the sums build up on each GPU. Phase 2, title: AllGather. The completed chunks circulate around the ring until every GPU holds the full answer. A side label on the ring: the tensor is split into n chunks, with n = 8. Number circles 1 and 2 on the two phases in time order. Step count label: 2 * (n - 1) steps in total. Formula box at the bottom: Volume per rank = 2 * ((n - 1) / n) * M. Worked line: a 1 GB tensor on 8 GPUs, each GPU sends 1.75 GB. Orange highlight on the latency term 2 * (n - 1), labelled the latency term grows linearly with rank count. Plain caption: ring AllReduce is a relay where each GPU passes a piece to the next until everyone holds the full answer. No takeaway bar.",
+  "anchor": "## 8. A communication cost model (Hockney model and ring AllReduce)",
+  "alt": "Ring AllReduce on eight GPUs runs ReduceScatter then AllGather, passing chunks around the ring for 2 times (n - 1) steps.",
+  "cap": "Ring AllReduce passes chunks around a ring in two phases, so each GPU sends about twice the tensor size in total."
+ }
+]

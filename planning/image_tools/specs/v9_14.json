@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "14",
+  "name": "d14-fabric-membership",
+  "title": "Why every instance must join the same GPU cluster object",
+  "spec": "Two side-by-side panels for comparison, each showing three GPU instances drawn as boxes with their network paths. Left panel, labelled instances not in one gpu_cluster: each instance connects through a VPC Ethernet path with a red label, NCCL falls back to standard VPC Ethernet, with the note: multi-node bandwidth drops to a fraction of line rate, and the GPUs themselves look healthy. Right panel, labelled all instances reference one nebius_compute_v1_gpu_cluster: the same three instances all attached to one shared InfiniBand fabric box labelled infiniband_fabric, with a green tick and the note: NCCL uses the lossless InfiniBand interfaces. Orange highlight on the left panel's VPC Ethernet fallback path. Monospace for nebius_compute_v1_gpu_cluster, infiniband_fabric and VPC Ethernet.",
+  "anchor": "### 3.1 The Nebius AI Cloud resource model and InfiniBand GPU cluster membership",
+  "alt": "Instances on one InfiniBand fabric versus VPC Ethernet fallback",
+  "cap": "Fabric membership: instances that share one GPU cluster object use the InfiniBand fabric, while unattached instances fall back to slower Ethernet."
+ }
+]

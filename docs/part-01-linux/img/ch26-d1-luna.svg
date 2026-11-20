@@ -12,14 +12,14 @@
   <text x="70" y="162" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Native hypervisor (Xen-style)</text>
   <text x="842" y="162" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Kernel-module hypervisor (KVM-style)</text>
 
-  <!-- Connections: Native hypervisor -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M215 420 V500"/>
     <path d="M370 420 V760"/>
     <path d="M555 420 V500"/>
   </g>
 
-  <!-- Connections: Kernel-module hypervisor -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M1000 420 V535"/>
     <path d="M1360 420 V535"/>
@@ -27,7 +27,7 @@
     <path d="M1360 790 V850"/>
   </g>
 
-  <!-- Hypervisor on bare metal -->
+  
   <rect x="100" y="220" width="540" height="200" rx="18" fill="#f5f8f5" stroke="#db8129" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="126" y="292" width="56" height="56" rx="8"/>
@@ -44,7 +44,7 @@
     <tspan x="208" dy="28">owns hardware</tspan>
   </text>
 
-  <!-- Guest VM -->
+  
   <rect x="70" y="500" width="290" height="170" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="90" y="557" width="56" height="48" rx="4"/>
@@ -53,7 +53,7 @@
   </g>
   <text x="162" y="598" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Guest VM</text>
 
-  <!-- Guest VM -->
+  
   <rect x="410" y="500" width="290" height="170" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="430" y="557" width="56" height="48" rx="4"/>
@@ -62,7 +62,7 @@
   </g>
   <text x="502" y="598" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Guest VM</text>
 
-  <!-- Privileged domain -->
+  
   <rect x="70" y="760" width="630" height="190" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="123" cy="855" r="19"/>
@@ -75,7 +75,7 @@
     <tspan x="167" dy="28">(QEMU)</tspan>
   </text>
 
-  <!-- Host Linux kernel + KVM module -->
+  
   <rect x="850" y="220" width="680" height="200" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="875" y="292" width="56" height="56" rx="8"/>
@@ -92,7 +92,7 @@
     <tspan x="965" dy="28">vCPU threads)</tspan>
   </text>
 
-  <!-- QEMU process per VM -->
+  
   <rect x="840" y="535" width="320" height="255" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="1000" cy="583" r="23"/>
@@ -108,7 +108,7 @@
     <tspan x="1000" dy="28">I/O proxy)</tspan>
   </text>
 
-  <!-- QEMU process per VM -->
+  
   <rect x="1200" y="535" width="320" height="255" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="1360" cy="583" r="23"/>
@@ -120,7 +120,7 @@
     <tspan x="1360" dy="34">per VM</tspan>
   </text>
 
-  <!-- Guest VM -->
+  
   <rect x="840" y="850" width="320" height="140" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="870" y="896" width="56" height="48" rx="4"/>
@@ -129,7 +129,7 @@
   </g>
   <text x="942" y="933" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="700">Guest VM</text>
 
-  <!-- Guest VM -->
+  
   <rect x="1200" y="850" width="320" height="140" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="1230" y="896" width="56" height="48" rx="4"/>

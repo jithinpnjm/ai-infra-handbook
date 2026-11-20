@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "24",
+  "name": "k24-alert-routing",
+  "title": "How Alertmanager turns many firing alerts into a few calls",
+  "spec": "A left-to-right flow. On the far left, a column of small alert cards labelled from Prometheus rules: several pod alerts on gpu-node-04, one NodeNotReady alert for gpu-node-04, one planned-maintenance mute, and one Watchdog card. An arrow from the column into a large box labelled Alertmanager, drawn as a switchboard. Inside the box, three numbered steps stacked top to bottom, each a rounded label with a gear icon: step 1 Group by alertname, cluster and namespace; step 2 Inhibit: NodeNotReady suppresses the pod alerts on the same node, drawn with a dashed grey arrow crossing out the pod cards; step 3 Silence: a time-bounded mute for planned maintenance on node gpu-node-07. Number circles 1 to 3 (r=24, green). On the right, three routes leave the box: a route labelled symptom that users feel, leading to a red-bordered box labelled Page on-call; a route labelled cause or capacity warning, leading to a box labelled Ticket or chat; and a route labelled Watchdog every 5 minutes, leading to an external box labelled heartbeat receiver, with a note: a missing heartbeat means the pipeline is broken. Orange highlight on the Watchdog route with the note: silence is the alarm. Green takeaway bar: page on symptoms, ticket on causes, and let the monitor prove it is alive.",
+  "anchor": "### Alertmanager",
+  "alt": "Alertmanager groups, inhibits and silences firing alerts, then routes symptoms to a page, causes to a ticket, and a Watchdog heartbeat to an external receiver.",
+  "cap": "Alertmanager groups and suppresses related alerts, then sends symptoms to a page and causes to a ticket."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "24",
+  "name": "k24-log-path",
+  "title": "A log line's path from stdout to Loki",
+  "spec": "A left-to-right pipeline with five stages. Stage 1, at the far left: a container box labelled app writes to stdout and stderr, with a window icon. An arrow labelled runtime saves output to a file box labelled /var/log/pods, with a disk icon. Stage 2: a node DaemonSet box labelled node agent, Fluent Bit or Alloy, one per node, with three stacked sub-steps numbered 1 to 3 inside: 1 tail the files and parse CRI format; 2 add Kubernetes metadata: namespace, pod, labels, node; 3 filter health checks and redact secrets or PII. An arrow labelled ships to Stage 3: a box labelled Loki, with a label card showing exactly four index labels: job, namespace, pod and container, and a note: everything else stays inside the log line. An arrow from Loki into a box labelled Grafana Explore for LogQL queries, with a small example query in monospace: {namespace=training} |= NCCL WARN. Beneath the pipeline, a second row labelled node-level logs with three small boxes: journald from kubelet and containerd, dmesg with Xid messages, and API server audit logs, each with an arrow into the same node agent or Loki. A separate small box labelled Kubernetes Events, marked with an orange note: export events, they expire after 1 hour. Orange highlight on the label card with the note: keep Loki labels low-cardinality. Green takeaway bar: logs leave the pod the moment they are written, because a deleted pod takes its files with it.",
+  "anchor": "### Architecture",
+  "alt": "Container output is written to node files, tailed by a per-node agent that adds metadata and filters lines, then stored in Loki with four low-cardinality labels.",
+  "cap": "Container logs are tailed by a per-node agent, enriched with metadata, and stored in Loki under a few low-cardinality labels."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "24",
+  "name": "k24-trace-handoff",
+  "title": "A trace stays connected across services through a header handoff",
+  "spec": "Three service boxes left to right: Service A (gateway), Service B (payments), Service C (database). Above them, a horizontal timeline bar for each service, showing its span as a bar: the span listPayments in Service B sits inside the time range of the request span in Service A, and a child span SQL query sits inside Service B's span, nested. An arrow between Service A and Service B labelled HTTP request with traceparent header, and an arrow from B to C labelled span context injected into outgoing headers. Three numbered steps on the arrow into Service B: 1 extract the parent's identity from the incoming headers; 2 start a child span that belongs to that parent; 3 finish the span when the handler returns. Small monospace labels for tracer function names: Extract, StartSpan, Inject, Finish. An orange marker on the arrow into Service C with the note: a missing inject step breaks the trace at this boundary. Under the boxes, a legend: Trace is all the spans of one request; Span is one timed operation; Tag is metadata on a span. Icons: a route arrow for the trace, a clock for span timing. Green takeaway bar: pass the trace context along on every call, or the trace is cut in two.",
+  "anchor": "### Instrumenting services for distributed tracing",
+  "alt": "A request carries its trace context in headers from one service to the next, where each service extracts it, starts a child span, and injects it into the next call.",
+  "cap": "Each service reads the trace context from incoming headers and passes it on, so one request stays a single connected trace."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "24",
+  "name": "k24-burn-windows",
+  "title": "Multi-window burn-rate alerts: a long window confirms, a short window checks now",
+  "spec": "A horizontal timeline from left to right labelled time, marked with an outage that begins at a point on the left and is fixed at a point on the right. Two shaded window bands drawn over the timeline at the moment of evaluation: a long band labelled 1 h window, confirms the budget really burned, and a short band labelled 5 min window, confirms the burn is still happening now. A horizontal threshold line across the chart labelled 14.4 times the 0.5 percent budget, which is the 7.2 percent error rate. Above the timeline, a step line for the error ratio: low before the outage, high during the outage, low after the fix. A green box labelled page fires only when both windows are above the threshold, at the centre. Orange highlight on the short window at the fix point, with the note: the 5 min window drops below the threshold within minutes, so the alert clears soon after a fix. Numbered circles 1 and 2 on the two windows (r=24, green). A small grey note on the long window: without it, a 30-second blip would page someone. Green takeaway bar: a page needs both a sustained burn and a current one.",
+  "anchor": "### Principles",
+  "alt": "A burn-rate page fires only when both the one-hour and five-minute error ratios exceed 14.4 times the budget.",
+  "cap": "A burn-rate page fires only when both the one-hour and five-minute windows are above the threshold, so a short blip stays quiet and a fixed outage clears quickly."
+ }
+]

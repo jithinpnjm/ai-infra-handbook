@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "13",
+  "name": "k13-veth-bridge",
+  "title": "Two pods on one node, joined by a veth pair and a bridge",
+  "spec": "A wide drawing of one node box labelled Node (host network namespace). Inside it, a vertical bridge bar labelled cni0 with the address 10.244.1.1 written on it. Two pod boxes sit on the left and right of the bridge, each a dashed-outline network namespace: left box labelled pod1 with eth0 10.244.1.11, right box labelled pod2 with eth0 10.244.1.12. Between each pod's eth0 and the bridge, draw a short link labelled veth pair, with the pod-side end inside the pod box and the host-side end (veth-pod1, veth-pod2) plugged into the bridge. Each pod box has a small gateway note: default via 10.244.1.1. Step 1 circle near the bridge with the label same subnet, L2 via bridge, with a double arrow between pod1 and pod2 passing through the bridge (ping pod1 to 10.244.1.12). Step 2 circle near the outside of the node with an arrow from pod1 that leaves the node through the bridge and a box labelled MASQUERADE on the node's uplink, with the note source rewritten to the node IP, for ping to 8.8.8.8. Orange highlight only on the MASQUERADE box. Small icon of a window for each pod namespace, a plug icon for the veth pair, a switch icon for the bridge. Green takeaway bar at the bottom: each pod gets its own namespace, a veth cable joins it to the bridge, and the bridge gateway carries traffic out of the node.",
+  "anchor": "## 2. Building pod networking by hand",
+  "alt": "Two pod namespaces connect through veth pairs to a cni0 bridge, and egress traffic is masqueraded at the node.",
+  "cap": "Two pod namespaces each reach the cni0 bridge through a veth pair, and outside traffic is masqueraded at the node."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "13",
+  "name": "k13-cni-chain",
+  "title": "A conflist runs its plugins in order, each reading prevResult",
+  "spec": "A left-to-right pipeline of three plugin boxes connected by arrows. Box 1 labelled calico with the sub-labels creates veth, calls calico-ipam, and an icon of a gear. Box 2 labelled portmap with the sub-label adds hostPort DNAT. Box 3 labelled bandwidth with the sub-label applies tc shaping. Each arrow between boxes carries a label prevResult, and step numbers 1, 2, 3 sit in green circles on the boxes in order. Above the pipeline, a small file card labelled /etc/cni/net.d/*.conflist feeds into box 1 with an arrow. Below the pipeline, a row of environment-variable tags in monospace fed into the plugin row from the runtime box labelled container runtime: CNI_COMMAND=ADD, CNI_CONTAINERID, CNI_NETNS, CNI_IFNAME, CNI_ARGS, CNI_PATH. Box 3 outputs a result card labelled ADD result with the keys interfaces, ips, routes, dns. Orange highlight only on the prevResult arrow between box 1 and box 2. Green takeaway bar at the bottom: the first plugin wires the pod, and each later plugin builds on what came before it.",
+  "anchor": "## 3. The CNI specification",
+  "alt": "The runtime calls a calico, portmap, bandwidth plugin chain in order, passing prevResult along each arrow.",
+  "cap": "A conflist runs calico, portmap and bandwidth in order, and each plugin passes its result to the next."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "13",
+  "name": "k13-mtu-budget",
+  "title": "Pod MTU is the underlay MTU minus the tunnel overhead",
+  "spec": "Two horizontal bars stacked vertically, drawn to the same scale. Top bar labelled 1500-byte underlay, full width, split into two segments: left segment labelled VXLAN overhead 50 bytes in grey with a hatched look, right segment labelled Pod MTU 1450 in green. Bottom bar labelled 9000-byte underlay, full width, split into a small grey segment labelled 50 bytes overhead and a large green segment labelled Pod MTU 8950. Arrow from each full bar pointing down to its green segment, with the formula text Pod MTU = underlay MTU - overhead. Below the bars, a small table-like row of overhead tags: VXLAN 50, IPIP 20, WireGuard 60, each as a labelled chip. Orange note on the 1500 bar: a pod set to 1500 gives an outer packet of 1550 bytes, which the underlay will not carry. Step 1 circle on the top bar, step 2 circle on the bottom bar. Green takeaway bar at the bottom: subtract the overhead from the underlay to get the pod MTU, never add it.",
+  "anchor": "## 5. MTU, performance and offloads",
+  "alt": "A 1500-byte underlay minus 50 bytes of VXLAN overhead leaves a 1450-byte pod MTU, and a 9000-byte underlay leaves 8950.",
+  "cap": "The pod MTU is the underlay MTU minus the encapsulation overhead, so a 1500-byte underlay with VXLAN gives 1450 bytes."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "13",
+  "name": "k13-multus-attach",
+  "title": "Multus attaches one primary and extra secondary interfaces to a pod",
+  "spec": "A pod box in the centre labelled nccl-worker, with three network interface tabs on its bottom edge: eth0 (primary), net1 and net2 (secondary). Above the pod, a meta-plugin box labelled Multus (meta CNI) with a numbered flow. Step 1 arrow from Multus down to a box labelled primary CNI (Calico or Cilium) with the output eth0 arrow going into the pod. Step 2 arrow from Multus to a card labelled reads the pod annotation with the text k8s.v1.cni.cncf.io/networks: rdma-net-a, rdma-net-b in monospace. Step 3 arrows from the card to two NetworkAttachmentDefinition cards on the right, one labelled rdma-net-a (macvlan, master ens1f0np0, mtu 9000) and one labelled rdma-net-b. Step 4 arrows from each NAD card into the pod's net1 and net2 interfaces. Below the pod, a small card labelled network-status annotation with the note lists the IPs and MACs written back. Orange highlight only on the arrow from the annotation to the NAD cards. Green takeaway bar at the bottom: the annotation asks for networks, the NetworkAttachmentDefinition describes each one, and Multus adds one interface per name.",
+  "anchor": "### Multus and NetworkAttachmentDefinition",
+  "alt": "Multus attaches the primary eth0 through the main CNI, then adds net1 and net2 from the NetworkAttachmentDefinitions named in the pod annotation.",
+  "cap": "Multus keeps eth0 from the primary CNI and adds net1 and net2 from the networks named in the pod annotation."
+ }
+]

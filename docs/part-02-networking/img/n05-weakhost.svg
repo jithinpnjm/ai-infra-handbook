@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Weak host model and asymmetric replies</title>
+  <desc>Visual explanation of the weak host model where a request arrives on NIC B but the reply leaves via NIC A due to destination routing, showing rp_filter drop behavior and configuration modes.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 1 2 L 9 5 L 1 8 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 1 2 L 9 5 L 1 8 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Weak host model and asymmetric replies</text>
+
+  
+  <rect x="60" y="100" width="920" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(90, 120)">
+    <rect x="0" y="0" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="8" y1="12" x2="26" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="8" y1="22" x2="26" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="36" cy="17" r="3" fill="#207448"/>
+  </g>
+  <text x="155" y="148" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Server</text>
+
+  
+  <rect x="90" y="180" width="380" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(115, 205)">
+    <rect x="0" y="0" width="46" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 8 36 L 8 26 L 14 26 L 14 20 L 32 20 L 32 26 L 38 26 L 38 36" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="180" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NIC A</text>
+  <text x="115" y="320" font-family="sans-serif" font-size="24" fill="#303a36">Subnet A</text>
+
+  
+  <rect x="560" y="180" width="380" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(585, 205)">
+    <rect x="0" y="0" width="46" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 8 36 L 8 26 L 14 26 L 14 20 L 32 20 L 32 26 L 38 26 L 38 36" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="650" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NIC B</text>
+  <text x="585" y="320" font-family="sans-serif" font-size="24" fill="#303a36">Subnet B</text>
+
+  
+  <rect x="560" y="770" width="380" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(585, 805)">
+    <rect x="0" y="0" width="46" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="23" y1="34" x2="23" y2="46" stroke="#207448" stroke-width="4"/>
+    <line x1="11" y1="46" x2="35" y2="46" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="650" y="835" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="650" dy="0">Client</tspan>
+    <tspan x="650" dy="34" font-size="24" font-weight="normal">on subnet B</tspan>
+  </text>
+
+  
+  
+  <path d="M 890 770 L 890 418" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  
+  
+  <circle cx="890" cy="690" r="22" fill="#207448"/>
+  <text x="890" y="698" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <rect x="520" y="475" width="340" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="690" y="515" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="690" dy="0">request arrives</tspan>
+    <tspan x="690" dy="32">on NIC B addressed</tspan>
+    <tspan x="690" dy="32">to B's address</tspan>
+  </text>
+
+  
+  
+  <path d="M 120 410 L 120 725 L 610 725 L 610 762" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <circle cx="120" cy="495" r="22" fill="#db8129"/>
+  <text x="120" y="503" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <rect x="155" y="445" width="340" height="150" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="325" y="480" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="325" dy="0">reply leaves through</tspan>
+    <tspan x="325" dy="32">NIC A because the</tspan>
+    <tspan x="325" dy="32">main table decides</tspan>
+    <tspan x="325" dy="32">by destination</tspan>
+  </text>
+
+  
+  <g transform="translate(155, 615)">
+    <rect x="0" y="0" width="340" height="85" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    
+    <g transform="translate(16, 22)">
+      <circle cx="20" cy="20" r="18" fill="#ef4444"/>
+      <line x1="12" y1="12" x2="28" y2="28" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="12" x2="12" y2="28" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="68" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">rp_filter may drop it</text>
+  </g>
+
+  
+  <rect x="1020" y="100" width="520" height="800" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(1050, 125)">
+    <path d="M 0 10 L 24 0 L 48 10 L 48 30 C 48 48 24 58 24 58 C 24 58 0 48 0 30 Z" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="1115" y="162" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">rp_filter values</text>
+  <line x1="1050" y1="195" x2="1510" y2="195" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="1045" y="225" width="470" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1070" y="288" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">0 no source validation</text>
+
+  
+  <rect x="1045" y="365" width="470" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1070" y="432" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1070" dy="0">1 strict: best route back</tspan>
+    <tspan x="1070" dy="36">  must use same interface</tspan>
+  </text>
+
+  
+  <rect x="1045" y="555" width="470" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1070" y="622" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1070" dy="0">2 loose: source reachable</tspan>
+    <tspan x="1070" dy="36">  via any interface</tspan>
+  </text>
+
+  
+  <rect x="60" y="935" width="1480" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="981" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">If the reply leaves on the wrong NIC, fix with policy routing before relaxing rp_filter</text>
+</svg>

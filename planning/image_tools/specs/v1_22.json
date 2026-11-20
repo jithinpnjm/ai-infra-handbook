@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "22",
+  "name": "l22-module-config",
+  "title": "Two files for modules",
+  "spec": "Two boxes. Left /etc/modules-load.d/gpu.conf lists what to load at boot (nvidia, nvidia_uvm, nvidia_peermem), read by systemd-modules-load. Right /etc/modprobe.d/nvidia.conf sets options and policy, read by modprobe: options nvidia ..., blacklist nouveau. Below: blacklist only stops automatic loading via aliases; stronger form install nouveau /bin/false (orange). Check merged result: sudo modprobe -c | grep -i nvidia and systemd-analyze cat-config modprobe.d. Note: modules needed to mount root or reach the network must be in the initramfs.",
+  "anchor": "### Configuring modules persistently",
+  "alt": "One file chooses which modules load at boot and another sets their options and blacklist.",
+  "cap": "modules-load.d lists what to load, and modprobe.d sets how and whether it loads."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "22",
+  "name": "l22-driver-delivery",
+  "title": "Four ways to deliver a GPU driver",
+  "spec": "Table with Approach, Pros, Cons. Rows: Precompiled kmod packages | no compiler on nodes, deterministic | tied to supported kernel list ; Golden image (Packer plus Ansible) | reproducible, rollback is the previous image, fits PXE | needs an image pipeline ; GPU Operator driver container | Kubernetes-native lifecycle | needs the node's kernel and headers available ; DKMS on nodes (orange) | easy on a workstation or tiny cluster | fragile at scale. Takeaway bar: compile the driver once in CI against a pinned kernel and never compile on a compute node.",
+  "anchor": "### Why large fleets avoid compiling on nodes",
+  "alt": "A comparison of precompiled packages, golden images, the GPU Operator driver container and DKMS on nodes.",
+  "cap": "Large fleets compile once in CI against a pinned kernel instead of compiling on compute nodes."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "22",
+  "name": "l22-upgrade-steps",
+  "title": "Safe driver upgrade on one node",
+  "spec": "Seven numbered boxes in a vertical flow: 1 cordon and drain; 2 stop GPU consumers (DCGM, Fabric Manager, persistence daemon); 3 install new driver packages with matching Fabric Manager, toolkit, MOFED/DOCA; 4 verify the module build for the target kernel (dkms status); 5 reboot; 6 validate (nvidia-smi, nvidia-smi topo -m, dcgmi diag -r 2, single-node NCCL test); 7 uncordon, roll out in waves, keep previous image for rollback. Orange highlight on step 4. Commands monospace.",
+  "anchor": "### Safe driver upgrade procedure (one node)",
+  "alt": "Seven steps to upgrade a GPU driver on one node before touching the fleet.",
+  "cap": "Cordon, upgrade, verify the build for the target kernel, reboot, validate, then uncordon and roll out in waves."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "22",
+  "name": "l22-sysctl-persist",
+  "title": "sysctl: runtime versus persistent",
+  "spec": "Two paths from a command. Top path orange: sudo sysctl -w vm.swappiness=1 changes /proc/sys/vm/swappiness immediately, lost after reboot. Bottom path green: write 'vm.swappiness = 1' into /etc/sysctl.d/90-gpu.conf, then sudo sysctl --system reloads all files. Name mapping: vm.swappiness corresponds to /proc/sys/vm/swappiness. Side notes: some keys exist only after a module loads (net.bridge.* needs br_netfilter); many network keys are per net namespace. Check: systemd-analyze cat-config sysctl.d.",
+  "anchor": "### Mechanics",
+  "alt": "A sysctl -w change is runtime only, while a file under /etc/sysctl.d persists across reboots.",
+  "cap": "Use sysctl -w to test and a sysctl.d file to make the setting survive a reboot."
+ }
+]

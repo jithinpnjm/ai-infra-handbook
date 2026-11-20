@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "10",
+  "name": "d10-six-stages",
+  "title": "The six acceptance stages, in order, before a pod serves researchers",
+  "spec": "A left-to-right flow of six numbered boxes with arrows between them, each box a stage with a title and one line of the main check. Stage 1: Physical acceptance, PDU load balanced, breaker headroom above 20 percent, inlet below 27 C under load. Stage 2: Server acceptance, zero firmware drift, nvidia-smi topo -m matches the fleet matrix. Stage 3: Network acceptance, LLDP matches the cabling plan, every rail at or above 90 percent of line rate, no PFC pause storms. Stage 4: Storage acceptance, concurrent all-node fio and mdtest meet targets, timed checkpoint save and restore. Stage 5: Cluster acceptance, HPL and ClusterKit pass, 24 to 72 hour burn-in with zero unplanned node drops. Stage 6: Operational acceptance, live alert injection pages on-call, executed rollback drill, runbooks readable outside the cluster. Under each box a small evidence label: Stage 1 signed checklist and thermal photos; Stage 2 firmware diff and topo archive; Stage 3 per-rail bandwidth matrix; Stage 4 fio and checkpoint logs; Stage 5 HPL report and burn-in log; Stage 6 alert delivery log and rollback log. Orange highlight on stage 5 with the note: never waive the burn-in. Monospace for fio, mdtest, HPL, ClusterKit, LLDP and PFC.",
+  "anchor": "## 5. Six stages of commissioning and acceptance",
+  "alt": "Six commissioning and acceptance stages",
+  "cap": "Six acceptance stages: each stage must pass, in order, and leaves evidence, before the pod serves researchers."
+ }
+]

@@ -78,6 +78,10 @@ A device file is a convenience, and a big one. Any program that can read and wri
 
 ### Types and numbers
 
+![How the first letter and the major and minor numbers of an ls -l line identify a device.](./img/l10-device-types.svg)
+
+*Figure 1.10.2. The type letter and the major and minor numbers tell you what kind of device a file is.*
+
 Run `ls -l` on a few device files and look at the first character of the mode. That one letter tells you what kind of file you have:
 
 ```text
@@ -106,6 +110,10 @@ The file in `/dev` is only a labelled pointer. Its owner, group and permission b
 Network interfaces are the notable exception. `eth0`, `ens3` and `ib0` have no device file, so they are not in `/dev`. The kernel offers them through the socket API and netlink instead.
 
 ### Naming: why enumeration order is a trap
+
+![Kernel disk names can shift between boots, so persistent configuration should use stable identifiers.](./img/l10-name-shift.svg)
+
+*Figure 1.10.3. Names like sdb depend on discovery order, so use a UUID or a /dev/disk link instead.*
 
 Here is a story you will hear on almost every storage team. A server has three data disks, and the kernel names them `sda`, `sdb` and `sdc`. One morning `sdb` fails. The machine reboots, and the old `sdc` comes back as `sdb`. An `fstab` entry that said `/dev/sdb1` now mounts the wrong disk, or none at all.
 
@@ -216,7 +224,7 @@ Open `/sys/class/net/eth0/speed` on a healthy server and you get a number. That 
 
 ![sysfs: the kernel's device model as a tree](./img/ch10-d1-luna.svg)
 
-*Figure 1.10.2. sysfs: the kernel's device model as a tree.*
+*Figure 1.10.4. sysfs: the kernel's device model as a tree.*
 
 Start reading at the top of the tree. Most of what you need lives under `/sys/devices`.
 
@@ -335,7 +343,7 @@ The kernel also notifies udev. udev does not create the nodes. It adjusts them b
 
 ![The problem and the design](./img/ch10-d2-luna.svg)
 
-*Figure 1.10.3. The problem and the design.*
+*Figure 1.10.5. The problem and the design.*
 
 When you read the diagram, start at the top and work down. The hardware and the kernel act first. udev and its rules then decide the final state of the node. Subscribers react last.
 
@@ -507,7 +515,7 @@ SATA disks connect through **libata**, which runs inside the kernel. libata tran
 
 ![Storage device stacks: SCSI vs NVMe](./img/ch10-d3-luna.svg)
 
-*Figure 1.10.4. Storage device stacks: the three-layer Linux SCSI subsystem and the separate NVMe stack.*
+*Figure 1.10.6. Storage device stacks: the three-layer Linux SCSI subsystem and the separate NVMe stack.*
 
 **Generic SCSI nodes and multiple access methods.** User processes can bypass the top-level class drivers, `sd` and `sr`. They send SCSI protocol commands straight to the device through its generic character device, `/dev/sg*`. Tools from `sg3_utils`, such as `sg_inq` and `sg_map`, do this for you. Run `lsscsi -g` to see the generic node beside each device. It appends the node on the right, as in `/dev/sda /dev/sg0`, `/dev/sr0 /dev/sg1`, and so on up to `/dev/sde /dev/sg5`. The generic nodes use major number `21`.
 
@@ -556,6 +564,10 @@ The matrix also lists each device's **CPU affinity** and **NUMA affinity**. Comm
 Before you place a process, check the matrix, so the job uses the fastest path between its GPUs and NICs.
 
 ## 9. Drivers, binding and rescans
+
+![A device is matched to a driver by its ID tables, and sysfs can unbind it and hand it to vfio-pci.](./img/l10-driver-bind.svg)
+
+*Figure 1.10.7. Drivers claim devices by ID, and the bind and unbind files in sysfs let you swap the driver.*
 
 Every device in a machine needs code that understands it. That code is the driver, and the kernel has to decide which driver owns which device, often within milliseconds of boot.
 

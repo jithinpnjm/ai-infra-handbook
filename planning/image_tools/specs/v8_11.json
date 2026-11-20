@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "11",
+  "name": "b11-trigger-timeline",
+  "title": "Which launch option fires on which sample",
+  "spec": "A horizontal timeline of consecutive samples drawn as dots on a line, labelled sample 1, sample 2, sample 3 and so on to sample 6 from left to right. A horizontal dashed threshold line across the middle labelled zone: value above 50 (the zone is above the line). Sample dots: sample 1 below the line (outside the zone), sample 2 above (inside), sample 3 above (inside), sample 4 above (inside), sample 5 below (outside), sample 6 above again (inside). Above the timeline, labelled markers: at sample 2, Enter fires, with the note: in the zone and the previous sample was not. Under the timeline, a bracket across samples 3 and 4 labelled During fires on each sample that stays in the zone. At sample 5 a marker Leave fires, with the note: out of the zone after being in it. Sample 1 has a grey note: the first sample can never fire Enter. Orange highlight on the Enter marker. Monospace for Enter, During, Leave.",
+  "anchor": "## 4. Triggers: exactly when does it fire? (10.4.5)",
+  "alt": "Enter, During and Leave on a series of samples",
+  "cap": "Trigger timing: Enter fires on the first sample in the zone, During on each sample that stays there, and Leave when the value drops out."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "11",
+  "name": "b11-remediation-tiers",
+  "title": "Choosing the remediation tier before the action",
+  "spec": "A top box labelled New alert on a node, with an arrow down to a diamond labelled what kind of fault? Three branches from the diamond to three columns. Column 1 (red-outlined, the most careful): Tier 1, suspected hardware (GPU falls off the bus, uncorrectable ECC, PSU). Action: Drain, notify, collect evidence NVSMHealthDump. A crossed-out box: no automatic reboot or image update. Column 2 (green): Tier 2, reproducible software state (missing mount, wrong package, bad module). Action: Drain, ImageUpdate or reboot, re-run the check, Undrain on PASS. Below it a loop-cap box: after the second failure, move the node to Tier 1. Column 3 (grey): Tier 3, transient (brief fabric blip, one timeout). Action: alert first, use flapping and UNKNOWN, drain only if it persists. Orange highlight on the crossed-out reboot box. Monospace for NVSMHealthDump, ImageUpdate, PASS and Undrain.",
+  "anchor": "## 8. Automatic remediation: a design that cannot make things worse",
+  "alt": "Three remediation tiers by fault type",
+  "cap": "Remediation tiers: hardware faults are drained and investigated, software faults are repaired from the image, and transient faults get an alert first."
+ }
+]

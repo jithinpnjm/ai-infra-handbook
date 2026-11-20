@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>What a with block guarantees</title>
+  <desc>A vertical timeline illustrating what a Python with block guarantees: enter runs and binds result, body runs, and exit runs even if an error occurs.</desc>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="95" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">What a with block guarantees</text>
+
+  
+  <g id="code-chip">
+    <rect x="80" y="430" width="440" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 280,466 L 268,478 L 280,490 M 320,466 L 332,478 L 320,490 M 306,462 L 294,494" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="300" y="545" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">with resource as r:</text>
+  </g>
+
+  
+  <g id="box-1">
+    <rect x="580" y="170" width="940" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="645" cy="260" r="24" fill="#207448"/>
+    <text x="645" y="260" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <path d="M 730,236 H 748 V 284 H 730" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 704,260 H 736 M 724,248 L 736,260 L 724,272" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="800" y="245">__enter__ runs and its result</tspan>
+      <tspan x="800" y="285">is bound by as</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-1-to-2">
+    <line x1="1050" y1="350" x2="1050" y2="414" stroke="#207448" stroke-width="4"/>
+    <polygon points="1050,430 1038,414 1062,414" fill="#207448"/>
+  </g>
+
+  
+  <g id="box-2">
+    <rect x="580" y="430" width="940" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="645" cy="510" r="24" fill="#207448"/>
+    <text x="645" y="510" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <rect x="708" y="490" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="698" y1="500" x2="708" y2="500" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="698" y1="510" x2="708" y2="510" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="698" y1="520" x2="708" y2="520" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="748" y1="500" x2="758" y2="500" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="748" y1="510" x2="758" y2="510" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="748" y1="520" x2="758" y2="520" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="800" y="520" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">the body of the with block runs</text>
+  </g>
+
+  
+  <g id="arrow-2-to-3">
+    <line x1="1050" y1="590" x2="1050" y2="654" stroke="#207448" stroke-width="4"/>
+    <polygon points="1050,670 1038,654 1062,654" fill="#207448"/>
+  </g>
+
+  
+  <g id="box-3">
+    <rect x="580" y="670" width="940" height="180" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    
+    <circle cx="645" cy="760" r="24" fill="#db8129"/>
+    <text x="645" y="760" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <path d="M 728,734 L 750,744 V 764 C 750,780 728,788 728,788 C 728,788 706,780 706,764 V 744 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 718,760 L 725,767 L 738,752" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="800" y="745">__exit__ runs, even if</tspan>
+      <tspan x="800" y="785">the body raised an error</tspan>
+    </text>
+  </g>
+</svg>

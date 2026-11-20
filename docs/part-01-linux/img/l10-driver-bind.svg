@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Binding a device to a driver</title>
+  <desc>Visual infographic explaining the device discovery and driver binding flow, sysfs inspection commands, and illustrative swap to VFIO.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Binding a device to a driver</text>
+
+  
+
+  
+  <rect x="50" y="110" width="670" height="600" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="155" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Flow</text>
+
+  
+  <rect x="75" y="175" width="620" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="115" cy="225" r="24" fill="#207448"/>
+  <text x="115" y="234" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(155, 197)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <line x1="18" y1="2" x2="18" y2="10"/>
+    <line x1="28" y1="2" x2="28" y2="10"/>
+    <line x1="38" y1="2" x2="38" y2="10"/>
+    <line x1="18" y1="46" x2="18" y2="54"/>
+    <line x1="28" y1="46" x2="28" y2="54"/>
+    <line x1="38" y1="46" x2="38" y2="54"/>
+    <line x1="2" y1="18" x2="10" y2="18"/>
+    <line x1="2" y1="28" x2="10" y2="28"/>
+    <line x1="2" y1="38" x2="10" y2="38"/>
+    <line x1="46" y1="18" x2="54" y2="18"/>
+    <line x1="46" y1="28" x2="54" y2="28"/>
+    <line x1="46" y1="38" x2="54" y2="38"/>
+  </g>
+  <text x="235" y="217" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="235" dy="0">device ID</tspan>
+    <tspan x="235" dy="34" font-size="24" font-weight="normal">(PCI vendor and device pair)</tspan>
+  </text>
+
+  
+  <line x1="385" y1="275" x2="385" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="75" y="315" width="620" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="115" cy="365" r="24" fill="#207448"/>
+  <text x="115" y="374" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(155, 337)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 28 L 28 8 L 48 8 L 48 28 L 28 48 Z"/>
+    <circle cx="38" cy="18" r="4" fill="#207448"/>
+  </g>
+  <text x="235" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">modalias</text>
+
+  
+  <line x1="385" y1="415" x2="385" y2="450" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="75" y="455" width="620" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="115" cy="505" r="24" fill="#207448"/>
+  <text x="115" y="514" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(155, 477)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="10"/>
+    <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12"/>
+  </g>
+  <text x="235" y="497" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="235" dy="0">udev loads</tspan>
+    <tspan x="235" dy="34">matching module</tspan>
+  </text>
+
+  
+  <line x1="385" y1="555" x2="385" y2="590" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="75" y="595" width="620" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="115" cy="645" r="24" fill="#207448"/>
+  <text x="115" y="654" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(155, 617)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="22" width="32" height="26" rx="4"/>
+    <path d="M 18 22 L 18 14 C 18 8, 38 8, 38 14 L 38 22"/>
+    <circle cx="28" cy="34" r="3" fill="#207448"/>
+  </g>
+  <text x="235" y="655" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">driver claims device</text>
+
+  
+  <rect x="750" y="110" width="800" height="600" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(780, 133)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="38" rx="4"/>
+    <line x1="4" y1="14" x2="52" y2="14"/>
+    <line x1="12" y1="26" x2="18" y2="30"/>
+    <line x1="18" y1="30" x2="12" y2="34"/>
+  </g>
+  <text x="850" y="155" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">sysfs commands</text>
+
+  
+  <rect x="775" y="210" width="750" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <path d="M 775 250 L 1525 250" stroke="#e8f1ea" stroke-width="2"/>
+  <circle cx="800" cy="230" r="6" fill="#207448"/>
+  <circle cx="820" cy="230" r="6" fill="#207448"/>
+  <circle cx="840" cy="230" r="6" fill="#207448"/>
+  <text x="795" y="325" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">readlink /sys/bus/pci/devices/0000:3b:00.0/driver</text>
+
+  
+  <rect x="775" y="450" width="750" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <path d="M 775 490 L 1525 490" stroke="#e8f1ea" stroke-width="2"/>
+  <circle cx="800" cy="470" r="6" fill="#207448"/>
+  <circle cx="820" cy="470" r="6" fill="#207448"/>
+  <circle cx="840" cy="470" r="6" fill="#207448"/>
+  <text x="795" y="565" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">ls /sys/bus/pci/drivers/nvidia</text>
+
+  
+
+  <rect x="50" y="740" width="1500" height="300" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  <text x="80" y="785" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">swap to VFIO</text>
+
+  
+  <rect x="90" y="815" width="410" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="130" cy="855" r="24" fill="#207448"/>
+  <text x="130" y="864" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(180, 830)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 16 22 L 8 22 C 4 22, 4 34, 8 34 L 16 34"/>
+    <path d="M 38 22 L 46 22 C 50 22, 50 34, 46 34 L 38 34"/>
+    <line x1="22" y1="16" x2="32" y2="40"/>
+  </g>
+  <text x="295" y="930" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="295" dy="0">unbind from</tspan>
+    <tspan x="295" dy="36">current driver</tspan>
+  </text>
+
+  
+  <line x1="500" y1="915" x2="570" y2="915" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="585" y="815" width="430" height="200" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <circle cx="625" cy="855" r="24" fill="#db8129"/>
+  <text x="625" y="864" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(675, 830)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="16" width="44" height="24" rx="12"/>
+    <circle cx="36" cy="28" r="6" fill="#db8129"/>
+  </g>
+  <text x="800" y="930" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">set driver_override</tspan>
+    <tspan x="800" dy="36">to vfio-pci</tspan>
+  </text>
+
+  
+  <line x1="1015" y1="915" x2="1085" y2="915" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="1100" y="815" width="410" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1140" cy="855" r="24" fill="#207448"/>
+  <text x="1140" y="864" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(1190, 830)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="8"/>
+    <path d="M 12 12 A 22 22 0 0 1 44 12"/>
+    <path d="M 6 6 A 31 31 0 0 1 50 6"/>
+  </g>
+  <text x="1305" y="945" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">drivers_probe</text>
+
+  
+
+  <rect x="50" y="1070" width="1500" height="80" rx="12" fill="#207448"/>
+  
+  <g transform="translate(75, 1083)" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 27 6 L 46 14 L 46 28 C 46 40 27 48 27 48 C 27 48 8 40 8 28 L 8 14 Z"/>
+    <line x1="27" y1="20" x2="27" y2="28"/>
+    <circle cx="27" cy="35" r="2" fill="#ffffff"/>
+  </g>
+  <text x="145" y="1120" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Note: drain the node before any of these operations</text>
+
+</svg>

@@ -14,7 +14,7 @@
   <rect width="1600" height="980" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Cluster identity: NSS and SSSD caching</text>
 
-  <!-- Top lane: Naive LDAP storm -->
+  
   <rect x="40" y="115" width="1520" height="310" rx="20" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
   <text x="72" y="162" fill="#db8129" font-family="sans-serif" font-size="30" font-weight="700">Without local cache: explosive job-launch storm</text>
 
@@ -46,11 +46,11 @@
     <tspan x="936" dy="34">Job launch fails on affected nodes.</tspan>
   </text>
 
-  <!-- Bottom lane: NSS + SSSD caching -->
+  
   <rect x="40" y="460" width="1520" height="480" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="72" y="508" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">With NSS and node-local SSSD cache</text>
 
-  <!-- Step 1: Program -->
+  
   <rect x="72" y="555" width="320" height="195" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="3.5"><rect x="98" y="582" width="44" height="32" rx="4"/><path d="M98 592h44"/></g>
   <text x="158" y="606" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">Program</text>
@@ -62,7 +62,7 @@
 
   <path d="M392 652 H446" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Step 2: NSS -->
+  
   <rect x="450" y="555" width="380" height="195" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <path d="M476 582h26l10 10v34h-36z M502 582v10h10" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
   <text x="532" y="606" fill="#303a36" font-family="sans-serif" font-size="27" font-weight="700">NSS switch</text>
@@ -74,7 +74,7 @@
 
   <path d="M830 652 H876" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Step 3: SSSD cache -->
+  
   <rect x="880" y="555" width="330" height="195" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
     <circle cx="924" cy="600" r="16"/><circle cx="924" cy="600" r="6"/>
@@ -88,7 +88,7 @@
 
   <path d="M1210 652 H1276" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
 
-  <!-- Step 4: LDAP / replicas -->
+  
   <rect x="1280" y="555" width="248" height="195" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="3.5">
     <ellipse cx="1324" cy="596" rx="22" ry="8"/>
@@ -100,7 +100,7 @@
     <tspan x="1306" dy="30">cache miss / expiry</tspan>
   </text>
 
-  <!-- Takeaway bar -->
+  
   <rect x="72" y="790" width="1456" height="110" rx="14" fill="#207448"/>
   <text x="800" y="838" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">
     <tspan x="800" dy="0">Rule: pair LDAP with local SSSD caching (or replica servers) before launching multi-node jobs.</tspan>

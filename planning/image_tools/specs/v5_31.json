@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "31",
+  "name": "k31-reconcile-steps",
+  "title": "One Reconcile pass: observe, decide, act, report",
+  "spec": "A horizontal flow of four rounded boxes left to right, each with a numbered circle (1 to 4, r=24, green, white number) and an icon. Box 1, icon clipboard or eye, title Observe, with a small monospace line below it reading r.Get(ctx, req.NamespacedName, &policy) and a second line reading list nodes. Box 2, icon scales or decision diamond, title Decide, with the line Plan(verdicts, budget) below it, and a note that this step is a pure function with no I/O. Box 3, icon gear, title Act, with the line cordon each node in the plan below it. Box 4, icon document, title Report, with the line updateStatus below it. Arrows run 1 to 2, 2 to 3 and 3 to 4 as plain horizontal arrows. Above box 1 sits a small input box labelled req ctrl.Request with the note carries only namespace and name, linked by one arrow down into Observe. Below the flow sits a branch row with the four return options as small labelled chips reading Result{}, nil for done, Result{}, err for failure with backoff, Result{RequeueAfter: d}, nil for a timed re-check, and Result{Requeue: true}, nil for an immediate requeue, each drawn with no arrows and grouped under a label Return value tells the queue what happens next. Orange highlight on the Report box with the note write the status only when it changed. Green takeaway bar at the bottom reading the request holds only a name, so every pass re-reads the world.",
+  "anchor": "## 4. The reconcile function",
+  "alt": "A Reconcile pass runs four steps in order: observe the policy and nodes, decide with a pure function, act on the plan, and report status.",
+  "cap": "One Reconcile pass observes the cluster, decides with a pure function, acts, and reports, and the return value tells the queue what happens next."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "31",
+  "name": "k31-event-filter",
+  "title": "From a watch event to a queued key",
+  "spec": "A left-to-right layout with three event sources stacked on the left column inside one light green container labelled Watched objects. Source 1 box labelled For(&Policy{}) with the note your own resource. Source 2 box labelled Owns(&Child{}) with the note objects you created and own. Source 3 box labelled Watches(&Node{}, handler.EnqueueRequestsFromMapFunc(fn)) with the note objects you do not own. Each source has one arrow pointing right into a filter column. The filter column is a vertical stack of two predicate boxes inside a container labelled Predicates, each with a small funnel icon: box one labelled GenerationChangedPredicate with the note skips status-only updates of the primary, box two labelled custom Node predicate with the note drops heartbeat-only updates. Orange highlight on the custom Node predicate box. A dashed no path from the predicate column down to a grey box labelled dropped event, meaning no reconcile runs. A yes arrow continues right from the predicates to a box labelled mapping function fn that turns the object into requests, here the source 2 event goes straight through with the note owner lookup. Then one arrow into a box labelled work queue holding reconcile.Request keys, with the note namespace and name only. Then one arrow into a final box labelled Reconcile(ctx, req) with the note re-reads the object from the cache. Under the flow, one monospace line reads mgr.GetFieldIndexer().IndexField registered before the manager starts, linked by a dotted line to the Reconcile box as a note that List calls with client.MatchingFields use the index. Green takeaway bar: predicates decide what wakes the reconciler, and the queue holds only keys.",
+  "anchor": "## 5. Watches, predicates and mapping",
+  "alt": "Watch events pass through predicates that drop noise, then a mapping step turns each event into a queued namespace and name key for Reconcile.",
+  "cap": "Watch events pass through predicates that drop noise, and only the surviving events reach the work queue as namespace and name keys."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "31",
+  "name": "k31-finalizer-flow",
+  "title": "A finalizer holds deletion until cleanup runs",
+  "spec": "A horizontal timeline from left to right with five numbered steps (number circles r=24, green). Step 1, box titled Add finalizer, with the monospace line controllerutil.AddFinalizer then r.Update, and the note before any side effect. Step 2, box titled Side effects, with the note cordon nodes the policy owns. Step 3, a branch box titled User deletes the policy, with a note that the API server sets a deletion timestamp and keeps the object visible. Step 4, box titled Release all, with the note undo every cordon the policy made, and an orange loop arrow curving back from a outlined sub-box labelled release failed, retry with the note returns the error so the queue retries. Step 5, box titled Remove finalizer, with the monospace line controllerutil.RemoveFinalizer then r.Update, and an arrow into a final grey box labelled object deleted by the API server. Above steps 1 and 2 a bracket labelled normal life, above steps 3 to 5 a bracket labelled deletion path. A side note box with a warning icon reads never leave a finalizer that nothing will remove, and a monospace line kubectl patch ... finalizers=null as the documented escape hatch. Green takeaway bar: the finalizer is armed before the side effect, so cleanup cannot be skipped.",
+  "anchor": "## 6. Owner references and finalizers",
+  "alt": "A finalizer is added before side effects, holds the object during deletion while cleanup runs, and is removed only after cleanup succeeds.",
+  "cap": "A finalizer is added before any side effect and holds the object in place during deletion until the controller finishes cleanup and removes it."
+ }
+]

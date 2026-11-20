@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Click</title>
+  <desc>Visual representation of Click CLI execution pipeline from argv to exit code.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="95" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Click</text>
+
+  
+  
+  <line x1="505" y1="320" x2="580" y2="320" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <line x1="1020" y1="320" x2="1095" y2="320" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1315 460 L 1315 486 Q 1315 510 1291 510 L 309 510 Q 285 510 285 534 L 285 560" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <line x1="505" y1="700" x2="580" y2="700" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <line x1="1020" y1="700" x2="1095" y2="700" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <g id="node-1">
+    <rect x="65" y="180" width="440" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="109" cy="224" r="24" fill="#207448" />
+    <text x="109" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <rect x="257" y="209" width="56" height="48" rx="8" stroke="#207448" stroke-width="3.5" fill="none" />
+    <path d="M 268 226 L 278 233 L 268 240" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <line x1="284" y1="240" x2="298" y2="240" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    
+    <text x="285" y="340" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">argv</text>
+  </g>
+
+  
+  <g id="node-2">
+    <rect x="580" y="180" width="440" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="624" cy="224" r="24" fill="#207448" />
+    <text x="624" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="800" cy="233" r="12" />
+      <path d="M 800 211 L 800 217 M 800 249 L 800 255 M 778 233 L 784 233 M 816 233 L 822 233 M 784.5 217.5 L 788.7 221.7 M 811.3 244.3 L 815.5 248.5 M 784.5 248.5 L 788.7 244.3 M 811.3 221.7 L 815.5 217.5" />
+    </g>
+    
+    <text x="800" y="325" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Group callback</text>
+    <text x="800" y="375" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(logging, config, client)</text>
+  </g>
+
+  
+  <g id="node-3">
+    <rect x="1095" y="180" width="440" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="1139" cy="224" r="24" fill="#207448" />
+    <text x="1139" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polygon points="1290,211 1340,211 1322,236 1322,253 1308,247 1308,236" />
+      <polyline points="1326,243 1332,249 1342,239" stroke-width="3" />
+    </g>
+    
+    <text x="1315" y="325" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Subcommand</text>
+    <text x="1315" y="375" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">parse + convert + validate</text>
+  </g>
+
+  
+  <g id="node-4">
+    <rect x="65" y="560" width="440" height="280" rx="16" fill="#fff9f2" stroke="#db8129" stroke-width="3.5" />
+    
+    <circle cx="109" cy="604" r="24" fill="#db8129" />
+    <text x="109" y="612" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polygon points="285,587 311,613 285,639 259,613" />
+      <path d="M 276 626 L 285 607 M 294 626 L 283 611" />
+    </g>
+    
+    <text x="285" y="705" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Business function</text>
+    <text x="285" y="755" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">(pure, testable)</text>
+  </g>
+
+  
+  <g id="node-5">
+    <rect x="580" y="560" width="440" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="624" cy="604" r="24" fill="#207448" />
+    <text x="624" y="612" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="775" y="587" width="50" height="52" rx="6" />
+      <line x1="775" y1="603" x2="825" y2="603" />
+      <line x1="795" y1="603" x2="795" y2="639" />
+      <line x1="775" y1="621" x2="825" y2="621" />
+    </g>
+    
+    <text x="800" y="705" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Output formatter</text>
+    <text x="800" y="755" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">(table/json)</text>
+  </g>
+
+  
+  <g id="node-6">
+    <rect x="1095" y="560" width="440" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="1139" cy="604" r="24" fill="#207448" />
+    <text x="1139" y="612" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="1315" cy="613" r="24" />
+      <polyline points="1304,613 1312,621 1326,605" />
+    </g>
+    
+    <text x="1315" y="730" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Exit code</text>
+  </g>
+</svg>

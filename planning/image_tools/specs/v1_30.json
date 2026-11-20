@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "30",
+  "name": "l30-tool-choice",
+  "title": "Which tool for which job",
+  "spec": "Table with You want to and Use. Rows: temporarily make files available on a trusted network | python3 -m http.server ; copy files across machines, repeatedly | rsync over SSH ; share regularly with Windows | Samba (SMB) ; mount Windows shares on Linux | mount -t cifs ; small-scale sharing between Linux machines, minimal setup | SSHFS ; larger filesystems from a NAS or server | NFS ; cloud storage | FUSE-based filesystems or the provider's CLI. Three group brackets: temporary and regular copying; Windows sharing; Linux-to-Linux and cloud. Orange note: large-scale sharing between many locations and users is not covered by this table.",
+  "anchor": "## 1. Which tool for which job",
+  "alt": "A table matching each sharing or copying job to the tool that fits it.",
+  "cap": "Start with the job, not the tool."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "30",
+  "name": "l30-rsync-decide",
+  "title": "How rsync decides what to send",
+  "spec": "Flow: source and destination compared by quick check: size and modification time. Match then skip (green); different then send only the changed blocks. Side table of safeguards in monospace: -c checksum (slower, thorough); --ignore-existing; -b backup; -u skip files newer at destination; -P partial plus progress. Orange note: a second rsync -av should list nothing, but the quick check trusts two numbers, so use -c for data you cannot rebuild. Dry run: rsync -nva dir host:dest_dir.",
+  "anchor": "### How `rsync` decides, and safeguards",
+  "alt": "rsync skips files whose size and time match and offers options for stronger checks and safeguards.",
+  "cap": "The quick check is cheap but trusts only size and time, so use checksums for data you cannot rebuild."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "30",
+  "name": "l30-stream-vs-random",
+  "title": "Streamed file versus random access",
+  "spec": "Two lanes over a network link between client and server. Top lane green: a video player reads one large file in order, the server can read ahead and buffer, fast. Bottom lane orange: a build opens thousands of small source files one after another, every open is a separate request that the server must accept, decode, find and load, so latency repeats, slow. Rule bar: large data without frequent random access can stay on the share; reading millions of small files, keep a local copy or stage the data.",
+  "anchor": "### Why a streamed file is fast and random access is slow",
+  "alt": "Sequential reads of a large file are fast over a network, while many small random opens repeat the latency.",
+  "cap": "The latency of each new file access is what makes network storage slow for many small files."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "30",
+  "name": "l30-remote-display",
+  "title": "When X is too slow",
+  "spec": "Table with Tool and Key note. Rows: VNC (TigerVNC) | very common, scaling and compression, any X application works, not multi-user: everyone sees one user's desktop (orange) ; RDP | Windows remote desktop, simultaneous users, closed protocol, Linux servers rare ; x2go | open, derived from NoMachine NX, no separate server service, connects over SSH ; NoMachine NX | commercial origin, free server allows two simultaneous users ; SPICE | another remote display protocol, less widespread. Top note: these send compressed images of the screen instead of drawing commands. Green bar: for Jupyter and TensorBoard, run the service on the node and tunnel its port over SSH.",
+  "anchor": "### When X is too slow: alternatives",
+  "alt": "Remote display alternatives to X compared by their key limits.",
+  "cap": "The alternatives send compressed screen images, and web UIs usually need only an SSH tunnel."
+ }
+]

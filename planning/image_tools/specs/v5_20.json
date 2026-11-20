@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "20",
+  "name": "k20-skew-ladder",
+  "title": "Version skew: how far each component may lag the API server",
+  "spec": "A vertical ladder of stacked boxes, top to bottom, with the kube-apiserver at the top as the reference. The top box is a large green box labelled kube-apiserver at n, with a second smaller box beside it labelled HA kube-apiserver instances at n and n-1 during a rolling upgrade. Below it, a row of boxes, each with a short arrow pointing up toward the API server: kube-controller-manager, kube-scheduler and cloud-controller-manager, labelled may be up to one minor older, never newer. Next row: kubelet and kube-proxy, labelled up to three minors older (two before 1.28), never newer. A separate box off to one side, joined by a double-headed arrow to the API server: kubectl, labelled one minor away in either direction, n-1 to n+1. Each box has a small icon: a gear for controllers, a window for kubectl, a chip for kubelet. The orange highlight marks one arrow or label only: never newer than kube-apiserver. Numbered steps 1 and 2 beside the ladder show the order: 1 upgrade the control plane, 2 upgrade the nodes one minor at a time. Green takeaway bar: every component may lag, none may run ahead of the API server.",
+  "anchor": "## 1. Versioning and skew",
+  "alt": "Version skew ladder: the API server is the reference, and controllers, kubelets and kubectl may lag within set limits but never run ahead.",
+  "cap": "Each component may lag the API server by a set number of minors, but none may run ahead of it."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "20",
+  "name": "k20-restore-decision",
+  "title": "Replace a member or restore a snapshot: decide by quorum",
+  "spec": "A top-down decision flow. Start box at the top labelled A member has failed, or the data needs recovery, with a warning icon. Below it a diamond-shaped decision box labelled Does a majority of etcd members still answer? Two arrows leave the diamond. The left arrow, labelled Yes, leads to a green box labelled A. Replace the member: run member remove on the dead ID, then rebuild the node with kubeadm join --control-plane, then check endpoint health --cluster. The right arrow, labelled No, leads to a box labelled B. Restore from snapshot: stop kube-apiserver and etcd on all control-plane nodes, run etcdutl snapshot restore on each node with its own name and peer URL, restore etcd first and then kube-apiserver. Under box B, a small grey note: corrupted data also goes to B. Number steps 1 to 3 inside box B are optional; use the three phases stop, restore, restart. Orange note beside the Yes arrow: replace instead of restoring when quorum is intact. Green takeaway bar: check quorum first, because that answer decides between replacing a member and restoring from a snapshot. Monospace labels for etcdctl and etcdutl commands.",
+  "anchor": "### Restore scenarios",
+  "alt": "If a majority of etcd members still answers, replace the broken member; if not, restore from a snapshot.",
+  "cap": "Whether a majority of etcd members still answers decides between replacing one member and restoring the whole cluster from a snapshot."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "20",
+  "name": "k20-quorum-trap",
+  "title": "Replacing a dedicated etcd member: subtractive versus additive",
+  "spec": "Three horizontal rows, each a short sequence of boxes with arrows left to right. Each box is a round node with a small etcd member icon and a voting count label. Row 1, titled Subtractive, 3 to 2 to 3: box one shows three voting members, all healthy. Box two shows one member removed with etcdctl member remove and its host terminated, leaving two voting members with quorum of 2 and zero fault tolerance for the 10 to 15 minutes the replacement takes to boot and sync. Box three shows the replacement joins and the cluster is back to three. The second box is outlined in orange with a label: a disk stall or network blip on either remaining node loses quorum for the whole control plane. Row 2, titled Additive learner, 3 to 4 learner to promote to remove old to 3: box one shows the new upgraded node added as a learner, which receives data but does not vote; box two shows it promoted, giving four members with three needed for quorum; box three shows the old node removed, leaving three voting members. A green label under row 2 reads three healthy voting members stay active throughout. Row 3, titled In-place rolling upgrade: one box labelled upgrade one member at a time, with the other two members staying online, drawn as three small members with one highlighted. Green takeaway bar: keep three healthy voting members through every replacement step.",
+  "anchor": "### Upgrade strategies in detail",
+  "alt": "Subtractive replacement drops a dedicated etcd cluster to two voting members, while additive learner replacement keeps three healthy voting members throughout.",
+  "cap": "Removing an etcd member before its replacement joins leaves no fault tolerance, so adding the new member as a learner first is the safer order."
+ }
+]

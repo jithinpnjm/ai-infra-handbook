@@ -2779,6 +2779,10 @@ Randomness has more uses than simulations. The `random` module is handy for shuf
 
 ## Decimals, fractions and exact numbers
 
+![Float, Decimal and Fraction](./img/s12-exactnums.svg)
+
+*Figure 3.12.1. float is a binary approximation, while Decimal and Fraction keep exact values.*
+
 Try `0.1 + 0.1 + 0.1 - 0.3` and Python will not give you zero. That surprise is the reason two more numeric types exist. Core floating-point numbers are not exact. Python offers two more numeric types that address this. A decimal keeps a fixed number of decimal digits. A fraction keeps a numerator and a denominator. Both come from the standard library, and both cost some speed.
 
 ### Decimal objects
@@ -3714,6 +3718,10 @@ Sooner or later you will need the middle of a string, or everything after the fi
 
 ### Picturing offsets
 
+![String offsets and slicing](./img/s12-offsets.svg)
+
+*Figure 3.12.2. Offsets count forward from 0 and backward from -1, and a slice stops before its end offset.*
+
 Offsets are easier once you picture the cells. Think of each character as a cell in a row. Positive offsets count from the left, starting at 0. Negative offsets count from the right, starting at -1. An index points at one cell. A slice's right bound marks the first cell that is not included.
 
 ```
@@ -4613,6 +4621,10 @@ Newer options keep arriving. You may see `Template` in other people's code, alon
 
 ### Choosing a formatting tool
 
+![String formatting tools](./img/s12-fmt.svg)
+
+*Figure 3.12.3. Four formatting tools produce the same text, and f-strings are the most direct.*
+
 No rule forces a single tool on every program. Python does not force one formatting tool on you. There is no strong argument for throwing out any of them in every case. In new code, the f-string is usually the best choice. Newer tools are less likely to be removed later, and f-strings read cleanly.
 
 The older tools still have work to do. The expression and the method still have jobs to do. Text loaded from a file is one example, since it needs a template you can fill in later. Knowing all three helps you read the code that already exists, and the choice in your own code is yours to make.
@@ -4865,6 +4877,10 @@ A file object sits oddly among the core types, because it has no literals and no
 | `codecs.open('f.txt', ...)` | Alternative Unicode text-file interface |
 
 ### Opening files
+
+![File open modes](./img/s12-filemodes.svg)
+
+*Figure 3.12.4. The open() mode letters choose reading, writing, appending, and text or binary.*
 
 Everything starts with one call. To open a file, call `open` with the external filename first and a processing mode second. Both arguments are strings, and the call returns a file object with methods for transferring data:
 

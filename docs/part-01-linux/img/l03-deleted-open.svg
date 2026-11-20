@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Deleted but still open</title>
+  <desc>A deleted file that a process still holds open keeps using disk space that du cannot see.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  <text x="800" y="72" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Deleted but still open</text>
+
+  <g id="left-box">
+    <rect x="60" y="130" width="420" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(242, 290)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <ellipse cx="28" cy="14" rx="26" ry="10" />
+      <path d="M 2 14 v 42 a 26 10 0 0 0 52 0 v -42" />
+      <path d="M 2 28 a 26 10 0 0 0 52 0" />
+      <path d="M 2 42 a 26 10 0 0 0 52 0" />
+    </g>
+
+    <text x="270" y="440" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36"><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32">df</tspan> shows 95% used.</text>
+  </g>
+
+  <g id="center-flow">
+    <g id="flow-step-1">
+      <rect x="520" y="130" width="560" height="160" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="770" cy="168" r="22" fill="#207448" />
+      <text x="770" y="168" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      
+      <g transform="translate(808, 146)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M 4 2 h 24 l 16 16 v 26 h -40 z" />
+        <path d="M 28 2 v 16 h 16" />
+        <line x1="12" y1="24" x2="26" y2="24" />
+        <line x1="12" y1="34" x2="32" y2="34" />
+      </g>
+
+      <text x="800" y="235" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="800" dy="0">a large log is deleted while</tspan>
+        <tspan x="800" dy="36">a process still has it open,</tspan>
+      </text>
+    </g>
+
+    <line x1="800" y1="290" x2="800" y2="326" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    <g id="flow-step-2">
+      <rect x="520" y="330" width="560" height="160" rx="14" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+      
+      <circle cx="770" cy="368" r="22" fill="#db8129" />
+      <text x="770" y="368" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      
+      <g transform="translate(808, 346)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M 4 2 h 24 l 16 16 v 26 h -40 z" />
+        <line x1="14" y1="22" x2="30" y2="38" />
+        <line x1="30" y1="22" x2="14" y2="38" />
+      </g>
+
+      <text x="800" y="435" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">
+        <tspan x="800" dy="0">the name is gone,</tspan>
+        <tspan x="800" dy="38">the space is not,</tspan>
+      </text>
+    </g>
+
+    <line x1="800" y1="490" x2="800" y2="526" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    <g id="flow-step-3">
+      <rect x="520" y="530" width="560" height="160" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="770" cy="568" r="22" fill="#207448" />
+      <text x="770" y="568" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      
+      <g transform="translate(808, 546)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <rect x="6" y="2" width="32" height="42" rx="2" />
+        <circle cx="30" cy="23" r="3" fill="#207448" />
+        <path d="M 2 44 h 40" />
+      </g>
+
+      <text x="800" y="635" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="800" dy="0">until the process</tspan>
+        <tspan x="800" dy="36">closes the file or exits.</tspan>
+      </text>
+    </g>
+  </g>
+
+  <g id="right-box">
+    <rect x="1120" y="130" width="420" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1302, 290)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 4 8 h 18 l 8 8 h 22 a 4 4 0 0 1 4 4 v 28 a 4 4 0 0 1 -4 4 h -48 a 4 4 0 0 1 -4 -4 z" />
+      <line x1="16" y1="28" x2="40" y2="28" />
+      <line x1="16" y1="36" x2="32" y2="36" />
+    </g>
+
+    <text x="1330" y="420" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="1330" dy="0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30">du -sh /*</tspan>
+      <tspan x="1330" dy="44">totals much less.</tspan>
+    </text>
+  </g>
+
+  <g id="diagnose-box">
+    <rect x="350" y="740" width="900" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(390, 788)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="46" rx="6" />
+      <line x1="0" y1="12" x2="56" y2="12" />
+      <circle cx="8" cy="6" r="1.5" fill="#207448" />
+      <circle cx="15" cy="6" r="1.5" fill="#207448" />
+      <path d="M 12 24 L 20 30 L 12 36" />
+      <line x1="26" y1="36" x2="38" y2="36" />
+    </g>
+
+    <text x="475" y="825" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Diagnose</text>
+
+    <rect x="660" y="775" width="540" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="930" y="825" text-anchor="middle" dominant-baseline="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">sudo lsof +L1</text>
+  </g>
+</svg>

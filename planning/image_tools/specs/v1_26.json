@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "26",
+  "name": "l26-memory-translation",
+  "title": "Two translation stages",
+  "spec": "Chain of three address boxes: guest virtual, guest physical, host physical, with arrows labelled guest page tables and host mapping. Below two approaches side by side: Shadow page tables (older): hypervisor intercepts every guest page-table change, keeps combined guest-virtual to host-physical tables, many exits. Nested paging (EPT on Intel, NPT on AMD): hardware walks both tables, a two-dimensional page walk, fewer exits (green) but a TLB miss costs more memory reads (orange: worst case 24 reads with 4-level paging in both dimensions, 8 with 1 GiB huge pages in both guest and host).",
+  "anchor": "### Memory virtualisation",
+  "alt": "A guest address is translated twice, by shadow page tables or by hardware nested paging.",
+  "cap": "Nested paging cuts exits but makes each TLB miss more expensive, which is why huge pages help."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "26",
+  "name": "l26-vm-net-modes",
+  "title": "VM networking modes",
+  "spec": "Table with Mode, How, Use. Rows: User-mode (SLIRP) | QEMU NAT with port forwarding | quick tests, slow ; libvirt NAT network (default) | virbr0 bridge, dnsmasq, NAT, guests on 192.168.122.0/24 | dev and test, not reachable from outside ; Linux bridge | tap devices on host bridge br0 enslaving the NIC | servers that must be reachable ; macvtap | virtual interface on a physical NIC | simple ; Open vSwitch | programmable switch | cloud-scale SDN ; SR-IOV VF or NIC passthrough | VF or PF into the guest | near-native throughput including RDMA. Takeaway bar: decide the network mode first, it determines who can reach the guest.",
+  "anchor": "## 5. Networking",
+  "alt": "The common VM networking modes and when to use each.",
+  "cap": "Choose the network mode by asking who needs to reach the guest."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "26",
+  "name": "l26-cloud-init",
+  "title": "Making a VM from a cloud image",
+  "spec": "Left-to-right flow: base cloud image (jammy-server-cloudimg-amd64.img) then qemu-img create -f qcow2 -b ... vm1.qcow2 40G (thin copy-on-write overlay) ; user-data plus meta-data then cloud-localds seed.iso ; both into virt-install --name vm1 --import ; first boot cloud-init configures the instance ; virsh domifaddr vm1 then ssh ubuntu@<ip>. Orange note: no installer runs, which is why a new VM takes seconds. Commands monospace.",
+  "anchor": "### Creating a VM with a cloud image and cloud-init",
+  "alt": "A thin overlay on a cloud image plus a cloud-init seed lets a new VM boot configured in seconds.",
+  "cap": "A cloud image needs no installer because cloud-init configures it at first boot."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "26",
+  "name": "l26-tuning-order",
+  "title": "Tuning order: host first",
+  "spec": "Six numbered boxes in a ladder from the bottom: 1 Host (BIOS VT-x and VT-d, intel_iommu=on iommu=pt, performance governor); 2 CPU (host-passthrough, vcpupin on one NUMA node); 3 Memory (hugepages, locked, numatune strict); 4 Disk (virtio with iothreads, cache=none); 5 Network (virtio-net with vhost and multiqueue, correct MTU); 6 Guest (virtio drivers, qemu-guest-agent, tuned-adm). Orange on step 1. Takeaway bar: start with the host, because guest settings depend on what the host exposes.",
+  "anchor": "## 6. Performance: what costs what, and how to tune",
+  "alt": "Six layers of VM tuning, from the host up to the guest.",
+  "cap": "Tune the host first, then libvirt, then the guest."
+ }
+]

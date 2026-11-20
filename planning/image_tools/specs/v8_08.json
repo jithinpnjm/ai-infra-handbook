@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "08",
+  "name": "b08-slurm-takeover",
+  "title": "Slurm controller takeover on a head-node failover",
+  "spec": "A left-to-right flow of four boxes with arrows. Box 1: Active head node fails, the passive head node takes over the cluster services. Box 2: cmha makeactive runs through CMDaemon. Box 3: The pre-failover script slurm.takeover.sh runs scontrol takeover, the backup slurmctld takes over without a break. Box 4: Primary head restarts later, the primary slurmctld takes its role back. A side box above Box 3 labelled slurmctldstartpolicy TAKEOVER, with a note: stops BCM restarting the stopped primary slurmctld right away, which would undo the takeover. Under the flow, a grey note: a single slurmctld uses ALWAYS. Orange highlight on the TAKEOVER side box. Monospace for cmha makeactive, slurm.takeover.sh, scontrol takeover, slurmctldstartpolicy and TAKEOVER.",
+  "anchor": "## 7. High availability (7.2.4)",
+  "alt": "Slurm controller takeover during head-node failover",
+  "cap": "Slurm takeover: the backup controller takes over through a script, and the TAKEOVER policy stops BCM undoing it."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "08",
+  "name": "b08-prejob-guard",
+  "title": "How a prejob health check stops a black hole node",
+  "spec": "A top box labelled Job sent to a node by the WLM. An arrow down to a diamond labelled prejob health check passes? Yes arrow goes right to a green box: the job starts on the node. No arrow goes down to a red-outlined box labelled node fails the check, the WLM does not start the job there. From that box an arrow goes left to a box labelled Drain action, BCM reschedules the job onto healthy nodes. From Drain an arrow goes down to a grey box labelled node stays drained until an administrator runs undrain after the fix. Side note near the top: Black Hole Node Syndrome, without the guard, an unhealthy node accepts every job and fails them. Orange highlight on the No path. Monospace for prejob, Drain and undrain, and the two cmsh enable commands listed as a small footer: monitoring setup set ib prejob yes, and wlm use slurm set enableprejob yes.",
+  "anchor": "### 10.2 Prejob and postjob health checks, power saving, and `nodecustomizations`",
+  "alt": "Prejob check decision for a job sent to a node",
+  "cap": "Prejob check: a node that fails the check is drained, so jobs are rescheduled and do not fail on it, until an administrator undrains it."
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "14",
+  "name": "k14-bgp-sessions",
+  "title": "Three ways to arrange BGP sessions, and how many each needs at 500 nodes",
+  "spec": "Three side-by-side panels, each titled with its design name. Panel 1 titled Full node-to-node mesh: a small cluster of six node circles, each connected to every other node by a line, drawn as a dense web. Label under it: every node peers with every other node. Big number label: 124,750 sessions for 500 nodes. Panel 2 titled Route reflectors: node circles on the bottom row and three reflector boxes labelled route reflector on the top row, with an arrow from each node up to the reflectors (drawn as a few lines, not a web). Label: nodes peer only with the reflectors. Big number label: 1,494 sessions with three reflectors. Panel 3 titled eBGP to ToR switches: two top-of-rack switch boxes labelled ToR, each with arrows down to the nodes in its rack, and an arrow up from each ToR into a single spine box. Label: each node peers with its local ToRs and nodeToNodeMesh is disabled. Big number label: 1,000 sessions with dual ToR switches. A small step note under panel 3 names the BGPPeer resource with the selector rack equals rack1. Orange highlight only on the 124,750 number, to show the cost of the full mesh. Green takeaway bar at the bottom: a full mesh grows with N squared, while reflectors and ToR peering keep each node's sessions small.",
+  "anchor": "### Calico in BGP mode",
+  "alt": "A full BGP mesh needs 124,750 sessions at 500 nodes, while route reflectors and ToR peering need far fewer.",
+  "cap": "A full BGP mesh at 500 nodes needs 124,750 sessions, while route reflectors and ToR peering need far fewer."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "14",
+  "name": "k14-identity-policy",
+  "title": "Identity-based policy stays fixed while pod IPs churn",
+  "spec": "Two side-by-side panels. Left panel titled IP-based rules: a rule table with rows of pod IP addresses, one row per frontend pod IP and one row per backend pod IP, drawn as a growing stack of small rows with a label 500,000 entries for IP pairs. A small note: each pod restart changes its IP, so the rule must change. Right panel titled Identity-based rules: a badge card labelled app=vllm, env=prod with the numeric identity 14902 on it, and a small arrow from a frontend badge to a backend badge labelled allowed. Below, a policy map with two entries, one per identity pair. Under the right panel: scaling vllm from 2 replicas to 1,000 replicas creates zero new identities and zero map changes. Step 1 circle on the badge card with the label labels give identity, step 2 circle on the policy map with the label one O(1) lookup. Orange highlight only on the 2-entry policy map to show it stays small. A dashed divider between the panels. Green takeaway bar at the bottom: policy names the workload by its badge, so the rule survives every pod restart.",
+  "anchor": "### Concepts",
+  "alt": "IP-based policy needs a rule for every pod IP, while identity-based policy keeps two entries no matter how many replicas run.",
+  "cap": "Identity-based policy keeps two map entries however many replicas run, while IP-based rules grow with every pod IP."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "14",
+  "name": "k14-socket-lb",
+  "title": "Socket-LB rewrites the destination at connect time, not per packet",
+  "spec": "Two horizontal lanes stacked vertically, each with the same three boxes left to right. Top lane titled iptables kube-proxy: client pod box labelled pod, arrow to a box labelled per-packet DNAT rules, marked with a note each packet is rewritten as it passes the rule chains, then an arrow to a backend pod box labelled backend pod. Bottom lane titled Socket-LB (Cilium eBPF): client pod box labelled pod calls connect(), arrow to a box labelled connect() rewritten to backend pod address, then an arrow to the backend pod box labelled backend pod. In the bottom lane, a note under the middle box says the packet already carries the real destination, so no per-packet translation and no conntrack. Step 1 circle on the connect() call in the bottom lane, step 2 circle on the rewrite box. Orange highlight only on the connect() rewrite box in the bottom lane. Icon of a window for each pod, a gear icon for the eBPF program box. Green takeaway bar at the bottom: Socket-LB does the translation once, when the connection starts, instead of on every packet.",
+  "anchor": "## 4. Cilium and eBPF",
+  "alt": "With Socket-LB, connect() is rewritten to a backend pod address before any packet is built, instead of rewriting each packet.",
+  "cap": "Socket-LB rewrites a Service address to a backend pod once, at connect time, so packets need no per-packet translation."
+ }
+]

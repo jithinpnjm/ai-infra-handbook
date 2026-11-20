@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "11",
+  "name": "s11-decorator",
+  "title": "What @decorator really does",
+  "spec": "Top: code chip @deco above def f(): ... with an equals sign to f = deco(f). Below: a box deco(f) returns wrapper. A call flow f() -> wrapper -> does extra work -> calls the original f -> returns its result. Green note: functools.wraps keeps the name and docstring.",
+  "anchor": "## 2. Decorators",
+  "alt": "How a decorator rebinds a function",
+  "cap": "A decorator is a function that takes a function and returns a replacement, usually a wrapper."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "11",
+  "name": "s11-lookup",
+  "title": "Attribute lookup order with descriptors",
+  "spec": "A top-to-bottom list of four ordered steps for obj.attr: 1 data descriptor on the class (has __set__), 2 the instance __dict__, 3 non-data descriptor or plain class attribute, 4 __getattr__ as the last resort. Number circles. Orange highlight on step 1: it beats the instance dictionary.",
+  "anchor": "### Lookup order",
+  "alt": "Attribute lookup with descriptors",
+  "cap": "Lookup order: a data descriptor wins over the instance dictionary, which wins over non-data descriptors."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "11",
+  "name": "s11-classcreate",
+  "title": "What the class statement does",
+  "spec": "A left-to-right flow: class body runs in a fresh namespace ; Python collects name, bases and namespace ; calls type(name, bases, namespace) (or the metaclass) ; a class object is created and bound to the name. Orange note: __init_subclass__ and class decorators hook in here.",
+  "anchor": "### What class does",
+  "alt": "How a class is created",
+  "cap": "The class statement runs the body, then calls type (or a metaclass) to build the class object."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "11",
+  "name": "s11-twotrees",
+  "title": "The two inheritance trees",
+  "spec": "Left tree (header is an instance of, dashed arrows): obj is an instance of Class, Class is an instance of type, type is an instance of type. Right tree (header inherits from, solid arrows): Class inherits from Base, Base inherits from object. A note: a metaclass is a subclass of type, and it changes how classes are built.",
+  "anchor": "### Metaclasses and the two-tree inheritance model",
+  "alt": "Instance-of versus inherits-from",
+  "cap": "Two trees: instances link to their classes, and classes link to their metaclass, while subclasses inherit from bases."
+ }
+]

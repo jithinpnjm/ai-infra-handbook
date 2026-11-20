@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "16",
+  "name": "b16-checkpoint-loss",
+  "title": "How much work a failure costs between checkpoints",
+  "spec": "A horizontal timeline of training steps with labelled markers. Checkpoints saved every 500 steps shown as small tick marks labelled checkpoint interval 500 steps. Marker at step 5000: latest valid checkpoint, loaded after restart. Marker at step 5243: failure hits. Marker at step 5001: first step executed after resume. A bracket between step 5000 and step 5243 labelled steps lost to failure: 5243 minus 5000 equals 243. A dashed lighter segment after 5243 running up to the next checkpoint at step 5500, labelled worst case: a failure just before the next checkpoint loses nearly the whole interval, at most 500 steps. Under the timeline a note: the restart restarts all ranks from the latest complete sharded checkpoint. Orange highlight on the failure marker at step 5243. Monospace for the step numbers and the 500-step interval.",
+  "anchor": "### 2.4 How this connects to BCM monitoring and training checkpoints",
+  "alt": "Steps lost between checkpoints when a failure hits",
+  "cap": "Checkpoint loss: a failure at step 5243 with checkpoints every 500 steps loses 243 steps, and at most 500 in the worst case."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "16",
+  "name": "b16-mc-roles",
+  "title": "The five Mission Control roles and how they relate",
+  "spec": "Five equal panels in one row or a grid, each a rounded box with a title and a short role line, with NO arrows and NO ordering implied (the source says the roles have no strict order). Panel 1: System health and diagnostics, the foundational health base, tracks system health and hardware status. Panel 2: Telemetry and Observability, proprietary diagnostic tools and health checks surface cluster-wide telemetry. Panel 3: Validation and Diagnostics, supports the autonomous recovery engine for rapid failure recovery. Panel 4: Cluster management operations, BCM and NMX Manager, provisioning and fabric control. Panel 5: Workload orchestration, Slurm, Kubernetes and Run:ai, scheduler access for AI and HPC workloads. Orange highlight on the Validation and Diagnostics panel with the note: the autonomous recovery engine sits here. Monospace for BCM, NMX Manager, Slurm, Kubernetes and Run:ai. A bracket above the row labelled NVIDIA Mission Control: five roles.",
+  "anchor": "### 1.1 The Mission Control software stack on a DGX SuperPOD",
+  "alt": "Five roles in the Mission Control stack",
+  "cap": "Mission Control stack: health sits at the base, recovery and telemetry above it, then cluster management and workload orchestration."
+ }
+]

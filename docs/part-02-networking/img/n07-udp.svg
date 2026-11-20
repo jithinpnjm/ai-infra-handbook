@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>UDP header and datagram</title>
+  <desc>Infographic illustrating the UDP header structure, datagram payload, absence of connection, ordering, retransmission, and flow control, and datagram socket delivery semantics.</desc>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">UDP header and datagram</text>
+
+  
+  
+  <g id="source-port-node">
+    <rect x="100" y="140" width="500" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(130, 161)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="40" height="32" rx="4"/>
+      <path d="M14 20v8M24 20v8M34 20v8"/>
+      <path d="M24 8V2"/>
+    </g>
+    <text x="375" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Source port</text>
+  </g>
+
+  <g id="destination-port-node">
+    <rect x="600" y="140" width="500" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(630, 161)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18"/>
+      <circle cx="24" cy="24" r="8"/>
+      <path d="M24 2v8M24 38v8M2 24h8M38 24h8"/>
+    </g>
+    <text x="875" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Destination port</text>
+  </g>
+
+  
+  <g id="length-node">
+    <rect x="100" y="230" width="500" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(130, 251)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 24h40M4 12v24M44 12v24"/>
+      <path d="M14 18v12M24 18v12M34 18v12"/>
+    </g>
+    <text x="375" y="286" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Length</text>
+  </g>
+
+  <g id="checksum-node">
+    <rect x="600" y="230" width="500" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(630, 251)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 4L8 10v14c0 12 16 18 16 18s16-6 16-18V10L24 4z"/>
+      <path d="M16 24l5 5 11-11"/>
+    </g>
+    <text x="875" y="286" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Checksum</text>
+  </g>
+
+  
+  <g id="header-bracket-group">
+    <path d="M 1120 144 H 1150 V 225 H 1170 H 1150 V 316 H 1120" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <rect x="1190" y="190" width="310" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1345" y="234" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">header is 8 bytes</text>
+  </g>
+
+  
+  <g id="data-node">
+    <rect x="100" y="340" width="1000" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6"/>
+    
+    <g transform="translate(130, 361)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="36" height="36" rx="4"/>
+      <path d="M14 16h20M14 24h20M14 32h12"/>
+    </g>
+    <text x="600" y="396" font-family="monospace, Courier New, monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">data ...</text>
+  </g>
+
+  
+  
+  <g id="lack-connection">
+    <rect x="80" y="480" width="315" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(210, 502)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="14" cy="28" r="10"/>
+      <circle cx="42" cy="28" r="10"/>
+      <path d="M24 28h8"/>
+    </g>
+    
+    <path d="M195 500 L281 586 M281 500 L195 586" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+    <text x="237" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">connection</text>
+  </g>
+
+  
+  <g id="lack-ordering">
+    <rect x="425" y="480" width="315" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(555, 502)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 44V34M24 44V22M40 44V10"/>
+      <path d="M8 18l6-6M24 10l6-6"/>
+    </g>
+    
+    <path d="M540 500 L626 586 M626 500 L540 586" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+    <text x="582" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">ordering</text>
+  </g>
+
+  
+  <g id="lack-retransmission">
+    <rect x="770" y="480" width="330" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(907, 502)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M44 26A18 18 0 1 1 38 12"/>
+      <path d="M38 4v10h10"/>
+    </g>
+    
+    <path d="M892 500 L978 586 M978 500 L892 586" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+    <text x="935" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">retransmission</text>
+  </g>
+
+  
+  <g id="lack-flow-control">
+    <rect x="1130" y="480" width="390" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1297, 500)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 40A20 20 0 1 1 46 40"/>
+      <path d="M28 28l10-10"/>
+    </g>
+    
+    <path d="M1282 498 L1368 584 M1368 498 L1282 584" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+    <text x="1325" y="608" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1325" dy="0">flow or</tspan>
+      <tspan x="1325" dy="32">congestion control</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="bottom-note-1">
+    <rect x="80" y="690" width="1440" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(112, 717)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="48" height="40" rx="6"/>
+      <path d="M4 14l24 16 24-16"/>
+    </g>
+    <text x="195" y="754" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">recvfrom returns exactly one datagram; each arrives whole or not at all</text>
+  </g>
+
+  
+  <g id="bottom-note-2">
+    <rect x="80" y="830" width="1440" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(112, 867)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="22" height="44" rx="4"/>
+      <rect x="30" y="6" width="22" height="44" rx="4" stroke="#db8129"/>
+      <path d="M36 20l10 16M46 20L36 36" stroke="#db8129"/>
+    </g>
+    <text x="195" y="882" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="195" dy="0">above the path MTU the datagram is fragmented at IP,</tspan>
+      <tspan x="195" dy="36">one lost fragment loses the whole datagram</tspan>
+    </text>
+  </g>
+</svg>

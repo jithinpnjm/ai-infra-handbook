@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "n05-rules",
+  "title": "Which table gets consulted",
+  "spec": "Vertical stack of three table cards in lookup order, top to bottom, with ip rule show priorities at left in monospace: '0: from all lookup local' -> table local (255): local and broadcast addresses, kernel maintained, consulted first; '32766: from all lookup main' -> table main (254): what ip route shows, connected, static, DHCP routes; '32767: from all lookup default' -> table default (253): usually empty. At the side an orange card: 'custom tables (1-252, 256+): one per NIC, tenant or VRF; a lower rule number means higher priority, and rules can match the source address'. Green main cards.",
+  "anchor": "## 3. Routing tables, rules and special routes",
+  "alt": "Linux routing tables and rules",
+  "cap": "Rules in ip rule decide which routing table the kernel looks in, starting with local, then main, then default."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "n05-weakhost",
+  "title": "Weak host model and asymmetric replies",
+  "spec": "Diagram of a server with two NICs, NIC A (left, subnet A) and NIC B (right, subnet B), a client on subnet B at the bottom. Solid arrow: request arrives on NIC B addressed to B's address. Orange arrow: reply leaves through NIC A because the main table decides by destination. Orange red-cross note on the reply: 'rp_filter may drop it'. Side table rp_filter values in monospace: '0 no source validation', '1 strict: best route back must use same interface', '2 loose: source reachable via any interface'. Takeaway line: 'If the reply leaves on the wrong NIC, fix with policy routing before relaxing rp_filter'.",
+  "anchor": "## 5. Multiple interfaces: weak host model, rp_filter and asymmetric routing",
+  "alt": "Weak host model with two NICs",
+  "cap": "Linux routes replies by destination only, so a reply can leave on a different NIC than the request arrived on."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "n05-ecmp",
+  "title": "ECMP route on a host",
+  "spec": "A host box on the left with two outgoing arrows to two next hops on the right: 'via 10.100.0.1 dev ens1f0 weight 1' and 'via 10.100.1.1 dev ens2f0 weight 1', both leading to a cloud labelled '10.200.0.0/16'. Below, table of net.ipv4.fib_multipath_hash_policy in monospace: 0 = L3 (src/dst IP), 1 = L4 (5-tuple), 2 = inner L3 for encapsulated, 3 = custom fields. Orange note: 'L3-only hashing: every connection between the same two hosts takes the same path (no port entropy)'.",
+  "anchor": "## 8. Multipath (ECMP) routes",
+  "alt": "ECMP multipath route",
+  "cap": "A multipath route has several equal-cost next hops, and the hash policy decides which packet details pick the path."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "n05-sixnets",
+  "title": "A GPU server with six networks",
+  "spec": "Server box in the centre with three groups of NICs: eno1 -> management 10.20.0.0/24 (carries the default route, highlighted orange); eno2 -> storage 10.30.4.0/24 reaching NFS and Lustre servers at 10.30.0.0/16; ens1f0..ens8f0 -> eight RoCE rails each on 10.100.R.0/24 with no gateway. Beside the storage link the fix chip in monospace: '10.30.0.0/16 via 10.30.4.1 dev eno2'. Beside management: 'exactly one default route, on management'. Bottom green bar: 'Audit with ip route get <dst> from <src> in CI after provisioning'.",
+  "anchor": "## 12. Case study: a GPU server with six networks",
+  "alt": "GPU server with six networks",
+  "cap": "One default route on management, a static route for storage, and one subnet per rail keep each kind of traffic on its own NIC."
+ }
+]

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "03",
+  "name": "n03-macbits",
+  "title": "Anatomy of a MAC address",
+  "spec": "A 6-octet strip: octets 1-3 'OUI (assigned by IEEE, names the vendor)' and octets 4-6 'NIC-specific (assigned by manufacturer)'. Zoom callout on octet 1 showing two bits: bit 0 (LSB) 'I/G: 0 = unicast, 1 = multicast or broadcast' and bit 1 'U/L: 0 = universally administered (burned-in), 1 = locally administered'. Side chips in monospace: 'ff:ff:ff:ff:ff:ff = broadcast', '01:00:5e:xx:xx:xx = IPv4 multicast mapping', '33:33:xx:xx:xx:xx = IPv6 multicast mapping'. Orange highlight on U/L bit with note 'virtual NICs often set it'.",
+  "anchor": "## 2. MAC addresses",
+  "alt": "MAC address structure",
+  "cap": "The first three octets name the vendor, and two bits of the first octet say unicast or multicast and burned-in or locally set."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "03",
+  "name": "n03-frame",
+  "title": "The Ethernet frame",
+  "spec": "One horizontal row of fields with byte widths: Preamble 7 B, SFD 1 B, Dest MAC 6 B, Src MAC 6 B, 802.1Q tag [4 B] (TPID 0x8100, PCP, DEI, VID) shown dashed as optional, EtherType 2 B, Payload (+pad) 46-1500 B, FCS 4 B (CRC-32), then 'inter-frame gap 12 B idle'. A bracket under Dest MAC to FCS: 'Ethernet frame: 64 to 1518 B (1522 B with VLAN tag)'. Orange highlight on Dest MAC with note 'arrives first: NIC decides at once whether to keep the frame'. Monospace for hex.",
+  "anchor": "## 3. The Ethernet frame",
+  "alt": "Ethernet frame layout",
+  "cap": "Every Ethernet frame has the same field order, which lets a NIC decide in hardware."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "03",
+  "name": "n03-arp",
+  "title": "ARP request and reply",
+  "spec": "Two hosts and a switch. Host A (203.0.113.10) on the left, Host B (203.0.113.12) on the right, a third host C below. Step 1 arrow from A: 'ARP request, broadcast: who has 203.0.113.12? tell 203.0.113.10' reaching all hosts (dashed to C, solid to B). Step 2 arrow from B back to A: 'ARP reply, unicast: 203.0.113.12 is at B's MAC'. Beside it the 28-byte packet fields row: hardware type (Ethernet=1), protocol type (IPv4=0x0800), HLEN 6, PLEN 4, opcode (1=request, 2=reply), sender MAC, sender IP, target MAC (00:00:.. in request), target IP. Orange on target MAC '00:00:.. in request'. Monospace for IPs.",
+  "anchor": "### IPv4 ARP (Address Resolution Protocol)",
+  "alt": "ARP request and reply",
+  "cap": "An ARP request is broadcast to the whole segment, and the owner of the address answers with a unicast reply."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "03",
+  "name": "n03-ndp",
+  "title": "IPv6 Neighbor Discovery",
+  "spec": "Three-step vertical sequence between a new host (left) and a router (right). Step 1: 'form link-local address fe80::/64 + interface ID'. Step 2: 'DAD: NS sent from :: for the address; any NA back means duplicate'. Step 3: 'RS (type 133) to ff02::2 -> RA (type 134): prefix, gateway lifetime, flags'; then 'SLAAC builds global address if A flag set; M flag = use DHCPv6'. Side table of ICMPv6 types: 133 RS, 134 RA, 135 NS (to solicited-node multicast ff02::1:ffXX:XXXX), 136 NA, 137 Redirect. Orange highlight on 'No broadcast: solicited-node multicast reaches only matching hosts'.",
+  "anchor": "### IPv6 Neighbor Discovery (NDP)",
+  "alt": "IPv6 Neighbor Discovery steps",
+  "cap": "A new IPv6 host builds a link-local address, checks it with DAD, then learns the prefix from a router advertisement."
+ }
+]

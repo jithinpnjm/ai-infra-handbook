@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "10",
+  "name": "l10-device-types",
+  "title": "Reading a device listing",
+  "spec": "Monospace lines: brw-rw---- 1 root disk 8, 1 ... /dev/sda1 ; crw-rw-rw- 1 root root 1, 3 ... /dev/null ; crw-rw-rw- 1 root root 195, 0 ... /dev/nvidia0 ; prw-r--r-- ... /run/fifo ; srw-rw-rw- ... /dev/log. Callout on the first character: b block device (disks, partitions), c character device (stream of bytes: /dev/null, GPUs), p named pipe, s Unix domain socket. Callout on '8, 1': major number selects the driver (the building), minor number selects the instance (the room). Note: /proc/devices lists drivers and major numbers.",
+  "anchor": "### Types and numbers",
+  "alt": "How the first letter and the major and minor numbers of an ls -l line identify a device.",
+  "cap": "The type letter and the major and minor numbers tell you what kind of device a file is."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "10",
+  "name": "l10-name-shift",
+  "title": "Why sdX names are a trap",
+  "spec": "Two columns Before and After a reboot. Before: sda, sdb, sdc. After sdb fails: sda, sdb (was sdc). Arrow from old sdc to new sdb in orange, label 'the name moved, nothing broke inside the filesystem'. Bottom green row of stable identifiers: UUID=... in fstab, /dev/mapper/vg-lv, /dev/disk/by-id (physical drive by serial), /dev/disk/by-path (slot), /dev/disk/by-uuid (recommended fstab key); GPUs by UUID from nvidia-smi -L. Paths in monospace.",
+  "anchor": "### Naming: why enumeration order is a trap",
+  "alt": "Kernel disk names can shift between boots, so persistent configuration should use stable identifiers.",
+  "cap": "Names like sdb depend on discovery order, so use a UUID or a /dev/disk link instead."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "10",
+  "name": "l10-driver-bind",
+  "title": "Binding a device to a driver",
+  "spec": "Flow: device ID (PCI vendor and device pair) then modalias then udev loads matching module then driver claims device. Side box of sysfs commands in monospace: readlink /sys/bus/pci/devices/0000:3b:00.0/driver ; ls /sys/bus/pci/drivers/nvidia. Lower row, orange illustrative swap to VFIO: unbind from current driver, set driver_override to vfio-pci, drivers_probe. Note: drain the node before any of these operations.",
+  "anchor": "## 9. Drivers, binding and rescans",
+  "alt": "A device is matched to a driver by its ID tables, and sysfs can unbind it and hand it to vfio-pci.",
+  "cap": "Drivers claim devices by ID, and the bind and unbind files in sysfs let you swap the driver."
+ }
+]

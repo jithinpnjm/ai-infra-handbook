@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "13",
+  "name": "d13-power-wall",
+  "title": "GPU demand crossing the 150 kW facility wall between months 9 and 10",
+  "spec": "A line chart with months 0 to 10 on the horizontal axis and GPU count on the vertical axis. Two rising curves: a combined demand line from about 26 GPUs at month 0, through about 70 at month 6, about 98 at month 8, about 115 at month 9, to about 136 at month 10. A second thin line above it is not drawn. A horizontal dashed line across the chart labelled facility ceiling, 150 kW at about 1.3 kW per GPU, roughly 115 to 117 GPUs. The demand line crosses the ceiling between month 9 and month 10, marked with an orange highlight at the crossing with the note: a 118th GPU cannot be plugged into a 150 kW room. Small annotations under the chart: offload interruptible training to cloud spot, move to denser H200 or B200 GPUs, or book a second data hall a year ahead. Monospace for 150 kW, 1.3 kW and the month labels 0 to 10.",
+  "anchor": "### 2.1 Seasonal forecast, the 70 percent reorder trigger and the facility wall",
+  "alt": "Forecast GPU demand against the facility power ceiling",
+  "cap": "Power wall: with the inference and training forecast combined, demand passes the 150 kW room limit between months nine and ten."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "13",
+  "name": "d13-allocation-gap",
+  "title": "Reserved GPUs versus GPUs doing math",
+  "spec": "Two horizontal bars side by side on a shared percentage scale from 0 to 100 percent. Top bar labelled Kubernetes allocation, nvidia.com/gpu requests, filled to 98 percent in grey. Bottom bar labelled DCGM SM activity over 30 days, filled to 12 percent in green. A bracket between the bar ends labelled the gap is where the money goes. Beside the top bar a small note: reserved GPUs still count against the quota. Beside the bottom bar a note: the GPUs that do the math. Orange highlight on the 12 percent bar with the note: check this before you approve a purchase. Monospace for nvidia.com/gpu, DCGM_FI_PROF_SM_ACTIVE, 98 percent and 12 percent.",
+  "anchor": "### 1.1 Why 98 percent allocation can hide 12 percent utilization",
+  "alt": "Allocated GPUs versus GPUs doing math",
+  "cap": "Allocation gap: a dashboard can show 98 percent of GPUs reserved while the silicon is busy only 12 percent of the time."
+ }
+]

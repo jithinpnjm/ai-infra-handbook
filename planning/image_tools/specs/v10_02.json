@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "02",
+  "name": "g02-register-cliff",
+  "title": "How a small register increase removes whole blocks from an SM",
+  "spec": "Three horizontal rows, each showing the slots of one SM as blocks of 256 threads, with the register file as the limit. Row 1, labelled 40 registers per thread: six block slots filled green, with the caption 6 blocks, 48 warps, 75 percent occupancy. Row 2, labelled 56 registers per thread: four block slots filled green and a dashed remainder labelled 0.57 of a block dropped, with the caption 4 blocks, 32 warps, 50 percent occupancy. Row 3, labelled 1,024-thread block at 48 registers per thread: one large block filling the whole row, with the caption 1 block, 32 warps, 50 percent occupancy, and the note: no second block to switch to during a barrier. Orange highlight on row 2 with the note: 16 more registers cut residency in one step. Monospace for 40, 56, 48, 256 and 1,024.",
+  "anchor": "### 4.1 The block admission gate and worked register and shared-memory occupancy math",
+  "alt": "Resident blocks at 40 and 56 registers per thread",
+  "cap": "Register cliff: a few more registers per thread can drop an SM from six resident blocks to four, because only whole blocks fit."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "02",
+  "name": "g02-launch-geometry",
+  "title": "Rounding the grid up to cover an array, and guarding the tail",
+  "spec": "A horizontal strip representing a one-million-element array drawn as a long bar of small cells, with the blocks laid over it as equal segments of 256 threads each. The bar is labelled N equals 1,000,000 elements. Above the bar a bracket labelled blocksPerGrid equals ceiling of N over 256, giving 3,907 blocks. At the right end, the final block is drawn partly outside the array edge: its first cells are green and labelled idx less than N, computed; its last 192 cells are hatched grey and labelled idx at or above N, masked by if idx less than N. A dashed vertical line marks the array end. Orange highlight on the hatched tail with the note: without the guard these threads write past the buffer. Monospace for 1,000,000, 256, 3,907 and idx less than N.",
+  "anchor": "### 3.1 1D, 2D, and 3D indexing and the `if (idx < N)` bounds check",
+  "alt": "Ceiling-rounded grid with a guarded tail block",
+  "cap": "Launch geometry: the grid is rounded up to whole blocks, so the trailing threads must be masked by the bounds check."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "02",
+  "name": "g02-sass-ptx",
+  "title": "What a fatbinary carries, and how a newer GPU finishes the job",
+  "spec": "A left-to-right flow in three stages. Stage 1, labelled compile with nvcc: a source file on the left, arrow to a fatbinary box containing two packages stacked: SASS cubins for sm_90 native machine code, and virtual PTX for compute_90. Stage 2, labelled run on a GPU: two arrows out of the fatbinary. The upper arrow, labelled same architecture, runs the embedded SASS directly on the matching GPU. The lower arrow, labelled newer GPU or CUDA_FORCE_PTX_JIT=1, goes to a box labelled driver JIT-compiles PTX into native code at startup. Orange highlight on the PTX package with the note: keep PTX in the build so newer GPUs still load the binary. A grey side note: test with CUDA_FORCE_PTX_JIT=1 in CI. Monospace for nvcc, sm_90, compute_90, SASS, PTX and CUDA_FORCE_PTX_JIT=1.",
+  "anchor": "### 3.3 Forward and backward binary compatibility (SASS, PTX, and `CUDA_FORCE_PTX_JIT=1`)",
+  "alt": "Fatbinary with SASS and PTX packages",
+  "cap": "Binary compatibility: SASS runs on the GPU it was built for, while embedded PTX lets the driver compile for a newer GPU at startup."
+ }
+]

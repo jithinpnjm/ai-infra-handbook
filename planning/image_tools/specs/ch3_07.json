@@ -1,0 +1,72 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "07",
+  "name": "s07-asgi",
+  "title": "Request path through an ASGI service",
+  "spec": "A left-to-right flow: client ; ASGI server (uvicorn) ; ASGI app (FastAPI) ; route handler async def. Under it two comparison chips: WSGI is synchronous, one request per worker ; ASGI is asynchronous, many waiting requests per worker (green).",
+  "anchor": "## 1. Architecture: from WSGI to ASGI",
+  "alt": "Client to ASGI server to FastAPI",
+  "cap": "ASGI architecture: the server hands each request to the app, and async handlers let waiting requests share a worker."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "07",
+  "name": "s07-params",
+  "title": "Where request data comes from",
+  "spec": "A URL line in the top box: GET /nodes/gpu-07?limit=10 with a header and a JSON body. Labelled arrows to five boxes: path parameter node_id ; query parameter limit ; header ; cookie ; body. Green note: type hints tell FastAPI where and how to read each value.",
+  "anchor": "### Path, query, header, cookie, form and body",
+  "alt": "Path, query, header, cookie and body",
+  "cap": "Request parameters: the same request carries data in the path, query string, headers, cookies and body."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "07",
+  "name": "s07-models",
+  "title": "Validation in and filtering out",
+  "spec": "A left-to-right flow: request JSON ; Pydantic request model validates (orange, failure gives 422) ; handler ; response_model keeps only the declared fields ; response JSON. Green note: internal fields never leak out.",
+  "anchor": "### Request and response models",
+  "alt": "Request and response models",
+  "cap": "Pydantic models validate incoming data and filter outgoing data."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "07",
+  "name": "s07-depends",
+  "title": "Dependency injection with Depends",
+  "spec": "Left: handler box def read(db = Depends(get_db)). Arrow to middle box FastAPI calls get_db() before the handler. Arrow to right box the result is passed in as db. Bottom orange note: in tests, dependency_overrides swaps in a fake.",
+  "anchor": "## 4. Dependency injection",
+  "alt": "How Depends works",
+  "cap": "Dependency injection: FastAPI calls the dependency and passes the result to your handler."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "07",
+  "name": "s07-lifespan",
+  "title": "Lifespan: startup and shutdown",
+  "spec": "A horizontal timeline in three zones: Startup (code before yield: open pools, load model), Serving requests (yield), Shutdown (code after yield: close pools). Green note: runs once per process.",
+  "anchor": "### Lifespan: startup and shutdown",
+  "alt": "Application lifespan",
+  "cap": "Lifespan: code before the yield runs at startup and code after it runs at shutdown."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "07",
+  "name": "s07-middleware",
+  "title": "Layers around a handler",
+  "spec": "Concentric rounded rectangles from outside in: middleware, validation, handler (the centre, green). An incoming arrow from the left labelled request and an outgoing arrow labelled response. An orange note: invalid input returns 422 before the handler runs. A grey note: exception handlers turn errors into responses.",
+  "anchor": "## 5. Errors, validation and middleware",
+  "alt": "Middleware, validation and the handler",
+  "cap": "A request passes through middleware and validation before the handler, and errors become clean responses."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "07",
+  "name": "s07-background",
+  "title": "Respond first, work after",
+  "spec": "Two panels. Left panel Background task: response is sent, then the task runs in the same process, for small jobs. Right panel Queue and worker: handler puts a job on a queue, a separate worker runs it, for heavy or durable work (green).",
+  "anchor": "### Background tasks and queues",
+  "alt": "Background tasks versus queues",
+  "cap": "Background tasks suit small jobs, and a queue with a worker suits heavy or durable work."
+ }
+]

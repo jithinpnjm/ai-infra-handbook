@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Regex metacharacters</title>
+  <desc>Visual guide to common regex metacharacters, their pattern syntax, and meanings.</desc>
+
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Regex metacharacters</text>
+
+  
+  <g>
+    <rect x="60" y="110" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="88" y="128" width="50" height="50" rx="10" stroke="#207448" stroke-width="4" fill="none"/>
+    <circle cx="113" cy="153" r="7" fill="#207448"/>
+    <rect x="156" y="128" width="70" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="191" y="164" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">.</text>
+    <text x="88" y="218" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">any single character</text>
+  </g>
+
+  
+  <g>
+    <rect x="840" y="110" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 905,136 A 17,17 0 1 1 883,158" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <path d="M 876,150 L 883,160 L 894,156" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="936" y="128" width="70" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="971" y="165" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">*</text>
+    <text x="868" y="218" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">zero or more of the preceding item</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="286" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="113" cy="329" r="22" stroke="#207448" stroke-width="4" fill="none"/>
+    <path d="M 113,317 V 341 M 101,329 H 125" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <rect x="156" y="304" width="70" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="191" y="340" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">+</text>
+    <text x="88" y="394" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">one or more (extended)</text>
+  </g>
+
+  
+  <g>
+    <rect x="840" y="286" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="893" cy="329" r="22" stroke="#207448" stroke-width="4" fill="none"/>
+    <path d="M 885,321 C 885,313 901,313 901,322 C 901,329 893,330 893,336" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <circle cx="893" cy="343" r="2.5" fill="#207448"/>
+    <rect x="936" y="304" width="70" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="971" y="340" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">?</text>
+    <text x="868" y="394" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">zero or one (extended)</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="462" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="93" y1="482" x2="93" y2="528" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="131" y1="505" x2="101" y2="505" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 111,495 L 101,505 L 111,515" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="156" y="480" width="70" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="191" y="516" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">^</text>
+    <text x="88" y="570" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">start of line</text>
+  </g>
+
+  
+  <g>
+    <rect x="840" y="462" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="918" y1="482" x2="918" y2="528" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="880" y1="505" x2="910" y2="505" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 900,495 L 910,505 L 900,515" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="936" y="480" width="70" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="971" y="516" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">$</text>
+    <text x="868" y="570" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">end of line</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="638" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 96,658 H 89 V 704 H 96" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 130,658 H 137 V 704 H 130" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 103,681 L 111,689 L 124,674" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="156" y="656" width="140" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="226" y="692" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">[abc]</text>
+    <text x="88" y="746" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">one of the set</text>
+  </g>
+
+  
+  <g>
+    <rect x="840" y="638" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 876,658 H 869 V 704 H 876" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 910,658 H 917 V 704 H 910" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 885,673 L 901,689 M 901,673 L 885,689" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <rect x="936" y="656" width="160" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1016" y="692" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">[^abc]</text>
+    <text x="868" y="746" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">not in the set</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="814" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="88" y1="857" x2="138" y2="857" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="98" cy="857" r="8" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <circle cx="128" cy="857" r="8" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <rect x="156" y="832" width="140" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="226" y="868" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">{n,m}</text>
+    <text x="88" y="922" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">n to m repetitions</text>
+  </g>
+
+  
+  <g>
+    <rect x="840" y="814" width="700" height="136" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="876" y1="837" x2="896" y2="877" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="910" cy="873" r="6" fill="#207448"/>
+    <rect x="936" y="832" width="90" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="981" y="868" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">\.</text>
+    <text x="868" y="922" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">a literal dot</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="990" width="1480" height="110" rx="16" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    <circle cx="115" cy="1045" r="24" stroke="#db8129" stroke-width="4" fill="none"/>
+    <path d="M 115,1031 V 1045" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="115" cy="1056" r="3.5" fill="#db8129"/>
+    <text x="165" y="1054" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">. matches exactly one arbitrary character, and .* is greedy.</text>
+  </g>
+</svg>

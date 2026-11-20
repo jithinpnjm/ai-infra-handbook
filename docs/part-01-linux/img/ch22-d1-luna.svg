@@ -14,21 +14,21 @@
   <rect width="1600" height="1060" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">What a kernel module is</text>
 
-  <!-- Container 1: User space (x=35..345) -->
+  
   <rect x="35" y="110" width="310" height="900" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="190" y="158" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">User space</text>
 
-  <!-- 210px gutter (x=345..555) for cross-boundary syscall labels -->
+  
 
-  <!-- Container 2: Kernel space (x=555..1245) -->
+  
   <rect x="555" y="110" width="690" height="900" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="900" y="158" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Kernel space</text>
 
-  <!-- Container 3: Hardware (x=1285..1565) -->
+  
   <rect x="1285" y="110" width="280" height="900" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="1425" y="158" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Hardware</text>
 
-  <!-- User space nodes -->
+  
   <rect x="55" y="345" width="270" height="185" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="3.5">
     <rect x="74" y="376" width="40" height="30" rx="4"/><path d="M74 386h40"/>
@@ -54,7 +54,7 @@
     <tspan x="128" dy="32">modules-load</tspan>
   </text>
 
-  <!-- Kernel space nodes -->
+  
   <rect x="580" y="190" width="315" height="150" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
     <rect x="600" y="216" width="40" height="40" rx="5"/>
@@ -75,7 +75,7 @@
   <text x="996" y="238" fill="#303a36" font-family="monospace" font-size="24" font-weight="700">nvidia-uvm.ko</text>
   <text x="996" y="284" fill="#303a36" font-family="sans-serif" font-size="24">(unified memory)</text>
 
-  <!-- Core kernel to nvidia.ko -->
+  
   <path d="M740 340 V385" fill="none" stroke="#207448" stroke-width="3.5"/>
 
   <rect x="680" y="385" width="330" height="130" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
@@ -128,13 +128,13 @@
     <tspan x="998" dy="28" font-family="sans-serif">(RDMA stack)</tspan>
   </text>
 
-  <!-- Internal kernel arrows -->
+  
   <path d="M740 515 V591" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M735 715 V791" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M945 515 V545 H1072 V571" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <path d="M1072 795 V739" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
 
-  <!-- Hardware nodes -->
+  
   <rect x="1305" y="385" width="240" height="130" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
     <rect x="1403" y="405" width="44" height="44" rx="5"/><rect x="1415" y="417" width="20" height="20"/>
@@ -149,7 +149,7 @@
   </g>
   <text x="1425" y="904" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">ConnectX NIC</text>
 
-  <!-- Cross-boundary arrows cleanly inside the 210px gutter -->
+  
   <path d="M325 450 H676" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <rect x="345" y="362" width="210" height="72" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
   <text x="450" y="394" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">
@@ -161,9 +161,9 @@
   <rect x="342" y="762" width="216" height="48" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
   <text x="450" y="794" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">finit_module()</text>
 
-  <!-- nvidia.ko -> GPU -->
+  
   <path d="M1010 450 H1301" fill="none" stroke="#db8129" stroke-width="4.5" marker-end="url(#orange-arrow)"/>
 
-  <!-- ib_core -> ConnectX NIC -->
+  
   <path d="M1225 867 H1301" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 </svg>

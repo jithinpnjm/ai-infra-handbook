@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The Linux stack</title>
+  <desc>Visual architecture of the Linux networking stack showing standard packet flow and the RDMA hardware bypass.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The Linux stack</text>
+
+  
+
+  
+  <g id="node-app">
+    <rect x="50" y="125" width="1040" height="96" rx="8" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="74" y="145" width="52" height="42" rx="4" ry="4" />
+      <line x1="74" y1="157" x2="126" y2="157" />
+      <circle cx="82" cy="151" r="1.5" fill="#207448" />
+      <circle cx="88" cy="151" r="1.5" fill="#207448" />
+      <circle cx="94" cy="151" r="1.5" fill="#207448" />
+    </g>
+    
+    <text x="148" y="163" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Application (user space):</text>
+    <text x="148" y="197" font-family="monospace" font-size="24" fill="#303a36">socket API (socket, bind, listen, connect, send, recv, epoll)</text>
+  </g>
+
+  
+  <line x1="570" y1="221" x2="570" y2="257" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-sock">
+    <rect x="50" y="261" width="1040" height="125" rx="8" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="74" y="295" width="52" height="42" rx="4" ry="4" />
+      <line x1="91" y1="295" x2="91" y2="337" />
+      <line x1="108" y1="295" x2="108" y2="337" />
+      <circle cx="82" cy="316" r="2" fill="#207448" />
+      <circle cx="100" cy="316" r="2" fill="#207448" />
+      <circle cx="117" cy="316" r="2" fill="#207448" />
+    </g>
+    
+    <text x="148" y="299" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Socket layer:</text>
+    <text x="148" y="331" font-family="monospace" font-size="24" fill="#303a36">struct socket / sock;</text>
+    <text x="148" y="361" font-family="sans-serif" font-size="24" fill="#303a36">send and receive buffers (sk_buff queues)</text>
+  </g>
+
+  
+  <line x1="570" y1="386" x2="570" y2="422" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-l4">
+    <rect x="50" y="426" width="1040" height="96" rx="8" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="100" cy="474" r="21" />
+      <polyline points="100,461 100,474 112,474" />
+      <line x1="95" y1="447" x2="105" y2="447" />
+    </g>
+    
+    <text x="148" y="464" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">TCP / UDP / SCTP / QUIC-in-userspace:</text>
+    <text x="148" y="498" font-family="sans-serif" font-size="24" fill="#303a36">connection state, retransmit timers, congestion control</text>
+  </g>
+
+  
+  <line x1="570" y1="522" x2="570" y2="558" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-l3">
+    <rect x="50" y="562" width="1040" height="125" rx="8" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="100" cy="624" r="21" />
+      <line x1="86" y1="624" x2="114" y2="624" />
+      <line x1="100" y1="610" x2="100" y2="638" />
+      <polyline points="89,617 84,624 89,631" />
+      <polyline points="111,617 116,624 111,631" />
+    </g>
+    
+    <text x="148" y="600" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">IP:</text>
+    <text x="148" y="632" font-family="sans-serif" font-size="24" fill="#303a36">routing (FIB), netfilter hooks (PREROUTING, INPUT, FORWARD,</text>
+    <text x="148" y="662" font-family="sans-serif" font-size="24" fill="#303a36">OUTPUT, POSTROUTING), fragmentation, IPsec/XFRM</text>
+  </g>
+
+  
+  <line x1="570" y1="687" x2="570" y2="723" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-qd">
+    <rect x="50" y="727" width="1040" height="125" rx="8" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 80 802 A 22 22 0 1 1 120 802" />
+      <line x1="100" y1="789" x2="113" y2="777" />
+      <circle cx="100" cy="789" r="3" fill="#207448" />
+    </g>
+    
+    <text x="148" y="765" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Traffic control:</text>
+    <text x="148" y="797" font-family="sans-serif" font-size="24" fill="#303a36">qdisc (fq_codel, fq, mq, htb, tbf), tc filters,</text>
+    <text x="148" y="827" font-family="sans-serif" font-size="24" fill="#303a36">eBPF (tc, cgroup, XDP)</text>
+  </g>
+
+  
+  <line x1="570" y1="852" x2="570" y2="888" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-drv">
+    <rect x="50" y="892" width="1040" height="125" rx="8" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="76" y="934" width="48" height="34" rx="3" />
+      <line x1="76" y1="924" x2="76" y2="978" />
+      <rect x="86" y="942" width="16" height="16" />
+      <line x1="84" y1="968" x2="116" y2="968" stroke-dasharray="3,3" />
+    </g>
+    
+    <text x="148" y="930" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Device driver / NIC:</text>
+    <text x="148" y="962" font-family="sans-serif" font-size="24" fill="#303a36">TX/RX rings (DMA), NAPI polling, interrupts, RSS queues,</text>
+    <text x="148" y="992" font-family="sans-serif" font-size="24" fill="#303a36">offloads (checksum, TSO/GSO/GRO, VLAN, VXLAN)</text>
+  </g>
+
+  
+  <line x1="570" y1="1017" x2="570" y2="1053" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-wire">
+    <rect x="50" y="1057" width="1040" height="96" rx="8" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 76 1083 H 124 V 1111 H 115 V 1120 H 85 V 1111 H 76 Z" />
+      <line x1="100" y1="1120" x2="100" y2="1135" />
+    </g>
+    
+    <text x="148" y="1095" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Wire / fiber / virtual device</text>
+    <text x="148" y="1129" font-family="sans-serif" font-size="24" fill="#303a36">(virtio, veth, vxlan, bridge, bond, tun)</text>
+  </g>
+
+  
+
+  
+  <g id="node-rdma">
+    <rect x="1140" y="125" width="410" height="261" rx="8" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1165" y="150" width="50" height="50" rx="6" />
+      <path d="M 1194 158 L 1178 178 L 1192 178 L 1184 194 L 1202 172 L 1192 172 Z" fill="#207448" />
+    </g>
+    
+    <text x="1232" y="171" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">RDMA verbs</text>
+    <text x="1232" y="207" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">(libibverbs):</text>
+    <text x="1165" y="255" font-family="sans-serif" font-size="24" fill="#303a36">memory registration,</text>
+    <text x="1165" y="289" font-family="sans-serif" font-size="24" fill="#303a36">QPs, CQs -</text>
+    <text x="1165" y="323" font-family="sans-serif" font-size="24" fill="#303a36">NIC hardware transport</text>
+  </g>
+
+  
+  
+  <line x1="1345" y1="386" x2="1345" y2="630" stroke="#db8129" stroke-width="3.5" stroke-dasharray="8,6" />
+
+  
+  <g id="bypass-label">
+    <rect x="1155" y="630" width="380" height="88" rx="8" ry="8" fill="#f5f8f5" stroke="#db8129" stroke-width="2" />
+    <text x="1345" y="667" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">bypasses sockets,</text>
+    <text x="1345" y="699" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">TCP/IP, qdisc</text>
+  </g>
+
+  
+  <path d="M 1345 718 L 1345 1105 L 1094 1105" stroke="#db8129" stroke-width="3.5" stroke-dasharray="8,6" fill="none" marker-end="url(#arrow-orange)" />
+
+</svg>

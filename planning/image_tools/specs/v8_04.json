@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "04",
+  "name": "b04-provisioners",
+  "title": "Provisioning nodes and node groups",
+  "spec": "A top box labelled Head node with the note: the head node always has the provisioning role. Below it, a row of two provisioning node boxes labelled Provisioning node A and Provisioning node B, each with a small label provisioningslots 10 (default). Under Provisioning node A a box for nodegroups rack-a with three small node boxes labelled rack-a nodes. Under Provisioning node B a box for nodegroups rack-b with three small node boxes labelled rack-b nodes. A grey box at the far right labelled nodes in no group, with an arrow to the provisioner that has no nodegroups (the head node). Arrows from the head node down to the two provisioners are dashed, labelled provisioning image traffic. Note at the bottom: a node in a group uses only provisioners that list that group. Orange highlight on the rack-b path. Monospace for provisioningslots and nodegroups.",
+  "anchor": "## 6. Scaling provisioning: provisioning nodes (5.2)",
+  "alt": "Provisioning nodes split by node group",
+  "cap": "Provisioning nodes: each node group pulls images only from the provisioners that list that group."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "04",
+  "name": "b04-kernelmodule-replace",
+  "title": "A lower kernel-module list replaces the higher one",
+  "spec": "Three stacked boxes, top to bottom: Software image (kernelmodules list), Category (kernelmodules list), Node (kernelmodules list). Between each pair of boxes a downward arrow labelled overrides. Beside the Node box, a note: a lower level replaces the higher level completely, it does not add to it. Left of the stack, a grey crossed-out box: appending to the image list from the node. Orange highlight on the node box with the text: an incomplete list here drops the image's storage and network drivers. Under the stack a green box: change the list on the image, then createramdisk rebuilds the ramdisk. Monospace for kernelmodules and createramdisk.",
+  "anchor": "## 7. Software images and kernels (5.3, chapter 9)",
+  "alt": "Kernel module lists replace each other by level",
+  "cap": "Kernel modules: a lower level replaces the higher list, so set the list on the image and rebuild the ramdisk."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "04",
+  "name": "b04-imageupdate-flow",
+  "title": "Safe live update of a running node",
+  "spec": "A left-to-right flow of four steps with number circles 1 to 4 and arrows between them. Step 1: updateprovisioners, push the new image to the provisioners first. Step 2: imageupdate -n node001, a dry run that writes nothing by default, then read the result with synclog. Step 3: for a larger change, a side branch arrow to a grey box: reboot instead, which does an AUTO install of the latest image. Step 4: imageupdate -n node001 -w, applies the change to the running node. Orange highlight on step 4 with the note: -w is the switch that makes the change real. Monospace for the commands.",
+  "anchor": "## 8. Updating a running node: `imageupdate` and exclude lists (5.6)",
+  "alt": "Dry run then apply for a live image update",
+  "cap": "Live update: push the image to the provisioners, dry run imageupdate, read synclog, and only then apply with the -w flag."
+ }
+]

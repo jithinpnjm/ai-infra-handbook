@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "l16-severity",
+  "title": "Syslog severity levels",
+  "spec": "Vertical ladder of eight rows from top to bottom: 0 emerg system unusable; 1 alert act immediately; 2 crit critical condition; 3 err error; 4 warning warning; 5 notice normal but significant; 6 info informational; 7 debug debug detail. Colour fading from orange at 0 to light green at 7. Left arrow labelled more urgent pointing up, right arrow less urgent pointing down. Side note: in the journal severity is called priority, field PRIORITY=, filter journalctl -p. Names monospace.",
+  "anchor": "### Journal versus syslog",
+  "alt": "Eight severity levels from emerg at 0 to debug at 7.",
+  "cap": "A smaller severity number means a more urgent message."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "l16-rotation-inode",
+  "title": "Rotation and open log files",
+  "spec": "Three steps left to right. 1 daemon writes to app.log (inode A). 2 logrotate renames app.log to app.log.1; the daemon still writes to the same inode, now under the new name (orange). 3 Fix: tell the daemon to reopen with SIGHUP (postrotate: systemctl kill -s HUP ...), or use copytruncate, which copies then truncates in place and may lose lines in the copy window. Footer: Linux tracks the open file, not its name. Also small config chips: daily, rotate 14, compress, delaycompress, missingok, notifempty. Test with sudo logrotate -d /etc/logrotate.d/slurm.",
+  "anchor": "## 3. Rotating logs",
+  "alt": "Renaming a log does not move a process that holds it open, so the daemon must reopen it.",
+  "cap": "A process keeps writing to the same inode after rename, so rotation needs a reopen or copytruncate."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "l16-safe-cron",
+  "title": "A safe cron job",
+  "spec": "One monospace crontab line in the centre: */5 * * * * root flock -n /run/lock/gpu-health.lock timeout 120 /usr/local/bin/gpu-health.sh 2>&1 | logger -t gpu-health. Callouts: */5 * * * * every five minutes; flock -n prevents overlapping runs; timeout 120 kills a hang; logger -t gpu-health sends output to the journal. Header lines shown above: SHELL=/bin/bash, PATH=..., MAILTO=\"\". Orange note: cron sets only HOME, LOGNAME, SHELL=/bin/sh and PATH=/usr/bin:/bin. Takeaway bar: before you schedule a job, make sure it is safe to run twice.",
+  "anchor": "### Making cron jobs safe",
+  "alt": "A cron line wrapped with flock, timeout and logger guards.",
+  "cap": "Guards against overlap, hangs and lost output make a cron job safe on a fleet."
+ }
+]

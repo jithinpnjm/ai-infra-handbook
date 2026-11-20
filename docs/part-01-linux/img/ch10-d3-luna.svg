@@ -14,11 +14,11 @@
   <rect width="1600" height="980" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Storage device stacks: SCSI vs NVMe</text>
 
-  <!-- Left container: Linux SCSI subsystem -->
+  
   <rect x="40" y="120" width="1020" height="720" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="550" y="168" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Linux SCSI subsystem (SATA, SAS, USB, virtual disks)</text>
 
-  <!-- Top layer: Class drivers -->
+  
   <rect x="75" y="195" width="950" height="162" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <text x="102" y="236" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">1. Top (class) layer — device nodes</text>
   <rect x="102" y="254" width="280" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
@@ -39,7 +39,7 @@
 
   <path d="M550 357 V386" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Middle layer: SCSI core -->
+  
   <rect x="75" y="390" width="950" height="145" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
     <circle cx="122" cy="462" r="18"/><circle cx="122" cy="462" r="7"/>
@@ -50,7 +50,7 @@
 
   <path d="M550 535 V576" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Bottom layer: Host-adapter drivers -->
+  
   <rect x="75" y="580" width="950" height="225" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
   <text x="102" y="622" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">3. Bottom (host-adapter) layer — hardware translators</text>
   <rect x="102" y="646" width="280" height="132" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
@@ -77,7 +77,7 @@
     <tspan x="852" dy="28">SCSI HBAs</tspan>
   </text>
 
-  <!-- Right container: Separate NVMe stack -->
+  
   <rect x="1100" y="120" width="460" height="720" rx="22" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
   <text x="1330" y="168" text-anchor="middle" fill="#db8129" font-family="sans-serif" font-size="30" font-weight="700">NVMe stack (separate)</text>
 
@@ -112,7 +112,7 @@
     <tspan x="1226" dy="30">RDMA / TCP fabric</tspan>
   </text>
 
-  <!-- Takeaway bar -->
+  
   <rect x="40" y="866" width="1520" height="80" rx="14" fill="#207448"/>
   <text x="800" y="916" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Inspect with lsscsi (SCSI tree + /dev/sg*), lsblk (block devices), nvme list, and lspci (PCIe view).</text>
 </svg>

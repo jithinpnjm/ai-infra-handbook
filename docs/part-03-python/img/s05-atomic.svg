@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Atomic file replace</title>
+  <desc>Visual explanation of atomic file replacement: write to a temp file in the same directory, flush and fsync, os.replace(temp, target), readers see old file or new file, never half a file, contrasted with writing the target directly which can leave a half-written file.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="16" refY="8" markerWidth="16" markerHeight="16" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 8 L 0 14 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="90" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Atomic file replace</text>
+
+  
+  <rect x="60" y="180" width="325" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <circle cx="104" cy="224" r="24" fill="#207448"/>
+  <text x="104" y="224" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(222.5, 212)">
+    <path d="M -16 -26 H 4 L 16 -14 V 24 H -16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 4 -26 V -14 H 16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M -8 2 H 8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M -8 11 H 4" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="222.5" y="320" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="222.5" dy="0">write to a temp</tspan>
+    <tspan x="222.5" dy="40">file in the</tspan>
+    <tspan x="222.5" dy="40">same directory</tspan>
+  </text>
+
+  
+  <line x1="385" y1="350" x2="445" y2="350" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="445" y="180" width="325" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <circle cx="489" cy="224" r="24" fill="#207448"/>
+  <text x="489" y="224" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(607.5, 212)">
+    <ellipse cx="0" cy="-16" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M -22 -16 V 14 C -22 20 -10 24 0 24 C 10 24 22 20 22 14 V -16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 0 -6 V 10 M -6 4 L 0 10 L 6 4" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="607.5" y="335" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="607.5" dy="0" font-family="system-ui, -apple-system, sans-serif">flush and</tspan>
+    <tspan x="607.5" dy="42" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">fsync</tspan>
+  </text>
+
+  
+  <line x1="770" y1="350" x2="830" y2="350" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="830" y="180" width="325" height="340" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  <circle cx="874" cy="224" r="24" fill="#db8129"/>
+  <text x="874" y="224" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(992.5, 212)">
+    <path d="M -16 -12 H 10 A 10 10 0 0 1 20 -2 V 0 M 14 -6 L 20 0 L 26 -6" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 16 12 H -10 A 10 10 0 0 1 -20 2 V 0 M -14 6 L -20 0 L -26 6" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="992.5" y="335" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="992.5" dy="0">os.replace(</tspan>
+    <tspan x="992.5" dy="42">temp, target)</tspan>
+  </text>
+
+  
+  <line x1="1155" y1="350" x2="1215" y2="350" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1215" y="180" width="325" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <circle cx="1259" cy="224" r="24" fill="#207448"/>
+  <text x="1259" y="224" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(1377.5, 212)">
+    <path d="M 0 -26 L 22 -17 V 2 C 22 16 0 26 0 26 C 0 26 -22 16 -22 2 V -17 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M -9 2 L -2 9 L 10 -4" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1377.5" y="320" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">
+    <tspan x="1377.5" dy="0">readers see old</tspan>
+    <tspan x="1377.5" dy="40">file or new file,</tspan>
+    <tspan x="1377.5" dy="40">never half a file</tspan>
+  </text>
+
+  
+  <rect x="220" y="615" width="1160" height="180" rx="16" fill="#ebebeb" stroke="#8c9691" stroke-width="3"/>
+  
+  
+  <line x1="220" y1="615" x2="440" y2="650" stroke="#8c9691" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1380" y1="795" x2="1160" y2="760" stroke="#8c9691" stroke-width="4" stroke-linecap="round"/>
+  <line x1="220" y1="795" x2="440" y2="760" stroke="#8c9691" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1380" y1="615" x2="1160" y2="650" stroke="#8c9691" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <g transform="translate(505, 705)">
+    <path d="M -16 -24 H 4 L 16 -12 V 4" fill="none" stroke="#737e79" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 4 -24 V -12 H 16" fill="none" stroke="#737e79" stroke-width="4" stroke-linejoin="round"/>
+    
+    <path d="M -16 -24 V 18 L -8 12 L 0 19 L 8 11 L 16 19 V 4" fill="none" stroke="#737e79" stroke-width="3.5" stroke-linejoin="round"/>
+    
+    <line x1="-22" y1="22" x2="22" y2="-22" stroke="#737e79" stroke-width="4.5" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="565" y="690" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="565" dy="0">writing the target directly</tspan>
+    <tspan x="565" dy="42">can leave a half-written file</tspan>
+  </text>
+</svg>

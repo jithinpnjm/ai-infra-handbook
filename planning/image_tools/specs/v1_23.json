@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "l23-latency-scale",
+  "title": "Latency scaled to human time",
+  "spec": "Ladder table with Event, Typical latency, Scaled. Rows: CPU cycle 0.3 ns = 1 s ; L1 cache 1 ns = 3 s ; L2 cache 3 ns = 10 s ; L3 cache 10 ns = 33 s ; DRAM 100 ns = 6 minutes ; NVMe / flash I/O 10 to 100 µs = 9 to 90 hours ; Rotational disk I/O 1 to 10 ms = 1 to 12 months ; Cross-continent network (SF to NY) 40 ms = 4 years ; TCP retransmit timeout 1 to 3 s = centuries ; Physical server reboot minutes = tens of millennia. Orange on DRAM and cross-continent rows. Takeaway: a 10 µs disk read is really a cache hit, not a disk.",
+  "anchor": "### Latency and time scales",
+  "alt": "Typical latencies scaled so that one CPU cycle takes one second.",
+  "cap": "Scaling latencies to human time shows how large the gaps between memory, disk and network are."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "l23-mantras",
+  "title": "Performance mantras",
+  "spec": "Seven steps as a descending staircase from most effective to least: 1 Don't do it. 2 Do it, but don't do it again. 3 Do it less. 4 Do it later. 5 Do it when they're not looking. 6 Do it concurrently. 7 Do it more cheaply. Orange highlight on step 1. Arrow at the side labelled order of effectiveness for fixes.",
+  "anchor": "### Performance mantras",
+  "alt": "The performance mantras ranked from most to least effective.",
+  "cap": "The order of the mantras is the point: eliminating work beats making it cheaper."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "l23-workload-4q",
+  "title": "Characterise the load first",
+  "spec": "Four boxes around a central box 'the load (input, not performance)': Who is causing the load (user, job, tenant, client IP, process); Why is it issued (code path, stack trace, API, dataset); What are its characteristics (IOPS, bytes, read/write mix, request size, batch size, include variance); How does it change over time (daily pattern, ramp, bursts, per epoch). Orange note: an unexpected client may be an attack, a mis-deployed cron job or a runaway retry loop.",
+  "anchor": "## 7. Workload characterisation",
+  "alt": "Four questions about who, why, what and when characterise the load before measuring speed.",
+  "cap": "Characterise the input load, not the resulting performance."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "l23-ai-metrics",
+  "title": "AI efficiency metrics",
+  "spec": "Table with Metric and Definition. Rows: Throughput | tokens/s or samples/s per GPU and aggregate ; Step time breakdown | data wait, H2D, forward, backward, communication, optimizer, checkpoint ; MFU | achieved model FLOPs/s divided by peak hardware FLOPs/s ; Scaling efficiency | throughput(N) divided by N times throughput(1) ; Goodput | fraction of time making forward training progress ; GPU idle gaps (bubbles) | time between kernels or collectives ; Inference | TTFT, TPOT, p99, tokens/s/GPU. Green bar: start with throughput and the step-time breakdown before you tune anything else.",
+  "anchor": "## 13. AI-specific measures of efficiency",
+  "alt": "Outcome metrics that measure work delivered, such as throughput, MFU, scaling efficiency and goodput.",
+  "cap": "Use outcome metrics rather than raw utilisation because they measure work delivered."
+ }
+]

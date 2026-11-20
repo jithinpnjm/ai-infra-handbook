@@ -14,7 +14,7 @@
   <rect width="1600" height="940" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Three security gates: seccomp, DAC, and MAC</text>
 
-  <!-- Process box -->
+  
   <rect x="40" y="210" width="270" height="240" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5"><rect x="150" y="238" width="48" height="36" rx="5"/><path d="M150 250h48"/></g>
   <text x="175" y="318" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">Process</text>
@@ -26,7 +26,7 @@
 
   <path d="M310 330 H376" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Gate 1: seccomp-bpf -->
+  
   <rect x="380" y="160" width="350" height="340" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <circle cx="425" cy="208" r="22" fill="#207448"/><text x="425" y="217" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">1</text>
   <text x="464" y="216" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">seccomp-bpf</text>
@@ -41,7 +41,7 @@
 
   <path d="M730 330 H796" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <!-- Gate 2: DAC -->
+  
   <rect x="800" y="160" width="350" height="340" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <circle cx="845" cy="208" r="22" fill="#207448"/><text x="845" y="217" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">2</text>
   <text x="884" y="216" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">DAC + Caps</text>
@@ -55,7 +55,7 @@
 
   <path d="M1150 330 H1206" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
 
-  <!-- Gate 3: MAC (LSM) -->
+  
   <rect x="1210" y="160" width="350" height="340" rx="18" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
   <circle cx="1255" cy="208" r="22" fill="#db8129"/><text x="1255" y="217" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">3</text>
   <text x="1294" y="216" fill="#db8129" font-family="sans-serif" font-size="28" font-weight="700">MAC (LSM)</text>
@@ -67,7 +67,7 @@
     <tspan x="1238" dy="34" font-weight="700">policy does not allow it.</tspan>
   </text>
 
-  <!-- Denial paths downward -->
+  
   <path d="M555 500 V576" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#orange-arrow)"/>
   <path d="M970 500 V576" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#orange-arrow)"/>
   <path d="M1385 500 V576" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#orange-arrow)"/>
@@ -79,7 +79,7 @@
     <tspan x="372" dy="36">• LSMs:    cat /sys/kernel/security/lsm   |   ausearch -m avc -ts recent</tspan>
   </text>
 
-  <!-- Takeaway bar -->
+  
   <rect x="40" y="775" width="1520" height="90" rx="14" fill="#207448"/>
   <text x="800" y="830" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Like a parcel with two labels: DAC is the owner's label; MAC is the system-wide label that root cannot override.</text>
 </svg>

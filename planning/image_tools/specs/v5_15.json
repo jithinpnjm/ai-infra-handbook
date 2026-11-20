@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "k15-selector-and-or",
+  "title": "One from element is AND, two elements are OR",
+  "spec": "Two side-by-side panels, each showing a YAML-style from block drawn as a box with a list of elements. Left panel titled One list element (AND): a single dash element holding two lines, namespaceSelector edge and podSelector app gateway. Below it a small truth table with four rows. Row 1: pod labelled app gateway in namespace edge, result ALLOWED with a green tick. Row 2: pod labelled app gateway in namespace serving, result REFUSED with a red cross. Row 3: pod labelled app debug in namespace edge, result REFUSED. Row 4: pod labelled app gateway in another namespace, result REFUSED. Right panel titled Two list elements (OR): two separate dash elements, the first holding namespaceSelector edge and the second holding podSelector app gateway. Below it the same four pods with results: edge namespace pod app debug ALLOWED, serving namespace pod app gateway ALLOWED, edge pod app gateway ALLOWED, other namespace pod REFUSED. Show each dash as a visible bracket or separator so the reader sees where one element ends. Orange highlight only on the second dash in the right panel, marked as the missing dash that widens the door. Step 1 circle on the left panel and step 2 circle on the right panel. Green takeaway bar at the bottom: a missing dash turns an AND into an OR, so check the dashes before you ship a policy.",
+  "anchor": "### Selector semantics (a common source of mistakes)",
+  "alt": "A single from element requires both the namespace and the pod label, while two separate elements admit either one.",
+  "cap": "One from element matches only pods that satisfy both selectors, while two separate elements let either selector through."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "k15-deny-proof",
+  "title": "Proving a default deny: open, deny, then one allowed door",
+  "spec": "A three-column left-to-right sequence with three numbered step circles (1, 2, 3) above three panels, each a small drawing of a kuard pod box in a namespace box kuard-networkpolicy with a test-source pod box on the left sending a request arrow to the kuard pod. Panel 1 titled Step 1 open, no policy: the arrow from test-source to kuard is solid green and labelled wget returns the page. Panel 2 titled Step 2 default deny ingress: a shield-like barrier drawn over the kuard pod labelled default-deny-ingress, and the arrow is dashed grey and ends at the barrier with the label wget times out. Panel 3 titled Step 3 allow test source: the barrier is still present but a single door labelled access-kuard allows the arrow from test-source, drawn solid green with the label run test-source allowed, and a faded second source box labelled any other pod with the arrow blocked. Orange highlight only on the barrier in panel 2. Icon of a window for each pod and a lock icon for the policy. Green takeaway bar at the bottom: the open test sets the baseline, the deny test proves the default works, and the allow test shows one rule opens exactly one door.",
+  "anchor": "### Proving a default deny with a test Pod",
+  "alt": "A test pod reaches kuard with no policy, times out under a default-deny ingress policy, and reaches it again once one allow rule is added.",
+  "cap": "A test pod reaches kuard before any policy, times out under default deny, and reaches it again through one allow rule."
+ }
+]

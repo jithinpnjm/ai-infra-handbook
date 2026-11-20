@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "h01-pipeline-conveyor",
+  "title": "Pipelining: 104 cycles instead of 500",
+  "spec": "Two horizontal conveyor lanes, one above the other, each lane labelled with its case. Top lane title: Without a pipeline. Bottom lane title: With a pipeline. Each lane carries the same five stage boxes in order, left to right: load from memory, normalize mantissas, add, correct, write result back. Each stage box is numbered 1 to 5 in time order. Each element is drawn as a small green block that moves through the stages. Top lane: element 1 passes through all five stages, then element 2 starts only after element 1 has left the last stage, and so on. Label under the top lane: 500 cycles for N = 100 elements with S = 5. Bottom lane: element 1 passes through the five stages, and each later element enters one stage-slot behind the element ahead of it, so the blocks form a staircase. Orange highlight on the first element's full pass, labelled pipeline fill time (S cycles). Label under the bottom lane: 104 cycles = K x (N - 1) + S, with K = 1, N = 100, S = 5. Formula line above the lanes: Total cycles = K * (N - 1) + S. Plain note at the bottom: pipelining is a different idea from vectorization. No takeaway bar.",
+  "anchor": "### Parallelism, pipelining, and the nine levels of cluster parallelism",
+  "alt": "Five-stage pipeline: 100 elements take 104 cycles pipelined versus 500 without a pipeline.",
+  "cap": "A pipeline overlaps the stages of successive elements, so 100 elements finish in 104 cycles instead of 500."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "h01-rpeak-rmax",
+  "title": "Rpeak is the ceiling, Rmax is what you measure",
+  "spec": "One long horizontal bar on the top labelled Rpeak, the theoretical ceiling: every arithmetic unit finishes an instruction on every clock cycle, with no waiting. Under its left part, a shorter green bar aligned to the left edge, labelled Rmax, the best sustained rate measured on HPL. The empty space between the end of the Rmax bar and the end of the Rpeak bar is orange, labelled the cost of real work: waiting for memory, waiting for the network, waiting for the slowest node, and heat or power limits. Below the bars, a formula line: HPL efficiency = Rmax / Rpeak. Worked example beneath it: 38 PFLOP/s Rmax against 48.0 PFLOP/s Rpeak gives 79% HPL efficiency. Three small question marks or check boxes beside the Rmax label, one per question: which precision, dense or sparse, peak or measured. Green takeaway bar at the bottom with the sentence: Never accept a FLOPS figure without its precision, its sparsity mode, and its efficiency ratio.",
+  "anchor": "## 2. Measuring speed: FLOPS, precision, peak and achieved",
+  "alt": "Rpeak is the theoretical ceiling, Rmax is the measured HPL rate, and the gap is the cost of real work.",
+  "cap": "Rmax is the measured HPL rate, always below the theoretical Rpeak ceiling, and the gap is the cost of waiting."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "h01-power-on-order",
+  "title": "Power-on order: storage first, compute in staggered groups",
+  "spec": "Top row: three hazard cards side by side, each with a warning icon. Card 1 title: Electrical inrush and boot-storm service overload. Card 2 title: Multi-rack disk array spin-up torque and controller sequencing. Card 3 title: Hot-corridor thermal baking. Each card has a one-line label. Card 1: power draw jumps by dozens or thousands of kilowatts; all nodes request data at once. Card 2: shelves and disks start in order; controllers expect a fixed order. Card 3: servers blow hot air into a shared hot aisle; neighbours with fans off get no cooling. Below the cards, a left-to-right flow of three numbered steps with arrows between them (time order, number circles 1, 2, 3). Step 1 box: Storage first, disk shelves and then controllers in the order the controllers expect. Step 2 box: Compute nodes in staggered groups, so electrical load and request load stay manageable. Step 3 box: Racks spaced out in time, so running servers keep the hot corridor under control. Each step box has an icon of a power switch or a gear. Orange arrow from the hazard cards down to the step boxes, labelled write the startup order down and keep it on a card at the rack. No takeaway bar.",
+  "anchor": "### Power-on surge hazards and startup sequencing",
+  "alt": "Three hazards of powering on a cluster lead to a startup order: storage first, then compute nodes in staggered groups.",
+  "cap": "Powering on storage first and then compute nodes in staggered groups keeps the electrical load, the request load, and the heat within limits."
+ }
+]

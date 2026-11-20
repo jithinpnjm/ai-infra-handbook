@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Choosing a filesystem type</title>
+  <desc>Visual comparison table of Linux filesystems detailing type, characteristics, and notes for AI nodes, underpinned by the kernel VFS layer.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Choosing a filesystem type</text>
+
+  
+  <rect x="40" y="98" width="1520" height="54" rx="10" fill="#207448"/>
+  <text x="70" y="135" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Type</text>
+  <text x="430" y="135" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Character</text>
+  <text x="1000" y="135" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Note for AI nodes</text>
+
+  
+  <g id="row-ext4">
+    <rect x="40" y="162" width="1520" height="106" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(60, 187)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="9"/>
+      <path d="M6 14v28c0 5 9.8 9 22 9s22-4 22-9V14"/>
+      <path d="M6 28c0 5 9.8 9 22 9s22-4 22-9"/>
+      <circle cx="16" cy="42" r="2.5" fill="#207448"/>
+    </g>
+    <text x="135" y="228" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">ext4</text>
+    <text x="430" y="226" font-family="sans-serif" font-size="24" fill="#303a36">Linux default for years</text>
+    <text x="1000" y="226" font-family="sans-serif" font-size="24" fill="#303a36">reliable general purpose</text>
+  </g>
+
+  
+  <g id="row-xfs">
+    <rect x="40" y="278" width="1520" height="122" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(60, 311)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="6"/>
+      <line x1="20" y1="8" x2="20" y2="48"/>
+      <line x1="36" y1="8" x2="36" y2="48"/>
+      <line x1="13" y1="28" x2="13" y2="34"/>
+      <line x1="28" y1="22" x2="28" y2="34"/>
+      <line x1="43" y1="16" x2="43" y2="34"/>
+    </g>
+    <text x="135" y="349" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">XFS</text>
+    <text x="430" y="331" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="430" dy="0">allocation groups for parallel allocation,</tspan>
+      <tspan x="430" dy="32">online grow, cannot shrink</tspan>
+    </text>
+    <text x="1000" y="347" font-family="sans-serif" font-size="24" fill="#303a36">default on RHEL family, big files and parallel I/O</text>
+  </g>
+
+  
+  <g id="row-btrfs">
+    <rect x="40" y="410" width="1520" height="114" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(60, 439)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="42" r="6"/>
+      <circle cx="40" cy="16" r="6"/>
+      <circle cx="40" cy="42" r="6"/>
+      <path d="M16 36V26c0-6 4-10 18-10"/>
+      <line x1="22" y1="42" x2="34" y2="42"/>
+    </g>
+    <text x="135" y="477" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">btrfs</text>
+    <text x="430" y="475" font-family="sans-serif" font-size="24" fill="#303a36">copy-on-write, subvolumes, snapshots</text>
+    <text x="1000" y="475" font-family="sans-serif" font-size="24" fill="#303a36">use with care for databases</text>
+  </g>
+
+  
+  <g id="row-zfs">
+    <rect x="40" y="534" width="1520" height="114" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(60, 563)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="16" rx="4"/>
+      <rect x="8" y="32" width="40" height="16" rx="4"/>
+      <line x1="20" y1="24" x2="20" y2="32"/>
+      <line x1="36" y1="24" x2="36" y2="32"/>
+    </g>
+    <text x="135" y="601" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">ZFS</text>
+    <text x="430" y="599" font-family="sans-serif" font-size="24" fill="#303a36">volume manager plus filesystem, ARC cache</text>
+    <text x="1000" y="599" font-family="sans-serif" font-size="24" fill="#303a36">out-of-tree, memory-hungry ARC</text>
+  </g>
+
+  
+  <g id="row-tmpfs">
+    <rect x="40" y="658" width="1520" height="106" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(60, 683)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="14" width="32" height="28" rx="4"/>
+      <line x1="18" y1="6" x2="18" y2="14"/>
+      <line x1="28" y1="6" x2="28" y2="14"/>
+      <line x1="38" y1="6" x2="38" y2="14"/>
+      <line x1="18" y1="42" x2="18" y2="50"/>
+      <line x1="28" y1="42" x2="28" y2="50"/>
+      <line x1="38" y1="42" x2="38" y2="50"/>
+    </g>
+    <text x="135" y="722" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">tmpfs</text>
+    <text x="430" y="722" font-family="sans-serif" font-size="24" fill="#303a36">in memory</text>
+    <text x="1000" y="722" font-family="monospace" font-size="24" fill="#303a36">/run, /dev/shm</text>
+  </g>
+
+  
+  <g id="row-overlayfs">
+    <rect x="40" y="774" width="1520" height="114" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(60, 803)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,8 50,19 28,30 6,19"/>
+      <path d="M6 29l22 11 22-11"/>
+      <path d="M6 39l22 11 22-11"/>
+    </g>
+    <text x="135" y="841" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">overlayfs</text>
+    <text x="430" y="839" font-family="sans-serif" font-size="24" fill="#303a36">lower read-only layers plus upper writable</text>
+    <text x="1000" y="839" font-family="sans-serif" font-size="24" fill="#303a36">container root filesystems</text>
+  </g>
+
+  
+  <g id="row-parallel-network">
+    <rect x="40" y="898" width="1520" height="136" rx="10" fill="#fff5ec" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(60, 938)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="14" cy="18" r="6"/>
+      <circle cx="42" cy="18" r="6"/>
+      <circle cx="28" cy="42" r="6"/>
+      <line x1="19" y1="21" x2="37" y2="21"/>
+      <line x1="17" y1="23" x2="25" y2="37"/>
+      <line x1="39" y1="23" x2="31" y2="37"/>
+    </g>
+    <text x="135" y="955" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">NFS, Lustre, GPFS,</tspan>
+      <tspan x="135" dy="38">BeeGFS, CephFS</tspan>
+    </text>
+    <text x="560" y="976" font-family="sans-serif" font-size="24" fill="#303a36">network and parallel</text>
+    <text x="1000" y="976" font-family="sans-serif" font-size="24" fill="#303a36">shared datasets and checkpoints</text>
+  </g>
+
+  
+  <g id="footer-takeaway">
+    <rect x="40" y="1064" width="1520" height="92" rx="10" fill="#207448"/>
+    
+    <g transform="translate(68, 1082)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="14" r="8"/>
+      <circle cx="10" cy="42" r="6"/>
+      <circle cx="28" cy="42" r="6"/>
+      <circle cx="46" cy="42" r="6"/>
+      <path d="M28 22v14"/>
+      <path d="M28 30L12 37"/>
+      <path d="M28 30l16 7"/>
+    </g>
+    <text x="800" y="1122" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">the kernel VFS layer lets them all coexist under one tree.</text>
+  </g>
+</svg>

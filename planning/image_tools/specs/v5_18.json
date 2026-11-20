@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "k18-gang-deadlock",
+  "title": "Two 4-pod jobs on six nodes: pod-by-pod placement deadlocks, gang admission does not",
+  "spec": "Two side-by-side panels sharing one row of six node boxes labelled node 1 to node 6, each node drawn as a small server box with a GPU icon. Left panel titled Default pod-by-pod scheduling: Job A has four pod boxes labelled A1 to A4 and Job B has four pod boxes labelled B1 to B4. Three A pods and three B pods are placed on nodes 1 to 6, each placed pod drawn solid, and the one remaining pod of each job (A4 and B4) drawn as a dashed box labelled Pending. A note under the row: each partial job holds its GPUs at 0 percent use while it waits for its last rank. A closed loop arrow in orange between Job A and Job B labelled hold and wait, deadlock. Right panel titled Kueue gang admission: Job A and Job B drawn as suspended cards, labelled suspend true. Kueue checks the whole job against quota, admits Job A first, shown by four pods placed on nodes 1 to 4, and Job B waits in a grey queue box labelled pending in queue with the note admitted later when quota is free. Step 1 circle on the Kueue admission check, step 2 circle on the admitted job. Icons: a lock on the queue box, a gear for Kueue. Green takeaway bar at the bottom: the default scheduler places pods one at a time, so two half-placed jobs can block each other, while Kueue admits a whole job or none of it.",
+  "anchor": "## 5. Why default scheduling fails for distributed jobs",
+  "alt": "Default pod-by-pod placement leaves each of two 4-pod jobs half-placed and waiting, while Kueue admits one whole job at a time.",
+  "cap": "Pod-by-pod placement leaves two 4-pod jobs half-started and blocking each other, while Kueue admits one whole job at a time."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "k18-fragmentation",
+  "title": "Spreading small pods strands the free GPUs; packing them keeps whole nodes free",
+  "spec": "Two side-by-side panels, each showing four node boxes in a row, labelled node 0 to node 3, each node drawn as a box with eight GPU squares inside it. Left panel titled LeastAllocated spread: every node has two small blue inference pod blocks each using one GPU square, so each node shows six free squares in green. Below the row, a red-outlined label: 24 GPUs free in total, but no node has 8 free, so the 8-GPU training pods stay Pending. Right panel titled MostAllocated bin-pack (gpu-binpack profile, nvidia.com/gpu weight 5): all eight one-GPU inference pods stacked in node 0, filling its eight squares, and nodes 1 to 3 shown fully green with eight free squares each. Below, a green label: three 8-GPU training pods each fit on one empty node. Step 1 circle on the left panel and step 2 circle on the right panel. Orange highlight only on the left panel red label, the stranded capacity. Icon of a chip for each GPU square group. Green takeaway bar at the bottom: spreading leaves free GPUs scattered in pieces too small for a big job, while packing keeps whole nodes free for it.",
+  "anchor": "## 2. Resource fit and accounting",
+  "alt": "Spreading one-GPU pods across four 8-GPU nodes strands free GPUs, while packing them onto one node leaves three whole nodes for 8-GPU jobs.",
+  "cap": "Spreading one-GPU pods across nodes strands free GPUs, while packing them onto one node keeps whole nodes free for 8-GPU jobs."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "k18-taint-toleration-selector",
+  "title": "A taint keeps guests out, a toleration lets them in, a selector takes them there",
+  "spec": "Three columns, each a small scene with one GPU node pool and a set of pods. Column 1 titled Taint only: a row of GPU nodes with a taint sign nvidia.com/gpu=present:NoSchedule on them, and a CPU pod box with an arrow hitting the sign and a red cross labelled rejected. Column 2 titled Toleration only: the same taint sign and a GPU pod carrying a badge labelled toleration nvidia.com/gpu; the arrow goes into the GPU node pool but also an arrow goes to an untainted CPU node with a note may still land on any node. Mark that arrow with a question mark and label it not forced there. Column 3 titled Toleration plus nodeSelector: the GPU pod with the badge and a selector label nvidia.com/gpu.product equals NVIDIA-H100 80GB HBM3; a green arrow goes only to the H100 GPU node pool, and the CPU node and the other GPU node are shown faded with a red cross. Step 1 circle on column 1, step 2 circle on column 2, step 3 circle on column 3. Orange highlight only on the question mark arrow in column 2, the trap. Icons: a sign for the taint, a badge for the toleration, a magnet or label tag for the selector. Green takeaway bar at the bottom: a taint keeps other pods out, a toleration only allows entry, and a selector is what pulls the pod to the right pool.",
+  "anchor": "### Taints and tolerations",
+  "alt": "A taint repels pods without a toleration, a toleration alone does not attract a pod, and a node selector sends it to the right GPU pool.",
+  "cap": "A taint keeps out pods without a toleration, but only a node selector steers a GPU pod to the right pool."
+ }
+]

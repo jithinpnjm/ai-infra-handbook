@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "k08-sandbox-network",
+  "title": "The pause sandbox holds the pod network, and CNI ADD wires it up",
+  "spec": "Left to right, two large panels joined by a dashed arrow. Left panel labelled Host node: a box labelled containerd (CRI) at the top with a numbered step 1 circle, a box labelled CNI plugin ADD below it with step 2, and a bridge or host side box labelled host side of veth with a dashed outline. Right panel labelled Pod sandbox netns cni-uuid, a large rounded rectangle. Inside it at the bottom, a grey box labelled pause container holds the namespace open, with the note net, IPC and UTS namespaces created here. Above it, two app container boxes labelled trainer and sidecar, each drawn as a room that joins the hallway, with arrows pointing down into the pause box and a note they keep this IP when they restart. Inside the panel, one interface box labelled eth0 with the pod IP address placeholder. A pipe-shaped veth pair connects the eth0 box in the right panel to the host side of veth box in the left panel, with the label veth pair. Step 3 circle near the eth0 box with the label IPAM returns IP, gateway and routes. Under the whole figure a row of three small labelled boxes: /etc/hosts, /etc/resolv.conf and podIP in status, each with a step 3 tag. Orange highlight on the arrow from CNI plugin ADD to eth0, labelled the one that wires the pod. Green takeaway bar at the bottom: the sandbox holds the network, and app containers join it.",
+  "anchor": "## 4. Sandbox creation and networking",
+  "alt": "The pause sandbox owns the pod network namespace, and the CNI ADD call creates the veth pair and the eth0 address.",
+  "cap": "The pause sandbox owns the pod network namespace, and the CNI plugin connects eth0 to the host side through a veth pair."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "k08-namespace-map",
+  "title": "Which Linux namespaces a pod's containers share",
+  "spec": "One large outer rounded box labelled Pod, containing a row of two inner boxes. Left inner box: pause sandbox container. Right inner box: trainer application container. Both boxes sit under one shared band labelled Pod cgroup slice. A table-like grid sits between or beneath the two boxes with four rows: net, ipc, uts, and mnt and pid. Each row has a green tick or a grey label. Row net: a single green band spanning both boxes labelled shared, same IP, ports and routing. Row ipc: a green band spanning both labelled shared, /dev/shm. Row uts: green band spanning both labelled shared, hostname. Row mnt: two separate grey blocks, one under each box, labelled own mount namespace, overlayfs root and volume binds. Row pid: two separate grey blocks labelled own PID namespace unless shareProcessNamespace is true. Below the grid, a small side label reads check with ls -l /proc/PID/ns and compare inode numbers. Under the trainer box a small block labelled cgroup files: memory.max, cpu.max, cpu.weight, pids.max. Orange note on the pid row: shared only when shareProcessNamespace is true. Green takeaway bar at the bottom: net, ipc and uts are shared across the pod, while mnt and pid stay separate by default.",
+  "anchor": "## 5. Images and containers",
+  "alt": "Containers in one pod share the network, IPC and UTS namespaces, while mount and PID namespaces stay separate by default.",
+  "cap": "Containers in one pod share the network, IPC and hostname namespaces, while their mount and PID namespaces stay separate by default."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "k08-gpu-isolation",
+  "title": "How the device plugin hands one container its GPUs and the cgroup filter blocks the rest",
+  "spec": "Top to bottom with numbered step circles 1 to 4 on the left side. Step 1 box at the top labelled NVIDIA device plugin advertises nvidia.com/gpu: N per node, with a small chip icon. Arrow down labelled step 2: kubelet Allocate call returns GPU UUIDs or CDI names. Step 2 box: a kubelet Device Manager box. Arrow down to step 3 box labelled runtime injects devices, which is split into two sub-boxes side by side: left sub-box labelled /dev/nvidia0 and /dev/nvidia1 plus nvidiactl and nvidia-uvm, shown in a green container; right sub-box labelled /dev/nvidia2 to /dev/nvidia7, shown in grey with a dashed outline and the note not created in this container. Arrow down to step 4 box labelled cgroup v2 device filter (eBPF), with a shield or lock icon. Two arrows from step 4: one to a green container box labelled trainer, 2 GPUs, which opens its GPUs, and one to a grey blocked box labelled other pods on the same node, drawn with an orange blocked arrow with a cross. Side note on the step 4 box: isolation comes from what is visible and openable, not from separate hardware, unless MIG is used. Green takeaway bar at the bottom: a container cannot use a GPU it cannot see, and the device filter blocks any device it was not granted.",
+  "anchor": "### GPU specifics",
+  "alt": "The device plugin allocates GPUs, the runtime exposes only the granted device nodes, and the cgroup device filter blocks other devices.",
+  "cap": "A container sees only the GPU device nodes it was granted, and the cgroup device filter blocks it from opening any other device."
+ }
+]

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "k03-allocatable",
+  "title": "Capacity minus reservations gives Allocatable",
+  "spec": "A horizontal stacked bar on the left labelled Capacity, the full hardware size. Three smaller grey blocks taken off its right end in order, each with an arrow pointing into the next: kube-reserved (kubelet and containerd), system-reserved (sshd, systemd, kernel daemons), eviction-threshold. The remaining green block on the right labelled Allocatable, the part the scheduler can hand to pods. A formula line under the bar: Allocatable = Capacity - kube-reserved - system-reserved - eviction-threshold. Orange note: without the reservations, pods can take all of the host CPU and memory, and the node agent starves. Green takeaway bar: Capacity is the dining room, Allocatable is the seats you sell.",
+  "anchor": "### Inspecting Nodes (`Capacity` vs. `Allocatable` and `Conditions`) and `kube-system` (*Kubernetes: Up and Running* Chapter 3)",
+  "alt": "Node Capacity minus kube-reserved, system-reserved and the eviction threshold leaves Allocatable.",
+  "cap": "A node's Allocatable is its Capacity minus the reservations kept back for the node agent and the system."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "k03-etcd-topology",
+  "title": "Stacked versus external etcd",
+  "spec": "Two side-by-side panels. Left panel titled Stacked etcd: three control-plane node boxes, each containing kube-apiserver, kube-controller-manager, kube-scheduler and an etcd member, drawn as stacked rows inside the node. A label under it: simpler, fewer machines, one node loss takes one API server and one etcd member together. Right panel titled External etcd: three control-plane node boxes with kube-apiserver, kube-controller-manager and kube-scheduler, and below them a separate row of three boxes labelled etcd member on dedicated nodes. A label under it: more isolation and independent scaling, more machines to operate. Both panels sit above one shared box labelled load balancer in front of the API servers, with an arrow into each control-plane group. Orange note on the stacked panel: the failure domains are coupled. Green takeaway bar: stacked uses fewer hosts, external isolates etcd.",
+  "anchor": "### Topologies",
+  "alt": "Stacked etcd runs on the control-plane nodes, while external etcd runs on its own dedicated nodes.",
+  "cap": "Stacked etcd uses fewer machines but couples failures, while external etcd isolates the database on its own nodes."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "k03-kubelet-timeline",
+  "title": "A kubelet that stops heartbeating: the timeline",
+  "spec": "A horizontal timeline from left to right with three marked points on an axis labelled time after heartbeats stop. Point at T plus 0 s labelled kubelet stops; a shaded span labelled Lease renewals every 10 s stops. Point at T plus 40 s, step 1, labelled node-monitor-grace-period (40 s): Ready becomes Unknown and the taint node.kubernetes.io/unreachable is added. Above this point, a green box labelled alert fires. Point at T plus 340 s, step 2, labelled 40 s + 300 s default toleration expires: pods are marked for eviction. Orange note at step 2: a pod that opts out of the toleration is evicted at once. Green takeaway bar: know the order, so you decide whether to wait for the node or act.",
+  "anchor": "### What fails and what happens",
+  "alt": "After the kubelet stops, the node goes Unknown after 40 seconds and pods are marked for eviction after 340 seconds.",
+  "cap": "A kubelet that stops heartbeating makes its node Unknown after 40 seconds and marks pods for eviction after 340 seconds."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "k03-quorum",
+  "title": "Odd etcd member counts give the best failure tolerance",
+  "spec": "Four columns, one each for 3, 4 and 5 etcd members, drawn as rows of small circle icons. 3 members: quorum 2, tolerates 1 failure. 4 members: quorum 3, tolerates 1 failure, an extra machine with no added tolerance, highlighted in orange. 5 members: quorum 3, tolerates 2 failures. Each column shows its quorum and tolerance as labelled numbers under the icons. A small note: quorum is the smallest majority of members that must agree before a write counts. Green takeaway bar: use an odd number of members on fast disks.",
+  "anchor": "### etcd",
+  "alt": "Three members tolerate one failure, four members still tolerate one, and five members tolerate two.",
+  "cap": "An etcd cluster needs a majority to write, so a fourth member adds a machine without adding failure tolerance."
+ }
+]

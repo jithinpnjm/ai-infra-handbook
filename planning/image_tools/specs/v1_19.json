@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "l19-ns-syscalls",
+  "title": "Three system calls for namespaces",
+  "spec": "Three columns. clone(2) creates a new process, optionally in new namespaces via CLONE_NEW* flags, used by runtimes to start a container's first process. unshare(2) moves the calling process into new namespaces, for PID only future children enter; wrapped by the unshare command. setns(2) joins an existing namespace through a file descriptor from /proc/PID/ns/*; wrapped by nsenter; docker exec and kubectl exec are setns then exec. Bottom strip: a namespace lives while a process, an open file descriptor to /proc/PID/ns/xxx, or a bind mount refers to it. Names monospace.",
+  "anchor": "## 2. The namespace types",
+  "alt": "The clone, unshare and setns calls create or join namespaces.",
+  "cap": "Three system calls do all the namespace work: create with clone, move with unshare and join with setns."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "l19-mount-propagation",
+  "title": "Mount propagation",
+  "spec": "Four small cards between a host mount and a namespace mount with arrows showing event direction: shared sends and receives events; slave only receives; private neither; unbindable private and cannot be bind-mounted. Orange warning: systemd makes / shared by default, so a naive new mount namespace can leak mounts back to the host; runtimes remount root as rslave or rprivate first. Command chip: findmnt -o TARGET,PROPAGATION.",
+  "anchor": "### Mount namespaces and propagation",
+  "alt": "Mount propagation flags control whether mount events pass between namespaces.",
+  "cap": "A shared mount can leak events back to the host, so runtimes make the root private or slave first."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "l19-chroot-pivot",
+  "title": "chroot versus pivot_root",
+  "spec": "Two panels. Left chroot(2): changes a process's root directory, the old root can stay reachable through open file descriptors, not a security boundary (orange). Right pivot_root(2): used by container runtimes inside a mount namespace, swaps the root mount so the old root can be unmounted and detached completely (green). Tiny sequence under right panel: new mount namespace, make mounts private, bind-mount new rootfs onto itself, mount proc, sysfs and tmpfs, pivot_root.",
+  "anchor": "### chroot versus pivot_root",
+  "alt": "chroot only changes the visible root, while pivot_root swaps the root mount and detaches the old one.",
+  "cap": "Container runtimes use pivot_root because chroot is not a security boundary."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "l19-isolation-compare",
+  "title": "Containers, VMs and lighter options",
+  "spec": "Table with columns Hardware VM (KVM/QEMU), Container, MicroVM (Firecracker, Kata), gVisor. Rows: Kernel | own guest | shared host | own minimal guest | Go kernel intercepting syscalls ; Isolation | strong | weaker | strong | medium ; Start time | seconds | milliseconds | about 100 to 200 ms | milliseconds ; GPU access | passthrough or vGPU/MIG | native driver via device nodes (orange) | possible but complex | limited. Takeaway bar: decide early whether the isolation needs a hardware boundary.",
+  "anchor": "## 9. Containers, VMs and lightweight VMs",
+  "alt": "A comparison of VMs, containers, microVMs and gVisor on kernel, isolation, start time and GPU access.",
+  "cap": "A container uses the native GPU driver through device nodes, while a VM needs passthrough or vGPU."
+ }
+]

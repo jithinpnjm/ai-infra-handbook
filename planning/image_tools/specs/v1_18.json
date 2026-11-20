@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "l18-sched-classes",
+  "title": "Scheduling classes",
+  "spec": "Vertical stack, highest on top: Stop (kernel internal); Deadline SCHED_DEADLINE; Real-time SCHED_FIFO and SCHED_RR with priority 1 to 99 (orange: a busy real-time task starves everything below); Fair CFS/EEVDF SCHED_OTHER, SCHED_BATCH, SCHED_IDLE, the default for ordinary processes; Idle (runs when nothing else is runnable). Side chips monospace: chrt -p $$ ; sudo chrt -f 50 ./latency_task ; ps -eo pid,cls,rtprio,ni,pri,comm. Note: use real-time policies sparingly.",
+  "anchor": "### Scheduling classes and policies",
+  "alt": "Scheduling classes are ordered, with real-time tasks above all fair tasks.",
+  "cap": "The real-time class sits above every fair task, which makes it powerful and dangerous."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "l18-weight-quota",
+  "title": "Weight versus quota",
+  "spec": "Two panels. Left Weight (cpu.weight, 1 to 10000, default 100; v1 cpu.shares default 1024): a promise about proportions, only under contention and only among siblings, never wastes capacity, never limits alone; Kubernetes CPU request becomes weight. Right Quota (cpu.max, form $MAX $PERIOD in microseconds, default max 100000): hard ceiling; 200000 100000 means 200 ms of CPU per 100 ms period, two CPUs' worth. Example orange: 16 busy threads with a 2-CPU quota burn 200 ms in about 12.5 ms then sleep 87.5 ms. Check throttling: nr_throttled versus nr_periods in cpu.stat.",
+  "anchor": "## 7. The CPU controller: weight, quota and throttling",
+  "alt": "Weight shares CPU proportionally under contention, while quota sets a hard ceiling.",
+  "cap": "A weight is a proportion that only matters under contention, but a quota is a ceiling that always applies."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "l18-isolation",
+  "title": "Keeping kernel and others off chosen cores",
+  "spec": "Left: grid of eight CPUs, cores 0-1 labelled housekeeping and cores 2-15 labelled isolated (orange) for the data loader. Right: mechanism list in monospace with effect: isolcpus=2-15 scheduler does not place tasks there unless pinned ; nohz_full=2-15 stop the periodic tick ; rcu_nocbs=2-15 offload RCU callbacks ; irqaffinity=0-1 IRQs to housekeeping CPUs ; systemd CPUAffinity= confine services ; cpuset.cpus.partition=isolated at runtime. Note: most are boot parameters; the cpuset row works without reboot.",
+  "anchor": "### Isolation: keeping the kernel and others off chosen cores",
+  "alt": "Boot and runtime settings that keep the kernel, interrupts and other tasks off chosen CPUs.",
+  "cap": "Isolation keeps the rest of the system off the cores you reserve for latency-sensitive work."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "l18-cgroup-v1-v2",
+  "title": "cgroups v1 versus v2",
+  "spec": "Two panels. Left v1: separate trees per controller (/sys/fs/cgroup/cpu/, /memory/, /blkio/), a process can sit in a different group in each tree. Right v2: one unified tree, a process is in exactly one cgroup, one cgroup2 mount at /sys/fs/cgroup; no internal processes rule: only leaf groups hold processes; controllers enabled by writing +cpu +memory to cgroup.subtree_control. Bottom commands monospace: stat -fc %T /sys/fs/cgroup/ (cgroup2fs means pure v2; tmpfs means v1 or hybrid) ; cat /proc/self/cgroup. v2 in green as default.",
+  "anchor": "### v1 versus v2",
+  "alt": "Version 1 uses one tree per controller, and version 2 uses a single unified tree.",
+  "cap": "In v2 every process belongs to exactly one cgroup in a single hierarchy."
+ }
+]

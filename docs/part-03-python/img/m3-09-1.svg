@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Test strategy for infrastructure code</title>
+  <desc>Flowchart showing the test strategy for infrastructure code across Unit, Contract, Integration, and End-to-end or canary testing tiers.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Test strategy for infrastructure code</text>
+
+  
+  <g id="node-unit">
+    <rect x="240" y="150" width="1120" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 306 206 L 294 220 L 306 234" />
+      <path d="M 334 206 L 346 220 L 334 234" />
+      <line x1="324" y1="202" x2="316" y2="238" />
+    </g>
+    <text x="390" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Unit</text>
+    <text x="390" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">(pure logic, fakes, milliseconds, thousands)</text>
+  </g>
+
+  
+  <line x1="800" y1="290" x2="800" y2="356" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="node-contract">
+    <rect x="240" y="360" width="1120" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="296" y="406" width="48" height="48" rx="8" stroke="#207448" stroke-width="4" fill="none" />
+    <path d="M 314 418 Q 309 418 309 424 Q 309 430 305 430 Q 309 430 309 436 Q 309 442 314 442" stroke="#207448" stroke-width="3" stroke-linecap="round" fill="none" />
+    <path d="M 326 418 Q 331 418 331 424 Q 331 430 335 430 Q 331 430 331 436 Q 331 442 326 442" stroke="#207448" stroke-width="3" stroke-linecap="round" fill="none" />
+    <text x="390" y="412" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Contract</text>
+    <text x="390" y="456" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">(API schemas, recorded fixtures, consumer-driven)</text>
+  </g>
+
+  
+  <line x1="800" y1="500" x2="800" y2="566" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="node-integration">
+    <rect x="240" y="570" width="1120" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polygon points="320,614 344,627 320,640 296,627" />
+      <polygon points="296,627 320,640 320,666 296,653" />
+      <polygon points="344,627 320,640 320,666 344,653" />
+    </g>
+    <text x="390" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Integration</text>
+    <text x="390" y="666" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">(containers, kind, localstack, real DB)</text>
+  </g>
+
+  
+  <line x1="800" y1="710" x2="800" y2="776" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="node-e2e">
+    <rect x="240" y="780" width="1120" height="140" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+    
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="296" y="828" width="48" height="18" rx="4" />
+      <rect x="296" y="852" width="48" height="18" rx="4" />
+      <line x1="306" y1="837" x2="310" y2="837" stroke-width="3" />
+      <line x1="306" y1="861" x2="310" y2="861" stroke-width="3" />
+      <line x1="318" y1="837" x2="336" y2="837" stroke-width="3" />
+      <line x1="318" y1="861" x2="336" y2="861" stroke-width="3" />
+    </g>
+    <text x="390" y="832" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">End-to-end / canary</text>
+    <text x="390" y="876" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">(real cluster, few tests, slow, flaky-prone)</text>
+  </g>
+</svg>

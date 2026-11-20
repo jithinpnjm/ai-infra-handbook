@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "07",
+  "name": "n07-udp",
+  "title": "UDP header and datagram",
+  "spec": "Top: UDP header as a 32-bit wide grid, two rows of two fields: Source port | Destination port; Length | Checksum; then 'data ...'. Label 'header is 8 bytes'. Below, three green chips of what UDP lacks, drawn crossed out in orange: 'connection', 'ordering', 'retransmission', 'flow or congestion control'. Bottom note: 'recvfrom returns exactly one datagram; each arrives whole or not at all'. Second note: 'above the path MTU the datagram is fragmented at IP, one lost fragment loses the whole datagram'.",
+  "anchor": "## 1. UDP: the minimal transport",
+  "alt": "UDP header",
+  "cap": "UDP is an 8-byte header with no connection, ordering or retransmission."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "07",
+  "name": "n07-icmptypes",
+  "title": "ICMP types you must not block",
+  "spec": "Two small tables. IPv4: 0 Echo reply (ping response); 3 Destination unreachable (code 3 port, code 4 fragmentation needed and DF set); 5 Redirect; 8 Echo request; 11 Time exceeded (TTL expired, traceroute); 12 Parameter problem. ICMPv6: 1 Destination unreachable; 2 Packet Too Big; 3 Time exceeded; 128/129 Echo request/reply; 133 to 137 neighbour discovery. Orange highlight on 'type 3 code 4' and 'type 2 Packet Too Big' with note 'Path MTU Discovery depends on these'. Green bar: 'Before you block any ICMP type, check which of the types above it would break'.",
+  "anchor": "## 2. ICMP: the network layer's error and diagnostic channel",
+  "alt": "Common ICMP types",
+  "cap": "Some ICMP messages such as fragmentation needed and Packet Too Big are required for the network to work."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "07",
+  "name": "n07-blackhole",
+  "title": "The PMTU black hole",
+  "spec": "Timeline between client and server. Green: 'TCP handshake succeeds (tiny packets)'. Green: 'small requests work'. Orange: 'large transfer stalls: big packet dropped, ICMP error blocked, sender never learns the limit'. Right panel step-down test in monospace: 'ping -M do -s 1472 host' then step down 1472, 1452, 1432, 1400 until one passes; also 'tracepath -n host', 'tcpdump -ni any icmp[icmptype]==3 and icmp[icmpcode]==4', 'sysctl net.ipv4.tcp_mtu_probing'. Footer: seen in VPNs, GRE, IPsec, WireGuard, VXLAN, Geneve, GCP default VPC MTU 1460.",
+  "anchor": "### The PMTU black hole",
+  "alt": "PMTU black hole symptoms",
+  "cap": "With the ICMP error blocked, the handshake and small requests work but large transfers hang."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "07",
+  "name": "n07-checklist",
+  "title": "Layered reachability checklist",
+  "spec": "Numbered ladder of eight steps from bottom to top, each with its command in monospace: 1 interface and address 'ip -br addr'; 2 gateway and neighbour 'ping <gateway>', 'ip neigh'; 3 route 'ip route get <B>'; 4 ICMP 'ping -c3 B', 'traceroute -n B' or 'mtr'; 5 port 'nc -zv B 443'; 6 large packets 'ping -M do -s 1472 B', 'tracepath B'; 7 application 'curl -v'; 8 other end 'tcpdump' on B. Orange highlight on step 5 with note 'refused (RST) and timeout (drop) point to different places'.",
+  "anchor": "## 7. A layered reachability checklist",
+  "alt": "Reachability checklist",
+  "cap": "Test one layer at a time from the interface up to the application, then look at the far end."
+ }
+]

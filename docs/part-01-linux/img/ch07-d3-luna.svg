@@ -27,7 +27,7 @@
     </style>
   </defs>
 
-  <!-- Ordered steps -->
+  
   <rect class="card" x="70" y="130" width="700" height="130" rx="18"/>
   <circle class="step" cx="116" cy="195" r="24"/>
   <text class="stepnum" x="116" y="204">1</text>
@@ -93,7 +93,7 @@
   <text class="node-text" x="245" y="1080">make install</text>
   <text class="node-text" x="245" y="1112">(or package it)</text>
 
-  <!-- Failure branches -->
+  
   <rect class="card" x="950" y="305" width="580" height="130" rx="18"/>
   <g class="icon" transform="translate(985 342)">
     <path d="M8 4h30l12 12v38H8z"/>
@@ -111,14 +111,14 @@
   <text class="diag-text" x="1065" y="535">find the first real error,</text>
   <text class="diag-text" x="1065" y="571">not the make[N] cascade</text>
 
-  <!-- Five ordered arrows -->
+  
   <path class="flow" d="M420 260 V305"/>
   <path class="flow" d="M420 435 V480"/>
   <path class="flow" d="M420 610 V655"/>
   <path class="flow" d="M420 785 V830"/>
   <path class="highlight" d="M420 960 V1005"/>
 
-  <!-- Two dashed failure arrows -->
+  
   <path class="branch" d="M770 370 H950"/>
   <text class="edge-label" x="860" y="354">fails?</text>
 

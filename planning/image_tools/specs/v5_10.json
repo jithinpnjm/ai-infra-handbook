@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "k10-endpoint-slices",
+  "title": "One big Endpoints list versus EndpointSlice shards of 100",
+  "spec": "Two side-by-side panels, each with a row of node boxes on the right side labelled node A, node B and node C. Left panel titled Endpoints (legacy): one tall grey box labelled one Endpoints object for the Service, holding a long stacked list of pod IPs, with the note the whole list is rewritten and re-sent for every change. Three thick arrows from that box go to node A, node B and node C, each arrow labelled full list. Orange note on the left panel: one pod change reprints the whole list. Right panel titled EndpointSlice: the same pod IPs split into three small green boxes labelled slice 1, slice 2 and slice 3, each holding up to 100 endpoints, with the note maximum 100 endpoints per slice. Only one slice has a highlighted pod entry, with a small arrow labelled one change updates one slice. Thin arrows from the slices to the nodes, each labelled changed slice only. Under the right panel, a small chip labelled EndpointSlice is the default since 1.21. Green takeaway bar at the bottom: sharding means one pod change updates one small slice, not the whole list.",
+  "anchor": "## 2. EndpointSlices",
+  "alt": "A legacy Endpoints object resends the whole pod list on every change, while EndpointSlices split it into shards of up to 100 endpoints.",
+  "cap": "A legacy Endpoints object resends the whole pod list on every change, whereas an EndpointSlice shard updates only the slice that changed."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "k10-traffic-policy",
+  "title": "externalTrafficPolicy Cluster versus Local",
+  "spec": "Two horizontal lanes stacked vertically, one labelled Cluster (default) at the top and one labelled Local at the bottom. Each lane has the same three parts from left to right: an external client icon labelled client with a laptop icon; a node box labelled node 1 that receives the NodePort traffic; and a row of pod boxes on the right. Cluster lane: the node 1 box forwards the arrow to a pod box on node 2 across a dashed boundary, with an arrow labelled SNAT, source becomes node IP, drawn in orange, and a return arrow back through node 1 labelled reply returns through the node that took the request. A note under the lane reads client IP is lost and there is one extra hop. Local lane: node 1 box forwards only to a pod box on node 1, with a green arrow labelled no SNAT, client IP kept. A second node box labelled node 2 with no pod inside has a dashed grey box labelled no local endpoint, fails health check on healthCheckNodePort, and its arrow is crossed out. A note under the lane reads client IP is kept, no extra hop, and load can be uneven when pods are spread unevenly. Green takeaway bar at the bottom: Cluster spreads load but hides the client IP, while Local keeps the client IP and drops nodes that have no pod.",
+  "anchor": "### `externalTrafficPolicy`",
+  "alt": "With Cluster the node may forward to a pod elsewhere and rewrite the source, while with Local only pods on the receiving node answer.",
+  "cap": "With Cluster traffic may reach a pod on another node and the client IP is lost, while with Local only local pods answer and the client IP is kept."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "k10-grpc-pinning",
+  "title": "A gRPC client with one connection sends every request to one pod",
+  "spec": "Left to right in two panels divided by a vertical line. Left panel titled ClusterIP Service, layer 4: a client box labelled gRPC client at the far left with one thick connection line labelled one long-lived TCP connection, running to a box labelled ClusterIP Service in the middle, then one arrow labelled chosen once, at connect time to a single pod box labelled vllm pod 1 highlighted in orange. Other vllm pod boxes are drawn grey with no arrows and the note idle. Under the left panel, a counter labelled 1000 of 1000 requests to pod 1. Right panel titled headless Service with client-side round_robin: the same gRPC client with its request stream fanning out to the pod boxes with thin arrows, each labelled a share of the requests, with no pod taking all of them. Small note in the right panel: the client picks the pod, not one TCP connection. Green takeaway bar at the bottom: a Service balances connections, so a multiplexed gRPC stream stays on one pod unless the client or an L7 proxy spreads the requests.",
+  "anchor": "### Session affinity and long-lived connections",
+  "alt": "A ClusterIP Service pins one long-lived gRPC connection to a single pod, while a headless Service with client-side round robin spreads requests.",
+  "cap": "A ClusterIP Service pins one long-lived gRPC connection to a single pod, so spreading requests needs a headless Service or an L7 proxy."
+ }
+]

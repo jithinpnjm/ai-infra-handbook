@@ -25,36 +25,36 @@
   </g>
 
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Virtual-address document icon -->
+    
     <path d="M173 418h34l18 18v49h-52z"/>
     <path d="M207 418v19h18M183 449h31M183 461h31M183 473h22"/>
 
-    <!-- Page-table split tree icon -->
+    
     <circle cx="630" cy="389" r="8"/>
     <circle cx="602" cy="417" r="7"/>
     <circle cx="630" cy="417" r="7"/>
     <circle cx="658" cy="417" r="7"/>
     <path d="M630 397v10M602 407v-4h56v4M602 424v9M630 424v9M658 424v9"/>
 
-    <!-- TLB cylinder icon -->
+    
     <ellipse cx="1060" cy="426" rx="27" ry="10"/>
     <path d="M1033 426v33c0 6 12 11 27 11s27-5 27-11v-33M1033 443c0 6 12 11 27 11s27-5 27-11"/>
 
-    <!-- Physical-address chip icon -->
+    
     <rect x="1372" y="381" width="46" height="46" rx="5"/>
     <rect x="1383" y="392" width="24" height="24" rx="2"/>
     <path d="M1380 373v8M1394 373v8M1408 373v8M1380 427v8M1394 427v8M1408 427v8M1364 389h8M1364 403h8M1364 417h8M1418 389h8M1418 403h8M1418 417h8"/>
 
-    <!-- Page-walk magnifier icon -->
+    
     <circle cx="1048" cy="814" r="21"/>
     <path d="M1064 830l18 18M1048 801v26M1035 814h26"/>
 
-    <!-- TLB gear icon -->
+    
     <circle cx="1460" cy="837" r="17"/>
     <circle cx="1460" cy="837" r="6"/>
     <path d="M1460 811v8M1460 855v8M1434 837h8M1478 837h8M1442 819l6 6M1472 849l6 6M1478 819l-6 6M1448 849l-6 6"/>
 
-    <!-- Page-fault shield icon -->
+    
     <path d="M255 882l24 9v20c0 17-12 28-24 35-12-7-24-18-24-35v-20z"/>
     <path d="M255 896v17M255 924v1"/>
   </g>

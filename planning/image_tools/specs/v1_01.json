@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "01",
+  "name": "l01-uid-gid",
+  "title": "The kernel compares numbers",
+  "spec": "Left box: a process, labelled 'runs as UID and GID'. Right box: a file, labelled 'owner, group and permission bits'. A central green box 'kernel compares the numbers' with arrows from both sides, leading to 'allow or deny'. Below, an orange chip: root has UID 0 and bypasses most permission checks. Green takeaway bar: the kernel enforces access on numbers, not names.",
+  "anchor": "### Users, owners, and `root`",
+  "alt": "A process with a UID and GID and a file with owner and permission bits are compared by the kernel.",
+  "cap": "The kernel decides access by comparing the numeric IDs of the process with the owner, group and permission bits on the file."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "01",
+  "name": "l01-asymmetry",
+  "title": "Kernel and user space move independently",
+  "spec": "Two stacked layers: top 'user space (glibc, programs)', bottom 'kernel'. Left panel green: 'old user-space binary on newer kernel' with a check mark, label 'works: never break user space'. Right panel two orange failures: 'program built against newer glibc on older distribution: fails to start' and 'kernel module (.ko) built for one kernel build on another: refuses to load'. Bottom bar: Standardise a single tested OS release across every node.",
+  "anchor": "### 6.2 The Debian and Ubuntu branch",
+  "alt": "Old programs run on new kernels, but newer glibc programs and kernel modules fail on mismatched systems.",
+  "cap": "Kernel and user space move independently, and the reverse direction fails in two ways."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "01",
+  "name": "l01-layer-failures",
+  "title": "Which layer does the failure live in",
+  "spec": "Table with three columns: Symptom, Layer, First check. Rows: 'nvidia-smi fails after kernel update' | kernel modules | uname -r ; 'GLIBC_2.xx not found' | user-space libraries | ldd ./binary ; 'kill -9 has no effect, state D' | kernel waiting on hardware | dmesg ; 'Out of memory: Killed process' | kernel OOM killer | memory.max ; 'ENOENT versus EACCES' | system call return code | strace. Commands in monospace. Orange highlight on the Layer column header.",
+  "anchor": "## 8. How it fails: six classic confusions",
+  "alt": "A table mapping six classic failure symptoms to the system layer that causes them.",
+  "cap": "Before touching anything, ask which layer of the system the failure actually lives in."
+ }
+]

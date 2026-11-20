@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>eBGP versus iBGP</title>
+  <desc>Comparison infographic illustrating key differences between eBGP and iBGP session types and behaviors.</desc>
+
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">eBGP versus iBGP</text>
+
+  
+  <rect x="60" y="115" width="720" height="735" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(100, 140)">
+    <circle cx="20" cy="25" r="16" stroke="#207448" stroke-width="4" fill="none"/>
+    <circle cx="65" cy="25" r="16" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="36" y1="25" x2="49" y2="25" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="200" y="173" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">eBGP</text>
+
+  
+  <g>
+    <rect x="85" y="215" width="670" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(112, 254)">
+      <line x1="28" y1="0" x2="28" y2="56" stroke="#207448" stroke-width="2" stroke-dasharray="4,4"/>
+      <circle cx="10" cy="28" r="12" stroke="#207448" stroke-width="4" fill="none"/>
+      <circle cx="46" cy="28" r="12" stroke="#207448" stroke-width="4" fill="none"/>
+      <line x1="22" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="195" y="270" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="195" dy="0">peers in different ASes,</tspan>
+      <tspan x="195" dy="34">normally directly connected</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="85" y="370" width="670" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(112, 409)">
+      <rect x="4" y="6" width="48" height="44" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+      <path d="M16 28 L38 28 M30 20 L38 28 L30 36" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="195" y="425" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="195" dy="0">next hop rewritten to the</tspan>
+      <tspan x="195" dy="34">sender's address</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="85" y="525" width="670" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(112, 564)">
+      <rect x="4" y="10" width="22" height="36" rx="4" stroke="#207448" stroke-width="4" fill="#e8f1ea"/>
+      <rect x="30" y="15" width="22" height="31" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+      <line x1="26" y1="28" x2="30" y2="28" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="195" y="580" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="195" dy="0">local AS prepended to</tspan>
+      <tspan x="195" dy="34">AS_PATH</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="85" y="680" width="670" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(112, 719)">
+      <circle cx="28" cy="28" r="24" stroke="#207448" stroke-width="4" fill="none"/>
+      <circle cx="28" cy="28" r="3" fill="#207448"/>
+      <line x1="28" y1="28" x2="40" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="195" y="756" font-family="sans-serif" font-size="24" fill="#303a36">TTL 1 by default</text>
+  </g>
+
+  
+  <rect x="820" y="115" width="720" height="735" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(860, 140)">
+    <rect x="4" y="6" width="64" height="40" rx="12" stroke="#207448" stroke-width="4" fill="none"/>
+    <circle cx="24" cy="26" r="8" stroke="#207448" stroke-width="3" fill="none"/>
+    <circle cx="48" cy="26" r="8" stroke="#207448" stroke-width="3" fill="none"/>
+  </g>
+  <text x="955" y="173" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">iBGP</text>
+
+  
+  <g>
+    <rect x="845" y="215" width="670" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(872, 277)">
+      <rect x="2" y="2" width="52" height="52" rx="10" stroke="#207448" stroke-width="4" stroke-dasharray="5,4" fill="none"/>
+      <circle cx="16" cy="28" r="8" stroke="#207448" stroke-width="3" fill="none"/>
+      <circle cx="40" cy="28" r="8" stroke="#207448" stroke-width="3" fill="none"/>
+      <line x1="24" y1="28" x2="32" y2="28" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="955" y="278" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="955" dy="0">peers in the same AS, usually</tspan>
+      <tspan x="955" dy="34">loopback to loopback and</tspan>
+      <tspan x="955" dy="34">multihop over the IGP</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="845" y="415" width="670" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(872, 462)">
+      <path d="M6 10 L50 10 C50 36 28 48 28 48 C28 48 6 36 6 10 Z" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none"/>
+      <path d="M18 26 L25 33 L38 18" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="955" y="498" font-family="sans-serif" font-size="24" fill="#303a36">AS_PATH not modified</text>
+  </g>
+
+  
+  <g>
+    <rect x="845" y="585" width="670" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(872, 672)">
+      <circle cx="10" cy="28" r="9" stroke="#207448" stroke-width="3" fill="none"/>
+      <circle cx="28" cy="14" r="7" stroke="#207448" stroke-width="2.5" stroke-dasharray="2,2" fill="none"/>
+      <circle cx="46" cy="28" r="9" stroke="#207448" stroke-width="3" fill="none"/>
+      <path d="M19 28 L28 20 L37 28" stroke="#207448" stroke-width="3" fill="none"/>
+    </g>
+    <text x="955" y="665" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="955" dy="0">next hop not changed by default,</tspan>
+      <tspan x="955" dy="36">so the IGP must reach the</tspan>
+      <tspan x="955" dy="36">original eBGP next hop</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="875" width="1480" height="95" rx="16" fill="#fef6ed" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(85, 894)">
+      <circle cx="28" cy="28" r="24" stroke="#db8129" stroke-width="4" fill="none"/>
+      <line x1="28" y1="15" x2="28" y2="31" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="39" r="3" fill="#db8129"/>
+    </g>
+    <text x="165" y="931" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Choose the session type first: the session comes up fine either way</text>
+  </g>
+</svg>

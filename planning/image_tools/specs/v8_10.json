@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "10",
+  "name": "b10-docker-escalation",
+  "title": "How docker group membership becomes root on the node",
+  "spec": "A left-to-right flow of four boxes with arrows. Box 1: A user in the docker UNIX group. Arrow labelled talks to the socket. Box 2: /var/run/docker.sock, a socket file, the docker CLI sends REST calls to dockerd. Arrow labelled dockerd runs as root on the host. Box 3: dockerd on the host, running as root. Arrow labelled starts a container with the host disk mounted. Box 4 (orange): a container with the host root filesystem mounted at /host, a shell inside it, unrestricted root on the compute node. Below box 4, a grey note line: a Slurm job cancelled with scancel can leave a container running as an orphan that holds GPU memory. Monospace for docker run -v /:/host -it ubuntu chroot /host bash, /var/run/docker.sock and dockerd.",
+  "anchor": "### 7.1 Deep dive: Why Docker is an anti-pattern for multi-tenant HPC and Slurm jobs",
+  "alt": "How the docker socket gives root on the node",
+  "cap": "Docker escalation: membership in the docker group reaches the root daemon, so any user can mount the host disk."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "10",
+  "name": "b10-sqsh-prestage",
+  "title": "Pre-import once, then every node reads the same file",
+  "spec": "Two rows for comparison. Top row labelled Pulling at job start: 64 nodes in a column each with an arrow going through one narrow box labelled NAT gateway or corporate proxy to the external registry nvcr.io or Docker Hub. Under the arrows a note: 64 times 20 GB is 1.28 TB through the border link. Bottom row labelled Pre-staged: one box enroot import docker://nvcr.io#nvidia/pytorch:24.01-py3 run once on a login or build node, arrow to a single file nvidia+pytorch+24.01-py3.sqsh on parallel storage, then 64 small arrows from the file to the nodes, each node unpacking into local NVMe. Orange highlight on the single .sqsh file with the note: the registry is contacted once. Monospace for the commands and the file name. Caption area note: srun --container-image=/scratch/containers/nvidia+pytorch+24.01-py3.sqsh.",
+  "anchor": "### 7.2 Architecting container image caching and registry tiers for 512-GPU jobs",
+  "alt": "Pulling an image per node versus pre-importing one file",
+  "cap": "Pre-staged image: import once to shared storage, so 64 nodes read one file instead of pulling from the registry."
+ }
+]

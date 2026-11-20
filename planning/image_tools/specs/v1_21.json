@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "21",
+  "name": "l21-cap-sets",
+  "title": "The five capability sets",
+  "spec": "Five stacked boxes with one-line roles: Permitted (upper bound of what the thread may hold in its effective set); Effective (what the kernel checks right now, highlighted orange); Inheritable (may be passed across execve); Bounding (limit on what can ever be gained through execve, dropping is irreversible for the process tree); Ambient (kept across execve of non-privileged programs). Right side monospace commands: grep Cap /proc/self/status (CapInh CapPrm CapEff CapBnd CapAmb) ; capsh --decode=... ; sudo setcap cap_net_bind_service=+ep /usr/local/bin/myserver.",
+  "anchor": "## 4. Capabilities: splitting root into pieces",
+  "alt": "The five capability sets of a thread and what each one does.",
+  "cap": "The effective set is what the kernel checks, and dropping from the bounding set cannot be undone."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "21",
+  "name": "l21-seccomp",
+  "title": "seccomp filters system calls",
+  "spec": "Flow: program calls a system call, then a seccomp filter checks it, then allowed goes to the kernel (green) and blocked is refused (orange, examples mount, kexec_load, init_module, reboot). Notes: filters are inherited by children and cannot be removed; stacked filters, the most restrictive result wins; unprivileged process must set no_new_privs first. Monospace check: grep -E 'Seccomp|NoNewPrivs' /proc/self/status with Seccomp: 0 none, 1 strict, 2 filter. Kubernetes: seccompProfile.type: RuntimeDefault.",
+  "anchor": "## 5. seccomp: filtering system calls",
+  "alt": "A seccomp filter decides call by call which system calls reach the kernel.",
+  "cap": "seccomp refuses system calls the service never needed, and filters cannot be removed once installed."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "21",
+  "name": "l21-ssh-hardening",
+  "title": "SSH hardening choices",
+  "spec": "Left column: key settings from the drop-in file /etc/ssh/sshd_config.d/10-hardening.conf as monospace chips: PermitRootLogin no ; PasswordAuthentication no ; PubkeyAuthentication yes ; AuthenticationMethods publickey ; AllowGroups ssh-users hpc-users ; MaxAuthTries 3 ; AllowAgentForwarding no ; AllowTcpForwarding no ; LogLevel VERBOSE. Right: Match Group hpc-users with AllowTcpForwarding yes (orange: enabled for that group only). Bottom flow: sudo sshd -t, reload, keep an existing session open while testing. Also bastion: ssh -J bastion node01.",
+  "anchor": "## 7. SSH hardening",
+  "alt": "Key sshd settings, a per-group Match exception and the safe way to test them.",
+  "cap": "Disable passwords and root login, allow specific groups, validate with sshd -t and keep a session open."
+ }
+]

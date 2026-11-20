@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "30",
+  "name": "k30-change-three-ways",
+  "title": "Three ways to change a node without overwriting someone else",
+  "spec": "Three side-by-side panels, each a short flow, titled from left to right. Panel 1 titled Get and Update: a box labelled Get node reads the object, a box labelled edit label, then a box labelled Update. A red-bordered arrow from another actor labelled another controller writes first leads to the Update step, and a red box labelled 409 Conflict. Under it: fragile, a stale copy fails. Panel 2 titled RetryOnConflict: the same three boxes inside a loop arrow labelled retry, with a note: read again on each attempt, then Update succeeds. Panel 3 titled Patch or apply: a single box labelled send only the changed field, with a merge patch body shown as a small box labelled labels only, and one arrow to a box labelled node updated, with the note: one round trip, no read first. Numbered green circles r=24 in Panel 3: 1 send only the changed field; 2 the server applies it. Orange note on Panel 1's conflict box: a full Update from a stale copy can silently undo another writer's change. Green takeaway bar: prefer patch or apply over get-modify-update.",
+  "anchor": "### CRUD, patch, apply",
+  "alt": "A full Update from a stale copy can conflict, retrying re-reads and succeeds, and a merge patch changes only the field it names.",
+  "cap": "A plain Update from a stale copy can fail with a conflict, while a patch sends only the field it changes."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "30",
+  "name": "k30-bounded-probes",
+  "title": "Fan out probes with a 16-slot gate and one results channel",
+  "spec": "A left-to-right fan-out. On the far left, a box labelled nodes (a list of node names). Arrows fan out to a column of goroutine boxes, drawn as stacked small cards labelled probe goroutine, several shown with a dotted tail to indicate more. Between the nodes and the probes, a vertical gate box labelled sem, 16 slots, drawn as a turnstile with sixteen small squares, each a slot; a probe must take a slot before it runs and gives it back when done. From the probes an arrow into a channel box labelled results channel, with a note: the probe sends unless ctx is done. From the results channel an arrow to a box labelled out map, filled by the loop that reads until the channel closes. Beside the probes a box labelled WaitGroup, with a note: a separate goroutine closes results after every probe finishes. Numbered green circles r=24: 1 take a slot in sem; 2 run the probe; 3 send the result or stop on ctx.Done; 4 close results when all are done. A 30-second timeout box at the top labelled context WithTimeout 30s. Orange note on the sem gate: at most 16 probes run at once. Green takeaway bar: every goroutine needs a clear way to exit, or it leaks.",
+  "anchor": "### Goroutines, channels, sync",
+  "alt": "Probe goroutines take one of 16 semaphore slots, send results on a channel, and the channel closes after the WaitGroup finishes.",
+  "cap": "The prober runs node checks in goroutines limited to 16 at a time, sends results on a channel, and closes it when all probes finish."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "30",
+  "name": "k30-error-wrap-chain",
+  "title": "Wrapping an API error with %w and unwrapping it with errors.Is",
+  "spec": "A top-to-bottom chain of three layered boxes stacked like nested envelopes on the left, and the caller on the right. Innermost box labelled API error: NotFound, the raw error from the API server, with a small icon of a magnifier. Middle box labelled wrapped with %w, cordon <node name>: ErrNoSuchNode, with a link icon. Outer box labelled returned to caller, the error value that the function returns. Between each layer a short arrow labelled wraps. On the right, the caller box with two check cards with arrows pointing back into the chain: a card labelled errors.Is ErrNoSuchNode, which follows the chain down to the named error; a card labelled errors.As, with the note: pulls a typed error out of the chain. Numbered green circles r=24 on the wraps: 1 the API call fails; 2 the function wraps it with %w; 3 the caller unwraps with errors.Is or errors.As. Orange note on a plain %v: it prints the message but drops the link to the original error. Green takeaway bar: wrap each error with %w so the caller can still reach the cause.",
+  "anchor": "### Errors",
+  "alt": "A Go error wrapped with %w keeps the original API error reachable, so errors.Is and errors.As can find it from the caller.",
+  "cap": "Wrapping an error with %w keeps the original cause reachable, so the caller can test it with errors.Is or errors.As."
+ }
+]

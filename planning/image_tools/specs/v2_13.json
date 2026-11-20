@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "13",
+  "name": "n13-dijkstra",
+  "title": "Dijkstra on a small diamond",
+  "spec": "A diamond graph: root A at top, B and C in the middle, D at the bottom; links A-B, A-C, B-D, C-D each labelled cost 10. Step labels beside it: 1 'root A in the tree at cost 0, all others infinity'; 2 'closest nodes B and C join the tree at cost 10'; 3 'relax neighbours: D is reached through both B and C'; 4 'install the lowest-cost next hops, including every equal-cost one for ECMP' (orange on the two equal paths to D). Green bar: 'Every router computes from an identical database, so the results are loop-free'.",
+  "anchor": "### Link state (Dijkstra)",
+  "alt": "Dijkstra on a diamond topology",
+  "cap": "Each router runs Dijkstra on the same database and keeps every equal-cost next hop."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "13",
+  "name": "n13-families",
+  "title": "Three routing families compared",
+  "spec": "Table with three columns Distance vector, Link state, Path vector and rows: Knows (distances and next hops / whole topology / paths, AS lists); State per router (low / high LSDB / per-prefix per-path); Loop avoidance (split horizon or DUAL / consistent database and SPF / own ID in path); Convergence (slower RIP, fast DUAL / fast / slow without tuning); Policy (limited / limited / rich); Examples (RIP, EIGRP / OSPF, IS-IS / BGP). Orange highlight on the Convergence row for path vector. Header chips in green.",
+  "anchor": "### Comparing families",
+  "alt": "Distance vector, link state and path vector",
+  "cap": "Each routing family trades state, convergence speed and policy richness differently."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "13",
+  "name": "n13-redistloop",
+  "title": "Redistribution loop and the tag fix",
+  "spec": "Two panels. Left 'Loop': routers A and B between protocol X and protocol Y clouds; A injects prefix N from X into Y; B hears N from Y and injects it back into X; arrow loops with orange label 'N now looks like a new route'. Right 'Tag fix': OSPF into BGP with 'set tag 1001' on the way in, and 'route-map BGP-TO-OSPF deny 5, match tag 1001' blocking the way back (green). Footer chips: 'keep redistribution one way', 'send defaults down and aggregates up', 'route tags'. Monospace for route-map lines.",
+  "anchor": "### Loops",
+  "alt": "Redistribution loop",
+  "cap": "A route injected from one protocol into another can come back, and a route tag marks it so it is blocked on the way back."
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "08",
+  "name": "h08-switch-rank",
+  "title": "Keeping neighboring MPI ranks on one leaf switch",
+  "spec": "Two panels side by side, each titled with its case. Above both panels, one wide box labelled top spine, the switch that joins the two leaf switches. Under it, two leaf switch boxes in each panel: s0 on the left and s1 on the right of the left panel, drawn with the same layout in the right panel. Left panel title: Default alphabetical ranks. Leaf s0 holds node boxes n0, n2, n4 and n6. Leaf s1 holds node boxes n1, n3, n5 and n7. A job receives n0, n1, n2 and n3, shown as four small rank cards in order: Rank 0 on n0 (s0), Rank 1 on n1 (s1), Rank 2 on n2 (s0), Rank 3 on n3 (s1). Under the cards, three labelled pairs written as text, not arrows: 0 <-> 1, 1 <-> 2, 2 <-> 3, each marked with a short label crosses the top spine. Right panel title: With TopologyParam=SwitchAsNodeRank. The same two leaf switches and nodes. The allocated nodes are re-listed in the order n0, n2, n1, n3, shown as four rank cards: Rank 0 on n0 (s0), Rank 1 on n2 (s0), Rank 2 on n1 (s1), Rank 3 on n3 (s1). Under the cards, a note reads consecutive ranks stay on the same leaf switch. Orange highlight on the crossing pairs in the left panel. Number circles are not used. Green takeaway bar at the bottom reads Consecutive ranks stay on the same leaf switch, so most of the neighbor traffic stays one hop away.",
+  "anchor": "## 5. Topology awareness (`topology.conf` / `topology.yaml` and `SwitchAsNodeRank`)",
+  "alt": "Default node ordering alternates leaf switches so every neighbor pair crosses the spine, while SwitchAsNodeRank groups neighbors on one leaf.",
+  "cap": "With SwitchAsNodeRank, Slurm orders the allocated nodes by leaf switch so neighboring MPI ranks stay on one switch."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "08",
+  "name": "h08-node-states",
+  "title": "How a node moves between states",
+  "spec": "A left-to-right flow with state boxes drawn as rounded rectangles, each with a small icon. In the top row, three green-outlined state boxes in order from left to right: IDLE (icon: empty box), MIXED (icon: half-filled box, caption only some CPUs in use), ALLOCATED (icon: full box, caption all CPUs in use). Arrows run left to right between them, labelled a job lands on it, then only some of its CPUs are in use, then all of them are. Above the top row, a caption box reads A healthy node sits in IDLE until a job lands on it. Below the top row, a second row with a warning-triangle icon: a dark-outlined box labelled DOWN with a small asterisk mark, reached by an arrow from the top row labelled slurmd stops answering. A dashed arrow from DOWN back up to IDLE labelled resume or ReturnToService. In the bottom-right area, two boxes in sequence: DRAINING, then DRAINED. An arrow from the top row into DRAINING labelled administrator drains the node for repair. An arrow from DRAINING to DRAINED labelled once the node is empty. A small note under DRAINING reads last jobs finish, and the reason appears with sinfo -R. Orange highlight on the DOWN box. Green takeaway bar at the bottom reads Read the reason before you change anything else.",
+  "anchor": "### Node states, state suffix symbols (`*`, `$`, `~`, `#`, `!`, `%`, `@`, `^`), and `ReturnToService`",
+  "alt": "A node goes from IDLE to MIXED to ALLOCATED as jobs land, falls to DOWN when slurmd stops answering, and drains through DRAINING to DRAINED.",
+  "cap": "A node moves from IDLE to MIXED to ALLOCATED as jobs land, and it leaves service through DOWN or a drain."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "08",
+  "name": "h08-cgroup-fence",
+  "title": "The controller promises, the cgroup enforces",
+  "spec": "Two lanes side by side. The left lane is titled slurmctld, the controller, and sits above a box labelled select/cons_tres. The right lane is titled slurmstepd on the node. Lane flow top to bottom with numbered steps in time order, each step a green number circle. Step 1 in the left lane: box labelled slurmctld picks the nodes and the cores, and records the choice. An arrow crosses from the left lane to the right lane. Step 2 in the right lane: box labelled slurmstepd creates the job cgroup, then writes the RAM and device limits into it. Step 3 in the right lane, below step 2: box labelled only then starts the user tasks. Inside a dashed fence drawn around the user tasks box, the label kernel checks every access against the limits. Beside the fence, a small note: ConstrainDevices=yes hides the GPUs the job did not get. A thin side note with a warning icon reads without ConstrainDevices=yes, CUDA_VISIBLE_DEVICES is only a hint. The fence box is orange as the single most important item. A thin arrow from the controller's record in step 1 to the cgroup limits in step 2 is labelled the controller's choice is a promise. Green takeaway bar at the bottom reads The controller's choice is a promise, and the cgroup is what keeps the promise.",
+  "anchor": "## 4. Resource selection (`select/cons_tres`) and cgroup containment",
+  "alt": "The controller chooses cores and GPUs, then slurmstepd creates the job cgroup with RAM and device limits before the user tasks start.",
+  "cap": "The controller decides what a job gets, and slurmstepd fences the job in with kernel limits before its tasks start."
+ }
+]

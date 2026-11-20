@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Two folders, one package</title>
+  <desc>Visual explanation of Python namespace packages: two separate folders without init files are combined via PYTHONPATH into one unified namespace package containing both modules.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="95" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Two folders, one package</text>
+
+  
+  <rect x="40" y="160" width="440" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  
+  <path d="M 246 182 H 268 L 280 194 V 230 H 246 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 268 182 V 194 H 280" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="254" y1="208" x2="272" y2="208" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="254" y1="218" x2="268" y2="218" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="260" y="282" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">ns/part1/sub/mod1.py</text>
+
+  
+  <rect x="40" y="370" width="440" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  
+  <path d="M 246 392 H 268 L 280 404 V 440 H 246 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 268 392 V 404 H 280" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="254" y1="418" x2="272" y2="418" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="254" y1="428" x2="268" y2="428" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="260" y="492" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">ns/part2/sub/mod2.py</text>
+
+  
+  <rect x="40" y="580" width="440" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6"/>
+  
+  <circle cx="260" cy="618" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="247" y1="605" x2="273" y2="631" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="260" y="670" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">no __init__.py</text>
+
+  
+  <path d="M 480 245 H 505 V 455 H 480" fill="none" stroke="#207448" stroke-width="4"/>
+
+  
+  <line x1="505" y1="350" x2="1054" y2="350" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="550" y="274" width="460" height="64" rx="10" fill="#db8129"/>
+  
+  <text x="780" y="315" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">PYTHONPATH=ns/part1:ns/part2</text>
+
+  
+  <rect x="1060" y="160" width="500" height="540" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  
+  <path d="M 1310 192 L 1334 204 L 1310 216 L 1286 204 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 1286 204 V 228 L 1310 240 V 216" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 1334 204 V 228 L 1310 240" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  
+  <text x="1310" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">sub (namespace package)</text>
+
+  
+  <rect x="1110" y="360" width="400" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <rect x="1145" y="398" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="1156" y1="390" x2="1156" y2="398" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1178" y1="390" x2="1178" y2="398" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1156" y1="442" x2="1156" y2="450" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1178" y1="442" x2="1178" y2="450" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="1230" y="430" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">mod1</text>
+
+  
+  <rect x="1110" y="520" width="400" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <rect x="1145" y="558" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="1156" y1="550" x2="1156" y2="558" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1178" y1="550" x2="1178" y2="558" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1156" y1="602" x2="1156" y2="610" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1178" y1="602" x2="1178" y2="610" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="1230" y="590" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">mod2</text>
+</svg>

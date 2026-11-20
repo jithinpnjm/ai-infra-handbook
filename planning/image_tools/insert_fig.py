@@ -11,8 +11,13 @@ i=s.index(anchor)
 j=s.find('\n\n',i)
 if j==-1: j=len(s)
 # if the paragraph is followed by a code fence belonging to it, stay simple: insert right after the paragraph
-shutil.copy(os.path.expanduser(f'~/Downloads/handbook-images/final/{name}.jpg'),f'{root}/img/{name}.jpg')
-block=f"\n\n![{alt}](./img/{name}.jpg)\n\n*Figure {label}. {cap}*"
+src=os.path.expanduser(f'~/Downloads/handbook-images/final/{name}.jpg')
+ext='jpg'
+if os.path.exists(src): shutil.copy(src,f'{root}/img/{name}.jpg')
+else:
+    assert os.path.exists(f'{root}/img/{name}.svg'), 'no image '+name
+    ext='svg'
+block=f"\n\n![{alt}](./img/{name}.{ext})\n\n*Figure {label}. {cap}*"
 s=s[:j]+block+s[j:]
 open(p,'w').write(s)
 print('inserted',name,'into',os.path.basename(p))

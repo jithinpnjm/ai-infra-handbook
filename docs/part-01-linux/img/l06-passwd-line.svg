@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>One line of /etc/passwd</title>
+  <desc>Visual breakdown of a single line in /etc/passwd into its seven colon-separated fields with callouts and security notes.</desc>
+
+  <defs>
+    <marker id="arrow-down" viewBox="0 0 12 12" refX="6" refY="11" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 6 10 L 10 2 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-up" viewBox="0 0 12 12" refX="6" refY="1" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 10 L 6 2 L 10 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">One line of /etc/passwd</text>
+
+  
+
+  
+  <g id="callout-1">
+    <rect x="60" y="130" width="280" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="106" cy="176" r="24" fill="#207448" />
+    <text x="106" y="185" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(170, 148)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="18" r="14" />
+      <path d="M 6 50 C 6 36 16 34 28 34 C 40 34 50 36 50 50" />
+    </g>
+    
+    <text x="200" y="270" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">login name</text>
+  </g>
+
+  
+  <g id="callout-3">
+    <rect x="380" y="130" width="260" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="426" cy="176" r="24" fill="#207448" />
+    <text x="426" y="185" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(490, 148)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="4" width="48" height="46" rx="6" />
+      <circle cx="28" cy="22" r="8" />
+      <path d="M 14 42 C 14 36 20 34 28 34 C 36 34 42 36 42 42" />
+    </g>
+    
+    <text x="510" y="270" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">UID 1042</text>
+  </g>
+
+  
+  <g id="callout-5">
+    <rect x="680" y="130" width="400" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="726" cy="176" r="24" fill="#207448" />
+    <text x="726" y="185" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(860, 148)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="4" width="48" height="48" rx="6" />
+      <line x1="14" y1="18" x2="38" y2="18" />
+      <line x1="14" y1="28" x2="38" y2="28" />
+      <line x1="14" y1="38" x2="28" y2="38" />
+    </g>
+    
+    <text x="880" y="270" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">GECOS comment</text>
+  </g>
+
+  
+  <g id="callout-7">
+    <rect x="1120" y="130" width="420" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="1166" cy="176" r="24" fill="#207448" />
+    <text x="1166" y="185" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+    
+    <g transform="translate(1310, 148)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="6" width="48" height="42" rx="6" />
+      <path d="M 14 20 L 22 26 L 14 32" />
+      <line x1="26" y1="34" x2="38" y2="34" />
+    </g>
+    
+    <text x="1330" y="254" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">login shell /bin/bash</text>
+  </g>
+
+  
+  <rect x="40" y="420" width="1520" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+  
+  <rect x="210" y="435" width="112" height="80" rx="8" fill="#e8f1ea" />
+  <rect x="334" y="435" width="40" height="80" rx="8" fill="#e8f1ea" />
+  <rect x="386" y="435" width="94" height="80" rx="8" fill="#e8f1ea" />
+  <rect x="492" y="435" width="94" height="80" rx="8" fill="#e8f1ea" />
+  <rect x="598" y="435" width="436" height="80" rx="8" fill="#e8f1ea" />
+  <rect x="1046" y="435" width="224" height="80" rx="8" fill="#e8f1ea" />
+  <rect x="1282" y="435" width="186" height="80" rx="8" fill="#e8f1ea" />
+
+  
+  <text x="800" y="487" text-anchor="middle" font-family="monospace" font-size="31" font-weight="bold" fill="#303a36">alice:x:1042:1042:Alice Example,Room 12:/home/alice:/bin/bash</text>
+
+  
+  
+  <line x1="266" y1="340" x2="266" y2="418" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+  <line x1="433" y1="340" x2="433" y2="418" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+  <line x1="816" y1="340" x2="816" y2="418" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+  <line x1="1375" y1="340" x2="1375" y2="418" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+
+  
+  <line x1="354" y1="610" x2="354" y2="532" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+  <line x1="539" y1="610" x2="539" y2="532" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+  <line x1="1158" y1="610" x2="1158" y2="532" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)" />
+
+  
+
+  
+  <g id="callout-2">
+    <rect x="40" y="610" width="400" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="86" cy="656" r="24" fill="#207448" />
+    <text x="86" y="665" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(220, 626)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 14 24 L 14 14 C 14 7 20 2 28 2 C 36 2 42 7 42 14 L 42 24" />
+      <rect x="6" y="24" width="44" height="30" rx="6" />
+      <circle cx="28" cy="38" r="4" fill="#207448" />
+    </g>
+    
+    <text x="240" y="738" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="240" dy="0">x password marker</tspan>
+      <tspan x="240" dy="34">(hash is in /etc/shadow)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="callout-4">
+    <rect x="480" y="610" width="400" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="526" cy="656" r="24" fill="#207448" />
+    <text x="526" y="665" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(660, 626)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="22" cy="18" r="11" />
+      <path d="M 6 48 C 6 36 14 34 22 34 C 30 34 38 36 38 48" />
+      <path d="M 33 10 C 37 10 42 13 42 18 C 42 22 39 25 35 27" />
+      <path d="M 40 34 C 46 35 50 38 50 48" />
+    </g>
+    
+    <text x="680" y="754" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">GID 1042 of primary group</text>
+  </g>
+
+  
+  <g id="callout-6">
+    <rect x="920" y="610" width="640" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="966" cy="656" r="24" fill="#207448" />
+    <text x="966" y="665" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g transform="translate(1220, 626)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 6 26 L 28 8 L 50 26" />
+      <path d="M 12 22 L 12 50 L 44 50 L 44 22" />
+      <rect x="22" y="32" width="12" height="18" />
+    </g>
+    
+    <text x="1240" y="754" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">home directory /home/alice</text>
+  </g>
+
+  
+  <g id="orange-note">
+    <rect x="100" y="890" width="1400" height="130" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <g transform="translate(140, 927)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 28 6 L 52 48 L 4 48 Z" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <circle cx="28" cy="41" r="2.5" fill="#db8129" />
+    </g>
+    
+    <text x="730" y="966" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">an empty password field means no password is required, never expected</text>
+  </g>
+</svg>

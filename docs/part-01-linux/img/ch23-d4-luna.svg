@@ -12,7 +12,7 @@
 
   <text x="60" y="78" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Reading scalability curves</text>
 
-  <!-- Linear -->
+  
   <rect x="60" y="350" width="330" height="200" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M197 378v54h62"/>
@@ -21,7 +21,7 @@
   <text x="225" y="474" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Linear</text>
   <text x="225" y="518" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">(ideal)</text>
 
-  <!-- Knee point -->
+  
   <rect x="470" y="330" width="430" height="240" rx="18" fill="#e8f1ea" stroke="#db8129" stroke-width="5"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M657 355v54h62"/>
@@ -31,7 +31,7 @@
   <text x="685" y="493" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">(a shared resource</text>
   <text x="685" y="525" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">starts to matter)</text>
 
-  <!-- Contention -->
+  
   <rect x="1100" y="120" width="440" height="205" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="1156" cy="170" r="19"/>
@@ -41,7 +41,7 @@
   <text x="1190" y="181" fill="#303a36" font-family="sans-serif" font-size="32" font-weight="700">Contention</text>
   <text x="1125" y="251" fill="#303a36" font-family="sans-serif" font-size="24">(serial section: Amdahl)</text>
 
-  <!-- Coherence -->
+  
   <rect x="1100" y="347" width="440" height="205" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4">
     <circle cx="1137" cy="395" r="23"/>
@@ -52,7 +52,7 @@
   <text x="1125" y="470" fill="#303a36" font-family="sans-serif" font-size="24">(cross-talk grows: USL;</text>
   <text x="1125" y="502" fill="#303a36" font-family="sans-serif" font-size="24">throughput can fall)</text>
 
-  <!-- Ceiling -->
+  
   <rect x="1100" y="574" width="440" height="205" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M1128 622h56"/>
@@ -63,7 +63,7 @@
   <text x="1125" y="697" fill="#303a36" font-family="sans-serif" font-size="24">(hard limit: a link, a</text>
   <text x="1125" y="729" fill="#303a36" font-family="sans-serif" font-size="24">limit, a single thread)</text>
 
-  <!-- Connections -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M390 450H470" marker-end="url(#arrow)"/>
     <path d="M900 390H1000V222H1100" marker-end="url(#arrow)"/>

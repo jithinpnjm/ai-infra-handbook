@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Three names for one library</title>
+  <desc>Visual explanation of shared library naming conventions in Linux: linker name, soname, and real name connected via symlinks.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three names for one library</text>
+
+  
+  <g transform="translate(100, 130)">
+    
+    <rect width="1400" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(45, 67)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="12" width="34" height="24" rx="12" transform="rotate(-35 17 24)" />
+      <rect x="22" y="12" width="34" height="24" rx="12" transform="rotate(-35 39 24)" />
+    </g>
+
+    
+    <text x="130" y="70" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="bold" fill="#207448">linker name</text>
+    <text x="130" y="125" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="36" font-weight="bold" fill="#303a36">libfoo.so</text>
+
+    
+    <line x1="440" y1="25" x2="440" y2="165" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3" stroke-dasharray="4 4" />
+
+    
+    <text x="480" y="80" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">
+      <tspan>used at BUILD time (</tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold">-lfoo</tspan><tspan>), usually a symlink,</tspan>
+    </text>
+    <text x="480" y="128" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">shipped in the -dev package.</text>
+  </g>
+
+  
+  <g>
+    <line x1="280" y1="320" x2="280" y2="385" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+    <rect x="310" y="333" width="130" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="375" y="362" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">symlinks</text>
+  </g>
+
+  
+  <g transform="translate(100, 395)">
+    
+    <rect width="1400" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(45, 67)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 6 16 V 32 C 6 46 28 54 28 54 C 28 54 50 46 50 32 V 16 Z" />
+      <path d="M 18 30 L 25 37 L 38 23" />
+    </g>
+
+    
+    <text x="130" y="70" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="bold" fill="#207448">soname</text>
+    <text x="130" y="125" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="36" font-weight="bold" fill="#303a36">libfoo.so.1</text>
+
+    
+    <line x1="440" y1="25" x2="440" y2="165" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3" stroke-dasharray="4 4" />
+
+    
+    <text x="480" y="78" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">
+      <tspan>recorded in programs that link against it (</tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold">DT_NEEDED</tspan><tspan>),</tspan>
+    </text>
+
+    
+    <rect x="480" y="100" width="370" height="48" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="2.5" />
+    <text x="496" y="133" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#db8129">the compatibility contract</text>
+  </g>
+
+  
+  <g>
+    <line x1="280" y1="585" x2="280" y2="650" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+    <rect x="310" y="598" width="130" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="375" y="627" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">symlinks</text>
+  </g>
+
+  
+  <g transform="translate(100, 660)">
+    
+    <rect width="1400" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(45, 60)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 8 H 36 L 48 20 V 52 H 10 Z" />
+      <path d="M 36 8 V 20 H 48" />
+      <line x1="18" y1="30" x2="32" y2="30" />
+      <line x1="18" y1="40" x2="40" y2="40" />
+    </g>
+
+    
+    <text x="130" y="66" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="bold" fill="#207448">real name</text>
+    <text x="130" y="120" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="36" font-weight="bold" fill="#303a36">libfoo.so.1.2.3</text>
+
+    
+    <line x1="440" y1="20" x2="440" y2="155" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3" stroke-dasharray="4 4" />
+
+    
+    <text x="480" y="98" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">the actual file.</text>
+  </g>
+
+  
+  <g transform="translate(100, 875)">
+    <rect width="1400" height="75" rx="12" fill="#207448" />
+    <text x="700" y="47" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="600" fill="#ffffff">
+      <tspan>Note: the number in the soname is the ABI version, so a bug-fix release </tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold">1.2.4</tspan><tspan> can replace </tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold">1.2.3</tspan><tspan> without relinking.</tspan>
+    </text>
+  </g>
+</svg>

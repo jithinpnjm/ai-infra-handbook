@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "17",
+  "name": "n17-encapoverhead",
+  "title": "Encapsulation overhead and ECMP entropy",
+  "spec": "Horizontal bar chart of overhead in bytes (IPv4 underlay), one bar per encapsulation: GRE 24 B; IPIP 20 B; VXLAN 50 B (outer Ethernet 14 + IP 20 + UDP 8 + VXLAN 8); GENEVE 50+ B; MPLS 4 B per label; WireGuard 60 B; IPsec ESP about 50 to 73 B. Each bar tagged 'UDP-based: ECMP entropy from outer source port' (VXLAN, GENEVE, WireGuard, green) or 'no ports: all traffic between two endpoints hashes to one path' (GRE, IPIP, ESP, orange). Footer: 'VXLAN is L2 over UDP/4789, GENEVE UDP/6081'.",
+  "anchor": "## 2. Encapsulation options",
+  "alt": "Encapsulation overhead",
+  "cap": "Each tunnel type adds a different number of header bytes, and only UDP-based ones give ECMP something to hash."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "17",
+  "name": "n17-evpnlayers",
+  "title": "EVPN: underlay and overlay",
+  "spec": "Two stacked layers. Bottom 'Underlay': eBGP, OSPF or IS-IS ECMP fabric giving IP reachability between VTEP loopbacks; spines and leaves drawn. Top 'Overlay': EVPN as an extra BGP address family on the leaf-spine sessions; spines act as route servers, not tunnel endpoints; leaves are VTEPs with VXLAN tunnels between them. A callout: 'BGP tells every VTEP where each MAC and IP lives, so no flooding to learn'. Small chips: EVI = MAC-VRF for an L2 segment; IP-VRF for L3 routing; RD makes routes unique across VRFs.",
+  "anchor": "## 4. EVPN: a control plane for Ethernet and IP overlays",
+  "alt": "EVPN underlay and overlay",
+  "cap": "The underlay gives VTEPs IP reachability, and EVPN over BGP tells each VTEP where hosts live."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "17",
+  "name": "n17-evpnroutes",
+  "title": "The five EVPN route types",
+  "spec": "Five numbered rows with type, name and purpose: 1 Ethernet Auto-Discovery: multihoming, fast convergence and aliasing; 2 MAC/IP Advertisement: host MAC (and optionally IP) with VNI and VTEP next hop, MAC mobility (orange, heart of host reachability); 3 Inclusive Multicast Ethernet Tag: builds the BUM replication list, 'I am in VNI x'; 4 Ethernet Segment: designated-forwarder election among multihomed leaves; 5 IP Prefix: prefixes into IP-VRFs. Bracket on types 1 and 4: 'multihoming'.",
+  "anchor": "### Route types",
+  "alt": "EVPN route types",
+  "cap": "Type 2 carries host reachability, while types 1 and 4 handle multihoming, 3 builds the BUM list and 5 carries prefixes."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "17",
+  "name": "n17-evpnpitfalls",
+  "title": "Common EVPN and VXLAN pitfalls",
+  "spec": "Checklist card with ten items, each with a small warning icon: underlay MTU too small; VTEP loopbacks not advertised; route targets mismatched (routes arrive, never imported); duplicate anycast gateway MAC on two leaves; a spine rewrites next hops; asymmetric IRB forces every leaf to carry every VNI; ARP suppression disabled (BUM storms); ECMP polarization when the hash ignores the outer UDP source port; missing resilient hashing or MLAG mixed with EVPN multihoming; default import of any lets tenant routes leak. Orange highlight on the first item. Green bar: 'Before you turn on EVPN, check route targets match and the underlay MTU is large enough'.",
+  "anchor": "### Common EVPN/VXLAN pitfalls",
+  "alt": "EVPN pitfalls checklist",
+  "cap": "Most EVPN faults come from a short list of MTU, advertisement, route target and hashing mistakes."
+ }
+]

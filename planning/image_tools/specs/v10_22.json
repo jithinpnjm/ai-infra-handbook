@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "22",
+  "name": "g22-straggler-timing",
+  "title": "One slow GPU makes every fast GPU wait at the collective",
+  "spec": "A column chart with four columns left to right labelled GPU 0, GPU 1, GPU 2 and GPU 3, showing the pre-collective iteration time in milliseconds: 125.3, 126.1, 1250.5 and 124.8. Columns 0, 1 and 3 are green and similar in height. Column 2 is tall, orange and labelled straggler. A dashed horizontal line at 125 ms labelled healthy ranks finish here. Above the three healthy columns a short bracket labelled waiting at the collective, with a dotted fill showing idle time up to the level of the straggler. Caption under the chart: measure before the all-reduce, because after it every rank looks equally slow. Monospace for 125.3, 126.1, 1250.5, 124.8 and 10.02x.",
+  "anchor": "### 3.2 Hunting the single straggler behind an NCCL timeout",
+  "alt": "Per-GPU pre-collective times with one straggler",
+  "cap": "Straggler timing: one GPU that arrives 10 times later makes the other three wait, so time each rank before the collective."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "22",
+  "name": "g22-seven-stage",
+  "title": "Where a 750 ms training iteration actually goes",
+  "spec": "A single horizontal stacked bar representing the 750 ms iteration drawn at full width, divided into seven segments from left to right in order of size: data_load_cpu 450 ms in orange, allreduce_network 150 ms in grey-blue, backward_gpu 60 ms in green, forward_gpu 30 ms in green, data_transfer_pcie 10 ms, optimizer_gpu 10 ms and loss_gpu 8 ms in green-grey. Each segment labelled with its name, its milliseconds in monospace and its percent: 60.0, 20.0, 8.0, 4.0, 1.3, 1.3 and 1.1. A bracket across the four green segments labelled all GPU math, 14.4 percent. A thin unlabelled sliver at the far right labelled unaccounted, 32 ms. Orange highlight on the data_load_cpu segment with the note: optimizing kernels here saves under 8 percent of the step. Monospace for 750 ms, 450 ms, 150 ms and 718 ms.",
+  "anchor": "### 4.1 Multi-failure evidence priority and the 7-stage synchronous breakdown",
+  "alt": "Seven stage shares of a 750 ms training iteration",
+  "cap": "Stage budget: CPU data loading takes 60 percent of the step, so kernel tuning would save little on this workload."
+ }
+]

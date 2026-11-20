@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>What @dataclass writes for you</title>
+  <desc>Visual comparison showing a Python class with @dataclass and two fields automatically generating __init__, __repr__, and __eq__ methods.</desc>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="100" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">What @dataclass writes for you</text>
+
+  
+  <rect x="120" y="170" width="560" height="520" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  
+  <g transform="translate(400, 235)">
+    <rect x="-28" y="-28" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="-28" y1="-10" x2="28" y2="-10" stroke="#207448" stroke-width="4" />
+    <circle cx="-16" cy="-19" r="2.5" fill="#207448" />
+    <circle cx="-6" cy="-19" r="2.5" fill="#207448" />
+    <path d="M-12 5 l-6 6 l6 6 M12 5 l6 6 l-6 6" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <rect x="160" y="305" width="480" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="400" y="364" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">@dataclass</text>
+
+  <rect x="160" y="430" width="480" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="400" y="489" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">host: str</text>
+
+  <rect x="160" y="555" width="480" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="400" y="614" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">port: int</text>
+
+  
+  <line x1="680" y1="430" x2="902" y2="430" stroke="#db8129" stroke-width="6" stroke-linecap="round" />
+  <polygon points="900,419 920,430 900,441" fill="#db8129" />
+
+  
+  <rect x="920" y="170" width="560" height="520" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+  
+  <g transform="translate(1200, 235)">
+    <circle cx="0" cy="0" r="14" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="0" cy="0" r="24" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8 10.85" />
+    <path d="M0 -26 v4 M0 22 v4 M-26 0 h4 M22 0 h4 M-18 -18 l3 3 M15 15 l3 3 M-18 18 l3 -3 M15 -15 l3 -3" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  
+  <rect x="960" y="305" width="480" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1200" y="364" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">__init__(host, port)</text>
+
+  <rect x="960" y="430" width="480" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1200" y="489" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">__repr__</text>
+
+  <rect x="960" y="555" width="480" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1200" y="614" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">__eq__</text>
+
+  
+  <rect x="120" y="740" width="1360" height="90" rx="16" fill="#207448" />
+  <text x="800" y="796" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">less boilerplate, the same behaviour</text>
+</svg>

@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "14",
+  "name": "b14-install-order",
+  "title": "The order of the air-gapped install on the active head node",
+  "spec": "A top-to-bottom flow of nine numbered boxes with arrows between them, in a single column, each box one step with a short monospace command or action. Step 1: Generate the configuration, cm-kubernetes-setup --airgap-registry master.cm.cluster:5000 --airgap-registry-as-helm, choose save, do not deploy. Step 2: Extract the bundle, on Ubuntu extract under /tmp, not /root. Step 3: cm-kubernetes-setup --airgap-install-system-packages, active head only. Step 4: cm-container-registry-setup --skip-packages, then trust the registry CA with update-ca-certificates. Step 5: Docker, cm-docker-setup --skip-packages, only for Run:ai. Step 6: Push content, --airgap-push-container-images, then --airgap-push-helm-charts. Step 7: extract the CRDs with extract_crds.sh. Step 8: Deploy, cm-kubernetes-setup -c /root/cm-kubernetes-setup.conf. Step 9: Run:ai is deployed afterwards by cm-runai-setup. Orange highlight on step 3 with the note: run on the active head only, never on the passive head, never with --force. Monospace for all commands.",
+  "anchor": "## 5. Installing on the air-gapped head node",
+  "alt": "Ordered steps of the air-gapped install",
+  "cap": "Air-gapped install order: save the configuration, install packages, trust the registry, push content, then deploy."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "14",
+  "name": "b14-skew-hops",
+  "title": "Two hops from 1.33 to 1.35 under the skew rule",
+  "spec": "A left-to-right sequence of three version boxes connected by two arrows. Box 1: cluster on 1.33. Arrow 1 labelled hop 1, using the 1.34 bundle, with a checklist note: all nodes upgraded and healthy before starting the next hop. Box 2: cluster on 1.34. Arrow 2 labelled hop 2, using the 1.35 bundle. Box 3: cluster on 1.35. Above the arrows a bracket with the rule: at most two adjacent minor versions at any time, and no skipping minors. Under the diagram a small grey comparison: 1.33, 1.34 and 1.35 together is not allowed. Orange highlight on the 1.34 box as the stop point in between. Each hop note: control plane first, one node at a time, then workers in drained batches. Monospace for version numbers 1.33, 1.34, 1.35.",
+  "anchor": "### 9.2 Planning multi-hop air-gapped Kubernetes upgrades under the skew policy",
+  "alt": "Two upgrade hops across Kubernetes minors",
+  "cap": "Multi-hop upgrade: a cluster on 1.33 reaches 1.35 through an intermediate 1.34 hop, because minors cannot be skipped."
+ }
+]

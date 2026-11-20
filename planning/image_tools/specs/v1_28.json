@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "28",
+  "name": "l28-topo-codes",
+  "title": "Reading nvidia-smi topo -m",
+  "spec": "Distance ladder from closest to farthest, each a labelled box: X self; NV# NVLink with # links; PIX path crosses at most one PCIe bridge (green, best for GPUDirect RDMA with PXB); PXB crosses multiple PCIe bridges; PHB goes through a PCIe host bridge, the CPU root complex; NODE crosses PCIe host bridges within one NUMA node; SYS crosses NUMA nodes through the inter-socket link (orange, avoid between a worker's CPU, GPU and NIC). Monospace command nvidia-smi topo -m. Takeaway bar: aim for GPU and NIC pairs at PIX or PXB.",
+  "anchor": "## 2. Know the machine: topology first",
+  "alt": "The connection codes in nvidia-smi topo -m ordered by distance.",
+  "cap": "Each topology code is a statement about distance, and SYS between a worker's CPU, GPU and NIC should be avoided."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "28",
+  "name": "l28-k8s-mechanisms",
+  "title": "Kubernetes knobs for a tuned node",
+  "spec": "Table with Concern then Mechanism. Rows: GPU allocation | NVIDIA device plugin (nvidia.com/gpu), GPU Operator ; CPU pinning | cpuManagerPolicy: static, Guaranteed pods with integer CPU requests ; NUMA alignment | topologyManagerPolicy: single-numa-node ; Reserved cores | reservedSystemCPUs, kubeReserved, systemReserved ; Memory | Guaranteed QoS, requests equal limits ; Network | hostNetwork or Multus plus SR-IOV/RDMA device plugin ; I/O isolation | not native, use node-level cgroup v2 io.max ; Jitter (orange) | homogeneous workloads per node, dedicate whole nodes. Names monospace.",
+  "anchor": "### Kubernetes",
+  "alt": "A map from each tuning concern to the Kubernetes setting that implements it.",
+  "cap": "Kubernetes expresses the same tuning ideas through its own knobs, and dedicating whole nodes removes jitter."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "28",
+  "name": "l28-fleet-checks",
+  "title": "Fleet health checks to automate",
+  "spec": "Four layered boxes: 1 Boot-time audit (topology, links, settings, versions; fails closed so a failing node stays drained); 2 Prolog and epilog (GPUs visible and healthy, ECC clean, no Xid since last job, clocks nominal, no leftover processes); 3 Periodic checks (dcgmi diag -r 1 often, -r 2 or -r 3 on a schedule, nccl-tests pair and ring tests); 4 Statistical outlier detection (compare reference-step time, NCCL busbw, GPU clocks, temperatures with the fleet median; flag beyond 3 MAD, orange). Commands monospace.",
+  "anchor": "### Fleet health checks (what to automate)",
+  "alt": "Four automated checks from boot audit to statistical outlier detection.",
+  "cap": "Stragglers are the expensive failure, so compare each node against the fleet median."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "28",
+  "name": "l28-troubleshoot",
+  "title": "Symptom to first check",
+  "spec": "Table with Symptom, Likely cause, First check. Rows: One rank slower than others | thermal or power throttling, PCIe downtrain | nvidia-smi -q -d PERFORMANCE,CLOCK,POWER ; Run-to-run variance | THP, NUMA balancing, C-states, IRQs on training cores | perf sched, mpstat ; Low NCCL bandwidth | wrong NIC/GPU affinity, fallback to TCP | NCCL_DEBUG=INFO, nvidia-smi topo -m ; DataLoader stalls | remote NUMA, too few workers, slow FS | iostat, pidstat ; OOM kill in a long job | limit counted pinned or cache | memory.events, dmesg ; Fleet differs after update | image, GRUB, sysctl or driver drift | run audit, diff against baseline. Commands monospace.",
+  "anchor": "## 13. Troubleshooting map",
+  "alt": "A short troubleshooting map from symptoms to likely causes and first checks.",
+  "cap": "Match the symptom to the row and run its first checks before exploring other causes."
+ }
+]

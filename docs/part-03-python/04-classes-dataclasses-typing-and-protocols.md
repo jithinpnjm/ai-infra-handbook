@@ -208,6 +208,10 @@ This freedom has a cost. Adding data that the class cannot use usually does not 
 
 ### Attribute search climbs a class tree
 
+![Attribute lookup climbs the class tree](./img/s04-attrsearch.svg)
+
+*Figure 3.4.1. Attribute search: Python looks in the instance, then the class, then each superclass, and the first match wins.*
+
 Every dot expression starts a search through a tree of linked objects. Picture a tree with two instances, `I1` and `I2`, a class `C1` that both were made from, and two superclasses, `C2` and `C3`, above `C1`. Each object carries its own names. When you ask for `I2.w`, Python checks `I2`, then `C1`, then `C2`, then `C3`. It stops at the first `w` it finds. If no object in the tree has the name, Python raises an error.
 
 In this tree, only `C3` defines `w`. So `I2.w` resolves to `C3.w`, and `I2` inherits `w` from `C3`. Other lookups take shorter paths. Both instances find `x` in `C1` and stop there, because `C1` sits lower in the tree and redefines `x`. A name stored on the instance itself, such as `I2.name`, is found without any climbing.
@@ -219,6 +223,10 @@ Python makes this literal. The classes and instances are real linked objects, an
 Method calls follow the same tree with one extra step. When `I2.w` is a function and you write `I2.w()`, Python turns the call into `C3.w(I2)`. The instance becomes the first argument, which the method receives as `self`. Every method call therefore has a subject object. Calling `pat.giveRaise()` first finds `giveRaise` by inheritance, then passes `pat` to it. Writing `Employee.giveRaise(pat)` performs both steps by hand. This is the default case, and Python also has static and class methods, which are covered later.
 
 ### Where an assignment stores an attribute
+
+![Instance versus class attribute assignment](./img/s04-assignstore.svg)
+
+*Figure 3.4.2. Assignment through an instance stores on that instance, while assignment through the class is shared by all instances.*
 
 Attributes appear the first time you assign them. The place where the assignment runs decides which object gets the name. Assignments at the top level of a `class` body attach names to the class, so every instance and subclass shares them. Assignments through `self` inside a method attach names to the instance being processed.
 
@@ -554,6 +562,10 @@ Normally a `class` statement and the methods inside it build these namespaces. T
 
 ### Inheritance and `super()`
 
+![Method resolution order with super()](./img/s04-mro.svg)
+
+*Figure 3.4.3. Inheritance: Python searches classes in the method resolution order, and super() moves to the next one.*
+
 Suppose a `GpuNode` must do everything a generic `Resource` does, plus report its GPU count. You do not want to copy the generic code, because two copies of `describe` drift apart the first time someone fixes a bug in one of them. Inheritance lets the subclass reuse the parent's `__init__` and `describe` and extend them.
 
 ```python
@@ -603,6 +615,10 @@ Use `isinstance(x, Base)` and `issubclass` when you want the check to respect in
 
 ### Composition over inheritance
 
+![Inheritance versus composition](./img/s04-composition.svg)
+
+*Figure 3.4.4. Composition: an object that has parts can swap them, while inheritance couples a child to its parent.*
+
 Inheritance and composition answer different questions. Inheritance describes what something is. A pizza-making robot is a kind of robot, so it inherits the usual robot properties. Those shared properties are written once and reused by every kind of robot. Composition describes what something has. The same robot is also a team of parts, such as arms to roll dough and motors to move it to the oven. Each part can be its own class.
 
 A GUI shows both ideas. A window is built from widgets such as buttons and labels, and drawing the window draws those widgets too. That is composition. A custom button with its own font is a specialized version of a general button, which is inheritance.
@@ -619,6 +635,10 @@ class RedfishClient:
 The benefits are concrete. Dependencies are explicit and easy to swap, so you can pass a fake session in tests. Classes stay small, and behaviors combine freely. This pattern is called **dependency injection**. It simply means passing collaborators in rather than constructing them inside the class, and it needs no framework.
 
 ### Abstract base classes
+
+![An abstract base class enforcing a method](./img/s04-abc.svg)
+
+*Figure 3.4.5. Abstract base classes: a subclass that forgets an abstract method cannot be instantiated.*
 
 An abstract base class, or ABC, is a contract that subclasses must satisfy. Suppose three providers are written, a fourth is on the way, and nobody notices that `find` was never implemented until a user calls it. An ABC moves that discovery to the moment the object is created. Here, `Provider` lists the methods every cloud or on-prem provider must implement:
 
@@ -653,6 +673,10 @@ flowchart TD
 
 ### Protocols (structural typing)
 
+![Protocol structural typing](./img/s04-protocol.svg)
+
+*Figure 3.4.6. A Protocol is satisfied by any class that has the right methods, with no inheritance needed.*
+
 Suppose a refactor splits one storage client into two, and a pile of `isinstance` checks still names the old class. The tests pass for reasons that have nothing to do with what the code actually needs. A **protocol** avoids that trap. It describes an interface by the methods an object has, with no inheritance required. This is the "if it quacks like a duck" idea. Static checkers verify that an object conforms. `@runtime_checkable` allows `isinstance` checks, but those check only that the methods exist.
 
 ```python
@@ -672,6 +696,10 @@ def flush_to(sink: Sink, data: bytes) -> int:        # accepts files, sockets, B
 Choose a Protocol for interfaces at boundaries, where the implementers are third-party or unrelated to you. That keeps coupling loose and makes test fakes easy. Choose an ABC when you control the hierarchy and want runtime enforcement with shared code.
 
 ## 3. Data class builders
+
+![What @dataclass generates](./img/s04-dataclass.svg)
+
+*Figure 3.4.7. A dataclass generates __init__, __repr__ and __eq__ from the field list.*
 
 You have just written the fourth `__init__`, the fourth `__repr__` and the fourth `__eq__` for what is really the same kind of record. Nothing in those lines is new, and every one of them can drift. That is the moment to reach for a data class builder. A **dataclass** is a class whose boring methods Python writes for you from the field annotations. The table compares the builders, so you can pick one for the job at hand.
 
@@ -770,6 +798,10 @@ The `extra` setting is the one to notice. With `"forbid"`, a typo in a config fi
 Pydantic v2 uses a Rust core, which makes it fast. Version 1 has a different API. Models can be nested, generic, discriminated unions (`Field(discriminator="type")`) and computed fields. FastAPI uses them for request and response schemas, which chapter 3.7 covers. Validate once at the boundary, when the config loads or the API request arrives. Then pass trusted, typed objects through the rest of the code, so you parse once and do not keep re-validating.
 
 ## 4. Type hints and static checking
+
+![Static checking of type hints](./img/s04-typehints.svg)
+
+*Figure 3.4.8. Type hints are read by a static checker before running, and Python itself does not enforce them at run time.*
 
 You change a function so that it takes a node object instead of a node name, and nothing complains until a scheduled job fails at 2 a.m. A type checker would have complained at your desk, before lunch. **Type hints**, defined in PEP 484 and its successors, record what you intend a value to be. CPython ignores them at runtime and stores them in `__annotations__`. Tools do the enforcing. mypy, pyright (through Pylance), pyre, pytype and many IDEs read the hints and report mismatches before your code runs. Libraries such as pydantic and FastAPI also read them at runtime, so the hints do real work in those cases.
 

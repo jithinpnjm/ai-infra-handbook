@@ -26,7 +26,7 @@
   <rect class="bg" x="0" y="0" width="1600" height="1740"/>
   <text class="title" x="64" y="78">The big picture</text>
 
-  <!-- Connections -->
+  
   <path class="arrow" d="M800 130 V180"/>
   <path class="arrow" d="M600 345 V455 H270 V500"/>
   <path class="arrow" d="M1000 345 V455 H1320 V500"/>
@@ -39,7 +39,7 @@
   <path class="arrow" d="M840 1370 H760"/>
   <path class="arrow" d="M420 1450 V1540"/>
 
-  <!-- Firmware branch labels -->
+  
   <text class="edge-label" x="64" y="382">
     <tspan x="64" dy="0">BIOS: read MBR (first 446</tspan>
     <tspan x="64" dy="30">bytes of code)</tspan>
@@ -49,7 +49,7 @@
     <tspan class="edge-mono" x="1080" dy="30">\EFI\&lt;vendor&gt;\*.efi</tspan>
   </text>
 
-  <!-- Power on -->
+  
   <g>
     <rect class="card" x="640" y="30" width="320" height="100" rx="18"/>
     <g class="icon" transform="translate(670 50)">
@@ -59,7 +59,7 @@
     <text class="node-title" x="740" y="91">Power on</text>
   </g>
 
-  <!-- Firmware -->
+  
   <g>
     <rect class="card" x="450" y="180" width="700" height="165" rx="18"/>
     <g class="icon" transform="translate(474 220)">
@@ -76,7 +76,7 @@
     </text>
   </g>
 
-  <!-- Stage 1 boot code -->
+  
   <g>
     <rect class="card" x="80" y="500" width="380" height="140" rx="18"/>
     <g class="icon" transform="translate(102 540)">
@@ -89,7 +89,7 @@
     </text>
   </g>
 
-  <!-- Stage 1.5/2 -->
+  
   <g>
     <rect class="card" x="80" y="720" width="380" height="160" rx="18"/>
     <g class="icon" transform="translate(102 766)">
@@ -104,7 +104,7 @@
     </text>
   </g>
 
-  <!-- UEFI boot loader -->
+  
   <g>
     <rect class="card" x="1120" y="500" width="400" height="140" rx="18"/>
     <g class="icon" transform="translate(1140 541)">
@@ -118,7 +118,7 @@
     </text>
   </g>
 
-  <!-- Boot loader -->
+  
   <g>
     <rect class="card" x="530" y="740" width="540" height="160" rx="18"/>
     <g class="icon" transform="translate(550 786)">
@@ -133,7 +133,7 @@
     </text>
   </g>
 
-  <!-- Kernel -->
+  
   <g>
     <rect class="card" x="40" y="1030" width="720" height="170" rx="18"/>
     <g class="icon" transform="translate(62 1084)">
@@ -149,7 +149,7 @@
     </text>
   </g>
 
-  <!-- initramfs -->
+  
   <g>
     <rect class="card" x="840" y="1030" width="720" height="170" rx="18"/>
     <g class="icon" transform="translate(862 1084)">
@@ -165,7 +165,7 @@
     </text>
   </g>
 
-  <!-- Mount real root filesystem -->
+  
   <g>
     <rect class="card" x="840" y="1290" width="720" height="160" rx="18"/>
     <g class="icon" transform="translate(862 1340)">
@@ -179,7 +179,7 @@
     </text>
   </g>
 
-  <!-- init -->
+  
   <g>
     <rect class="card" x="40" y="1290" width="720" height="160" rx="18"/>
     <g class="icon" transform="translate(62 1340)">
@@ -194,7 +194,7 @@
     </text>
   </g>
 
-  <!-- Login -->
+  
   <g>
     <rect class="card" x="40" y="1540" width="720" height="150" rx="18"/>
     <g class="icon" transform="translate(62 1584)">

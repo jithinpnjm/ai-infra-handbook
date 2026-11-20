@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Ways to keep state between calls</title>
+  <desc>Visual comparison table of five ways to retain state between function calls in Python: nonlocals in a closure, globals, function attributes, mutable objects in an enclosing scope, and classes.</desc>
+
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Ways to keep state between calls</text>
+
+  <g id="table-headers">
+    <rect x="60" y="115" width="590" height="55" rx="10" fill="#207448"/>
+    <text x="355" y="153" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Option</text>
+
+    <rect x="680" y="115" width="860" height="55" rx="10" fill="#207448"/>
+    <text x="1110" y="153" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Short trait</text>
+  </g>
+
+  <g id="row-1">
+    <rect x="60" y="195" width="590" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(85, 234.5)">
+      <rect x="4" y="4" width="48" height="48" rx="8" stroke="#207448" stroke-width="4" fill="none"/>
+      <rect x="15" y="15" width="26" height="26" rx="6" stroke="#207448" stroke-width="3" fill="#ffffff"/>
+      <circle cx="28" cy="28" r="4" fill="#207448"/>
+    </g>
+    <text x="165" y="273" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Nonlocals in a closure</text>
+
+    <rect x="680" y="195" width="860" height="135" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="715" y="273" font-family="sans-serif" font-size="26" fill="#303a36">private to the function</text>
+  </g>
+
+  <g id="row-2">
+    <rect x="60" y="350" width="590" height="135" rx="16" fill="#fff7f0" stroke="#db8129" stroke-width="3.5"/>
+    <g transform="translate(85, 389.5)">
+      <circle cx="28" cy="28" r="22" stroke="#db8129" stroke-width="4" fill="none"/>
+      <line x1="6" y1="28" x2="50" y2="28" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <ellipse cx="28" cy="28" rx="11" ry="22" stroke="#db8129" stroke-width="3.5" fill="none"/>
+    </g>
+    <text x="165" y="428" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Globals</text>
+
+    <rect x="680" y="350" width="860" height="135" rx="16" fill="#fff7f0" stroke="#db8129" stroke-width="3.5"/>
+    <text x="715" y="410" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="715" dy="0">shared by the whole module</tspan>
+      <tspan x="715" dy="38" fill="#db8129" font-weight="bold">(easy to misuse)</tspan>
+    </text>
+  </g>
+
+  <g id="row-3">
+    <rect x="60" y="505" width="590" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(85, 544.5)">
+      <rect x="6" y="8" width="34" height="40" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+      <path d="M 27 18 C 24 14 18 14 18 20 L 18 38 M 14 26 L 24 26" stroke="#207448" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <circle cx="38" cy="28" r="3" fill="#207448"/>
+      <path d="M 40 23 L 50 23 L 54 28 L 50 33 L 40 33 Z" stroke="#207448" stroke-width="2.5" fill="#e8f1ea"/>
+    </g>
+    <text x="165" y="583" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Function attributes</text>
+
+    <rect x="680" y="505" width="860" height="135" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="715" y="583" font-family="sans-serif" font-size="26" fill="#303a36">attached to the function object</text>
+  </g>
+
+  <g id="row-4">
+    <rect x="60" y="660" width="590" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(85, 699.5)">
+      <path d="M 14 8 L 8 8 L 8 48 L 14 48" stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none"/>
+      <path d="M 42 8 L 48 8 L 48 48 L 42 48" stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none"/>
+      <path d="M 28 17 A 10 10 0 1 1 19 25" stroke="#207448" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+      <polygon points="14,20 20,26 22,19" fill="#207448"/>
+    </g>
+    <text x="165" y="718" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Mutable objects in</tspan>
+      <tspan x="165" dy="38">an enclosing scope</tspan>
+    </text>
+
+    <rect x="680" y="660" width="860" height="135" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="715" y="738" font-family="sans-serif" font-size="26" fill="#303a36">a list or dict mutated in place</text>
+  </g>
+
+  <g id="row-5">
+    <rect x="60" y="815" width="590" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(85, 854.5)">
+      <rect x="6" y="6" width="44" height="44" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+      <line x1="6" y1="20" x2="50" y2="20" stroke="#207448" stroke-width="3"/>
+      <line x1="6" y1="34" x2="50" y2="34" stroke="#207448" stroke-width="2" stroke-dasharray="3,3"/>
+      <line x1="14" y1="27" x2="24" y2="27" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="14" y1="41" x2="28" y2="41" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="38" cy="27" r="2.5" fill="#207448"/>
+      <circle cx="38" cy="41" r="2.5" fill="#207448"/>
+    </g>
+    <text x="165" y="893" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Classes</text>
+
+    <rect x="680" y="815" width="860" height="135" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="715" y="873" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="715" dy="0">instance attributes plus methods,</tspan>
+      <tspan x="715" dy="38" font-weight="bold" fill="#207448">the most explicit choice</tspan>
+    </text>
+  </g>
+</svg>

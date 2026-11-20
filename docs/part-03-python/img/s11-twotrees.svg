@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 950" width="1600" height="950">
+  <title>The two inheritance trees</title>
+  <desc>Visual explanation of Python's two inheritance trees: the instance tree (is an instance of) and the inheritance tree (inherits from), with metaclasses.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="950" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The two inheritance trees</text>
+
+  
+  <g id="left-tree">
+    
+    <rect x="60" y="115" width="710" height="670" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="100" y="145" width="630" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="415" y="188" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">is an instance of</text>
+
+    
+    <g id="node-type">
+      <rect x="185" y="255" width="460" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <g transform="translate(215, 282)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="12" />
+        <circle cx="28" cy="28" r="4" />
+        <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 44 12 L 39 17 M 17 39 L 12 44" />
+      </g>
+      <text x="295" y="323" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36">type</text>
+    </g>
+
+    
+    <path d="M 550 255 C 550 215 675 215 675 285 C 675 310 660 310 647 310" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow-orange)" />
+
+    
+    <path d="M 415 445 L 415 367" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow-green)" />
+
+    
+    <g id="node-left-class">
+      <rect x="185" y="445" width="460" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <g transform="translate(215, 472)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="6" width="44" height="44" rx="8" />
+        <line x1="6" y1="20" x2="50" y2="20" />
+        <line x1="6" y1="34" x2="50" y2="34" />
+      </g>
+      <text x="295" y="513" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36">Class</text>
+    </g>
+
+    
+    <path d="M 415 635 L 415 557" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow-green)" />
+
+    
+    <g id="node-obj">
+      <rect x="185" y="635" width="460" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <g transform="translate(215, 662)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="8" width="40" height="40" rx="10" />
+        <circle cx="28" cy="28" r="8" />
+        <circle cx="28" cy="28" r="2" fill="#207448" />
+      </g>
+      <text x="295" y="703" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36">obj</text>
+    </g>
+  </g>
+
+  
+  <g id="right-tree">
+    
+    <rect x="830" y="115" width="710" height="670" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="870" y="145" width="630" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1185" y="188" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">inherits from</text>
+
+    
+    <g id="node-object">
+      <rect x="955" y="255" width="460" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <g transform="translate(985, 282)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="20" />
+        <ellipse cx="28" cy="28" rx="20" ry="8" />
+        <line x1="28" y1="8" x2="28" y2="48" />
+      </g>
+      <text x="1065" y="323" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36">object</text>
+    </g>
+
+    
+    <path d="M 1185 445 L 1185 367" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="node-base">
+      <rect x="955" y="445" width="460" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <g transform="translate(985, 472)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="10" width="40" height="8" rx="2" />
+        <rect x="8" y="38" width="40" height="8" rx="2" />
+        <line x1="16" y1="18" x2="16" y2="38" />
+        <line x1="28" y1="18" x2="28" y2="38" />
+        <line x1="40" y1="18" x2="40" y2="38" />
+      </g>
+      <text x="1065" y="513" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36">Base</text>
+    </g>
+
+    
+    <path d="M 1185 635 L 1185 557" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="node-right-class">
+      <rect x="955" y="635" width="460" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <g transform="translate(985, 662)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="6" width="44" height="44" rx="8" />
+        <line x1="6" y1="20" x2="50" y2="20" />
+        <line x1="6" y1="34" x2="50" y2="34" />
+      </g>
+      <text x="1065" y="703" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36">Class</text>
+    </g>
+  </g>
+
+  
+  <g id="note-takeaway">
+    <rect x="60" y="825" width="1480" height="70" rx="14" fill="#207448" />
+    <text x="800" y="869" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">a metaclass is a subclass of type, and it changes how classes are built.</text>
+  </g>
+</svg>

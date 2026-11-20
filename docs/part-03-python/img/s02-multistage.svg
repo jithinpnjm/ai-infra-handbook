@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Multi-stage image build</title>
+  <desc>Visual infographic explaining a multi-stage Docker build separating build tools from the final runtime image.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Multi-stage image build</text>
+
+  
+  <g id="build-stage-container">
+    <rect x="50" y="120" width="600" height="550" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(85, 148)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14" />
+      <circle cx="28" cy="28" r="6" />
+      <path d="M28 4 L28 10 M28 46 L28 52 M4 28 L10 28 M46 28 L52 28 M11 11 L15 15 M41 41 L45 45 M11 45 L15 41 M41 11 L45 15" />
+    </g>
+
+    
+    <text x="160" y="174" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">build stage</text>
+    <text x="160" y="210" font-family="monospace" font-size="24" fill="#303a36">python:3.12-slim AS build</text>
+
+    
+    <rect x="75" y="250" width="550" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="115" cy="300" r="22" fill="#207448" />
+    <text x="115" y="308" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <text x="155" y="308" font-family="monospace" font-size="24" fill="#303a36">create venv /opt/venv</text>
+
+    
+    <rect x="75" y="370" width="550" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="115" cy="420" r="22" fill="#207448" />
+    <text x="115" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <text x="155" y="428" font-family="monospace" font-size="24" fill="#303a36">pip install --require-hashes</text>
+
+    
+    <rect x="75" y="490" width="550" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="115" cy="540" r="22" fill="#207448" />
+    <text x="115" y="548" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <text x="155" y="548" font-family="monospace" font-size="24" fill="#303a36">pip install --no-deps .</text>
+  </g>
+
+  
+  <g id="copy-transition">
+    <text text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="800" y="395">COPY --from=build</tspan>
+      <tspan x="800" y="425">/opt/venv</tspan>
+    </text>
+    <line x1="650" y1="445" x2="950" y2="445" stroke="#db8129" stroke-width="4" marker-end="url(#arrow)" />
+  </g>
+
+  
+  <g id="final-stage-container">
+    <rect x="950" y="120" width="600" height="550" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(985, 148)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6" />
+      <line x1="4" y1="18" x2="52" y2="18" />
+      <circle cx="12" cy="12" r="2" fill="#207448" />
+      <circle cx="20" cy="12" r="2" fill="#207448" />
+    </g>
+
+    
+    <text x="1060" y="174" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">final stage</text>
+    <text x="1060" y="210" font-family="monospace" font-size="24" fill="#303a36">python:3.12-slim</text>
+
+    
+    <rect x="975" y="250" width="550" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1250" y="308" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">PATH=/opt/venv/bin</text>
+
+    
+    <rect x="975" y="370" width="550" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1250" y="428" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">USER 10001</text>
+
+    
+    <rect x="975" y="490" width="550" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1250" y="548" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">ENTRYPOINT myops</text>
+  </g>
+
+  
+  <g id="green-takeaway-bar">
+    <rect x="50" y="710" width="1500" height="90" rx="16" fill="#207448" />
+    <text x="800" y="766" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">build tools stay behind in the build stage</text>
+  </g>
+</svg>

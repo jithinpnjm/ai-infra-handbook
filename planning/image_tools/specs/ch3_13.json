@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "13",
+  "name": "s13-unpack",
+  "title": "Extended unpacking",
+  "spec": "Top code chip: first, *middle, last = [1, 2, 3, 4, 5]. Below the list drawn as five cells 1 2 3 4 5 with colored brackets mapping: cell 1 to first = 1, cells 2 3 4 to middle = [2, 3, 4] (green, the star collects the rest as a list), cell 5 to last = 5.",
+  "anchor": "### Extended-unpacking assignments",
+  "alt": "Extended unpacking with a star",
+  "cap": "A starred target collects whatever the other targets did not take, as a list."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "13",
+  "name": "s13-zip",
+  "title": "Parallel traversal with zip",
+  "spec": "Left: two lists, names ['a', 'b', 'c'] and nums [1, 2, 3], as rows of cells. Middle: arrow labelled zip(names, nums). Right: a row of pairs ('a', 1) ('b', 2) ('c', 3). Orange note: zip stops at the shortest input. Green chip: for n, v in zip(names, nums).",
+  "anchor": "### Parallel traversals with zip",
+  "alt": "How zip pairs items",
+  "cap": "zip walks several sequences in step and stops at the shortest one."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "13",
+  "name": "s13-loopelse",
+  "title": "The loop else clause",
+  "spec": "A flowchart of a for loop. Box for item in items, diamond break reached?. Yes arrow to box leave the loop, else block skipped (orange). No arrow loops back until the items run out, then to the else block runs (green). Caption: else means no break happened.",
+  "anchor": "### Loop else",
+  "alt": "Loop else versus break",
+  "cap": "The else block of a loop runs only when the loop ends without hitting break."
+ }
+]

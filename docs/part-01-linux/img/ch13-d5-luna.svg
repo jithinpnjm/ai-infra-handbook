@@ -14,11 +14,11 @@
   <rect width="1600" height="980" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">NVMe queues per CPU and namespaces</text>
 
-  <!-- Left panel: Legacy SATA vs NVMe queues -->
+  
   <rect x="40" y="120" width="840" height="710" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="72" y="168" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Per-CPU queue pairs eliminate lock contention</text>
 
-  <!-- SATA comparison box -->
+  
   <rect x="72" y="195" width="776" height="145" rx="16" fill="#f5f8f5" stroke="#db8129" stroke-width="3"/>
   <text x="100" y="242" fill="#db8129" font-family="sans-serif" font-size="26" font-weight="700">Legacy SATA / SAS (shared queue)</text>
   <text x="100" y="282" fill="#303a36" font-family="sans-serif" font-size="24">
@@ -26,7 +26,7 @@
     <tspan x="100" dy="32">through SCSI/SATA translation layers.</tspan>
   </text>
 
-  <!-- NVMe blk-mq per-CPU queues -->
+  
   <rect x="72" y="365" width="776" height="430" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3.5"/>
   <text x="100" y="410" fill="#207448" font-family="sans-serif" font-size="27" font-weight="700">NVMe (blk-mq): up to 64K queues × 64K entries</text>
 
@@ -56,7 +56,7 @@
     <tspan x="460" dy="34">• +1 Admin queue pair; scheduler = none; optional io_poll.</tspan>
   </text>
 
-  <!-- Right panel: Controller & Namespace hierarchy -->
+  
   <rect x="920" y="120" width="640" height="710" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <text x="952" y="168" fill="#207448" font-family="sans-serif" font-size="30" font-weight="700">Device naming: controller → namespace</text>
 
@@ -95,7 +95,7 @@
   <text x="1115" y="688" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="26" font-weight="700">/dev/nvme0n1p1</text>
   <text x="1115" y="726" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">Partition 1 (note the 'p')</text>
 
-  <!-- Takeaway bar -->
+  
   <rect x="40" y="862" width="1520" height="82" rx="14" fill="#207448"/>
   <text x="800" y="913" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Watch APST power latency and PCIe link width (lspci -vv); alert on smart-log critical_warning and percentage_used.</text>
 </svg>

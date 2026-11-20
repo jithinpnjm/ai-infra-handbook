@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Protocols match by shape</title>
+  <desc>Visual comparison demonstrating how protocols match by shape rather than inheritance</desc>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Protocols match by shape</text>
+
+  
+  <rect x="80" y="150" width="620" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  
+  <g transform="translate(362, 225)">
+    <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="14" y1="18" x2="42" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="14" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="14" y1="38" x2="42" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="390" y="375" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="390" dy="0">Protocol Reader </tspan>
+    <tspan x="390" dy="44">requires read()</tspan>
+  </text>
+
+  
+  <rect x="740" y="150" width="780" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  
+  <g transform="translate(770, 222)">
+    <path d="M 4 0 L 38 0 L 52 14 L 52 56 L 4 56 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 38 0 L 38 14 L 52 14" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="16" y1="30" x2="40" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="16" y1="40" x2="34" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="850" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="850" dy="0">class FileReader </tspan>
+    <tspan x="850" dy="44">with read()</tspan>
+  </text>
+
+  
+  <rect x="1270" y="220" width="210" height="60" rx="10" fill="#207448"/>
+  <text x="1375" y="261" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">matches</text>
+
+  
+  <rect x="740" y="380" width="780" height="200" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  
+  
+  <g transform="translate(770, 452)">
+    <rect x="4" y="0" width="48" height="56" rx="8" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="18" y1="18" x2="38" y2="38" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="38" y1="18" x2="18" y2="38" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="850" y="470" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="850" dy="0">class Plain </tspan>
+    <tspan x="850" dy="44">without read()</tspan>
+  </text>
+
+  
+  <rect x="1210" y="450" width="270" height="60" rx="10" fill="#db8129"/>
+  <text x="1345" y="490" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">does not match</text>
+
+  
+  <rect x="80" y="630" width="690" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="830" y="630" width="690" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(120, 702)">
+    <circle cx="28" cy="10" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="18" x2="28" y2="36" stroke="#207448" stroke-width="4"/>
+    <line x1="10" y1="36" x2="46" y2="36" stroke="#207448" stroke-width="4"/>
+    <circle cx="10" cy="46" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="46" cy="46" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <text x="210" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="210" dy="0">ABC is by name </tspan>
+    <tspan x="210" dy="44">(must inherit)</tspan>
+  </text>
+
+  
+  <g transform="translate(870, 702)">
+    <polygon points="28,2 54,28 28,54 2,28" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="28" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <text x="960" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="960" dy="0">Protocol is by shape </tspan>
+    <tspan x="960" dy="44">(has the methods)</tspan>
+  </text>
+</svg>

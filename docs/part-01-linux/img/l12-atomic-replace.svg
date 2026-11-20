@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Replacing a file safely</title>
+  <desc>Infographic explaining how to safely replace a file using a temporary file, fsync, rename, and directory fsync.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2 3 L 10 7 L 2 11 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Replacing a file safely</text>
+
+  
+  <rect x="60" y="105" width="1480" height="135" rx="16" ry="16" fill="#fff8f2" stroke="#db8129" stroke-width="3" />
+  <text x="800" y="156" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan>a normal </tspan>
+    <tspan font-family="ui-monospace, monospace" font-weight="bold">write()</tspan>
+    <tspan> copies data into the page cache and returns, the data is not durable yet;</tspan>
+  </text>
+  <text x="800" y="200" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan>flusher threads write dirty pages later.</tspan>
+  </text>
+
+  
+  <line x1="395" y1="485" x2="438" y2="485" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+  <line x1="777" y1="485" x2="820" y2="485" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+  <line x1="1159" y1="485" x2="1201" y2="485" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="60" y="275" width="335" height="420" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="227.5" cy="330" r="24" fill="#207448" />
+  <text x="227.5" y="339" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+  
+  <path d="M 205 382 L 235 382 L 250 397 L 250 434 L 205 434 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <path d="M 235 382 L 235 397 L 250 397" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <line x1="215" y1="407" x2="230" y2="407" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="215" y1="418" x2="240" y2="418" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  
+  <text x="227.5" y="515" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="227.5" dy="0">write a temporary</tspan>
+    <tspan x="227.5" dy="38">file in the same</tspan>
+    <tspan x="227.5" dy="38">directory</tspan>
+  </text>
+
+  
+  <rect x="442" y="275" width="335" height="420" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="609.5" cy="330" r="24" fill="#207448" />
+  <text x="609.5" y="339" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+  
+  <ellipse cx="609.5" cy="388" rx="26" ry="10" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 583.5 388 L 583.5 424 A 26 10 0 0 0 635.5 424 L 635.5 388" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 583.5 406 A 26 10 0 0 0 635.5 406" fill="none" stroke="#207448" stroke-width="3.5" />
+  
+  <text x="609.5" y="535" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace">fsync</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> it</tspan>
+  </text>
+
+  
+  <rect x="824" y="275" width="335" height="420" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="991.5" cy="330" r="24" fill="#207448" />
+  <text x="991.5" y="339" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+  
+  <path d="M 972 388 L 994 388 L 1004 398 L 1004 430 L 972 430 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" stroke-dasharray="4 3" />
+  <path d="M 983 378 L 1005 378 L 1015 388 L 1015 420 L 983 420 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <path d="M 1005 378 L 1005 388 L 1015 388" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+  
+  <text x="991.5" y="525" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace">rename()</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> it over</tspan>
+    <tspan x="991.5" dy="38" font-family="system-ui, -apple-system, sans-serif">the target</tspan>
+  </text>
+
+  
+  <rect x="1205" y="275" width="335" height="420" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="1372.5" cy="330" r="24" fill="#207448" />
+  <text x="1372.5" y="339" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+  
+  <path d="M 1345 388 L 1365 388 L 1373 396 L 1400 396 L 1400 426 L 1345 426 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <ellipse cx="1372.5" cy="413" rx="15" ry="4" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M 1357.5 413 L 1357.5 420 A 15 4 0 0 0 1387.5 420 L 1387.5 413" fill="none" stroke="#207448" stroke-width="2.5" />
+  
+  <text x="1372.5" y="525" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace">fsync</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> the</tspan>
+    <tspan x="1372.5" dy="38" font-family="system-ui, -apple-system, sans-serif">directory</tspan>
+  </text>
+
+  
+  <rect x="60" y="735" width="1480" height="95" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="800" y="792" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">even then, a device write cache can still hold data.</text>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "28",
+  "name": "k28-envoy-route-path",
+  "title": "How Envoy moves one request from listener to endpoint",
+  "spec": "A left-to-right chain of four boxes, each with a number circle r=24 green with a white number: 1, 2, 3, 4. Box 1 labelled listener, with a door icon, note binds a port such as 80 and 443, the front door. Box 2 labelled filter chain, with a gear icon, note HTTP connection manager, the sorting step. Box 3 labelled route, with a signpost icon, note matches by path or header. Box 4 labelled cluster, with a delivery van icon, note the group of endpoints for one service. From box 4 an arrow to a final small box labelled endpoints. Above the chain, four smaller discovery boxes, each connected by a dashed arrow down to its stage: LDS feeds listener, RDS feeds route, CDS feeds cluster, EDS feeds endpoints. Under the endpoints box a small label: attached through a ClusterLoadAssignment. Orange note on the endpoints link: Envoy has no Endpoint object in the EDS API. Green takeaway bar: listeners accept, filters decide, and clusters receive the traffic.",
+  "anchor": "### Envoy and the xDS APIs",
+  "alt": "Envoy sends a request from a listener through a filter chain and a route to a cluster, whose endpoints come from EDS.",
+  "cap": "Envoy handles a request in four steps, from listener to filter chain, route and cluster, with the xDS APIs feeding each stage."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "28",
+  "name": "k28-retry-doubling",
+  "title": "A retry doubles the load on a slow model server",
+  "spec": "Two side-by-side panels. Left panel titled Every caller retries once: a client icon sends a request to a model server box labelled vllm, which is slow. A second arrow from the client labelled retry sends the same request again to the same server. A load gauge under the server reads 2x load, drawn as two full bars against a one-bar reference line. Orange note: the load doubles at the exact moment the server can least afford more. Right panel titled Generation POST with retries.attempts: 0: the same client sends one request to the vllm box, with no retry arrow. The gauge reads 1x load, one bar. Under the right panel, two smaller labelled boxes: retryOn: connect-failure,refused-stream for idempotent calls such as embeddings and health checks. Numbered steps with green circles r=24: 1 a slow server; 2 a retry is added; 3 the server takes twice the load. Green takeaway bar: retries multiply load, so set attempts to 0 for generation requests.",
+  "anchor": "### Traffic management for model rollouts",
+  "alt": "When every caller retries a slow model server once, the server load doubles, while setting retries to zero for generation requests keeps load at one.",
+  "cap": "Retrying a slow model server doubles its load, so generation requests should not be retried."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "28",
+  "name": "k28-native-sidecar-order",
+  "title": "Sidecar start and stop order: regular container versus native sidecar",
+  "spec": "Two horizontal lanes on one shared time axis labelled pod lifecycle, from start to end. Top lane titled Sidecar as a regular container: a bar for the app container and a bar for the proxy container that start together. A red-bordered marker where the app makes an early call before the proxy is ready, labelled connection refused. At the end, the app bar stops when the job finishes, but the proxy bar keeps running, with a label: the Job never completes. Bottom lane titled Native sidecar (initContainers with restartPolicy: Always): the proxy bar starts first in the init phase, a small marker labelled startupProbe waits for proxy ready, then the app bar starts. At the end the proxy bar stops after all main containers exit. Numbered green circles r=24 on the bottom lane: 1 proxy starts first; 2 app starts once the proxy is ready; 3 proxy stops after the main containers exit. Orange note on the top lane's still-running proxy: the pod stays alive, so the Job never completes. No takeaway bar.",
+  "anchor": "## 7. Costs, performance and failure modes",
+  "alt": "A regular sidecar starts with the app and keeps a finished Job alive, while a native sidecar starts first and stops after the main containers exit.",
+  "cap": "A native sidecar starts before the app and stops after the main containers exit, which fixes the startup race and the stuck Job."
+ }
+]

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "34",
+  "name": "k34-pool-after-create",
+  "title": "What a GPU node pool sets up after creation",
+  "spec": "A top-to-bottom sequence of four numbered steps, each a rounded box with a number circle (r=24, green, white number) and a small icon, joined by down arrows. Step 1 box titled Node pool created with the monospace line gcloud container node-pools create h100-pool and the note accelerator type=nvidia-h100-80gb,count=8. Step 2 box titled GPU driver DaemonSet with the note GKE installs it when gpu-driver-version is not disabled, drawn as a small stack of three identical pod icons, one per GPU node. Step 3 box titled Node advertises nvidia.com/gpu with the note through the GKE device plugin, and beside it a label chip cloud.google.com/gke-accelerator=nvidia-h100-80gb and a taint chip nvidia.com/gpu=present:NoSchedule drawn in grey. Step 4 box titled Pod requests a GPU with the monospace line resources.limits nvidia.com/gpu: 8 and the note the admission step adds a matching toleration automatically. An arrow from the taint chip at step 3 to step 4 labelled matched by an automatic toleration. Orange highlight on the taint chip with the note a CPU-only Pod without the toleration is kept off this node. Side note under step 2, drawn as a dashed box: set gpu-driver-version=disabled only if the GPU Operator installs the driver, and never let both install drivers on one node. Green takeaway bar at the bottom: the pool creates the driver, the advertised GPU count, the label and the taint in one step.",
+  "anchor": "### What happens after creation",
+  "alt": "After a GPU node pool is created, GKE installs the driver, advertises nvidia.com/gpu, labels and taints the nodes, and admits only GPU Pods with the matching toleration.",
+  "cap": "After a GPU node pool is created, GKE installs the driver, advertises the GPU resource, and taints the nodes so that only GPU Pods land there."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "34",
+  "name": "k34-sharing-walls",
+  "title": "Three ways to share a GPU, from shared desk to separate offices",
+  "spec": "Three panels side by side, left to right, each titled with its technique name, arranged by increasing walls. Left panel titled Time-sharing with a single GPU drawn as a box, two small container boxes labelled container A and container B taking turns, drawn with a clock icon and arrows showing alternating time slots. Under it a label Shared desk, memory and faults are shared, with an orange warning chip reading no fault isolation. Middle panel titled MPS with one GPU box and several process boxes working at the same time, joined to the GPU by parallel arrows, with a dashed wall partially between them, labelled shared room, and a note shares fault fate. Right panel titled MIG with one GPU box split into three separate partitions, each with its own dedicated memory block and its own compute block, separated by solid walls, labelled separate offices, and a green note dedicated memory and compute per partition. Under the three panels a horizontal arrow from left to right labelled more walls means stronger isolation and fewer workloads per card. Orange highlight on the time-sharing warning chip with the note never use it for tenants you do not trust. Green takeaway bar at the bottom: each step to the right adds walls, and each wall costs some density.",
+  "anchor": "## 7. Sharing a GPU: time-sharing, MPS, MIG",
+  "alt": "Time-sharing, MPS and MIG share one GPU with increasing walls, from turn-taking containers to hardware partitions with dedicated memory.",
+  "cap": "Time-sharing, MPS and MIG share one GPU with more isolation at each step, and stronger isolation fits fewer workloads per card."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "34",
+  "name": "k34-spot-window",
+  "title": "A Spot preemption gives about 25 to 30 seconds to save",
+  "spec": "A horizontal timeline from left to right with three marked points on an axis labelled time. Point T0 labelled preemption notice, with a note the provider sends the signal and kubelet sends SIGTERM to the Pods. A shaded span from T0 to T0 plus 25 to 30 seconds labelled grace period (verify), drawn in a wide light green band. Inside the span, a sub-bar labelled checkpoint write, drawn as a bar that ends too late, with an orange dashed outline and the note a checkpoint written at the end of a long step may not finish in time. Point T1 at the end of the span labelled VM hard-terminated. Above the timeline, a row of three number circles r=24 green: 1 at T0, 2 at the start of the checkpoint bar, 3 at T1. Below the timeline, two boxes side by side. Left box titled Option 1 with the note stateless or idempotent work, such as batch scoring or inference behind a load balancer. Right box titled Option 2 with the note frequent asynchronous checkpointing, paired with elastic torchrun or JobSet restart. Green takeaway bar at the bottom: checkpoint often enough that a notice this short still leaves something to resume from.",
+  "anchor": "## 5. Quotas, reservations and consumption models",
+  "alt": "A Spot preemption gives a short grace period, so a checkpoint must be frequent enough to finish before the VM is terminated.",
+  "cap": "A Spot preemption gives only about 25 to 30 seconds of notice, so a checkpoint has to be frequent enough to save progress in that window."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "34",
+  "name": "k34-gpu-nics",
+  "title": "Where GPU traffic goes on a multi-node training node",
+  "spec": "A layout drawing of one accelerator VM box in the centre, labelled GPU node, containing a row of eight small GPU chips labelled GPU 1 to GPU 8, joined by a band labelled NVLink and NVSwitch inside the box. On the right edge of the VM box, two arrows leave: one thin grey arrow labelled default VPC network, and a set of thick green arrows labelled GPU NICs with the note dedicated to GPU traffic. The GPU NIC arrows lead to a box on the far right labelled fabric to other nodes, with the note compact placement keeps nodes close. Above the VM box, a row of three small config chips: gVNIC with the flag --enable-gvnic, multi-networking with the flag --enable-multi-networking and --additional-node-network, and NCCL plugin with the note TCPXO or RoCE RDMA depending on the machine generation. Below the fabric box, a small chip labelled compact placement with the flag --placement-type COMPACT. Orange highlight on the GPU NIC arrows with the note these carry the gradient traffic between nodes. A small box at the bottom reads validate with all_reduce_perf before a long run. Green takeaway bar at the bottom: GPU traffic gets its own NICs, so it does not compete with ordinary network traffic.",
+  "anchor": "## 8. Networking for multi-node training",
+  "alt": "A multi-node GPU VM sends GPU traffic over dedicated GPU NICs to the fabric, while ordinary traffic uses the default VPC network.",
+  "cap": "A multi-node GPU VM sends gradient traffic over dedicated GPU NICs, so it does not compete with ordinary network traffic."
+ }
+]

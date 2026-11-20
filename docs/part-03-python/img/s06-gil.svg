@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>The GIL lets one thread run Python at a time</title>
+  <desc>Visual explanation of Python Global Interpreter Lock (GIL) showing Thread 1 holding the GIL token, Thread 2 waiting, and comparison panels between CPU-bound execution and waiting on I/O.</desc>
+
+  <defs>
+    
+    <marker id="arrow-solid" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 0 2 L 18 9 L 0 16 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-dashed" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 0 2 L 18 9 L 0 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The GIL lets one thread run Python at a time</text>
+
+  
+
+  
+  <g id="thread-1-node">
+    <rect x="70" y="150" width="380" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(96, 197)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="10" />
+      <path d="M 12 40 C 20 16, 36 40, 44 16" />
+      <circle cx="12" cy="40" r="3" fill="#207448" />
+      <circle cx="44" cy="16" r="3" fill="#207448" />
+    </g>
+    <text x="176" y="240" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Thread 1</text>
+  </g>
+
+  
+  <path d="M 260 300 L 260 398" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-solid)" />
+
+  
+  <g id="gil-token-node">
+    <rect x="100" y="400" width="320" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(124, 437)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 14 26 L 14 16 A 14 14 0 0 1 42 16 L 42 26" />
+      <rect x="6" y="26" width="44" height="26" rx="6" />
+      <circle cx="28" cy="37" r="4" fill="#207448" />
+      <path d="M 28 41 L 28 47" />
+    </g>
+    <text x="194" y="478" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">GIL (one token)</text>
+  </g>
+
+  
+  <path d="M 260 630 L 260 532" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow-dashed)" />
+
+  
+  <g id="thread-2-node">
+    <rect x="70" y="630" width="380" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g transform="translate(96, 677)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="10" />
+      <path d="M 12 40 C 20 16, 36 40, 44 16" />
+      <circle cx="12" cy="40" r="3" fill="#207448" />
+      <circle cx="44" cy="16" r="3" fill="#207448" />
+    </g>
+    <text x="176" y="720" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Thread 2</text>
+  </g>
+
+  
+
+  
+  <g id="panel-cpu-bound">
+    <rect x="510" y="150" width="1020" height="310" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+
+    
+    <g transform="translate(540, 175)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="6" />
+      <rect x="18" y="18" width="20" height="20" rx="2" />
+      
+      <line x1="18" y1="2" x2="18" y2="10" />
+      <line x1="28" y1="2" x2="28" y2="10" />
+      <line x1="38" y1="2" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="54" />
+      <line x1="28" y1="46" x2="28" y2="54" />
+      <line x1="38" y1="46" x2="38" y2="54" />
+      <line x1="2" y1="18" x2="10" y2="18" />
+      <line x1="2" y1="28" x2="10" y2="28" />
+      <line x1="2" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="54" y2="18" />
+      <line x1="46" y1="28" x2="54" y2="28" />
+      <line x1="46" y1="38" x2="54" y2="38" />
+    </g>
+
+    
+    <text x="616" y="213" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU-bound code: threads take turns, no speed-up</text>
+
+    
+    <g id="cpu-timeline" transform="translate(540, 275)">
+      
+      <rect x="0" y="10" width="960" height="50" rx="8" fill="#f5f8f5" stroke="#e0e8e2" stroke-width="2" />
+      
+      <rect x="0" y="80" width="960" height="50" rx="8" fill="#f5f8f5" stroke="#e0e8e2" stroke-width="2" />
+
+      
+      <rect x="30" y="15" width="200" height="40" rx="6" fill="#207448" />
+
+      
+      <rect x="250" y="85" width="200" height="40" rx="6" fill="#db8129" />
+
+      
+      <rect x="470" y="15" width="200" height="40" rx="6" fill="#207448" />
+
+      
+      <rect x="690" y="85" width="200" height="40" rx="6" fill="#db8129" />
+    </g>
+  </g>
+
+  
+  <g id="panel-io-waiting">
+    <rect x="510" y="490" width="1020" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+
+    
+    <g transform="translate(540, 520)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8" />
+      <path d="M 6 14 L 6 42 C 6 46.4, 15.9 50, 28 50 C 40.1 50, 50 46.4, 50 42 L 50 14" />
+      <path d="M 6 28 C 6 32.4, 15.9 36, 28 36 C 40.1 36, 50 32.4, 50 28" />
+    </g>
+
+    
+    <text x="616" y="545" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="616" dy="0">waiting on I/O:</tspan>
+      <tspan x="616" dy="38">the lock is released while waiting, so threads overlap</tspan>
+    </text>
+
+    
+    <g id="io-timeline" transform="translate(540, 640)">
+      
+      <rect x="0" y="10" width="960" height="50" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
+      
+      <rect x="0" y="80" width="960" height="50" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
+
+      
+      <rect x="30" y="15" width="160" height="40" rx="6" fill="#207448" />
+
+      
+      <rect x="210" y="15" width="500" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
+
+      
+      <rect x="230" y="85" width="460" height="40" rx="6" fill="#207448" />
+
+      
+      <rect x="730" y="15" width="180" height="40" rx="6" fill="#207448" />
+    </g>
+  </g>
+</svg>

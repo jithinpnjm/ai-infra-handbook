@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "s09-pyramid",
+  "title": "The test pyramid for infrastructure code",
+  "spec": "A pyramid of three layers. Wide bottom layer green: Unit tests (many, fast, no network). Middle layer: Integration tests (fewer, real dependencies). Small top layer orange: End-to-end tests (few, slow). An arrow on the left labelled cost and time rising upward.",
+  "anchor": "## 1. Test strategy for infrastructure code",
+  "alt": "The test pyramid",
+  "cap": "Test strategy: many fast unit tests, fewer integration tests, and very few end-to-end tests."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "s09-di",
+  "title": "Inject the dependency instead of patching",
+  "spec": "Two panels. Left panel Production: function receives the real client and calls the real API. Right panel Test: the same function receives a fake client that returns canned data (green). Under them: the function takes the client as an argument. Grey crossed-out note: patching internals couples tests to the implementation.",
+  "anchor": "### Dependency injection beats patching",
+  "alt": "Dependency injection in tests",
+  "cap": "Dependency injection: pass a fake client in tests instead of patching module internals."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "s09-hypothesis",
+  "title": "Hypothesis finds and shrinks failures",
+  "spec": "A flow of four boxes: you state a property (for all inputs, the result is valid) ; Hypothesis generates many inputs ; one input fails (orange) ; Hypothesis shrinks it to the smallest failing example (green). Under it: example-based tests check the cases you thought of, properties check the ones you did not.",
+  "anchor": "### Property-based testing with Hypothesis",
+  "alt": "Property-based testing",
+  "cap": "Hypothesis generates many inputs, finds a failure, and shrinks it to a minimal example."
+ }
+]

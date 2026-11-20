@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Circuit versus packet switching</title>
+  <desc>Visual comparison between circuit switching with reserved paths and packet switching with shared mesh links</desc>
+
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Circuit versus packet switching</text>
+
+  
+  <g id="left-panel">
+    <rect x="60" y="115" width="720" height="735" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(90, 138)">
+      <circle cx="24" cy="24" r="20" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="4" y1="24" x2="16" y2="24" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="32" y1="24" x2="44" y2="24" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="16" y1="24" x2="32" y2="14" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="156" y="174" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Circuit switching</text>
+
+    
+    <rect x="90" y="205" width="660" height="240" rx="12" fill="#ffffff" stroke="#c2dac7" stroke-width="2"/>
+
+    
+    <line x1="290" y1="280" x2="290" y2="375" stroke="#d5e5d8" stroke-width="4" stroke-dasharray="8,8"/>
+    <line x1="440" y1="280" x2="440" y2="375" stroke="#d5e5d8" stroke-width="4" stroke-dasharray="8,8"/>
+    <line x1="290" y1="375" x2="440" y2="375" stroke="#d5e5d8" stroke-width="4" stroke-dasharray="8,8"/>
+    <line x1="175" y1="325" x2="290" y2="375" stroke="#d5e5d8" stroke-width="4" stroke-dasharray="8,8"/>
+    <line x1="440" y1="375" x2="560" y2="325" stroke="#d5e5d8" stroke-width="4" stroke-dasharray="8,8"/>
+
+    
+    <circle cx="290" cy="375" r="22" fill="#ffffff" stroke="#c2dac7" stroke-width="3"/>
+    <circle cx="440" cy="375" r="22" fill="#ffffff" stroke="#c2dac7" stroke-width="3"/>
+
+    
+    <path d="M 175 325 L 290 280 L 440 280 L 560 325" fill="none" stroke="#207448" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+
+    
+    <g transform="translate(130, 295)">
+      <rect x="0" y="0" width="46" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+      <rect x="7" y="7" width="32" height="24" rx="2" fill="#e8f1ea"/>
+      <path d="M 13 46 L 33 46 M 23 38 L 23 46" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+
+    
+    <g transform="translate(268, 258)">
+      <circle cx="22" cy="22" r="22" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="22" cy="22" r="8" fill="#207448"/>
+    </g>
+    <g transform="translate(418, 258)">
+      <circle cx="22" cy="22" r="22" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="22" cy="22" r="8" fill="#207448"/>
+    </g>
+
+    
+    <g transform="translate(560, 295)">
+      <rect x="0" y="0" width="46" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+      <rect x="7" y="7" width="32" height="24" rx="2" fill="#e8f1ea"/>
+      <path d="M 13 46 L 33 46 M 23 38 L 23 46" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+
+    
+    <g id="left-notes">
+      
+      <rect x="90" y="468" width="660" height="92" rx="10" fill="#ffffff" stroke="#c2dac7" stroke-width="1.5"/>
+      <circle cx="126" cy="514" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <path d="M 120 514 L 124 518 L 132 510" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="156" y="506" font-family="sans-serif" font-size="25" fill="#303a36">
+        <tspan x="156" dy="0">path and bandwidth reserved</tspan>
+        <tspan x="156" dy="32">before data flows</tspan>
+      </text>
+
+      
+      <rect x="90" y="580" width="660" height="76" rx="10" fill="#ffffff" stroke="#c2dac7" stroke-width="1.5"/>
+      <circle cx="126" cy="618" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <path d="M 120 618 L 124 622 L 132 614" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="156" y="626" font-family="sans-serif" font-size="25" fill="#303a36">predictable delay and jitter</text>
+
+      
+      <rect x="90" y="676" width="660" height="76" rx="10" fill="#ffffff" stroke="#c2dac7" stroke-width="1.5"/>
+      <circle cx="126" cy="714" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <path d="M 120 714 L 124 718 L 132 710" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="156" y="722" font-family="sans-serif" font-size="25" fill="#303a36">bandwidth idle during silence</text>
+    </g>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="820" y="115" width="720" height="735" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(850, 138)">
+      <rect x="6" y="6" width="16" height="16" rx="3" fill="#207448"/>
+      <rect x="26" y="6" width="16" height="16" rx="3" fill="#207448" opacity="0.6"/>
+      <rect x="6" y="26" width="16" height="16" rx="3" fill="#207448" opacity="0.6"/>
+      <rect x="26" y="26" width="16" height="16" rx="3" fill="#207448"/>
+    </g>
+    <text x="916" y="174" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Packet switching</text>
+
+    
+    <rect x="850" y="205" width="660" height="240" rx="12" fill="#ffffff" stroke="#c2dac7" stroke-width="2"/>
+
+    
+    <line x1="935" y1="325" x2="1035" y2="265" stroke="#7eb792" stroke-width="4"/>
+    <line x1="935" y1="325" x2="1035" y2="385" stroke="#7eb792" stroke-width="4"/>
+    <line x1="1035" y1="265" x2="1185" y2="265" stroke="#7eb792" stroke-width="4"/>
+    <line x1="1035" y1="265" x2="1185" y2="385" stroke="#7eb792" stroke-width="4"/>
+    <line x1="1035" y1="385" x2="1185" y2="265" stroke="#7eb792" stroke-width="4"/>
+    <line x1="1035" y1="385" x2="1185" y2="385" stroke="#7eb792" stroke-width="4"/>
+    <line x1="1185" y1="265" x2="1285" y2="325" stroke="#7eb792" stroke-width="4"/>
+    <line x1="1185" y1="385" x2="1285" y2="325" stroke="#7eb792" stroke-width="4"/>
+    <line x1="1285" y1="325" x2="1375" y2="325" stroke="#7eb792" stroke-width="4"/>
+
+    
+    <g transform="translate(1013, 243)">
+      <circle cx="22" cy="22" r="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 12 22 L 32 22 M 22 12 L 22 32" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(1013, 363)">
+      <circle cx="22" cy="22" r="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 12 22 L 32 22 M 22 12 L 22 32" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(1163, 243)">
+      <circle cx="22" cy="22" r="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 12 22 L 32 22 M 22 12 L 22 32" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(1163, 363)">
+      <circle cx="22" cy="22" r="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 12 22 L 32 22 M 22 12 L 22 32" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(1263, 303)">
+      <circle cx="22" cy="22" r="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 12 22 L 32 22 M 22 12 L 22 32" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    
+    
+    <g transform="translate(1085, 256)">
+      <rect x="0" y="0" width="14" height="18" rx="2" fill="#207448"/>
+      <rect x="14" y="0" width="22" height="18" rx="2" fill="#c2dac7" stroke="#207448" stroke-width="1.5"/>
+    </g>
+    
+    <g transform="translate(1085, 376)">
+      <rect x="0" y="0" width="14" height="18" rx="2" fill="#207448"/>
+      <rect x="14" y="0" width="22" height="18" rx="2" fill="#c2dac7" stroke="#207448" stroke-width="1.5"/>
+    </g>
+    
+    <g transform="translate(1310, 316)">
+      <rect x="0" y="0" width="14" height="18" rx="2" fill="#207448"/>
+      <rect x="14" y="0" width="22" height="18" rx="2" fill="#c2dac7" stroke="#207448" stroke-width="1.5"/>
+    </g>
+
+    
+    <g transform="translate(1198, 320)">
+      <rect x="0" y="0" width="12" height="15" rx="2" fill="#207448" opacity="0.4"/>
+      <rect x="12" y="0" width="18" height="15" rx="2" fill="#c2dac7" stroke="#207448" stroke-width="1" opacity="0.4"/>
+      <path d="M 4 22 L 26 34 M 26 22 L 4 34" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    
+    <g transform="translate(890, 295)">
+      <rect x="0" y="0" width="46" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+      <rect x="7" y="7" width="32" height="24" rx="2" fill="#e8f1ea"/>
+      <path d="M 13 46 L 33 46 M 23 38 L 23 46" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+
+    
+    <g transform="translate(1375, 295)">
+      <rect x="0" y="0" width="46" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+      <rect x="7" y="7" width="32" height="24" rx="2" fill="#e8f1ea"/>
+      <path d="M 13 46 L 33 46 M 23 38 L 23 46" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+
+    
+    <g id="right-notes">
+      
+      <rect x="850" y="468" width="660" height="92" rx="10" fill="#ffffff" stroke="#c2dac7" stroke-width="1.5"/>
+      <circle cx="886" cy="514" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <path d="M 880 514 L 884 518 L 892 510" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="916" y="506" font-family="sans-serif" font-size="25" fill="#303a36">
+        <tspan x="916" dy="0">each packet carries a destination</tspan>
+        <tspan x="916" dy="32">in its header</tspan>
+      </text>
+
+      
+      <rect x="850" y="580" width="660" height="76" rx="10" fill="#ffffff" stroke="#c2dac7" stroke-width="1.5"/>
+      <circle cx="886" cy="618" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <path d="M 880 618 L 884 622 L 892 614" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="916" y="626" font-family="sans-serif" font-size="25" fill="#303a36">links used efficiently</text>
+
+      
+      <rect x="850" y="676" width="660" height="76" rx="10" fill="#ffffff" stroke="#c2dac7" stroke-width="1.5"/>
+      <circle cx="886" cy="714" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <path d="M 880 714 L 884 718 L 892 710" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="916" y="722" font-family="sans-serif" font-size="25" fill="#303a36">queues can fill and packets get dropped</text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-highlight">
+    <rect x="60" y="878" width="1480" height="82" rx="14" fill="#db8129"/>
+    <text x="800" y="930" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Ask first: does the network reserve a path or share one?</text>
+  </g>
+</svg>

@@ -14,7 +14,7 @@
   <rect width="1600" height="1080" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">The initial RAM filesystem (initramfs)</text>
 
-  <!-- 6 Participants (centers: 180, 425, 675, 925, 1175, 1425) -->
+  
   <rect x="65" y="106" width="230" height="145" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5"><rect x="158" y="122" width="44" height="32" rx="4"/><path d="M158 132h44"/></g>
   <text x="180" y="206" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="26" font-weight="700">Boot loader</text>
@@ -54,7 +54,7 @@
     <tspan x="1425" dy="30">(PID 1)</tspan>
   </text>
 
-  <!-- Lifelines -->
+  
   <g stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.45">
     <line x1="180" y1="251" x2="180" y2="1040"/>
     <line x1="425" y1="251" x2="425" y2="1040"/>
@@ -64,7 +64,7 @@
     <line x1="1425" y1="251" x2="1425" y2="1040"/>
   </g>
 
-  <!-- 1: Boot loader -> Kernel -->
+  
   <circle cx="42" cy="316" r="22" fill="#207448"/><text x="42" y="325" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">1</text>
   <path d="M180 326 H421" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="302" y="280" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
@@ -72,37 +72,37 @@
     <tspan x="302" dy="28">pass cmdline (root=UUID=...)</tspan>
   </text>
 
-  <!-- 2: Kernel -> initramfs -->
+  
   <circle cx="42" cy="406" r="22" fill="#207448"/><text x="42" y="415" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">2</text>
   <path d="M425 416 H671" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="550" y="396" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">unpack initramfs to RAM, run /init as PID 1</text>
 
-  <!-- 3: initramfs -> udev -->
+  
   <circle cx="42" cy="506" r="22" fill="#207448"/><text x="42" y="515" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">3</text>
   <path d="M675 516 H921" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="800" y="496" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">start udev, load modules for detected hardware (nvme, mpt3sas, mlx5, dm-crypt, md, lvm)</text>
 
-  <!-- 4: initramfs self -->
+  
   <circle cx="42" cy="600" r="22" fill="#207448"/><text x="42" y="609" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">4</text>
   <path d="M675 600 H725 V622 H679" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="700" y="582" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">assemble md/LVM, unlock LUKS, configure network if needed, apply rd.* options</text>
 
-  <!-- 5: initramfs -> Real root fs -->
+  
   <circle cx="42" cy="696" r="22" fill="#207448"/><text x="42" y="705" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">5</text>
   <path d="M675 706 H1171" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="925" y="686" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">wait for root=UUID device, mount it read-only</text>
 
-  <!-- 6: initramfs -> Kernel (orange) -->
+  
   <circle cx="42" cy="790" r="22" fill="#db8129"/><text x="42" y="799" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">6</text>
   <path d="M675 800 H429" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
   <text x="550" y="780" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">switch_root to the real root</text>
 
-  <!-- 7: Kernel -> systemd -->
+  
   <circle cx="42" cy="884" r="22" fill="#207448"/><text x="42" y="893" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">7</text>
   <path d="M425 894 H1421" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="925" y="874" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">exec /sbin/init (systemd) as PID 1 on the real root</text>
 
-  <!-- 8: systemd -> Real root fs -->
+  
   <circle cx="42" cy="978" r="22" fill="#207448"/><text x="42" y="987" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="24" font-weight="700">8</text>
   <path d="M1425 988 H1179" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="1295" y="968" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">remount rw, mount fstab filesystems, start units</text>

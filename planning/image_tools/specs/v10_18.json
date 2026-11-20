@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "18",
+  "name": "g18-launch-gap",
+  "title": "Three tiny kernels spend most of their time waiting for the CPU to submit them",
+  "spec": "Two horizontal timeline lanes on one shared time axis from 0 to 54 microseconds. Top lane labelled CPU submits, one launch at a time: three blocks each 15 microseconds wide, labelled launch 1, launch 2 and launch 3, placed end to end and covering 45 microseconds. Bottom lane labelled GPU runs kernels: three short blocks each 3 microseconds wide, aligned under the launch blocks at the end of each, labelled kernel 1, kernel 2, kernel 3, covering 9 microseconds in total, with large empty gaps between them. A grey bracket over the empty GPU time labelled idle, waiting for the next launch. A second, smaller panel below labelled one graph replay: a single CPU block labelled cudaGraphLaunch, 15 microseconds, followed by the three GPU kernel blocks back to back with no gaps. Orange highlight on the idle GPU gaps in the top panel with the note: 83.3 percent of the time is CPU launch overhead. Monospace for 15 us, 3 us, 45 us, 9 us and cudaGraphLaunch.",
+  "anchor": "### 2.1 Why CPU launch overhead dominates LLM decode (`15 µs` launch vs `3 µs` kernel & `40,000` launches)",
+  "alt": "CPU launch gaps against tiny GPU kernels, and one graph replay",
+  "cap": "Launch gap: the GPU finishes each tiny kernel long before the CPU submits the next, so a single graph replay removes the gaps."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "18",
+  "name": "g18-atomic-batch",
+  "title": "Batching the queue counter cuts the number of atomic calls by the batch size",
+  "spec": "A column chart with four columns left to right labelled unbatched batch 1, batch 8, batch 16 and batch 32. Column heights are proportional to total L2 atomic calls for N equals 1,048,576 elements: 1,048,576, 131,072, 65,536 and 32,768. Each column has its value in monospace above it and its reduction factor below it: 1x, 8x, 16x and 32x fewer. The first column is grey and the last column is green. Under the columns a short caption: unbatched shows high L2 contention stalls, batch 8 and 16 remove most of the replays, batch 32 with a warp leader gives the fewest atomics. Orange highlight on the batch 32 column with the note: a batch too large can leave late warps with extra work, so measure. Monospace for 1,048,576, 131,072, 65,536 and 32,768.",
+  "anchor": "### 1.1 L2-cache atomics, `atomic_transactions_per_request`, and batching (`batchSize = 8, 16, 32`)",
+  "alt": "Atomic call counts at four batch sizes",
+  "cap": "Atomic batching: one atomic that reserves 32 items replaces 32 separate atomics, which cuts L2 contention 32-fold."
+ }
+]

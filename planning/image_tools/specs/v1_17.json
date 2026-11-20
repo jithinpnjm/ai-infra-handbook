@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "l17-page-faults",
+  "title": "Minor and major page faults",
+  "spec": "Left: process with virtual memory; malloc(1<<30) consumes almost no RAM until pages are touched (demand paging). Two outcomes from a touch: minor fault (green): no I/O, new zero page or already-cached file page, cheap and frequent; major fault (orange): kernel must read from storage, first touch of uncached file page or swapping an anonymous page back in, slow. Bottom strip of size terms: VSZ or VIRT counts everything allocated; RSS only the part in RAM; PSS divides shared pages among users; USS unique set size.",
+  "anchor": "### Demand paging, page faults, memory states",
+  "alt": "Touching a page triggers a cheap minor fault or a slow major fault that reads storage.",
+  "cap": "Linux hands out virtual memory immediately and backs it with physical pages only when touched."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "l17-overcommit",
+  "title": "Overcommit modes",
+  "spec": "Three cards for vm.overcommit_memory: 0 (default) heuristic, refuse only obviously excessive single requests; 1 always allow, never fail malloc; 2 strict, total committed memory limited to swap plus vm.overcommit_ratio% of RAM, allocations fail with ENOMEM (orange, the only hard limit). Below: flow for 0 and 1: malloc succeeds, memory runs out later at first touch, then the OOM killer picks a victim. Note: overcommit defers the failure.",
+  "anchor": "### Overcommit",
+  "alt": "Three overcommit policies and when the failure shows up.",
+  "cap": "Only mode 2 enforces a hard limit, while the others defer failure to first touch and the OOM killer."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "l17-thp-modes",
+  "title": "Huge pages: explicit versus transparent",
+  "spec": "Two columns. Left, Explicit hugetlb: reserved in a dedicated pool (echo 1024 | sudo tee /proc/sys/vm/nr_hugepages is 2 GiB), not swappable, only apps that ask use it; 1 GiB pages need boot parameters; for VM guests, DPDK, RDMA, large in-memory databases. Right, Transparent THP: kernel backs large aligned anonymous regions with 2 MiB pages by itself; /sys/kernel/mm/transparent_hugepage/enabled has values always, madvise, never; training nodes always or madvise; latency-critical inference, databases, Redis madvise or never with defrag=defer (orange). Top note: huge pages shrink the page table and raise TLB reach.",
+  "anchor": "## 8. Huge pages and transparent huge pages",
+  "alt": "Explicit huge pages are reserved in a pool, while transparent huge pages are used automatically by the kernel.",
+  "cap": "THP is automatic and can add latency spikes, while explicit huge pages give a guaranteed page size."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "l17-memory-policy",
+  "title": "Memory policy by node type",
+  "spec": "Table with columns Node type, Swap, Swappiness, THP, Limits. Rows: Training or HPC compute | none or minimal | 0 to 10 | always or madvise | cgroup memory.max per job, memlock unlimited ; Inference or latency-critical | none | 0 to 10 | madvise or never | per-service limits, memory.high as early warning ; Login or shared nodes | small swap, maybe zram | 10 to 60 | default | per-user slice MemoryMax ; Kubernetes workers | usually off | low | per workload | systemReserved, kubeReserved, QoS classes. Green bar: start from your row and change it only after you measure.",
+  "anchor": "### Swap and memory policy summary",
+  "alt": "A table of starting memory settings for training, inference, login and Kubernetes nodes.",
+  "cap": "Start from the row for your node type and change it only after you measure."
+ }
+]

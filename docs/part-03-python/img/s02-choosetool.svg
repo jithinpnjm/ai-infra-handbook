@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Pick the tool for the situation</title>
+  <desc>A two-column comparison guide mapping Python development situations to their recommended tools, featuring reproducible deployment highlighted in orange, and a bottom takeaway rule.</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Pick the tool for the situation</text>
+
+  
+  <rect x="60" y="130" width="670" height="55" rx="8" fill="#207448"/>
+  <text x="395" y="168" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Situation</text>
+
+  <rect x="750" y="130" width="790" height="55" rx="8" fill="#207448"/>
+  <text x="1145" y="168" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Tool</text>
+
+  
+  
+  <rect x="60" y="205" width="670" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 97 236 L 123 236 L 135 248 L 135 284 L 97 284 Z"/>
+    <path d="M 123 236 L 123 248 L 135 248"/>
+    <path d="M 105 260 L 111 266 L 105 272"/>
+    <path d="M 117 272 L 127 272"/>
+  </g>
+  <text x="165" y="252" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="165" dy="0">Quick script with</tspan>
+    <tspan x="165" dy="35">a few dependencies</tspan>
+  </text>
+  
+  <rect x="750" y="205" width="790" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="785" y="269" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">python -m venv + pip (or uv)</text>
+
+  
+  
+  <rect x="60" y="330" width="670" height="110" rx="12" fill="#fff5ea" stroke="#db8129" stroke-width="4"/>
+  
+  <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="87" y="361" width="52" height="48" rx="6"/>
+    <path d="M 87 375 L 139 375"/>
+    <path d="M 106 391 L 106 386 C 106 382 118 382 118 386 L 118 391"/>
+    <rect x="103" y="391" width="18" height="13" rx="2" fill="#fff5ea"/>
+  </g>
+  <text x="165" y="377" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="165" dy="0">Application,</tspan>
+    <tspan x="165" dy="35">reproducible deployment</tspan>
+  </text>
+  
+  <rect x="750" y="330" width="790" height="110" rx="12" fill="#fff5ea" stroke="#db8129" stroke-width="4"/>
+  <text x="785" y="394" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">pip-tools or uv lock + hashes</text>
+
+  
+  
+  <rect x="60" y="455" width="670" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 113 483 L 138 496 L 113 509 L 88 496 Z"/>
+    <path d="M 88 496 L 88 525 L 113 538 L 113 509 Z"/>
+    <path d="M 138 496 L 138 525 L 113 538"/>
+    <path d="M 100 489 L 126 503"/>
+  </g>
+  <text x="165" y="519" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Library you publish</text>
+  
+  <rect x="750" y="455" width="790" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="785" y="519" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">pyproject.toml + Hatch/Flit/setuptools</text>
+
+  
+  
+  <rect x="60" y="580" width="670" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="87" y="611" width="52" height="48" rx="6"/>
+    <path d="M 97 627 L 107 635 L 97 643"/>
+    <path d="M 113 643 L 127 643"/>
+  </g>
+  <text x="165" y="644" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Global CLI tools</text>
+  
+  <rect x="750" y="580" width="790" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="785" y="644" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">pipx / uv tool</text>
+
+  
+  
+  <rect x="60" y="705" width="670" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="95" y="742" width="36" height="36" rx="4"/>
+    <rect x="105" y="752" width="16" height="16" rx="2"/>
+    <path d="M 103 734 L 103 742 M 113 734 L 113 742 M 123 734 L 123 742"/>
+    <path d="M 103 778 L 103 786 M 113 778 L 113 786 M 123 778 L 123 786"/>
+    <path d="M 87 750 L 95 750 M 87 760 L 95 760 M 87 770 L 95 770"/>
+    <path d="M 131 750 L 139 750 M 131 760 L 139 760 M 131 770 L 139 770"/>
+  </g>
+  <text x="165" y="752" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="165" dy="0">Heavy native</tspan>
+    <tspan x="165" dy="35">scientific stack, HPC</tspan>
+  </text>
+  
+  <rect x="750" y="705" width="790" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="785" y="769" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">conda/mamba, or Lmod + venv</text>
+
+  
+  
+  <rect x="60" y="830" width="670" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 106 861 L 120 861"/>
+    <path d="M 110 861 L 110 873 L 93 903 C 90 908 94 911 100 911 L 126 911 C 132 911 136 908 133 903 L 116 873 L 116 861"/>
+    <path d="M 101 895 L 125 895"/>
+    <path d="M 109 903 L 113 907 L 120 899"/>
+  </g>
+  <text x="165" y="894" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Multi-version testing</text>
+  
+  <rect x="750" y="830" width="790" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="785" y="894" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">tox / nox / CI matrix</text>
+
+  
+  <rect x="60" y="965" width="1480" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="1012" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">a published library gets ranges, a deployed application gets a lockfile</text>
+</svg>

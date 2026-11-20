@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "n10-httpmsg",
+  "title": "Anatomy of an HTTP exchange",
+  "spec": "Two stacked boxes, request on top (client to server) and response below, in monospace. Request: 'GET /v1/models HTTP/1.1' (first line: method + target), headers 'Host: api.example.com', 'Accept: application/json', 'Authorization: Bearer eyJ...'. Response: 'HTTP/1.1 200 OK' (first line: status), headers 'Content-Type: application/json', 'Content-Length: 142', 'Cache-Control: max-age=60'. Orange highlight on both first lines with note 'read the first line first'. Right side chips for status classes: 1xx informational, 2xx success, 3xx redirection, 4xx client error, 5xx server error; note 'A 502, 503 or 504 from a load balancer points to the upstream'.",
+  "anchor": "## 1. HTTP in practice",
+  "alt": "HTTP request and response",
+  "cap": "The first line of each message holds the method and target or the status, and the status class tells you where to look."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "n10-httpver",
+  "title": "HTTP/1.1, HTTP/2 and HTTP/3",
+  "spec": "Three columns. HTTP/1.1: persistent connections (keep-alive), Host header, over TCP; one connection per request in HTTP/1.0. HTTP/2 (RFC 9113): many streams multiplexed over one TCP connection, binary frames, HPACK header compression, flow control per stream. HTTP/3 (RFC 9114): runs on QUIC over UDP, independent streams so a lost packet on one stream does not block others, faster handshakes, connections can migrate, TLS 1.3 built in. Below each column a small drawing: 1.1 several roads, 2 one road with many lanes, 3 many lanes over UDP. Orange note: 'Reuse connections: saves the TCP and TLS handshake costs, 1 RTT + 1 RTT'.",
+  "anchor": "### Connections and versions",
+  "alt": "HTTP versions compared",
+  "cap": "HTTP/2 shares one TCP connection between streams, while HTTP/3 uses QUIC over UDP so streams are independent."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "n10-crypto",
+  "title": "What each crypto building block does",
+  "spec": "Six rows each with a job and examples: Symmetric encryption: fast bulk confidentiality, AES-128/256-GCM, ChaCha20-Poly1305. Key exchange: agree a shared secret over an insecure channel, (EC)DHE X25519, P-256. Public-key signatures: prove possession of a private key, RSA, ECDSA, Ed25519. Hashes: fixed-size fingerprint, SHA-256, SHA-384. HMAC: authenticate with a shared key, HMAC-SHA256. Key derivation: secrets into session keys, HKDF. Green bar: 'No single tool does everything; TLS combines them'. Orange note on Key exchange: 'ephemeral keys give forward secrecy'.",
+  "anchor": "## 2. Security goals and cryptographic building blocks",
+  "alt": "TLS cryptographic building blocks",
+  "cap": "TLS combines symmetric encryption, key exchange, signatures, hashes, HMAC and key derivation, each covering a different job."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "n10-rtt",
+  "title": "Round trips: TCP plus TLS",
+  "spec": "Two horizontal bars comparing connection setup cost before the first request. Top bar 'TCP + TLS 1.2': three blocks 'TCP 1 RTT' + 'TLS 2 RTT' = 3 RTTs. Bottom bar 'TCP + TLS 1.3': blocks 'TCP 1 RTT' + 'TLS 1 RTT' = 2 RTTs (green, shorter). Orange arrow showing the saved round trip. Side note: 'TLS 1.3 client sends its key share in the first message'. Footer: 'Session tickets or PSKs let a returning client skip the full handshake'.",
+  "anchor": "### The handshake (TLS 1.3)",
+  "alt": "TLS 1.2 versus 1.3 round trips",
+  "cap": "TCP plus TLS 1.3 takes 2 round trips instead of 3 for TLS 1.2."
+ }
+]

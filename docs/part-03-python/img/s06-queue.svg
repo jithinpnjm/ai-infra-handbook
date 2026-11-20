@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>A bounded queue gives backpressure</title>
+  <desc>Visual infographic showing how a bounded queue with maxsize N creates backpressure by blocking producers when full while keeping memory use bounded.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A bounded queue gives backpressure</text>
+
+  
+  
+  <rect x="70" y="210" width="310" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(197, 240)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="28" cy="28" r="14"/>
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 15 15 M 41 41 L 45 45 M 11 45 L 15 41 M 41 11 L 45 15"/>
+  </g>
+  <text x="225" y="355" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Producer 1</text>
+
+  
+  <rect x="70" y="500" width="310" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(197, 530)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="28" cy="28" r="14"/>
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 15 15 M 41 41 L 45 45 M 11 45 L 15 41 M 41 11 L 45 15"/>
+  </g>
+  <text x="225" y="645" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Producer 2</text>
+
+  
+  
+  <rect x="490" y="180" width="620" height="530" rx="20" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(772, 215)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="4" y="8" width="48" height="40" rx="6"/>
+    <line x1="20" y1="8" x2="20" y2="48"/>
+    <line x1="36" y1="8" x2="36" y2="48"/>
+  </g>
+
+  
+  <text x="800" y="305" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">Queue(maxsize=N)</text>
+
+  
+  <g transform="translate(545, 345)">
+    
+    <rect x="0" y="0" width="75" height="75" rx="8" fill="#207448"/>
+    <path d="M 25 38 L 33 46 L 50 28" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+    
+    <rect x="87" y="0" width="75" height="75" rx="8" fill="#207448"/>
+    <path d="M 112 38 L 120 46 L 137 28" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+    
+    <rect x="174" y="0" width="75" height="75" rx="8" fill="#207448"/>
+    <path d="M 199 38 L 207 46 L 224 28" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+    
+    <rect x="261" y="0" width="75" height="75" rx="8" fill="#207448"/>
+    <path d="M 286 38 L 294 46 L 311 28" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+    
+    <rect x="348" y="0" width="75" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-dasharray="6 4"/>
+
+    
+    <rect x="435" y="0" width="75" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-dasharray="6 4"/>
+  </g>
+
+  
+  <g transform="translate(525, 465)">
+    <rect x="0" y="0" width="550" height="110" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(25, 27)" stroke="#db8129" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="22"/>
+      <line x1="16" y1="28" x2="40" y2="28"/>
+    </g>
+    <text x="95" y="48" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">
+      <tspan x="95" dy="0">when it is full,</tspan>
+      <tspan x="95" dy="32">put() blocks the producers</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(525, 600)">
+    <rect x="0" y="0" width="550" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(25, 12)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M 28 6 L 46 14 C 46 32 28 46 28 46 C 28 46 10 32 10 14 Z"/>
+    </g>
+    <text x="310" y="50" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">memory use stays bounded</text>
+  </g>
+
+  
+  
+  <rect x="1220" y="210" width="310" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(1347, 240)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="8" y="8" width="40" height="40" rx="6"/>
+    <path d="M 18 28 L 26 36 L 38 20" stroke-linecap="round"/>
+  </g>
+  <text x="1375" y="355" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Consumer 1</text>
+
+  
+  <rect x="1220" y="500" width="310" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(1347, 530)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="8" y="8" width="40" height="40" rx="6"/>
+    <path d="M 18 28 L 26 36 L 38 20" stroke-linecap="round"/>
+  </g>
+  <text x="1375" y="645" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Consumer 2</text>
+
+  
+  
+  <path d="M 380 305 L 488 305" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 380 595 L 488 595" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1110 305 L 1218 305" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1110 595 L 1218 595" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "09",
+  "name": "h09-fairtree-walk",
+  "title": "Fair Tree ranks users by walking the account tree",
+  "spec": "A tree drawn top to bottom. At the top, a box labelled root. Two account boxes under it: physics with the label shares 60, S 0.60, U 0.965, LF 0.622, and biology with the label shares 40, S 0.40, U 0.035, LF 11.400. Biology is drawn on the left and physics on the right, with biology visited first. Under biology, two user boxes: carol, labelled FairShare 1.00, and dave, labelled FairShare 0.75. Under physics, two user boxes: bob, labelled FairShare 0.50, and alice, labelled FairShare 0.25. Each user box carries a number circle showing the visit order in time order: carol 1, dave 2, bob 3, alice 4. Small text next to biology reads LF above 1 means under-served. Small text next to physics reads LF below 1 means over-served. A thin dashed line marks the depth-first walk through the tree in visit order. Orange highlight on the biology box, the account that outranks physics. Green takeaway bar at the bottom reads Biology outranks physics, so both biology users come before both physics users, whatever their usage.",
+  "anchor": "### The simulator",
+  "alt": "Fair Tree sorts sibling accounts by level fairshare, so biology outranks physics and its users rank above physics users.",
+  "cap": "Fair Tree ranks the under-served biology account first, so both of its users rank above both physics users."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "09",
+  "name": "h09-backfill-gap",
+  "title": "Backfill fills the gap before a planned large job",
+  "spec": "A horizontal time axis from left to right labelled time, with a vertical marker at the right side labelled planned start of the large job. A top lane shows the node field: a wide grey block labelled large multi-node job, waiting, which starts at the planned start marker, drawn with a dashed outline and a PLANNED tag. Above the large job's planned start, a row of small running job blocks labelled running small jobs finish and free nodes; their ends are marked on the axis. In the gap between now and the planned start, two candidate job blocks appear in the lower lane. First candidate, green block labelled short job with accurate --time: it fits fully inside the gap and has a green check icon, with an arrow pointing left-to-right into the gap labelled backfills now. Second candidate, grey block labelled long job with loose --time: it is drawn longer than the gap and crosses the planned start marker, with a cross icon, and the note cannot fit before the planned start. The orange highlight is on the gap between now and the planned start. Number circles are not used. Green takeaway bar at the bottom reads Accurate time limits let more jobs backfill.",
+  "anchor": "## 5. Backfill",
+  "alt": "A short job with an accurate time limit fits in the gap before a large job's planned start, while a long job with a loose limit does not.",
+  "cap": "Backfill starts a short job early only when its time limit ends before the large job's planned start."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "09",
+  "name": "h09-preempt-flow",
+  "title": "Preemption from urgent arrival to freed GPUs",
+  "spec": "A vertical sequence of numbered steps down the left side, each a box with a green number circle in time order. Step 1: an urgent job arrives and every GPU is busy. Step 2: the scheduler finds lower-priority jobs whose resources would satisfy the request. Step 3: those jobs receive SIGCONT and SIGTERM straight away. Step 4: the grace time runs out and the jobs receive SIGKILL. Step 5: the preempted jobs are cancelled, requeued or suspended, depending on the mode. Step 6: the urgent job starts on the freed GPUs. To the right of step 5, three mode boxes stacked vertically, each linked by a short arrow from step 5: CANCEL labelled ends the job, REQUEUE labelled back to PENDING with --requeue, and SUSPEND,GANG labelled frozen in memory. The SUSPEND,GANG box is drawn with the orange highlight and carries a warning icon with the note unsuitable for GPU training. The REQUEUE box carries a checkpoint icon with the note needs checkpoints to resume. Green takeaway bar at the bottom reads For GPU training, choose REQUEUE with checkpoints, and reserve a scavenger QOS for work that can resume.",
+  "anchor": "## 6. Preemption",
+  "alt": "Preemption sends signals to lower-priority jobs, then cancels, requeues or suspends them so the urgent job can start on the freed GPUs.",
+  "cap": "Preemption stops lower-priority jobs after a grace period so an urgent job can start, and the mode decides what happens to them."
+ }
+]

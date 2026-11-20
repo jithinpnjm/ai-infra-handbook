@@ -14,11 +14,11 @@
 
   <text x="800" y="82" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="700" fill="#303a36">Memory at a glance</text>
 
-  <!-- Each process -->
+  
   <rect x="50" y="230" width="500" height="290" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <text x="75" y="278" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Each process</text>
 
-  <!-- Virtual address space -->
+  
   <rect x="80" y="295" width="440" height="200" rx="18" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="100" y="366" width="56" height="48" rx="5"/>
@@ -31,7 +31,7 @@
     <tspan x="174" dy="36">unmapped)</tspan>
   </text>
 
-  <!-- Swap -->
+  
   <rect x="1120" y="150" width="430" height="140" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <ellipse cx="1160" cy="205" rx="26" ry="9"/>
@@ -40,7 +40,7 @@
   </g>
   <text x="1202" y="228" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Swap (disk/zram)</text>
 
-  <!-- Filesystem / disk -->
+  
   <rect x="1120" y="340" width="430" height="140" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M1135 377 H1154 L1162 386 H1185 V440 H1135 Z"/>
@@ -48,7 +48,7 @@
   </g>
   <text x="1202" y="418" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">Filesystem / disk</text>
 
-  <!-- Physical memory -->
+  
   <rect x="650" y="300" width="400" height="180" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <rect x="670" y="361" width="56" height="56" rx="5"/>
@@ -62,7 +62,7 @@
     <tspan x="746" dy="34">nodes)</tspan>
   </text>
 
-  <!-- Connection labels -->
+  
   <rect x="560" y="140" width="520" height="60" rx="12" fill="#e8f1ea"/>
   <text x="580" y="166" font-family="sans-serif" font-size="24" fill="#303a36">
     <tspan x="580" dy="0">anonymous pages paged out</tspan>
@@ -75,13 +75,13 @@
     <tspan x="580" dy="28">cache) paged from</tspan>
   </text>
 
-  <!-- VA to Swap and Filesystem -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 10" stroke-linecap="round" stroke-linejoin="round">
     <path d="M420 295 V130 H1090 V220 H1120" marker-end="url(#arrow-green)"/>
     <path d="M480 295 V205 H1080 V410 H1120" marker-end="url(#arrow-green)"/>
   </g>
 
-  <!-- VA to PM -->
+  
   <path d="M520 395 H650" fill="none" stroke="#db8129" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
   <rect x="55" y="550" width="350" height="130" rx="14" fill="#e8f1ea"/>
   <text x="75" y="579" font-family="sans-serif" font-size="24" fill="#303a36">
@@ -91,7 +91,7 @@
     <tspan x="75" dy="28">translation)</tspan>
   </text>
 
-  <!-- Memory fan-out -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M690 480 C600 620 390 700 230 860" marker-end="url(#arrow-green)"/>
     <path d="M790 480 C750 620 680 720 610 860" marker-end="url(#arrow-green)"/>
@@ -99,38 +99,38 @@
     <path d="M1010 480 C1120 620 1280 720 1370 860" marker-end="url(#arrow-green)"/>
   </g>
 
-  <!-- Output nodes -->
+  
   <rect x="55" y="860" width="350" height="280" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <rect x="435" y="860" width="350" height="280" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <rect x="815" y="860" width="350" height="280" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <rect x="1195" y="860" width="350" height="280" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
 
-  <!-- Output node icons -->
+  
   <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Kernel memory: gear -->
+    
     <circle cx="102" cy="994" r="17"/>
     <circle cx="102" cy="994" r="6"/>
     <path d="M102 966 V974 M102 1014 V1022 M74 994 H82 M122 994 H130 M82 974 L88 980 M116 1008 L122 1014 M122 974 L116 980 M88 1008 L82 1014"/>
     <path d="M102 966 L96 961 M102 966 L108 961 M102 1022 L96 1027 M102 1022 L108 1027 M74 994 L69 988 M74 994 L69 1000 M130 994 L135 988 M130 994 L135 1000"/>
 
-    <!-- Page cache -->
+    
     <rect x="465" y="970" width="48" height="48" rx="4"/>
     <path d="M475 982 H503 M475 994 H503 M475 1006 H497"/>
     <path d="M459 964 H507"/>
 
-    <!-- Anonymous memory -->
+    
     <rect x="847" y="972" width="48" height="46" rx="4"/>
     <path d="M858 984 H884 M858 996 H884 M858 1008 H878"/>
     <path d="M841 966 H889"/>
 
-    <!-- Hugepages / pinned -->
+    
     <path d="M1228 991 V981 C1228 969 1237 960 1249 960 C1261 960 1270 969 1270 981 V991"/>
     <rect x="1220" y="991" width="58" height="38" rx="6"/>
     <circle cx="1249" cy="1007" r="4"/>
     <path d="M1249 1011 V1019"/>
   </g>
 
-  <!-- Kernel memory -->
+  
   <text x="151" y="928" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
     <tspan x="151" dy="0">Kernel</tspan>
     <tspan x="151" dy="36">memory: slab,</tspan>
@@ -139,14 +139,14 @@
     <tspan x="151" dy="36">buffers</tspan>
   </text>
 
-  <!-- Page cache -->
+  
   <text x="531" y="964" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
     <tspan x="531" dy="0">Page cache</tspan>
     <tspan x="531" dy="36">(file data),</tspan>
     <tspan x="531" dy="36">reclaimable</tspan>
   </text>
 
-  <!-- Anonymous memory -->
+  
   <text x="911" y="928" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
     <tspan x="911" dy="0">Anonymous</tspan>
     <tspan x="911" dy="36">memory: heap,</tspan>
@@ -155,7 +155,7 @@
     <tspan x="911" dy="36">host</tspan>
   </text>
 
-  <!-- Hugepages / pinned -->
+  
   <text x="1291" y="946" font-family="sans-serif" font-size="30" font-weight="700" fill="#303a36">
     <tspan x="1291" dy="0">Hugepages /</tspan>
     <tspan x="1291" dy="36">pinned</tspan>

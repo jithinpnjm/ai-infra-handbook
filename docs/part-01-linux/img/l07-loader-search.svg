@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>How the loader finds a library</title>
+  <desc>Visual explanation of the dynamic loader library search order: RPATH/RUNPATH, LD_LIBRARY_PATH, ld.so.cache, and default directories, with ldd inspection.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 7 5 L 1 8 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="700" fill="#303a36">How the loader finds a library</text>
+
+  
+
+  
+  <rect x="60" y="140" width="860" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="106" cy="215" r="24" fill="#207448"/>
+  <text x="106" y="224" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="700" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 152 191 L 180 191 L 194 205 L 194 239 L 152 239 Z"/>
+    <path d="M 180 191 L 180 205 L 194 205"/>
+    <path d="M 162 218 L 170 224 L 162 230"/>
+    <line x1="174" y1="230" x2="184" y2="230"/>
+  </g>
+  
+  <text x="225" y="202" fill="#303a36">
+    <tspan x="225" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="700">the executable's embedded</tspan>
+    <tspan x="225" dy="42" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="700" fill="#207448">RPATH</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700"> or </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="700" fill="#207448">RUNPATH</tspan>
+  </text>
+
+  
+  <line x1="490" y1="290" x2="490" y2="345" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="60" y="345" width="860" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="106" cy="420" r="24" fill="#207448"/>
+  <text x="106" y="429" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="700" fill="#ffffff">2</text>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="148" y="396" width="48" height="46" rx="6"/>
+    <line x1="148" y1="410" x2="196" y2="410"/>
+    <path d="M 158 423 L 166 429 L 158 435"/>
+    <line x1="172" y1="435" x2="184" y2="435"/>
+  </g>
+  
+  <text x="225" y="407" fill="#303a36">
+    <tspan x="225" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="700">the </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="700" fill="#207448">LD_LIBRARY_PATH</tspan>
+    <tspan x="225" dy="42" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700">environment variable</tspan>
+  </text>
+
+  
+  <line x1="490" y1="495" x2="490" y2="550" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="60" y="550" width="860" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="106" cy="640" r="24" fill="#207448"/>
+  <text x="106" y="649" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="700" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <ellipse cx="172" cy="618" rx="22" ry="7"/>
+    <path d="M 150 618 L 150 656 C 150 663 194 663 194 656 L 194 618"/>
+    <path d="M 150 637 C 150 644 194 644 194 637"/>
+  </g>
+  
+  <text x="225" y="608" fill="#303a36">
+    <tspan x="225" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="700">the cache </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="700" fill="#207448">/etc/ld.so.cache</tspan>
+    <tspan x="225" dy="40" font-family="system-ui, -apple-system, sans-serif" font-size="26">built from </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="700" fill="#207448">/etc/ld.so.conf</tspan>
+    <tspan x="225" dy="38" font-family="system-ui, -apple-system, sans-serif" font-size="26">(rebuilt by </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="700" fill="#207448">sudo ldconfig</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-size="26">)</tspan>
+  </text>
+
+  
+  <line x1="490" y1="730" x2="490" y2="785" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="60" y="785" width="860" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="106" cy="860" r="24" fill="#207448"/>
+  <text x="106" y="869" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="700" fill="#ffffff">4</text>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 150 842 L 166 842 L 172 848 L 194 848 C 196 848 198 850 198 852 L 198 876 C 198 878 196 880 194 880 L 150 880 C 148 880 146 878 146 876 L 146 846 C 146 844 148 842 150 842 Z"/>
+  </g>
+  
+  <text x="225" y="847" fill="#303a36">
+    <tspan x="225" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="700">default directories</tspan>
+    <tspan x="225" dy="42" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="700" fill="#207448">/lib</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700"> and </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="700" fill="#207448">/usr/lib</tspan>
+  </text>
+
+  
+
+  
+  <rect x="980" y="140" width="560" height="795" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="1030" y="184" width="38" height="48" rx="6"/>
+    <line x1="1040" y1="198" x2="1058" y2="198"/>
+    <line x1="1040" y1="208" x2="1052" y2="208"/>
+    <circle cx="1066" cy="220" r="12"/>
+    <line x1="1075" y1="229" x2="1086" y2="240"/>
+  </g>
+
+  
+  <text x="1106" y="222" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="700" fill="#207448">ldd /bin/bash</text>
+
+  
+  <line x1="1025" y1="268" x2="1495" y2="268" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  
+  <text x="1030" y="324" font-size="26" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="1030" dy="0">shows what the program asked for</tspan>
+    <tspan x="1030" dy="44">on the left of the arrow and</tspan>
+    <tspan x="1030" dy="44">where it was found on the right</tspan>
+  </text>
+
+  
+  <rect x="1020" y="520" width="480" height="340" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+
+  
+  <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 1260 565 L 1286 612 L 1234 612 Z"/>
+    <line x1="1260" y1="582" x2="1260" y2="596"/>
+    <circle cx="1260" cy="604" r="1.5" fill="#db8129"/>
+  </g>
+
+  
+  <text x="1260" y="675" text-anchor="middle">
+    <tspan x="1260" dy="0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="700" fill="#db8129">'libfoo.so.1 =&gt; not found'</tspan>
+    <tspan x="1260" dy="52" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#db8129">is the problem</tspan>
+  </text>
+</svg>

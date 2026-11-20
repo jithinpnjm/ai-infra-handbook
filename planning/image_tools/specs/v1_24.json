@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "24",
+  "name": "l24-tool-matrix",
+  "title": "Which kind of tool",
+  "spec": "Two-by-three matrix. Columns System-wide and Per-process. Rows Counters, Profiling (sampling), Tracing (every event). Cells in monospace: Counters: vmstat, mpstat, iostat, sar | ps, top, pidstat, /proc/PID/* ; Profiling: perf record, perf top | py-spy, gprof, cProfile ; Tracing: perf trace, Ftrace, bpftrace, tcpdump | strace, ltrace, gdb. Side note: counters are like an odometer, read twice; profiling is a camera taking one photo per interval, e.g. 99 Hz; tracing records every event so overhead grows with the event rate (orange).",
+  "anchor": "## 2. Tool types",
+  "alt": "Tools sorted by system-wide versus per-process scope and by counting, sampling or tracing.",
+  "cap": "Two questions sort the tools: whole system or one process, and counting, sampling or tracing."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "24",
+  "name": "l24-perf-workflow",
+  "title": "Count first, then record",
+  "spec": "Three-step arrow flow. 1 perf stat: cheap counting, gives IPC (an insn per cycle below about 0.5 suggests memory stalls), e.g. sudo perf stat -a -- sleep 5. 2 perf record: sampling profile, e.g. sudo perf record -F 99 -a -g -- sleep 30. 3 perf report --stdio -n or perf script, or turn into a flame graph. Orange note under step 2: binaries built without frame pointers show broken stacks; Python shows interpreter frames unless python -X perf or py-spy. Commands monospace.",
+  "anchor": "### perf stat: counting",
+  "alt": "Counting with perf stat comes first, then sampling with perf record, then reporting.",
+  "cap": "Run perf stat first because counting is cheap, then record and report only where it matters."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "24",
+  "name": "l24-bpftrace-timing",
+  "title": "bpftrace entry and return timing",
+  "spec": "Top: probe shape in monospace: probe[,probe...] /filter/ { action; }. Below, a two-probe diagram: kprobe:vfs_read stores @start[tid] = nsecs; kretprobe:vfs_read with filter /@start[tid]/ computes $duration_us = (nsecs - @start[tid]) / 1000, adds to @us = hist($duration_us), then delete(@start[tid]). Arrow between probes labelled map keyed by thread ID. Output: a latency histogram in microseconds. Green bar: entry probe stores a timestamp, return probe computes the delta and aggregates in a histogram.",
+  "anchor": "### bpftrace: a high-level tracing language",
+  "alt": "An entry probe stores a timestamp by thread ID and a return probe turns it into a histogram.",
+  "cap": "The filter on the return probe protects against calls that began before tracing started."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "24",
+  "name": "l24-overhead-rules",
+  "title": "Tracing overhead rules",
+  "spec": "Left: scale bar for event rate: under about 10k events per second is negligible; above about 100k per second needs care; scheduler, memory allocation, network packet and syscall events can exceed 1M per second (orange). Right: preference ladder tracepoints, then kprobes, then uprobes (every uprobe hit traps into the kernel; avoid on malloc, memcpy, CUDA launch paths). Bottom rules: count first with perf stat -e event -a sleep 1; aggregate in kernel with maps and histograms; filter on PID, cgroup, comm; keep durations short.",
+  "anchor": "### Overhead and safety rules",
+  "alt": "Event-rate thresholds and probe-type preferences that keep tracing overhead safe.",
+  "cap": "Count the event rate first and prefer tracepoints over kprobes over uprobes."
+ }
+]

@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "08",
+  "name": "g08-memory-stack",
+  "title": "One reserved number split into live tensors, cache and true headroom",
+  "spec": "A single tall vertical stacked bar representing the 40.0 GB GPU, with the top of the bar labelled total 40.0 GB. The bar is divided from the bottom up into four segments: allocated, 28.4 GB, live tensors, drawn solid dark; reusable PyTorch cache, 1.8 GB, drawn light hatched, labelled reserved but free inside the pool; driver free space, 9.8 GB, drawn light grey and labelled never touched by PyTorch. A bracket spans the top two segments, the lower hatched and the upper grey, labelled headroom 11.6 GB, and a second bracket spans the bottom two, labelled reserved 30.2 GB, the number nvidia-smi shows. A small note on the side reads a 75.5 percent figure on nvidia-smi is normal for a healthy job. Orange highlight on the reserved bracket with the note: do not alert on this number alone. Monospace for 40.0, 28.4, 1.8, 9.8, 30.2 and 11.6.",
+  "anchor": "### 2.3 The memory lie",
+  "alt": "Allocated, reserved and free GPU memory as stacked segments",
+  "cap": "Memory lie: nvidia-smi reports the reserved pool, but only the allocated part is in use and the free part is real headroom."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "08",
+  "name": "g08-clock-lie",
+  "title": "Utilization stays at 100 percent while the SM clock falls underneath it",
+  "spec": "A time-series chart with time in minutes on the horizontal axis, from 0 to 30. Two lines share the axis with two vertical scales. A flat dark line near the top labelled GPU-Util, held at 100 percent for the whole window. A descending green line labelled SM clock in MHz, starting near 1410 MHz at minute 0, stepping down to about 1200 MHz around minute 12 and to about 1100 MHz by minute 25, with a shaded band beneath marked throttle reason active. A dashed horizontal line at 1410 MHz labelled peak SM clock. A small annotation near minute 12 where the clock crosses below the peak line reads thermal slowdown: 0x20, with a leader line. Orange highlight on the gap between the flat utilization line and the falling clock line with the note: the utilization number does not move while step time grows. Monospace for 100 percent, 1410 MHz, 1200 MHz and 0x20.",
+  "anchor": "### 2.4 The clock speed lie",
+  "alt": "Flat GPU utilization beside a falling SM clock",
+  "cap": "Clock lie: utilization can stay at 100 percent while thermal limits pull the SM clock down, so step times grow with no change in the headline number."
+ }
+]

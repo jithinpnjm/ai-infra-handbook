@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "l15-service-types",
+  "title": "How systemd knows a service is started",
+  "spec": "Table with Type=, Considered started when, Use. Rows: simple (default) | right after fork, process stays in foreground | modern foreground daemons ; exec | after exec() succeeds | catches missing binaries ; forking | parent exits, systemd tracks the child | traditional daemons ; oneshot | process runs to completion, often with RemainAfterExit=yes | setup tasks ; notify | service calls sd_notify(\"READY=1\") | daemons with explicit readiness. Values in monospace. Footer: systemd tracks all processes with cgroups.",
+  "anchor": "### Service types: how systemd knows a service is \"started\"",
+  "alt": "A table of Type= values and when systemd considers a service started.",
+  "cap": "Type= tells systemd what the main process does at start-up and when the service counts as ready."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "l15-socket-activation",
+  "title": "Socket activation",
+  "spec": "Timeline in three boxes. 1 systemd holds the socket (echo.socket, ListenStream=22222) while no service runs. 2 a client connects. 3 systemd starts the service (echo@.service) and hands it the connection. With Accept=true, systemd accepts each connection and starts a new instance named echo@<n>-... per connection. Orange note: ss -ltnp shows systemd as the listener, not the daemon. Unit names and options monospace. Link rule: echo.socket activates echo.service by name.",
+  "anchor": "## 8. Socket, path and automount activation",
+  "alt": "systemd holds the listening socket and starts the service when a client connects.",
+  "cap": "A rarely used service uses no resources until a client needs it."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "l15-timer-pair",
+  "title": "A timer and its service",
+  "spec": "Two boxes joined by an arrow. Left: fstrim-data.timer with lines OnCalendar=Sun *-*-* 03:00:00 ; RandomizedDelaySec=30min ; Persistent=true ; AccuracySec=1min ; WantedBy=timers.target. Right: fstrim-data.service with Type=oneshot and ExecStart=/usr/sbin/fstrim -v /data. Arrow labelled activates. Orange chip: enable the timer, not the service: sudo systemctl enable --now fstrim-data.timer. Annotations: Persistent=true runs a missed job at next start; RandomizedDelaySec= spreads load. Two trigger families: calendar (OnCalendar=) and monotonic (OnBootSec=, OnUnitActiveSec=).",
+  "anchor": "## 9. Timers: the cron replacement",
+  "alt": "A timer unit activates a oneshot service on a calendar schedule.",
+  "cap": "A timer fires a matching service, and Persistent=true catches up a run missed while the machine was off."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "l15-journalctl",
+  "title": "Filtering the journal",
+  "spec": "Grid of command chips, each with a short meaning: journalctl -b this boot (-b -1 previous boot); journalctl -u sshd by unit; journalctl -u kubelet -f follow; journalctl -k kernel messages; journalctl -p err priority err and worse; journalctl --since yesterday time window; journalctl -n 100 --no-pager last lines; journalctl --vacuum-size=2G trim old logs. Orange note: default Storage=auto writes to /var/log/journal only if that directory exists, otherwise in memory under /run/log/journal. Commands monospace.",
+  "anchor": "## 12. Journald and `journalctl`",
+  "alt": "The most common journalctl filters by boot, unit, kernel, priority and time.",
+  "cap": "Each journalctl option filters the journal in a different way."
+ }
+]

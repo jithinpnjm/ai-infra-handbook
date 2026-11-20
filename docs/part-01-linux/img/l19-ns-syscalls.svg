@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Three system calls for namespaces</title>
+  <desc>Infographic explaining clone(2), unshare(2), and setns(2) system calls for Linux namespaces</desc>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three system calls for namespaces</text>
+
+  
+  <g id="col-clone">
+    <rect x="50" y="130" width="460" height="590" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(252, 160)">
+      <circle cx="28" cy="10" r="8" fill="none" stroke="#db8129" stroke-width="4"/>
+      <path d="M 28 18 L 28 32 M 28 32 L 12 46 M 28 32 L 44 46" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="48" r="6" fill="none" stroke="#db8129" stroke-width="4"/>
+      <circle cx="44" cy="48" r="6" fill="none" stroke="#db8129" stroke-width="4"/>
+    </g>
+
+    <text x="280" y="260" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">clone(2)</text>
+    <line x1="90" y1="285" x2="470" y2="285" stroke="#db8129" stroke-width="1.5" stroke-opacity="0.4"/>
+
+    
+    <text x="85" y="335" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">creates a new process,</tspan>
+      <tspan x="85" dy="40">optionally in new</tspan>
+      <tspan x="85" dy="40">namespaces via</tspan>
+      <tspan x="85" dy="40"><tspan font-family="monospace" font-weight="bold">CLONE_NEW*</tspan> flags,</tspan>
+      <tspan x="85" dy="40">used by runtimes to start</tspan>
+      <tspan x="85" dy="40">a container's first</tspan>
+      <tspan x="85" dy="40">process.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-unshare">
+    <rect x="570" y="130" width="460" height="590" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(772, 160)">
+      <rect x="4" y="6" width="30" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 22 28 L 48 28 M 40 20 L 48 28 L 40 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="36" y="6" width="18" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="4 4"/>
+    </g>
+
+    <text x="800" y="260" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">unshare(2)</text>
+    <line x1="610" y1="285" x2="990" y2="285" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="605" y="335" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="605" dy="0">moves the calling process</tspan>
+      <tspan x="605" dy="40">into new namespaces,</tspan>
+      <tspan x="605" dy="40">for PID only future</tspan>
+      <tspan x="605" dy="40">children enter;</tspan>
+      <tspan x="605" dy="40">wrapped by the</tspan>
+      <tspan x="605" dy="40"><tspan font-family="monospace" font-weight="bold">unshare</tspan> command.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-setns">
+    <rect x="1090" y="130" width="460" height="590" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1292, 160)">
+      <rect x="18" y="6" width="34" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4 28 L 32 28 M 24 20 L 32 28 L 24 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <text x="1320" y="260" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">setns(2)</text>
+    <line x1="1130" y1="285" x2="1510" y2="285" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="1125" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1125" dy="0">joins an existing</tspan>
+      <tspan x="1125" dy="38">namespace through a file</tspan>
+      <tspan x="1125" dy="38">descriptor from</tspan>
+      <tspan x="1125" dy="38" font-family="monospace" font-weight="bold">/proc/PID/ns/*;</tspan>
+      <tspan x="1125" dy="38">wrapped by <tspan font-family="monospace" font-weight="bold">nsenter;</tspan></tspan>
+      <tspan x="1125" dy="38"><tspan font-family="monospace" font-weight="bold">docker exec</tspan> and</tspan>
+      <tspan x="1125" dy="38"><tspan font-family="monospace" font-weight="bold">kubectl exec</tspan> are</tspan>
+      <tspan x="1125" dy="38"><tspan font-family="monospace" font-weight="bold">setns</tspan> then <tspan font-family="monospace" font-weight="bold">exec.</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-strip">
+    <rect x="50" y="765" width="1500" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(80, 804)">
+      <path d="M 28 6 L 48 15 C 48 35 28 49 28 49 C 28 49 8 35 8 15 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="28" cy="25" r="4" fill="#207448"/>
+    </g>
+
+    
+    <text x="160" y="822" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="160" dy="0">a namespace lives while a process, an open file descriptor</tspan>
+      <tspan x="160" dy="40">to <tspan font-family="monospace" font-weight="bold">/proc/PID/ns/xxx,</tspan> or a bind mount refers to it.</tspan>
+    </text>
+  </g>
+</svg>

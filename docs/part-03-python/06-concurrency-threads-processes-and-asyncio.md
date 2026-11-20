@@ -66,6 +66,10 @@ flowchart TD
 
 ### The Global Interpreter Lock
 
+![The Global Interpreter Lock](./img/s06-gil.svg)
+
+*Figure 3.6.1. The GIL: one thread runs Python bytecode at a time, but threads overlap while they wait on I/O.*
+
 Here is the mistake to clear up first, because almost everyone makes it once. A colleague wraps a slow number-crunching script in four threads and watches it get slower, not faster. The explanation is a lock inside the interpreter.
 
 CPython, the reference implementation of Python, has a **GIL**. A mutex is a lock that only one thread may hold at a time. This mutex lets only one thread execute Python bytecode at a time within a process. The lock keeps memory management simple, because reference counting is not thread-safe without it, and it keeps C extensions simpler to write. Three consequences follow from it.
@@ -119,6 +123,10 @@ Subinterpreters, defined in PEP 684 and PEP 734, give each interpreter its own G
 Other options exist too, and they are worth knowing about. Processes have separate GILs. Native extensions such as Cython, Numba and Rust through PyO3 move the work out of Python. Vectorised libraries such as NumPy, pandas and PyTorch spend their time outside the interpreter.
 
 ### Choosing a model
+
+![Choosing threads, processes or asyncio](./img/s06-choosemodel.svg)
+
+*Figure 3.6.2. Choosing a model: processes for CPU-bound work, asyncio for many async connections, threads for blocking I/O.*
 
 The table is a lookup, not a sermon. Find your workload in the first column and read across to the model that fits it. Notice that blocking libraries point you toward threads, while async libraries point you toward asyncio.
 
@@ -200,6 +208,10 @@ Whatever the trap, the habits are the same. Keep critical sections tiny and free
 
 ### Producer/consumer with a bounded queue
 
+![Producer consumer with a bounded queue](./img/s06-queue.svg)
+
+*Figure 3.6.3. A bounded queue: when it fills, put() blocks the producers, so memory stays bounded.*
+
 Two roles appear in nearly every pipeline: a producer that creates work, and consumers that handle it. A bounded queue sits between them and stops a fast producer from flooding memory. When the queue is full, `put()` waits until the consumers catch up, and that waiting is the backpressure the code comment mentions. The sentinel object tells each consumer that no work is left.
 
 ```python
@@ -223,6 +235,10 @@ def consumer():
 `task_done()` marks each item as finished, so `join()` can tell when all the work is complete.
 
 ### `concurrent.futures`
+
+![Executors and futures](./img/s06-futures.svg)
+
+*Figure 3.6.4. concurrent.futures: submit returns a Future at once, and result() waits for the value or raises the error.*
 
 Managing raw `Thread` objects gets tiring fast. `concurrent.futures` is the high-level API for pools: you submit callables and get `Future` objects back. A future is a stand-in for a result that is not ready yet.
 
@@ -341,6 +357,10 @@ PyTorch's `DataLoader(num_workers=N)` uses worker processes to decode and augmen
 Now scale the fan-out up to the 5,000-BMC poll from the exercises. Threads are heavy. Each one has its own stack and is scheduled by the kernel, so you can run only thousands of them. asyncio takes another route. It runs many tasks cooperatively on one thread, using an event loop and non-blocking I/O through epoll or kqueue. An event loop is a scheduler that lives on a single thread and switches between tasks at their `await` points. A task runs until it hits an `await` on something that is not ready. Then it yields control, so tens of thousands of concurrent connections cost very little. The price is that all code on the loop must be non-blocking, libraries must be async-aware, and any CPU-bound or blocking call stalls every task.
 
 ### Core concepts
+
+![The asyncio event loop](./img/s06-asyncio.svg)
+
+*Figure 3.6.5. asyncio: tasks share one thread, and each await hands control back to the event loop.*
 
 Here is the shape of a real async fan-out. The example below fetches many health endpoints through a semaphore, so no more than 100 requests run at once.
 
@@ -478,6 +498,10 @@ On each failed attempt, the `retry` helper waits a random delay between zero and
 Libraries such as `tenacity` and `backoff` implement this for you. HTTP clients also have retry adapters, for example `urllib3.util.Retry` with `requests.adapters.HTTPAdapter`.
 
 ### Rate limiting and circuit breaking
+
+![Circuit breaker states](./img/s06-breaker.svg)
+
+*Figure 3.6.6. A circuit breaker stops calling a failing service, then probes it before trusting it again.*
 
 Protect the targets, and protect yourself. A token bucket, from `aiolimiter` or from an asyncio semaphore plus a sleep, limits the rate. Per-host concurrency limits, with one semaphore per host, rack or BMC network, keep any single target from being overloaded. A circuit breaker stops calling a failing dependency for a cool-down period, which gives it time to recover. Handle `Retry-After` too, and consider adaptive concurrency, such as AIMD, the approach TCP uses. For BMC and Redfish fleets, limit concurrency per rack, so the management switches are not overwhelmed.
 

@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Check the stack from the bottom up</title>
+  <desc>Infographic explaining checking the AI software stack from the bottom up: host driver, CUDA runtime inside the wheel, PyTorch wheel, and your code.</desc>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Check the stack from the bottom up</text>
+
+  
+  <g>
+    <rect x="60" y="160" width="900" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="110" cy="245" r="24" fill="#207448"/>
+    <text x="110" y="245" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+    
+    <rect x="160" y="217" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="160" y1="233" x2="216" y2="233" stroke="#207448" stroke-width="3"/>
+    <path d="M 176 251 L 169 257 L 176 263 M 200 251 L 207 257 L 200 263 M 190 247 L 186 267" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="246" y="232" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">your code</text>
+    <text x="246" y="280" font-family="monospace" font-size="26" fill="#207448">torch.cuda.is_available()</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="374" width="900" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="110" cy="459" r="24" fill="#207448"/>
+    <text x="110" y="459" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+    
+    <path d="M 188 431 L 214 445 L 214 475 L 188 489 L 162 475 L 162 445 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 188 445 L 188 475 M 188 461 L 214 445 M 188 461 L 162 445" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    
+    <text x="246" y="446" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">PyTorch wheel</text>
+    <text x="246" y="494" font-family="monospace" font-size="26" fill="#207448">cu121 index</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="588" width="900" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="110" cy="673" r="24" fill="#207448"/>
+    <text x="110" y="673" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+    
+    <circle cx="188" cy="673" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 188 647 L 188 653 M 188 693 L 188 699 M 162 673 L 168 673 M 208 673 L 214 673 M 170 655 L 174 659 M 202 687 L 206 691 M 170 691 L 174 687 M 202 659 L 206 655" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="188" cy="673" r="5" fill="#207448"/>
+    
+    <text x="246" y="660" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">CUDA runtime inside the wheel</text>
+    <text x="246" y="708" font-family="monospace" font-size="26" fill="#207448">torch.version.cuda</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="802" width="900" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="110" cy="887" r="24" fill="#207448"/>
+    <text x="110" y="887" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+    
+    <rect x="167" y="866" width="42" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="176" y="875" width="24" height="24" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="174" y1="859" x2="174" y2="866" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="188" y1="859" x2="188" y2="866" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="202" y1="859" x2="202" y2="866" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="174" y1="908" x2="174" y2="915" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="188" y1="908" x2="188" y2="915" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="202" y1="908" x2="202" y2="915" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="160" y1="873" x2="167" y2="873" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="160" y1="887" x2="167" y2="887" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="160" y1="901" x2="167" y2="901" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="209" y1="873" x2="216" y2="873" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="209" y1="887" x2="216" y2="887" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="209" y1="901" x2="216" y2="901" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="246" y="874" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">host driver</text>
+    <text x="246" y="922" font-family="sans-serif" font-size="26" fill="#303a36">check with <tspan font-family="monospace" font-weight="bold" fill="#207448">nvidia-smi</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="1020" y="160" width="520" height="384" rx="16" fill="#edf1ee" stroke="#7a8882" stroke-width="3"/>
+    
+    <circle cx="1280" cy="245" r="26" fill="none" stroke="#7a8882" stroke-width="4"/>
+    <line x1="1280" y1="229" x2="1280" y2="247" stroke="#7a8882" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="1280" cy="257" r="3" fill="#7a8882"/>
+    
+    <text x="1280" y="340" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">
+      <tspan x="1280" dy="0">avoid <tspan font-family="monospace">pip install</tspan></tspan>
+      <tspan x="1280" dy="50">at job start</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1020" y="588" width="520" height="384" rx="16" fill="#fdf5ed" stroke="#db8129" stroke-width="4"/>
+    
+    <path d="M 1280 640 L 1306 651 C 1306 675 1294 692 1280 698 C 1266 692 1254 675 1254 651 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 1269 668 L 1276 676 L 1292 660" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="1280" y="770" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1280" dy="0">driver must be</tspan>
+      <tspan x="1280" dy="46">new enough for the</tspan>
+      <tspan x="1280" dy="46">wheel's CUDA runtime</tspan>
+    </text>
+  </g>
+</svg>

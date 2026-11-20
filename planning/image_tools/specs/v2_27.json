@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "27",
+  "name": "n27-lab1",
+  "title": "Lab 1 topology: three namespaces and a router",
+  "spec": "Three namespace boxes in a row: 'hA' on the left with interface vA 10.1.0.2/24, 'r' in the middle with interfaces rA 10.1.0.1/24 and rB 10.2.0.1/24, 'hB' on the right with interface vB 10.2.0.2/24. Two veth pair links: vA-rA and vB-rB. Default routes: hA 'default via 10.1.0.1', hB 'default via 10.2.0.1'. Orange note over r: 'Why would a router refuse to pass packets even when its interfaces look correct?'. Monospace for names and addresses.",
+  "anchor": "## Lab 1: three namespaces and a router (routing, forwarding, MTU, ICMP)",
+  "alt": "Lab 1 topology",
+  "cap": "Two hosts in separate namespaces reach each other only through a router namespace in the middle."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "27",
+  "name": "n27-roadmap",
+  "title": "The seven labs",
+  "spec": "Seven numbered cards in a staircase, each one line: Lab 1 three namespaces and a router (routing, forwarding, MTU, ICMP); Lab 2 FRR in namespaces running OSPF (link state); Lab 3 leaf-spine fabric with containerlab, eBGP unnumbered, ECMP; Lab 4 EVPN-VXLAN overlay with tenant VRFs on the same fabric; Lab 5 overlays, VPNs and tunnels with namespaces; Lab 6 load balancing, anycast and failure testing; Lab 7 a validation harness (tests as code). Orange arrow from Lab 3 to Lab 4: 'underlay does not change, the overlay is a new layer on top'. Footer: 'Evidence checklist'.",
+  "anchor": "## Lab environment",
+  "alt": "Lab roadmap",
+  "cap": "The labs grow from one router in namespaces to a full fabric with overlays and tests."
+ }
+]

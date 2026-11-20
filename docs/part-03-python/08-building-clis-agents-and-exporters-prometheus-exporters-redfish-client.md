@@ -286,6 +286,10 @@ Suppose a BMC shows the temperature of a GPU server, but Prometheus cannot read 
 
 ### 4.1 Metric model essentials
 
+![The Prometheus metric types](./img/s08-metrictypes.svg)
+
+*Figure 3.8.1. Metric types: counter, gauge, histogram and summary each answer a different question.*
+
 Pick the metric type first, because each one answers a different question. A counter only goes up, so you query it with `rate()`. A gauge can move up and down, which suits temperature or queue depth. A histogram stores bucketed observations along with `_sum` and `_count`, and it is the right choice for latency distributions. A summary computes quantiles on the client side, so it cannot be aggregated across instances. Prefer a histogram when you need to combine data from several exporters. An info metric carries constant labels that describe an entity.
 
 Names follow a few rules. Use `snake_case`, add a unit suffix in base units such as `_seconds`, `_bytes`, `_celsius` or `_watts`, and prefix the name with the application, as in `bmc_temperature_celsius`. Keep label names out of the metric name, and keep timestamps out of it too.
@@ -384,6 +388,10 @@ Before you write an exporter for a new gap, look first for one that already cove
 A DGX or HGX host will not power on, and there is no shell to work from. The machine is not entirely out of reach. Every such server carries a BMC, the small management computer on the management network, and out-of-band management means reaching the machine over that separate network instead of over the workload one. Redfish is the DMTF RESTful API for it, and it replaces IPMI. Think of Redfish as a side door to a building whose front door is jammed. BMCs on DGX, HGX and OEM servers expose it over HTTPS with JSON. Part 7 covers Redfish and BMCs in depth. Here we build a client skeleton.
 
 ### 5.1 Resource model
+
+![The Redfish resource tree](./img/s08-redfish.svg)
+
+*Figure 3.8.2. Redfish hangs everything off the service root, and resources link to each other with @odata.id.*
 
 Everything in Redfish hangs off a tree rooted at `/redfish/v1/`, called the service root. Read the tree like a filing cabinet: one drawer per collection. The `Systems` collection describes the host computer, including power state, boot settings, BIOS, processors and memory. `Chassis` describes the physical enclosure, with its thermal, power and sensor data and its GPU or PCIe devices. `Managers` describes the BMC itself, including its network settings, logs and virtual media. `UpdateService` holds the firmware inventory and handles updates. `AccountService`, `SessionService`, `EventService` and `TelemetryService` cover the rest.
 

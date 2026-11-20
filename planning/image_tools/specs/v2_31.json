@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "31",
+  "name": "n31-threequestions",
+  "title": "The three questions of monitoring",
+  "spec": "Three stacked questions each with checks: 1 'Is it up?' availability of devices, links, sessions and services; 2 'Is it healthy?' errors, drops, saturation, latency, temperature and power; 3 'Is it doing its job?' the purpose metric: collective bandwidth and job completion time, or inference latency and error rate (orange, start here). Right side two method chips: 'USE: utilisation, saturation, errors, for each interface and queue', 'RED: for services such as DNS, DHCP, load balancers and the monitoring pipeline'. Green bar: 'Start with the purpose metric'.",
+  "anchor": "### Three questions of monitoring",
+  "alt": "Three monitoring questions",
+  "cap": "Every monitoring setup should answer whether it is up, whether it is healthy and whether it is doing its job."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "31",
+  "name": "n31-signals",
+  "title": "AI fabric signals and alert rules",
+  "spec": "Table with columns Signal, Why it matters, Alert logic, with six example rows: per-port throughput: sustained over 85% on uplinks; egress queue occupancy: high-water mark approaching ECN/PFC thresholds; drops per queue: any drop on the lossless priority; PFC pause frames and watchdog events: pause rate above baseline, any watchdog trigger; ECN marks and CNPs: persistent high CNP rate = chronic congestion; physical layer (FEC, CRC/FCS, optics DOM): predicts failing optics before link-down; job-level (NCCL timeouts, step time): step time over baseline x 1.2. Orange on the lossless priority row. Footer: group by rail, pod, tenant and device role, compare peers.",
+  "anchor": "## 4. Signals that matter in an AI/ML fabric",
+  "alt": "AI fabric monitoring signals",
+  "cap": "A few signals, each with a clear alert rule, tell you the most about an AI fabric."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "31",
+  "name": "n31-ifa",
+  "title": "In-band telemetry with IFA",
+  "spec": "A path across a fabric: ingress leaf (Initiator) -> spine (Transit) -> egress leaf or border (Terminator) -> collector (IPFIX). Initiator samples traffic and clones it into probe packets carrying an IFA header, initiator tag, timestamps. Transit nodes append device ID, ingress and egress ports, queue ID, ingress timestamp, residence time in nanoseconds, congestion bit when ECN marking applies. Terminator strips the metadata, exports it, drops the cloned probe. Below, the packet layout row: L2 and L3 headers | IFA header | original L4 header | IFA metadata header | metadata stack. Green note: 'Probes follow the same path as the real flow'. Orange note: 'Decide which flows justify the IFA overhead'.",
+  "anchor": "## 5. In-band telemetry: IFA",
+  "alt": "In-band flow analyzer",
+  "cap": "Probe packets collect per-hop metadata as they cross the fabric and the terminator exports it."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "31",
+  "name": "n31-straggler",
+  "title": "Straggler hunt across layers",
+  "spec": "A vertical drill-down chain with arrows: NCCL or step-time telemetry flags rank 112 as slow -> its node -> its NIC and rail -> leaf port -> spine uplinks. At each level a chip of what to compare with peers: TX and RX rates, retransmissions, CNP counts, PFC pauses, FEC errors. Right side pattern chip in orange: 'ECN and CNP rise on many NICs while a spine uplink shows high utilisation and a growing egress queue: ECMP collision or oversubscribed tier'. Footer: 'Join datasets by time and identity using consistent labels from the source of truth'.",
+  "anchor": "### Correlating switch and server telemetry",
+  "alt": "Straggler hunt",
+  "cap": "Follow a slow rank from job to node to NIC to leaf port to spine uplinks, comparing against peers at each step."
+ }
+]

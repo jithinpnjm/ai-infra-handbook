@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "02",
+  "name": "h02-job-lifecycle",
+  "title": "One job from login to epilogue",
+  "spec": "A left-to-right row of five numbered step cards connected by arrows, number circles 1 to 5 in time order. Each card has a title, a short label, and an icon. Step 1, title: Connect to the access node. Label: ssh client, password, private key or 2FA; edit, compile, copy data. Icon: a laptop with a terminal window. Step 2, title: Queue the job. Label: sbatch names the executable, arguments, MPI processes, nodes, memory, GPUs and licenses; batch output goes to files. Icon: a stacked queue of documents. Step 3, title: Schedule and run the prologue. Label: the scheduler selects compute nodes and runs prolog to prepare the node for the job. Icon: a clock or a gear. Step 4, title: Start and run. Label: mpirun or mpiexec starts on the allocated node list and launches the job across the compute nodes. Icon: a chip with arrows. Step 5, title: Terminate and run the epilogue. Label: epilog makes sure every user process has exited and temp directories are cleaned, then the job is marked completed and usage is logged. Icon: a broom or a checkmark. Under step 3 and step 5, small orange tags: a missed epilogue lets leftover processes slow the next user's job. Under the row, a thin grey bar labelled hidden from the user: account management, quotas, monitoring, time sync, backups. No takeaway bar.",
+  "anchor": "### A typical user session and the job life cycle",
+  "alt": "A batch job passes through five steps: login, queueing, prologue, parallel run, and epilogue.",
+  "cap": "A batch job moves from login to queueing, the prologue, the parallel run, and finally the epilogue that cleans up the nodes."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "02",
+  "name": "h02-torus-ring",
+  "title": "The loop that shortens the trip",
+  "spec": "Top panel: a ring of eight green node circles labelled 0 to 7 drawn around a closed circle, so the ring has no end. Two arrows leave node 0, one clockwise and one counter-clockwise, meeting at node 4, the far point. The arc from 0 to 4 is labelled 4 hops, one way round the loop. Orange highlight on node 4 labelled farthest point. A short caption beside the ring: the message can travel either way around the ring. Bottom panel: the formula line Max hops (3D torus) = [N/2] + [M/2] + [K/2], then the worked line for an 8 x 8 x 8 torus: 4 + 4 + 4 = 12 hops. Each of the three terms has a small label: X dimension, Y dimension, Z dimension. Plain note under the formula: the loop is what makes the formula work; without it the far side of each dimension would be a full length away. No takeaway bar.",
+  "anchor": "### Fabric topologies and the 3D torus hop formula",
+  "alt": "In a ring, the farthest node is half the ring away, so an 8 by 8 by 8 3D torus has at most 12 hops.",
+  "cap": "The wrap-around loop in a torus halves the longest trip in each dimension, so an 8 by 8 by 8 torus has at most 12 hops."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "02",
+  "name": "h02-numa-pinning",
+  "title": "Two sockets, local RAM, and pinning a process to its room",
+  "spec": "Two side-by-side socket panels, labelled Socket 0 and Socket 1, each a large light green panel containing a cores block and a local RAM block beneath it. A slower interconnect bar between the two sockets labelled inter-socket link, drawn in a lighter dashed line. Left scene titled Unpinned: a process icon drawn as a dashed arrow that hops between Socket 0 and Socket 1 over time, with a label core migration every few milliseconds, and its memory stays on Socket 0, so a cross-socket arrow labelled slow remote memory read crosses the interconnect. Right scene titled Pinned with numactl or MPI binding: the same process as a solid green block sitting on Socket 0 cores, with its memory on Socket 0 RAM, and no arrow crosses the interconnect. Orange highlight on the cross-socket arrow in the unpinned scene. Small caption beside the pinned scene: processor affinity and memory affinity, bound per parallel process. Analogy strip at the bottom: a craftsman who stays in one room keeps the work flowing, while one who walks to the other room every few minutes spends the day carrying tools. No takeaway bar.",
+  "anchor": "### SMP vs NUMA, process/memory pinning, HyperThreading trick, and RDMA vs RoCE",
+  "alt": "Unpinned processes migrate across sockets and read remote memory slowly, while pinned processes keep their cores and memory on one socket.",
+  "cap": "Pinning a process to its local NUMA cores and memory avoids the slow trips across sockets that an unpinned process keeps making."
+ }
+]

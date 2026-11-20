@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "n02-switching",
+  "title": "Circuit versus packet switching",
+  "spec": "Two side-by-side panels. Left panel 'Circuit switching': two endpoints joined by a single reserved path drawn as a solid thick line, notes: 'path and bandwidth reserved before data flows', 'predictable delay and jitter', 'bandwidth idle during silence'. Right panel 'Packet switching': data cut into packets, each with a header, travelling across a mesh of devices sharing links, notes: 'each packet carries a destination in its header', 'links used efficiently', 'queues can fill and packets get dropped'. Orange highlight on the bottom line: 'Ask first: does the network reserve a path or share one?'.",
+  "anchor": "## 1. Two ways to build a network",
+  "alt": "Circuit switching versus packet switching",
+  "cap": "Circuit switching reserves a path, while packet switching shares links and forwards each packet by its header."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "n02-goodput",
+  "title": "Overhead and goodput",
+  "spec": "A stacked horizontal bar for one 1500-byte MTU segment, left to right, with byte counts: Preamble+gap 20 B (grey), Ethernet header 14 B, IP header 20 B, TCP header 20 B, data 1460 B (big green block), FCS 4 B. Label above: '1460 + 20 + 20 + 14 + 4 + 20 = 1538 byte times'. Below three result chips: 'MTU 1500: 1460 / 1538 = 94.9%', 'MTU 9000 (jumbo): 8960 / 9038 = 99.1%', 'Tiny 64-byte frame: 84 byte times on the wire, up to 148.8 million frames per second at 100 Gb/s' (orange). Monospace for arithmetic.",
+  "anchor": "### Overhead and goodput (worked examples)",
+  "alt": "Goodput of a TCP segment",
+  "cap": "Headers and gaps cost about 5 percent at 1500 bytes MTU and under 1 percent with jumbo frames."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "n02-demux",
+  "title": "Demultiplexing a frame",
+  "spec": "Four stacked steps top to bottom with arrows, following one frame upward from the NIC: 'Ethernet: EtherType 0x0800 -> IPv4'; 'IPv4: protocol 6 -> TCP'; 'TCP: destination port 443 -> socket bound to port 443'. At the side a lookup table of keys: EtherType 0x0800 IPv4, 0x86DD IPv6, 0x0806 ARP, 0x8100 VLAN; IP protocol 1 ICMP, 6 TCP, 17 UDP; ports 22 SSH, 53 DNS, 443 HTTPS, 4791 RoCE v2. Orange note: 'No handler matches: packet dropped, ICMP unreachable or TCP RST'. Monospace for hex values.",
+  "anchor": "### Demultiplexing: how the right code gets the bytes",
+  "alt": "Demultiplexing by protocol keys",
+  "cap": "Each layer carries a key field that tells the receiver which code should get the payload next."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "n02-planes",
+  "title": "The three planes",
+  "spec": "Three stacked horizontal bands labelled Management plane (top), Control plane (middle), Data (forwarding) plane (bottom). Each band has a job line and example chips. Management: 'configures and monitors' with SSH, REST APIs, Prometheus exporters, NETCONF/gNMI, syslog. Control: 'builds the tables' with OSPF, IS-IS, BGP, STP, ARP/ND, LACP. Data: 'moves packets at line rate: parse, lookup FIB, rewrite, queue, transmit' with switching, NAT, ACL matching. Arrow from Control labelled 'RIB best routes -> FIB' to Data. Orange note: 'What happens to traffic when the control plane fails?'.",
+  "anchor": "## 5. The three planes",
+  "alt": "Management, control and data planes",
+  "cap": "The data plane moves packets, the control plane builds the tables it uses, and the management plane configures and monitors."
+ }
+]

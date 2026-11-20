@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "05",
+  "name": "l05-copy-tools",
+  "title": "Which copy tool for which goal",
+  "spec": "Table with Goal then Tool. Rows: one-off copy of a file or two | scp ; interactive browsing | sftp host ; keep directory trees in step | rsync (highlighted orange: transfers only differences, preserves permissions, resumable) ; stream a tree with no temporary archive | tar | ssh ; mount remote directory | sshfs host:/path mnt ; share among Linux machines | NFS ; share with Windows | Samba ; cloud object stores | rclone, gcloud storage, aws s3. Tools in monospace.",
+  "anchor": "## 4. Copying files: `scp`, `sftp`, `rsync` and cloud tools",
+  "alt": "A goal-to-tool table for copying files over SSH and the network.",
+  "cap": "A one-off copy suits scp, while a directory you keep in step suits rsync."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "05",
+  "name": "l05-fanout",
+  "title": "Running one command on many nodes",
+  "spec": "Left: one box 'your terminal'. Arrows fan out to a column of nodes gpu01, gpu02 ... gpu16. Four tool chips with monospace example: pdsh -w gpu[01-16] with dshbak -c ; clush -w gpu[01-16] -b ; srun -N16 --ntasks-per-node=1 hostname ; ansible gpu -m shell. Right: identical outputs gathered into one line, one outlier node highlighted orange. Note: node ranges like gpu[01-16].",
+  "anchor": "## 6. Running commands on many nodes",
+  "alt": "One terminal fans a command out to many nodes and the identical outputs are grouped.",
+  "cap": "A healthy fleet prints one grouped line, so an outlier node stands out."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "05",
+  "name": "l05-bmc",
+  "title": "Out-of-band access",
+  "spec": "Two paths into one server. Top path, green, 'SSH over the OS network' ending at 'operating system', marked blocked when the OS has crashed or the network is broken. Bottom path, orange, 'BMC (baseboard management controller)' with its own network port and IP address, works even when the main system is powered off. Monospace examples: ipmitool ... chassis power status ; sol activate ; chassis power cycle. Note: BMC network must be isolated.",
+  "anchor": "## 8. Out-of-band access: when SSH is not available",
+  "alt": "The BMC gives a second way into a server when SSH and the operating system are unavailable.",
+  "cap": "The BMC has its own network port and works even when the main system is powered off."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "05",
+  "name": "l05-hpc-path",
+  "title": "The standard HPC path",
+  "spec": "Horizontal chain: laptop, bastion, Slurm login node, compute node. Last arrow labelled srun --pty bash or salloc (monospace). Orange note under the last arrow: do not ssh into compute nodes uninvited; processes started outside Slurm are not tracked by it.",
+  "anchor": "## 9. AI-infrastructure patterns",
+  "alt": "From laptop through a bastion and login node to a compute node using srun or salloc.",
+  "cap": "On an HPC cluster you reach a compute node through Slurm rather than by logging in directly."
+ }
+]

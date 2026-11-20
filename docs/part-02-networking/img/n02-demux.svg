@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Demultiplexing a frame</title>
+  <desc>Visual infographic explaining frame demultiplexing upward from the NIC through Ethernet, IPv4, and TCP to the destination socket, alongside a protocol lookup table and drop handler note.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Demultiplexing a frame</text>
+
+  
+  <line x1="470" y1="265" x2="470" y2="315" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="470" y1="450" x2="470" y2="500" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="470" y1="635" x2="470" y2="685" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-1">
+    <rect x="60" y="130" width="820" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="115" cy="198" r="24" fill="#207448" />
+    <text x="115" y="207" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(165, 170)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="8" width="56" height="40" rx="4" />
+      <line x1="0" y1="0" x2="0" y2="56" />
+      <rect x="16" y="18" width="24" height="20" rx="3" stroke-width="3" />
+      <line x1="12" y1="48" x2="12" y2="56" stroke-width="3" />
+      <line x1="20" y1="48" x2="20" y2="56" stroke-width="3" />
+      <line x1="28" y1="48" x2="28" y2="56" stroke-width="3" />
+      <line x1="36" y1="48" x2="36" y2="56" stroke-width="3" />
+      <line x1="44" y1="48" x2="44" y2="56" stroke-width="3" />
+    </g>
+    
+    <text x="250" y="208" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">NIC</text>
+  </g>
+
+  
+  <g id="step-2">
+    <rect x="60" y="315" width="820" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="115" cy="383" r="24" fill="#207448" />
+    <text x="115" y="392" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(165, 355)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="44" height="34" rx="4" />
+      <path d="M 17 10 L 17 2 L 39 2 L 39 10" />
+      <line x1="18" y1="30" x2="18" y2="44" stroke-width="3" />
+      <line x1="28" y1="30" x2="28" y2="44" stroke-width="3" />
+      <line x1="38" y1="30" x2="38" y2="44" stroke-width="3" />
+      <line x1="28" y1="44" x2="28" y2="54" stroke-width="5" />
+    </g>
+    
+    <text x="250" y="373" font-family="sans-serif" font-size="28" fill="#303a36">
+      <tspan font-weight="bold">Ethernet:</tspan> EtherType <tspan font-family="monospace">0x0800</tspan>
+      <tspan x="250" dy="40" font-weight="bold">-&gt; IPv4</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-3">
+    <rect x="60" y="500" width="820" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="115" cy="568" r="24" fill="#207448" />
+    <text x="115" y="577" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(165, 540)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <line x1="16" y1="28" x2="40" y2="28" />
+      <line x1="28" y1="16" x2="28" y2="40" />
+      <polyline points="10,28 16,22" stroke-width="3" />
+      <polyline points="10,28 16,34" stroke-width="3" />
+      <polyline points="46,28 40,22" stroke-width="3" />
+      <polyline points="46,28 40,34" stroke-width="3" />
+      <polyline points="28,10 22,16" stroke-width="3" />
+      <polyline points="28,10 34,16" stroke-width="3" />
+      <polyline points="28,46 22,40" stroke-width="3" />
+      <polyline points="28,46 34,40" stroke-width="3" />
+    </g>
+    
+    <text x="250" y="558" font-family="sans-serif" font-size="28" fill="#303a36">
+      <tspan font-weight="bold">IPv4:</tspan> protocol 6
+      <tspan x="250" dy="40" font-weight="bold">-&gt; TCP</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-4">
+    <rect x="60" y="685" width="820" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="115" cy="753" r="24" fill="#207448" />
+    <text x="115" y="762" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(165, 725)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="6" width="52" height="44" rx="6" />
+      <line x1="2" y1="20" x2="54" y2="20" stroke-width="3" />
+      <circle cx="12" cy="13" r="2.5" fill="#207448" />
+      <circle cx="20" cy="13" r="2.5" fill="#207448" />
+      <circle cx="28" cy="35" r="7" stroke-width="3" />
+      <line x1="20" y1="35" x2="36" y2="35" stroke-width="3" />
+    </g>
+    
+    <text x="250" y="743" font-family="sans-serif" font-size="28" fill="#303a36">
+      <tspan font-weight="bold">TCP:</tspan> destination port 443
+      <tspan x="250" dy="40" font-weight="bold">-&gt; socket bound to port 443</tspan>
+    </text>
+  </g>
+
+  
+  <g id="lookup-table">
+    <rect x="920" y="130" width="620" height="515" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(945, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="16" r="12" />
+      <circle cx="16" cy="16" r="4" stroke-width="3" />
+      <line x1="25" y1="25" x2="48" y2="48" />
+      <line x1="42" y1="42" x2="48" y2="36" />
+      <line x1="35" y1="35" x2="41" y2="29" />
+    </g>
+    <text x="1015" y="186" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Lookup table of keys</text>
+
+    
+    <text x="945" y="235" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">EtherType</text>
+    <rect x="945" y="248" width="270" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="965" y="279" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">0x0800</tspan> IPv4</text>
+    <rect x="1245" y="248" width="270" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1265" y="279" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">0x86DD</tspan> IPv6</text>
+    <rect x="945" y="302" width="270" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="965" y="333" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">0x0806</tspan> ARP</text>
+    <rect x="1245" y="302" width="270" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1265" y="333" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">0x8100</tspan> VLAN</text>
+
+    
+    <text x="945" y="382" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">IP protocol</text>
+    <rect x="945" y="395" width="175" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="965" y="426" font-family="sans-serif" font-size="24" fill="#303a36">1 ICMP</text>
+    <rect x="1142" y="395" width="175" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1162" y="426" font-family="sans-serif" font-size="24" fill="#303a36">6 TCP</text>
+    <rect x="1340" y="395" width="175" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1360" y="426" font-family="sans-serif" font-size="24" fill="#303a36">17 UDP</text>
+
+    
+    <text x="945" y="475" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">ports</text>
+    <rect x="945" y="488" width="270" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="965" y="519" font-family="sans-serif" font-size="24" fill="#303a36">22 SSH</text>
+    <rect x="1245" y="488" width="270" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1265" y="519" font-family="sans-serif" font-size="24" fill="#303a36">53 DNS</text>
+    <rect x="945" y="542" width="270" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="965" y="573" font-family="sans-serif" font-size="24" fill="#303a36">443 HTTPS</text>
+    <rect x="1245" y="542" width="270" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1265" y="573" font-family="sans-serif" font-size="24" fill="#303a36">4791 RoCE v2</text>
+  </g>
+
+  
+  <g id="orange-note">
+    <rect x="920" y="685" width="620" height="135" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(945, 726)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="16,0 38,0 54,16 54,38 38,54 16,54 0,38 0,16" />
+      <line x1="27" y1="14" x2="27" y2="30" stroke-width="4" />
+      <circle cx="27" cy="40" r="2.5" fill="#db8129" />
+    </g>
+    
+    <text x="1020" y="738" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">
+      No handler matches:
+      <tspan x="1020" dy="36" font-size="24" font-weight="normal" fill="#303a36">packet dropped, ICMP unreachable</tspan>
+      <tspan x="1020" dy="32" font-size="24" font-weight="normal" fill="#303a36">or TCP RST</tspan>
+    </text>
+  </g>
+</svg>

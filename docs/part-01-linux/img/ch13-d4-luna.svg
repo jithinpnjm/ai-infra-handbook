@@ -14,7 +14,7 @@
   <rect width="1600" height="900" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Device mapper: virtual sectors to physical disks</text>
 
-  <!-- Left: Virtual block device -->
+  
   <rect x="40" y="140" width="380" height="580" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5">
     <ellipse cx="94" cy="186" rx="22" ry="8"/>
@@ -37,7 +37,7 @@
     <tspan x="230" dy="32">length: 10010624</tspan>
   </text>
 
-  <!-- Middle: dmsetup table -->
+  
   <rect x="460" y="140" width="660" height="580" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
     <circle cx="508" cy="192" r="16"/><circle cx="508" cy="192" r="6"/>
@@ -59,7 +59,7 @@
 
   <text x="490" y="694" fill="#303a36" font-family="sans-serif" font-size="24">Targets: linear, striped, raid, crypt, thin, multipath, cache</text>
 
-  <!-- Right: Physical PVs -->
+  
   <rect x="1160" y="140" width="400" height="270" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5">
     <ellipse cx="1212" cy="190" rx="22" ry="8"/>
@@ -80,13 +80,13 @@
   <text x="1360" y="618" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="700">PV extents on disk 2</text>
   <text x="1360" y="654" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">offset 20973568 …</text>
 
-  <!-- Arrows connecting segments -->
+  
   <path d="M388 365 H486" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <path d="M388 570 H486" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
   <path d="M1090 350 H1186" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
   <path d="M1090 595 H1186" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
 
-  <!-- Takeaway bar -->
+  
   <rect x="40" y="770" width="1520" height="90" rx="14" fill="#207448"/>
   <text x="800" y="825" text-anchor="middle" fill="#f5f8f5" font-family="sans-serif" font-size="26" font-weight="700">Think of device mapper as virtual memory's translation applied to block storage: inspect with dmsetup ls --tree.</text>
 </svg>

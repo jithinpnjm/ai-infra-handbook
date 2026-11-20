@@ -14,7 +14,7 @@
   <rect width="1600" height="1220" fill="#f5f8f5"/>
   <text x="800" y="72" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="700">Putting it together: what a runtime does</text>
 
-  <!-- 5 Participant boxes (centers: 190, 490, 795, 1100, 1410) -->
+  
   <rect x="55" y="106" width="270" height="160" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
   <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
     <rect x="166" y="122" width="48" height="36" rx="5"/><path d="M178 134l8 6-8 6 M192 146h12"/>
@@ -58,7 +58,7 @@
   </g>
   <text x="1410" y="218" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="28" font-weight="700">Linux kernel</text>
 
-  <!-- Lifelines -->
+  
   <g stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.45">
     <line x1="190" y1="266" x2="190" y2="1175"/>
     <line x1="490" y1="266" x2="490" y2="1175"/>
@@ -67,47 +67,47 @@
     <line x1="1410" y1="266" x2="1410" y2="1175"/>
   </g>
 
-  <!-- 1: kubelet -> containerd -->
+  
   <path d="M190 340 H486" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="340" y="320" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">create container (image, config)</text>
 
-  <!-- 2: containerd self -->
+  
   <path d="M490 412 H542 V434 H494" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="515" y="394" text-anchor="start" fill="#303a36" font-family="sans-serif" font-size="24">unpack layers, prepare overlay snapshot</text>
 
-  <!-- 3: containerd -> shim -->
+  
   <path d="M490 500 H791" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="642" y="482" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">start shim (stays as parent)</text>
 
-  <!-- 4: shim -> runc -->
+  
   <path d="M795 575 H1096" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="948" y="555" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">run with OCI bundle (config.json + rootfs)</text>
 
-  <!-- 5: runc -> kernel: clone -->
+  
   <path d="M1100 652 H1406" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="1255" y="632" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">clone(CLONE_NEWPID|NEWNS|NEWNET|NEWUTS|NEWIPC|…)</text>
 
-  <!-- 6: runc -> kernel: cgroup -->
+  
   <path d="M1100 726 H1406" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="1255" y="708" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">create cgroup, write limits (ch. 1.18)</text>
 
-  <!-- 7: runc -> kernel: mount/pivot_root -->
+  
   <path d="M1100 800 H1406" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="1255" y="782" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">mount rootfs, pivot_root, mask paths</text>
 
-  <!-- 8: runc -> kernel: caps/seccomp/LSM -->
+  
   <path d="M1100 874 H1406" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
   <text x="1245" y="856" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">set capabilities, seccomp filter, LSM label (ch. 1.21)</text>
 
-  <!-- 9: runc -> kernel: execve (orange) -->
+  
   <path d="M1100 948 H1406" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
   <text x="1255" y="930" text-anchor="middle" fill="#303a36" font-family="monospace" font-size="24">execve(user process) as PID 1</text>
 
-  <!-- 10: runc -->> shim: exit -->
+  > shim: exit -->
   <path d="M1100 1022 H799" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
   <text x="948" y="1002" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">exit (runc is gone, shim supervises)</text>
 
-  <!-- Note across SH..KN -->
+  
   <rect x="740" y="1075" width="720" height="82" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
   <text x="1100" y="1125" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">CNI plugin is called to create the net ns wiring</text>
 </svg>

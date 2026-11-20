@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "02",
+  "name": "k02-sandbox",
+  "title": "The pod sandbox holds the shared namespaces",
+  "spec": "One large outlined box labelled pod sandbox, drawn as a shared room. Inside, at the bottom, a small box labelled pause container with a note holds the network namespace, IP and cgroup parent. Above it, two smaller boxes labelled app container 1 and app container 2 each show an arrow pointing down into the pause container, with the label joins the namespaces. Outside the room, a green box labelled CNI plugin with an arrow into the sandbox labelled attaches interfaces and assigns IP. Orange note on the pause container: it sleeps and reaps orphaned children, so the network namespace survives app restarts. Green takeaway bar: every container in the pod shares the pause container's network.",
+  "anchor": "### The pod sandbox",
+  "alt": "A pod sandbox holds a pause container that keeps the network namespace, and app containers join it.",
+  "cap": "The pause container holds the pod's network namespace so application containers can restart without losing the pod IP."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "02",
+  "name": "k02-cri-sequence",
+  "title": "The kubelet calls the CRI in a fixed order",
+  "spec": "Swimlane diagram, time runs top to bottom. Four lanes with headers: kubelet, RuntimeService, ImageService, containerd. Messages as horizontal arrows top to bottom, each with a number circle. 1 kubelet to RuntimeService: RunPodSandbox, with a return arrow labelled sandbox ID. 2 kubelet to ImageService: ImageStatus, with a return arrow labelled null if the image is missing. 3 kubelet to ImageService: PullImage, with a return arrow labelled image SHA256 digest. 4 kubelet to RuntimeService: CreateContainer, with a return arrow labelled container ID. 5 kubelet to RuntimeService: StartContainer, with a return arrow labelled container running. Orange note on step 3: the kubelet uses the digest, not the tag. Green takeaway bar: if a pod stalls, the step it reached tells you where to look.",
+  "anchor": "### Starting a Pod through the CRI",
+  "alt": "The kubelet calls RunPodSandbox, ImageStatus, PullImage, CreateContainer and StartContainer in that order.",
+  "cap": "The kubelet starts a pod by calling the CRI in a fixed order, so the last step reached shows where a stall is."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "02",
+  "name": "k02-isolation",
+  "title": "Three OCI runtimes, three isolation models",
+  "spec": "Three columns side by side, left to right, each a stacked diagram. Column 1 titled runc or crun: container processes sit directly on the host kernel box; label shares the host kernel; green. Column 2 titled gVisor runsc: container processes talk to a box labelled user-space kernel (sentry, gofer), which sits on the host kernel; label intercepts syscalls. Column 3 titled Kata Containers: container processes sit inside a box labelled lightweight VM with its own guest kernel, which sits on the hypervisor and then the host. Under the columns a horizontal arrow from left to right labelled more isolation, more overhead. Orange note under column 3: strong isolation, with GPU passthrough (VFIO) as a variant. Green takeaway bar: the more of the kernel a runtime shields, the more it costs in speed and GPU support.",
+  "anchor": "## 4. OCI runtimes and RuntimeClass",
+  "alt": "runc shares the host kernel, gVisor puts a user-space kernel in between, and Kata runs each pod in its own VM.",
+  "cap": "Stronger OCI runtimes put more of the kernel behind a wall, and they pay for it in speed and GPU support."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "02",
+  "name": "k02-cgroup-match",
+  "title": "The kubelet and containerd must use the same cgroup driver",
+  "spec": "Two-panel layout with a central equals sign. Left panel titled kubelet: a config box with the line cgroupDriver: systemd. Right panel titled containerd: a config box with the line SystemdCgroup = true. A green double arrow between the two panels labelled must match. Below the panels, a two-column bad case: left box labelled systemd in kubelet, right box labelled cgroupfs in containerd, with an orange cross and the label two owners fight over the cgroup tree. Under it a green takeaway bar: set the same driver in both files and check both when you build a node.",
+  "anchor": "## 7. Cgroup drivers and cgroup v2",
+  "alt": "The kubelet cgroup driver and the containerd SystemdCgroup setting must both name systemd.",
+  "cap": "The kubelet and containerd must use the same cgroup driver, because two cgroup managers fight over one tree."
+ }
+]

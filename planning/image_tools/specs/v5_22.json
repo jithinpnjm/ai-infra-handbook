@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "22",
+  "name": "k22-abstraction-spectrum",
+  "title": "Four stages of developer abstraction, from raw kubectl to invisible Kubernetes",
+  "spec": "A wide horizontal arrow across the top, pointing right, labelled from more Kubernetes exposed to less Kubernetes exposed. Under the arrow, four equal columns numbered with circles 1 to 4 (r=24, green, white numbers). Column 1, titled Stage 1 raw CLI and local UIs: a small terminal icon; list items kubectl, kubectx, kubens, Octant and Lens (monospace for kubectl, kubectx, kubens); a label: full flexibility, every developer needs RBAC and Kubernetes knowledge. Column 2, titled Stage 2 templating: a stack-of-layers icon; boxes Helm chart with Values.yaml, then Kustomize patches what the chart does not cover, a label: developers still apply native objects. Column 3, titled Stage 3 custom workload CRDs: a box icon; a short YAML card labelled PinterestService, 25 lines replacing more than 350 lines of native YAML; a window labelled break-glass view into Pods, PVCs and events drawn as a second door on the column. Column 4, titled Stage 4 invisible Kubernetes: a cloud icon; labels Cloud Foundry, Backstage, HashiCorp Waypoint, and a short file labelled build, deploy, release. Under column 4 a grey note: developers never see Kubernetes. Orange highlight on the break-glass door in column 3 with the note: keep the emergency door. Under the four columns, a row of two labels at the two ends: left, most flexibility and most developer knowledge needed; right, fastest onboarding and highest platform maintenance burden for custom GPU or RDMA features. Green takeaway bar: each step to the right trades flexibility for simplicity.",
+  "anchor": "### The `Team` custom resource operator pattern and the 4-stage spectrum of platform abstractions",
+  "alt": "Four stages move from raw kubectl with full flexibility to invisible Kubernetes with the fastest onboarding.",
+  "cap": "Developer abstractions run from raw kubectl with full flexibility to invisible Kubernetes, and each step to the right trades flexibility for simplicity."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "22",
+  "name": "k22-cohort-borrow",
+  "title": "A Kueue cohort: owned quota, borrowing and reclaim by preemption",
+  "spec": "A top box labelled Cohort, a shared pool, drawn as a large rounded container. Inside it, two ClusterQueue boxes side by side: ClusterQueue team-a with nominalQuota marked as its owned GPUs, and ClusterQueue team-b with its own nominalQuota. Each queue box shows a row of GPU slots (small squares). Team-a's queue has its slots filled with a team-a job and, in addition, three slots filled with borrowed slots from team-b's idle quota, outlined with a dashed border and labelled borrowed. Team-b's queue has idle slots shown as empty squares. Numbered steps in circles 1 to 3 along the bottom: 1 team-a borrows idle quota from the cohort, 2 team-b submits a job and asks for its own share back, 3 team-a's borrowed work is preempted and the borrowed slots return to team-b. An orange arrow marks step 3 as the preemption. Labels in the boxes: borrowingLimit caps how much a team may borrow, written as text beside team-a. Icons: a car-park or bay icon for the queue slots is optional. Green takeaway bar: a team's owned quota comes back when its owner needs it, so the borrower loses running work.",
+  "anchor": "### Priority and fair sharing",
+  "alt": "Teams in one cohort borrow each other's idle GPU quota, and the borrower is preempted when the owner reclaims it.",
+  "cap": "Teams in a Kueue cohort can borrow idle GPU quota from each other, and a borrower is preempted when the owner needs its share back."
+ }
+]

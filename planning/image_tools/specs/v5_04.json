@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "04",
+  "name": "k04-cidr-blocks",
+  "title": "Three address ranges that must not overlap",
+  "spec": "Three horizontal address-range bars stacked one above another, each a labelled block. Top bar labelled host network with the example 10.0.0.0/24, the node addresses. Middle bar labelled pod CIDR with the example 10.244.0.0/16, each pod gets an address. Bottom bar labelled Service CIDR with the example 10.96.0.0/12, each Service gets a stable virtual address. Each bar has a small chip showing its example range. An orange cross between two bars labelled overlap means traffic goes to the wrong place. Under the bars a note: a /16 pod CIDR gives 256 nodes of /24 each. Green takeaway bar: settle these ranges before kubeadm init, because they are hard to change later.",
+  "anchor": "## 1. Plan the cluster",
+  "alt": "The host network, the pod CIDR and the Service CIDR are three separate address ranges that must not overlap.",
+  "cap": "The host, pod and Service address ranges must not overlap, and the pod range must be sized before the cluster is built."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "04",
+  "name": "k04-join-trust",
+  "title": "How a worker verifies the API server and gets its identity",
+  "spec": "A left-to-right flow of four boxes with numbered steps. Box 1 worker with kubeadm join, holding the token as a one-time invitation. Box 2 API server endpoint, with a check labelled discovery-token-ca-cert-hash: the worker compares the CA fingerprint before it hands over the invitation. Arrow from worker to box 3 labelled bootstrap token submits a CSR for a client certificate. Box 3 controller manager CSR approver, labelled signs the CSR. Arrow to box 4 worker with a file labelled kubelet.conf, written and node registered. Orange note on step 2: without the CA hash pin, a fake API server could collect the token. Green takeaway bar: after this, the node has its own identity and does not need the shared token.",
+  "anchor": "## 5. Join workers",
+  "alt": "A worker checks the CA hash, submits a CSR with the bootstrap token, and receives its own kubelet identity.",
+  "cap": "A worker pins the cluster CA hash before using the join token, then receives its own signed identity."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "04",
+  "name": "k04-layers-debug",
+  "title": "Work upward through the layers when a node is broken",
+  "spec": "A vertical stack of five layer boxes, bottom to top, with an up arrow on the left labelled work upward. Bottom layer 1 labelled clock, with the sub-label NTP correct (chrony). Layer 2 labelled kubelet runs. Layer 3 labelled runtime starts containers. Layer 4 labelled CNI gives pods addresses. Top layer 5 labelled DNS and Services work. Next to each layer, a small outline icon: clock, gear, chip, network, globe. Orange note beside the bottom: a failure at a lower layer always makes the upper layers look broken too. Green takeaway bar: confirm each layer before moving up.",
+  "anchor": "## 11. Troubleshooting kubeadm clusters",
+  "alt": "Troubleshooting order: clock, kubelet, container runtime, CNI, then DNS and Services.",
+  "cap": "Troubleshoot a kubeadm cluster from the bottom up, starting with the clock and ending with DNS and Services."
+ }
+]

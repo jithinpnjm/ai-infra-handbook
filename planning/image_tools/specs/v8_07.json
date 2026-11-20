@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-08-bcm",
+  "ch": "07",
+  "name": "b07-power-waves",
+  "title": "How a batch power-on spreads over time",
+  "spec": "A horizontal timeline axis labelled seconds with tick marks at 0, 20, 40 and 60. Four waves stacked as rows or groups, each a row of three small rack boxes labelled rack01 to rack12 across the four waves. Wave 1 starts at 0 s with racks 1 to 3, wave 2 at 20 s with racks 4 to 6, wave 3 at 40 s with racks 7 to 9, wave 4 at 60 s with racks 10 to 12. Between racks inside a wave, no gap (started together). Label on the arrows between waves: parallel-delay 20 s. Title note: power on -p 3 rack[01-12]. Orange highlight on the first wave with the note: each wave is one more group of racks drawing inrush current at once. A small grey note: count the waves before you run the command. Monospace for the command and the tick values.",
+  "anchor": "## 3. Power operations (4.2)",
+  "alt": "Batch power-on waves over time",
+  "cap": "Batch power-on: racks start in waves three at a time, spaced 20 seconds apart, to limit the inrush current."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "07",
+  "name": "b07-firmware-activation",
+  "title": "Why a firmware update is not active until the AC power cycle",
+  "spec": "A left-to-right flow of five state boxes with arrows, each box a state name with the result text. Box 1: flashing, with a progress percentage. Box 2: pending, Result column: success: AC power cycle to activate. Box 3 (orange, the key step): AC power cycle, cut all AC inputs, for example a PDU that turns the system off or pulling every mains lead. Box 4: firmware status again, State shows completed with Result success: activated. Box 5: new version shown, for example 96.00.70.00.01 to 96.00.74.00.01. Below the arrow from box 2 to box 3, a grey crossed-out side path labelled power reset, which is only a DC board reset and does not activate some components. Monospace for firmware status, firmware flash, power reset and the version strings.",
+  "anchor": "## 7. Firmware (14.5.3)",
+  "alt": "Firmware states from flashing to activated",
+  "cap": "Firmware activation: the update stays pending until a true AC power cycle, because a power reset does not activate it."
+ },
+ {
+  "part": "part-08-bcm",
+  "ch": "07",
+  "name": "b07-sol-layers",
+  "title": "Three layers that must match for serial over LAN",
+  "spec": "Three stacked horizontal layers, a stack of three wide panels with a lock icon at the left of each. Top panel: The BMC BIOS, SOL enabled with matching speed, flow control and port. Middle panel: The node kernel, set through the software image, set enablesol yes. Bottom panel: The node BIOS, serial port enabled with the same settings. Arrows or bracket on the right side labelled: all three must use the same key, a mismatch gives a garbled or silent console. Below the stack, a green box: 115200 bps, flow control on, ttyS0 on x86_64 or ttyAMA0 on aarch64. Orange highlight on the middle panel. Monospace for enablesol, 115200, ttyS0 and ttyAMA0.",
+  "anchor": "## 8. Serial over LAN (14.7)",
+  "alt": "Three layers that must agree for serial over LAN",
+  "cap": "Serial over LAN: the BMC BIOS, the node kernel and the node BIOS must all use the same serial settings."
+ }
+]

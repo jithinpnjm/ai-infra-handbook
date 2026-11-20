@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>DHCP relay agent</title>
+  <desc>Visual infographic explaining DHCP relay agent operation across VLAN boundaries with giaddr and DHCP options.</desc>
+
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 6 3 L 0 6 z" fill="#207448" />
+    </marker>
+    <marker id="arrowhead-left" viewBox="0 0 6 6" refX="1" refY="3" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 6 0 L 0 3 L 6 6 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">DHCP relay agent</text>
+
+  
+  <line x1="290" y1="280" x2="290" y2="760" stroke="#b8d1c0" stroke-width="3" stroke-dasharray="8 6" />
+  <line x1="800" y1="280" x2="800" y2="760" stroke="#b8d1c0" stroke-width="3" stroke-dasharray="8 6" />
+  <line x1="1310" y1="280" x2="1310" y2="760" stroke="#b8d1c0" stroke-width="3" stroke-dasharray="8 6" />
+
+  
+  <rect x="70" y="125" width="440" height="155" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(262, 142)">
+    <rect x="4" y="2" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="28" y1="36" x2="28" y2="48" stroke="#207448" stroke-width="4" />
+    <line x1="16" y1="48" x2="40" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="12" y1="14" x2="24" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="290" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Client in a rack VLAN</text>
+
+  
+  <rect x="580" y="125" width="440" height="155" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(772, 142)">
+    <rect x="2" y="6" width="52" height="38" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 12 20 L 44 20 M 36 14 L 44 20 L 36 26" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 44 30 L 12 30 M 20 24 L 12 30 L 20 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="800" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">DHCP relay agent</text>
+
+  
+  <rect x="1090" y="125" width="440" height="155" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(1282, 142)">
+    <rect x="4" y="2" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="12" cy="9" r="2.5" fill="#207448" />
+    <circle cx="20" cy="9" r="2.5" fill="#207448" />
+    <rect x="4" y="19" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="12" cy="26" r="2.5" fill="#207448" />
+    <circle cx="20" cy="26" r="2.5" fill="#207448" />
+    <rect x="4" y="36" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="12" cy="43" r="2.5" fill="#207448" />
+    <circle cx="20" cy="43" r="2.5" fill="#207448" />
+  </g>
+  <text x="1310" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">central DHCP server</text>
+
+  
+  <rect x="365" y="306" width="410" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="570" y="334" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="570" dy="0">DHCP broadcast</tspan>
+    <tspan x="570" dy="28">(does not cross routers)</tspan>
+  </text>
+  <line x1="354" y1="390" x2="790" y2="390" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+  <circle cx="330" cy="390" r="24" fill="#207448" />
+  <text x="330" y="398" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <rect x="875" y="415" width="420" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="1035" y="479" width="100" height="30" rx="6" fill="#fdf0e2" stroke="#db8129" stroke-width="2" />
+  <text x="1085" y="442" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1085" dy="0">unicast, relay adds its</tspan>
+    <tspan x="1085" dy="28">interface address in</tspan>
+  </text>
+  <text x="1085" y="501" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">giaddr</text>
+  <line x1="864" y1="535" x2="1300" y2="535" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+  <circle cx="840" cy="535" r="24" fill="#207448" />
+  <text x="840" y="543" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+  
+  <rect x="495" y="600" width="570" height="72" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="672" y="609" width="94" height="28" rx="5" fill="#fdf0e2" stroke="#db8129" stroke-width="1.5" />
+  <text x="780" y="629" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="600">server reads </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#db8129">giaddr</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> to pick</tspan>
+    <tspan x="780" dy="28">the scope (subnet pool)</tspan>
+  </text>
+  <line x1="1246" y1="695" x2="300" y2="695" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead-left)" />
+  <circle cx="1270" cy="695" r="24" fill="#207448" />
+  <text x="1270" y="703" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+  
+  <rect x="120" y="785" width="1360" height="72" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="829" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan font-family="system-ui, -apple-system, sans-serif">option </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#207448">3</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> router, </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#207448">6</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> DNS, </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#207448">51</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> lease time, </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#207448">66/67</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> TFTP server and boot file (PXE)</tspan>
+  </text>
+</svg>

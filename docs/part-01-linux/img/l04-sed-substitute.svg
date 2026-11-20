@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Anatomy of sed substitute</title>
+  <desc>Visual breakdown of sed substitute command syntax, flags, delimiters, capture groups, address ranges, and in-place file editing.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1020" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Anatomy of sed substitute</text>
+
+  
+  <rect x="60" y="105" width="1480" height="355" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="100" y="130" width="1400" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="177" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36">sed 's/old/new/g' file</text>
+
+  
+  <circle cx="670" cy="202" r="4" fill="#207448" />
+  <circle cx="735" cy="202" r="4" fill="#207448" />
+  <circle cx="821" cy="202" r="4" fill="#207448" />
+  <circle cx="886" cy="202" r="4" fill="#207448" />
+  <circle cx="973" cy="202" r="4" fill="#207448" />
+
+  
+  <path d="M 670 202 L 670 220 L 245 220 L 245 254" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 735 202 L 735 230 L 502 230 L 502 254" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 821 202 L 821 240 L 722 240 L 722 254" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 886 202 L 886 230 L 1070 230 L 1070 254" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 973 202 L 973 220 L 1405 220 L 1405 254" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  
+  <rect x="100" y="255" width="290" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(132, 275)">
+    
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 15 15 M 41 41 L 45 45 M 11 45 L 15 41 M 41 15 L 45 11" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="215" y="315" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">s</text>
+  <text x="245" y="370" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="245" dy="0">substitute</tspan>
+    <tspan x="245" dy="30">command</tspan>
+  </text>
+
+  
+  <rect x="415" y="255" width="175" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(432, 275)">
+    
+    <circle cx="24" cy="24" r="14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 35 35 L 49 49" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="498" y="315" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">old</text>
+  <text x="502" y="385" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">pattern</text>
+
+  
+  <rect x="615" y="255" width="215" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(632, 275)">
+    
+    <path d="M 8 18 L 44 18 M 34 8 L 44 18 L 34 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 48 38 L 12 38 M 22 28 L 12 38 L 22 48" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="702" y="315" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">new</text>
+  <text x="722" y="385" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">replacement</text>
+
+  
+  <rect x="855" y="255" width="430" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(885, 275)">
+    
+    <circle cx="28" cy="28" r="18" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 10 A 18 18 0 0 1 46 28" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 46 20 L 46 28 L 38 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 28 46 A 18 18 0 0 1 10 28" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 10 36 L 10 28 L 18 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="965" y="315" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">g</text>
+  <text x="1070" y="370" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1070" dy="0">all matches on each line</tspan>
+    <tspan x="1070" dy="30">(without g only the first)</tspan>
+  </text>
+
+  
+  <rect x="1310" y="255" width="190" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1330, 275)">
+    
+    <path d="M 12 6 L 34 6 L 44 16 L 44 50 L 12 50 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 34 6 L 34 16 L 44 16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  </g>
+  <text x="1395" y="315" font-family="monospace" font-size="34" font-weight="bold" fill="#207448">file</text>
+  <text x="1405" y="385" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">input</text>
+
+  
+  <rect x="60" y="480" width="1480" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(88, 507)">
+    
+    <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 22 16 C 16 22 16 34 22 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M 34 16 C 40 22 40 34 34 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="175" y="546" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">sed -E 's/step=([0-9]+)/STEP:\1/' file</text>
+  <rect x="960" y="505" width="540" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1230" y="543" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">\1 is the first capture group</text>
+
+  
+  <rect x="60" y="610" width="1480" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(88, 637)">
+    
+    <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 20 12 L 20 44 M 36 12 L 36 44" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="175" y="676" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">sed 's|/usr/local|/opt|g' file</text>
+  <rect x="960" y="635" width="540" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1230" y="673" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">other delimiter</text>
+
+  
+  <rect x="60" y="740" width="1480" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(88, 767)">
+    
+    <rect x="8" y="10" width="40" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 16 6 L 40 6 L 40 10 L 16 10 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 16 22 L 32 22 M 16 30 L 40 30 M 16 38 L 26 38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="175" y="806" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">sed -n '10,20p' file</text>
+  <rect x="960" y="765" width="540" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1230" y="803" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">prints lines 10 to 20</text>
+
+  
+  <rect x="60" y="870" width="1480" height="110" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+  <rect x="60" y="870" width="12" height="110" rx="4" fill="#db8129" />
+  <g transform="translate(90, 897)">
+    
+    <rect x="4" y="6" width="48" height="42" rx="6" fill="none" stroke="#db8129" stroke-width="4" />
+    <path d="M 12 18 L 22 27 L 12 36 M 26 36 L 40 36" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="175" y="936" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">sed writes to standard output, -i edits the file in place</text>
+</svg>

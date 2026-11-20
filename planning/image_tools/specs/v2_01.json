@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "n01-dnschain",
+  "title": "The name resolution chain",
+  "spec": "Vertical chain of seven numbered boxes top to bottom, arrows between them, a small 'answer found: stop here' side arrow leaving the /etc/hosts box. Boxes: 1 '/etc/nsswitch.conf (hosts: line sets the order)'; 2 '/etc/hosts (static overrides, no network traffic)'; 3 'stub resolver / local cache (127.0.0.53, systemd-resolved)'; 4 'search domains and ndots'; 5 'DNS query: UDP port 53 (TCP if truncated), A and AAAA'; 6 'recursive resolver: root, then .com, then example.com authoritative'; 7 'choose among answers: RFC 6724 order, Happy Eyeballs'. Monospace for file names and port. Orange highlight on box 2 side note 'a match ends the lookup'. Green main boxes. Bottom green bar: 'Each door can be locked and each fails differently'.",
+  "anchor": "## 3. Step 1: name resolution (what is the IP address?)",
+  "alt": "Seven stages of name resolution",
+  "cap": "The C library tries the files, the local stub or cache, the search domains and finally the recursive resolver, in order."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "n01-curlw",
+  "title": "Reading curl -w timing",
+  "spec": "A horizontal timeline bar from left to right split into five segments, with six tick marks above labelled in order: namelookup, connect, appconnect (TLS done), pretransfer, starttransfer (first byte), total. Below each segment a bracket with its formula: 'DNS = namelookup'; 'TCP = connect minus namelookup'; 'TLS = appconnect minus connect'; 'request + server time + first byte = starttransfer minus pretransfer'; 'transfer = total minus starttransfer'. Tick labels in monospace as time_namelookup etc. Orange note: 'All values count from the start'. Green bar: 'Start with the largest phase, since that is where the time went'.",
+  "anchor": "## 11. Timing: reading `curl -w`",
+  "alt": "curl timing phases",
+  "cap": "Each curl -w value counts from zero, so each phase is the difference between two values."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "n01-symptommap",
+  "title": "From symptom to layer",
+  "spec": "Left-to-right ladder of layers from bottom to top: Routing, ARP/ND, Transport, Name resolution, TLS/PKI, Application. Each layer is a row with a curl symptom chip and exit code: Name resolution: 'Could not resolve host' (exit 6); Routing: 'Network is unreachable' (exit 7); ARP/ND: 'No route to host' (exit 7); Transport: 'Connection refused' (exit 7, no listener), 'Connection timed out' (28/7, loss or firewall DROP); TLS/PKI: 'certificate verify failed' (60); Application: 'HTTP 4xx/5xx' (22 with -f). Orange highlight on the title note 'start with the layer the message points to'. Message text in monospace.",
+  "anchor": "## 12. A map from symptom to layer",
+  "alt": "Curl error symptoms mapped to layers",
+  "cap": "A curl error message and exit code point to the layer where you should start looking."
+ }
+]

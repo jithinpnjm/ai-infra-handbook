@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "06",
+  "name": "d06-two-storage",
+  "title": "Two separate storage systems on a SuperPOD",
+  "spec": "Two side-by-side panels around a row of GPU compute trays in the centre. Left panel, labelled System 1, High-Performance Storage, HPS: a parallel file system, POSIX interface, many storage servers, reached over a dedicated BlueField-3 400G RoCEv2 storage port, certified for Grace aarch64 and GPUDirect Storage, workload: dataset reads and checkpoint bursts. Right panel, labelled System 2, User Storage: an enterprise NFS share on the in-band Ethernet fabric, at least 100 GbE DR1, workload: /home directories, admin scripts, cluster logs, Mission Control and Base Command Manager HA state. A bracket under both panels: separate hardware, so a metadata storm on one does not stall the other. Orange highlight on the HPS panel. Monospace for POSIX, RoCEv2, GPUDirect Storage, /home and NFS.",
+  "anchor": "### 4.1 High-Performance Storage and User Storage, Standard and Enhanced tiers",
+  "alt": "High-performance storage and user storage side by side",
+  "cap": "Two storage systems: a parallel file system for data and checkpoints, and a separate NFS share for home directories and logs."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "06",
+  "name": "d06-checkpoint-stages",
+  "title": "Two-stage checkpoint: local NVMe first, then a background flush",
+  "spec": "A left-to-right flow of three boxes with arrows, with a split at the middle. Box 1: 64 GPUs each write their own shard in parallel, about 15.3 GB per GPU and 122.5 GB per 8-GPU node, with torch.distributed.checkpoint. Arrow to Box 2 labelled stage 1, local NVMe at /raid, about 8.17 seconds at 15 GB/s per node, with a green note: GPUs resume immediately. From Box 2 a branch arrow to Box 3 labelled stage 2, background flush to the shared file system and S3 object storage, with an atomic rename and SHA-256 check. Under Box 3 two timing notes: about 98 s at 10 GB/s NAS, or about 21.8 s at 45 GB/s Standard SU write. Orange highlight on the stage 1 box with the note: the training stall ends here. Monospace for torch.distributed.checkpoint, /raid, 8.17 seconds and SHA-256.",
+  "anchor": "### 4.2 Why text training is limited by checkpoint writes",
+  "alt": "Two-stage checkpoint write",
+  "cap": "Checkpoint staging: each node writes its shard to local NVMe in about eight seconds so the GPUs resume, and the copy to shared storage runs in the background."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "06",
+  "name": "d06-bucket-overlap",
+  "title": "Gradient buckets overlap communication with the backward pass",
+  "spec": "A two-row timeline on a shared time axis from left to right. Top row labelled backward compute on the GPU: a series of blocks labelled backward for layer groups, one after another. Bottom row labelled AllReduce on the network: a series of blocks, each starting as soon as its gradient bucket is ready, placed under the compute blocks with a small offset. Dashed arrows from each compute block end down to the matching AllReduce block start, labelled bucket ready, launch asynchronous AllReduce. At the far right, a last AllReduce block that extends past the end of the compute row, highlighted in orange with the note: only the last bucket is exposed. A small note: the PyTorch DDP default bucket size is 25 MB. Monospace for loss.backward, AllReduce and bucket.",
+  "anchor": "### 3.3 Collective algorithms and InfiniBand versus RoCEv2 economics",
+  "alt": "Bucketed AllReduce overlapping the backward pass",
+  "cap": "Bucket overlap: each gradient bucket starts its AllReduce while later layers are still computing, so only the final bucket adds waiting time."
+ }
+]
