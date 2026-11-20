@@ -124,9 +124,9 @@ Follow a packet from container A to container B on the same bridge, slowly, one 
 
 A packet from A to the internet takes a different path. The default route of A points at the bridge IP, and the packet enters the host IP stack. It passes FORWARD and then POSTROUTING masquerade, and it leaves through the NIC with the address of the host. Return traffic is un-NATed by conntrack and delivered back through the bridge. The outside world never learns that the container exists. It only talks to the host.
 
-![DNS inside: per-namespace resolv.conf under /etc/netns/<ns>/resolv.conf](./img/m2-25-1.svg)
+![DNS inside: per-namespace resolv.conf under /etc/netns/ns/resolv.conf](./img/m2-25-1.svg)
 
-*Figure 2.25.3. DNS inside: per-namespace resolv.conf under /etc/netns/<ns>/resolv.conf, as a diagram.*
+*Figure 2.25.3. DNS inside: per-namespace resolv.conf under /etc/netns/ns/resolv.conf, as a diagram.*
 
 Bridge and NAT are not the only option. A routed veth has no bridge. Instead, it uses one /32 route per container that points at the host end of the veth, with proxy ARP or a routing protocol. This is the model of Calico. Macvlan puts the container directly on the physical LAN with its own MAC address. Host-to-container traffic on the same parent does not work unless the host has a macvlan sub-interface too. Ipvlan L3 routes container IPs through the parent, so there is no MAC explosion. Host networking skips the namespace entirely, and SR-IOV and DPDK bypass the kernel with hardware or user-space paths.
 

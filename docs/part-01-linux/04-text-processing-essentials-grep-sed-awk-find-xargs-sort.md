@@ -305,7 +305,7 @@ When a field carries units, strip them before you do any arithmetic on it.
 
 ![How awk splits a line into fields](./img/ch04-fig2-awk-v2.jpg)
 
-*Figure 1.4.6. How awk reads a line: fields, NF, NR and `pattern { action }`.*
+*Figure 1.4.6. How awk reads a line: fields, NF, NR and `pattern  action `.*
 
 ## 7. Fan-out: `find`, `xargs`, and parallelism
 

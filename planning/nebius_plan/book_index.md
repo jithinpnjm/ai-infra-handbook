@@ -1,0 +1,11784 @@
+# Book index for Nebius SRE prep (auto-generated from headings)
+
+
+## Vol part-01-linux (30 chapters)
+
+
+### 1.1 The Linux big picture: kernel, userspace, distributions  [11643 words, ~58 min]  `part-01-linux/01-the-linux-big-picture-kernel-userspace-distributions.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What an operating system is for
+- 2. The three layers
+- Why two modes? Kernel mode and user mode
+- 3. What the kernel does: four jobs
+- Job 1: running processes
+- Job 2: managing memory
+- Job 3: managing devices
+- Job 4: system calls and the services around them
+- 4. Processes, users, and who starts what
+- What happens when you type a command
+- Users, owners, and `root`
+- 5. Seeing it with your own eyes
+- 5.1 What machine and which kernel is this?
+- 5.2 What is running, and in what tree?
+- 5.3 Watch a command start: `strace`
+- 5.4 Watch the kernel/user boundary yourself
+- 5.5 Where do devices and kernel modules show up?
+- 6. Distributions: Linux is a kernel, not a system
+- 6.1 The Red Hat, Fedora, CentOS, and Amazon Linux branch
+- 6.2 The Debian and Ubuntu branch
+- 7. Putting a GPU node on the map
+- 8. How it fails: six classic confusions
+- 1. "I updated the kernel and the GPU disappeared"
+- 2. "Works in the container, not on the host" (and the reverse): confusing library layers
+- 3. A process that "cannot be killed": state D
+- 4. "The kernel killed my job": the out-of-memory killer
+- 5. "Permission denied" versus "No such file": wrong layer of cause
+- 6. "It behaves differently on the other cluster": distribution differences
+- Hands-on lab: layer verification and VM tour
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.2 The command line: shells, commands, pipes and redirection  [14377 words, ~71 min]  `part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Terminal, shell, command: three different things
+- 2. Anatomy of a command line
+- What the shell does with a line
+- How the shell finds a program: `PATH`
+- 3. A survival kit of commands
+- The forms of the basic commands
+- The one habit that prevents most disasters
+- 4. Getting help without leaving the terminal
+- Reading a man page without getting lost
+- 5. Expansion and quoting: the rules that explain "weird" behaviour
+- Special characters: the names to know
+- 6. Standard streams, redirection and pipes
+- 7. Exit status and combining commands
+- Exit codes you will meet in AI infrastructure
+- 8. Environment variables, `PATH` and startup files
+- Modifying `PATH` safely
+- Startup files: where the settings live
+- 9. Working faster: history, completion and editing
+- Shell tricks that save hours on clusters
+- 10. Understanding error messages
+- 11. Mac or Linux? The differences that bite
+- 12. Daily patterns for AI and HPC work
+- How it fails
+- 1. A space in a filename, an unquoted variable
+- 2. `rm -rf "$DIR"/*` with an empty `DIR`
+- 3. Errors vanish or appear in the wrong place: redirection order
+- 4. The wrong program runs: `PATH` or alias shadowing
+- 5. "Argument list too long"
+- 6. `bad interpreter: No such file or directory` on a script that exists
+- 7. A failing pipeline stage hidden by a later one
+- 8. A "bash script" that fails on another distribution: `/bin/sh` is not bash
+- Hands-on lab: shell parsing, redirection, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.3 Files and the directory hierarchy: paths, links, inodes  [10751 words, ~53 min]  `part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Paths: how you name a file
+- 2. The standard layout: where things live
+- 3. File types and what `ls -l` really shows
+- Reading a long listing column by column
+- 4. Inodes: what a file really is
+- 5. Links: hard and symbolic
+- Hard links
+- Symbolic (soft) links
+- The atomic "latest" pattern
+- 6. Timestamps
+- 7. Names, extensions and finding things
+- `find`: search by properties
+- `locate`: search by name in an index
+- Where is that command?
+- 8. Archiving and compression
+- 9. AI-infrastructure patterns, in one place
+- How it fails
+- 1. "No space left on device" but `df -h` shows free space
+- 2. A dangling symlink: `latest -> checkpoints/step_900` but the directory was cleaned
+- 3. "Invalid cross-device link" when hard-linking or renaming
+- 4. The disk is full, but `du` cannot find the files: deleted but still open
+- 5. An archive overwrote system files or exploded the working directory
+- 6. `ls` or a job takes forever in a directory with millions of entries
+- Hands-on lab: inodes, links, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.4 Text-processing essentials: grep, sed, awk, find, xargs, sort  [8385 words, ~41 min]  `part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The model: lines of text flowing through small tools
+- 2. Regular expressions from scratch
+- 3. `grep`: filter lines
+- 4. Slicing, ordering and counting: `cut`, `tr`, `sort`, `uniq`, `wc`, `head`, `tail`
+- The two pipelines you will write a thousand times
+- Reading long output: `less`, and a few one-line improvements
+- Combining: `paste`, `join`, `column`, `tee`
+- 5. `sed`: edit a stream
+- 6. `awk`: the Swiss army knife for columns
+- 7. Fan-out: `find`, `xargs`, and parallelism
+- 8. Comparing files and handling structured text
+- `diff`, `comm`, `cmp`
+- JSON and friends: use a parser, not regex
+- Ask tools for machine-readable output first
+- 9. Portability, locale and other traps
+- 10. Recipes for AI and HPC work
+- How it fails
+- 1. Different sort order or "wrong" results on two machines: locale
+- 2. `uniq -c` shows duplicates: input was not sorted
+- 3. The `sed -i` that works on the laptop and fails on the server (or the reverse)
+- 4. Files with spaces or newlines in names break an `xargs` pipeline
+- 5. A regex that matches too much: unescaped dots, greedy stars
+- 6. Parsing a pretty table with `cut -d' '`
+- 7. Parsing JSON or YAML with regex
+- Hands-on lab: text pipelines and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.5 Working remotely: SSH keys, file transfer, tmux and editors  [9271 words, ~46 min]  `part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. How SSH works
+- 2. Keys: create, install, protect
+- 3. Using SSH day to day
+- Running commands, with or without a terminal
+- The config file: `~/.ssh/config`
+- Port forwarding (tunnels)
+- Debugging a connection
+- 4. Copying files: `scp`, `sftp`, `rsync` and cloud tools
+- `rsync` properly
+- Network filesystems: an introduction
+- 5. Sessions that survive: `tmux`
+- 6. Running commands on many nodes
+- 7. Editors: enough to survive anywhere
+- 8. Out-of-band access: when SSH is not available
+- 9. AI-infrastructure patterns
+- How it fails
+- 1. `Permission denied (publickey)`
+- 2. `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED`
+- 3. Hangs, timeouts and "Connection refused"
+- 4. Sessions drop and kill your work
+- 5. rsync mirrors the wrong thing: the trailing slash and --delete
+- 6. Agent forwarding exposes you, and keys leak
+- 7. Works in the terminal, fails over `ssh host command` or in automation
+- Hands-on lab: SSH, rsync, tmux, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.6 Users, groups, permissions, ACLs, sudo and user environments  [14558 words, ~72 min]  `part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Users and groups: names for numbers
+- `/etc/passwd`: the user table
+- `/etc/shadow`: passwords and aging
+- `/etc/group`: the group table
+- Why `/etc` is split into subdirectories
+- 2. Managing users and groups
+- 3. File permissions: read, write, execute
+- What the bits mean: files versus directories
+- Changing permissions: `chmod`, `chown`, `chgrp`
+- Absolute modes: memorize the ones you use
+- `umask`: default permissions for new files
+- The special bits: setuid, setgid, sticky
+- A recipe: a safe shared project directory
+- 4. Access control lists (ACLs)
+- 5. Process identity, setuid and `sudo`
+- `getty` and `login`: how a terminal login starts
+- How a process gets its identity, and how it changes
+- Real, effective, saved (and filesystem) IDs
+- Why setuid is dangerous: security implications
+- Identification, authentication, authorization
+- `sudo`: administrative power with a trail
+- 6. Shell startup files: the user environment
+- Which file is read when (bash)
+- What belongs in a startup file
+- An example `~/.bashrc`
+- Defaults for new users and cluster-wide defaults
+- Startup-file pitfalls and further startup topics
+- 7. Limits and quotas (an introduction)
+- 8. Identity in a cluster: keeping the numbers consistent (*Supercomputers for Linux Sysadmins* Chapter 11)
+- 8.1 What must match everywhere and what must differ by node role
+- 8.2 The classic file-synchronization approach and the pull-based `/usr/sbin/master-sync` design
+- 8.3 NIS and NIS+: why the commands start with `yp` and why 30 to 40 clients is the ceiling
+- 8.4 LDAP, explosive job-launch storms, and SSSD caching
+- 8.5 How a program finds a user: the Name Service Switch (NSS)
+- 9. AI-infrastructure patterns
+- How it fails
+- 1. "Permission denied" although the file looks readable
+- 2. New files in a shared directory have the wrong group or permissions
+- 3. After "fixing" with `chmod -R 777`, everything is wide open
+- 4. Files owned by `root` in your project after running a container
+- 5. The same user, different UID on different nodes
+- 6. Locked out by a `sudoers` mistake
+- 7. A `sudo` command behaves differently: environment and redirection surprises
+- Hands-on lab: permissions, ACLs, sudo, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.7 Packages, repositories and software installation  [18510 words, ~92 min]  `part-01-linux/07-packages-repositories-and-software-installation.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What a package is
+- Two layers, and why they exist
+- The package database is precious
+- Configuration files and upgrades
+- Dependencies, and how the two families express them
+- Integrity: checksums
+- 2. Repositories: where packages come from
+- Signatures and trust
+- Debian-family configuration
+- Red Hat-family configuration
+- Verbs you need on both sides
+- 3. The low-level tools
+- `rpm`: modes and selectors
+- `dpkg`: the equivalents
+- Translation table
+- 4. Holding, pinning and reproducibility
+- 5. Finding the package you need
+- 6. Installing from source
+- The standard sequence
+- Safe first install: a private prefix
+- `pkg-config`: how builds find libraries
+- Turning a source build into a package
+- Applying a patch
+- Where to go next with builds
+- Troubleshooting builds
+- 7. The build toolchain: compiler, linker, headers and `make`
+- From source to executable
+- Linking against libraries
+- Static and shared libraries
+- Headers, the preprocessor and include paths
+- `make`
+- 8. Shared libraries at run time
+- The search order
+- Do not add directories carelessly to ld.so.conf
+- The danger of LD_LIBRARY_PATH
+- Quick diagnosis
+- 9. Interpreters, shebang lines, scripting languages, and Java (*How Linux Works* Sections 15.4–15.6)
+- Scripting languages and Java you will encounter on Linux systems
+- 10. Software installation on a cluster
+- Drivers, InfiniBand and RAID
+- Installing OFED on the cluster
+- A sensible build order
+- The login node
+- NFS server and client
+- Compilers and libraries on nodes
+- The compute node
+- Getting an operating system onto many nodes
+- Remote and RAM-disk installs
+- 11. AI-infrastructure patterns
+- How it fails
+- Hands-on lab: packages, shared libraries, Makefiles, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.8 Processes, signals and job control  [18969 words, ~94 min]  `part-01-linux/08-processes-signals-and-job-control.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What the kernel does for processes
+- The operating system in one picture
+- Kernel mode and user mode
+- System calls
+- Interrupts, the clock and idle
+- Preemption
+- 2. What a process is
+- Threads
+- Where processes come from: `fork` and `exec`
+- Zombies and orphans
+- Process states
+- The run queue and the load average
+- 3. Looking at processes from outside
+- `ps`
+- What the default `ps` columns mean
+- Viewing threads with `ps m`
+- `top`, `htop`, `atop`
+- `pgrep`, `pidof`, `pstree`, `fuser`
+- `/proc`: the kernel's window on every process
+- `lsof`: who has what open?
+- Reading `lsof` output
+- Narrowing `lsof` output
+- `strace` and `ltrace`: what is this program actually doing?
+- 4. Signals
+- Sending signals
+- Stopping, continuing and processes that resist
+- Catching signals in shell scripts
+- Core dumps
+- 5. Shell job control
+- Job control: useful, but easy to get lost in
+- Background processes and stray output
+- 6. Priority: `nice`, `ionice`, CPU affinity
+- Seeing priorities in `top`
+- 7. Limits: `ulimit` and `prlimit`
+- 8. First resource monitoring: CPU time, memory, I/O
+- Measuring CPU time: `time`
+- Load averages with `uptime`
+- Memory in brief, and page faults
+- `vmstat`: the whole machine in one line per interval
+- Watching memory run out in `vmstat`
+- I/O: `iostat`, `iotop`, `pidstat`, `sar`
+- Partitions, per-process I/O and `pidstat` in detail
+- 9. Control groups (cgroups)
+- v1 versus v2
+- Viewing cgroups
+- Creating and changing cgroups
+- 10. AI-infrastructure patterns
+- Kernel background reference (from the operating-systems chapter of the performance book)
+- How it fails
+- Hands-on lab: processes, signals, cgroups, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.9 Shell scripting that survives production  [13617 words, ~68 min]  `part-01-linux/09-shell-scripting-that-survives-production.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The shape of a script
+- Choosing the interpreter
+- Run, source, or exec
+- The limits of shell (*How Linux Works* Section 11.1.1)
+- 2. Quoting and expansion: the heart of shell
+- The three kinds of quoting (*How Linux Works* Section 11.2)
+- Word splitting: why `$var` should almost always be `"$var"`
+- `$@` versus `$*`
+- Even `echo $var` can misbehave
+- Globbing
+- 3. Variables, parameters and special variables
+- Variables
+- Positional parameters and special variables
+- Exit codes
+- 4. Conditionals
+- `if` runs a command and tests its exit code
+- `[`, `test` and `[[`
+- The test operators
+- Logical constructs: `&&` and `||` as one-line conditionals
+- `case`
+- `select` and `read`
+- Arithmetic
+- 5. Loops
+- `for`
+- `while` and `until` (*How Linux Works* Section 11.6.2)
+- Reading a file line by line (the right way)
+- Loops over command output and find results
+- 6. Command and process substitution, temporary files, here documents
+- Command substitution
+- Temporary files (`mktemp` and `trap`)
+- Here documents and here strings
+- 7. Parameter expansion, functions, grouping and subshells
+- Parameter expansion: string work without extra processes
+- Arrays
+- Functions
+- Options with `getopts`
+- Grouping and subshells
+- Command search and builtins
+- 8. Making scripts safe: strict mode, traps, locks, retries
+- Strict mode, and its traps
+- Cleanup with `trap`
+- Logging and output discipline
+- Locking: only one copy at a time
+- Idempotence
+- Retries and timeouts
+- Lint and debug
+- 9. Important shell script utilities (*How Linux Works* Section 11.10)
+- 10. Common mistakes, collected
+- 11. Performance in a few lines
+- 12. AI-infrastructure patterns
+- How it fails
+- Hands-on lab: shell scripting, strict mode, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.10 Devices, udev, sysfs and procfs  [12506 words, ~62 min]  `part-01-linux/10-devices-udev-sysfs-and-procfs.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Device files: hardware as files
+- Types and numbers
+- Naming: why enumeration order is a trap
+- Creating device files
+- 2. The common device files
+- Consoles, parallel ports and audio (legacy devices you will still meet)
+- 3. `dd` and devices
+- 4. sysfs: the kernel's device model as a tree
+- 5. procfs and `sysctl`
+- `/proc/sys` and `sysctl`
+- 6. udev: from hardware events to device files
+- The problem and the design
+- Rules
+- Writing your own rule
+- `udevadm` and device monitoring (*How Linux Works* Sections 3.5.3–3.5.4)
+- Persistent device names under `/dev/disk`
+- udev versus systemd `.link` files and `systemd-hwdb`
+- 7. How storage devices fit together in the kernel (*How Linux Works* Section 3.6)
+- 8. Hardware inventory: PCI, USB, CPU, memory, firmware
+- 9. Drivers, binding and rescans
+- 10. AI-infrastructure patterns
+- How it fails
+- Hands-on lab: devices, sysfs, udev, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.11 How a program runs: system calls, libraries, ELF, strace and ldd  [13624 words, ~68 min]  `part-01-linux/11-how-a-program-runs-system-calls-libraries-elf-strace-and-ldd.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. From keystroke to `main()`
+- 2. The ELF file format
+- Reading an ELF file
+- Symbols, stripping and debug info
+- 3. The process address space
+- 4. System calls
+- The mechanism
+- Common calls and what they tell you
+- 5. Shared libraries in depth
+- Names: soname, real name, linker name
+- Symbol versioning and glibc
+- glibc versus musl, and containers
+- Preloading and debugging the loader
+- Python and extension modules
+- 6. Watching a program: `strace` and `ltrace` in practice
+- Other process-inspection tools
+- 7. Application performance: a first method
+- Know the application first
+- Common techniques applications use
+- Languages and runtimes
+- The analysis methods
+- Tools at a glance
+- Gotchas: missing symbols and missing stacks
+- 8. AI-infrastructure patterns
+- How it fails
+- Hands-on lab: ELF, shared libraries, strace, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.12 Disks, partitions and filesystems  [19937 words, ~99 min]  `part-01-linux/12-disks-partitions-and-filesystems.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The storage stack in one picture
+- 2. Disks and their behaviour
+- Disk types
+- Sectors and block sizes
+- Rotational disk mechanics (why old advice exists)
+- Interfaces
+- How storage is attached
+- 3. Partitioning
+- MBR and GPT
+- Tools
+- Reading a partition table with `parted -l`
+- Partition tables on an LVM system
+- An MBR example with fdisk
+- How the kernel learns about a new table
+- Alignment examples with `parted`
+- A worked example (a spare disk, GPT)
+- Alignment (*How Linux Works* Section 4.1.6)
+- Partition types you will meet
+- 4. Creating filesystems
+- Filesystem types
+- Making one
+- Filesystem families and their history
+- What `mkfs` runs behind the scenes
+- 5. Mounting
+- Identifying filesystems: UUID and labels
+- Mount options
+- Short and long mount options
+- Remounting a filesystem in place
+- Removable media and `noauto`
+- `/etc/fstab`: mounts at boot
+- Capacity: `df`, `du`, inodes, reserved blocks
+- Reading the `df` output
+- Finding space hogs with `du`
+- Swap, in brief
+- Swap partitions in detail
+- Swap files in detail
+- How much swap you need
+- 6. Inside a traditional filesystem
+- Special-purpose filesystems
+- Special filesystem details
+- 7. Checking and repairing filesystems
+- Running `fsck` by hand
+- Checking ext3 and ext4 after a crash
+- The worst case
+- Quotas
+- 8. Files, file descriptors and the read path
+- 9. Filesystem performance: the concepts
+- Latency, caching and the page cache
+- Access patterns and read-ahead
+- Write-back caching and durability
+- Direct, raw, non-blocking and memory-mapped I/O
+- Metadata, and logical versus physical I/O
+- Capacity and timestamps
+- 10. Choosing and tuning filesystems
+- 11. Methodology and tools
+- 12. AI-infrastructure patterns
+- How it fails
+- Hands-on lab: disks, partitions, filesystems, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.13 LVM, RAID and NVMe  [15590 words, ~77 min]  `part-01-linux/13-lvm-raid-and-nvme.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Logical Volume Manager (LVM)
+- The problem LVM solves
+- Looking at an LVM system
+- How LVM finds its volumes
+- Physical volumes in detail
+- Volume groups and logical volumes in detail
+- Building: the standard sequence
+- Resizing: the two-step operation and its order
+- A worked two-disk example
+- Moving, removing and renaming
+- Cloud pattern: the disk grew, grow everything above it
+- Snapshots and thin provisioning
+- Implementation: how it fits together
+- 2. The device mapper
+- Device mapper inventory with `dmsetup`
+- Encryption: dm-crypt and LUKS
+- Multipath
+- Caching layers
+- 3. Software RAID with `md`
+- RAID levels
+- `mdadm`
+- Which RAID for what (GPU nodes)
+- 4. NVMe in depth
+- Architecture
+- `nvme-cli`
+- NVMe over Fabrics (NVMe-oF)
+- NVMe naming and containers
+- 5. Disk performance: the method
+- Concepts you need
+- Methods, in a sensible order
+- Micro-benchmarking the device
+- 6. Tools for the block layer
+- Tuning knobs
+- 7. AI-infrastructure patterns
+- The full data path, layer by layer
+- Local NVMe as cache and staging area
+- DGX-style layout and build
+- Kubernetes and local volumes
+- Hardware RAID versus software
+- How it fails
+- Hands-on lab: LVM, RAID, NVMe, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.14 Boot: firmware, GRUB, kernel, initramfs  [14873 words, ~74 min]  `part-01-linux/14-boot-firmware-grub-kernel-initramfs.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The big picture
+- 2. Firmware: BIOS, UEFI and the hardware settings that matter
+- BIOS (legacy) boot
+- UEFI boot
+- Secure Boot
+- Hardware/firmware settings that matter on GPU servers
+- 3. The boot loader
+- GRUB 2 in use
+- GRUB configuration: do not edit `grub.cfg`
+- GRUB installation
+- How GRUB boots (for BIOS)
+- Chainloading
+- 4. The kernel starts
+- Reading the boot log
+- Kernel parameters
+- 5. The initial RAM filesystem (initramfs)
+- Skipping the initramfs
+- 6. `init`: the first user-space process
+- SysV init, briefly (still seen in appliances, containers' ancestors, and some old HPC images)
+- The `rc*.d` link farm and `init.d`
+- systemd, in one screen
+- 7. Diagnosing and repairing boot problems
+- 8. Cloning images: a cluster pitfall
+- 9. Consoles for servers
+- 10. Network booting: DHCP, TFTP, PXE and NFS root
+- Components
+- DHCP server configuration (ISC `dhcpd`)
+- PXELINUX configuration and NFS root
+- Image-based provisioning today
+- Boot storms and other cluster-boot hazards
+- 11. AI-infrastructure patterns
+- How it fails
+- Hands-on lab: boot sequence, GRUB, initramfs, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.15 systemd: units, targets, timers, journald  [14260 words, ~71 min]  `part-01-linux/15-systemd-units-targets-timers-journald.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What systemd is
+- Older init systems
+- 2. Units
+- Where unit files live (and the precedence rule)
+- Anatomy of a service unit
+- Service types: how systemd knows a service is "started"
+- Common [Service] options
+- 3. Operating systemd: `systemctl`
+- 4. Dependencies and ordering
+- 5. Overriding units: drop-ins
+- 6. Targets
+- 7. Templates and instances
+- 8. Socket, path and automount activation
+- 9. Timers: the cron replacement
+- 10. Resource control, slices and host protection
+- 11. Sandboxing and service hardening
+- 12. Journald and `journalctl`
+- 13. The other built-in services: networkd, resolved, timesyncd
+- 14. Debugging and analysing
+- 15. Shutdown, rescue and legacy
+- Runlevels: the older way to name a system state
+- 16. AI-infrastructure patterns
+- How it fails
+- Hands-on lab: systemd units, timers, slices, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.16 Logging, time synchronisation, cron and batch jobs  [10930 words, ~54 min]  `part-01-linux/16-logging-time-synchronisation-cron-and-batch-jobs.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. System logging
+- Checking what your machine runs
+- rsyslog in a nutshell
+- Journal versus syslog
+- 2. Searching and monitoring logs
+- 3. Rotating logs
+- 4. Central logging for clusters
+- 5. Final notes on logging
+- 6. Time
+- The clocks
+- Time zones
+- Network time: NTP
+- Classic ntpd setup for a small cluster
+- 7. Scheduling recurring tasks: cron
+- Where crontabs live
+- Cron's environment (the cause of most "works in my shell" failures)
+- Making cron jobs safe
+- 8. One-time tasks: `at`, `batch` and `systemd-run`
+- 9. cron versus systemd timers (*How Linux Works* Section 7.6.4)
+- 10. AI-infrastructure patterns
+- How it fails
+- Hands-on lab: logging, logrotate, chrony, cron, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.17 Memory management: virtual memory, NUMA, huge pages, OOM  [13618 words, ~68 min]  `part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Memory at a glance
+- 2. Virtual memory and paging
+- Why virtual memory
+- Translation: page tables, MMU and TLB
+- Demand paging, page faults, memory states
+- Overcommit
+- Utilisation and saturation
+- Swap
+- 3. Memory hardware that affects performance
+- UMA versus NUMA
+- 4. How Linux frees memory
+- 5. The OOM killer
+- 6. Observing memory
+- The summary view: `free` and `/proc/meminfo`
+- Pressure and activity: `vmstat`, PSI, `sar`
+- Per process
+- Kernel memory and caches: `slabtop`, `/proc/slabinfo`
+- Tracing: `perf`, BCC, `bpftrace`
+- The method for memory problems
+- 7. NUMA in practice
+- Discover the topology
+- Policies and binding
+- 8. Huge pages and transparent huge pages
+- Explicit huge pages (hugetlb)
+- Transparent huge pages (THP)
+- 9. Allocators and heap behaviour
+- 10. Tuning parameters
+- 11. Memory in cgroups, containers and GPU workloads
+- cgroup v2 memory controller
+- Pinned (page-locked) memory, `memlock`, and DMA
+- Host memory budget for a training node
+- Swap and memory policy summary
+- How it fails
+- Hands-on lab: virtual memory, NUMA, huge pages, OOM, and VM drills
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.18 CPU scheduling and cgroups v1 and v2  [13150 words, ~65 min]  `part-01-linux/18-cpu-scheduling-and-cgroups-v1-and-v2.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. CPU basics
+- 2. The Linux scheduler
+- Run queues, time sharing, preemption, load balancing
+- Scheduling classes and policies
+- Nice values and weights
+- CFS and EEVDF
+- Load balancing and migration cost
+- Interrupts and softirqs
+- 3. Observing CPUs
+- The method for CPU problems
+- 4. Controlling placement and priority
+- Affinity
+- Isolation: keeping the kernel and others off chosen cores
+- Governors and power states
+- 5. Control groups: the idea
+- v1 versus v2
+- 6. cgroups v2 by hand
+- The no-internal-processes rule and delegation
+- 7. The CPU controller: weight, quota and throttling
+- Weight (shares): relative fairness
+- Quota: hard ceiling (CFS bandwidth control)
+- cpuset: which CPUs and memory nodes
+- Other controllers in brief
+- PSI and monitoring per cgroup
+- 8. Systemd, Docker, Slurm and the cgroup tree
+- 9. Kubernetes and cgroups
+- 10. Troubleshooting
+- 11. Hands-on lab: CPU scheduling, weights, quota, cpuset, and VM drills
+- 12. Common mistakes
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.19 Namespaces: the kernel feature behind containers  [10818 words, ~54 min]  `part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. A container is not a kernel object
+- 2. The namespace types
+- Inspecting namespaces
+- 3. PID namespaces
+- Seeing a container from the host
+- 4. Mount namespaces, root changes and OverlayFS
+- Mount namespaces and propagation
+- chroot versus pivot_root
+- OverlayFS: images as layers
+- Reading an overlay mount on the host
+- 5. Network namespaces
+- 6. User namespaces, UID mapping and rootless containers
+- 7. UTS, IPC, cgroup and time namespaces
+- 8. Putting it together: what a runtime does
+- 9. Containers, VMs and lightweight VMs
+- 10. Observing containers (and the traps)
+- 11. GPUs inside containers
+- 12. Other flavours of "virtual"
+- 13. Failure modes and diagnosis
+- 14. Hands-on lab: explore and build with namespaces
+- 15. Common mistakes
+- 16. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.20 Lab: build a container by hand with unshare, chroot, cgroups and overlayfs  [5100 words, ~25 min]  `part-01-linux/20-lab-build-a-container-by-hand-with-unshare-chroot-cgroups-and-overlayf.md`
+- Why this lab
+- Safety
+- Architecture of what we build
+- Step 0. Preconditions and local Python verification
+- Step 1. Root filesystem
+- Step 2. Plain chroot, and why it is not enough
+- Step 3. Namespaces with unshare
+- Step 4. Layers with OverlayFS and a proper root switch
+- Step 5. Put it in a cgroup (CPU, memory, PIDs)
+- Step 6. Networking
+- Step 7. Reduce privilege
+- Step 8. Compare with a real container
+- Step 9. Break it on purpose
+- Step 10. Clean up
+- Troubleshooting
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.21 Linux security: capabilities, SELinux, AppArmor, seccomp, PAM, SSH hardening  [11515 words, ~57 min]  `part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The security model in one picture
+- 2. Users, groups and the superuser
+- The account databases
+- Process credentials: real, effective, saved, filesystem UIDs
+- Setuid, setgid and sticky bits
+- 3. Authentication: PAM, sudo, passwords
+- PAM: Pluggable Authentication Modules
+- sudo and su
+- Passwords and authentication factors
+- 4. Capabilities: splitting root into pieces
+- 5. seccomp: filtering system calls
+- 6. Mandatory access control: SELinux and AppArmor
+- SELinux (RHEL, Rocky, Fedora, Amazon Linux; also used by Android)
+- AppArmor (Ubuntu, Debian, SUSE)
+- 7. SSH hardening
+- 8. Auditing, logging and integrity
+- 9. Kernel and system hardening
+- Secure Boot and module signing (links to 1.14, 1.22)
+- 10. Hardening AI/HPC nodes without breaking them
+- 11. Unix permissions you must not forget
+- 12. Kubernetes admission control and Pod Security (cluster-side)
+- 13. Failure modes and troubleshooting
+- 14. Hands-on lab: harden a node step by step
+- 15. Common mistakes
+- 16. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.22 Kernel modules, DKMS and sysctl tuning for GPU nodes  [9912 words, ~49 min]  `part-01-linux/22-kernel-modules-dkms-and-sysctl-tuning-for-gpu-nodes.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What a kernel module is
+- 2. Working with modules
+- Configuring modules persistently
+- Why unloading fails and what to do
+- 3. Out-of-tree modules: DKMS
+- Why large fleets avoid compiling on nodes
+- 4. The NVIDIA driver stack
+- Kernel modules and device nodes
+- Installation methods and pitfalls
+- Safe driver upgrade procedure (one node)
+- 5. Module signing, Secure Boot and lockdown
+- 6. sysctl and kernel parameters
+- Mechanics
+- Parameters that matter on GPU/HPC nodes
+- Applying settings as code
+- 7. Troubleshooting flow: "the node has no GPUs"
+- 8. Hands-on lab: modules, DKMS, and sysctl
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.23 Performance methodology: USE, workload characterisation, drill-down  [14919 words, ~74 min]  `part-01-linux/23-performance-methodology-use-workload-characterisation-drill-down.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What "systems performance" covers
+- Two perspectives
+- Why performance is hard
+- 2. Vocabulary and concepts
+- Latency and time scales
+- Other concepts
+- 3. The problem statement comes first
+- 4. Anti-methods and good methods
+- The Scientific Method in practice (examples)
+- Elimination is also an answer
+- 5. The Linux 60-second checklist
+- 6. The USE method
+- The USE table for a GPU server
+- RED for services
+- 7. Workload characterisation
+- 8. Drill-down and latency analysis
+- Three-stage drill-down
+- Five whys
+- Latency analysis: halve the problem
+- Event tracing
+- Baselines and static tuning
+- Performance mantras
+- 9. Scalability, modelling and queueing
+- Reading scalability curves
+- Queueing theory in four lines
+- 10. Capacity planning
+- 11. Statistics you must get right
+- 12. Visualisation and monitoring
+- Observability tool taxonomy (preview of chapter 1.24)
+- 13. AI-specific measures of efficiency
+- 14. Two worked case studies
+- Case 1: "Slow disks" becomes "slow data loading"
+- Case 2: non-regression test of a software change
+- 15. Putting a method into practice: a template
+- 16. Hands-on lab: practise the method
+- 17. Common mistakes
+- 18. Interview angles
+- When the method itself fails
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.24 Observability tools: perf, ftrace, BPF and bpftrace  [15029 words, ~75 min]  `part-01-linux/24-observability-tools-perf-ftrace-bpf-and-bpftrace.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Tool coverage: what can each tool see?
+- 2. Tool types
+- Fixed counters
+- Profiling
+- Tracing
+- Monitoring
+- 3. Observability sources
+- /proc
+- /sys
+- Delay accounting
+- netlink
+- Tracepoints
+- kprobes
+- uprobes
+- USDT
+- Hardware counters (PMCs)
+- Other sources
+- 4. sar: system activity reporter
+- 5. Observing the observability
+- 6. perf
+- Subcommands
+- Events
+- perf stat: counting
+- perf record / report / script: profiling and tracing
+- Flame graphs
+- perf trace: lightweight tracing
+- perf probe: dynamic events
+- perf sched, mem, c2c, top, diff
+- perf in AI workflows (practical notes)
+- Documentation
+- 7. Ftrace
+- tracefs
+- Function profiler (counts and times)
+- Function tracer
+- Event tracing: tracepoints, filters, triggers
+- kprobe and uprobe events
+- function_graph tracer
+- hwlat and latency tracers
+- Hist triggers and synthetic events
+- Front ends: trace-cmd, perf ftrace, perf-tools, KernelShark
+- 8. BPF, BCC and bpftrace
+- BCC: canned tools and a framework
+- bpftrace: a high-level tracing language
+- BCC versus bpftrace
+- Overhead and safety rules
+- 9. Joining the host tools to the GPU tools
+- 10. Choosing a tool
+- 11. Worked examples
+- 12. Hands-on lab: use perf, Ftrace, BCC, and bpftrace
+- 13. Common mistakes
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.25 Benchmarking correctly  [13129 words, ~65 min]  `part-01-linux/25-benchmarking-correctly.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why benchmark, and what makes a good benchmark
+- 2. The failures (and the cures)
+- 3. Benchmark types
+- Designing a micro-benchmark matrix
+- 4. Methodology
+- Active benchmarking: a worked example
+- Ramping load and acceptable latency
+- The checklist
+- Questions to ask about a result you did not generate
+- 5. A reproducible benchmarking procedure
+- 6. The AI-infrastructure benchmark toolkit
+- 6.1 CPU
+- 6.2 Memory
+- 6.3 Storage and filesystems (`fio`)
+- 6.4 Network (TCP and RDMA)
+- 6.5 GPU
+- 6.6 Collectives: nccl-tests
+- 6.7 Training benchmarks
+- 6.8 Inference benchmarks (LLM serving)
+- 6.9 Cluster acceptance and burn-in
+- 6.10 Industry benchmarks to know
+- 7. Statistics, sanity checks and reporting
+- Sanity-check arithmetic you should do instantly
+- Statistics for benchmark data
+- Writing the report
+- 8. Worked examples
+- 9. Hands-on lab: benchmark carefully
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.26 KVM, QEMU and libvirt basics  [11829 words, ~59 min]  `part-01-linux/26-kvm-qemu-and-libvirt-basics.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Virtual machines in one page
+- Hypervisor types and configurations
+- Why VMs, and why not
+- Software emulators and hardware help
+- Drawbacks of virtual machines
+- 2. How the hardware helps
+- CPU virtualisation
+- Memory virtualisation
+- I/O virtualisation and the IOMMU
+- 3. The stack: KVM, QEMU, libvirt
+- Command-line QEMU (to see what libvirt generates)
+- Installing and checking (Ubuntu/Debian)
+- Creating a VM with a cloud image and cloud-init
+- Day-to-day virsh
+- Domain XML: the parts that matter
+- 4. Storage
+- 5. Networking
+- 6. Performance: what costs what, and how to tune
+- 7. Observing VMs
+- 8. GPUs and other devices in VMs
+- PCI passthrough with VFIO
+- KubeVirt: the same passthrough, driven from Kubernetes
+- NVLink/NVSwitch systems
+- Other devices
+- 9. Security and isolation
+- 10. Nested virtualisation and the lab venue
+- 11. Troubleshooting
+- 12. Hands-on lab: build, tune, and observe a VM
+- 13. Common mistakes
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.27 Cloud computing and virtualization internals for Linux engineers  [10939 words, ~54 min]  `part-01-linux/27-cloud-computing-and-virtualization-internals-for-linux-engineers.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The cloud model
+- Why organisations move to the cloud, and what it costs them
+- Instance types
+- Scalable architecture
+- Capacity planning in the cloud
+- Cloud storage
+- Multitenancy
+- Why a cloud GPU node behaves differently
+- Orchestration (Kubernetes)
+- 2. Three ways to virtualise
+- Hardware virtualisation (cloud view)
+- OS virtualisation (containers)
+- Lightweight virtualisation (microVMs)
+- 3. Comparing the three (performance attributes)
+- 4. AI-cloud specifics
+- VM, bare metal or container for GPUs?
+- Networking and placement
+- Quotas, reservations and spot
+- Storage and data gravity
+- Observability in the cloud
+- 5. Resource controls under the USE method
+- 6. Observing containers and VMs
+- From the host: containers
+- From the guest: containers
+- From the host and guest: VMs
+- Strategy
+- 7. Failure modes
+- 8. Hands-on lab: look at a cloud VM from inside
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.28 Putting it together: tuning a Linux node for GPU and HPC work  [13957 words, ~69 min]  `part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The tuning stack, top to bottom
+- Guiding principles
+- Tune continuously and reduce bottlenecks across the stack
+- 2. Know the machine: topology first
+- Superchips such as Grace Blackwell
+- 3. Firmware and BIOS
+- 4. Kernel boot parameters
+- 5. Sysctl, limits and services
+- 6. Memory: pinning, huge pages, allocation policy
+- The OOM killer and memory limits
+- 7. CPU placement and interrupts
+- Keeping the CPU ahead of the GPU
+- Scheduler priority and core isolation
+- Finding a GPU's NUMA node in Python
+- 8. Storage, network and the GPU driver
+- Local storage and filesystems
+- Network (host side)
+- GPU driver and runtime settings
+- ECC, clocks and power: change them only with a reason
+- GPU memory: watch it before it runs out
+- 9. Containers, Slurm and Kubernetes as consumers of the tuned node
+- Container runtime
+- Kubernetes
+- Slurm
+- 10. Configuration as code and fleet operations
+- Provisioning pipeline
+- Fleet health checks (what to automate)
+- 11. The node audit and baseline (verification suite)
+- 12. A case study: the unexplained 3 to 4x win
+- 13. Troubleshooting map
+- 14. Hands-on lab: tune, audit, and prove
+- 15. Common mistakes
+- 16. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.29 Remote administration reference: SSH server and client options, host-based authentication, parallel shells, screen and tmux, IPMI and console managers  [10824 words, ~54 min]  `part-01-linux/29-remote-administration-reference-ssh-server-and-client-options-host-bas.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. First: make out-of-band access possible before you need it
+- 2. How SSH works, in detail
+- Two kinds of cryptography
+- Servers have identities too
+- The sequence of a session
+- 3. Keys in practice
+- Host key files and `known_hosts`
+- 4. The SSH client: options and configuration
+- Command-line options
+- Configuration files
+- 5. Forwarding: environment, ports, X11 and agent
+- 6. The SSH server: `sshd_config`
+- `Match` blocks: conditional configuration
+- 7. Restricting a key, and host-based authentication
+- Restrict what a key may do
+- Host-based authentication
+- 8. Running commands on many nodes
+- `pdsh` and `pdcp`
+- ClusterShell: `clush`, `cluset`
+- Cautions for any parallel fan-out
+- 9. `screen` and `tmux` in detail
+- GNU `screen`
+- `tmux`
+- 10. IPMI: managing the machine behind the machine
+- Reaching the local controller
+- Remote commands
+- Serial-over-LAN console
+- Creating an administrative user and enabling access
+- IPMI security
+- Console managers: `conman`, `powerman`
+- iKVM (KVM over IP)
+- How it fails
+- 1. A fan-out command hangs forever on one node
+- 2. Mass parallel operations flatten the head node
+- 3. Host-key chaos after a reinstall
+- 4. `sshd` change locks you out
+- 5. IPMI works from the node but not remotely
+- 6. `tmux` or `screen` status line freezes your session
+- 7. A trusted-host configuration is abused
+- Hands-on lab: SSH, parallel shells, multiplexers, and IPMI
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 1.30 Network file sharing and remote graphical access: rsync in depth, Samba, SSHFS, NFS clients, cloud storage, X11, VNC and alternatives  [12507 words, ~62 min]  `part-01-linux/30-network-file-sharing-and-remote-graphical-access-rsync-in-depth-samba.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Which tool for which job
+- The scenarios in three groups
+- 2. A quick copy
+- 3. `rsync` in depth
+- Getting started
+- Exact copies, and the dangerous option
+- The trailing slash
+- Excluding and including
+- How `rsync` decides, and safeguards
+- Compression and bandwidth
+- Pulling files to your machine, and other uses
+- 4. Why share files over a network at all? Performance and security
+- Centralized storage and its one constant cost
+- Why a streamed file is fast and random access is slow
+- 5. Samba: sharing with Windows (SMB) and CIFS mounts
+- Scope of this section
+- Setting up the server, step by step
+- The global section and access control
+- Passwords
+- Shares, homes and printers
+- Reloading after configuration changes
+- How `[homes]` finds a directory
+- Starting, diagnosing and the client
+- Reading the share list
+- Using the smbclient prompt
+- Who can change a Samba password
+- 6. SSHFS and NFS: sharing between Linux machines
+- SSHFS
+- NFS (client side)
+- 7. Cloud storage, and the state of network file sharing
+- Setting up a cloud client
+- Cloud storage
+- Why there is no standard answer
+- 8. Giving users remote access
+- SSH, for users
+- FTP and web access
+- 9. Remote graphical access: X11 and its alternatives
+- The X Window System
+- Customizing Xorg with `xorg.conf`
+- Using X from a Windows or Mac workstation
+- When X is too slow: alternatives
+- Principle for access design
+- How it fails
+- 1. `rsync --delete` removes the wrong files
+- 2. A transfer is "done" but data differs
+- 3. Samba users cannot log in, or Linux password suddenly changes
+- 4. NFS clients hang
+- 5. SSHFS is "slow" or leaves stale mounts
+- 6. Remote X programs fail ("cannot open display")
+- 7. FTP or open web services expose the cluster
+- Hands-on lab: rsync, Samba, SSHFS, NFS, and X11/x2go
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+## Vol part-02-networking (32 chapters)
+
+
+### 2.1 What happens when you curl a URL: a packet's journey end to end  [11136 words, ~55 min]  `part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The whole journey in one picture
+- 2. Step 0: the process and the URL
+- 3. Step 1: name resolution (what is the IP address?)
+- 4. Step 2: the socket, the route and the source address
+- 5. Step 3: from IP to Ethernet (ARP or NDP) and out of the NIC
+- 6. Step 4: the switch, the router, NAT and the Internet
+- 7. Step 5: TCP connection establishment
+- 8. Step 6: TLS handshake (HTTPS)
+- 9. Step 7: the HTTP request and response
+- 10. Step 8: transfer, acknowledgements and teardown
+- 11. Timing: reading `curl -w`
+- 12. A map from symptom to layer
+- 13. The same journey in AI infrastructure
+- 14. Hands-on lab: trace one request end to end
+- 15. Common mistakes
+- 16. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.2 How networks work: layers, encapsulation, the TCP/IP model  [11626 words, ~58 min]  `part-02-networking/02-how-networks-work-layers-encapsulation-the-tcp-ip-model.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Two ways to build a network
+- Circuit switching
+- Packet switching
+- Fixed versus variable length frames
+- Flow control and congestion
+- 2. The four jobs of a protocol
+- 3. Layered models
+- The DoD / TCP/IP model (4 layers)
+- The OSI model (7 layers)
+- Comparison
+- Packets, headers and payloads
+- A note on the OSI model
+- Where the layers blur
+- Connection-oriented and connectionless
+- 4. Encapsulation and decapsulation
+- Overhead and goodput (worked examples)
+- Demultiplexing: how the right code gets the bytes
+- MTU, MSS and tunnels
+- 5. The three planes
+- Loop-free paths: the control plane's core problem
+- Quality of service
+- 6. Taming complexity: the hourglass and the SOS triangle
+- The hourglass (wasp waist)
+- State, Optimisation, Surface
+- 7. Where the layers live: Linux and AI fabrics
+- The Linux stack
+- AI fabrics in the model
+- 8. Reading a capture: labelling layers
+- 9. Hands-on lab: layers, overhead, and captures
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.3 Ethernet and L2: frames, MAC addresses, switching, ARP and NDP  [12723 words, ~63 min]  `part-02-networking/03-ethernet-and-l2-frames-mac-addresses-switching-arp-and-ndp.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Ethernet in one page
+- 2. MAC addresses
+- 3. The Ethernet frame
+- Frame types you will see on a network
+- 4. Physical layers, media and optics (reading the names)
+- 5. How an Ethernet switch works
+- Learning, forwarding and flooding
+- Switching modes and latency
+- Inside a network device (packet switching, in brief)
+- Switching versus routing (L2 versus L3)
+- 6. Mapping between layers: ARP and Neighbor Discovery
+- The default gateway problem
+- IPv4 ARP (Address Resolution Protocol)
+- Linux ARP behaviour on multi-NIC hosts (important for AI nodes)
+- IPv6 Neighbor Discovery (NDP)
+- Clearing a stale ARP entry
+- 7. L2 on Linux: the objects behind the concepts
+- 8. Wi-Fi (802.11) in contrast
+- Connecting Wi-Fi from the command line
+- 9. AI fabrics at layer 2
+- 10. Failure modes and diagnosis
+- 11. Hands-on lab: a switched L2 network in network namespaces
+- 12. Common mistakes
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.4 IP addressing, subnetting and CIDR (IPv4 and IPv6), with practice  [11083 words, ~55 min]  `part-02-networking/04-ip-addressing-subnetting-and-cidr-ipv4-and-ipv6-with-practice.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Number systems you need
+- 2. IPv4 addresses and masks
+- The reserved host addresses
+- Fast subnetting: the block-size method
+- Reference table
+- Same subnet or not?
+- 3. VLSM, supernetting and summarisation
+- 4. Special-purpose IPv4 ranges
+- 5. NAT, briefly (more in chapter 2.9)
+- 6. IPv6
+- Why and what
+- Notation
+- Address types
+- Global and link-local addresses
+- Structure and the /64 convention
+- Configuration and inspection
+- Running IPv4 and IPv6 side by side
+- 7. The IP headers
+- IPv4 header (20 bytes minimum)
+- IPv6 header (40 bytes, fixed)
+- Fragmentation and path MTU
+- 8. Configuring addresses on Linux
+- 9. Address planning for AI clusters and clouds
+- A worked cluster plan (illustrative)
+- Rail-optimised and L3-to-the-host numbering
+- GCP/VPC notes
+- 10. Practice problems (with answers)
+- 11. Hands-on lab: subnetting, VLSM, IPv6, and cluster IP plans
+- 12. Common mistakes
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.5 Routing on a host: routing tables, default gateways and forwarding  [9992 words, ~49 min]  `part-02-networking/05-routing-on-a-host-routing-tables-default-gateways-and-forwarding.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The routing decision
+- 2. Reading the routing table
+- Longest-prefix match and metrics
+- The default gateway
+- `ip route get`: ask the kernel
+- 3. Routing tables, rules and special routes
+- Special route types
+- Loopback, VIPs and dummy interfaces
+- Adding and deleting routes by hand
+- 4. Choosing the source address
+- 5. Multiple interfaces: weak host model, rp_filter and asymmetric routing
+- Diagnosing "SSH works on NIC A but not NIC B"
+- 6. Static routes and persistence
+- 7. Linux as a router: forwarding
+- ICMP redirects and source routing
+- 8. Multipath (ECMP) routes
+- 9. IPv6 routing on a host
+- 10. Containers, VMs and Kubernetes: more routing tables than you think
+- 11. Diagnosing routing problems
+- 12. Case study: a GPU server with six networks
+- 13. Hands-on lab: routing between network namespaces
+- 14. Common mistakes
+- 15. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.6 TCP in depth: handshake, windows, congestion control, tuning and troubleshooting  [12309 words, ~61 min]  `part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What a transport protocol must solve
+- 2. Transport models: DoD, OSI, RINA, and connection-oriented versus connectionless
+- 3. The TCP header and options
+- 4. The handshake, data transfer and teardown
+- TCP states in the field
+- Ports, connections and netstat
+- Well-known ports and /etc/services
+- What TCP does for you
+- 5. Reliability: ACKs, retransmission and the RTO
+- 6. Flow control: the sliding window
+- Bandwidth-delay product and buffers
+- 7. Congestion control
+- 8. Linux tuning reference and what each knob is for
+- 9. Reading TCP in practice
+- `ss`
+- `tcpdump`
+- `nstat` and `/proc/net/netstat`
+- A diagnostic flow
+- 10. TCP and AI workloads
+- 11. QUIC and where TCP is going
+- 12. Hands-on lab: observe TCP behaviour
+- 13. Common mistakes
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.7 UDP, ICMP and the diagnostic toolkit: ping, traceroute, mtr and path MTU  [8782 words, ~43 min]  `part-02-networking/07-udp-icmp-and-the-diagnostic-tools-ping-traceroute-mtr.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. UDP: the minimal transport
+- 2. ICMP: the network layer's error and diagnostic channel
+- 3. ping
+- Reading ping output
+- 4. traceroute, tracepath and mtr
+- 5. MTU, MSS, fragmentation and Path MTU Discovery
+- The PMTU black hole
+- Encapsulation overhead (compute, don't guess)
+- Jumbo frames for AI clusters
+- 6. More tools
+- 7. A layered reachability checklist
+- 8. Hands-on lab: UDP, ICMP, traceroute, and an MTU black hole
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.8 DNS in depth: resolution, records, resolvers and caching  [9414 words, ~47 min]  `part-02-networking/08-dns-in-depth-resolution-records-resolvers-and-caching.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The structure of DNS
+- 2. How a lookup actually works
+- 3. Resource records
+- 4. Tools: `dig` and friends
+- 5. How a Linux host resolves names
+- Hostnames
+- Following one lookup, step by step
+- The hosts file and its limits
+- Caching daemons and the resolv.conf file
+- 6. DNS in Kubernetes and containers
+- 7. DNS in HPC and AI clusters
+- 8. Security: DNSSEC, DoT/DoH, and abuse
+- 9. Running your own DNS
+- 10. Diagnosing DNS problems
+- 11. Case study: "random 5-second delays" in a GPU inference cluster
+- 12. Hands-on lab: DNS from both sides
+- 13. Common mistakes
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.9 DHCP, NAT and PAT  [8604 words, ~43 min]  `part-02-networking/09-dhcp-nat-and-pat.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. DHCP: automatic configuration
+- DORA
+- Relays, scopes and options
+- PXE boot of bare-metal GPU nodes
+- Linux clients and servers
+- DHCPv6, SLAAC and IPv6
+- Hardening and diagnostics
+- 2. Private addressing and why NAT exists
+- 3. Types of NAT
+- How PAT works
+- 4. NAT on Linux
+- Container and Kubernetes NAT
+- Cloud NAT
+- Routers that run Linux: OpenWRT and BusyBox
+- 5. NAT and the fabric: where NAT does not belong
+- 6. Troubleshooting
+- 7. Hands-on lab: DHCP server and NAT gateway with namespaces
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.10 HTTP, TLS and PKI basics  [9282 words, ~46 min]  `part-02-networking/10-http-tls-and-pki-basics.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. HTTP in practice
+- Connections and versions
+- `curl` as a diagnostic tool
+- Reading a protocol trace
+- 2. Security goals and cryptographic building blocks
+- 3. TLS
+- The handshake (TLS 1.3)
+- Inspecting TLS with openssl
+- 4. Certificates and public-key infrastructure
+- Certificate authorities
+- Revocation and lifetimes
+- Generating certificates (labs and private CAs)
+- 5. TLS and PKI in Kubernetes and AI platforms
+- 6. Troubleshooting TLS and HTTP
+- 7. Hands-on lab: build a CA, serve HTTPS with mTLS, and break it on purpose
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.11 Switching internals, VLANs, trunking and spanning tree  [9536 words, ~47 min]  `part-02-networking/11-vlans-trunking-and-spanning-tree.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. How a network device moves a packet
+- Three forwarding paths
+- Across the fabric: shared memory, bus, crossbar
+- Cut-through versus store-and-forward, and buffers
+- 2. VLANs and trunks
+- The 802.1Q tag
+- Port types
+- Inter-VLAN routing
+- VLANs in a GPU cluster
+- Linux VLANs and bridges
+- 3. Loops and the Spanning Tree Protocol
+- How STP works
+- RSTP and MSTP
+- Protection features (use them)
+- Diagnosing loops
+- Modern designs avoid STP
+- 4. How devices discover the network: neighbours, links and reachability
+- Detecting neighbours
+- 5. Designing L2 domains for AI infrastructure
+- 6. Hands-on lab: VLANs, bridges, and a deliberate loop
+- 7. Common mistakes
+- 8. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.12 Link aggregation, LACP, MLAG and ECMP  [8923 words, ~44 min]  `part-02-networking/12-link-aggregation-lacp-and-mlag.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The problem: many parallel links, one conversation
+- Hash functions and why balance is imperfect
+- 2. Link aggregation and LACP
+- 3. Linux bonding
+- 4. Multi-chassis link aggregation (MLAG, vPC, EVPN multihoming)
+- 5. Routed parallel links: ECMP
+- 6. Cluster roles and networks (a practical map)
+- 7. Failure behaviour and troubleshooting
+- 8. Hands-on lab: build and break bonds and ECMP
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.13 IP routing: static routes, dynamic routing and convergence  [10129 words, ~50 min]  `part-02-networking/13-ip-routing-static-routes-dynamic-routing-and-convergence.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Static versus dynamic routing
+- 2. What a control plane does
+- Learning reachable destinations
+- Distribution models
+- 3. Loop-free paths: trees, shortest paths and the algorithms
+- Distance vector (Bellman-Ford)
+- Link state (Dijkstra)
+- Path vector
+- Comparing families
+- 4. Alternate paths and fast reroute
+- 5. Detecting and reacting to topology changes
+- Detection
+- Distributing change
+- Convergence timeline
+- 6. Redistribution between control planes
+- Metrics
+- Loops
+- 7. Choosing a protocol (preview)
+- 8. Hands-on: routing on Linux with FRR
+- 9. Hands-on lab: static routes, distance-vector failure, link state, and convergence
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.14 Distance-vector and link-state protocols: RIP, EIGRP, OSPF and IS-IS  [9089 words, ~45 min]  `part-02-networking/14-ospf-and-is-is.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Spanning Tree as a control plane
+- 2. RIP and EIGRP: why distance-vector is legacy
+- 3. Link-state protocols: the shared model
+- 4. IS-IS in depth
+- NSAP/NET addressing
+- Packets and marshalling
+- Neighbour formation
+- Reliable flooding
+- Levels, overload and metrics
+- FRR IS-IS example
+- 5. OSPF in depth
+- Router ID, packets and LSAs
+- Neighbour state machine
+- Reliable flooding
+- Network types, DR and BDR
+- Areas and hierarchy
+- Cost, SPF and ECMP
+- FRR OSPF example
+- 6. OSPF versus IS-IS: choosing
+- 7. Operations and troubleshooting
+- 8. Hands-on lab: OSPF and IS-IS in FRR
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.15 BGP fundamentals and control-plane policy  [8740 words, ~43 min]  `part-02-networking/15-bgp-fundamentals.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Autonomous systems and why BGP exists
+- 2. Sessions (peering)
+- Session establishment
+- 3. Messages, NLRI and path attributes
+- Loop prevention without split horizon
+- 4. The best-path decision process
+- 5. Advertisement rules, iBGP scaling and route reflectors
+- 6. Configuring BGP in FRR
+- 7. Policy tools
+- What policy is for (use cases)
+- 8. Security and operations
+- 9. BGP in AI/Kubernetes contexts (preview)
+- 10. Hands-on lab: BGP sessions, attributes, and policy
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.16 BGP in the data center: eBGP Clos, unnumbered, ECMP, anycast and AI-fabric routing  [15119 words, ~75 min]  `part-02-networking/16-bgp-in-the-data-center-ebgp-clos-unnumbered-ecmp-anycast.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The standard design: eBGP in a Clos
+- ASN allocation
+- Making BGP behave like an IGP
+- 2. BGP unnumbered (RFC 5549 / RFC 8950)
+- 3. Controlling scope: failure domains and information hiding
+- Positive feedback loops
+- Techniques
+- The Clos black-hole caveat
+- 4. Advanced BGP capabilities for AI fabrics
+- ADD-PATH
+- AS-PATH strip and replace
+- Link Bandwidth Extended Community and weighted ECMP
+- BGP Deterministic Path Forwarding (DPF) and path diversity
+- 5. IGPs for AI back-end fabrics: IS-IS flood reduction, Flex Algo and RIFT
+- 5.1 Flood reduction in a small example
+- 6. Dragonfly and sparse topologies (routing view)
+- 6.1 The canonical dragonfly
+- 6.2 The sparse dragonfly
+- 7. Multi-tenancy for AI/ML clusters
+- 8. Extending routing to the server
+- 9. Traffic engineering: telemetry, controllers and segment routing
+- 9.1 Segment routing terms, the SR domain and the SRv6 header
+- 10. Operations: verifying, converging and failing safely
+- 11. Hands-on lab: build a leaf-spine eBGP fabric with unnumbered peering
+- 12. Common mistakes
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.17 Overlays: tunnels, VXLAN, EVPN, segment routing and SD-WAN  [10839 words, ~54 min]  `part-02-networking/17-overlays-vxlan-and-evpn.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What is a virtual network?
+- A packet through a tunnel
+- Two classic use cases
+- What every virtualization solution must solve
+- 2. Encapsulation options
+- 3. VXLAN
+- Linux VXLAN
+- 4. EVPN: a control plane for Ethernet and IP overlays
+- Route types
+- Behaviours that make EVPN practical
+- FRR EVPN leaf (VXLAN with symmetric IRB, sketch)
+- Common EVPN/VXLAN pitfalls
+- 5. Overlays for AI clusters and containers
+- 6. Segment routing and SD-WAN in brief
+- 7. Complexity and virtualization
+- 8. Hands-on lab: tunnels, VXLAN, and EVPN
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.18 Data-center topologies: Clos, leaf-spine, oversubscription, failure domains and resilience  [14744 words, ~73 min]  `part-02-networking/18-data-center-topologies-clos-leaf-spine-oversubscription-failure-domain.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Network design patterns
+- From business needs to a network
+- Hierarchical design
+- Common topologies
+- 2. What makes a fabric?
+- East-west, disaggregation and the jitter problem
+- 3. Leaf-spine (folded Clos)
+- Sizing a 3-stage fabric
+- Five-stage fabrics
+- Oversubscription and contention
+- Capacity under failure
+- 4. AI back-end designs: rails
+- Rail-optimised design (ROD)
+- Rail-only design
+- Extending rail-only across a stripe
+- Rail-unified design (RUD)
+- Rail-unified placement, hop counts and intra-server options
+- Rack and cable layout
+- Leaves in their own racks: ToR, MoR and EoR layouts
+- 5. Scheduled (cell-based) fabrics
+- 6. Dragonfly, torus and other low-diameter topologies
+- Torus connections in one, two and three dimensions
+- 7. Multi-planar scale-out
+- One NIC, four planes: breakouts and packet spraying
+- Dual-plane and four-plane domains with super-spines
+- 8. Inference data centres and the front-end
+- Storage, training and inference data centers
+- 9. Information hiding and failure domains: worked examples
+- 10. Resilience and redundancy
+- What failures look like to applications
+- Measures
+- Redundancy as a tool
+- 11. A design exercise and calculator
+- 12. Hands-on lab: validate topologies and Clos sizing
+- 13. Common mistakes
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.19 Queuing, QoS, ECN, PFC and DCB: congestion management for AI fabrics  [12043 words, ~60 min]  `part-02-networking/19-queuing-qos-ecn-pfc-and-dcb-basics.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why QoS exists
+- 2. The QoS toolbox
+- Classification and marking
+- Policing and shaping
+- Queueing and scheduling
+- Queue management (AQM)
+- Linux `tc` quick reference
+- 3. Data-centre congestion points
+- 4. RoCEv2 and why it needs lossless behaviour
+- 5. ECN and CNPs
+- 6. PFC: lossless links by backpressure
+- The problems with PFC
+- PFC watchdog
+- 7. DCQCN: ECN and PFC together
+- 8. Newer mechanisms: SFC and CSIG
+- 9. DCB: the Ethernet toolbox
+- 10. Configuring a lossless RoCE class (conceptual, verify per vendor)
+- 11. Troubleshooting congestion in AI fabrics
+- 12. Hands-on lab: queueing, AQM, and ECN with Linux
+- 13. Design guidance for AI back-ends
+- 14. Common mistakes
+- 15. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.20 Load balancing: L4, L7, ECMP hashing, proxies and inference traffic  [11558 words, ~57 min]  `part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What a load balancer does
+- Layers and families
+- Packet paths
+- 2. Algorithms
+- 3. Health checks, failure handling and draining
+- 4. ECMP, anycast and scaling out the L4 tier
+- 5. L4 tools: IPVS and friends
+- 6. L7 tools: HAProxy, nginx, Envoy
+- HAProxy (HTTP and TCP)
+- nginx
+- Envoy
+- 7. TLS, client identity and L4/L7 interplay
+- 8. Cloud and Kubernetes load balancing (overview)
+- 9. Load balancing for AI inference
+- 10. Troubleshooting
+- 11. Hands-on lab: build and break load balancers
+- 12. Common mistakes
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.21 Network security: threat models, firewalls, SSH, zero trust and securing AI clusters  [12297 words, ~61 min]  `part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Vocabulary and threat modelling
+- 2. Defense in depth
+- 3. Access control and AAA
+- 4. Firewalls and filtering (overview)
+- 5. Data protection: encryption and keys
+- 6. Availability: denial of service
+- 7. SSH in depth (and hardening)
+- Public-key cryptography in a paragraph
+- Host keys and trust
+- Where SSH falls short
+- Client
+- Server (`sshd_config`) hardening
+- fail2ban
+- Legacy services
+- 8. Scanning and auditing exposure
+- 9. Basic rules and how attacks reach AI clusters
+- 10. Securing routing and the control plane
+- 11. Layer-2 security
+- 12. Zero trust and segmentation
+- 13. Security specifics for AI clusters
+- 14. The OODA loop for security operations
+- 15. Hands-on lab: harden and probe
+- 16. Common mistakes
+- 17. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.22 Linux networking I: inspecting state with ip, ss, counters and the observability toolkit  [12726 words, ~63 min]  `part-02-networking/22-linux-networking-inspecting-state-with-ip-ss-and-counters.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The kernel's view: network interfaces
+- 2. The `ip` command family
+- `ethtool`: the hardware side
+- 3. Persistent configuration: managers and files
+- Why boot scripts fall short
+- How NetworkManager chooses a connection
+- Talking to NetworkManager with nmcli
+- NetworkManager configuration and unmanaged interfaces
+- Dispatcher scripts
+- 4. Sockets: how processes use the network
+- Inspecting sockets
+- Remote procedure calls and `rpcbind`
+- Learning the socket interface
+- Unix domain sockets
+- Who is using a port: `lsof -i`
+- 5. Counters: where packets disappear
+- 6. Performance methodology
+- Tools method (checklist)
+- USE method
+- Workload characterization
+- Latency analysis
+- TCP analysis
+- Static performance tuning
+- Resource controls
+- Micro-benchmarking
+- 7. Observability tools in practice
+- `ss -ti` fields
+- BCC and bpftrace tools
+- `perf`, `tcpdump` and Wireshark
+- Experimentation tools
+- 8. Putting it together: a top-down and bottom-up checklist
+- 9. Hands-on lab: a guided tour with deliberate faults
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.23 Linux networking II: netfilter, nftables, conntrack and NAT  [11001 words, ~55 min]  `part-02-networking/23-linux-networking-netfilter-nftables-conntrack-and-nat.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Netfilter architecture
+- Tables and chains in iptables
+- nftables
+- A default-deny host firewall (server)
+- A router/NAT gateway ruleset
+- iptables quick map
+- 2. Connection tracking (conntrack)
+- States
+- Inspecting and managing
+- Sizing, timeouts and exhaustion
+- Conntrack and UDP/DNS races
+- 3. NAT in practice
+- 4. Container and Kubernetes hosts
+- 5. Firewall design strategies
+- Default-deny rules, step by step
+- Rule order and the first match
+- 6. Debugging netfilter
+- 7. Performance notes for large nodes
+- 8. Hands-on lab: build, break, and trace
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.24 Linux networking III: policy routing, VRF, bonding, MTU, NIC and stack tuning  [11910 words, ~59 min]  `part-02-networking/24-linux-networking-policy-routing-bonding-mtu-nic-and-stack-tuning.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Policy routing
+- Fixing multi-homed asymmetric routing
+- Netplan / NetworkManager / networkd persistence
+- fwmark-based and UID-based routing
+- Common PBR patterns in clusters
+- 2. VRF on Linux
+- 3. Bonding operations
+- 4. MTU design
+- 5. The packet path and where to tune it
+- 5.1 Know the limits first (static tuning)
+- 5.2 Rings, interrupts and coalescing
+- 5.3 Queues, RSS, RPS, RFS, XPS
+- 5.4 Offloads
+- 5.5 Kernel queues, budget and backlog
+- 5.6 Busy polling and low latency
+- 6. TCP/IP stack tuning
+- Socket options (per application)
+- Qdisc and pacing
+- 7. Beyond the kernel stack
+- 8. A safe tuning method
+- 9. Scenarios
+- 10. Hands-on lab: policy routing and tuning
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.25 Linux networking IV: namespaces, veth, bridges and container networking  [10293 words, ~51 min]  `part-02-networking/25-linux-networking-namespaces-veth-bridges-and-container-networking.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Network namespaces
+- Interfaces across namespaces
+- 2. Building container networking by hand
+- 3. Docker networking
+- 4. CNI: the Container Network Interface
+- How it works
+- Kubernetes network model (requirements)
+- Common CNI implementations
+- 5. Kubernetes pod networking walkthrough
+- Same node, bridge-based CNI (e.g. bridge/Flannel host-gw)
+- Different nodes
+- Pod to service and to the outside
+- Host networking, pause containers, DNS
+- 6. Networking for GPU and HPC pods
+- 7. Debugging container networking
+- 8. Hands-on lab: build container networking and a mini-CNI
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.26 Packet capture from scratch: tcpdump, tshark, Wireshark and BPF-based tracing  [12742 words, ~63 min]  `part-02-networking/26-packet-capture-from-scratch-tcpdump-tshark-and-wireshark.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. How packet capture works
+- Capture points
+- 2. tcpdump
+- What tcpdump shows on the wire
+- Capture filter syntax (pcap-filter)
+- Primitives and operators
+- Permission to capture
+- 3. tshark and Wireshark
+- 4. Decoding the protocols you meet in AI infrastructure
+- 5. Capturing at scale and in awkward places
+- 6. BPF-based tracing for networking (BCC and bpftrace)
+- BCC and bpftrace
+- Using BPF tools in network investigations
+- 7. A capture-driven troubleshooting workflow
+- 8. Hands-on lab: capture, read, and decode
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.27 Lab: build network topologies with namespaces, FRR and containerlab  [12159 words, ~60 min]  `part-02-networking/27-lab-build-network-topologies-with-namespaces-frr-and-containerlab.md`
+- Why this lab chapter exists
+- Lab environment
+- VM and tooling
+- Lab 1: three namespaces and a router (routing, forwarding, MTU, ICMP)
+- Lab 2: install FRR in namespaces and run OSPF (link state)
+- Lab 3: leaf-spine fabric with containerlab, eBGP unnumbered, ECMP
+- Topology file `fabric.clab.yml`
+- Config generator (Python + Jinja2)
+- Deploy and verify
+- Experiments
+- Lab 4: EVPN-VXLAN overlay with tenant VRFs on the same fabric
+- Lab 5: overlays, VPNs and tunnels with namespaces
+- Lab 6: load balancing, anycast and failure testing
+- Lab 7: a validation harness (tests as code)
+- Evidence checklist
+- Troubleshooting the lab itself
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.28 Network automation fundamentals: data models, templates, APIs, NETCONF, gNMI and SDN  [14446 words, ~72 min]  `part-02-networking/28-network-automation-fundamentals-apis-yang-netconf-gnmi-sdn-templates.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why automate, and what
+- Benefits
+- Types of automation
+- Lessons learned from a network automation outage
+- 2. The evolution of device management interfaces
+- 3. Structured data formats
+- Why structured data
+- YAML
+- XML
+- JSON
+- Binary formats: Protocol Buffers
+- 4. Data modelling
+- YANG
+- JSON Schema and XSD
+- 5. Templates
+- Jinja2
+- Other template languages
+- Source of truth and the data pipeline
+- 6. Working with network APIs
+- REST fundamentals
+- NETCONF
+- RESTCONF
+- gRPC and gNMI
+- Comparing the model-driven protocols
+- Streaming (model-driven) telemetry
+- Python (and Go) libraries
+- 7. Software-defined networking and centralised control planes
+- Interfaces
+- Four models of interaction
+- Division of labour
+- Examples
+- CAP and subsidiarity
+- 8. Putting it together: a minimal automation pipeline
+- 9. Hands-on lab: data, templates, and APIs
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.29 Network automation in practice: Ansible, Nornir, Terraform, CI/CD and automation architecture  [13755 words, ~68 min]  `part-02-networking/29-network-automation-in-practice-ansible-nornir-and-ci-cd-for-networks.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Choosing automation tools
+- The tool landscape
+- Axes for comparing them
+- 2. Ansible for networks
+- How it works
+- Inventory
+- Playbooks, modules and idempotency
+- Ansible for Linux GPU servers in the same pipeline
+- 3. Nornir
+- 4. Terraform / OpenTofu for network resources
+- 5. Continuous integration and delivery for networks
+- Principles
+- The five components of a network CI pipeline
+- Example GitHub Actions workflow
+- 6. Network automation architecture
+- User interactions
+- Source of truth (SoT)
+- Automation engine
+- Telemetry and observability
+- Orchestration
+- 7. On-box automation, controllers, VNFs, intent
+- On-box automation
+- Network controllers
+- Automation and complexity
+- Virtualised network functions (VNFs), service chaining, intent
+- From automation to "auto"
+- 8. Hands-on lab: an automation pipeline for the leaf-spine fabric
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.30 Network troubleshooting: method, models and case studies  [11886 words, ~59 min]  `part-02-networking/30-network-troubleshooting-method-and-case-studies.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The purpose and the components
+- Purpose first
+- Components
+- 2. Models
+- How models (theory)
+- What models (the state of your system)
+- Accurate models
+- Shifting between models and the model tree
+- 3. Half-split, manipulation and simplification
+- Half split and move
+- Manipulation: from correlation to causation
+- Simplify before testing
+- Fixing the problem, technical debt and learning
+- 4. A practical workflow
+- 5. The diagnostic kit
+- 6. Decision trees
+- Connectivity: "A cannot reach B"
+- Performance: "slow", "stalls", "low throughput"
+- Intermittent faults
+- AI-fabric symptoms
+- 7. Case studies
+- Case 1: SNAT port exhaustion
+- Case 2: Path MTU black hole
+- Case 3: Conntrack table full
+- Case 4: ARP flux and reverse-path filtering on a multi-homed host
+- Case 5: UDP receive buffer overflow (StatsD/syslog)
+- Case 6: BGP route dampening after a flapping optic
+- Case 7: TCP checksum offload failure
+- Case 8: PFC storm collapses an NCCL job
+- Case 9: veth CPU bottleneck in a pod
+- Case 10: TCP zero window stalls
+- Case 11: Asymmetric ECMP and reordering from a host speaking BGP
+- Case 12: Multicast blackhole in an overlay
+- Case 13: DNS 5-second delays in Kubernetes
+- Case 14: Silent corruption and a "slow rail" in a GPU cluster
+- 8. Hands-on lab: fault-injection exercises
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.31 Network monitoring and telemetry for AI data centers  [9023 words, ~45 min]  `part-02-networking/31-network-monitoring-and-telemetry.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What to monitor and why
+- Three questions of monitoring
+- Beyond the network
+- Baselines and trends
+- 2. Monitoring mechanisms
+- Choosing
+- 3. An open-source network monitoring stack
+- Prometheus model
+- Host and NIC metrics (node_exporter)
+- Switch telemetry with gNMI → Prometheus
+- Flow data
+- Logs
+- 4. Signals that matter in an AI/ML fabric
+- Example PromQL
+- Alert rules (examples)
+- SLOs for the network
+- 5. In-band telemetry: IFA
+- 6. Correlation and corrective actions
+- Correlating switch and server telemetry
+- Corrective actions
+- 7. Operating the monitoring system
+- 8. Hands-on lab: a network observability stack
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 2.32 Cloud networking: VPC design, connectivity, load balancers and GCP specifics for AI  [9877 words, ~49 min]  `part-02-networking/32-cloud-networking-vpc-peering-load-balancers-and-gcp-specifics.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Cloud computing concepts
+- 2. Business drivers and trade-offs
+- Drivers
+- Trade-offs
+- 3. Technical challenges of cloud networking
+- 4. AWS and Azure in one table
+- 5. GCP networking in depth
+- Global resources and the VPC model
+- Outbound access: Cloud NAT and Private Google Access
+- Connecting networks
+- DNS
+- Load balancing
+- Observability and troubleshooting
+- 6. GKE and Kubernetes networking on GCP
+- 7. Networking for GPU clusters in the cloud
+- GCP GPU VM generations
+- AWS, Azure, OCI equivalents
+- Design guidance
+- 8. Hands-on lab: a small GCP network and failure drills
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+## Vol part-03-python (17 chapters)
+
+
+### 3.1 Python core: types, control flow, functions  [18892 words, ~94 min]  `part-03-python/01-python-core-types-control-flow-functions.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. How Python runs programs
+- The execution model
+- Ways to run code
+- Starting the REPL
+- Writing and running a script
+- Importing modules and module attributes
+- Launching other programs
+- Debugging your first programs
+- Python versions, `python` vs `python3`, and installation
+- 2. Objects, names and references
+- Everything is an object
+- Mutability
+- Reference counting and garbage collection
+- Dynamic typing and duck typing
+- 3. Numbers and expressions
+- Operator precedence hierarchy
+- Floor division (`//`, `math.floor`) versus truncation (`math.trunc`, `int`)
+- 4. Strings and bytes
+- 5. Core collections
+- Truthiness and `None`
+- 6. Files (preview)
+- 7. Statements and syntax
+- Structure
+- Statement syntax compared with C-like languages
+- Assignment forms
+- `print()` call format and stream redirection
+- `if` / `elif` / `else` and conditional expressions
+- The `match` statement (3.10+)
+- `while` and `for` loops
+- The iteration protocol (preview)
+- Comprehensions (preview)
+- Example: an interactive loop
+- 8. Functions
+- Why use functions
+- The function toolbox at a glance
+- Definition, calls and return
+- def runs at runtime
+- lambda makes an anonymous function
+- A first example: times
+- Polymorphism in Python
+- A second example: intersecting sequences
+- Parameters
+- The mutable default argument trap
+- Local variables
+- Scope: LEGB
+- Lambdas, higher-order functions
+- Recursion and limits
+- Docstrings, annotations, introspection
+- Generators (preview)
+- 9. Documentation, introspection and benchmarking
+- Finding help
+- Benchmarking
+- 10. Infrastructure patterns using the core
+- Safe environment configuration
+- Retry with backoff and jitter
+- Parse and aggregate a log without loading it
+- Compare desired and actual state (set algebra)
+- Data shaping
+- 11. Common mistakes
+- 12. Hands-on lab: Python core on a Linux box
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.2 Modules, packages, virtual environments and packaging  [15057 words, ~75 min]  `part-03-python/02-modules-packages-virtual-environments-and-packaging.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Modules
+- `import` versus `from`: shared references, cross-file mutation, and `reload()`
+- Module namespaces (`__dict__`), lexical scoping, and downward attribute paths
+- Data hiding (`_X`, `__all__`, `__getattr__`, `__dir__`), `__future__`, and `__name__ == '__main__'`
+- Module introspection (`mydir.py`), dynamic string imports, and transitive reloaders (`reloadall.py`)
+- How imports work (3 steps) and the 5-component module search path
+- `.pyc` and bytecode caches
+- 2. Packages
+- Why packages exist: resolving `system1/utilities.py` vs `system2/utilities.py`
+- Dotted package walkthrough (`dir0/dir1/dir2/mod.py`), `__init__.py` roles, and `__main__.py`
+- Four import models, PEP 420 namespace packages (`__path__`), and the 4-step search algorithm
+- Circular (`recursive`) imports: why `import recur1` fails while `import recur2` succeeds
+- Typical project layout (src layout)
+- 3. Virtual environments
+- Managing Python versions
+- 4. Installing and managing dependencies
+- pip
+- Declaring dependencies: libraries vs applications
+- conda / mamba
+- Choosing
+- 5. Packaging your own code
+- `pyproject.toml`
+- Building, installing, publishing
+- Native extensions
+- 6. Plugins and entry points
+- 7. Python packaging on GPU and ML systems
+- 8. Containers and system integration
+- 9. Troubleshooting imports and environments
+- 10. Lab: environments and a packaged tool
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.3 Idiomatic Python: the data model, comprehensions, generators  [14060 words, ~70 min]  `part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The Python data model
+- Categories of special methods
+- A sequence by protocol: a node inventory
+- Context managers
+- 2. Sequences
+- The sequence family
+- Memory and performance notes
+- 3. Mappings and sets
+- 4. Text versus bytes
+- 5. Object references, mutability and recycling
+- 6. Functions as objects, closures, decorators and design patterns
+- Callable objects (`RoundRobin`), `operator` (`itemgetter`, `attrgetter`, `methodcaller`), and `functools.partial`
+- Closures (`make_averager`), decorators at import time, `@cache`, and `@singledispatch`
+- Refactoring the Strategy pattern with first-class functions
+- 7. Comprehensions
+- 8. Iterables, iterators and generators
+- The iterator protocol: multiple-pass iterables vs single-pass iterators
+- Generator functions, `scramble` vs `permute` (`factorial(N)` explosion), and `myzip` / `mymapPad`
+- Pipelines
+- `itertools`, `functools`, `operator`
+- 9. Idioms for clarity and correctness
+- 10. Infrastructure examples
+- LRU cache of expensive lookups
+- Sliding-window rate / anomaly detector
+- Merging layered configuration
+- A resource pool as a context manager
+- 11. Lab
+- 12. Common mistakes
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.4 Classes, dataclasses, typing and protocols  [16734 words, ~83 min]  `part-03-python/04-classes-dataclasses-typing-and-protocols.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Classes and objects
+- Class definition and instances
+- Object lifecycle and identity
+- Classes as factories for many objects
+- Instance attributes and inherited method lookup
+- Attribute search climbs a class tree
+- Where an assignment stores an attribute
+- The constructor: `__init__`
+- Subclasses customize by inheritance
+- Polymorphism and programming by customization
+- Classes live inside modules
+- Operator overloading
+- Classes as records
+- Under the hood: namespaces are dictionaries
+- 2. Inheritance, composition and protocols
+- Inheritance and `super()`
+- Composition over inheritance
+- Abstract base classes
+- Protocols (structural typing)
+- 3. Data class builders
+- Pydantic
+- 4. Type hints and static checking
+- 5. Operator overloading and comparison
+- Sequence special methods (`Vector` Takes #1–#5, Fluent Python Chapter 12) and operator overloading (Fluent Python Chapter 16 and Learning Python Chapter 30)
+- 6. Design guidance for infrastructure code
+- Example: a typed provider layer
+- 7. Lab
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.5 Errors, files, text and bytes, subprocess and system scripting  [18803 words, ~94 min]  `part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Exceptions
+- Why exceptions exist
+- Exception roles
+- Mechanics
+- Default exception handler
+- Catching exceptions
+- Raising exceptions
+- User-defined exceptions
+- Termination actions with `finally`
+- Exceptions and backtracking
+- Nested try statements
+- Why exceptions save code
+- Exception idioms
+- Breaking out of several loops
+- Exceptions that are signals, not errors
+- Raising to signal a result
+- Closing files and server connections
+- Outer try for debugging
+- Running in-process tests
+- sys.exc_info, sys.exception, and tracebacks
+- Exception design tips and gotchas
+- Summary of exception tools
+- Error-handling strategy for tools and services
+- 2. Logging
+- 3. Files and paths
+- `open()` and modes
+- `pathlib`
+- Safe writes: atomic replace
+- Temporary files and directories
+- Permissions, ownership and umask
+- Locking and races
+- `shutil`, archives and compression
+- 4. Text, bytes and encodings in practice
+- 5. Data formats
+- Dates and times
+- 6. Running external programs: `subprocess`
+- Safe defaults
+- Streaming, pipelines and process control
+- Avoid shelling out when Python can do it
+- 7. Interacting with the operating system
+- Environment, arguments, process info
+- `/proc`, `/sys`, `psutil`
+- Signals and graceful shutdown
+- Network and system helpers
+- Development tools for larger projects
+- 8. A template for robust operational scripts
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.6 Concurrency: threads, processes and asyncio  [10188 words, ~50 min]  `part-03-python/06-concurrency-threads-processes-and-asyncio.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Concepts
+- The Global Interpreter Lock
+- A ten-minute experiment
+- Choosing a model
+- 2. Threads
+- Basics
+- Synchronisation primitives
+- Producer/consumer with a bounded queue
+- `concurrent.futures`
+- Backpressure with executors (avoiding the "10 million futures" OOM)
+- Thread safety of common objects
+- 3. Processes
+- `multiprocessing` and `ProcessPoolExecutor`
+- GPUs and data loading
+- 4. asyncio
+- Why asyncio
+- Core concepts
+- A worker-pool template
+- 5. Patterns for infrastructure fan-out
+- Retries, backoff and jitter
+- Rate limiting and circuit breaking
+- Aggregating results
+- Streaming and pagination
+- Scheduling and periodic tasks
+- Combining models
+- Distributed concurrency
+- 6. Pitfalls and diagnosis
+- 7. Lab
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.7 Building APIs and microservices with FastAPI  [12101 words, ~60 min]  `part-03-python/07-building-apis-and-microservices-with-fastapi.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Architecture: from WSGI to ASGI
+- 2. A first application
+- 3. Requests: routing and parameters
+- Path, query, header, cookie, form and body
+- Request and response models
+- 4. Dependency injection
+- Lifespan: startup and shutdown
+- 5. Errors, validation and middleware
+- 6. Structuring applications
+- 7. Authentication and security
+- 8. Databases
+- SQL (SQLAlchemy 2.x / SQLModel)
+- 9. Long-running, background and streaming work
+- Background tasks and queues
+- Streaming
+- An inference gateway example
+- 10. Testing
+- 11. Deployment and operations
+- Packaging
+- Kubernetes deployment essentials
+- Observability
+- Performance checklist
+- 12. Lab
+- 13. Common mistakes
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.8 Building CLIs, agents and exporters  [11402 words, ~57 min]  `part-03-python/08-building-clis-agents-and-exporters-prometheus-exporters-redfish-client.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Principles for operational tooling
+- 2. Command-line interfaces
+- 2.1 argparse: the standard library baseline
+- 2.2 Click
+- Case study from *Practical MLOps* Chapter 11: `csv-linter` and `cloud-translate` CLIs
+- 2.3 Typer and Rich
+- 2.4 Configuration and secrets
+- 2.5 Interactive and long-running UX
+- 3. Resilient API clients
+- 3.1 Sessions, timeouts and connection reuse
+- 3.2 Retries, backoff and jitter
+- 3.3 Circuit breakers and bulkheads
+- 3.4 Pagination and completeness
+- 3.5 Rate limits, concurrency and file operations
+- 4. Prometheus exporters
+- 4.1 Metric model essentials
+- 4.2 The simple way: instrument and serve
+- 4.3 The recommended way: a custom collector
+- 4.4 Real-world GPU and hardware exporters
+- 5. Talking to hardware: a Redfish client
+- 5.1 Resource model
+- 5.2 A small client
+- 5.3 Fleet fan-out
+- 6. Collecting from GPU hosts
+- 7. Node agents and daemons
+- 8. Packaging and distribution of tools
+- 9. Profiling and performance of tools
+- 10. Worked capstone: a GPU fleet diagnostics CLI
+- 11. Lab
+- 12. Common mistakes
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.9 Testing, quality and CI for Python tooling  [9178 words, ~45 min]  `part-03-python/09-testing-quality-and-ci-for-python-tooling.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Test strategy for infrastructure code
+- 2. pytest essentials
+- Fixtures that clean up and avoid leaked state
+- 3. Isolating dependencies: fakes, stubs and mocks
+- Dependency injection beats patching
+- unittest.mock and pytest-mock
+- HTTP-level fakes
+- Subprocess, filesystem and environment
+- Async code
+- 4. Beyond example-based tests
+- Property-based testing with Hypothesis
+- Golden files and snapshot tests
+- Contract tests
+- Integration tests with real dependencies
+- Testing CLIs
+- Mutation testing and test quality
+- Flaky tests
+- 5. Static quality gates
+- 6. Continuous integration
+- Pipeline architecture
+- GitHub Actions example
+- 7. Testing the infrastructure code around Python
+- 8. Observability of the tests themselves
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.10 Python for data and ML infrastructure: NumPy, pandas, PyTorch essentials  [9571 words, ~47 min]  `part-03-python/10-python-for-data-and-ml-infrastructure-numpy-pandas-pytorch-essentials.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. NumPy: the array model
+- 2. pandas and the tabular stack
+- Columnar formats: Parquet and Arrow
+- 3. PyTorch fundamentals
+- 3.1 Tensors and devices
+- 3.2 Autograd and modules
+- 3.3 Where the memory goes
+- 3.4 Mixed precision, accumulation and compilation
+- 3.5 Data loading: usually the real bottleneck
+- 3.6 Checkpointing and saving
+- 4. Distributed and multi-GPU hooks (preview)
+- 5. Profiling and observability of ML code
+- 6. Reproducibility and determinism
+- 7. Packaging and environments for ML code
+- 8. Common failure modes
+- 9. Lab
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.11 Python under the hood: decorators, descriptors and metaprogramming (how frameworks work)  [10629 words, ~53 min]  `part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Functions are objects; closures
+- 2. Decorators
+- Decorators with arguments
+- Sync and async
+- Class-based decorators, stacking and registries
+- Standard-library decorators worth knowing
+- 3. Attribute access and the descriptor protocol
+- Lookup order
+- Methods are descriptors
+- Writing a descriptor
+- property, cached_property and slots
+- Dynamic attributes and proxies (`FrozenJSON`)
+- How some frameworks use descriptors
+- 4. Class creation and customisation
+- What class does
+- `__init_subclass__` and class decorators: the first tools to reach for
+- Helper functions, decorators and metaclasses
+- Metaclasses and the two-tree inheritance model
+- Abstract base classes, protocols and the data model hooks
+- 5. Introspection and code generation
+- How FastAPI wires a handler (a worked example)
+- How pydantic validators plug into the same machinery
+- How pytest finds and injects fixtures
+- 6. Imports, modules and hooks
+- 7. Performance and memory implications of dynamism
+- 8. Good practice for framework-style code
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 3.12 Objects, types and data structures in depth  [50234 words, ~251 min]  `part-03-python/12-objects-types-and-data-structures-in-depth.md`
+- Where objects fit in a Python program
+- A note on terms
+- Why use built-in objects?
+- Built-in objects make programs easy to write
+- Built-in objects are building blocks for extensions
+- Built-in objects are often faster
+- Built-in objects are a standard part of the language
+- Python's core object types
+- Python built-in (core) objects
+- Program-unit and implementation objects
+- The table is not the whole list
+- Dynamic and strong typing
+- Numbers
+- Basic arithmetic
+- Numeric modules
+- Very large integers
+- Strings
+- Sequence operations
+- Slicing
+- Concatenation and repetition
+- Immutability
+- Type-specific methods
+- Getting help with dir and help
+- Other ways to code strings
+- Unicode strings
+- Lists
+- Sequence operations
+- Type-specific operations
+- Bounds checking
+- Nesting
+- Comprehensions
+- Slice and index assignment
+- Methods that find, insert and remove
+- Sorting with key and reverse
+- The sorted built-in
+- Reversing, stacks and reversed
+- Membership, iteration and unpacking
+- Deleting items and slices
+- Common list operations
+- Dictionaries
+- Mapping operations
+- Nesting revisited
+- Missing keys and if tests
+- Item iteration with for loops
+- Dictionary operations
+- Changing dictionaries in place
+- Other ways to build dictionaries
+- Dictionary unpacking and the union operator
+- Dictionary comprehensions
+- Insertion order and popitem
+- Books database example
+- Keys that are not strings
+- Integer keys as flexible lists
+- Sparse data with tuple keys
+- Dictionaries as records
+- Dictionary views
+- Sorting keys and comparing dictionaries
+- Lists, dictionaries or sets
+- Tuples
+- Why use tuples?
+- Files
+- Unicode and byte files
+- Other file-like tools
+- Other object types
+- Sets
+- Booleans and None
+- Types
+- Type hinting
+- User-defined objects
+- Everything else
+- Chapter summary
+- Numeric literals and number types
+- Writing numbers as literals
+- Hex, octal and binary literals
+- Complex numbers
+- Built-in numeric tools
+- Coding other numeric types
+- Expression operators and precedence
+- Precedence decides the order
+- Parentheses override precedence
+- Mixed types are converted up
+- Operator overloading preview
+- Numbers in action: variables and expressions
+- Variables and basic expressions
+- Grouping and conversions in practice
+- Display formats and str versus repr
+- Comparisons and floating-point equality
+- Chained comparisons
+- Floating-point equality
+- Division, truncation and integer precision
+- Floor is not always truncation
+- Integer precision has no limit
+- Complex, hex, octal and binary numbers
+- Complex math in practice
+- Other bases
+- Bitwise operations and underscore separators
+- Bit operations
+- Underscores in numeric literals
+- Math, random and statistics tools
+- Dropping decimal digits
+- Three ways to find a square root
+- Statistics and random
+- Decimals, fractions and exact numbers
+- Decimal objects
+- Setting decimal precision
+- Fraction objects
+- Accuracy in fractions and decimals
+- Set operations in depth
+- Creating sets
+- Set expressions and methods
+- Sets hold only immutable items
+- Set comprehensions
+- Why use sets
+- Booleans and numeric extensions
+- Boolean objects
+- Numeric extensions
+- Dynamic typing and references
+- Variables are created by assignment
+- References and C pointers
+- Types live with objects, not variables
+- Objects are garbage-collected
+- More on garbage collection
+- Shared references
+- Shared references and in-place changes
+- Shared references and equality
+- Dynamic typing is everywhere
+- Type hinting: optional and unused
+- Weak references
+- String literals in depth
+- Single and double quotes
+- Escape sequences
+- Raw strings
+- Triple quotes and multiline text
+- Slicing and indexing in depth
+- Picturing offsets
+- Indexing and slicing cheat sheet
+- Out-of-bounds offsets
+- Extended slicing and steps
+- Slice objects
+- Slices in real scripts
+- Converting strings and numbers
+- Converting characters and code points
+- Comparing strings
+- String methods in depth
+- Calling methods
+- Finding and replacing text
+- Splitting and joining text
+- Parsing text with slices and splits
+- Other common methods
+- String formatting in depth
+- The formatting expression
+- Formatting expression type codes
+- Formatting expression examples
+- Dictionary-based formatting expressions
+- The formatting method
+- Formatting method keys, attributes and offsets
+- Custom formats with the formatting method
+- Formatting method examples
+- The f-string
+- Nested quotes, backslashes and comments in f-strings
+- F-strings with data and templates
+- string.Template
+- Choosing a formatting tool
+- Type categories and mutability
+- Operations by category
+- Mutable and immutable types
+- Tuples in depth
+- Tuple syntax and operations
+- Why lists and tuples
+- Named tuples
+- Files in depth
+- Opening files
+- Reading and writing files
+- Text and binary files
+- Storing objects with conversions
+- Storing objects with pickle
+- Storing objects with JSON
+- Other storage tools: struct and csv
+- Closing files with a context manager
+- More file methods and tools
+- Core types review
+- Object flexibility
+- Operator overloading
+- Shared references and copies
+- Common reference mistakes
+- Cyclic data structures
+- Immutable types cannot change in place
+- Comparisons, equality and truth
+- Mixed-type comparisons and sorts
+- Dictionary comparisons
+- The meaning of True and False
+- The None object
+- The bool type
+- Type hierarchies and other objects
+- Common object gotchas
+- Assignment creates references, not copies
+- Repetition adds one level deep
+- Cyclic structures need care
+- Immutable types cannot change in place
+- Checkpoint questions
+- Sources and review notes
+
+### 3.13 Statements, iteration and control flow in depth  [31563 words, ~157 min]  `part-03-python/13-statements-iteration-and-control-flow-in-depth.md`
+- Assignments
+- Assignment syntax forms
+- Basic assignments
+- Sequence assignments
+- Advanced sequence-assignment patterns
+- Extended-unpacking assignments
+- Extended unpacking in action
+- Boundary cases of extended unpacking
+- Extended unpacking as a convenience
+- Extended unpacking in for loops
+- The many stars of Python
+- Multiple-target assignments
+- Augmented assignments
+- Augmented assignment and shared references
+- Named assignment expressions
+- When to use named assignment
+- Variable name rules
+- Legal names
+- Case matters
+- Reserved words are off-limits
+- Python's deprecation policies
+- Naming conventions
+- Names have no type, but objects do
+- Expression statements
+- Expression statements and in-place changes
+- Print operations
+- File methods and the standard output stream
+- The print function
+- Print stream redirection
+- Manual stream redirection
+- Automatic stream redirection
+- Why you will care: print and stdout
+- Chapter summary
+- if statements
+- General format
+- Basic examples
+- Multiple-choice selections
+- Handling switch defaults
+- Handling larger actions
+- match statements
+- Basic match usage
+- Match versus if
+- Advanced match usage
+- Python syntax revisited
+- Block delimiters: indentation rules
+- Avoid mixing tabs and spaces
+- Statement delimiters: lines and continuations
+- Special syntax cases in action
+- Truth values revisited
+- The if/else ternary expression
+- Why you will care: Booleans
+- while loops
+- General format
+- Examples
+- break, continue, pass, and the loop else
+- General loop format
+- pass
+- continue
+- break
+- Loop else
+- for loops
+- General format
+- Examples
+- Loop coding techniques
+- Counter loops with range
+- Sequence scans with while, range, and for
+- Sequence shufflers with range and len
+- Skipping items with range and slices
+- Changing lists with range and comprehensions
+- Parallel traversals with zip
+- More on zip: size and truncation
+- More zip roles: dictionaries
+- Offsets and items with enumerate
+- Why you will care: file scanners
+- The iteration protocol
+- Iterables and iterators
+- Reading a file one line at a time
+- Letting the for loop read the file
+- The iter and next built-ins
+- The full iteration protocol
+- Manual iteration
+- next with a default value
+- Other built-in iterables
+- Dictionaries, range, enumerate, and zip
+- Iterator nesting
+- Functional iterables: map and filter
+- Multiple-pass versus single-pass iterables
+- Standard-library iterables
+- Comprehensions
+- List comprehension basics
+- List comprehensions and files
+- Extended list comprehension syntax
+- Comprehensions and the other forms
+- Iteration tools
+- Other iteration topics
+- Iteration chapter summary
+- Checkpoint questions
+- Sources and review notes
+
+### 3.14 Functions, scopes and arguments in depth  [51593 words, ~257 min]  `part-03-python/14-functions-scopes-and-arguments-in-depth.md`
+- Python scope basics
+- Names live in namespaces
+- Assignment decides the scope
+- Scopes overview
+- Name resolution: the LEGB rule
+- The three rules inside a def
+- Other short-lived scopes
+- Scope examples
+- A module with one function
+- The built-in scope
+- Redefining built-in names
+- The global statement
+- Minimize global variables
+- Minimize cross-file changes
+- Other ways to reach globals
+- Nested functions and closures
+- Nested scope lookups
+- Closures and factory functions
+- Customizing open with a closure
+- Arbitrary scope nesting
+- The nonlocal statement
+- nonlocal basics
+- nonlocal in action
+- nonlocal boundary cases
+- State-retention options
+- Nonlocals
+- Globals
+- Function attributes
+- Mutable objects in an enclosing scope
+- Classes
+- Which option to choose
+- Scopes and argument defaults
+- Defaults as an older workaround
+- Loops require defaults, not scopes
+- Mutable defaults keep state
+- Chapter summary
+- Argument passing basics
+- Arguments and shared references
+- Avoiding mutable argument changes
+- Simulating output parameters and multiple results
+- Special argument-matching modes
+- Argument matching overview
+- Argument matching syntax
+- Argument passing details
+- Keyword and default examples
+- Keywords
+- Defaults
+- Combining keywords and defaults
+- Arbitrary arguments examples
+- Collecting arguments in definitions
+- Calls: unpacking arguments
+- Why arbitrary arguments?
+- Keyword-only arguments
+- Why keyword-only arguments?
+- Positional-only arguments
+- Argument ordering: the gritty details
+- Definition ordering
+- Calls ordering
+- Perspective
+- Example: the min wakeup call
+- Bonus points
+- The punch line
+- Example: generalized set functions
+- Example: rolling your own print
+- Using keyword-only arguments
+- Argument passing summary
+- Why keyword arguments matter
+- Function design concepts
+- Recursive functions
+- Summation with recursion
+- Coding alternatives
+- Loop statements versus recursion
+- Handling arbitrary structures
+- Recursion versus queues and stacks
+- Cycles, paths, and stack limits
+- More recursion examples
+- Function tools: introspection, attributes, and annotations
+- The first-class object model
+- Function introspection
+- Attaching your own attributes
+- Function annotations
+- Function decorators: a preview
+- Anonymous functions with lambda
+- lambda basics
+- Why use lambda?
+- Multiway branches with dictionaries
+- How (not) to obfuscate your Python code
+- Scopes in nested lambdas
+- lambda callbacks in GUIs
+- Functional programming tools
+- Mapping functions over iterables with map
+- Selecting items with filter
+- Combining items with reduce
+- Chapter wrap-up
+- Comprehensions: the final act
+- A quick review of list comprehensions
+- Formal comprehension syntax
+- Example: comprehensions and matrixes
+- When not to use comprehensions
+- When to use comprehensions: speed and conciseness
+- Generator functions and expressions
+- Generator functions: yield versus return
+- Generator expressions: iterables meet comprehensions
+- Why generator expressions?
+- Generator odds and ends
+- Generators are single-pass iterables
+- Generation in built-ins and classes
+- Comprehensions versus type calls and generators
+- Scopes and comprehension variables
+- Generating "infinite" results
+- Generator examples: shuffling and permuting sequences
+- Scrambling sequences
+- Simple functions
+- Generator functions for scrambling
+- Generator expressions for scrambling
+- Tester client
+- Permutating sequences
+- Why generators here: space, time, and more
+- Example: emulating zip and map
+- Coding your own map
+- Coding your own zip and Python 2 map
+- Asynchronous functions: the short story
+- Async basics
+- Comprehensions and generators: summary
+- Iteration versus Python morph
+- Benchmarking interlude
+- Benchmarking with homegrown tools
+- Timer module: take 1
+- Timer module: take 2
+- Timing runner and script
+- Iteration results
+- Other Pythons' results
+- For more good times: function calls and map
+- More module mods
+- Benchmarking with timeit
+- Basic timeit usage
+- API-calls mode
+- Command-line mode
+- Handling multiline statements
+- Other timeit usage modes
+- Timing sort speed
+- Automating timeit benchmarking
+- Benchmark module
+- Benchmark script
+- Timing individual Pythons
+- Timing multiple Pythons
+- Timing set and dictionary iterations
+- Conclusion: comparing tools
+- Function gotchas
+- Hiding built-ins by assignment
+- Wrapping up the case study
+- Check your understanding
+- Sources and review notes
+
+### 3.15 Modules and packages in depth  [25543 words, ~127 min]  `part-03-python/15-modules-and-packages-in-depth.md`
+- Module essentials
+- Why use modules
+- Python program architecture
+- How to structure a program
+- Imports and attributes
+- Standard-library modules
+- How imports work
+- Loaded modules are cached
+- Step 1: find it
+- Step 2: compile it (maybe)
+- Step 3: run it
+- The module search path
+- Search-path components
+- Configuring the search path
+- The `sys.path` list
+- Changing the search path
+- Module file selection
+- Module sources
+- Selection priorities
+- Path outliers: standalones and packages
+- Chapter summary
+- Module files and names
+- Extension modules
+- Import and from statements
+- The import statement
+- The from statement
+- The from * statement
+- Imports run once and at runtime
+- Imports are runtime statements
+- Shared objects and cross-file changes
+- Cross-file name changes
+- Choosing import or from
+- Pitfalls of the from statement
+- When import is required
+- Module namespaces
+- Namespace dictionaries
+- Attribute name qualification
+- Imports and scopes
+- Namespace nesting
+- Reloading modules
+- reload basics
+- A reload example
+- Reload notes
+- Package imports
+- Dotted paths in imports
+- Packages and the module search path
+- Creating packages
+- Basic package structure
+- Using the basic package
+- Package __init__.py files
+- Package __main__.py files
+- Why packages?
+- A tale of two systems
+- The roles of __init__.py files
+- Package initialization
+- Module namespace initialization
+- Package indicator for search
+- The `from *` statement behavior
+- Package-relative imports
+- Relative and absolute imports
+- Relative-import rationales and trade-offs
+- Package-relative imports in action
+- Namespace packages
+- Python import models
+- Namespace-package rationales
+- The module search algorithm
+- Namespace packages in action
+- Module design concepts
+- Data hiding in modules
+- Hiding names from `from *`
+- Managing attribute access with `__getattr__` and `__dir__`
+- Enabling language changes with `__future__`
+- The `__name__` usage-mode variable
+- Self-test code
+- Example: unit tests with `__name__`
+- The `as` extension for `import` and `from`
+- Module introspection
+- Example: listing modules with `__dict__`
+- Importing modules by name string
+- Running code strings
+- Direct calls: two options
+- Transitive module reloads
+- A recursive reloader
+- Testing recursive reloads
+- Alternative codings
+- Testing reload variants
+- Caveats of transitive reloads
+- Module gotchas
+- Module name clashes
+- Statement order matters in top-level code
+- `from` copies names but does not link
+- `from *` can obscure the meaning of variables
+- `reload` may not affect `from` imports
+- `reload`, `from`, and interactive testing
+- Recursive `from` imports may not work
+- Recap of advanced module topics
+- Practice exercises
+- Checkpoint questions
+- Sources and review notes
+
+### 3.16 Classes and object-oriented programming in depth  [60659 words, ~303 min]  `part-03-python/16-classes-and-object-oriented-programming-in-depth.md`
+- Building a realistic example: a Person class
+- Step 1: Making instances
+- Step 2: Adding behavior methods
+- Step 3: Operator overloading
+- Step 4: Customizing behavior by subclassing
+- Step 5: Customizing constructors, too
+- OOP is simpler than you may think
+- Other ways to combine classes: composites
+- Step 6: Using introspection tools
+- Step 7 (final): Storing objects in a database
+- Future directions
+- Chapter summary
+- Class coding details: the class statement
+- General syntax and usage
+- Class attributes and shared data
+- Methods and how they are called
+- A method example
+- Other method-call possibilities
+- Inheritance in detail
+- Building the attribute tree
+- Specializing inherited methods
+- The super alternative
+- Class interface techniques
+- Abstract superclasses
+- Namespaces and scopes in classes
+- Simple names: global unless assigned
+- Attribute names: object namespaces
+- The rule of assignments: assignments classify names
+- Nested classes and the LEGB rule
+- Namespace dictionaries and class trees
+- Namespace links: a tree climber
+- Documentation strings in classes
+- Classes versus modules
+- Class coding details summary
+- Operator overloading
+- Overloading methods are optional
+- Constructors and expressions: `__init__` and `__sub__`
+- Common operator-overloading methods
+- Indexing and slicing: `__getitem__` and `__setitem__`
+- Index iteration: `__getitem__`
+- Iterable objects: `__iter__` and `__next__`
+- Classes versus generators
+- Multiple iterators on one object
+- Iteration with `__iter__` and `yield`
+- Membership: `__contains__`, `__iter__`, and `__getitem__`
+- Attribute access: `__getattr__` and `__setattr__`
+- String representation: `__repr__` and `__str__`
+- Right-side and in-place operators: `__radd__` and `__iadd__`
+- Call expressions: `__call__`
+- Comparisons: `__lt__`, `__gt__`, and others
+- Boolean tests: `__bool__` and `__len__`
+- Object destruction: `__del__`
+- Operator overloading summary
+- Designing with classes
+- Python and OOP
+- Inheritance: the is-a relationship
+- Composition: the has-a relationship
+- Delegation: the like-a relationship
+- Pseudoprivate class attributes
+- Method objects: bound or not
+- Classes are objects: generic object factories
+- Multiple inheritance and the MRO
+- Other design-related topics
+- Chapter summary: designing with classes
+- Extending built-in types
+- Extending types by embedding
+- Extending types by subclassing
+- The Python object model
+- Classes are types are classes
+- Some instances are more equal than others
+- The inheritance bifurcation
+- The metaclass/class dichotomy
+- One object to rule them all
+- Advanced attribute tools
+- Slots: attribute declarations
+- Properties: attribute accessors
+- `__getattribute__` and descriptors
+- Static and class methods
+- Why the special methods?
+- Plain-function methods
+- Static method alternatives
+- Using static and class methods
+- Counting instances with static methods
+- Counting instances with class methods
+- Counting instances per class with class methods
+- Decorators and metaclasses
+- Function decorator basics
+- A first look at user-defined function decorators
+- Class decorators and metaclasses
+- For more details
+- The super function
+- The super basics
+- The super details
+- Universal deployment and call-chain anchors
+- Same argument lists
+- Noncalls and operator overloading
+- The super wrap-up
+- Class gotchas
+- Changing class attributes can have side effects
+- Changing mutable class attributes can have side effects, too
+- Multiple inheritance: order matters
+- Scopes in methods and classes
+- Miscellaneous class gotchas
+- Overwrapping-itis
+- Class odds and ends summary
+- Practice exercises
+- Checkpoint questions
+- Sources and review notes
+
+### 3.17 Exceptions, Unicode, managed attributes and decorators  [44546 words, ~222 min]  `part-03-python/17-exceptions-unicode-managed-attributes-and-decorators.md`
+- The try statement
+- try statement clauses
+- The except and else clauses
+- How try statements run
+- Catching many exceptions with a tuple
+- Catching all exceptions with empty except and Exception
+- Catching the no-exception case with else
+- Example: default behavior
+- Example: catching built-in exceptions
+- The finally clause
+- Example: coding termination actions with try/finally
+- Combined try clauses
+- Combined-clause syntax rules
+- Combining finally and except by nesting
+- Combined-clauses example
+- The raise statement
+- Raising exceptions
+- The except as hook
+- Scopes and except as
+- Propagating exceptions with raise
+- Exception chaining with raise from
+- The assert statement
+- Trapping constraints, not errors
+- The with statement and context managers
+- Basic with usage
+- The context-management protocol
+- Multiple context managers
+- Termination handlers compared
+- Chapter summary
+- Exception objects
+- Exception classes and superclass matching
+- Why exception hierarchies?
+- Built-in exception classes
+- Built-in exception categories
+- Default printing and state
+- Custom print displays
+- Custom state and behavior
+- Providing exception details
+- Providing exception methods
+- Exception groups
+- Exception objects summary
+- Unicode and byte strings
+- Character representations
+- Character encodings
+- The three string types
+- Text and binary files
+- Literals and basic properties
+- String type conversions
+- Coding Unicode strings in Python
+- Source-file encoding declarations
+- Using byte strings
+- The bytearray object
+- Text-file basics
+- Text and binary modes
+- Unicode-text files
+- Unicode and other string tools
+- Unicode defaults and UTF-8 mode
+- Byte-order marks (BOM)
+- Unicode normalization
+- Unicode and byte strings summary
+- Managed attributes
+- Inserting code to run on attribute access
+- Properties
+- The basics of properties
+- A first example with properties
+- Computed attributes with properties
+- Coding properties with decorators
+- Descriptors
+- The basics of descriptors
+- Descriptor method arguments
+- Read-only descriptors
+- A first example with descriptors
+- Computed attributes with descriptors
+- Using state in descriptors
+- How properties and descriptors relate
+- Descriptors, slots and other tools
+- The `__getattr__` and `__getattribute__` methods
+- The basics of these methods
+- Avoiding loops in these methods
+- A first example with generic methods
+- Computed attributes with generic methods
+- Comparing `__getattr__` and `__getattribute__`
+- Management techniques compared
+- Intercepting built-in operation attributes
+- Attribute validation case study
+- Managed attributes summary
+- Decorators
+- What a decorator is
+- Managing calls and instances
+- Managing functions and classes directly
+- Why use decorators
+- Decorators and macros
+- Decorator basics
+- Function decorator basics
+- Class decorator basics
+- Decorator nesting
+- Decorator arguments
+- Decorators that manage functions and classes too
+- Coding function decorators
+- Tracing function calls
+- Decorator state retention options
+- Class pitfall: decorating methods
+- Timing function calls
+- Adding decorator arguments
+- Coding class decorators
+- Singleton classes
+- Tracing object interfaces
+- Class pitfall: retaining multiple instances
+- Private and public attributes
+- Validating function arguments
+- The goal
+- A basic range-testing decorator for positional arguments
+- Generalizing for keywords and defaults
+- Decorator arguments versus function annotations
+- Decorators summary
+- Checkpoint questions
+- Sources and review notes
+
+## Vol part-04-automation (27 chapters)
+
+
+### 4.1 Git from scratch for infrastructure engineers  [15704 words, ~78 min]  `part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why version control (the infrastructure view)
+- Infrastructure developer environments (*Network Programmability and Automation* Chapter 5)
+- 2. The Git object model
+- The three areas
+- 3. The daily workflow
+- Commit hygiene
+- Looking at history
+- 4. Ignoring files and keeping the repo clean
+- 5. Remotes and collaboration
+- 6. Branching strategies for infrastructure
+- 7. Merge, rebase and history shape
+- Resolving conflicts, including generated files
+- 8. Undoing things safely
+- 9. Repository architecture
+- 10. Hooks and pre-commit: shifting left
+- 11. Secrets and sensitive history
+- 12. Governance: branch protection and CODEOWNERS
+- Review by blast radius
+- 13. Large files, binaries and LFS
+- 14. GitOps: Git as the deployment trigger
+- 15. Lab
+- 16. Common mistakes
+- 17. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.2 CI/CD pipelines: concepts and design  [14683 words, ~73 min]  `part-04-automation/02-ci-cd-pipelines-concepts-and-design.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Application CI/CD versus infrastructure CI/CD
+- Foundations from *Network Programmability and Automation* (Ch. 13) and *Ansible: Up and Running* (Ch. 22)
+- 2. Core principles
+- 3. Pipeline anatomy
+- 4. Pull requests as the control plane
+- 5. Authentication: OIDC instead of stored keys
+- 6. A reference GitHub Actions pipeline
+- Self-hosted CI/CD stack and Jenkins Configuration as Code (*Ansible: Up and Running* Chapter 22)
+- 7. Policy as code
+- 8. Golden images as pipeline artefacts
+- 9. Rolling out to physical and large fleets
+- 10. Testing infrastructure code
+- 11. Drift detection and self-healing
+- 12. Operating the pipeline itself
+- 13. Lab
+- 14. Common mistakes
+- 15. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.3 Ansible from zero: what it is, how it works, installation and ad-hoc commands  [12464 words, ~62 min]  `part-04-automation/03-ansible-from-zero-what-it-is-how-it-works-installation-and-ad-hoc-comm.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What Ansible is
+- Where it fits
+- 2. How Ansible executes a task
+- 3. Installation and versions
+- Components and versions
+- Setting up a local test environment with Vagrant
+- Install on the control node
+- Prepare targets
+- 4. Configuration: ansible.cfg
+- Privilege escalation (become)
+- 5. Inventory basics (preview)
+- 6. Ad-hoc commands
+- Command, shell, raw and idempotency
+- Idempotency and check mode
+- 7. Your first playbook
+- 8. Troubleshooting connections (first 30 minutes)
+- 9. Security and good practice from day one
+- 10. Lab
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.4 YAML and Jinja2 for infrastructure code  [11920 words, ~59 min]  `part-04-automation/04-yaml-and-jinja2-for-infrastructure-code.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. YAML essentials
+- Rules that bite
+- Anchors, aliases and merge keys
+- JSON, YAML and other formats
+- 2. Jinja2 essentials
+- Expressions
+- Filters
+- Tests
+- Control structures
+- Whitespace control
+- Macros, includes, inheritance, raw blocks
+- 3. Jinja2 in Ansible
+- Network switchport templates, custom Python filters (`get_interface_speed`), and NGINX TLS templates (*Network Programmability and Automation* Ch. 9 & *Ansible: Up and Running* Ch. 3)
+- 4. Templating elsewhere (and how not to confuse them)
+- 5. Testing and debugging templates
+- 6. Security considerations
+- 7. Lab
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.5 Ansible inventory: hosts, groups, dynamic inventory and variables  [10067 words, ~50 min]  `part-04-automation/05-ansible-inventory-hosts-groups-dynamic-inventory-and-variables.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Inventory formats
+- INI
+- YAML
+- Special groups, names and connection variables
+- 2. Host patterns
+- 3. Variables: group_vars, host_vars, and layout
+- Variable precedence (summary)
+- 4. Runtime grouping: add_host and group_by
+- 5. Dynamic inventory
+- Script and custom plugins
+- Source of truth for GPU fleets
+- 6. Designing inventory for GPU clusters
+- 7. Debugging inventory and variable problems
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.6 Ansible playbooks: tasks, modules, idempotency and check mode  [10996 words, ~54 min]  `part-04-automation/06-ansible-playbooks-tasks-modules-idempotency-and-check-mode.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Playbook anatomy
+- Walkthrough from *Ansible: Up and Running* Chapter 3: `webservers-tls.yml`
+- Task anatomy and common keywords
+- 2. Idempotency, the heart of playbooks
+- 3. Module families you will use daily
+- Packages and repositories
+- Files, templates and content
+- Users, groups, SSH, sudo
+- Services and boot
+- Information, control flow and debugging
+- Platform and domain modules relevant to this handbook
+- 4. command, shell, script, raw: when and how
+- 5. Check mode and diff
+- 6. Controlling execution
+- Targeting and iteration
+- Batching, strategies and failure semantics
+- Exit codes and recap
+- 7. Worked example: a safe driver-parameter rollout
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.7 Ansible variables, facts, templates and filters  [11208 words, ~56 min]  `part-04-automation/07-ansible-variables-facts-templates-and-filters.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Defining variables
+- Where and how
+- Naming and types
+- Scope and lifetime
+- 2. Registered results and set_fact
+- 3. Facts
+- Custom (local) facts
+- Magic variables
+- 4. Lookups
+- 5. Loops over data
+- 6. Filters for configuration generation
+- 7. Templates in practice
+- Example 1: /etc/hosts for the cluster
+- Example 2: Slurm node and GRES configuration derived from data
+- Example 3: Prometheus file_sd targets
+- Example 4: YAML output from data
+- Good template practice
+- 8. Variable precedence debugging toolkit
+- 9. Security of variables and templates
+- 10. Lab
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.8 Ansible handlers, conditionals, loops, blocks and error handling  [10423 words, ~52 min]  `part-04-automation/08-ansible-handlers-conditionals-loops-blocks-and-error-handling.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Handlers
+- 2. Conditionals: when
+- 3. Loops
+- 4. Error handling
+- Default behaviour
+- Overriding judgement
+- Blocks: rescue and always
+- Stopping the play and fleet-level policies
+- Retries and eventual consistency
+- 5. Imports versus includes
+- 6. Patterns for operational flows
+- Drain → change → validate → return
+- Idempotent restart-if-needed
+- Waiting for the world
+- 7. Debugging control flow
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.9 A real playbook end to end: deploying an application  [10258 words, ~51 min]  `part-04-automation/09-a-real-playbook-end-to-end-deploying-an-application.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Target architecture
+- Why production deployment is harder than `runserver` (*Ansible: Up and Running*, Chapters 6 and 7, `mezzanine.yml`)
+- 2. Project layout
+- 3. Variables
+- 4. The baseline and database plays
+- 5. The application play: release directories and an atomic switch
+- 6. The web tier: nginx, TLS and rate limiting
+- 7. Verification play
+- 8. Idempotency and safety checks
+- 9. A container-based variant
+- 10. Troubleshooting a failed deploy
+- 11. Lab
+- 12. Common mistakes
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.10 Debugging Ansible playbooks  [11507 words, ~57 min]  `part-04-automation/10-debugging-ansible-playbooks.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. A layered method
+- 2. Verbosity and output
+- 3. The `debug` and `assert` modules
+- 4. Controlling the run while investigating
+- The interactive debugger
+- 5. Classifying common failures
+- Parse and templating errors before execution
+- Connection layer (UNREACHABLE)
+- Privilege and module layer
+- Application layer
+- 6. Reproducing a module run by hand
+- 7. Debugging variables and templates
+- 8. Performance debugging
+- 9. Debugging at scale and in CI
+- 10. Prevention habits
+- 11. Lab
+- 12. Common mistakes
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.11 Ansible roles and collections  [9306 words, ~46 min]  `part-04-automation/11-ansible-roles-and-collections.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Anatomy of a role
+- defaults versus vars
+- tasks, handlers and entry points
+- meta and dependencies
+- Argument specs: the role's contract
+- 2. Using roles
+- 3. Designing good roles
+- Example: a compact role for kernel tuning
+- 4. Galaxy, requirements and sourcing third-party content
+- 5. Collections
+- Where to put what
+- 6. Repository layout for a platform team
+- 7. Role patterns specific to GPU infrastructure
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.12 Ansible Vault and secrets management  [9237 words, ~46 min]  `part-04-automation/12-ansible-vault-and-secrets-management.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Threat model
+- 2. Ansible Vault
+- Files
+- The `vault_` indirection pattern
+- Encrypting single values
+- Vault IDs: multiple passwords
+- Providing the vault password without a human
+- 3. Keeping secrets out of output
+- 4. External secret managers
+- HashiCorp Vault (or OpenBao)
+- Cloud secret managers
+- SOPS (Secrets OPerationS)
+- Other options
+- Comparison
+- 5. SSH keys, sudo and BMC credentials
+- 6. CI/CD integration
+- 7. Rotation and incident response
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.13 Testing Ansible: ansible-lint, Molecule and CI  [9367 words, ~46 min]  `part-04-automation/13-testing-ansible-ansible-lint-molecule-and-ci.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Test pyramid for Ansible
+- 2. Static analysis
+- yamllint
+- ansible-lint
+- 3. Syntax, check mode and render tests
+- 4. Molecule
+- Install and initialise
+- Scenario files
+- The test sequence
+- Verification options
+- Multi-platform and multi-host scenarios (`docker_networks` and `desired_state`, *Ansible: Up and Running* Chapter 14)
+- Drivers and what containers cannot do
+- Testing handlers, errors and upgrades
+- 5. Testing playbooks and collections
+- 6. CI integration
+- 7. What to test: a checklist per role
+- 8. Troubleshooting Molecule
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.14 Ansible at scale: performance, strategies and callbacks  [9318 words, ~46 min]  `part-04-automation/14-ansible-at-scale-performance-strategies-and-callbacks.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Measure before tuning
+- 2. Execution tuning
+- Forks and the control node
+- SSH tuning
+- Facts
+- Tasks, modules and loops
+- Mitogen and alternatives
+- 3. Strategies and batching
+- Failure containment
+- Long-running tasks
+- 4. Architectures for large fleets
+- 5. Callbacks: observing and reporting
+- 6. Pull mode in detail
+- 7. Putting it together: a large GPU cluster playbook skeleton
+- 8. Failure modes of the controller itself
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.15 Custom modules, plug-ins and Ansible Automation Platform  [10319 words, ~51 min]  `part-04-automation/15-custom-modules-plug-ins-and-ansible-automation-platform.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Choosing the extension point
+- 2. Writing a module
+- Example: manage a GPU power cap
+- Testing a module
+- When not to write a module
+- 3. Plugins
+- Filter plugins
+- Lookup plugins
+- Inventory plugins
+- Callback, action, connection, vars, cache, strategy and become plugins
+- 4. Execution environments (EEs)
+- 5. Ansible Automation Platform and AWX
+- Core objects
+- Why teams adopt it
+- Operating considerations
+- API-driven automation
+- Architectural best practices and the CALMS framework
+- Event-Driven Ansible (EDA)
+- 6. Choosing where to run Ansible
+- 7. Lab
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.16 Ansible for containers, cloud and network devices  [10532 words, ~52 min]  `part-04-automation/16-ansible-for-containers-cloud-and-network-devices.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Containers
+- Docker and Podman
+- Kubernetes
+- 2. Cloud
+- What Ansible does well in the cloud
+- What Terraform does better
+- Modules and collections
+- Cost and quota safety
+- AWS EC2 provisioning, AMI lookup, VPCs, and Windows hosts (*Ansible: Up and Running*, Chapters 12 and 17)
+- 3. Network devices
+- How network automation differs
+- Patterns
+- NETCONF and RESTCONF/gNMI
+- NVIDIA networking
+- Network-specific pitfalls
+- Comparing Ansible with Python Nornir + NAPALM (*Network Programmability and Automation*, Chapter 12) and Security Automation (*Ansible: Up and Running*, Chapter 21)
+- 4. Choosing the right tool at each layer
+- 5. Lab
+- 6. Common mistakes
+- 7. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.17 Ansible for GPU nodes and clusters  [12286 words, ~61 min]  `part-04-automation/17-ansible-for-gpu-nodes-and-clusters.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The node bring-up dependency graph
+- 2. Project structure
+- 3. Roles in detail
+- 3.1 gpu_facts: know the hardware before changing it
+- 3.2 base_os and kernel_tuning
+- 3.3 mofed (MLNX_OFED / DOCA-Host)
+- 3.4 nvidia_driver
+- 3.5 fabric_manager, GPU tuning, MIG
+- 3.6 dcgm and telemetry
+- 3.7 container_toolkit and runtimes
+- 3.8 Scheduler and Kubernetes agents
+- 4. Reboots, long tasks and idempotent upgrades
+- 5. Validation and burn-in
+- 6. Day-2: drain, patch, validate, resume
+- 7. Incidents that shaped the design
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.18 Terraform refresher: why, providers, resources and the workflow  [10828 words, ~54 min]  `part-04-automation/18-terraform-refresher-why-providers-resources-and-the-workflow.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Declarative versus imperative
+- The Five IaC Categories and Six Trade-Off Axes from *Terraform: Up and Running* (Chapter 1)
+- 2. Architecture
+- 3. HCL language essentials
+- Files and blocks
+- Variables, locals, outputs
+- Resources and data sources
+- 4. The workflow and CLI reference
+- Targeted and partial runs
+- 5. Drift, import and refactoring
+- Detecting and handling drift
+- Importing existing infrastructure
+- Refactoring safely
+- State commands (use with care)
+- 6. Providers and authentication
+- 7. Workspaces and environments
+- 8. Terraform OSS, HCP Terraform and OpenTofu
+- 9. A small end-to-end example
+- 10. Lab
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.19 Terraform state in depth: backends, locking and drift  [9822 words, ~49 min]  `part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What state is
+- 2. Local state and its limits
+- 3. Remote backends
+- Amazon S3 (with locking)
+- Google Cloud Storage
+- Azure Blob Storage
+- HCP Terraform / Terraform Enterprise (`cloud` block)
+- Others
+- Backend rules and gotchas
+- 4. Locking
+- 5. State layout: how to split
+- Sharing data across states
+- 6. Workspaces and state keys
+- 7. Migrating and restructuring state
+- Move between backends
+- Split or merge states, rename resources
+- State surgery commands
+- 8. Recovery scenarios
+- 9. Drift
+- 10. Secrets and sensitive data in state
+- 11. State in CI/CD
+- 12. Lab
+- 13. Common mistakes
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.20 Terraform modules and reusable infrastructure  [8901 words, ~44 min]  `part-04-automation/20-terraform-modules-and-reusable-infrastructure.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What a module is
+- 2. Anatomy of a good module
+- Interface design
+- 3. Composition patterns
+- Passing providers and multi-region
+- 4. Sources, versions and distribution
+- Upgrading modules safely
+- 5. Testing modules
+- 6. Worked example: network + checkpoint storage + GPU pool modules
+- 7. Anti-patterns
+- 8. Operating a module ecosystem
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.21 Terraform loops, conditionals, lifecycle and gotchas  [8802 words, ~44 min]  `part-04-automation/21-terraform-loops-conditionals-lifecycle-and-gotchas.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. count
+- 2. for_each
+- 3. for expressions and splats
+- String Directives (`%{ for ... }` and `%{ if ... }`, *Terraform: Up and Running*, Chapter 5)
+- 4. dynamic blocks
+- 5. Conditionals
+- 6. The lifecycle block
+- 7. Zero-downtime and rolling patterns
+- 8. Gotchas and sharp edges
+- 9. Worked example: GPU capacity by data
+- 10. Lab
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.22 Terraform secrets and multiple providers  [9599 words, ~47 min]  `part-04-automation/22-terraform-secrets-and-multiple-providers.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Where secrets leak
+- 2. Strategies, from best to worst
+- Secret Management Taxonomy from *Terraform: Up and Running* (Chapter 6)
+- Examples
+- Generated credentials
+- 3. Authenticating providers
+- 4. Multiple provider configurations
+- Aliases
+- Passing providers to modules
+- Typical multi-provider patterns for AI platforms
+- Provider dependency ordering and the "provider depends on resource" problem
+- 5. Provider versioning, locking and distribution
+- 6. Putting it together: a secure pipeline sketch
+- 7. Lab
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.23 Production-grade Terraform: structure, testing and team workflows  [10514 words, ~52 min]  `part-04-automation/23-production-grade-terraform-structure-testing-and-team-workflows.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Repository structure
+- Live vs modules
+- Orchestration of many stacks
+- Keeping `live/` DRY with Terragrunt (*Terraform: Up and Running* Chapter 10)
+- 2. Production-readiness checklist
+- 3. Testing strategy
+- 4. Team workflow
+- Change lifecycle
+- Atlantis-style flow (summary)
+- Promotion with versions
+- 5. Guardrails: cost, security, compliance
+- 6. Operating the estate
+- 7. Terraform and GPU capacity management
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.24 Terraform on GCP and Nebius: networks, GPU VMs and GKE  [9971 words, ~49 min]  `part-04-automation/24-terraform-on-gcp-and-nebius-networks-gpu-vms-and-gke.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Designing the landing zone (GCP)
+- 2. Network
+- 3. GPU virtual machines
+- 4. GKE clusters and GPU node pools
+- 5. Storage, KMS and IAM building blocks
+- 6. Slurm-style clusters on GCP
+- 7. Nebius: the GPU-cloud model
+- 8. Verification after apply
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.25 Terraform with Kubernetes and Helm providers, and OpenTofu  [8544 words, ~42 min]  `part-04-automation/25-terraform-with-kubernetes-and-helm-providers-opentofu.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Where Terraform fits in the Kubernetes lifecycle
+- 2. Providers and authentication
+- The kubernetes provider
+- Layering rule (repeat from 4.22)
+- Resource types you will use
+- 3. Installing platform components with helm_release
+- 4. CRDs, custom resources and the plan-time schema problem
+- 5. Tenancy and policy as code
+- 6. GitOps bootstrap
+- 7. Operational concerns and pitfalls
+- 8. OpenTofu notes
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.26 GitOps with Argo CD and Flux  [12501 words, ~62 min]  `part-04-automation/26-gitops-with-argo-cd-and-flux.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. GitOps principles and architecture
+- Filesystem as the source of truth
+- Code review for every change
+- Feature gates: code lands off by default
+- Keeping secrets out of plain Git
+- Alerting on drift that never heals
+- Ordering, scripts and objects made by controllers
+- Why two repositories
+- 2. Argo CD
+- Architecture and objects
+- CLI
+- 3. Flux
+- Argo CD vs Flux
+- 4. Repository design
+- Filesystem layout for one cluster
+- Keeping several releases side by side
+- Stages between HEAD and release
+- Parameterized environments with Helm
+- 5. Bootstrapping a GPU platform: ordering
+- 6. Progressive delivery and verification
+- Canary, blue/green and A/B testing
+- Flagger
+- 7. Operating GitOps
+- Troubleshooting
+- Disaster recovery and security
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 4.27 Lab: provision a GPU cluster with Terraform and Ansible  [8559 words, ~42 min]  `part-04-automation/27-lab-provision-a-gpu-cluster-with-terraform-and-ansible.md`
+- Purpose
+- Learning outcomes
+- Architecture
+- Part 0: Prerequisites and repository skeleton
+- Part 1: Terraform: nodes and network (Path A: Docker)
+- 1.1 Variables and the node model
+- 1.2 The Docker node module (systemd + sshd containers)
+- 1.3 Live root and generated inventory
+- Path B: cloud variant (summary)
+- Part 2: Ansible: configure the cluster
+- 2.1 Project settings
+- 2.2 Roles (compact versions)
+- 2.3 Site playbook with ordering and safety
+- 2.4 Run it
+- Part 3: Verification
+- Part 4: Pipeline
+- Part 5: Day-2 exercises
+- Part 6: Teardown and verification of cleanup
+- Deliverables and review checklist
+- Common mistakes in this lab
+- Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+## Vol part-05-kubernetes (35 chapters)
+
+
+### 5.1 Containers from first principles: images, layers, registries  [15989 words, ~79 min]  `part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What a container is
+- The dependency problem containers solve
+- Why containers took off
+- 2. Images: layers, content addressing and the OCI formats
+- Overlay filesystems: how layers stack
+- Manifests, indexes and configs
+- Layout on disk
+- 3. Building images well
+- Dockerfile mechanics
+- A Docker build, step by step
+- A Node.js example, line by line
+- BuildKit, buildx and builders
+- Image size and startup
+- Choosing a base
+- Build image versus runtime image
+- Runtime user and pinned packages
+- Choosing a build backend
+- Pitfalls of containers
+- 4. Registries and distribution
+- Registry anatomy and placement
+- 5. Rootless containers and security basics
+- 6. GPU containers
+- 7. Container lifecycle commands (cheat sheet)
+- Running a container and mapping its port
+- Cleaning up images
+- 8. Troubleshooting images and containers
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.2 Container runtimes: containerd, runc, CRI and OCI  [12799 words, ~63 min]  `part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The stack
+- Why the CRI exists
+- The pod sandbox
+- Starting a Pod through the CRI
+- 2. containerd in depth
+- Configuration
+- containerd data model
+- The containerd CRI plugin on a node
+- 3. CRI-O and alternatives
+- Choosing a runtime
+- CRI-O and the other runtimes
+- CRI-O in practice
+- Docker Engine and the dockershim
+- Virtual Kubelet
+- 4. OCI runtimes and RuntimeClass
+- The OCI project and runc
+- The OCI runtime configuration
+- Kata Containers in more detail
+- 5. GPU runtimes: NVIDIA Container Toolkit with containerd
+- 6. Node-level tools
+- 7. Cgroup drivers and cgroup v2
+- 8. Operations: upgrades, GC, logs, security
+- 9. Failure modes and diagnostics
+- 10. Lab
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.3 Kubernetes architecture overview: components and what talks to what  [13443 words, ~67 min]  `part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The big picture
+- What "Kubernetes" covers in this book
+- Getting the core binaries
+- Why Kubernetes Exists: Borg/Omega Heritage and Five Core Benefits (*Kubernetes: Up and Running* Chapter 1)
+- 2. Control plane components
+- kube-apiserver
+- etcd
+- kube-scheduler
+- kube-controller-manager
+- cloud-controller-manager
+- Aggregated and extension API servers
+- Checking the control plane with `componentstatuses`
+- 3. Node components
+- Inspecting Nodes (`Capacity` vs. `Allocatable` and `Conditions`) and `kube-system` (*Kubernetes: Up and Running* Chapter 3)
+- Reading one node with `kubectl describe nodes`
+- kube-proxy and DNS in practice
+- 4. Ports and trust
+- 5. The declarative object model
+- 6. From `kubectl apply` to a running container
+- 7. High availability and failure behaviour
+- Topologies
+- What fails and what happens
+- 8. Extension points
+- Why some APIs are only a contract
+- Interfaces: how plug-ins fit in
+- Kubernetes is one piece of the puzzle
+- 9. Add-ons required for a functioning cluster
+- 10. Architecture of a GPU/AI cluster
+- 11. Official limits (SIG-Scalability thresholds, approximate)
+- 12. Hands-on tour
+- Seeing the cluster in a UI
+- 13. Lab
+- 14. Common mistakes
+- 15. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.4 Bare-metal Kubernetes from scratch with kubeadm (lab)  [15144 words, ~75 min]  `part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Plan the cluster
+- Bare metal versus virtualized
+- Compute infrastructure
+- Networking infrastructure
+- 2. Prepare every node
+- Container runtime (containerd)
+- Kubernetes packages
+- What to install on each machine
+- Containerized control plane components
+- 3. Initialise the first control-plane node
+- What `kubeadm init` did (phases)
+- 4. Install a CNI
+- 5. Join workers
+- 6. Verify the cluster
+- Everyday `kubectl` context, `last-applied-configuration`, `attach`, and shell completion
+- Deleting objects
+- Graphical and editor tools
+- 7. High-availability control plane (stacked etcd)
+- kube-vip (static pod on control-plane nodes)
+- Join additional control-plane nodes
+- 8. Alternatives to kubeadm for bare metal (for context)
+- Start on a cloud or a laptop first
+- Local clusters: minikube, Docker Desktop, and kind
+- 9. Adding a GPU worker (preview of Part 11)
+- 10. Day-1 add-ons
+- How add-ons get installed
+- 11. Troubleshooting kubeadm clusters
+- 12. Automation and reproducibility
+- Machine images versus configuration management
+- 13. Lab checklist
+- 14. Common mistakes
+- 15. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.5 The API server and etcd: how a request becomes cluster state  [13654 words, ~68 min]  `part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The API surface
+- Groups, versions, kinds, resources
+- Versioning and conversion
+- Verbs and HTTP mapping
+- 2. The request pipeline
+- 3. resourceVersion, generation and concurrency
+- 4. Writing objects: create, update, patch, apply
+- 5. Audit, authn/z debugging and security notes
+- 6. API Priority and Fairness (APF)
+- 7. etcd internals
+- Deployment models for etcd
+- Data model and Raft
+- MVCC, revisions, compaction, defrag
+- What lives in etcd
+- Encrypting Secrets in etcd
+- Performance factors and tuning
+- Backup, restore, and member operations
+- 8. API server operations and scaling
+- 9. Diagnosing control-plane saturation
+- 10. Lab
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.6 Controllers and the reconcile loop: how Kubernetes thinks  [10397 words, ~51 min]  `part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The controller pattern
+- 2. The machinery: informers and work queues
+- 3. Built-in controllers (a tour)
+- Deployment → ReplicaSet → Pod
+- StatefulSet
+- DaemonSet
+- Job and CronJob
+- Node lifecycle and eviction
+- EndpointSlice and Service controllers
+- Namespace, garbage collector, TTL, PV/PVC, HPA and others
+- 4. Owners, selectors, finalizers, conditions
+- Reconciliation loops and the loose link to Pods
+- ownerReferences and adoption
+- Finalizers
+- Status and conditions
+- 5. Leader election and HA
+- 6. Failure modes and diagnostics
+- 7. Designing safe automation with the controller mindset
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.7 Pods and workloads: Deployments, StatefulSets, DaemonSets and Jobs  [23546 words, ~117 min]  `part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The pod
+- Labels and annotations: syntax rules and selector queries
+- Why labels exist
+- Applying and changing labels
+- Selecting objects with labels
+- Labels in the Kubernetes architecture
+- Annotations
+- Cleaning up the label examples
+- Why containers share a Pod
+- Thinking with Pods
+- Declarative configuration and Pod manifests
+- Creating a Pod
+- 2. Pod spec anatomy
+- Containers and init containers
+- Resources and QoS
+- Resource requests and limits, with a worked example
+- Volumes
+- Persisting data and volume patterns
+- Environment and configuration
+- Security context
+- Reading a SecurityContext in a running Pod
+- Lifecycle, termination and restart policy
+- Scheduling-related fields
+- Putting it all together
+- 3. Workload controllers: choosing
+- Why a bare Pod is not enough
+- ReplicaSets: one object for a group of identical Pods
+- Deployment patterns for inference
+- Controlling Deployment rollouts: `change-cause`, `pause`, `resume`, `history`, and `undo --to-revision`
+- Rolling updates and version compatibility
+- StatefulSet example (vector database)
+- DaemonSet example (GPU telemetry agent)
+- DaemonSets: one Pod on every node
+- DaemonSet scheduling and reconciliation
+- Creating a DaemonSet
+- Limiting a DaemonSet to specific nodes
+- Updating a DaemonSet
+- Deleting a DaemonSet
+- DaemonSets and autoscaled clusters
+- Job patterns for batch and distributed work
+- Job patterns: completions and parallelism
+- One-shot jobs
+- One-shot failures: restart policy and backoff
+- Parallel jobs: completions and parallelism together
+- Work queues: parallel jobs that drain a queue
+- CronJobs: run a Job on a schedule
+- Packaging and templating manifests
+- Pre-stop hooks and graceful shutdown
+- Resource limits and runtimes such as the JVM
+- 4. Operating pods
+- Reading state
+- Listing and describing Pods
+- Logs, exec and copying files
+- Deleting a Pod
+- Phases and states
+- 5. Sizing and placement guidelines for GPU workloads
+- 6. Lab
+- 7. Common mistakes
+- 8. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.8 The life of a pod end to end, including what the kernel does  [10387 words, ~51 min]  `part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Timeline overview
+- 2. Admission and scheduling (control plane)
+- 3. The kubelet takes over
+- The sync loop
+- 4. Sandbox creation and networking
+- How CNI `ADD`, IPAM, `readinessGates`, and `podCIDRs` Work (*Networking and Kubernetes* Chapters 3–4 and *Production Kubernetes* Chapter 5)
+- 5. Images and containers
+- GPU specifics
+- 6. Running state
+- 7. Termination
+- 8. Measuring pod startup latency
+- 9. Debugging by lifecycle stage
+- 10. Lab
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.9 The kubelet and the node: CRI, cgroups, QoS classes, probes and eviction  [11904 words, ~59 min]  `part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. What the kubelet does
+- 2. A production KubeletConfiguration for GPU nodes
+- 3. cgroups, QoS and node allocatable
+- The hierarchy (cgroup v2, systemd driver)
+- Node capacity and allocatable
+- QoS recap (details in 5.7)
+- CPU limits and throttling in multithreaded code
+- 4. Resource managers: CPU, memory, topology, devices
+- CPU Manager
+- Memory Manager
+- Topology Manager
+- Device Manager and Pod Resources API
+- 5. Probes
+- A startup probe sized for a model load
+- Designing liveness and readiness endpoints
+- 6. Node-pressure eviction
+- Reading an OOMKilled container
+- 7. Garbage collection and logs
+- 8. Node status, leases and failure behaviour
+- 9. Static pods, kubelet API and security
+- 10. Observability
+- 11. Troubleshooting guide
+- 12. Tuning checklist for GPU nodes
+- 13. Lab
+- 14. Common mistakes
+- 15. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.10 Services, endpoints and kube-proxy: the life of a Service  [14417 words, ~72 min]  `part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Service objects
+- Why a Service is needed
+- Creating two services
+- Types
+- Ports
+- DNS
+- Readiness checks
+- 2. EndpointSlices
+- Watching endpoints
+- Manual service discovery
+- 3. kube-proxy
+- iptables mode (default for many years)
+- Why iptables struggles at scale
+- IPVS mode
+- Reading IPVS listings
+- nftables mode
+- eBPF replacements (Cilium kube-proxy replacement, Calico eBPF dataplane)
+- Mode comparison
+- Cluster IP environment variables
+- 4. NodePort, LoadBalancer and traffic policies
+- NodePort path
+- Trying a NodePort
+- `externalTrafficPolicy`
+- LoadBalancer implementations
+- Trying a LoadBalancer
+- Session affinity and long-lived connections
+- Source IP and hairpin
+- Connecting with other environments
+- Connecting to resources outside of a cluster
+- Connecting external resources to services inside a cluster
+- 5. conntrack: the hidden state
+- How a table fills up, and what to watch
+- 6. Topology-aware routing and other features
+- 7. Debugging Services
+- 8. Scaling guidance
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.11 DNS and service discovery with CoreDNS  [10370 words, ~51 min]  `part-05-kubernetes/11-dns-and-service-discovery-with-coredns.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Records Kubernetes creates
+- Reading a Service name
+- 2. Resolver behaviour inside pods
+- The ndots:5 problem
+- 3. CoreDNS architecture
+- Customisation recipes
+- 4. Scaling and hardening
+- Capacity
+- NodeLocal DNSCache
+- The conntrack/UDP race and 5-second delays
+- Other hardening and operations
+- 5. DNS-based discovery for distributed AI workloads
+- 6. Observability
+- 7. Debugging method
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.12 Ingress, load balancers and the Gateway API  [14500 words, ~72 min]  `part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Layers of load balancing
+- 2. Ingress
+- The case for Ingress
+- Host-based routing with Ingress
+- Why Ingress has no default controller
+- Installing Contour
+- Pointing DNS names at the controller
+- Testing with a local hosts file
+- Creating three sample services
+- Simplest Ingress: send everything to one service
+- Routing by hostname
+- Routing by path
+- Cleaning up the sample
+- Annotations and gotchas
+- Ingress and namespaces
+- Path rewriting
+- Serving TLS
+- Where Ingress is heading
+- Controllers
+- Multi-team Ingress collisions and Contour's `HTTPProxy` root inclusion
+- Dedicated Ingress node pool and DaemonSet edge pattern
+- Trade-offs of dedicated and host-network Ingress nodes
+- DNS for Ingress: a wildcard record or external-dns
+- 3. Gateway API
+- 4. TLS and cert-manager
+- 5. Bare-metal and GPU-cloud load balancers
+- 6. Designing the edge for AI/LLM traffic
+- Example: nginx-ingress tuned for streaming inference (annotations)
+- Example: Envoy Gateway policies (Gateway API attachments)
+- 7. Operating and debugging
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.13 Pod networking under the hood: veth, bridges, routes and CNI plugins  [10113 words, ~50 min]  `part-05-kubernetes/13-pod-networking-under-the-hood-veth-bridges-routes-and-cni-plugins.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The Kubernetes network model
+- 2. Building pod networking by hand
+- Multi-node: how pods on different nodes talk
+- 3. The CNI specification
+- 4. Implementation families (overview)
+- 5. MTU, performance and offloads
+- 6. Secondary networks, SR-IOV and RDMA for AI
+- Multus and NetworkAttachmentDefinition
+- DPUs and OVS offload
+- 7. Inspecting pod networking on a node
+- 8. Troubleshooting matrix
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.14 Overlay versus routed pod networking: VXLAN, BGP with Calico, eBPF with Cilium  [10468 words, ~52 min]  `part-05-kubernetes/14-overlay-versus-routed-pod-networking-vxlan-bgp-with-calico-ebpf-with-c.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Decision frame
+- 2. Overlay networks
+- 3. Routed designs with BGP
+- Calico in BGP mode
+- Underlay-native / VPC-native
+- 4. Cilium and eBPF
+- Concepts
+- Install (Helm) examples
+- Cilium BGP Control Plane example
+- 5. Comparison
+- 6. Choosing for GPU clusters
+- 7. Verification and benchmarking
+- 8. Migration and operations
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.15 NetworkPolicy and the kernel: netfilter, conntrack and eBPF  [11449 words, ~57 min]  `part-05-kubernetes/15-networkpolicy-and-the-kernel-netfilter-conntrack-and-ebpf.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The NetworkPolicy API
+- Selector semantics (a common source of mistakes)
+- Default-deny and baseline patterns
+- Proving a default deny with a test Pod
+- 2. Things NetworkPolicy does not do (and traps)
+- 3. How enforcement works in the kernel
+- Netfilter basics and conntrack
+- Calico (iptables dataplane)
+- Cilium (eBPF)
+- nftables-based and other implementations
+- Performance considerations
+- 4. Extended policy models
+- Calico
+- Cilium
+- Admin and baseline network policies
+- Network identity with Calico and Cilium
+- 5. Policy design for a multi-tenant GPU platform
+- 6. Testing and debugging
+- 7. Lab
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.16 Configuration, secrets and RBAC  [20417 words, ~102 min]  `part-05-kubernetes/16-configuration-secrets-and-rbac.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. ConfigMaps
+- Reading a ConfigMap back from the cluster
+- 2. Secrets
+- Defense in depth for secrets
+- The Secret API, RBAC verbs, and scope
+- Consumption models: environment variables, volumes, and the client API
+- A TLS Secret mounted as files
+- Image pull secrets
+- GitOps-safe secret management
+- Sealed Secrets in depth
+- Rotation
+- HashiCorp Vault Agent Injector and Kubernetes authentication
+- Secrets Store CSI driver and CyberArk
+- Best practices for secrets
+- Choosing how an application reads ConfigMaps and Secrets
+- Injecting workload metadata with the Downward API
+- Offloading external secret systems to the platform
+- 3. Projected volumes and ServiceAccount tokens
+- ServiceAccounts
+- Service Account tokens and TokenReview
+- Projected service account tokens (PSAT)
+- 4. Authentication
+- Shared secrets: static token and password files
+- Client certificates from the CSR flow
+- OIDC for robot users and kubeconfig generation
+- 5. RBAC
+- Why RBAC matters and how a request is checked
+- Verbs and HTTP methods
+- Properties
+- Design patterns for AI platforms
+- Least-privilege admin elevation via RBAC `impersonate` (`sudo`-style workflow)
+- Testing and auditing RBAC
+- Managing RBAC at scale
+- 6. Configuration management patterns for AI workloads
+- 6. Configuration management patterns for AI workloads
+- 7. Failure modes and troubleshooting
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.17 Storage internals: volumes, PV and PVC, CSI and mounts  [13881 words, ~69 min]  `part-05-kubernetes/17-storage-internals-volumes-pv-and-pvc-csi-and-mounts.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Volume types at a glance
+- Block, file and object storage
+- 2. PersistentVolumes, Claims and StorageClasses
+- Key properties
+- Offering storage classes to developers
+- Resizing a volume in practice
+- Snapshots and restores in practice
+- Integrating External and Replicated Stateful Storage (*Kubernetes: Up and Running* Chapter 16 & *Production Kubernetes* Chapter 4)
+- 3. The CSI architecture
+- Why CSI replaced in-tree plugins
+- Controller and node services
+- Lifecycle for a dynamically provisioned volume
+- fsGroup, permissions and SELinux
+- CSI driver capabilities and ecosystems
+- Installing the driver and giving it access
+- 4. Mount mechanics (what the kernel does)
+- 5. Storage patterns for AI/ML workloads
+- 6. Operations and failure modes
+- Capacity and monitoring
+- Troubleshooting
+- Data protection
+- Security
+- 7. Lab
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.18 Scheduling in depth: kube-scheduler, affinity, taints, priority and preemption  [12735 words, ~63 min]  `part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The scheduler's job and model
+- 2. Resource fit and accounting
+- 3. Placement constraints
+- nodeSelector and node affinity
+- Pod affinity and anti-affinity
+- Topology spread constraints
+- Taints and tolerations
+- Other fields
+- Spreading replicas across failure domains
+- 4. Priority, preemption and disruption
+- PriorityClass
+- 5. Why default scheduling fails for distributed jobs
+- Kueue
+- Volcano
+- Other gang mechanisms
+- 6. Topology-aware and device-aware scheduling
+- 7. Descheduling, autoscaling and scheduler tuning
+- Extending the scheduler
+- 8. Debugging scheduling
+- 9. Reference patterns for a GPU platform
+- 10. Lab
+- 11. Common mistakes
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.19 Cluster deployment models and day-2 operations  [13438 words, ~67 min]  `part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Deployment models
+- Matching the approach to your needs
+- Managed service or roll your own
+- Prebuilt installer or custom automation
+- 2. Cluster topology choices
+- Cluster tiers
+- Node pools or separate clusters
+- Cluster sizing
+- Dedicated versus colocated etcd and node pool sizing ratios
+- 3. Node lifecycle
+- Joining nodes safely
+- Draining and maintenance
+- Replacing and decommissioning
+- Bulk node operations at scale
+- 4. Capacity and quota management
+- 5. Add-on and configuration lifecycle
+- 6. Observability, SLOs and on-call
+- What to monitor (minimum viable)
+- SLOs
+- Runbooks (examples to write and test)
+- Change management
+- 7. Multi-tenancy and platform operations basics
+- 8. Cluster API and fleet operations (brief)
+- Infrastructure automation with tools and operators
+- Triggering mechanisms
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Summary
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.20 Upgrades, etcd backup and restore, and disaster recovery  [14231 words, ~71 min]  `part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Versioning and skew
+- Platform versioning
+- Plan to fail
+- Integration testing
+- 2. Upgrade planning
+- Upgrade strategies in detail
+- 3. kubeadm upgrade procedure
+- Managed services
+- 4. Upgrading the GPU and platform stack
+- 5. Backing up and restoring etcd
+- Backup
+- Restore scenarios
+- Test restores
+- 6. Application and data backup
+- 7. Disaster recovery strategies
+- 8. Failure scenarios and responses
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.21 Certificates, identity, admission control and policy  [20836 words, ~104 min]  `part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The Kubernetes PKI
+- Inspecting and renewing
+- Rotating CAs
+- Kubelet TLS bootstrapping and CSRs
+- Workload certificates and mTLS
+- 2. Identity and authentication federation
+- Before you build workload identity
+- Platform-mediated identity on AWS
+- Cloud metadata proxies (`kube2iam` / `kiam`) versus `IRSA`
+- IRSA in practice
+- Cross-platform workload identity with `SPIFFE` and `SPIRE`
+- SPIRE integration points and trade-offs
+- Choosing an identity model
+- 3. Admission control
+- How a request moves through admission
+- In-tree controllers and the flags that control them
+- What the API server sends a webhook
+- Webhook failure modes, ordering and performance
+- Serving certificates for an admission webhook
+- 4. Pod Security Standards and Admission
+- Measuring a container's security with amicontained
+- Pod Security Standards in a namespace: a worked example
+- Benchmarking the cluster with kube-bench
+- 5. Policy engines
+- Kyverno
+- OPA Gatekeeper
+- Rego and where Gatekeeper fits
+- Worked example: one Ingress host pattern per Namespace
+- Gatekeeper strengths, weaknesses and blast radius
+- Others
+- Image and supply-chain admission
+- 6. A guardrail set for multi-tenant GPU clusters
+- 7. Troubleshooting
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.22 Multitenancy and platform services  [17984 words, ~89 min]  `part-05-kubernetes/22-multitenancy-and-platform-services.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Tenancy models and trust levels
+- Isolation layers (what to configure)
+- 2. Namespace-level building blocks
+- ResourceQuota and LimitRange
+- RBAC bindings that keep tenants in their own Namespace
+- Priority and fair sharing
+- GPU sharing options
+- Node isolation
+- 3. Delegated administration and virtual clusters
+- 4. Self-service and onboarding
+- Choosing how much to abstract
+- The `Team` custom resource operator pattern and the 4-stage spectrum of platform abstractions
+- Stage 1 in practice: raw kubectl and its limits
+- Stage 2 in practice: templating with Helm and Kustomize
+- Stage 3 in practice: custom workload CRDs
+- Stage 4 in practice: making Kubernetes invisible
+- Supporting differing levels of abstraction
+- 5. Platform services around the cluster
+- What an application platform is
+- Building on Kubernetes
+- Building blocks of an application platform
+- Deciding what the platform should own
+- Summary of application platforms
+- Operating the platform as a product
+- 6. Cost allocation and showback
+- Two approaches to showback
+- 7. Failure modes and troubleshooting
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.23 Autoscaling: HPA, VPA, KEDA and the cluster autoscaler  [13505 words, ~67 min]  `part-05-kubernetes/23-autoscaling-hpa-vpa-keda-and-the-cluster-autoscaler.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Layers of autoscaling
+- When not to autoscale
+- Designing applications to scale
+- 2. Horizontal Pod Autoscaler (HPA)
+- Controller and algorithm
+- Metric types
+- Behaviour tuning
+- Scaling signals for inference services
+- Exposing custom metrics (Prometheus Adapter example)
+- Cluster proportional autoscaler
+- Custom autoscaling
+- 3. Vertical Pod Autoscaler (VPA)
+- Off mode as a tuning aid
+- 4. KEDA: event-driven autoscaling
+- 5. Cluster Autoscaler and Karpenter
+- Cluster Autoscaler (CA)
+- Cluster Autoscaler configuration example
+- Cluster overprovisioning
+- Karpenter
+- Atomic capacity for multi-node jobs
+- 6. Autoscaling patterns for AI workloads
+- 7. Troubleshooting
+- 8. Lab
+- 9. Common mistakes
+- 10. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.24 Observability for Kubernetes  [15209 words, ~76 min]  `part-05-kubernetes/24-observability-for-kubernetes.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The observability signals
+- 2. Prometheus and the Operator
+- Why Prometheus became the default
+- Prometheus model
+- kube-prometheus-stack
+- Prometheus servers as custom resources
+- Reading a ServiceMonitor
+- Recording and alerting rules with PrometheusRule
+- Instrumenting your own software
+- Exposing app metrics with the Prometheus client libraries
+- Key exporters and sources
+- Essential PromQL
+- 3. Alerting design
+- Principles
+- Alertmanager
+- GPU-fleet specific alerts
+- 4. Logs
+- Why logs need a central place
+- What your application should log
+- Architecture
+- Kubernetes Events
+- 5. Traces and OpenTelemetry
+- Tracing vocabulary
+- Tracing components
+- Instrumenting services for distributed tracing
+- 6. Dashboards
+- 7. Scaling, retention and cost
+- 8. Practical diagnosis flows
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.25 Troubleshooting Kubernetes from the node: crictl, nsenter, tcpdump and ip  [11305 words, ~56 min]  `part-05-kubernetes/25-troubleshooting-kubernetes-from-the-node-crictl-nsenter-tcpdump-and-ip.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Method
+- 2. kubectl toolkit
+- 3. Node-level toolkit
+- 3.1 Container runtime state (crictl / ctr)
+- 3.2 Namespaces: nsenter, lsns, unshare
+- 3.3 Networking tools
+- 3.4 Storage and filesystem
+- 3.5 Processes and performance
+- 3.6 GPU and fabric hardware
+- 4. Failure playbooks
+- 4.1 Pod Pending
+- 4.2 `ContainerCreating` for a long time
+- 4.3 `CrashLoopBackOff`
+- 4.4 Network and Service failures
+- 4.5 Node `NotReady`
+- 4.6 OOM and eviction
+- 4.7 Terminating pods that never finish
+- 4.8 DNS issues
+- 4.9 Storage problems
+- 4.10 GPU workloads
+- 4.11 Control-plane slowness
+- 4.12 Cluster-wide incidents after change
+- 5. Chaos and game days
+- 6. Evidence, communication and learning
+- 7. Lab
+- 8. Common mistakes
+- 9. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.26 How Kubernetes uses the Linux kernel: a complete map  [12819 words, ~64 min]  `part-05-kubernetes/26-how-kubernetes-uses-the-linux-kernel-a-complete-map.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The master map
+- 2. Namespaces in depth
+- 3. cgroups v2 in depth
+- 4. Security primitives
+- 5. Filesystems, mounts and block I/O
+- 6. Networking in the kernel
+- 7. CPU, memory and NUMA
+- 8. Devices and the GPU/RDMA stack in the kernel
+- 9. Kernel versions, boot parameters and sysctls for GPU Kubernetes nodes
+- 10. Observing the kernel from Kubernetes
+- 11. Failure modes mapped to kernel causes
+- 12. Lab
+- 13. Common mistakes
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.27 Software supply chain security  [14555 words, ~72 min]  `part-05-kubernetes/27-software-supply-chain-security.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Threat model
+- 2. Frameworks and standards
+- 3. Source and build
+- Source integrity
+- Build integrity
+- The "Golden Base Image Antipattern"
+- In-cluster cloud-native build pipelines with Tekton (`Task` and `Pipeline`)
+- Cloud Native Buildpacks: no Dockerfile needed
+- Who should own image builds
+- Triggering builds from commits
+- Image tags and metadata
+- Push-based deploys and their limits
+- 4. SBOMs and vulnerability management
+- SBOM
+- Scanning
+- Scanning over time without causing outages
+- 5. Signing and verification
+- Cosign basics
+- Signing at each stage of the pipeline
+- Admission-time enforcement in Kubernetes
+- Quarantine workflow
+- Image promotion pipeline
+- 6. Registries and artefact stores
+- Registry placement and replication
+- 7. Python and ML dependency hygiene
+- 8. Model and data supply chain
+- 9. Runtime and detection
+- Limit what a container can do
+- 10. Incident response for supply-chain events
+- 11. Maturity roadmap
+- 12. Lab
+- 13. Common mistakes
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.28 Service mesh  [13505 words, ~67 min]  `part-05-kubernetes/28-service-mesh.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Concepts
+- Where service meshes came from
+- The three pillars
+- Why Services and Ingress are not enough
+- Choosing a mesh
+- 2. Data-plane models
+- Node proxy
+- 3. Istio essentials
+- Envoy and the xDS APIs
+- istiod, sidecar injection and traffic shifting
+- 4. Linkerd essentials
+- 5. Cilium Service Mesh
+- The Service Mesh Interface (SMI)
+- 6. Capabilities in practice
+- Mutual TLS and zero-trust
+- Traffic management for model rollouts
+- Observability
+- 7. Costs, performance and failure modes
+- 8. When to use (and not use) a mesh
+- Adopting too early: a cautionary tale
+- 9. Lab
+- 10. Common mistakes
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.29 Extending Kubernetes: CRDs and operators  [15941 words, ~79 min]  `part-05-kubernetes/29-extending-kubernetes-crds-and-operators.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Extension points recap
+- Why Kubernetes made its API extensible
+- Platform services and the toil they remove
+- Points of extension
+- Plug-in extensions: network, storage, runtime and devices
+- Webhook extensions: authentication, authorization and admission
+- 2. Custom resources and CRDs
+- Kinds, resources and a WebApp example
+- Schema and validation
+- Subresources
+- Versions and conversion
+- Garbage collection, owner references and finalizers
+- Status and conditions
+- API design guidance
+- Custom resources are not a database
+- 3. The operator pattern
+- Capability levels (Operator Framework model)
+- Typical operator reconcile structure
+- Operator use cases
+- Operator implementation choices
+- Programming the Kubernetes API from Python (`kubernetes` OpenAPI client)
+- But what about `kubectl x`?
+- OpenAPI and generated client libraries
+- Authenticating to the Kubernetes API
+- Namespaced and cluster-level resources
+- API groups
+- Listing and creating Pods
+- Creating, replacing, and patching objects
+- Watching for changes instead of polling
+- Interacting with Pods
+- 4. Packaging, distribution and lifecycle
+- 5. AI-platform operators (what to know)
+- 6. Lab
+- 7. Common mistakes
+- 8. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.30 Go for Kubernetes engineers  [13634 words, ~68 min]  `part-05-kubernetes/30-go-for-kubernetes-engineers.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Toolchain and project layout
+- 2. Language essentials (the subset Kubernetes code uses)
+- Types, structs, methods
+- Interfaces (implicit) and polymorphism
+- Errors
+- Slices, maps, strings, generics
+- Pointers and values
+- Packages, visibility, init, build tags
+- 3. Concurrency
+- Goroutines, channels, sync
+- context.Context
+- 4. JSON, YAML and Kubernetes types
+- 5. client-go
+- Building clients
+- CRUD, patch, apply
+- Watching
+- Informers, listers and work queues
+- Leader election
+- Dynamic client for CRDs
+- Logging, metrics, flags
+- 6. A small CLI: cordon nodes on XID events (walkthrough)
+- 7. Testing
+- 8. Packaging
+- 9. Idioms and pitfalls checklist
+- 10. Lab
+- 11. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.31 Operators in Go: controller-runtime and kubebuilder  [15693 words, ~78 min]  `part-05-kubernetes/31-operators-in-go-controller-runtime-and-kubebuilder.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Where controller-runtime sits
+- Tooling for building operators
+- Kubebuilder as an SDK for APIs
+- Metacontroller: write only the logic
+- Operator Framework
+- 2. Defining the API
+- Choosing the data model for a Namespace operator
+- 3. The manager
+- 4. The reconcile function
+- Status updates
+- Gathering existing and desired state
+- 5. Watches, predicates and mapping
+- Field indexes
+- 6. Owner references and finalizers
+- 7. Ownership of foreign objects: annotate, do not assume
+- 8. Events, logging and metrics
+- 9. RBAC
+- 10. Webhooks (brief)
+- Defaulting and validation with admission webhooks
+- Plain HTTPS handler or controller-runtime
+- 11. Testing strategy
+- 12. Production hardening checklist
+- 13. Common mistakes
+- 14. Lab
+- 15. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.32 Project A: GPU node health operator  [9674 words, ~48 min]  `part-05-kubernetes/32-project-a-gpu-node-health-operator.md`
+- Why this matters for AI infrastructure
+- Requirements
+- Architecture
+- The API
+- The decision core (pure)
+- The reconciler
+- Where this operator fits
+- Design decisions and why
+- What the tests prove
+- What the tests do not prove
+- Failure modes to rehearse
+- Extension ideas
+- Lab
+- Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.33 Reading the GPU Operator and Network Operator source  [10100 words, ~50 min]  `part-05-kubernetes/33-reading-the-gpu-operator-and-network-operator-source.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Method for reading an operator
+- 2. GPU Operator repository map
+- 3. The ClusterPolicy flow
+- 4. How a state is applied
+- 5. Node gating and the validator chain
+- 6. Drivers: DaemonSet vs NVIDIADriver CRD, and upgrades
+- 7. SetupWithManager: how it stays efficient
+- 8. Network Operator repository map
+- 9. The Network Operator reconcile and State interface
+- Wait labels: dependency ordering without the controller waiting
+- Shared state logic and stale objects
+- Secondary networks
+- 10. Comparing the two operators
+- 11. Debugging from source: worked recipes
+- 12. Lab
+- 13. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.34 GKE for GPU workloads: setup, node pools and quotas  [10768 words, ~53 min]  `part-05-kubernetes/34-gke-for-gpu-workloads-setup-node-pools-and-quotas.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Standard vs Autopilot
+- 2. GPU machine families and accelerators
+- 3. Creating a cluster for GPUs
+- The minimal GKE path
+- 4. Creating a GPU node pool
+- What happens after creation
+- Verify
+- 5. Quotas, reservations and consumption models
+- 6. Scheduling Pods onto GPUs
+- 7. Sharing a GPU: time-sharing, MPS, MIG
+- 8. Networking for multi-node training
+- 9. Autoscaling and upgrades
+- 10. Observability and cost
+- 11. Terraform sketch (untested)
+- 12. Failure modes and troubleshooting
+- 13. Lab
+- 14. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 5.35 Multicluster and fleet management  [14585 words, ~72 min]  `part-05-kubernetes/35-multicluster-and-fleet-management.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why more than one cluster
+- Get the foundations right first
+- Building the application for many clusters
+- Cluster federation and management clusters
+- 2. Layers of fleet management
+- 3. Provisioning and lifecycle
+- 4. Configuration delivery with GitOps
+- Each region is a stage
+- 5. Placing workloads across clusters
+- Federated software deployment
+- Kueue MultiKueue (read from the Kueue docs and API types)
+- Other approaches
+- 6. Cross-cluster networking
+- User traffic: GeoDNS and anycast
+- 7. Identity, access and policy
+- 8. Observability across the fleet
+- Federating metrics
+- 9. Upgrades and change management
+- Rolling out a release across regions
+- Dashboards for version drift
+- 10. Failure-domain design
+- 11. Lab
+- 12. Interview angles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+
+## Vol part-10-gpu-cuda (22 chapters)
+
+
+### 10.1 Why GPUs: CPU versus GPU and throughput design  [21062 words, ~105 min]  `part-10-gpu-cuda/01-why-gpus-cpu-versus-gpu-and-throughput-design.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why AI breaks the web-scaling mindset
+- 1.1 I/O-bound web infrastructure versus compute- and memory-bound AI
+- 1.2 The four physical stages of an AI request on a heterogeneous node
+- 1.3 Three classic infrastructure bottlenecks on day one
+- 1.4 The performance engineer's daily work
+- 1.5 Core competencies and tools of the role
+- 2. CPU latency design versus GPU throughput design
+- 2.1 The end of Dennard Scaling and the silicon budget split
+- 2.2 Cross-vendor hardware terminology
+- 2.3 SIMT warps, zero-cost context switching, and batch-size alignment
+- 2.4 Calculating theoretical peak FLOPs, memory bandwidth, and PCIe overhead
+- 2.5 Five workload patterns where GPUs struggle
+- 3. How GPU silicon evolved from pixels to Tensor Cores and NVL72
+- 3.1 From 4K video games to GPGPU and CUDA
+- 3.2 The precision cascade: trading bits for memory bandwidth and FLOPs
+- 4. Anatomy of an LLM inference request: Prefill, Decode, and the KV Cache
+- 4.1 Phase 1 (Prefill and TTFT) versus Phase 2 (Decode and TPOT)
+- 4.2 The KV cache memory crisis, Continuous Batching, and PagedAttention
+- 5. Performance engineering at scale: Goodput, Mechanical Sympathy, and energy
+- 5.1 Measuring Goodput versus Speed of Light
+- 5.2 Mechanical sympathy, 100-trillion-parameter math, and the DeepSeek-V3 case study
+- 5.3 Time-to-solution, energy efficiency, and job-suite parallel efficiency
+- 5.4 Why DeepSeek's export limits shaped its design
+- 6. From one GPU to the full-stack AI factory
+- 6.1 Where the rest of the book goes
+- 6.2 Key takeaways and the closing argument
+- 7. Inspecting a GPU host and tracing a staged request path
+- 7.1 The 8-step host inspection sequence and 3-layer failure triage
+- Commands and configurations that matter
+- 1. The 8-step Linux and GPU host qualification sequence (untested on live Nebius GPU VM)
+- 2. Monitoring GPU power and utilization over time (`nvidia-smi dmon`)
+- 3. Empirical memory bandwidth (`BabelStream`) and Roofline (`mixbench`) micro-benchmarks
+- How it fails
+- Hands-on lab
+- Part A: Self-checking Python model (`code/part10/why_gpus_lab.py` — verified here)
+- Part B: Staged request-path latency and preprocessing fault-injection lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Reconciliations and verification notes
+
+### 10.2 The execution model: threads, warps, blocks and SMs  [14166 words, ~70 min]  `part-10-gpu-cuda/02-the-execution-model-threads-warps-blocks-and-sms.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Inside a modern NVIDIA GPU and the Streaming Multiprocessor
+- 1.1 Silicon geography: GigaThread Engine, L2 Cache, SMs, Copy Engines, and NVDEC
+- 1.2 Inside one SM: four warp schedulers, dual-issue, and SFUs
+- 2. The thread hierarchy: Threads, Warps, Thread Blocks, Clusters, and Grids
+- 2.1 Software-to-hardware mapping and cross-vendor terminology
+- 3. Kernel launch geometry, bounds checks, tile decomposition, and PTX compatibility
+- 3.1 1D, 2D, and 3D indexing and the `if (idx < N)` bounds check
+- 3.2 2D and 3D domain tile decomposition and halo trade-offs
+- 3.3 Forward and backward binary compatibility (SASS, PTX, and `CUDA_FORCE_PTX_JIT=1`)
+- 4. Residency, Occupancy, and how to calculate and tune them
+- 4.1 The block admission gate and worked register and shared-memory occupancy math
+- 4.2 Why sufficient parallelism matters and why 100% occupancy is not the goal
+- 4.3 Tuning occupancy with `__launch_bounds__` and the CUDA Occupancy API
+- 5. Warp states, instruction dispatch, divergence, and the two efficiency gates
+- 5.1 The five warp states and scoreboard dependencies
+- 5.2 Warp divergence, predication, and the two Nsight Compute efficiency gates
+- 6. Production operations: the four scheduling layers, GPU Contexts, and Compute Sanitizer
+- 6.1 The four scheduling layers and GPU Context Switching (Time-Slicing vs MIG vs MPS)
+- 6.2 Catching memory, race, and barrier bugs with NVIDIA Compute Sanitizer
+- Commands and configurations that matter
+- 1. Inspecting compile-time register usage and local-memory spills (`nvcc -Xptxas=-v`, untested on live Nebius GPU VM)
+- 2. Profiling timeline gaps (`nsys`) and SM occupancy and efficiency gates (`ncu`)
+- 3. Live DCGM and `nvidia-smi` host versus container boundary verification
+- 4. CI functional verification with `compute-sanitizer`
+- How it fails
+- Hands-on lab
+- Self-checking Python model (`code/part10/execution_model_lab.py` — verified here)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Verification and review notes
+
+### 10.3 The GPU memory hierarchy  [14709 words, ~73 min]  `part-10-gpu-cuda/03-the-gpu-memory-hierarchy.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The seven-tier GPU memory hierarchy and Points of Coherency
+- 1.1 Architectural map from Registers and TMEM to L2, HBM3e, and Host RAM
+- 1.2 Points of Coherency and tracing a memory request
+- 2. On-chip storage: Registers, Local Memory spills, Shared Memory tiling, Bank Conflicts, and Warp Shuffles
+- 2.1 Registers versus Local Memory: why "Local" memory is physically off-chip
+- 2.2 Shared Memory tiling and data reuse
+- 2.3 Shared-Memory 32-Bank Conflicts, `[32][33]` Padding, Swizzling, and Warp Shuffles
+- 3. Global memory access: Coalescing, Vectorization, Read-Only Cache, and TMA Async Prefetch
+- 3.1 128-byte cache-line coalescing and AoS versus SoA
+- 3.2 Vectorized loads on Hopper and Blackwell
+- 3.3 Read-Only Data Cache and Tensor Memory Accelerator
+- 4. Device and Host-Device memory: Capacity vs Bandwidth, ReBAR, Memory Pools, and Unified Memory
+- 4.1 Capacity versus Bandwidth
+- 4.2 PCIe BAR1 and Resizable BAR, Stream-Ordered Memory Pools, and Unified Memory
+- 5. Field notes from the Volume 02 memory chapters
+- 5.1 Words that are easy to confuse
+- 5.2 Locality, memory partitions and what to size
+- 5.3 Evidence patterns
+- 5.4 Lab 03 worked comparison: contiguous versus strided copy
+- 5.5 Customer scenarios from the notes
+- Commands and configurations that matter
+- 1. Pre-flight check for BAR1, HBM usage, and streaming SM vs memory utilization
+- 2. Inspecting register spills and Nsight Compute memory counters
+- 3. Configuring PyTorch's caching allocator pool to reduce VRAM fragmentation
+- How it fails
+- Hands-on lab
+- Self-checking Python model (`code/part10/gpu_memory_hierarchy_lab.py` — verified here)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Sources read in full for this chapter
+- Mapped notes checked in the 2026-10-25 deep-read pass
+- Run here
+- My own choices and inferences, labelled in the text
+- Not verified on live hardware
+
+### 10.4 Tensor cores and numerical precision  [11682 words, ~58 min]  `part-10-gpu-cuda/04-tensor-cores-and-numerical-precision.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Specialized execution engines inside an SM: CUDA Cores, Tensor Cores, RT Cores, and SFUs
+- 1.1 How warp instructions route to specialized SM pipelines
+- 1.2 Why `nvidia-smi` GPU-Util cannot prove Tensor Core usage
+- 2. Numerical precision formats: from FP64 and FP32 to TF32, BF16, FP8, INT8, and NVFP4
+- 2.1 Bit layouts: Sign, Exponent, and Mantissa
+- 2.2 Why lowering precision wins twice: compute TFLOPS and 128-byte cache-line density
+- 3. The Transformer Engine, 2:4 Structured Sparsity, and feeding Tensor Cores with TMEM and TMA
+- 3.1 The Transformer Engine and two-level micro-scaled NVFP4
+- 3.2 Hardware 2:4 Structured Sparsity
+- 3.3 How TMA, SMEM, and TMEM feed Blackwell `tcgen05` Tensor Cores
+- Reading the rack-level FP4 peak
+- Adopting the precision features in your stack
+- 4. Using CUTLASS and auditing Tensor Core shape alignment
+- 4.1 Why CUTLASS is preferred over hand-written MMA assembly
+- 4.2 Auditing matrix dimensions for 16-byte Tensor Core alignment
+- Commands and configurations that matter
+- 1. Enabling TF32, BF16 Automatic Mixed Precision, and 2:4 Sparsity in PyTorch
+- 2. Verifying Tensor Core pipeline activity vs scalar SM activity
+- How it fails
+- Hands-on lab
+- Self-checking Python model (`code/part10/tensor_cores_precision_lab.py` — verified here)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Sources read in full for this chapter
+- Added from general knowledge
+- Mapped notes checked in the 2026-10-25 deep-read pass
+- Run here
+- The handbook's own synthesis
+- Not verified on live hardware
+
+### 10.5 The roofline model and performance modelling  [11300 words, ~56 min]  `part-10-gpu-cuda/05-the-roofline-model-and-performance-modelling.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Speeds, feeds, and the Roofline equation
+- 1.1 Arithmetic Intensity, Machine Balance, and the Ridge Point
+- 1.2 Worked Example 1: FP32 Vector Addition on Blackwell
+- 1.3 How uncoalesced or strided cache usage lowers the slanted roof
+- 2. Tensor Core ridge points and why Batch Size = 1 inference hits the memory wall
+- 2.1 Comparing Ridge Points across H100, H200, and Blackwell B200
+- 2.2 Mathematical proof: why Batch Size = 1 MLP/LLM inference is pinned under the Slanted Roof
+- 3. Five engineering levers to shift a workload rightward on the Roofline
+- 4. Building a complete system performance model: the six bottleneck regimes
+- 4.2 Designing a production release performance gate
+- Commands and configurations that matter
+- 1. Collecting a Roofline chart and Speed-of-Light report in Nsight Compute
+- 2. Running the 6-cause `nvidia-smi` elimination pass and per-rank straggler check
+- 3. Empirical Roofline (`ERT`), `STREAM` / `BabelStream`, and `NERSC` Roofline plotting
+- How it fails
+- Hands-on lab
+- Self-checking Python model (`code/part10/roofline_model_lab.py` — verified here)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Sources read in full for this chapter
+- Run here
+- My own choices and inferences, labelled in the text
+- Not verified on live hardware
+
+### 10.6 GPU interconnects: PCIe, NVLink, NVSwitch and NVLink-C2C  [11189 words, ~55 min]  `part-10-gpu-cuda/06-gpu-interconnects-pcie-nvlink-nvswitch-and-nvlink-c2c.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. PCIe, PCIe Switches, and NUMA Host Data Paths
+- 1.1 The PCIe bandwidth ceiling and lane negotiation
+- 1.2 CPU Root Complex vs dedicated PCIe Switches and NUMA boundaries
+- 1.3 Reading the `nvidia-smi topo -m` path hierarchy and the 500 MB worked comparison
+- 2. NVLink, NVSwitch, and In-Switch SHARP (NVLS)
+- 2.1 NVLink memory semantics and the five NVLink generations
+- 2.2 NVLink Bridges on PCIe GPUs vs NVSwitch non-blocking fabrics
+- 2.3 In-Network Collective Offload: NVLink SHARP (NVLS) vs InfiniBand SHARP (CollNet)
+- 2.4 NVLink is not the only scale-up fabric
+- Why SHARP helps collectives
+- 3. On-Package (NV-HBI) and Chip-to-Chip (NVLink-C2C) Interconnects and Cache Coherence Rules
+- 3.1 The four hardware interconnect scales: NV-HBI, NVLink-C2C, NVLink, and PCIe
+- 3.2 Two critical architectural rules from AI Systems Performance Engineering Chapter 2
+- 4. Commands and Configurations That Matter
+- 4.1 Map CPU sockets, SLIT NUMA distances, PCIe tree, and sysfs `numa_node`
+- 4.2 Verify PCIe negotiated link speed and width (`LnkCap` vs `LnkSta`)
+- 4.3 Inspect `nvidia-smi topo -m`, `topo -p2p`, and `nvlink` error counters
+- 4.4 Measure real Peer-to-Peer (P2P) bandwidth and latency (`p2pBandwidthLatencyTest`)
+- 4.5 Enforce NUMA-aligned placement in Linux (`numactl`) and Kubernetes (`Topology Manager`)
+- 5. How It Fails: Six Production Interconnect and Topology Failure Modes
+- 6. Hands-On Lab: Verify PCIe Link Widths, NVLink Generations, P2P Matrices, and Topology Placement Policies
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Explicitly labelled inferences
+- Run here
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 10.7 GPU generations and product line: Ampere, Hopper, Blackwell; PCIe versus SXM  [11662 words, ~58 min]  `part-10-gpu-cuda/07-gpu-generations-and-product-line-ampere-hopper-blackwell-pcie-versus-s.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Silicon Segmentation: GeForce, RTX Professional, and Data Center
+- 1.1 The three tiers of NVIDIA GPUs
+- 1.2 The four technical showstoppers for gaming GPUs in enterprise AI
+- 1.3 The legal showstopper: The GeForce driver EULA
+- 2. Generational Silicon Shifts: Volta, Ampere, Hopper, Blackwell, and Beyond
+- 2.1 Volta V100: The dawn of the Tensor Core
+- 2.2 Ampere A100: Hardware isolation, TF32, and structural sparsity
+- 2.3 Hopper H100: The Transformer Engine and FP8 math
+- 2.4 Hopper H200: Extreme memory capacity for KV cache scaling
+- 2.5 Blackwell B200, B300, and the roadmap ahead
+- 2.6 Architectural summary matrix across data center generations
+- 3. Form Factors: PCIe Add-in Card vs. SXM HGX Baseboard
+- 3.1 The PCIe form factor: Universal enterprise compatibility with performance trade-offs
+- 3.2 The SXM form factor: Unrestricted power and all-to-all NVSwitch fabrics
+- 3.3 Architectural comparison: PCIe vs. SXM
+- 4. The Specialized Tiers: Inference Lineage (T4, L4, L40S) and Grace Superchips (GH200, GB200)
+- 4.1 The inference lineage: T4, L4, and L40S
+- 4.2 Grace Superchips: GH200 and GB200
+- 5. Workload-First Selection Methodology and Gate Criteria
+- 5.1 The five mandatory pass/fail gate criteria
+- 5.2 The weighted criteria scorecard
+- 5.3 Worked example: Sizing an inference cluster for Llama-3 70B
+- Commands and configurations that matter
+- 1. Identify GPU family, architecture, and memory specifications
+- 2. Verify hardware ECC status and error counters
+- 3. Inspect Multi-Instance GPU capabilities
+- 4. Create an inference benchmark run manifest
+- How it fails: Six production GPU selection and form factor failure modes
+- Hands-on lab: Evaluate GPU Selection Gates, Scorecards, and Hardware Specifications
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Explicitly labelled inferences
+- Run here
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 10.8 Operating GPU nodes: nvidia-smi, topology, clocks and throttling  [10638 words, ~53 min]  `part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The GPU observability architecture
+- 1.1 Why host queue models fail on a GPU
+- 2. The three misleading metrics
+- 2.1 The utilization lie
+- 2.2 Utilization you can trust
+- 2.3 The memory lie
+- 2.4 The clock speed lie
+- 3. Clocks, power caps and throttle reasons
+- 3.1 Decoding the throttle bitmask
+- 3.2 Temperature headroom
+- 3.3 Power capping and clock locking
+- 3.4 NVML under nvidia-smi and DCGM
+- 3.5 Prefill and decode on an inference node
+- 4. Commands and configuration that matter
+- 4.1 Persistence mode
+- 4.2 Scripted inventory
+- 4.3 High-frequency streaming with dmon and pmon
+- 4.4 Topology and PCIe link negotiation
+- 5. Field triage: Xid errors and slowdown causes
+- 5.1 Xid errors: three tiers
+- 5.2 Which kind of slowdown is it?
+- 5.3 Fans: many data center GPUs have none
+- 5.4 When throttle reasons are clear and utilization still misleads
+- 6. How it fails: six production failure modes
+- Hands-on lab: verify throttle bitmasks, memory regimes and Xid triage
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Sources used
+- Corrections made in this revision
+- Not verified on live hardware
+
+### 10.9 The NVIDIA software stack: driver, CUDA toolkit, container toolkit, compatibility  [13924 words, ~69 min]  `part-10-gpu-cuda/09-the-nvidia-software-stack-driver-cuda-toolkit-container-toolkit-compat.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The Seven-Layer NVIDIA Software Stack: From Python to `nvidia.ko`
+- 1.1 Layers 1 and 2: PyTorch, `torch.compile`, C++ domain libraries, and Python CUDA DSLs
+- 1.2 Layer 3 vs Layer 4: CUDA Runtime API (`libcudart.so`) vs CUDA Driver API (`libcuda.so`)
+- 1.3 Layers 5 and 6: Linux character devices (`/dev/nvidia*`) and the four kernel modules (`KMD`)
+- 1.4 Python-facing CUDA libraries: cuTile and cuPyNumeric
+- 1.5 Why every layer matters for GPU time
+- 2. Compilation, Fatbinaries (`PTX` vs `SASS` / `CUBIN`), and Version Compatibility
+- 2.1 How `nvcc` compiles CUDA code: Host code, `PTX` (`compute_XX`), and `SASS` / `CUBIN` (`sm_XX`)
+- 2.2 Two real-world PTX/SASS production incidents (`resolve_fatbinary_execution_path`)
+- 2.3 The three driver and CUDA compatibility rules (`evaluate_driver_cuda_compatibility`)
+- 3. Containerizing the GPU: NVIDIA Container Toolkit, `CDI`, and Namespace Traps
+- 3.1 Four generations of container GPU injection: From `nvidia-docker` to `CDI`
+- 3.2 Why `nvidia-smi` inside a container shows an empty process list (the PID namespace trap)
+- 3.3 How BCM installs and owns the container stack (from the BCM 11 containerization manual)
+- 3.4 BCM packages for the driver and CUDA toolkit (from the BCM 11 installation manual)
+- 3.5 No hypervisor in the path: why containers keep GPU speed
+- 4. Commands and Configurations That Matter
+- 4.1 Walk the 7-step host driver, device-node, and library verification chain
+- 4.2 Generate a CDI specification (`nvidia-ctk`) and configure `containerd`
+- 4.3 Inspect compiled binaries for embedded `SASS` (`sm_XX`) and `PTX` (`cuobjdump`)
+- 4.4 Compile and run the minimal end-to-end validation program (`cuda-validate.cu`)
+- 5. How It Fails: Six Production Software Stack Failure Modes
+- 6. Hands-On Lab: Validate the 7-Layer Software Stack, Driver Compatibility, and Fatbinary Resolution
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in `MIGRATION_MAP.md`
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 10.10 Fabric Manager, NVSM and NVLink domains  [12220 words, ~61 min]  `part-10-gpu-cuda/10-fabric-manager-nvsm-and-nvlink-domains.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. NVLink Domains and the NVIDIA Fabric Manager (`nvidia-fabricmanager`)
+- 1.1 What is an NVLink domain, and why does NVSwitch require a Fabric Manager?
+- 1.2 `nvidia-fabricmanager.service` lifecycle, version locking, and the `kubelet` boot race
+- 2. In-Band Hardware Health & Telemetry Bundles: `NVSM` (`nvsm`) and `NVDebug` (`nvdebug`)
+- 2.1 NVIDIA System Management (`NVSM`): Host CLI vs BCM `cmsh` wrapper
+- 2.2 `NVDebug` (`nvdebug`): Multi-platform host, BMC, Redfish, and NVSwitch log collection
+- 3. From the NVLink Domain to the Scale-Out Fabric: GPUDirect RDMA, GDS, ConnectX, and NCCL
+- 3.1 Why GPU networking exists: 3D Parallelism, TCP/IP overhead, and switch-buffer jitter
+- 3.2 `GPUDirect RDMA` (`BAR1` + `nvidia-peermem`) vs `GPUDirect Storage` (`GDS`, `libcufile`, `DALI`)
+- 3.3 `ConnectX-6`, `ConnectX-7`, and `ConnectX-8` PCIe physics & the dual-200G OEM trap
+- 3.4 Scale-out fat-tree sizing (`1,024 GPUs`), `1:1` non-blocking vs `2:1` oversubscription, and storage plane isolation
+- 4. Topology-Aware Placement & the 3-Step Benchmark Hierarchy (`nvbandwidth` → `ib_write_bw` → `nccl-tests`)
+- 4.1 Kubernetes Topology Manager (`single-numa-node`) and the `16-Core → 12-Core` fix
+- 4.2 The 3-Step Hardware-to-Application Benchmark Hierarchy (`diagnose_three_step_data_path_benchmarks`)
+- 5. Commands and Configurations That Matter
+- 5.1 Verify `nvidia-fabricmanager.service` and enforce systemd ordering before `containerd`/`kubelet`
+- 5.2 Run `nvsm` and `nvdebug` on a DGX host and inside BCM `cmsh`
+- 5.3 Execute the 3-step data-path benchmark sequence (`nvbandwidth` → `ib_write_bw` → `nccl-tests`)
+- 6. How It Fails: Six Production Fabric Manager, NVLink Domain, and Data-Path Failure Modes
+- 7. Hands-On Lab: Verify NVLink Domains, Fabric Manager Rules, Topology Manager Admission, and 3-Step Benchmark Triage
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in `MIGRATION_MAP.md`
+- Run here
+- The handbook's own synthesis
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 10.11 CUDA programming basics: kernels, indexing and memory  [13349 words, ~66 min]  `part-10-gpu-cuda/11-cuda-programming-basics-kernels-indexing-and-memory.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why CUDA Exists and the Heterogeneous Host–Device Model
+- 1.1 From graphics shaders to a compute-first platform
+- 1.2 The heterogeneous execution contract: `__host__`, `__device__`, and `__global__`
+- 2. Kernel Launch Geometry, 1D/2D/3D Indexing, and Hardware Limits
+- 2.1 The execution configuration and GPU hardware limits
+- 2.2 1D indexing, ceiling division, and the two boundary bugs
+- 2.3 Warp lane waste, SM grid underfill, and grid-stride loops
+- 3. CUDA Memory Management: Explicit Copies, Stream-Ordered Pools, and Unified Memory
+- 3.1 Explicit device memory and the PCIe transfer-to-kernel ratio
+- 3.2 Synchronous allocation churn (`77.6%` API time) and stream-ordered pools
+- 3.3 Unified Memory, prefetching, and the oversubscription cliff
+- 4. Synchronization Scopes, Asynchronous Error Bisection, and Correctness
+- 4.1 The seven CUDA synchronization scopes and the inter-block deadlock trap
+- 4.2 Asynchronous timing (`0.014 ms` vs `4.812 ms`) and bisecting deferred errors
+- 5. Commands and Code Patterns That Matter
+- 5.1 Complete reference implementation: `vector_add.cu`
+- 5.2 Compile, test boundary shapes, and profile API overhead
+- 6. How It Fails: Six Production CUDA Programming & Memory Failure Modes
+- 7. Hands-On Lab: Validate CUDA Launch Geometry, Indexing, Memory Lifecycles, and Unified Memory Behavior
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in `MIGRATION_MAP.md`
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 10.12 Streams, events, asynchronous copies and pinned memory  [10271 words, ~51 min]  `part-10-gpu-cuda/12-streams-events-asynchronous-copies-and-pinned-memory.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. CUDA Streams, Copy-Compute Overlap, and the Default-Stream Barrier
+- 1.1 Host asynchrony vs device concurrency and 3-way hardware engine overlap
+- 1.2 Legacy Default Stream vs Per-Thread Default Stream vs Non-Blocking Streams
+- 2. Pinned Host Memory, NUMA Locality, and Stream-Ordered LLM Scratch Pools
+- 2.1 Why DMA requires Pinned Memory and the 256 MiB benchmark
+- 2.2 Four host-memory modes and the Linux OOM Killer rule
+- 2.3 Stream-ordered allocations for LLM scratch buffers
+- 3. CUDA Events, Host Callbacks, and Double-Buffered Ownership
+- 3.1 Cross-stream dependencies with CUDA Events and host callbacks
+- 3.2 Double-buffered pipeline ownership in `overlap_pipeline.cu`
+- 4. Commands and Code Patterns That Matter
+- 4.1 Double-buffered multi-stream pipeline loop (`overlap_pipeline.cu` core pattern)
+- 4.2 Compile with Per-Thread Default Stream, enable `cudaMallocAsync`, and verify overlap with `nsys` (untested here)
+- 5. How It Fails: Six Production Stream, Event, and Pinned-Memory Failure Modes
+- 6. Hands-On Lab: Verify Pageable vs Pinned DMA, Nsight Trace Overlap, and the Double-Buffered Pipeline
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in `MIGRATION_MAP.md`
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 10.13 Memory access patterns and profiling  [17163 words, ~85 min]  `part-10-gpu-cuda/13-memory-access-patterns-and-profiling.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Coalesced vs. Uncoalesced Global Memory Access
+- 1.1 How the GPU memory controller services a 32-thread warp load
+- 1.2 Array of Structures vs. Structure of Arrays and Nsight Compute Table 7-1
+- 1.3 A strided copy in C++ and PyTorch, and the contiguous fix
+- 2. Vectorized Global Memory Access
+- 2.1 Coalescing vs. vectorizing and `cudaMalloc` 256-byte alignment
+- 2.2 Nsight Compute Table 7-2: Scalar vs. Vectorized Copy
+- 2.3 Scalar and vector copy kernels side by side
+- 3. Shared-Memory Tiling and Eliminating Bank Conflicts
+- 3.1 Tiling matrix multiplication in shared memory
+- 3.2 Why you cannot blindly grow tiles forever: The `64 × 64` register budget
+- 3.3 Shared-memory bank conflicts and `+1` column padding
+- 3.4 Naive and tiled matrix multiply code
+- 3.5 Transpose with and without padding, and the stride-32 trap
+- 4. Warp Shuffle Intrinsics, Read-Only Caches, and TMA Prefetching
+- 4.1 Intra-warp register reductions with `__shfl_down_sync`
+- 4.2 Routing immutable lookup tables through the read-only data cache
+- 4.3 Hiding 800-cycle DRAM latency with TMA double buffering
+- 4.4 Lookup tables: a naive kernel versus a `const __restrict__` kernel
+- 4.5 A full TMA double-buffer kernel
+- 5. Commands and Profiling Workflows That Matter
+- 5.1 Profile global coalescing, sector counts, and shared-memory bank conflicts with `ncu`
+- 6. How It Fails: Six Production Memory-Access and Profiling Failure Modes
+- 7. Hands-On Lab: Verify Coalescing Sector Math, Vectorized Loads, Shared-Memory Tiling, Bank Padding, and Warp Shuffles
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in `MIGRATION_MAP.md`
+- Run here
+- The handbook's own synthesis
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 10.14 Occupancy, warp efficiency and instruction-level parallelism  [17376 words, ~86 min]  `part-10-gpu-cuda/14-occupancy-warp-efficiency-and-instruction-level-parallelism.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Profiling Bottlenecks, Warp Stall Reasons, and the Four Execution Regimes
+- 1.1 The two-tier profiling stack: Nsight Systems, Nsight Compute, and `torch.profiler`
+- 1.2 Decoding Nsight Compute's Warp Stall Reasons
+- Reading the stall breakdown in practice
+- 1.3 The Four Kernel Execution Regimes
+- 1.4 Checking the data pipeline and host-side waits
+- 1.5 Fixing each regime and re-profiling
+- 2. Occupancy Tuning: Hardware Limits, Eligible Warps, and Launch Bounds
+- 2.1 Theoretical vs. achieved occupancy across GPU architectures
+- 2.2 Controlling occupancy with `__launch_bounds__`, `-maxrregcount`, and the Occupancy API
+- 2.3 Reading achieved occupancy and its limiters
+- 2.4 Comparing throughput with the hardware peaks
+- 2.5 Block size, register pressure, and the launch configuration
+- 3. Improving Warp Execution Efficiency: Branch Divergence and Predication
+- 3.1 How SIMT branch divergence serializes warps
+- 3.2 Five techniques to eliminate warp divergence and Nsight Compute Table 8-3
+- 3.3 Warp intrinsics for work inside one warp
+- 3.4 Measuring divergence and the payoff from fixing it
+- 3.5 Restructuring conditions and splitting kernels
+- 3.6 Divergence in PyTorch code and fused kernels
+- 4. Exposing Instruction-Level Parallelism and Blackwell Dual-Issue Rules
+- 4.1 How ILP hides latency within a single warp and cuts required occupancy
+- 4.2 Blackwell's Unified `INT32`/`FP32` Core Dual-Issue Rule and Register Pressure
+- 4.3 Writing code that exposes ILP
+- 5. Commands and Profiling Workflows That Matter
+- 5.1 System timeline (`nsys` + `NVTX`), kernel stall analysis (`ncu`), and power-throttle check
+- 6. How It Fails: Six Production Occupancy, Warp-Divergence, and ILP Failure Modes
+- 7. Hands-On Lab: Verify SM Occupancy Limiters, `__launch_bounds__`, Nsight Compute Stall Regimes, Predication, and ILP Tables
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in `MIGRATION_MAP.md`
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 10.15 Kernel efficiency and arithmetic intensity  [12853 words, ~64 min]  `part-10-gpu-cuda/15-kernel-efficiency-and-arithmetic-intensity.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Multilevel Microtiling, Software Prefetching, and Thread Block Cluster Multicast
+- 1.1 Multilevel microtiling across DRAM, L2, SMEM, TMEM, and registers
+- 1.2 Tiling across SMs with Thread Block Clusters and TMA multicast
+- 2. Kernel Fusion, 2:4 Structured Sparsity, Recomputation, and PyTorch Intensity Levers
+- 2.1 Vertical and horizontal kernel fusion and the fusedL2Norm worked example
+- 2.2 2:4 structured sparsity and recomputation trade-offs
+- 2.3 PyTorch arithmetic intensity levers
+- 3. Feeding Tensor Cores with TMEM, TMA, Mixed Precision, and CUTLASS
+- 3.1 How reduced precision multiplies arithmetic intensity
+- 3.2 Staging tiles through SMEM and per-SM TMEM
+- 3.3 Using CUTLASS templates versus hand-tuned MMA kernels
+- 3.4 Overlapping copies with compute using the CUDA Pipeline API
+- 3.5 The profile, diagnose, and optimize loop
+- 4. Inline PTX and SASS Micro-Optimizations and DeepSeek DeepEP Cache Bypass
+- 4.1 Four legitimate use cases for inline PTX and Table 9-2
+- 4.2 Case study: DeepSeek DeepEP cache bypass on H800
+- 4.3 PTX and SASS: what they are and when to stop
+- 5. Commands and Configurations That Matter
+- 5.1 Inspect generated PTX and SASS and profile Roofline intensity
+- 5.2 Enable TF32, BF16 AMP, FlashAttention, 2:4 sparsity, and NestedTensor in PyTorch
+- 6. How It Fails: Six Production Arithmetic-Intensity Failure Modes
+- 7. Hands-On Lab: Verify fusedL2Norm Intensity, Cluster Multicast, TMEM Tile Budgets, CUTLASS, and Inline PTX
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Explicitly labelled inferences and verification notes
+
+### 10.16 Intra-kernel pipelining, warp specialization and thread block clusters  [14129 words, ~70 min]  `part-10-gpu-cuda/16-intra-kernel-pipelining-warp-specialization-and-thread-block-clusters.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Intra-Kernel Pipelining and Double/Triple Buffering with `<cuda/pipeline>`
+- 1.1 The two `<cuda/pipeline>` paradigms in Table 10-1
+- 1.2 Full cooperative double/triple-buffered GEMM and Table 10-2
+- 2. Warp Specialization and Producer-Consumer Pipelines
+- 2.1 Why warp specialization beats uniform double buffering
+- 2.2 Full 3-role `<cuda/pipeline>` kernel and the collective ordering rule
+- 2.3 PyTorch torch.compile, Triton, and scaled_dot_product_attention
+- 3. Persistent Kernels, Megakernels, and Cooperative Grid Synchronization
+- 3.1 Persistent kernels: eliminating launch overhead and uneven tail waves
+- 3.2 Megakernels for LLM inference
+- 3.3 Cooperative Groups and grid-wide synchronization
+- 4. Thread Block Clusters, DSMEM, Scratch Memory, Swizzling, and 2-SM CTA Pairs
+- 4.1 Hardware hierarchy: GPC coscheduling, NV-HBI logical GPC, and Thread Block Swizzling
+- 4.2 Distributed Shared Memory versus hardware Scratch Memory
+- 4.3 Launching and coordinating a Thread Block Cluster
+- 4.4 Thread Block Pairs, TMA multicast versus DSMEM, and Table 10-4
+- 4.5 Combining warp specialization with Thread Block Clusters and Table 10-5
+- 5. Commands and Configurations That Matter
+- 5.1 Compile and profile pipeline, cooperative grid, and cluster kernels
+- 5.2 Enable dynamic shared memory above 48 KB on Blackwell
+- 6. How It Fails: Six Intra-Kernel Pipelining, Cooperative Grid, and Cluster Failure Modes
+- 7. Hands-On Lab: Verify Pipeline Speedups, SMEM Budgets, Persistent Kernels, Cooperative Grids, and Cluster DSMEM
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Calculations and verification notes
+
+### 10.17 Inter-kernel pipelining, synchronization and stream-ordered allocation  [12341 words, ~61 min]  `part-10-gpu-cuda/17-inter-kernel-pipelining-synchronization-and-stream-ordered-allocation.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Overlapping Kernel Execution and 3-Way Data Transfers with CUDA Streams
+- 1.1 Concurrent kernel dispatch and host interleaving
+- 1.2 Three-way `H2D` / `Compute` / `D2H` overlap, hardware limits (`128` grids), and saturation contention
+- 2. The Stream-Ordered Memory Allocator (`cudaMallocAsync`) and LLM Scratch Pools
+- 2.1 Tuning the device memory pool (`cudaMemPoolSetAttribute` & `PYTORCH_ALLOC_CONF`)
+- 2.2 Three LLM workloads that depend on `cudaMallocAsync`
+- 3. Default vs. Explicit Streams, Per-Thread Default Streams (`PTDS`), Events, and Host Callbacks
+- 3.1 Comparing Legacy Default Stream (`stream 0`), `PTDS`, and Explicit Non-Blocking Streams
+- 3.2 Fine-grained cross-stream events (`Figures 11-5 to 11-7`) and the `cudaLaunchHostFunc` deadlock rule
+- 4. Two-Layer Pipelining: Intra-Kernel Warp Specialization + Inter-Kernel CUDA Streams + Thread Block Clusters
+- 4.1 Layering dual-pipeline 3-role warp specialization with CUDA streams (`warp_specialized_two_pipelines`)
+- 4.2 Combining Thread Block Clusters, Warp Specialization, and CUDA Streams (`launch_warp_specialized_cluster_pipeline_multistream`)
+- 5. Multi-GPU Compute, P2P (`cudaMemcpyPeerAsync`), `NCCL` Ring All-Reduce, `NIXL`, and `CUDA Graph` Stream Capture
+- 5.1 Multi-GPU pipeline parallelism (`cudaMemcpyPeerAsync`) and data parallelism (`NCCL` & `NIXL`)
+- 5.2 Capturing a multi-stream iteration into a `CUDA Graph` (`cudaStreamCaptureModeGlobal`)
+- 6. Programmatic Dependent Launch (`PDL`) and Combining `PDL` + Thread Block Clusters + Warp Specialization
+- 6.1 Overlapping Kernel B's prologue with Kernel A's epilogue in the same stream
+- 6.2 Combining `PDL` + Thread Block Clusters (`__cluster_dims__(2,1,1)`) + Warp Specialization (`primary_gemm` → `secondary_gemm`, `Figures 11-10 & 11-11`)
+- 7. Commands and Configurations That Matter
+- 7.1 Enable Per-Thread Default Streams (`PTDS`), compile `PDL` + Cluster kernels, and trace multi-stream overlap in `nsys` (untested here)
+- 8. How It Fails: Six Multi-Stream, Allocator, Callback, and `PDL` Failure Modes
+- 9. Hands-On Lab: Verify 3-Way Stream Overlap, Stream-Ordered Pools, Dual-Pipeline Warp Specialization, Cluster Streams, and `PDL`
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Verification and review notes
+
+### 10.18 Dynamic scheduling, CUDA graphs and device-initiated orchestration  [15593 words, ~77 min]  `part-10-gpu-cuda/18-dynamic-scheduling-cuda-graphs-and-device-initiated-orchestration.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Dynamic Scheduling with L2-Cache Atomic Work Queues
+- 1.1 L2-cache atomics, `atomic_transactions_per_request`, and batching (`batchSize = 8, 16, 32`)
+- 1.2 Warp-leader dynamic work queue (`uneven_static.cu` `200 ms` vs `uneven_dynamic.cu` `100 ms`)
+- 2. CUDA Graphs: Eliminating Host Submission Overhead in C++, PyTorch, and Inference Engines
+- 2.1 Why CPU launch overhead dominates LLM decode (`15 µs` launch vs `3 µs` kernel & `40,000` launches)
+- 2.2 Stream capture, PyTorch `torch.cuda.CUDAGraph`, static memory pools, and Table 12-1
+- 2.3 Dynamic Graph Updates (`cudaGraphExecUpdate`), Per-Slot Buffer Ownership, and Production Graph Caches
+- 3. Device-Initiated CUDA Graph Launches and Conditional Graph Nodes
+- 3.1 Device-side graph launch modes (`Fire-and-Forget`, `Tail`, and `Sibling`, `Figures 12-5 to 12-8`)
+- 3.2 Conditional Graph Nodes (`IF`, `IF/ELSE`, `WHILE`, `SWITCH`, `Figures 12-9 to 12-11`)
+- 4. Dynamic Parallelism (`DP`, `-rdc=true`) and Table 12-2
+- When dynamic parallelism is the right tool
+- Why the device-launched version is faster
+- 5. Multi-GPU Orchestration (`NVSHMEM` PGAS & Graph-Captured `NCCL`), Roofline Decisions, and the Volume 03 Production Profiling Funnel
+- Overlapping peer copies, NCCL, and CUDA-aware MPI
+- 5.1 Fine-grained GPU-to-GPU PGAS orchestration with `NVSHMEM`
+- 5.2 Capturing multi-GPU `NCCL` bucketed all-reduces in CUDA Graphs (`Figures 12-15 & 12-16`)
+- 5.3 Roofline-guided orchestration decisions and the Volume 03 Production Profiling Funnel
+- Reading the roofline before choosing a tool
+- Scaling to many GPUs
+- Key takeaways
+- 6. Commands and Configurations That Matter
+- 6.1 Compile Dynamic Parallelism (`-rdc=true`), NVSHMEM, and inspect L2 atomic contention & CUDA Graphs in `ncu` / `nsys` (untested here)
+- 7. How It Fails: Six Dynamic Scheduling, CUDA Graph, and Device Orchestration Failure Modes
+- 8. Hands-On Lab: Verify L2 Atomic Queues, CUDA Graph Tables, Decode Launch Overhead, Dynamic Parallelism, and Volume 03 Regressions
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Verification and review notes
+
+### 10.19 Triton language and compilers: OpenAI Triton, torch.compile, XLA  [11905 words, ~59 min]  `part-10-gpu-cuda/19-triton-language-and-compilers-openai-triton-torch-compile-xla.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The PyTorch 2.x Compiler Stack (`torch.compile`)
+- 1.1 Stage 1 — TorchDynamo: CPython bytecode capture, FX Graphs, guards, and compiler stances
+- 1.2 Stage 2 — AOTAutograd: Ahead-of-time joint forward and backward graph fusion
+- 1.3 Stage 3 — PrimTorch IR: Decomposing ATen operators into functional primitives
+- 1.4 Stage 4 — TorchInductor: Define-by-run loop IR, compilation modes, AOTInductor, TE, and FlexAttention
+- 2. Dynamic Shapes, Graph Breaks, Compiler Logging, and Numerical Determinism
+- 2.1 Dynamic shapes: SymPy, `mark_dynamic`, and the bucket-padding rule
+- 2.2 Diagnosing and eliminating graph breaks (`torch._dynamo.explain`, `torch.where`, `torch.cond`, and DDP/FSDP)
+- 2.3 Compiler logging, `TORCH_COMPILE_DEBUG=1`, `tlparse`, and numerical determinism
+- 3. OpenAI Triton: SPMD Programming, PyTorch Op Registration, Autotuning, TMA Descriptors, and Persistent GEMMs
+- 3.1 Triton's SPMD programming model: `vector_add_kernel` and `BLOCK_SIZE` vs `num_warps`
+- 3.2 Registering custom Triton kernels with PyTorch (`@triton_op`, `wrap_triton`, and `register_autograd`)
+- 3.3 Autotuning (`@triton.autotune`), Warp Specialization, TMA Descriptors, and Persistent GEMM (`matmul_kernel_persistent`)
+- 4. Profiling with Triton Proton and the PyTorch XLA (OpenXLA) Backend
+- 4.1 Triton Proton profiler (`8,192 × 8,192 × 512` GEMM benchmark) and portable cache hints
+- 4.2 PyTorch XLA (OpenXLA) vs. TorchInductor
+- 5. Commands and Configurations That Matter
+- 5.1 Inspect `torch.compile` graph breaks, generated Triton/PTX code, `tlparse` traces, and bitwise cuBLAS determinism
+- 6. How It Fails: Six `torch.compile`, Triton, and OpenXLA Failure Modes
+- 7. Hands-On Lab: Verify the PyTorch Compiler Stack, `dynamo.explain`, `TORCH_LOGS`, Triton SPMD & TMA Rules, and Proton Benchmarks
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Verification and review notes
+
+### 10.20 Profiling tools: Nsight Systems, Nsight Compute, PyTorch profiler  [11618 words, ~58 min]  `part-10-gpu-cuda/20-profiling-tools-nsight-systems-nsight-compute-pytorch-profiler.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The Profiling Ecosystem, NVTX Markers, and the 4-Layer Evidence Ladder
+- 1.1 The 4-Layer Evidence Ladder and NVTX Cross-Tool Correlation
+- 1.2 The 9 profiling and visualization tools in Table 13-1
+- 2. Four-Tool Walkthrough: Profiling a 64-Expert Mixture-of-Experts Training Step
+- 2.1 Step 1 — Operator-level attribution with `torch.profiler`
+- 2.2 Step 2 — System timeline and NVTX GPU projection with Nsight Systems
+- 2.3 Step 3 — Kernel Roofline analysis with Nsight Compute (`ncu`)
+- 2.4 Step 4 — Host CPU and Grace-Blackwell NVLink-C2C PMU profiling with Linux `perf`
+- 3. Applying Compiler, Stream, CUDA Graph Tree, and Memory Allocator Optimizations
+- 3.1 `torch.compile` MoE benchmark, Table 13-5 modes, Mega-Cache, and Regional Compilation
+- 3.2 Overlapping `transfer_stream` and `compute_stream`, CUDA Graph Trees, and the FireworksAI decreasing-batch pool
+- 3.3 Tuning `PYTORCH_ALLOC_CONF`, `SuperOffload` (`GraceAdam`), Pluggable NCCL `MemPool`, UCX, and Symmetric Memory
+- 4. Multi-GPU Scaling (`FSDP`, `TorchTitan`, `SimpleFSDP`), HTA, CI (`TorchBench` & PyTorch HUD), and MLPerf Logging
+- 4.1 DDP, FSDP, TorchTitan, AsyncTP, AutoParallel, and SimpleFSDP
+- 4.2 Continuous Benchmarking (TorchBench, PyTorch HUD `>= 5%` rule) and MLPerf Logging
+- 5. Commands and Configurations That Matter
+- 5.1 End-to-end profiling commands (`nsys`, `ncu`, `perf`, `PYTORCH_ALLOC_CONF`, `UCX`, `TorchBench`)
+- 6. How It Fails: Six Profiling, Allocator, and Distributed Scaling Failure Modes
+- 7. Hands-On Lab: Verify the Evidence Ladder, MoE Profiler Tables 13-2 to 13-4, Grace `perf` Counters, Allocator Rounding, and MLPerf Table 13-6
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Verification and review notes
+
+### 10.21 GPU health: DCGM, ECC, row remapping and Xid  [13406 words, ~67 min]  `part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. NVIDIA Data Center GPU Manager (DCGM 4): Architecture, Watches, Fields, and Diagnostics
+- 1.1 Standalone vs. embedded architecture and shared watches
+- 1.2 Core DCGM fields, canonical field renames, and production alert thresholds
+- 1.3 Active hardware validation: `dcgmi diag` levels 1 through 4
+- 2. ECC Memory, Thermal Correlation, Page Retirement, and Hardware Row Remapping
+- 2.1 Single-Bit vs. Double-Bit ECC counters across Volatile and Aggregate scopes
+- 2.2 Distinguishing thermally driven SBE spikes from progressive silicon degradation
+- 2.3 Legacy Page Retirement vs. Hardware Row Remapping across 640 banks
+- 3. The Authoritative 15-Code Xid Encyclopedia and 3-Tier Triage Framework
+- 3.1 The 15-code Xid reference table
+- 3.2 Reading multi-Xid cascades and asymmetric Xid 74 NVLink counters
+- 4. GPU Sharing Fault Isolation, Safe Node Draining, and Cluster Health SLOs
+- 4.1 Comparing memory and fault isolation across GPU sharing modes
+- 4.2 Safe GPU node draining and Cluster Health SLIs, SLOs, and Error Budgets
+- 5. Commands and Configurations That Matter
+- 5.1 Install and verify DCGM 4, run `dcgmi diag`, inspect ECC & Row Remapper, and triage Xids
+- 6. How It Fails: Six DCGM, ECC, Row Remapper, MIG, and Xid Operational Failure Modes
+- 7. Hands-On Lab: Verify DCGM Configs, the 15-Code Xid Triage Engine, ECC Thermal Correlation, 640-Bank Row Remapper, and Cluster SLO Error Budgets
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in `MIGRATION_MAP.md`
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 10.22 GPU troubleshooting scenarios  [12663 words, ~63 min]  `part-10-gpu-cuda/22-gpu-troubleshooting-scenarios.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Runbook Family 1: Missing GPU Memory, Zombie Contexts, DKMS, and Container Visibility
+- 1.1 The four causes of missing or unavailable GPU memory
+- 1.2 Kernel patch DKMS breaks, missing Enroot hooks, and systemd boot races
+- 2. Runbook Family 2: Thermal Throttling, Fan Rise Rates, PSU Brownouts, and DVFS Clock Instability
+- 2.1 Separating thermal throttling from power limiting
+- 2.2 Fan degradation, temperature rise rate, and the 2h 35m postmortem
+- 2.3 Power supply brownouts, 12V voltage sag, and PSU capacity sizing
+- 2.4 DVFS clock instability at flat 65°C temperature
+- 3. Runbook Family 3: PCIe Down-Training, NCCL Stragglers, NVLink Degradation, and ECC Storms
+- 3.1 PCIe link down-training and DMA faults
+- 3.2 Hunting the single straggler behind an NCCL timeout
+- 3.3 ECC storm escalation math and automated job-stop thresholds
+- 4. Runbook Family 4: Cross-Layer Diagnosis — When Metrics Lie
+- 4.1 Multi-failure evidence priority and the 7-stage synchronous breakdown
+- 4.2 Five classic "lying metrics" scenarios and Profiler Heisenbugs
+- 5. Commands and Configurations That Matter
+- 5.1 Multi-layer triage commands for MIG, PERFORMANCE bitmask, PCIe retrain, NCCL stragglers, and SELinux / DKMS
+- 6. How It Fails: Six Classic Troubleshooting Misdiagnoses and Traps
+- 7. Hands-On Lab: Verify All 12 Runbook Troubleshooting Scenarios
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in `MIGRATION_MAP.md`
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+## Vol part-11-gpu-kubernetes (34 chapters)
+
+
+### 11.1 Why Kubernetes needs a GPU platform layer  [11263 words, ~56 min]  `part-11-gpu-kubernetes/01-why-kubernetes-needs-a-gpu-platform-layer.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. CPU-Era Kubernetes vs. the GPU Operating Contract: The Two-Path Model
+- 1.1 Why kubelet understands CPUs and RAM natively—but not GPUs
+- 1.2 The Two-Path Agreement Model: Bound? vs. CudaInit?
+- 1.3 The accelerator device-plugin ecosystem
+- 2. Why an Integer Count (`nvidia.com/gpu: 1`) Is Not a GPU Service
+- 2.1 The 6-layer platform responsibility and false-positive table
+- 2.2 Worked math: Pool fragmentation
+- 2.3 Worked math: Whole-GPU memory waste, 70B quantization, and GB vs. GiB
+- 3. The GPU Software Lifecycle, Combinatorial Qualification, and Operator Ownership Models
+- 3.1 Why manual configuration fails at fleet scale and how to bound the qualification matrix
+- 3.2 What the NVIDIA GPU Operator reconciles
+- 3.3 Choosing an ownership model: Host-Managed vs. Operator-Managed vs. Hybrid
+- 4. The 5-Gate Node Acceptance Protocol and Staged Rollout Discipline
+- 4.1 Why Node Ready is never a promotion condition
+- 4.2 The 5-Gate Automated Node Acceptance Checklist
+- 5. Commands and Configurations That Matter
+- 5.1 Inspect the Two-Path Evidence Chain and run the minimal CUDA acceptance check (untested here)
+- 6. How It Fails: Six GPU Platform Layer Failure Modes
+- 7. Hands-On Lab: Verify the Two-Path Triage Engine, 32-GPU Pool Fragmentation, 48-to-8 Qualification Matrix, and Whole-GPU Waste Math
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.2 Device plugin, container toolkit, CDI and runtime classes  [11555 words, ~57 min]  `part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The host kernel/user-space split and Linux container isolation
+- 2. Intermediate: Evolution of GPU containerization — Toolkit, RuntimeClass, and CDI
+- 3. Advanced: The Kubernetes Device Plugin gRPC contract and resource model
+- Commands and configurations that matter
+- 1. Verifying the host driver and character devices on a worker node
+- 2. Inspecting CDI specifications and `crictl` container device injection
+- 3. Configuring RuntimeClass, Device Plugin flags, and GPU Operator toolkit/plugin values
+- 4. Running a one-line Kubernetes GPU validation Pod
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking simulation lab (tested here)
+- Step 2: Live GKE / Kubernetes node evidence collection runbook (untested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.3 Node Feature Discovery and GPU Feature Discovery  [10572 words, ~52 min]  `part-11-gpu-kubernetes/03-node-feature-discovery-and-gpu-feature-discovery.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Node Feature Discovery (NFD) and GPU Feature Discovery (GFD)
+- 2. Intermediate: Label-based scheduling patterns (nodeSelector, nodeAffinity, and taints)
+- 3. Advanced: Facts, assertions, service classes, and discovery drift
+- Commands and configurations that matter
+- 1. Deploying NFD and inspecting both NFD and GFD labels on a GPU node
+- 2. Verifying NFD worker probe freshness in logs
+- 3. Auditing label consistency across a uniform node pool
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking NFD and GFD simulation lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+
+### 11.4 GPU Operator architecture and operands  [10639 words, ~53 min]  `part-11-gpu-kubernetes/04-gpu-operator-architecture-and-operands.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The Kubernetes Operator pattern, ClusterPolicy, and node operand targeting
+- 2. Intermediate: Operand dependency ordering, initContainers, and nvidia-operator-validator
+- 3. Advanced: Driver containers, ownership models, rollout blast radius, and Network Operator handoff
+- Commands and configurations that matter
+- 1. Installing a pinned GPU Operator release with Helm (Lab 02 and bcm11-containerization)
+- 2. Configuring ClusterPolicy for sharing, MIG, and driver upgrade policy
+- 3. Validating GPU Operator operands, nvidia-operator-validator init containers, and Network Operator RDMA
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking GPU Operator architecture lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+
+### 11.5 GPU Operator installation, configuration and upgrades  [10208 words, ~51 min]  `part-11-gpu-kubernetes/05-gpu-operator-installation-configuration-and-upgrades.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Defining the platform boundary and treating Helm values as a governed interface
+- 2. Intermediate: The seven-criterion production acceptance contract
+- 3. Advanced: Staged canary upgrades, progressive batch sizing, and why Helm rollback is not enough
+- Commands and configurations that matter
+- 1. Archiving pre-upgrade baseline and rollback artifacts
+- 2. Quarantining and draining the canary node safely
+- 3. Executing the version-pinned canary upgrade and post-upgrade validation
+- 4. GitOps rendering and pre-apply manifest diffing
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking installation and upgrade lab
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.6 Scheduling GPUs: requests, Topology Manager, CPU and NUMA alignment  [11699 words, ~58 min]  `part-11-gpu-kubernetes/06-scheduling-gpus-requests-topology-manager-cpu-and-numa-alignment.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The four placement questions and the physical motherboard data path
+- 2. Intermediate: Kubernetes QoS classes, static CPU Manager, and Topology Manager
+- 3. Advanced: OS tuning, PyTorch DataLoader NUMA binding, MIG single-node constraints, and service classes
+- Commands and configurations that matter
+- 1. Configuring kubelet for static CPU Manager and single-numa-node Topology Manager
+- 2. Deploying a Guaranteed QoS Pod that triggers static CPU pinning and single-numa-node
+- 3. Diagnosing Pending Pods and slow running Pods
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking GPU scheduling and topology lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.7 Multi-node jobs: why a pod cannot span nodes, and gang scheduling concepts  [10912 words, ~54 min]  `part-11-gpu-kubernetes/07-multi-node-jobs-why-a-pod-cannot-span-nodes-and-gang-scheduling-concep.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Why a Pod cannot span nodes and why microservices scheduling breaks batch AI
+- 2. Intermediate: Gang scheduling architectures, bin packing, and the Descheduler
+- 3. Advanced: Head-of-line blocking, backfill, thundering herds, Slurm/Slinky, storage, and security
+- Commands and configurations that matter
+- 1. Configuring kube-scheduler for GPU Bin Packing
+- 2. Defining a Coscheduling PodGroup and protecting it with a PodDisruptionBudget
+- 3. Volcano Gang Job and Kubeflow MPIJob
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking multi-node and gang scheduling lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.8 Kueue, Volcano and scheduler plugins  [10525 words, ~52 min]  `part-11-gpu-kubernetes/08-kueue-volcano-and-scheduler-plugins.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The Kubernetes Scheduling Framework and the Coscheduling PodGroup plugin
+- 2. Intermediate: Kueue architecture in depth
+- 3. Advanced: Volcano batch scheduling, layered architectures, and control-plane protection
+- Commands and configurations that matter
+- 1. Defining Kueue ResourceFlavors, ClusterQueue, and LocalQueue
+- 2. Configuring Kueue Cohort Borrowing, Priority Preemption, and APF PriorityLevelConfiguration
+- 3. Inspecting Kueue Workload admission status and taking an etcd snapshot
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking Kueue, Volcano, and scheduler plugins lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.9 JobSet, LeaderWorkerSet, PyTorchJob and the MPI Operator  [10070 words, ~50 min]  `part-11-gpu-kubernetes/09-jobset-leaderworkerset-pytorchjob-and-the-mpi-operator.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Why native Job and Deployment primitives fall short, and how PyTorchJob works
+- 2. Intermediate: Kubeflow Trainer v2, JobSet, and PEFT/LoRA
+- 3. Advanced: LeaderWorkerSet for multi-node inference and the MPIJob Operator
+- Commands and configurations that matter
+- 1. Installing Kubeflow Trainer and defining a ClusterTrainingRuntime
+- 2. Submitting an eight-node LoRA TrainJob via the Kubeflow Python SDK
+- 3. Deploying MPIJob to run multi-node `all_reduce_perf`
+- 4. Deploying LeaderWorkerSet for sharded multi-node LLM inference
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking workload operators lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.10 Secondary networks: Multus, SR-IOV device plugin and RDMA device plugin  [10018 words, ~50 min]  `part-11-gpu-kubernetes/10-secondary-networks-multus-sr-iov-device-plugin-and-rdma-device-plugin.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Primary Pod networking and the GPUDirect RDMA data path
+- 2. Intermediate: Multus CNI, Whereabouts IPAM, and the 8-NIC HGX Rail Architecture
+- 3. Advanced: RDMA Shared Device Plugin vs SR-IOV Network Device Plugin, PCIe ACS, and NCCL tuning
+- Commands and configurations that matter
+- 1. Defining NetworkAttachmentDefinitions for InfiniBand and RoCE SR-IOV
+- 2. Configuring a PyTorchJob with Multus, RDMA HCAs, IPC_LOCK, and NCCL variables
+- 3. Three-step verification of secondary RDMA interfaces inside a running Pod
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking Multus, SR-IOV, and RDMA device plugins lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.11 NVIDIA Network Operator  [10301 words, ~51 min]  `part-11-gpu-kubernetes/11-nvidia-network-operator.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The NVIDIA Network Operator architecture and its five operands
+- 2. Intermediate: InfiniBand vs Ethernet (RoCEv2), packet framing, and fabric validation
+- 3. Advanced: Storage fabric integration, GPUDirect Storage, and CSI drivers
+- Commands and configurations that matter
+- 1. Deploying the NVIDIA Network Operator via Helm
+- 2. Configuring Lossless RoCEv2 Switch Ports and Capturing Congestion Packets
+- 3. Upgrading the Network Operator and checking NicClusterPolicy
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking NVIDIA Network Operator lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Added in the Opus rework (2026-11-12)
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.12 Dynamic Resource Allocation (DRA)  [9880 words, ~49 min]  `part-11-gpu-kubernetes/12-dynamic-resource-allocation-dra.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Dynamic Resource Allocation architecture and the CSI analogy
+- 2. Intermediate: Control-plane API machinery (`ResourceVersion` OCC) and Kubelet node lifecycle (`PLEG`, QoS, and `CSI`)
+- 3. Advanced: Platform guardrails (Kyverno, Karpenter, GitOps) and the 5-step upgrade sequence
+- Commands and configurations that matter
+- 1. Defining a `ResourceClaimTemplate` and `Deployment` with Structured Parameters
+- 2. Using the Stable Kubernetes `1.34` (`resource.k8s.io/v1`) `ResourceClaimTemplate` API
+- 3. Inspecting DRA `ResourceSlice`s, `ResourceClaim`s, and cleaning up orphaned CRI sandboxes
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking DRA and node operations lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.13 KAI Scheduler: why default scheduling is not enough  [10691 words, ~53 min]  `part-11-gpu-kubernetes/13-kai-scheduler-why-default-scheduling-is-not-enough.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The six failure modes of default Kubernetes scheduling on shared GPU clusters
+- 2. Intermediate: What is the NVIDIA KAI Scheduler?
+- 3. Advanced: Fair-share deficit mathematics, graceful SIGTERM checkpoint preemption, and Run:ai operations
+- Commands and configurations that matter
+- 1. Defining a KAI Scheduler Project and gang-scheduled PyTorchJob
+- 2. Implementing a 30-Second SIGTERM Checkpoint Handler in PyTorch
+- 3. Verifying and managing the Run:ai and KAI installation on BCM 11
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking KAI Scheduler motivation and fair-share lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.14 KAI Scheduler architecture and resources  [10237 words, ~51 min]  `part-11-gpu-kubernetes/14-kai-scheduler-architecture-and-resources.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The five control-plane microservices of the NVIDIA KAI Scheduler
+- 2. Intermediate: Deep dive into KAI Scheduler Custom Resource Definitions
+- 3. Advanced: Inside the KAI session pipeline and the 8-GPU, 20-job multi-class packing benchmark
+- Commands and configurations that matter
+- 1. Defining PriorityClasses, KAI Queues, and a 60% Scoped Quota
+- 2. Inspecting KAI PodGroups, Queues, BindRequests, and Control-Plane Pods
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking KAI Scheduler architecture and resources lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.15 KAI queues, quotas and fair sharing  [9966 words, ~49 min]  `part-11-gpu-kubernetes/15-kai-queues-quotas-and-fair-sharing.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Hierarchical queues and the three KAI quota parameters
+- 2. Intermediate: Hierarchical Fair Queuing mathematics and the 32-GPU research cluster
+- 3. Advanced: Capacity planning, five operational reserves, and chargeback economics
+- 4. Continuous governance: demand forecasting, idle reclamation, and rate-card reviews
+- Commands and configurations that matter
+- 1. Defining a two-level KAI Department-to-Project Queue hierarchy
+- 2. Configuring Slurm equivalent fair-share QOS and accounts
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking KAI queues, quotas, and fair-sharing lab (tested here)
+- Exercises
+- Checkpoint questions
+- Checkpoint questions
+- Sources and review notes
+
+### 11.16 KAI gang scheduling and topology-aware placement  [10079 words, ~50 min]  `part-11-gpu-kubernetes/16-kai-gang-scheduling-and-topology-aware-placement.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: How parallelism strategies dictate gang and topology requirements
+- 2. Intermediate: How KAI Scheduler integrates gang scheduling with hierarchical Topology
+- 3. Advanced: Host placement plans and cluster-scale throughput math
+- 4. Sub-group topology rules and post-commissioning drift detection
+- Commands and configurations that matter
+- 1. Inspecting host GPU, NUMA, PCIe, and NVLink sub-link topology
+- 2. Defining KAI Scheduler Topology and workload placement profiles
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking KAI gang scheduling and topology lab
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+
+### 11.17 KAI GPU sharing and fractions  [9939 words, ~49 min]  `part-11-gpu-kubernetes/17-kai-gpu-sharing-and-fractions.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: How KAI Scheduler implements fractional GPUs
+- 2. Intermediate: Measuring the time-slicing concurrency envelope
+- 3. Advanced: Hardware-isolated sharing with MIG and the four-way decision tree
+- Commands and configurations that matter
+- 1. Submitting fractional GPU Pods to KAI Scheduler
+- 2. Configuring and inspecting MIG partitions on an H100
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking KAI GPU sharing and fractions lab
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+
+### 11.18 KAI operations and troubleshooting  [10357 words, ~51 min]  `part-11-gpu-kubernetes/18-kai-operations-and-troubleshooting.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The six-layer triage model for KAI Scheduler and shared GPUs
+- 2. Intermediate: Observability, telemetry contracts, and service-class SLIs and SLOs
+- 3. Advanced: Production incident playbooks and AI Game Days
+- Commands and configurations that matter
+- 1. Preserving the read-only scene bundle
+- 2. Bounded diagnostic Pod and safe ResourceQuota fault injection
+- 3. Time-correlated host contention triage
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking KAI operations and troubleshooting lab
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+
+### 11.19 The Run:ai platform view  [11482 words, ~57 min]  `part-11-gpu-kubernetes/19-the-run-ai-platform-view.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: How the Run:ai Platform relates to KAI Scheduler, MIG, and Time-Slicing
+- 2. Intermediate: Multi-tenant security, threat modeling, and fairness governance
+- 3. Advanced: End-to-end system design — Research GPU cluster and the 1,024-GPU AI Factory
+- Commands and configurations that matter
+- 1. Declarative Department and Project Hierarchy in Run:ai and KAI Scheduler
+- 2. Verifying Multi-Tenant MIG Process Isolation and Prometheus Scoping
+- 3. Graceful SIGTERM Checkpoint Handler for Preemptible Research Jobs
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking Run:ai platform view and AI Factory design lab
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.20 Scheduler comparison guide: KAI, Kueue, Volcano, YuniKorn and Slurm  [10185 words, ~50 min]  `part-11-gpu-kubernetes/20-scheduler-comparison-guide-kai-kueue-volcano-yunikorn-and-slurm.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The 6-scheduler taxonomy and complete feature comparison
+- 2. Intermediate: Apache YuniKorn, hybrid Kueue composition, and Slurm containers
+- 3. Advanced: Cluster MTBF, 3-tier Slurm health gating, SuperPOD sizing, and BCM Auto Scaler
+- Commands and configurations that matter
+- 1. Slurm Topology, cons_tres, and 3-Tier Health Gate Configuration
+- 2. Multi-Node PyTorch Launch on Slurm via Pyxis and Enroot
+- 3. Composing Kueue Job Admission with NVIDIA KAI Scheduler Pod Placement
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking scheduler comparison guide lab
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.21 PCIe, IOMMU, VFIO and device passthrough  [11481 words, ~57 min]  `part-11-gpu-kubernetes/21-pcie-iommu-vfio-and-device-passthrough.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: PCIe generations, switches, NUMA boundaries, and the IOMMU DMA firewall
+- 2. Intermediate: Hardware virtualization internals
+- 3. Advanced: Comparing Hardware VMs, OS Containers, and Lightweight MicroVMs
+- Commands and configurations that matter
+- 1. Auditing PCIe and NUMA Topology and IOMMU Groups on a GPU Host
+- 2. Unbinding a GPU from Host Drivers and Binding its IOMMU Group to `vfio-pci`
+- 3. Observing KVM VM-EXITs and Container Namespace and Cgroup Limits
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking PCIe, IOMMU, VFIO and passthrough lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.22 SR-IOV for NICs and GPUs  [10224 words, ~51 min]  `part-11-gpu-kubernetes/22-sr-iov-for-nics-and-gpus.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: How SR-IOV works on PCIe for ConnectX NICs and NVIDIA GPUs
+- 2. Intermediate: Operating SR-IOV in Kubernetes and Brendan Gregg's observability and CNI rules
+- 3. Advanced: Zero-trust AI defense-in-depth and forensic incident response on SR-IOV and GPU nodes
+- Commands and configurations that matter
+- 1. Enabling SR-IOV Virtual Functions on a ConnectX-7 NIC and an NVIDIA H100 GPU
+- 2. Forensic Containment Quarantine NetworkPolicy
+- 3. Checking Host vs Guest vGPU State
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking SR-IOV for NICs and GPUs lab
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.23 NVIDIA vGPU: architecture, profiles and licensing  [10006 words, ~50 min]  `part-11-gpu-kubernetes/23-nvidia-vgpu-architecture-profiles-and-licensing.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The GPU sharing contract and the two-path NVIDIA vGPU architecture
+- 2. Intermediate: vGPU profiles, Time-Sliced vs MIG-Backed vGPU, and the 7-state device lifecycle
+- 3. Advanced: The 8-step vGPU maintenance runbook and the validation lab suite
+- Commands and configurations that matter
+- 1. Host vs Guest NVIDIA vGPU Diagnostic Workflow
+- 2. Controlled MIG Creation, Validation, and Ordered Rollback
+- 3. Controlled Time-Slicing ClusterPolicy Patch and Ordered Rollback
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking NVIDIA vGPU and validation lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.24 MIG in depth  [10907 words, ~54 min]  `part-11-gpu-kubernetes/24-mig-in-depth.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: the two-layer MIG hierarchy and the six-layer validation chain
+- 2. Intermediate: profile geometry, sizing from concurrent peak, and a fleet plan
+- 3. Advanced: DCGM telemetry, safe node draining, known-good validation and fault reading
+- Commands and configurations that matter
+- 1. Declarative Kubernetes MIG Configuration
+- 2. Node drain that proves no client holds the GPU
+- 3. A MIG node pool on GKE
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking MIG in depth lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Corrections made in the 2026-11-12 rework
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.25 Time-slicing, MPS and oversubscription  [10367 words, ~51 min]  `part-11-gpu-kubernetes/25-time-slicing-mps-and-oversubscription.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Time-slicing and CUDA Multi-Process Service
+- 2. Intermediate: Benchmarking the replica envelope and diagnosing the MPS Ghost OOM
+- 3. Advanced: Production oversubscription governance, namespace guards, and the operating policy
+- Commands and configurations that matter
+- 1. Device-plugin time-slicing ConfigMap with explicit shared naming
+- 2. Enabling CUDA Multi-Process Service with thread and memory caps
+- 3. Live contention triage on a time-sliced node
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking time-slicing, MPS and oversubscription lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.26 Choosing a GPU sharing model  [11317 words, ~56 min]  `part-11-gpu-kubernetes/26-choosing-a-gpu-sharing-model.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: The five-way GPU sharing decision tree and active-mechanism diagnostics
+- 2. Intermediate: The five-layer capacity chain, the node sizing formula, and allocation-contract chargeback
+- 3. Advanced: The cross-functional decision workshop, four-service catalog, and class migration discipline
+- Commands and configurations that matter
+- 1. Live Incident Triage: Identifying the Active Sharing Mechanism
+- 2. Comparative Sharing Benchmark Job Manifest
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking GPU sharing model selection and capacity lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.27 Virtual machines on Kubernetes: KubeVirt, Kata and GPU passthrough  [9997 words, ~49 min]  `part-11-gpu-kubernetes/27-virtual-machines-on-kubernetes-kubevirt-kata-and-gpu-passthrough.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: From OCI/CRI containers to Kata MicroVMs and KubeVirt VMs
+- 2. Intermediate: Operating KubeVirt and GPU Operator Sandboxed Workloads
+- 3. Advanced: The multi-tenant GPU threat matrix and Confidential Computing VMs
+- Commands and configurations that matter
+- 1. Kubernetes RuntimeClass and Pod Manifest for Kata Containers
+- 2. Enabling Sandboxed Workloads in GPU Operator and Launching a KubeVirt GPU VM
+- 3. Inspecting CRI Containers and Kata QEMU Processes on a Worker Node
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking KubeVirt, Kata and GPU passthrough lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.28 DPUs, BlueField and DOCA  [9385 words, ~46 min]  `part-11-gpu-kubernetes/28-dpus-bluefield-and-doca.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: BlueField DPU architecture, SKU operating modes, and the fast vs slow path
+- 2. Intermediate: Zero-trust security offload and forensic containment
+- 3. Advanced: The 3-layer DPU outage triage model and 6-step lifecycle sequence
+- Commands and configurations that matter
+- 1. Three-Layer DPU Incident Triage Commands
+- 2. Fleet-Wide DPU Image Version Drift Audit via Out-of-Band Management
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking DPUs, BlueField and DOCA lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.29 Multi-tenancy, quotas, fault tolerance and health on GPU clusters  [10996 words, ~54 min]  `part-11-gpu-kubernetes/29-multi-tenancy-quotas-fault-tolerance-and-health-on-gpu-clusters.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Three-pillar multi-tenancy, DevSecOps identity, and FinOps reapers
+- 2. Intermediate: Zero-downtime rolling upgrades, Thanos observability at scale, and petabyte DR
+- 3. Advanced: The Universal AI SRE Diagnostic Matrix
+- Commands and configurations that matter
+- 1. Scanning RDMA Hardware Sequence-Error Counters Across a Node
+- 2. Least-Privilege AWS S3 Access via IAM Roles for Service Accounts
+- 3. Prometheus Recording Rule and FinOps Zombie Reaper Query
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking multi-tenancy, FinOps, fault tolerance and health lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.30 Lab: multi-node GPU Kubernetes on GKE and Nebius  [11308 words, ~56 min]  `part-11-gpu-kubernetes/30-lab-multi-node-gpu-kubernetes-on-gke-and-nebius.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- Concepts: basics to intermediate to advanced
+- 1. Basics: Phase 1 Nebius GPU VM verification and Phase 2 multi-node Kubernetes baseline
+- 2. Intermediate: Phase 3 Terraform provisioning and autoscaling with HPA, VPA, KEDA, and Karpenter
+- 3. Advanced: Phase 4 cloud networking best practices for multi-node GenAI on Kubernetes
+- Commands and configurations that matter
+- 1. Phase 1: Nebius L40S and Cloud GPU VM 4-Layer Verification Script
+- 2. Phase 2: Provisioning GPU Node Pools on GKE and Nebius and Validating GPU Operator
+- 3. Phase 3 and 4: KEDA Dual-Trigger Autoscaler, Karpenter GPU NodePool, and Chatbot NetworkPolicies
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking multi-node GPU Kubernetes capstone lab (tested here)
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Related source files mapped in MIGRATION_MAP.md
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 11.31 NVIDIA's open-source AI factory Kubernetes stack: NVKE, Run:ai, KAI, Grove, NVSentinel and AICR  [22394 words, ~111 min]  `part-11-gpu-kubernetes/31-nvidias-open-source-ai-factory-kubernetes-stack.md`
+- Read this first
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Seven jobs, seven projects
+- 2. What was open-sourced, and when
+- 3. NVKE and NVKR: a managed Kubernetes service on your own GPUs
+- How it is built
+- Where it sits in the stack
+- What managed means here
+- The cluster request
+- Preview limits
+- Running a management plane as an SRE
+- 4. Run:ai: open source against commercial, and where KAI sits
+- 5. Grove and Dynamo: one unit of inference
+- 6. AICR: configure with a pinned recipe
+- 7. NVCRE: certify under real load
+- 8. NVSentinel: operate and heal
+- 9. How the pieces fit in one lifecycle
+- 10. What to use when
+- 11. Is it production ready?
+- 12. SRE failure modes and what to monitor
+- 13. Hands-on lab
+- Step 1: Clone the upstream repositories
+- Step 2: Validate the manifests against the CRDs
+- Step 2b: Validate the NVKE cluster spec
+- Step 3: Render the Helm charts
+- Step 4: Run the tests
+- Step 5: Not run, needs a cluster
+- 14. How to answer out loud
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Sources
+- Cross-references
+- Migrated from nvidia-devops
+- Explicitly labelled inferences
+- Not verified or not run
+- Verification log
+
+### 11.32 NVKE in depth, part 1: what NVIDIA Kubernetes Engine is, how it is built, its API and its cluster spec  [9577 words, ~47 min]  `part-11-gpu-kubernetes/32-nvke-nvidia-kubernetes-engine-in-depth.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The problem: a Kubernetes service you do not have to invent
+- 2. What ships: the repository family and its versions
+- 3. Architecture: one process, three engines
+- 3.1 The outbox: why the API never calls Temporal
+- 3.2 Where the control plane runs
+- 3.3 Identity and trust
+- 3.4 What state exists and where
+- 3.5 The proposed next architecture
+- 4. How a cluster request becomes a running cluster
+- 5. The REST API
+- 5.1 Conventions
+- 5.2 Error model
+- 5.3 Authentication status
+- 5.4 Endpoint catalog
+- 5.5 A real exchange: create, list, get
+- 6. The cluster specification
+- 6.1 Top-level fields
+- 6.2 Control plane configuration
+- 6.3 Node pool fields
+- 6.4 Annotated example: minimal cluster
+- 6.5 Annotated example: HA cluster with a GPU pool
+- 6.6 Adding a pool, and the patch bodies
+- 6.7 A linter for the mistakes
+- 7. Hands-on lab: run the real controller on your laptop
+- Step 1. Start the dependencies
+- Step 2. Install only the CRDs the controller needs
+- Step 3. Build and run the controller
+- Step 4. Check health, then create, list and delete
+- Step 6. Run the self-checking lab
+- Step 5. Clean up
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Sources
+- Cross-references
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified or not run
+- Verification log
+
+### 11.33 NVKE in depth, part 2: installation, NVKR builds, NICo and CAPNICo, and the cluster lifecycle runbooks  [9667 words, ~48 min]  `part-11-gpu-kubernetes/33-nvke-in-depth-part-2-installation-nvkr-and-cluster-lifecycle.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The installation path in seven steps
+- 1.1 What you need
+- 1.2 Ports
+- 1.2.1 Decisions you cannot undo
+- 2. NVKR: where the artifacts come from
+- 2.1 Definition, Run and Release
+- 2.2 A Definition, validated
+- 2.3 What NVKR can build for NVKE
+- 2.4 Browsing, pulling and verifying a release
+- 3. Node images and releases
+- 3.1 Build and host
+- 3.2 Three release objects
+- 4. Bootstrap: forming the management cluster
+- 4.1 The site spec
+- 4.2 Fields that matter
+- 5. Installing the management plane
+- 5.1 Inputs
+- 5.2 The sequence
+- 5.3 Admitting networks
+- 5.4 Verifying the install
+- 5.5 Rendering the controller chart
+- 6. NICo and CAPNICo
+- 6.1 NICo in two paragraphs
+- 6.2 CAPNICo
+- 6.3 Credentials
+- 6.4 Repair and reboot through annotations
+- 7. Lifecycle runbooks
+- 7.1 Create a cluster
+- 7.2 Add a pool and scale
+- 7.3 Roll a Kubernetes upgrade
+- 7.4 Replace a failed GPU node
+- 7.5 Delete a cluster
+- 8. Hands-on lab: validate everything you can without hardware
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Sources
+- Cross-references
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified or not run
+- Verification log
+
+### 11.34 NVKE in depth, part 3: operations, security posture, failure modes, comparison and how to answer out loud  [7573 words, ~37 min]  `part-11-gpu-kubernetes/34-nvke-in-depth-part-3-operations-security-failure-modes-and-comparison.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Two planes, two sets of duties
+- 2. Certificates, keys and credentials
+- 2.1 What NVKE renews on tenant clusters
+- 2.2 Credential monitoring and alerts
+- 3. Backup, restore and upgrade of the management plane
+- 3.1 What is supported and what is not
+- 3.2 What to do anyway
+- 4. Security posture of the preview
+- 4.1 The gaps, with sources
+- 4.2 The three authentication modes
+- 4.3 Mitigations
+- 5. Failure modes and how to see them
+- 5.1 Metrics and alerts
+- 6. Comparison with other ways to run Kubernetes
+- 6.1 What NVKE is actually unique at
+- 6.2 What partners say they will do
+- 7. When to use NVKE today, and when to wait
+- 8. How to answer out loud: what is NVKE and how would you operate it
+- Numbers to state
+- Trade-offs to name
+- Follow-up questions to expect
+- 9. Hands-on lab: operate what you can without hardware
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Sources
+- Cross-references
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified or not run
+- Verification log
+
+## Vol part-12-ai-networking (24 chapters)
+
+
+### 12.1 AI traffic: collectives, incast and elephant flows  [21170 words, ~105 min]  `part-12-ai-networking/01-ai-traffic-collectives-incast-and-elephant-flows.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. AI Workloads, 3D Parallelism, Job Completion Time (JCT), and Tail Latency
+- 1.1 The AI model lifecycle and the training iteration loop
+- 1.2 3D Parallelism: Data, Pipeline, and Tensor Parallelism traffic profiles
+- 1.3 Job Completion Time (JCT), tail latency, and synchronous efficiency math
+- 1.4 Three ways a model learns, and the training loop in review
+- 2. RDMA, RoCEv2 (UDP 4791), Elephant Flows, Flowlets, and Incast
+- 2.1 Host TCP/IP vs RDMA and transport headers
+- 2.2 Inside the RoCEv2 packet and the 11/13-step RDMA state machines
+- 2.3 Why AI traffic breaks traditional Ethernet: low entropy, elephant flows, flowlets, and incast
+- 2.4 InfiniBand versus Ethernet for AI fabrics
+- 3. Proactive and Reactive Fabric Defense: Load-Balancing Pyramid, DCQCN, and Fat-Tree Sizing
+- 3.1 The four-tier load-balancing pyramid (SLB, DLB, GLB, sDLB)
+- 3.2 Reactive congestion management: DCQCN (ECN, CNP, and PFC)
+- 3.3 Sizing a 1:1 non-blocking rail-optimized fat-tree and isolating storage planes
+- 3.4 Key requirements for an AI data center fabric
+- 4. Overlapping Communication with Computation and Collective Algorithms (NCCL, SHARP, NVLS)
+- 4.1 Hiding network latency: CUDA streams, DDP bucketing, gradient accumulation, and DP vs DDP
+- 4.2 NCCL collective algorithms (Ring, Tree, CollNet, PAT) and SHARP / NVLS in-network math
+- 5. Multi-Node Pitfalls, NCCL Lifecycle Gotchas, and Disaggregated Inference (NIXL)
+- 5.1 Six multi-node pitfalls, six NCCL lifecycle gotchas, and Meta's 54-day Llama 3 405B failure data
+- 5.2 Disaggregated inference and NIXL (Prefill vs Decode KV cache routing)
+- Commands and configurations that matter
+- 1. Inspecting GPU/NIC topology, RoCEv2 / InfiniBand state, and kernel bypass (untested here)
+- 2. Running the 3-step hardware isolation hierarchy (nvbandwidth -> ib_write_bw -> nccl-tests) (untested here)
+- 3. Base Command Manager (bcm11-admin) fabric health checks (ibnetdiscover, ibdiagnet, cablecheck) (untested here)
+- How it fails
+- Hands-on lab
+- Run the Chapter 12.1 verification lab (tested here)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 12.2 RDMA fundamentals: verbs, queue pairs and memory registration  [19811 words, ~99 min]  `part-12-ai-networking/02-rdma-fundamentals-verbs-queue-pairs-and-memory-registration.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why TCP/IP Stalls AI Collectives and How RDMA Bypasses the Kernel
+- 1.1 The 7-step TCP/IP kernel penalty vs RDMA kernel bypass
+- 1.2 The five node-local RDMA layers and three RDMA transport protocols
+- 2. The Verbs Object Hierarchy and Capability Inspection
+- 2.1 Answering the seven capability questions before writing code
+- 3. Protection Domains, Memory Registration, Keys, and MTT Math
+- 3.1 What memory registration actually does in the kernel and on the NIC
+- 3.2 MTT page-table scaling math and NIC cache thrashing
+- 3.3 Protection Domain and Memory Region failure semantics
+- 4. Work Requests, SGEs, Operation Types, and Transport Services
+- 4.1 Work Requests, Work Queue Elements, and Scatter-Gather Entries
+- 4.2 Two-sided Send and Receive vs one-sided RDMA Write, Read, and Atomics
+- 4.3 Tracing the 13-step RDMA Write and 11-step RDMA Read CM sessions
+- 4.4 Transport Service Types and Queue Pair Scaling Math
+- 5. Queue Pair State Machine, Completion Queues, and Wire-Level Packet Headers
+- 5.1 The 6-state Queue Pair lifecycle
+- 5.2 Completion Queue semantics, busy polling vs events, and flush cascades
+- 5.3 Wire-level packet headers: BTH, RETH, AETH, and ICRC
+- 5.4 How transport congestion control protects RDMA Queue Pairs
+- Commands and configurations that matter
+- 1. Host OFED installation, locked memory limits, and BCM configuration (`untested here`)
+- 2. Enumerating RDMA Verbs devices, port states, GIDs, and fabric counters (`untested here`)
+- 3. Validating Queue Pair transitions, latency, and line-rate bandwidth (`untested here`)
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking Chapter 12.2 RDMA fundamentals lab (`tested here`)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Explicitly labelled inferences
+- Run here
+- Not verified on live hardware
+- Not in the corpus
+- Corrections to the author's notes
+
+### 12.3 RoCEv2 transport and congestion management  [17138 words, ~85 min]  `part-12-ai-networking/03-rocev2-transport-and-congestion-management.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. RoCEv1 vs RoCEv2 encapsulation, wire headers, and RDMA session flows
+- 1.1 Comparing InfiniBand, RoCEv1, RoCEv2, and iWARP
+- 1.2 Inside the IB BTH, RETH, and AETH headers and session state machines
+- 2. Addressing, GID tables, MTU, and end-to-end QoS trust boundaries
+- 2.1 Why the GID index is a local table position, not a portable identity
+- 2.2 End-to-end MTU and QoS classification
+- 3. Six Clos congestion points, ECN, and PFC
+- 3.1 The six Clos congestion points in 3-stage and 5-stage AI fabrics
+- 3.2 Explicit Congestion Notification and Congestion Notification Packets
+- 3.3 Priority Flow Control, frame format, and the PFC Watchdog
+- 4. DCQCN, Go-Back-N vs Selective Repeat, Source Flow Control, and CSIG
+- 4.1 Data Center Quantized Congestion Notification
+- 4.2 Go-Back-N vs Selective Repeat retransmission amplification
+- 4.3 Source Flow Control and Congestion Signaling
+- 5. Production inventory, baseline benchmarking, and the 5-layer RoCEv2 evidence ladder
+- 5.1 Building an endpoint-to-endpoint RoCEv2 path inventory
+- 5.2 Interpreting controlled contention and the 5-layer evidence ladder
+- Commands and configurations that matter
+- 1. Host RoCEv2 path inventory, GID inspection, and hardware counter baselines
+- 2. Host-memory perftest smoke test and UDP 4791 packet capture
+- 3. Switch lossless RoCEv2 queue configuration
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the self-checking RoCEv2 transport and congestion management lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 12.4 PFC, ECN and DCQCN in depth  [15904 words, ~79 min]  `part-12-ai-networking/04-pfc-ecn-and-dcqcn-in-depth.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The six Clos congestion points and why RoCEv2 needs two loops
+- Why neither ECN alone nor PFC alone suffices
+- 2. Priority Flow Control frame format, quanta math, and buffer headroom
+- 2.1 From Global Pause to Per-Priority Pause
+- 2.2 Wire-level anatomy of an 802.1Qbb PFC XOFF and XON frame
+- 2.3 Exact PFC pause duration math across 100G, 200G, 400G, and 800G
+- 2.4 Cable flight-time headroom math and `mlnx_qos` buffer thresholds
+- 3. Explicit Congestion Notification and DCQCN closed-loop rate control
+- 3.1 IP header DSCP + ECN bits and CNP packet format
+- 3.2 WRED `K_min` / `K_max` probabilistic marking curve and `XON < K_min < K_max < XOFF`
+- 3.3 The DCQCN three-actor state machine (CP, NP, RP)
+- 4. Hop-by-hop PFC propagation, pause trees, and the PFC Watchdog
+- 4.1 The 5-step hop-by-hop PFC propagation chain
+- 4.2 The 3-stage PFC Watchdog (Detection, Mitigation, Restoration)
+- 5. Next-generation congestion signaling: Source Flow Control and CSIG
+- 5.1 Source Flow Control (SFC, IEEE 802.1Qdw / Source PFC)
+- 5.2 Congestion Signaling (CSIG, `draft-ravi-ippm-csig-01`)
+- Commands and configurations that matter
+- 1. Inspecting PFC enablement, buffer allocation, XOFF, XON, and DSCP trust (`mlnx_qos`)
+- 2. Walking a PFC pause tree and correlating ECN marks (`ethtool -S`)
+- 3. Auditing NIC DCQCN Notification Point and Reaction Point counters (`mlx5_cnp_stats`)
+- 4. End-to-end 4-lab RoCEv2 path inventory, contention test, and GID evidence ladder
+- How it fails
+- Hands-on lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 12.5 Data center bridging and QoS for AI  [16367 words, ~81 min]  `part-12-ai-networking/05-data-center-bridging-and-qos-for-ai.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. End-to-end QoS architecture and the small class model for AI fabrics
+- 1.1 The highway lanes mental model and why every control has a single job
+- 1.2 Designing a small, explainable QoS class model
+- 2. Packet markings, IP ToS byte math, and QoS trust boundaries
+- 2.1 Encoding and decoding the 8-bit IP ToS / Traffic Class byte vs 802.1p PCP
+- 2.2 Trust boundaries, untrusted ingress rewrites, and PCP vs DSCP across L2/L3 hops
+- 3. IEEE 802.1Qaz Enhanced Transmission Selection, Strict Priority, and CBWFQ scheduling math
+- 3.1 How IEEE 802.1Qaz ETS combines Strict Priority (TSA 0) and DWRR (TSA 2)
+- 3.2 Work-conserving CBWFQ / DWRR math: minimum guarantees under contention, not hard reservations
+- 3.3 Strict Priority (LLQ) policing math and serialization jitter (9,000 B vs 64 B)
+- 4. IEEE 802.1Qaz DCBX TLV negotiation and switch buffer pool carving
+- 4.1 DCBX over LLDP (`EtherType 0x88CC`, `OUI 00:80:C2`, Subtypes 9..12) and the Willing bit
+- 4.2 Switch buffer pool carving across lossless (TC3) and lossy (TC0, TC2, TC4, TC6) classes
+- 4.3 Comparing Ethernet DCB (PFC + ETS + DCQCN) with InfiniBand Virtual Lanes and Storage Fabrics
+- 5. End-to-end consistency, configuration drift detection, and the 6-layer production validation plan
+- 5.1 Hop-by-hop drift analysis: how a single `trust: pcp` port breaks RoCE silently
+- 5.2 The 6-layer production QoS validation plan
+- Commands and configurations that matter
+- 1. Host NIC (ConnectX) QoS, `iproute2 dcb`, `lldptool`, and `mlxconfig` commands
+- 2. Switch port (Cumulus Linux / Spectrum / SONiC) and packet-capture verification commands
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1 — Run the 30-check DCB and QoS verification suite
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 12.6 InfiniBand fundamentals and addressing  [18458 words, ~92 min]  `part-12-ai-networking/06-infiniband-fundamentals-and-addressing.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why InfiniBand exists and how the layered fabric works
+- 1.1 Tightly coupled collectives and the separation of data and control planes
+- 1.2 Predictability versus peak speed: reading `ib_write_bw` under contention
+- 2. Physical layer generations, lane widths, encoding, and port state machines
+- 2.1 Link generations, four-lane versus twelve-lane widths, and line encoding
+- 2.2 Physical state versus logical link-layer port state machine
+- 3. Component identification, addressing, and partitioning
+- 3.1 Sixteen-bit LID address space and LMC multipath math
+- 3.2 Global Identifiers and why hardcoded GID indices fail
+- 3.3 Directed-route Subnet Management Packets
+- 3.4 Partition Keys: full versus limited membership
+- 4. InfiniBand frame format, Virtual Lanes, and Credit-Based Flow Control
+- 4.1 Native InfiniBand data frame headers
+- 4.2 Virtual Lanes, Service Levels, and Credit-Based Flow Control
+- 5. Verbs execution model, IP over InfiniBand, storage transports, and alternatives
+- 5.1 Verbs resource hierarchy and `ibv_devinfo -v`
+- 5.2 IP over InfiniBand: hardware address, datagram versus connected modes, and BCM provisioning
+- 5.3 InfiniBand for AI storage and fabric alternatives
+- Commands and configurations that matter
+- 1. Local HCA and port state inspection: `ibstat`, `ibstatus`, and `ibdev2netdev` `(untested here)`
+- 2. Node and Subnet Administration queries: `smpquery`, `saquery`, `ibping`, `ibnetdiscover`, and `ibdiagnet` `(untested here)`
+- 3. Physical counters, `PortXmitWait`, and optical transceiver DOM: `perfquery`, `ibqueryerrors`, and `mlxlink` `(untested here)`
+- 4. NVIDIA Base Command Manager `mlxconfig`, Subnet Manager, and `ib0` setup `(untested here)`
+- How it fails
+- Hands-on lab
+- Run the lab (tested here)
+- Live cluster workflow on Nebius GPU or InfiniBand hosts `(untested here)`
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Run here, inferences, and unverified hardware notes
+
+### 12.7 InfiniBand subnet manager, routing, topologies and rails  [18352 words, ~91 min]  `part-12-ai-networking/07-infiniband-subnet-manager-routing-topologies-and-rails.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Centralized subnet management, port states, and the OpenSM lifecycle
+- 1.1 Why InfiniBand requires a Subnet Manager
+- 1.2 The ten-stage Subnet-Management lifecycle and the port state machine
+- 1.3 Directed Route SMPs: how OpenSM discovers an unaddressed fabric
+- 1.4 Master and Standby election, split authority, and HA architecture
+- 2. Linear Forwarding Tables, LMC multipathing, and OpenSM routing engines
+- 2.1 Destination-based LID lookup, LFTs, MFTs, and LMC
+- 2.2 Comparing OpenSM routing engines: `minhop`, `updn`, `ftree`, `dor`, and `dfsssp`
+- 3. Topologies, oversubscription math, and three-stage versus five-stage scale
+- 3.1 Leaf oversubscription and its exact cost on AllReduce
+- 3.2 Scaling three-stage and five-stage folded Clos and Fat-Tree fabrics
+- 3.3 Alternative topologies: Scheduled Fabric, Dragonfly, and Torus
+- 4. Rail-optimized, Rail-Only, Rail-Unified, and Multi-Planar designs
+- 4.1 ROD versus Rail-Only versus RUD: GPU-to-leaf cabling and failure blast radius
+- 4.2 Rack placement trade-offs for rail rows
+- 5. AI fabric IP routing counterparts, multi-tenancy, and topology-aware scheduling
+- 5.1 Dynamic IP routing options: eBGP unnumbered, BGP DPF, RIFT, IS-IS Flex Algo, and SRv6
+- 5.2 Multi-tenancy and Slurm topology-aware scheduling via BCM Topograph
+- Commands and configurations that matter
+- 1. Inspecting HCA readiness, LIDs, and OpenSM master state: `ibv_devinfo`, `ibstat`, `ibstatus`, and `sminfo`
+- 2. Comparing direct node SMP queries versus the Subnet Administration database: `smpquery` and `saquery`
+- 3. Inspecting switch LFTs, path traces, and uplink balance: `ibroute`, `ibtracert`, and `perfquery`
+- 4. Configuring OpenSM, BCM `opensm`, and BCM Topograph
+- How it fails
+- Hands-on lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources cited
+- Verification and unverified notes
+
+### 12.8 InfiniBand adaptive routing and congestion control  [17568 words, ~87 min]  `part-12-ai-networking/08-infiniband-adaptive-routing-and-congestion-control.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Credit-based flow control, congestion trees, and Virtual Lane isolation
+- 1.1 Link-level Credit-Based Flow Control and 64-byte credit blocks
+- 1.2 Backpressure propagation, congestion trees, and Head-of-Line blocking
+- 1.3 Isolating victim flows with Virtual Lanes and preventing credit loops
+- 2. Congestion versus physical link faults: reading `perfquery` evidence
+- 2.1 Distinguishing congestion from hardware faults on the same switch
+- 2.2 Tracing a congestion tree to its root via the `PortXmitWait` gradient
+- 3. Adaptive Routing, SHIELD self-healing, and ConnectX OOO reordering
+- 3.1 Why static Linear Forwarding Tables create 20-to-1 uplink hot spots
+- 3.2 Adaptive Routing groups, Private LFTs, and the Service Level mask
+- 3.3 Fast Notification and Self-Healing Interconnect
+- 3.4 Out-of-Order packet delivery and ConnectX HCA hardware reordering
+- 4. InfiniBand Congestion Control
+- 4.1 Why Adaptive Routing needs Congestion Control
+- 4.2 The 3-stage FECN, BECN, and CCTI hardware control loop
+- 4.3 Worked numerical trace of the CCTI rate-throttling state machine
+- 4.4 Architectural comparison: Adaptive Routing vs Congestion Control vs Placement vs Capacity
+- 5. Multi-tenancy, SuperPOD scale, and operational observability
+- 5.1 Multi-tenant isolation: why Partition Keys do not prevent congestion interference
+- 5.2 Scale-out reference points: DGX B200 NDR and DGX GB300 Quantum-X800 SuperPODs
+- 5.3 Rate-of-change alerting versus cumulative counter scar tissue
+- Commands and configurations that matter
+- 1. Endpoint HCA, port state, and SM authority baseline
+- 2. Inspecting OpenSM Adaptive Routing, SHIELD, and SL2VL configuration
+- 3. Sampling `PortXmitData`, `PortXmitWait`, and physical errors without clearing counters
+- 4. Benchmarking NUMA-pinned pairwise bandwidth and tail latency
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Run the lab (tested here)
+- Expected output (28 passed, 0 failed)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 12.9 InfiniBand diagnostics, UFM and operations  [19196 words, ~95 min]  `part-12-ai-networking/09-infiniband-diagnostics-ufm-and-operations.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. InfiniBand observability layers: state, counters, rates, and inventory context
+- 1.1 The six-layer observability stack and why "port Active" is never enough
+- 1.2 State versus cumulative counters versus rates of change
+- 1.3 Why inventory context and immutable GUIDs anchor every metric
+- 2. The complete InfiniBand diagnostic toolkit (`OFED`, `rdma-core`, and `MFT`)
+- 2.1 Functional taxonomy of the 27 InfiniBand utilities
+- 2.2 Local HCA inspection: `ibstat` versus `ibstatus`, `ibdev2netdev`, and `ibv_devinfo`
+- 2.3 Comparing `smpquery` versus `saquery` to detect Subnet Manager database drift
+- 3. Deep counter semantics (`perfquery`, `ibqueryerrors`) and optical/SERDES telemetry (`mlxlink`, `ibdiagnet`)
+- 3.1 `perfquery` and `ibqueryerrors`: counter families, units, and diagnostic matrix
+- 3.2 `mlxlink` and `mst`: SERDES Bit Error Rate (`BER`) and optical DDM link budgets
+- 3.3 `ibdiagnet`: multi-stage fabric-wide auditing
+- 4. NVIDIA Unified Fabric Manager (`UFM`) architecture and production operations
+- 4.1 How UFM relates to OpenSM and the CLI tools: Enterprise, Telemetry, and Cyber-AI
+- 4.2 UFM High Availability (`HA`), SM priority handover, and Base Command Manager (`BCM 11`) integration
+- 5. The 7-gate bottom-up production troubleshooting methodology
+- 5.1 Stopping at the first unproven layer (`V8` Ch. 10, Ch. 12, and Lab 04)
+- 5.2 Reading `ib_write_lat` percentile tails against a baseline (`V8` Ch. 10 Step 6 & Lab 02)
+- 5.3 Incident evidence bundle and post-repair verification checklist
+- Commands and configurations that matter
+- 1. Host & Fabric Inventory Bundle (`V8` Lab 01 & *Supercomputers for Linux Sysadmins* Ch. 5)
+- 2. Subnet Manager, Addressing, Path Tracing, and `smpquery` vs `saquery` (*Supercomputers for Linux Sysadmins* Ch. 5 & `V8` Lab 03)
+- 3. Hardware Counter Delta Collection, Optical DDM (`mlxlink`), `ibdiagnet`, and Safe Port Isolation
+- 4. NUMA-Pinned Pairwise RDMA Baseline & UFM Enterprise REST API (`V8` Labs 02 & 04)
+- How it fails
+- Hands-on lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 12.10 HDR, NDR, XDR, optics and cabling  [19373 words, ~96 min]  `part-12-ai-networking/10-hdr-ndr-xdr-optics-and-cabling.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. InfiniBand link generations, lane width, and scaling optics for AI clusters
+- 1.1 Scaling intra-server NVLink and inter-server scale-out bandwidth
+- 1.2 InfiniBand link generations from SDR to GDR: raw speed, line coding, and lane width
+- 1.3 Link rate, active lane width, and the four-ceiling performance model
+- 2. Packet flow, SerDes mux/demux, and DSP physics
+- 2.1 Four core challenges in high-speed optical innovation
+- 2.2 Packet flow, demultiplexers and multiplexers, and PFE ASIC SerDes
+- 2.3 Inside the DSP: NRZ versus PAM4, FEC, CDR, and FFE/DFE equalization
+- 3. Transmission modes: Multi-Mode Fiber, Single-Mode Fiber, and DWDM
+- 4. AI server connectivity, transceiver reach classes, connectors, and the 90 percent cable rule
+- 4.1 AI server connectivity topologies and ToR versus MoR/EoR layouts
+- 4.2 Transceiver reach classes and fabric tier mapping
+- 4.3 Connectors, copper and optical cable assemblies, and the 90 percent SuperPOD derating rule
+- 5. Standards, high-bandwidth form factors, and LPO, LRO, and CPO
+- 5.1 Optical standards and QSFP28, QSFP56, QSFP-DD, and OSFP form factors
+- 5.2 Further innovations in optics: Pluggable versus LRO, LPO, and CPO
+- 6. Mixed-generation fabrics, upgrade planning, and operational verification
+- 6.1 Mixed-generation interoperability and the 10-step upgrade plan
+- Commands and configurations that matter
+- 1. Inspecting optical transceiver DDM telemetry, per-lane BER, and CDR lock with `mlxlink` `(untested here)`
+- 2. Auditing negotiated link rate, lane width, and HCA/PCIe topology `(untested here)`
+- 3. Validating delivered payload bandwidth and latency `(untested here)`
+- How it fails
+- Hands-on lab: verifying link generations, SerDes/PAM4 DSP math, transceiver reach, MPO breakouts, and 90 percent cable rules
+- Step 1: Run the 32-check optics and link-evolution verification suite
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 12.11 NVIDIA Spectrum-X and Spectrum switches  [18233 words, ~91 min]  `part-12-ai-networking/11-nvidia-spectrum-x-and-spectrum-switches.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Spectrum-4 switch architecture, monolithic shared buffers, and SuperPOD topologies
+- 1.1 Spectrum-4 51.2 Tbps ASIC, port radix, breakout modes, and SN2201 OOB switches
+- 1.2 Monolithic fully shared buffer versus sliced port-allocated buffers
+- 1.3 Spectrum-4 and SN2201 in the DGX GB300 SuperPOD architecture
+- 1.4 Evaluating switch capacity at the bottleneck cut in normal and N-1 degraded states
+- 2. End-to-end Spectrum-X platform: Spectrum-4, BlueField-3, ConnectX, and DOCA
+- 2.1 BlueField-3 operating modes and three-layer fault isolation
+- 2.2 ConnectX and BlueField-3 local I/O paths: PCIe downgrades, NUMA locality, and multi-rail selection
+- 3. Spectrum-X Adaptive Routing and selective per-packet RoCEv2 spraying
+- 3.1 Why traditional 5-tuple Static Load Balancing caps AI Ethernet fabrics at 60 percent
+- 3.2 Dynamic, Global, Selective, and Spectrum-X per-packet RoCEv2 spraying
+- 4. BlueField-3 hardware out-of-order Direct Data Placement and telemetry-driven congestion control
+- 4.1 Why per-packet spraying breaks standard RDMA NICs and how hardware DDP solves it
+- 4.2 Spectrum-X hardware telemetry-driven congestion control
+- 5. Spectrum telemetry, What Just Happened, and the 4-branch fault decision tree
+- 5.1 Separating physical faults, healthy congestion control, hot cuts, and ECMP imbalance
+- 5.2 Hardware drop-reason sampling with What Just Happened and tracing PFC pause trees
+- 6. Cumulus Linux, declarative NVUE, NetQ, and Base Command Manager operations
+- 6.1 Declarative switch management with NVUE and BCM `cmsh`
+- Commands and configurations that matter
+- 1. Declarative NVUE (`nv set`) configuration for a Spectrum-X lossless RoCEv2 + Adaptive Routing + BGP/EVPN leaf switch
+- 2. BCM `cmsh` Cumulus switch, ZTP, `nvconfiguration`, and NetQ integration
+- 3. Spectrum switch WJH drop sampling, PFC pause-tree tracing, and hop-by-hop QoS trust verification
+- 4. Host, ConnectX, and BlueField-3 5-layer evidence ladder
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Run the lab (tested here)
+- Expected output (`28 passed, 0 failed`)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary sources read in full for this chapter
+- Run here
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 12.12 Ethernet versus InfiniBand: a design decision guide  [18658 words, ~93 min]  `part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Workload-backward design: AI training versus inference fabrics
+- 1.1 Why synchronized collectives expose the fabric on the critical path
+- 1.2 AI training data centers versus AI inference data centers
+- 1.3 Core advantages of InfiniBand versus Ethernet in AI training clusters
+- 2. Four-way architectural deep dive: InfiniBand vs Standard RoCEv2 vs Spectrum-X vs UET
+- 2.1 End-to-end protocol stack and congestion-control comparison
+- 2.2 Why Standard RoCEv2 requires coordinated proactive and reactive control loops
+- 2.3 How Ultra Ethernet redesigns the Ethernet stack for one million GPUs
+- 3. ConnectX VPI adapters, BlueField-3 DPUs, and host locality
+- 3.1 ConnectX VPI personality switching and BCM precedence
+- 3.2 PCIe link negotiation, NUMA locality, and multi-rail binding
+- 3.3 BlueField-3 DPUs versus SuperNICs: host-edge trust and failure domains
+- 4. Storage networks, TCO economics, and the 64-GPU break-even model
+- 4.1 AI storage network transport: InfiniBand vs NVMe-o-RDMA vs NVMe-o-TCP
+- 4.2 The 128-GPU and 64-GPU H100 TCO and break-even calculation
+- 5. Workload-driven fabric decision matrix and the 7-stage validation ladder
+- 5.1 End-to-end decision tree: matching workload, scale, and tenancy to the right fabric
+- 5.2 Capacity planning at the bottleneck cut and the 7-stage validation ladder
+- Commands and configurations that matter
+- 1. Switching ConnectX VPI personality via `mlxconfig` and BCM `cmsh`
+- 2. Host locality, RDMA GID table, and PCIe negotiation audit
+- 3. QoS classification, PFC headroom, DCQCN, and Spectrum WJH telemetry
+- How it fails
+- Hands-on lab
+- Run the lab (tested here)
+- Live cluster workflow on a Nebius GPU or RoCEv2 testbed
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.13 Fabric design: topology, oversubscription and scale  [19180 words, ~95 min]  `part-12-ai-networking/13-fabric-design-topology-oversubscription-and-scale.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. AI workload lifecycle, server port roles, and Rail-Optimized vs Rail-Only vs RUD architectures
+- 1.1 The three AI/ML processing stages and three server-attached fabrics
+- 1.2 Why storage and multi-tenant traffic cannot share the compute fabric or oversubscribed uplinks
+- 1.3 Rail-Optimized Design vs Rail-Only vs Rail-Unified Design
+- 2. Rack engineering and leaf physical placement: ToR, MoR, and EoR
+- 2.1 Rack dimensions, server U-heights, and the 48 kW to 60 kW power jump
+- 2.2 Comparing ToR, MoR, and EoR across an 8-rack stripe
+- 3. 3-stage and 5-stage Clos scaling: port arithmetic, chassis spines, and oversubscription
+- 3.1 3-stage Clos scaling up to 2,048 GPUs and 9,216 GPUs
+- 3.2 5-stage Clos: 1,024-GPU blocks and 1:1 to 7:1 super-spine oversubscription
+- 4. Beyond standard Clos: Scheduled Fabrics, Dragonfly, Torus, and Multi-Planar Scale-Out
+- 4.1 Scheduled Fabric: fixed-size cells and Virtual Output Queueing
+- 4.2 Low-diameter alternatives: Dragonfly and Torus topologies
+- 4.3 Multi-Planar Scale-Out architectures, shuffle cables, and LPO/LRO optics
+- 5. Inference data center architecture, production design gates, and Slurm Topograph scheduling
+- 5.1 Inference data center placement and fabric requirements
+- 5.2 The 7-input production design gate, capacity cuts, and Slurm Topograph
+- 6. Thermal and power efficiency considerations for AI network fabrics
+- 6.1 Global data center power split, PUE, DGX H100 PSUs, and switch + optics power
+- 6.2 Switch fan airflow options and the five liquid cooling technologies
+- Commands and configurations that matter
+- 1. Inspecting physical rail locality, InfiniBand port counters, and paired `ib_write_bw` cut bandwidth
+- 2. Configuring Multi-Planar ToR port breakouts and RoCEv2 QoS on NVIDIA Cumulus NVUE
+- 3. Configuring BCM 11 Topograph for block- and rail-aware Slurm scheduling
+- How it fails
+- Hands-on lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.14 Load balancing and routing for AI fabrics  [21884 words, ~109 min]  `part-12-ai-networking/14-load-balancing-and-routing-for-ai-fabrics.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Per-flow load balancing: from static hashing to global path awareness
+- Why AI traffic has low entropy
+- 1.1 IP ECMP next-hop groups and the low-entropy RoCEv2 problem
+- 1.2 Static load balancing (`SLB`): worked CRC32 5-tuple math, resilient buckets, symmetric XOR, and WCMP
+- 1.3 Dynamic load balancing (`DLB`): quality bands, flowlet inactivity timers, and reactive rebalancing
+- 1.4 Global load balancing (`GLB`): BGP NNHN (`draft-wang-idr-next-next-hop-nodes`) and `20 ms` ASIC heartbeats
+- GLB heartbeats, update rates, and congestion effects
+- 1.5 Traffic engineering–based load balancing (`TELB`)
+- Why MPLS-TE and SR-MPLS are rarely used in AI fabrics
+- 2. Per-packet load balancing and selective packet spraying (`sDLB`)
+- 2.1 Random spray, DLB per-packet mode, and the receiver reordering challenge
+- 2.2 Complete load-balancing mechanism comparison (`ADC` Table 6-1)
+- 3. IP routing for AI fabrics: eBGP unnumbered, ASN design, WCMP, and BGP DPF
+- 3.1 Dynamic IP routing options: OSPF vs IS-IS vs eBGP across backend and frontend networks
+- 3.2 eBGP underlay and BGP unnumbered (`RFC 5549` / `Capability Code 5`)
+- 3.3 BGP ASN allocation, ADD-PATH, AS-PATH normalization, Link Bandwidth WCMP, and minimum peers
+- 3.4 BGP Deterministic Path Forwarding (`BGP DPF`, `draft-wang-idr-dpf`) and traffic-to-fabric color mapping
+- 3.5 Reading the DPF figures: shared pool, rail-optimized stripes, and rail-unified leaves
+- 4. Interior gateway protocols (`RIFT` and `IS-IS Flex Algo`), multi-tenancy, host BGP, and `SRv6 uSID`
+- 4.1 RIFT (`RFC 9692`) for Fat-Tree and DragonFly Sparse topologies
+- 4.2 IS-IS for AI IP fabrics: Optimal Distributed Flooding and Flex Algo (`RFC 9350` / `RFC 9502`)
+- 4.3 Protocol comparison: eBGP vs RIFT vs IS-IS (`ADC` Table 8-1)
+- 4.4 Network- and server-level multi-tenancy (`512` GPUs/rail, `H100 MIG`, `EVPN RT5`, and `VXLAN-GBP`)
+- 4.5 Extending BGP to the GPU server (`FRR`) and SRv6 compressed `16`-bit `uSID` traffic engineering
+- 4.6 Reading the tenancy figures: dedicated servers, RT5 across rails, MIG, and combined tenancy
+- 5. End-to-end packet and control-plane walkthroughs
+- 5.1 Walkthrough A: Ingress RoCEv2 flowlet vs GLB NNHN vs sDLB BTH opcode path selection
+- 5.2 Walkthrough B: Multi-tenant `512`-GPU rail with `H100 MIG`, `EVPN RT5`, and `BGP DPF`
+- Commands and configurations that matter
+- 1. Cumulus Linux `NVUE` and BCM `cmsh`: eBGP unnumbered, shared spine ASN, and RoCEv2 adaptive routing
+- 2. Inspecting BGP unnumbered `Capability Code 5` (`Extended Next Hop`) and `MP_REACH_NLRI` (`Code 14`)
+- 3. Configuring `DLB`, `GLB NNHN`, `sDLB` `BTH` opcode filters, and `BGP DPF` colored sessions
+- 4. Host-level `FRR` eBGP (`32`-bit ASNs) and `EVPN-VXLAN` `MIG` multi-tenancy
+- How it fails
+- Hands-on lab
+- Step 1: Run the self-checking load-balancing and AI routing lab suite
+- Step 2: Inspect the reference simulator outputs directly
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.15 NCCL: collectives and algorithms  [17079 words, ~85 min]  `part-12-ai-networking/15-nccl-collectives-and-algorithms.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Hardware, Parallelism Taxonomy, and the Six Core NCCL Collectives
+- 1.1 Cluster Hardware Context, SIMT Execution, and Parallelism Classification
+- 1.2 The Six Core NCCL Collectives and Their Decomposition Rules
+- 2. Algorithmic bandwidth (`algbw`), bus bandwidth (`busbw`), and step/volume math
+- 2.1 Deriving Ring Step Counts and Per-GPU Data Volume
+- 2.2 Converting `algbw` to `busbw` Across Collectives and Cluster Scales
+- 3. NCCL Communication Algorithms: Ring, Double Binary Tree, CollNet/SHARP, NVLS, and PAT
+- 3.1 Ring vs Double Binary Tree and the Latency-Bandwidth Crossover
+- 3.2 CollNet (InfiniBand SHARP), NVLink SHARP (NVLS), and PAT Math
+- 4. NCCL Wire Protocols (`LL`, `LL128`, `Simple`) and Zero-Copy User Buffers
+- 4.1 Wire Protocol Framing: `LL` (50%), `LL128` (93.75%), and `Simple` (100%)
+- 4.2 Persistent User Buffers and Zero-Copy Registration (`ncclCommRegister` / `ncclMemAlloc`)
+- 5. Compute-Communication Overlap, Wave Scheduling, Communicator Lifecycle, and NIXL
+- 5.1 Pipelining, Wait-Free Backpropagation (`DDP` vs `DP`), and Bucketing Math
+- 5.2 Wave Scheduling, Rotating Ring Endpoints, and Multi-Rail Striping on NVL72
+- 5.3 NCCL vs NIXL for Disaggregated Inference
+- Commands and configurations that matter
+- 1. Environment Variables for Algorithm, Protocol, SHARP/NVLS, and Transport Control (`(untested here)`)
+- 2. Zero-Copy Persistent User Buffer Registration (`ncclMemAlloc` + `ncclCommRegister`, `(untested here)`)
+- 3. NIXL `0.5.x` Non-Blocking GPU-to-GPU KV Cache Transfer (`(untested here)`)
+- How it fails
+- Hands-on lab
+- Lab Venue and Objective
+- Step 1: Run the Self-Checking Simulation Lab (Tested Locally)
+- Step 2: Benchmark Live `AllReduce` `algbw` and `busbw` on Nebius GPU (`(untested here)`)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.16 NCCL: topology, channels, transports and environment variables  [17249 words, ~86 min]  `part-12-ai-networking/16-nccl-topology-channels-transports-and-environment-variables.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. NCCL Topology Discovery, Path Cost Scoring, and XML Graph Overrides
+- 1.1 Logical GPU Indices versus Physical Locality
+- 1.2 The Seven NCCL Topology Path Levels (LOC through SYS)
+- 1.3 Inspecting and Overriding Topologies with `NCCL_TOPO_DUMP_FILE` and `NCCL_TOPO_FILE`
+- 2. NCCL Channels, Subrings, SM Thread Blocks, and `NCCL_BUFFSIZE`
+- 2.1 How Channels Map to Subrings and GPU Streaming Multiprocessors (SMs)
+- 2.2 Controlling Channel Count and Channel Buffer Memory (`NCCL_BUFFSIZE`)
+- 3. NCCL Transports: P2P, SHM, NET (IB / RoCE / IBGDA / Socket), NVLS, and CollNet
+- 3.1 Deep Dive into the Five Critical Transport Mechanisms
+- 4. Production NCCL Environment Variables Reference and Filter Grammar
+- 4.1 Complete Categorized Environment Variable Matrix
+- 4.2 Prefix and Exact Filter Operators for `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA`
+- 4.3 Multi-NIC Socket Tuning and the 64-Socket Limit
+- 5. CPU/GPU NUMA Affinity, Kubernetes Topology Manager, and Rail-Aligned Multi-Tenancy
+- 5.1 `NCCL_IGNORE_CPU_AFFINITY=1` and Dual-Socket NUMA Binding
+- 5.2 Kubernetes Topology Manager and the `TopologyAffinityError` Trap
+- Commands and configurations that matter
+- 1. Host Topology, `nvidia-peermem`, PCIe ACS, and Ephemeral Port Audit (`untested here`)
+- 2. Production NCCL Launch Profile with Topology Dump and NUMA Binding (`untested here`)
+- 3. Schematic `NCCL_TOPO_FILE` (`topology.xml`) Anchoring GPU and NIC under One PCIe Switch (`untested here`)
+- 4. Kubernetes NVIDIA Network Operator, Multus, and SR-IOV Multi-Tenant Manifests (`untested here`)
+- How it fails
+- Hands-on lab
+- Venue and Scope
+- Run Command and Verified Output
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.17 nccl-tests and fabric benchmarking  [18912 words, ~94 min]  `part-12-ai-networking/17-nccl-tests-and-fabric-benchmarking.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Expected learning outcomes
+- 1. The three-tier fabric validation hierarchy (`nvbandwidth`, `perftest`, `nccl-tests`)
+- Why `iperf3` cannot validate an AI fabric
+- Reading `nvidia-smi topo -m` and InfiniBand port counters before benchmarking
+- 2. `nccl-tests` architecture, CLI flags, and exact `algbw` versus `busbw` math
+- Core `nccl-tests` CLI flags
+- Deriving `algbw` and `busbw` from first principles
+- Annotating an `all_reduce_perf` output table
+- 3. Benchmarking methodology, training scaling efficiency, and Amdahl's Law
+- Three rules of reproducible GPU benchmarking
+- Key distributed training metrics and phase decomposition
+- Scaling efficiency and Amdahl's Law
+- 4. Isolating stragglers, silent fallbacks, and hung collectives at scale
+- Why post-collective timers lie—and how to instrument pre-collective arrival
+- Active NCCL diagnostics and the `ncclras` daemon
+- Binary-search node bisection and per-rail isolation
+- 5. Profiling tools (`torch.profiler`, `nsys`, `NCCL_PROFILER_PLUGIN`), inference benchmarking (`genai-bench`), and accuracy validation
+- PyTorch Profiler, NVIDIA Nsight Systems, and the `NCCL_PROFILER_PLUGIN` API
+- Understanding percentile latencies and LLM inference metrics
+- Workload-realistic inference benchmarking (`genai-bench`), cold starts, and reasoning models
+- Validating distributed training and inference accuracy
+- Commands and configurations that matter
+- 1. Tier 1 & Tier 2: Intra-node `nvbandwidth` and point-to-point RDMA `perftest`
+- 2. Tier 3: Building and launching `nccl-tests` (`mpirun` and Slurm `sbatch`/`srun`)
+- 3. Production Slurm `sbatch` job for 4-node (32-GPU) 8-rail NDR400 `all_reduce_perf`
+- How it fails
+- Hands-on lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Inferences and verification notes
+
+### 12.18 NCCL debugging: hangs, timeouts and errors  [19870 words, ~99 min]  `part-12-ai-networking/18-nccl-debugging-hangs-timeouts-and-errors.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The Four-Layer Debugging Ladder and the Llama 3 405B Reliability Baseline
+- 1.1 Why Multi-Node Hangs Mislead Engineers—and the Empirical Reality at 16,384-GPU Scale
+- 1.2 The Four-Layer Joint Debugging Ladder
+- 2. `ncclResult_t` Error Codes (`0..6`), `/dev/shm` Exhaustion, and Layer 1–2 Bootstrap Failures
+- 2.1 Complete `ncclResult_t` Error Taxonomy (`0..6`)
+- 2.2 Container `/dev/shm` `64 MiB` Exhaustion → `ncclSystemError` (`Code 2`, `Errno 28`)
+- 2.3 `memlock` Limits, Slurm `PMIx`, `NCCL_SOCKET_IFNAME`, and Ephemeral Ports (`50000 51000`)
+- 3. Layer 3 Triage: Watchdog Timeouts, PyTorch Flight Recorder, NCCL RAS (`28028`), and Active Diagnostics
+- 3.1 Understanding the `ProcessGroupNCCL` Watchdog and Heartbeat Monitor
+- 3.2 PyTorch Flight Recorder (`TORCH_FR_BUFFER_SIZE`) Ring Buffer Analysis
+- 3.3 `NCCL 2.24+` RAS (`ncclras` on Port `28028`), `NCCL 2.31+` Active Diagnostics, and `NCCL_DEBUG`
+- 4. The Six Multinode Pitfalls and Six Communicator Lifecycle & Environment Gotchas
+- 4.1 The Six Multinode Communication Pitfalls
+- 4.2 The Six `NCCL` Communicator Lifecycle and Environment Gotchas
+- 5. Layer 4 Cross-Layer Hardware, Xid, NVLink, Straggler, and Fabric Triage
+- 5.1 The Three-Tier Xid Classification and Precursor Chains (`92` → `45` → `79`)
+- 5.2 Silent `NVLink` Degradation (`Xid 74`), Asymmetric Error Isolation, and `PIX` PCIe Fallback
+- 5.3 Hunting Stragglers (`10.02x` Ratio): Dataloaders, Thermals, Power Caps, DVFS, and When Metrics Lie
+- 5.4 Layer 4 Fabric Verification: InfiniBand, RoCEv2 Lossless QoS, and SHARP
+- Commands and configurations that matter
+- How it fails
+- Hands-on lab
+- Lab Venue and Objective
+- Step 1: Run the Self-Checking Diagnostic Lab (Verified Here)
+- Step 2: Reproduce and Triage a Rank-Starvation Hang on Nebius GPU (`(untested here)`)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.19 GPUDirect RDMA and GPUDirect Storage  [15477 words, ~77 min]  `part-12-ai-networking/19-gpudirect-rdma-and-gpudirect-storage.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The Host Bounce-Buffer Bottleneck vs GPUDirect Zero-Copy
+- 1.1 The 5-Step Traditional Network Bounce-Buffer Path
+- 1.2 The 3-Step GPUDirect RDMA Zero-Copy Path
+- 1.3 Quantitative Bandwidth and PCIe Generation Math
+- 2. GPUDirect RDMA Under the Hood: BAR1, `nvidia-peermem`, and `dma-buf`
+- 2.1 PCIe `BAR1` Aperture and `Above 4G Decoding`
+- 2.2 The Legacy/OFED Path: `nvidia-peermem.ko`
+- 2.3 The Upstream Kernel Path: Linux `dma-buf` (`ibv_reg_dmabuf_mr`)
+- 3. PCIe Topology, Rail Alignment, and `NCCL_NET_GDR_LEVEL`
+- 3.1 `nvidia-smi topo -m` Distance Codes and `NCCL_NET_GDR_LEVEL`
+- 3.2 The 8-NIC Rail-Optimized Architecture (`DGX` / `HGX`)
+- 4. The PCIe ACS Trap and IOMMU Passthrough
+- 4.1 How PCIe ACS Breaks Peer-to-Peer Switching
+- 4.2 Auditing and Disabling ACS (`lspci -vvv` and `setpci`)
+- 5. GPUDirect Storage (`GDS`), `NVMe-oF`, and the `cuFile` Pipeline
+- 5.1 `NVMe-oF` State Machines (`NVMe/TCP` vs `NVMe/RDMA`)
+- 5.2 Why Legacy `POSIX` I/O Starves GPUs
+- 5.3 The 10-Stage `cuFile` API and `nvidia-fs.ko` Lifecycle
+- Commands and configurations that matter
+- 1. Verifying and Loading GPUDirect RDMA (`nvidia-peermem`, `dma-buf`, `BAR1`, and `ib_write_bw`)
+- 2. Essential `NCCL` GPUDirect RDMA Environment Variables
+- 3. Verifying and Benchmarking GPUDirect Storage (`gdscheck`, `/etc/cufile.json`, `gdsio`, `fio`, `nsys`)
+- How it fails
+- Hands-on lab
+- Venue and Scope
+- Run the Verification Lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.20 SHARP and in-network computing  [16262 words, ~81 min]  `part-12-ai-networking/20-sharp-and-in-network-computing.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Mathematical Foundations: Endpoint Ring/Tree Collectives vs In-Network Reduction
+- 1.1 Why Host-Driven Ring Collectives Multiply Traffic by (N - 1)
+- 1.2 In-Network Reduction (NVLS and SHARP) and the 1 / (N - 1) Traffic Collapse
+- 2. Two Domains of In-Network Computing: NVLink SHARP (NVLS) vs InfiniBand SHARP (CollNet)
+- 2.1 Intra-Node and Intra-Rack NVLink SHARP (NVLS and NVLSTree)
+- 2.2 Inter-Node and Inter-Rack InfiniBand SHARP (CollNetDirect and CollNetChain)
+- 2.3 Two-Level Hierarchical NVLS + InfiniBand SHARP Execution Pipeline
+- 3. InfiniBand SHARP Architecture: sharp_am, sharp_daemons, Aggregation Nodes, and Trees
+- 3.1 The Four Architectural Components of InfiniBand SHARP
+- 3.2 Step-by-Step Lifecycle of a SHARP Collective
+- 4. Hardware Generations (SHARPv1–SHARPv4, NVLS), Data Types, and Floating-Point Determinism
+- 4.1 Evolution from SHARPv1 (EDR) to SHARPv4 (Quantum-X800) and NVLS Gen 4
+- 4.2 DGX GB300 SuperPOD Scale-Out with Quantum-X800 Q3400-RD (144-Port) Switches
+- 4.3 IEEE-754 Floating-Point Non-Associativity and Deterministic SHARP Tree Reductions
+- 5. Software Stack Integration: NCCL (CollNet, NVLS, ncclCommRegister), HPC-X OpenMPI (HCOLL), and UEC INC
+- 5.1 Enabling InfiniBand SHARP (CollNet) and NVSwitch NVLS in NCCL
+- 5.2 Enabling SHARP in OpenMPI and HPC-X via HCOLL (`HCOLL_ENABLE_SHARP=1`)
+- 5.3 Ethernet Fabrics: Spectrum-X vs UEC In-Network Collectives (INC and xCCL)
+- Commands and configurations that matter
+- 1. Verifying InfiniBand Fabric, UFM / OpenSM, sharp_am, and sharp_daemons (untested here)
+- 2. Launching NCCL (nccl-tests / PyTorch) with CollNet (SHARP) and NVLS (untested here)
+- 3. Launching OpenMPI (HPC-X) with HCOLL and SHARP (untested here)
+- How it fails
+- Hands-on lab
+- Venue and Scope
+- Part 1: Run the Self-Checking Python Verification Lab (26/26 Checks)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources Read in Full and Cited
+
+### 12.21 Storage networks, Ultra Ethernet and scale-up fabrics  [32771 words, ~163 min]  `part-12-ai-networking/21-storage-networks-ultra-ethernet-and-scale-up-fabrics.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. AI Storage Network Lifecycle, Topologies, and Access Models
+- 1.1 The Four-Stage AI Data Lifecycle and Storage Access Tiers
+- 1.2 Four Storage Fabric Topologies: Physical Fab A/B, Logical Fab A/B, Collapsed Spine, and Hybrid Cloud
+- 1.3 PCIe-Attached Drives vs Network-Attached Storage: Latency and When Each Fits
+- 1.4 Checkpoints and Fast Writes During Training
+- 1.5 Redundancy, Path Diversity, and Inter-Site Replication
+- 1.6 Logical Fab A/B With EVPN-VXLAN Overlays
+- 1.7 Hot and Cold Data Across On-Premises Storage and Object Storage
+- 2. NVMe-oF State Machines (NVMe-o-TCP vs NVMe-o-RDMA), Parallel File Systems, and InfiniBand Storage
+- 2.1 NVMe-oF Architecture: Queues, Capsules, NSID, and PRP vs SGL
+- 2.2 NVMe-o-TCP State Machine, PDUs, and Jumbo-Frame Packing
+- 2.3 NVMe-o-RDMA (RoCEv2) State Machine: TCP 8009 -> UDP 4420 -> UDP 4791
+- 2.4 High-Performance Parallel File Systems and GPUDirect Storage Integration
+- 2.5 InfiniBand for Storage: 16-Bit LID (48,000 Nodes), Frame Format, and 64B CBFC Credits
+- 2.6 GPUDirect Storage: Logical View and CUDA API Orchestration
+- 3. Ultra Ethernet Consortium (UEC Specification v1.0): Architecture, PDS/SES, Encapsulations, and Delivery Modes
+- 3.1 UEC Working Groups, Service Profiles (AI Base, AI Full, HPC), and Core Terminology
+- 3.2 PDC Session Handshake, UDP-Based Encapsulation for UET (UDP Port 49150), and UET over IP (IP Protocol 253)
+- 3.3 The Four UEC Packet Delivery Modes (ROD, RUD, RUDI, UUD)
+- 3.4 Protocol Stack, Network Architectures, and Existing Ethernet
+- 4. UEC Congestion Management (NSCC, RCCC, CBFC), Packet Trimming, LLR, and In-Network Collectives (INC)
+- 4.1 Two-Tier Congestion Management: NSCC, RCCC (256B Credits), and Link-Level CBFC (32 VCs)
+- 4.2 Fast Retransmission via DSCP Packet Trimming and Hop-by-Hop Link Layer Reliability (LLR)
+- 4.3 In-Network Collectives (INC) vs User-Space xCCL, Management, Interoperability, and Compliance
+- 4.4 Comparing UEC to InfiniBand and RoCEv2
+- 5. Scale-Up Systems: Architecture, OCP SUE-T (ESUN), UALink 1.0, and Memory Coherence
+- 5.1 Why Scale-Up Pods Exist: Latency, Bandwidth, and the 4-Rack / 1,000-xPU Boundary
+- 5.2 Open Compute Project (OCP) Scale-Up Ethernet Transport (SUE-T / ESUN)
+- 5.3 Ultra Accelerator Link (UALink 1.0): 6.4 Tbps Stations, 64B/640B Flits, UPLI, and GVA -> NPA -> SPA
+- 5.4 Hardware Directory Coherence vs Software PGAS Coherence and Scale-Up Comparison
+- 5.5 Pod Building Blocks, HBM Placement, and Vendor Scope
+- 5.6 Single-Hop Mesh Wiring and Attaching Pods to Fabric Planes
+- 5.7 Full Scale-Up Comparison and Why Open Standards Matter
+- 5.8 UALink Flit Layout, Station Wiring, and Address Handles
+- Commands and configurations that matter
+- 1. NVMe-o-TCP (Port 8009) and NVMe-o-RDMA (RoCEv2 Ports 8009 -> 4420 -> 4791) Host Operations
+- 2. Inspecting NVMe-o-RDMA, UET-over-UDP (49150), and UET-over-IP (Proto 253) on the Wire
+- 3. InfiniBand Storage Subnet (LID & 16 VLs) and GPUDirect Storage Verification
+- How it fails
+- Hands-on lab
+- Venue and Scope
+- Run the Verification Lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.22 AI network telemetry and KPIs  [17839 words, ~89 min]  `part-12-ai-networking/22-ai-network-telemetry-and-kpis.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. AI data center performance KPIs: JCT, scaling, power, and MLCommons / MLPerf
+- 1.1 Evolution of benchmarking and the model-plus-data KPI duality
+- 1.2 The six core AI data center KPIs and Job Completion Time math
+- 1.3 MLCommons, MLPerf suites, LoadGen, and the 5-step benchmarking procedure
+- 2. Exploring monitoring options in AI/ML data centers: polling, streaming telemetry, and active probes
+- 2.1 Why microsecond AI congestion breaks legacy polling
+- 2.2 Historical trend forecasting versus real-time telemetry correlation
+- 3. In-Band Flow Analyzer: architecture, packet headers, and nanosecond residence time
+- 3.1 Why synthetic probes miss elephant-flow congestion—and how IFA solves it
+- 3.2 IFA packet encapsulation, 32-bit header, and 256-bit per-hop metadata stack
+- 3.3 IFA MTU budget, residence-time math, and architectural constraints
+- 4. Correlating InfiniBand, RoCEv2, and GPU host telemetry: signals, PromQL, and alerting
+- 4.1 InfiniBand counter semantics: state, cumulative totals, rates, and PortXmitWait
+- 4.2 RoCEv2 ECN, CNP, PFC pause trees, FEC corruption, and multi-rail skew
+- 4.3 Streaming telemetry ingestion scale and Prometheus cardinality control
+- 5. Closed-loop correlation, corrective actions, and autonomous AI fabrics
+- 5.1 Four-tier decision hierarchy and worst-case operational mitigations
+- 5.2 Why telemetry cannot rescue a broken capacity design
+- Commands and configurations that matter
+- 1. Host, RDMA, and GPU telemetry collection
+- 2. Streaming telemetry and PromQL alert rules
+- How it fails
+- Hands-on lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.23 Fabric validation and capacity planning  [14663 words, ~73 min]  `part-12-ai-networking/23-fabric-validation-and-capacity-planning.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The multi-stage cluster acceptance gating ladder
+- Stage L1: Physical layer, DOM optical budgets, FEC/BER, and inventory truth
+- Stage L2: Subnet/IP routing, QoS queue verification, and point-to-point RDMA
+- Stages L3, L4, and L5: From pairwise rings and bisection cuts to full-scale burn-in
+- 2. Automated cable matrix validation
+- Reconciling discovered links against the Point-to-Point BOM
+- NVIDIA Base Command Manager switch discovery and Topograph integration
+- 3. Switch, transceiver, and cable BOM sizing
+- General 2-tier and 3-tier Clos BOM equations
+- Reference BOMs: NVIDIA DGX B200 and DGX GB300 SuperPODs
+- 4. Capacity modeling at the bottleneck cut and N-1 failure analysis
+- Worked cut-capacity and collective step-time calculations
+- 5. Production architecture decision framework and 10 enterprise design scenarios
+- Production release management and canary promotion gates
+- Commands and configurations that matter
+- 1. Stage L1 & L2 InfiniBand inventory, routing, and counter baseline
+- 2. Stage L1–L4 RoCEv2 Ethernet path inventory, QoS under load, and collectives
+- 3. NVIDIA Base Command Manager switch port mapping and Topograph configuration
+- How it fails
+- Hands-on lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+
+### 12.24 AI networking troubleshooting playbook  [17756 words, ~88 min]  `part-12-ai-networking/24-ai-networking-troubleshooting-playbook.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The Layered Troubleshooting Mindset and First-10-Minute Protocol
+- 1.1 Core Axioms of AI Fabric Incident Response
+- 1.2 The First-10-Minute Incident Protocol and Evidence Bundle
+- 2. InfiniBand Production Troubleshooting Playbook (7-Gate Decision Tree)
+- 2.1 Gate 1 vs Gate 2: Port Down, State Initializing, and Reduced Width
+- 2.2 Gate 4: Reading `ib_write_lat` Tail Percentiles vs Averages
+- 2.3 Gate 1 vs Gate 6: Distinguishing a Bad Cable from Fabric Congestion
+- 3. RoCEv2 and AI Ethernet Production Troubleshooting Playbook (6-Gate Decision Tree)
+- 3.1 Gate 1 Trap: How Physical CRC Errors Masquerade as an ECN Congestion Problem
+- 3.2 Gate 2 and Gate 3: Why `ping` Works while RoCEv2 Fails (`RTR` and `RETRY_EXC_ERR`)
+- 3.3 Gate 5: ECN and DCQCN Feedback Validation vs Persistent PFC Pause Storms
+- 4. Host, PCIe, DMA Engine, NVLink, and Xid Hardware Triage
+- 4.1 The Master 3-Tier Xid Triage Matrix and Precursor Chains
+- 4.2 Silent NVLink Degradation, MIG Verification, and Asymmetric Transceiver Isolation
+- 4.3 PCIe Link Down-Training, DMA Page Faults, and Non-Disruptive Bus Rescan
+- 5. Collective Timeouts, Straggler Bisection, and Cross-Layer Diagnosis
+- 5.1 Binary-Search Multi-Node Straggler Isolation
+- 5.2 Cross-Layer Diagnosis: When Metrics Lie and Profiler Heisenbugs
+- Commands and configurations that matter
+- 1. Non-Destructive Incident Evidence Bundle Collector
+- 2. InfiniBand and RoCEv2 Layer-by-Layer Verification Commands
+- 3. Host PCIe Rescan, NVLink Isolation, and NCCL Stalled-Rank Triage
+- How it fails
+- Hands-on lab
+- Venue and Scope
+- Running the Lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full and Migrated)
+- Inferences and Unverified Claims Note
+
+## Vol part-13-ai-storage (9 chapters)
+
+
+### 13.1 The AI data path: from storage to GPU  [15190 words, ~75 min]  `part-13-ai-storage/01-the-ai-data-path-from-storage-to-gpu.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. Why AI storage is different: the five workload phases and the capacity illusion
+- 1.1 The three failure modes of standard IT storage in AI
+- 1.2 The five AI storage workload phases
+- 1.3 Capacity is not throughput: worked metadata bottleneck calculation
+- 2. The AI storage hierarchy and the 8-layer data path
+- 2.1 The four-tier AI factory storage hierarchy
+- 2.2 The 8-layer data path from storage media to GPU HBM
+- 3. Traditional bounce-buffer I/O vs GPUDirect Storage (`GDS`)
+- 3.1 Anatomy of the POSIX CPU bounce-buffer path (3 to 4 copies)
+- 3.2 GPUDirect Storage (`GDS`) architecture: 1 direct P2P DMA copy
+- 4. Bandwidth math, NUMA/PCIe locality, and page cache pollution
+- 4.1 Per-GPU, per-node, and per-rack bandwidth scaling
+- 4.2 NUMA and PCIe topology alignment (`PIX`/`PHB` vs `SYS`)
+- 4.3 Linux Page Cache pollution vs `O_DIRECT`
+- 5. Storage network fabrics and Kubernetes CSI integration
+- 5.1 NVMe-oF (`TCP` vs `RDMA` over `RoCEv2` vs `InfiniBand`) and Fabric A/B design
+- 5.2 Kubernetes CSI (`ReadWriteMany`), `hostPath` NVMe, and PyTorch `DataLoader` pipelining
+- Commands and configurations that matter
+- 1. Layer-by-layer data path inspection (`Layers 1–8`) ``
+- 2. GPUDirect Storage (`GDS`) verification and `gdsio` benchmarking ``
+- 3. Benchmarking sequential reads (`fio`), checkpoint bursts (`fio`), and MDS (`mdtest`) ``
+- 4. Kubernetes `RWX` CSI StorageClass and GDS-enabled training Pod ``
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Part A: Run the self-checking AI data path lab locally
+- Part B: Baseline a GPU node storage path on Linux / GKE ``
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- 1. Primary `nvidia-devops` and Gem Book Sources
+- 2. Lab verification and labelled inferences
+
+### 13.2 Local NVMe and data staging  [14641 words, ~73 min]  `part-13-ai-storage/02-local-nvme-and-data-staging.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Concepts: basics → intermediate → advanced
+- 1. Why AI compute nodes still need local NVMe: the staging decision path
+- 1.1 When to use local NVMe, and when to skip it
+- 2. Two-tier node NVMe architecture and RAID 0 stripe geometry
+- 2.1 The two-tier physical layout: OS RAID 1 vs `/raid` RAID 0 scratch
+- 2.2 `mdadm` RAID 0 chunk size and XFS stripe alignment math
+- 3. Data staging economics: multi-epoch break-even and checkpoint staging math
+- 3.1 Multi-epoch dataset staging: worked cluster calculation and break-even formula
+- 3.2 Cache hit rate progression, the 85% fill-level cliff, and SHA-256 manifest validation
+- 3.3 Asynchronous two-phase checkpoint staging
+- 4. Tuning the Linux NVMe and filesystem stack for GPU pipelines
+- 4.1 `blk-mq` scheduler (`none` vs `mq-deadline`), queue depth (`nr_requests`), and `read_ahead_kb`
+- 4.2 Filesystem selection (XFS with `noatime`), `io_uring`, and `DataLoader` / GDS integration
+- 5. Benchmarking local NVMe vs shared storage, SMART endurance, and Slurm lifecycle
+- 5.1 The four AI storage benchmark profiles (`fio` and `dd` baseline vs shared PFS)
+- 5.2 NVMe endurance math (DWPD, TBW, WAF) and SMART health monitoring
+- 5.3 Multi-tenant Slurm Prolog and Epilog lifecycle for `/raid`
+- Commands and configurations that matter
+- 1. Provisioning an Aligned `mdadm` RAID 0 `/raid` Volume and Tuning `blk-mq`
+- 2. Benchmarking Local NVMe vs Shared Storage (`fio` and `gdsio`)
+- 3. Checking NVMe SMART Health, Checksum Manifests, Async Checkpointing, and Slurm Hooks
+- How it fails
+- Hands-on lab
+- Venue and Scope
+- Running the Lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full and Migrated)
+- Inferences and Verification Notes
+
+### 13.3 GPUDirect Storage architecture  [15834 words, ~79 min]  `part-13-ai-storage/03-gpudirect-storage-architecture.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The CPU Bounce-Buffer Bottleneck vs GPUDirect Storage
+- 1.1 Anatomy of the Traditional CPU Bounce Path
+- 1.2 The Five Conditions Where GPUDirect Storage Pays Off
+- 2. Under the Hood: cuFile API, nvidia-fs.ko, and BAR1 Peer-to-Peer DMA
+- 2.1 How GDS Complements `GPUDirect RDMA`
+- 2.2 The 7-Step cuFile API Lifecycle and 10-Stage OS/CUDA Flow
+- 2.3 Orthogonal Path: cuda-checkpoint and `CRIU` vs GDS
+- 3. Compatibility Mode, `4 KiB` O_DIRECT Alignment, and Why FUSE Cannot Use GDS
+- 3.1 Direct Path vs Silent Compatibility-Mode Fallback
+- 3.2 `4 KiB` O_DIRECT Alignment Rules and `8 KiB` Lustre Stripe Alignment
+- 3.3 Why User-Space FUSE Filesystems Cannot Deliver a Native GDS Path
+- 4. Benchmarking with gdsio, Enterprise Uplifts, and the Blackwell Hardware Decompression Engine
+- 4.1 gdsio Transfer Selector Modes
+- 4.2 Quantitative gdsio Benchmark and `VAST Data` Uplifts
+- 4.3 In-Pipeline Unpacking with the Blackwell Hardware Decompression Engine
+- 5. Production Verification, `/etc/cufile.json` Tuning, and Profiling with `nsys`
+- 5.1 Four-Stage Production Verification Workflow
+- Commands and configurations that matter
+- 1. Hardened `/etc/cufile.json` Configuration for Verification and Production
+- 2. Essential Linux NVMe, Lustre, NFS, and GDS Commands
+- 3. Refactoring Python I/O from CPU Bounce (`torch.load`) to kvikio / cuFile
+- How it fails
+- Hands-on lab
+- Venue and Scope
+- Part A: Run the Local Self-Checking Verification Lab
+- Part B: Cluster Hardware Validation Script
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full and Migrated)
+- Verification and Honest-Scope Note
+
+### 13.4 Lustre for AI  [18161 words, ~90 min]  `part-13-ai-storage/04-lustre-for-ai.md`
+- Why this matters for AI infrastructure
+- Lustre in an AI workload: the beginner's mental model
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Lustre in the AI Factory and DGX SuperPOD Storage Architecture
+- 1.1 High-Performance Storage (HPS) vs User Storage Tiering
+- 1.2 Why Metadata and Data Decoupling Can Still Starve GPUs
+- 2. Progressive File Layouts (PFL), Data-on-MDT (DoM), and Striping Math
+- 2.1 Round-Robin RAID0 Striping Math vs the "Contiguous Halves" Fallacy
+- 2.2 Composite Layouts: Progressive File Layout (PFL) + Data-on-MDT (DoM)
+- 3. Metadata Scaling at Scale: DNE Phase 1/2, `statahead`, and Dataset Sharding
+- 3.1 Diagnosing Metadata Saturation with `lctl get_param llite.*.stats`
+- 3.2 Distributed Namespace (DNE Phase 1 vs Phase 2) Across Multiple MDTs
+- 3.3 The 1,000x Multiplier: Dataset Repackaging and Containerized Environments
+- 4. LNet Multi-Rail Networking, Client RPC BDP Tuning, and GPUDirect Storage
+- 4.1 LNet Multi-Rail (`o2ib` / `RoCEv2`), Port `988`, and NUMA/PCIe Affinity
+- 4.2 Client RPC Bandwidth-Delay Product (`BDP`) Math and OSC Tunables
+- 4.3 GPUDirect Storage (`GDS`) with Lustre and Mount Options (`flock,lazystatfs`)
+- 5. Checkpoint Architecture on Lustre: N-to-1 Lock Contention vs N-to-N Sharded Writes
+- 5.1 Why Unaligned N-to-1 Shared-File Checkpoints Collapse Under LDLM Locking
+- Commands and configurations that matter
+- 6.1 LNet Multi-Rail Configuration (`/etc/modprobe.d/lustre.conf` and `lnetctl`)
+- 6.2 Client Mount with `flock,lazystatfs,noatime` and OSC/MDC/LLITE Tuning
+- 6.3 Configuring DNE Directories, PFL + DoM Layouts, and Checkpoint Striping
+- 6.4 Live Metadata, OST Balance, Migration, and GPUDirect Storage (`gdsio`) Verification
+- How it fails
+- Hands-on lab
+- Venue and Scope
+- Run the Local Verification Lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Inferences and Unverified Claims Note
+
+### 13.5 BeeGFS, Weka, VAST and object storage  [14824 words, ~74 min]  `part-13-ai-storage/05-beegfs-weka-vast-and-object-storage.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The AI Storage Taxonomy: Block, File, Parallel File, and Object
+- 2. BeeGFS for GPU Clusters: Architecture, Striping, and Metadata Tuning
+- 2.1 The Four Decoupled BeeGFS Services
+- 2.2 Round-Robin Striping Math and Checkpoint Stall Time
+- 2.3 The 256-GPU Metadata Wall and Target Fill Skew
+- 3. WekaFS: Distributed Virtual Metadata, Core Pinning, and S3 Tiering
+- 3.1 Fully Distributed Metadata and N+K Erasure Coding
+- 3.2 POSIX Client Core Pinning and Unified S3 Tiering
+- 4. VAST Data DASE, GPUDirect Storage, and DeepSeek 3FS
+- 4.1 VAST Data Disaggregated Shared-Everything Architecture
+- 4.2 GPUDirect Storage on these filesystems
+- 4.3 DeepSeek Fire-Flyer File System
+- 5. Object Storage and Dataset Staging Pipelines
+- 5.1 The S3 Small-Object Latency Trap
+- 5.2 Prefix Sharding, Parallel Worker Pools, and Local NVMe Caching
+- 6. Choosing between them: metadata rate, small files and failure modes
+- Commands and configurations that matter
+- 1. BeeGFS Health, Metadata Rate, and Target Fill Inspection
+- 2. BeeGFS Client RDMA Config and Stripe Tuning
+- 3. Linux read-ahead and a high-throughput NFS mount
+- 4. Production S3 Manifest Validation and Exponential Backoff Prefetch
+- How it fails
+- Hands-on lab
+- Venue and scope
+- Step 1: Run the Self-Contained Verification Lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Sources used
+- Corrections made in this revision
+- Not verified here
+
+### 13.6 Data loading, small files and metadata  [15749 words, ~78 min]  `part-13-ai-storage/06-data-loading-small-files-and-metadata.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The Small-File Metadata Bottleneck: Quantifying Why GPUs Starve
+- 1.1 The Library Catalog Analogy and Per-File Syscall Anatomy
+- 1.2 Diagnosing Metadata Saturation: `strace -c`, Cache Decay, and `mdtest`
+- 2. Dataset Repackaging and Sequential Storage Layouts
+- 2.1 Tar Archives, WebDataset, HDF5, and Columnar Shards
+- 2.2 Sequential vs Random Read Math and Kernel Read-Ahead Tuning
+- 3. PyTorch DataLoader Architecture, Memory Pinning, and `/dev/shm` Sizing
+- 3.1 Multi-Process Prefetching, Pinned Memory, and Dedicated Copy Streams
+- 3.2 Isolating Python DataLoader Cost vs H2D Copy Cost
+- 3.3 Scaling Out Workers and Shards as You Scale Out GPUs
+- 4. Multimodal GPU Preprocessing with NVIDIA DALI and Hardware Decompression
+- 4.1 Offloading Decode and Augmentations to the GPU
+- 4.2 Avoiding the DALI Host-Device-Host Ping-Pong Anti-Pattern
+- 5. Offline LLM Dataset Curation with NVIDIA NeMo Curator and Continuous Profiling
+- 5.1 From Raw JSONL and Parquet to Memory-Mapped `.bin` and `.idx` Shards
+- 5.2 Continuous Profiling and Diagnosing Compute vs Communication vs I/O
+- Commands and configurations that matter
+- 1. Diagnosing Small-File Open Rates, Batch Wait, and Lustre Metadata Stats
+- 2. Benchmarking Sequential Reads with `fio` and Metadata Stress with `mdtest`
+- 3. Repackaging into Tar Shards, WebDataset, and Chunked HDF5
+- 4. Kubernetes Pod Specification with 400Gi `/dev/shm` and GPUDirect Storage
+- How it fails
+- Hands-on lab
+- Venue and Scope
+- Step 1: Run the Local Verification Lab
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources
+- Inferences and Unverified Claims Note
+
+### 13.7 Checkpoint architecture and recovery  [7302 words, ~36 min]  `part-13-ai-storage/07-checkpoint-architecture-and-recovery.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. How many bytes a checkpoint adds
+- 2. Where the time goes in one save
+- 3. The staged write path
+- 3.1 The host memory guard
+- 4. Sizing the storage for checkpoint bandwidth
+- 5. Striping, atomic publication and retention
+- 5.1 Stripe the checkpoint directory
+- 5.2 Publish atomically
+- 5.3 Retention
+- 6. The restore path
+- 7. Transparent snapshots with cuda-checkpoint and CRIU
+- Commands and configurations that matter
+- 1. Staged save with a barrier and atomic publish
+- 2. Storage commands
+- How it fails
+- Hands-on lab
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Sources used
+- Changes in this revision
+- Not verified here
+
+### 13.8 Capacity, performance and cost planning  [16862 words, ~84 min]  `part-13-ai-storage/08-capacity-performance-and-cost-planning.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- 1. The Six-Dimension AI Storage Sizing Framework
+- 1.1 Dimension 1: Usable Capacity and the 30 Percent Headroom Rule
+- 2. Read, Write, Metadata, and Burst Bandwidth Sizing
+- 2.1 Dimension 2: Sustained Read Bandwidth
+- 2.2 Dimension 3: Checkpoint Write Bandwidth and Two-Tier Async Staging
+- 2.3 Dimensions 4 and 5: Metadata Rate and Burst Overbuild
+- 3. NVIDIA DGX SuperPOD High-Performance Storage Architecture
+- 3.1 DGX GB300 NVL72 vs DGX B200 SuperPOD Scalable Units
+- 3.2 SuperPOD Standard Tier vs Enhanced Tier
+- 4. Usable-to-Raw Efficiency, Erasure Coding, and Multi-Tier FinOps
+- 4.1 Converting Usable TB to Raw Flash TB: Replication vs Erasure Coding
+- 4.2 Four-Tier Storage Architecture and 3-Year TCO Economics
+- 5. Production Readiness Checklist and End-to-End Cluster Sizing Walkthrough
+- 5.1 Worked Sizing Walkthrough: 256-GPU Distributed Training Cluster
+- 5.2 Production AI Storage Deployment Checklist
+- Commands and configurations that matter
+- 1. Auditing Usable Capacity, Inode Headroom, and Target Skew
+- 2. Measuring Sustained Read/Write Bandwidth and Metadata IOPS with `fio` and `gdsio`
+- 3. Executing the Deterministic Capacity, SuperPOD, and TCO Calculator
+- How it fails
+- Hands-on lab
+- Lab Venue and Objectives
+- Step 1: Run the Verification Lab
+- Expected Output
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full and Migrated)
+- Inferences and Unverified Claims Note
+
+### 13.9 Storage troubleshooting  [16589 words, ~82 min]  `part-13-ai-storage/09-storage-troubleshooting.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Concepts: basics → intermediate → advanced
+- 1. The Eight-Layer AI Storage Troubleshooting Decision Tree
+- 1.1 The End-to-End Decision Tree
+- 1.2 Why Layer Order Matters: Avoiding False Positives
+- 2. Separating Compute, Collective Communication, and Storage I/O Bottlenecks
+- 2.1 The Batch-Size Halving and Doubling Diagnostic
+- 2.2 Multi-Level Profiling Stack
+- 3. Evidence Gathering: The 5-Minute Golden Baseline
+- 3.1 Layer-by-Layer Latency and Bandwidth Reference
+- 3.2 Benchmarking Local NVMe vs Shared Storage Across Four AI Workload Profiles
+- 4. Deep-Dive Walkthrough of a Real Production Incident
+- 4.1 Incident Alert and Step 1: Comparing Current State Against the Baseline
+- 4.2 Steps 2 and 3: Queue Depth and Ruling Out the CPU Decoder
+- 4.3 Steps 4, 5, and 6: Metadata Latency, Ring Buffers, and Switch Oversubscription
+- 5. Validating GPUDirect Storage and Catching Silent Fallbacks
+- 5.1 The Six Non-Negotiable GDS Prerequisites and Verification Signals
+- 5.2 Benchmarking CPU Bounce vs Direct GDS and the 20 Percent Rule
+- 6. Commands and Configurations That Matter
+- 6.1 The 5-Minute Node and Storage Baseline Capture Script
+- 6.2 Structured Benchmark, Profiling, and Remediation Commands
+- 7. How It Fails: Six Production Storage Failure Modes
+- 8. Hands-On Lab: End-to-End Storage Incident and Bottleneck Triage
+- Run the Verification Lab
+- Expected Output (Verified Locally)
+- Common first mistakes
+- Exercises
+- Interview angles
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full and Migrated)
+- Inferences and Unverified Claims Note
+
+## Vol part-15-inference (18 chapters)
+
+
+### 15.1 The anatomy of an inference request  [17625 words, ~88 min]  `part-15-inference/01-the-anatomy-of-an-inference-request.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Why Inference Infrastructure Is Different from Training
+- 1.1 The Paradigm Shift from Offline Batch Learning to Online Interactive Serving
+- 1.2 Deconstructing the Latency Budget: TTFT, ITL, TPOT, and E2E
+- 1.3 Throughput (RPS and TPS), Goodput, and Request Cost Economics
+- 2. The Nine-Stage End-to-End Inference Request Path
+- 2.1 Latency Beyond the GPU: Tracing the Data and Control Planes
+- 2.2 Stage-by-Stage Mechanics, Protocols, and Latency Budgets
+- 2.3 Non-GPU Bottlenecks: Tokenizer Placement, Pinned Memory, and Backpressure
+- 3. Prefill vs. Decode Mechanics, Arithmetic Intensity, and the Roofline Model
+- 3.1 Inside a Decoder-Only Forward Pass: Why Prefill Is GEMM and Decode Is GEMV
+- 3.2 Deriving Arithmetic Intensity and the Hardware Roofline Ridge Point
+- 3.3 The Memory-Bandwidth Wall, MFU vs. MBU, and Accelerator Selection
+- 4. KV Cache Memory Anatomy, Continuous Batching, and Chunked Prefill
+- 4.1 Why the KV Cache Exists and How It Grows Linearly with Context and Concurrency
+- 4.2 PagedAttention, Continuous Batching, and Chunked Prefill Guardrails
+- 5. Tokenization, Logit Sampling, Stopping Conditions, and Ecosystem Stack
+- 5.1 Tokenization, Vocabulary Logits, and the GPU Sampling Pipeline
+- 5.2 The Five Stopping Conditions and the NVIDIA Serving Stack
+- 6. Commands, Configurations, and Production Failure Modes
+- 6.1 Production Engine, Triton, and Nginx Streaming Configurations
+- 6.2 How It Fails: Five Production Inference Failure Modes
+- 7. Hands-on Lab: Verifying Request Anatomy, Roofline Math, and KV Cache Sizing
+- Lab Venue and Execution Scope
+- Running the Self-Checking Verification Lab
+- Key takeaways
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full and Migrated)
+- Inferences and Unverified Claims Note
+
+### 15.2 Batching, the KV cache and quantization fundamentals  [16653 words, ~83 min]  `part-15-inference/02-batching-the-kv-cache-and-quantization-fundamentals.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Prefill vs Decode Roofline Mechanics and Batching Paradigms
+- 1.1 The Roofline Dichotomy: Why Single-Stream Decode Starves the GPU
+- 1.2 Static vs Dynamic vs Continuous (In-Flight) Batching
+- 1.3 Chunked Prefill and Iteration Token Budgets
+- 2. The KV Cache: Attention Architectures, PagedAttention and Capacity Planning
+- 2.1 KV Cache Memory Math: MHA vs GQA vs MQA vs DeepSeek MLA
+- 2.2 PagedAttention Virtual Memory and Prefix Caching
+- 2.3 Concurrency Capacity Planning and Preemption (Swap vs Recompute)
+- 3. Quantization Fundamentals: PTQ vs QAT, FP8, SmoothQuant, AWQ/GPTQ, NVFP4 and KV Cache Quantization
+- 3.1 Number Formats, Rounding vs Clamping Error and Calibration
+- 3.2 Weight-Only (W4A16 AWQ/GPTQ) vs Weight-and-Activation (W8A8 SmoothQuant/FP8)
+- 3.3 PTQ vs QAT, Blackwell NVFP4/MXFP4 and KV Cache Quantization
+- 4. Commands and Configurations That Matter
+- 4.1 vLLM Production Launch with Continuous Batching, Chunked Prefill and Prefix Caching
+- 4.2 TensorRT-LLM Engine Compilation and Triton Decoupled In-Flight Batching
+- 4.3 Compressing Models with `llmcompressor` (SmoothQuant W8A8 and GPTQ W4A16) and Evaluating Accuracy
+- 5. How It Fails: Production Troubleshooting Playbook
+- 6. Hands-on Lab: Verifying Batching, KV Cache Math and Quantization Models
+- Lab Venue and Objectives
+- Part A: Run the Self-Checking Python Verification Lab
+- Part B: Live GPU Benchmarking on GCP / GKE (Untested in Sandbox)
+- Key takeaways
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary Sources Cited
+- Inferences and Verification Notes
+
+### 15.3 vLLM in depth  [18905 words, ~94 min]  `part-15-inference/03-vllm-in-depth.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Autoregressive KV Cache Mechanics and PagedAttention Internals
+- 1.1 Decoder-Only Transformers: Prefill vs Decode and the KV Cache Footprints
+- 1.2 Why Contiguous KV Allocation Fails: The 60% to 80% Fragmentation Trap
+- 1.3 How PagedAttention Works: Block Tables, Physical Blocks, and Zero Padding FLOPs
+- 2. Copy-on-Write, Automatic Prefix Caching (APC), and RadixAttention
+- 2.1 Copy-on-Write Block Sharing for Parallel Sampling and Beam Search
+- 2.2 Automatic Prefix Caching (APC) vs SGLang RadixAttention
+- 2.3 Prompt Structuring, Multi-Tenant Prefix Isolation, and RAG vs CAG Economics
+- 3. Continuous Batching, Chunked Prefill, and Preemption Policies
+- 3.1 Iteration-Level Continuous Batching vs Request-Level Dynamic Batching
+- 3.2 Chunked Prefill and Token-Budget Scheduling
+- 3.3 Request Preemption: Swap vs Recompute
+- 4. vLLM Engine Architecture, V1 Dual-Process Design, and Distributed Parallelism
+- 4.1 Internal Component Hierarchy and the 4-Layer Optimization Strategy
+- 4.2 vLLM V1 Asynchronous Dual-Process Separation
+- 4.3 Distributed Parallelism in vLLM: TP, PP, DP, and MoE Expert Parallelism
+- 4.4 Multi-LoRA Serving (Punica / S-LoRA), Quantization, and Speculative Decoding
+- 4.5 Serving Engine Comparison: vLLM vs TGI vs SGLang vs LMDeploy vs TensorRT-LLM vs llama.cpp
+- 5. Commands, Configurations, and Prometheus Telemetry That Matter
+- 5.1 Installation, Docker Launch, Offline Batching, and Distributed Serving Commands
+- 5.2 Prometheus Metrics, Alerting Thresholds, and Kubernetes HPA / KEDA Autoscaling
+- 6. How It Fails: Production Failure Modes and Diagnostic Runbooks
+- Failure Mode 1: Physical Block Exhaustion and PCIe Swap Stalls Under Long-Context RAG
+- Failure Mode 2: Unbounded `--max-model-len` and `0.98` VRAM Utilization Causing CUDA OOM
+- Failure Mode 3: Unchunked Prefill Bursts or Mis-Sized Chunk Thresholds Spiking p99 ITL
+- Failure Mode 4: Cross-Node Tensor Parallelism (`TP=16`) NCCL Timeout
+- Failure Mode 5: Degraded Prefix Cache Hit Rate and Block Reference Leaks
+- 7. Hands-On Lab: Verify PagedAttention, APC, Chunked Prefill, and Lab 03 Telemetry
+- Lab Venue and Execution Modes
+- Part A: Run the Self-Checking PagedAttention & vLLM Engine Verification Suite
+- Part B: Deploy and Benchmark `Qwen2.5-Coder-1.5B-Instruct` on GPU (`untested here`)
+- Key takeaways
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full and Migrated)
+- Verification, Inferences, and Live Hardware Status
+
+### 15.4 SGLang and cross-request optimisation  [14634 words, ~73 min]  `part-15-inference/04-sglang-and-cross-request-optimisation.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Intra-Request vs Cross-Request Philosophy and SGLang Architecture
+- 1.1 The Four Open-Source Serving Paradigms
+- 1.2 SGLang Runtime (`SRT`) Pipeline and Container Setup
+- 1.3 The SGLang Frontend Programming Model (`@sgl.function` and `s.fork`)
+- 2. RadixAttention: Radix Tree KV Cache Reuse and LRU Eviction
+- 2.1 How RadixAttention Differs from Block-Hash Prefix Caching
+- 2.2 Radix Tree Lifecycle: Splitting, Sharing, and Leaf-First LRU Eviction
+- 2.3 Cache-Aware Batch Scheduling, RAG Prompt Ordering, and Multi-Tenant Isolation
+- 3. Structured Output Decoding (`XGrammar`, `Outlines`, Jump-Forward) and Zero-Overhead Scheduling
+- 3.1 The 128K Vocabulary Masking Bottleneck and Precompiled Finite-State Machines
+- 3.2 Jump-Forward Decoding: Turning Decode Steps into Prefix Splices
+- 3.3 Operator Fusion and Attention Kernel Backends (`FlashInfer` vs `FlashAttention-3`)
+- 3.4 The Zero-Overhead CPU Scheduler and Token Placeholders
+- 4. Distributed SGLang: Model Gateway, Prefill/Decode Disaggregation, and DP Attention
+- 4.1 The SGLang Model Gateway (Router) Architecture
+- 4.2 Cache-Aware Routing Policies, Session Affinity, and Fault Tolerance
+- 4.3 Prefill/Decode (`PD`) Disaggregation and Transfer Engines (`Mooncake`, `NIXL`, `ASCEND`)
+- 4.4 Hybrid Parallelism (`TP`, `PP`, `DP`, `EP`), Data-Parallel Attention, and Speculative Decoding
+- 5. Commands and Configurations That Matter
+- 5.1 Docker Container Launch and OpenAI / Structured Output Verification
+- 5.2 Multi-Node Router, Mooncake PD Disaggregation, and MoE + DP Attention Launches
+- 6. How It Fails: Five Production Failure Modes
+- 7. Hands-On Lab: Verify RadixAttention, Jump-Forward Decoding, and Cache-Aware Routing
+- Lab Venue and Objectives
+- Step 1: Reference SGLang Frontend DSL Scripts (`@sgl.function`, `s.fork`, Session Affinity)
+- Step 2: Run the Self-Checking Verification Lab
+- Key takeaways
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full)
+- Inferences and Unverified Claims Note
+
+### 15.5 TensorRT and TensorRT-LLM  [13586 words, ~67 min]  `part-15-inference/05-tensorrt-and-tensorrt-llm.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. TensorRT Graph Compilation, Layer Fusion, and Tactic Auto-Tuning
+- 1.1 The Five-Stage Compilation Lifecycle
+- 1.2 Vertical and Horizontal Kernel Fusion Mechanics
+- 1.3 Tactic Profiling, Auto-Tuning, and Workspace Memory Pools
+- 2. Dynamic Shapes, Engine Lifecycle, and Hardware Portability Constraints
+- 2.1 Dynamic Shapes and `IOptimizationProfile` Boundaries
+- 2.2 Hardware/Driver Portability Constraints and Multi-Threaded Runtime Contexts
+- 3. TensorRT-LLM Architecture, Distributed Execution, and Custom Kernels
+- 3.1 Why Autoregressive LLMs Broke Standard TensorRT
+- 3.2 Megatron-Style Tensor and Pipeline Parallelism in TensorRT-LLM
+- 3.3 Custom Attention Plugins: `contextFMHA`, FlashDecoding, and XQA (`MHARunner`)
+- 3.4 In-Flight Batching and Paged KV Cache (`KVCacheManager` and `GptManager`)
+- 4. Quantization with TensorRT and NVIDIA ModelOpt: INT8, FP8, INT4 AWQ, SmoothQuant, and NVFP4
+- 4.1 TensorRT INT8 Entropy Calibration vs Explicit Q/DQ Precision
+- 4.2 LLM Quantization with NVIDIA ModelOpt: FP8, SmoothQuant, INT4 AWQ, and Blackwell NVFP4
+- 5. Commands and Configurations That Matter: Checkpoint Conversion, `trtllm-build`, `trtllm-serve`, and Triton
+- 5.1 End-to-End TensorRT-LLM CLI Workflow
+- 5.2 Production C++ Executor API and Triton `config.pbtxt` Integration
+- 6. How It Fails: Six Production Failure Modes and Runbooks
+- Failure Mode 1: Engine Builder Crashes with `std::bad_alloc` OOM During Tactic Profiling
+- Failure Mode 2: Severe INT8 or FP8 Accuracy Collapse from Non-Representative Calibration Data
+- Failure Mode 3: Silent Output Corruption or Illegal Memory Access Under Multi-Threaded Load
+- Failure Mode 4: Multi-Node Tensor Parallelism NCCL Deadlock
+- Failure Mode 5: KV Cache Block Allocation OOM at Moderate Concurrency
+- Failure Mode 6: Engine Deserialization Failure After Node Auto-Scaling or Driver Upgrade
+- 7. Hands-On Lab: Deterministic TensorRT and TensorRT-LLM Engine Verification
+- Lab Venue and Objective
+- Running the Lab and Expected Output
+- Key takeaways
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary Sources (Read in Full and Migrated)
+- Inferences and Unverified Claims Note
+
+### 15.6 Triton Inference Server  [13040 words, ~65 min]  `part-15-inference/06-triton-inference-server.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Triton C++ Core Architecture, Model Repository Layout, and Configuration
+- 1.1 Internal Server Architecture and Multi-Framework Execution
+- 1.2 Model Repository Layout and Version Policies
+- 1.3 Anatomy of `config.pbtxt` and TensorRT Optimization Profile Alignment
+- 1.4 Model Control Modes: `none`, `poll`, and `explicit`
+- 2. Batch Schedulers: Dynamic, Sequence, and Decoupled Continuous Batching
+- 2.1 Stateless Dynamic Batching (`dynamic_batching`)
+- 2.2 Stateful Sequence Batching (`sequence_batching`)
+- 2.3 Why LLMs Require Decoupled Continuous Batching (`TensorRT-LLM` and `vLLM` Backends)
+- 3. Instance Groups, Multi-Model Concurrency, and GPU Memory Trade-offs
+- 3.1 How `instance_group` Maps to CUDA Streams and GPU HBM
+- 3.2 Worked Production Failure: CUDA Stream Contention and VRAM Saturation (`count: 8` vs `count: 2`)
+- 4. Multi-Model Pipelines: Ensembles vs Business Logic Scripting, Transport Protocols, and Shared Memory
+- 4.1 Declarative Ensembles vs Imperative Business Logic Scripting (BLS)
+- 4.2 Client Transport Protocols (`HTTP/REST` vs `gRPC` vs `C API`) and Shared Memory (`System SHM` vs `CUDA SHM`)
+- 5. Commands, Model Analyzer, Prometheus Telemetry, and Kubernetes Operations
+- 5.1 Prometheus Telemetry KPIs (`:8002/metrics`)
+- 5.2 Automated Configuration Sweeps with `perf_analyzer`, `model-analyzer`, and `genai-perf`
+- 5.3 Kubernetes Probe Decoupling and Zero-Downtime Model Rollouts
+- 6. How It Fails: Six Production Failure Modes
+- 7. Hands-On Lab: Triton Architecture, Dynamic Batcher, and Model Analyzer Verification
+- 7.1 Lab Venue and Environment Note
+- 7.2 Part A: Run the Local Deterministic Python Verification Suite
+- 7.3 Part B: Deploy Triton on a GPU Host and Benchmark Dynamic Batching (`untested` on live hardware)
+- Checkpoint questions
+- Key takeaways
+- Exercises
+- Sources and review notes
+- Primary Sources
+- Lab Verification and Inferences Note
+
+### 15.7 NVIDIA NIM and the NIM Operator  [12372 words, ~61 min]  `part-15-inference/07-nvidia-nim-and-the-nim-operator.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. NVIDIA NIM Container Anatomy and Enterprise Support Boundary
+- 1.1 Inside the NIM Container: Unifying API, Triton, and Execution Engines
+- 1.2 The NVIDIA AI Enterprise Qualification Matrix and Support Boundary
+- 2. Hardware-Aware Model Profile Selection: TensorRT-LLM vs vLLM Fallback
+- 2.1 How `model_manifest.yaml` Resolves GPU Profiles at Startup
+- 2.2 Inspecting Profiles and Sizing GPU Memory
+- 3. Model Caching, NGC Entitlements, and Air-Gapped Supply Chains
+- 3.1 Solving the 20-Minute Cold Start with `NIM_CACHE_PATH`
+- 3.2 NGC Entitlements, `NGC_API_KEY` Rotation, and Air-Gapped `download-to-cache`
+- 4. OpenAI-Compatible API, Health Probes, and Multi-LoRA Serving
+- 4.1 Standardized OpenAI Endpoints and Decoupled Health Probes
+- 4.2 Multi-LoRA Dynamic Adapter Loading (`NIM_PEFT_SOURCE`)
+- 5. The Kubernetes NIM Operator, NeMo Microservices CRDs, and Autoscaling
+- 5.1 Declarative Orchestration with `NIMCache`, `NIMService`, and `NIMPipeline`
+- 5.2 Production Manifests: `NIMCache` and `NIMService` with HPA
+- 5.3 Queue-Depth Autoscaling, Canary Rollout Gates, and NeMo Controls
+- 6. How It Fails: Six Production Failure Modes
+- 7. Hands-On Lab: NVIDIA NIM and NIM Operator Verification
+- 7.1 Lab Venue and Environment Note
+- 7.2 Part A: Run the Local Deterministic Python Verification Suite
+- 7.3 Part B: Deploy and Validate a NIM Service on Kubernetes (not run on live hardware)
+- Checkpoint questions
+- Key takeaways
+- Exercises
+- Sources and review notes
+- Primary Sources
+- Lab Verification and Inferences Note
+
+### 15.8 NVIDIA Dynamo, llm-d and disaggregated serving  [14655 words, ~73 min]  `part-15-inference/08-nvidia-dynamo-llm-d-and-disaggregated-serving.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Why Colocated Serving Breaks Under Dual SLOs
+- 1.1 Prefill-Decode Interference and Head-of-Line Blocking
+- 1.2 The Goodput Imperative and DistServe Math
+- 2. NVIDIA Dynamo Architecture: Control Plane, Smart Router, and GPU Planner
+- 2.1 The Four Pillars of NVIDIA Dynamo
+- 2.2 Decode-Centric Request Flow with `etcd` and NATS
+- 2.3 Smart Router: Conditional Disaggregation and Composite Cost Scoring
+- 2.4 Dynamo GPU Planner, QoS Tiers, and Early Rejection
+- 2.5 Worker Discovery, Leases, and Role Swapping
+- 3. NIXL: The NVIDIA Inference Transfer Library
+- 3.1 Why Disaggregated Serving Needs NIXL Alongside NCCL
+- 3.2 NIXL 0.5.x Architecture, `nixlAgent` Lifecycle, and IBGDA
+- 3.3 PagedAttention Block Collation and Fabric Bandwidth Math
+- 4. Distributed KV Cache Manager, Tiered Offloading, and Heterogeneous Pools
+- 4.1 The Four-Tier KV Cache Memory Hierarchy
+- 4.2 Heterogeneous Hardware Pairing and Asymmetric Parallelism (`TP_p` vs `TP_d`)
+- 5. `llm-d` and the Kubernetes Gateway API Inference Extension
+- 5.1 Architecture of `llm-d` on Kubernetes
+- 5.2 `InferencePool`, `InferenceObjective` (`InferenceModel`), and Envoy `EPP`
+- 6. Commands and Configurations That Matter
+- 6.1 LMCache + NIXL Disaggregated Prefill and Decode Configuration
+- 6.2 End-to-End Nsight Systems Profiling of Disaggregated NIXL Transfers
+- 7. How It Fails: Five Disaggregated Serving Failure Modes
+- 8. Hands-on Lab: Disaggregated Serving, Smart Router, and NIXL Verification
+- Lab Venue and Scope
+- Run the Verification Suite
+- Expected Output (`25 passed, 0 failed`)
+- Key takeaways
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Primary Sources (Read in Full and Cited)
+- Inferences and Unverified Claims Note
+
+### 15.9 Multinode inference: parallelism, decoding and routing  [20979 words, ~104 min]  `part-15-inference/09-multinode-inference-parallelism-decoding-and-routing.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The 5D Parallelism Taxonomy for Multi-Node Inference
+- 1.1 Why Inference Parallelism Differs from Training Parallelism
+- 1.2 Tensor Parallelism Mechanics and Why TP Across PCIe or Ethernet Breaks ITL
+- 1.3 Pipeline Parallelism, Context Parallelism, and Helix Parallelism
+- 1.4 Disaggregated Prefill and Decode
+- 1.5 Trade-offs of Each Parallelism Strategy
+- 2. Wide Expert Parallelism, DeepSeek-R1 671B, and GB200 NVL72
+- 2.1 Sparse Mixture-of-Experts Mechanics and DeepSeek-R1 671B
+- 2.2 TP+EP vs DP+EP (Data-Parallel Attention) in vLLM and SGLang
+- 2.3 Wide Expert Parallelism on GB200 NVL72
+- 2.4 Dynamic MoE Routing, Wave Scheduling, Capacity Factor, and EPLB
+- 2.5 Expert Communication Optimization
+- 2.6 Load Balancing, Capacity Factor, and Expert Replication
+- 2.7 Adaptive Expert Routing and Real-Time Monitoring
+- 3. Speculative Decoding, Parallel Token Generation, and Constrained Decoding
+- 3.1 The Sequential Decode Bottleneck and Draft-Verify Rejection Math
+- 3.2 Medusa, EAGLE-1/2/3, Multi-Token Prediction (MTP), and Lookahead Decoding
+- 3.3 Concurrency Trade-Offs and vLLM Speculative Decoding Configuration
+- 3.4 Constrained Decoding Performance Implications
+- 3.5 Self-Speculative and Single-Model Variants
+- 3.6 Interleaving Decode Steps Across Requests
+- 3.7 Combining Decoding Techniques and Evaluating Complexity
+- 4. Multi-Node Orchestration on Kubernetes: Ray and LeaderWorkerSet (LWS)
+- 4.1 Why Standard Kubernetes Deployments Fail for Multi-Node Sharded LLMs
+- 4.2 Kubernetes LeaderWorkerSet (`LWS`) + GPUDirect RDMA Manifest
+- 5. Multi-Node Request Routing and Prefix-Aware Load Balancing
+- 5.1 Why Round-Robin Fails and Unbounded Prefix Hashing Creates Hotspots
+- 5.2 Disaggregated Prefill-Decode Routing and NIXL / LMCache Handoff
+- 6. How It Fails: Multi-Node Production Incidents and Runbooks
+- 6.1 Failure Mode 1: Cross-Node `TP=16` NCCL Watchdog Timeout (`Meta-Llama-3-405B`)
+- 6.2 Failure Mode 2: Pipeline Parallel Stage 0 KV Cache Starvation (`99.2%` vs `38.5%`)
+- 6.3 Failure Mode 3: Inter-Node GPUDirect RDMA Disabled (`45 ms` AllReduce Latency)
+- 6.4 Failure Mode 4: MoE AllToAll Hot-Expert Straggler (`99%` vs `60%` Utilization)
+- 7. Hands-On Verification Lab
+- Lab Venue and Execution Scope
+- Key takeaways
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full and Cited)
+- Inferences and Unverified Claims Note
+
+### 15.10 Prefill and decode disaggregation  [17815 words, ~89 min]  `part-15-inference/10-prefill-and-decode-disaggregation.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Why Co-Located Prefill-Decode Interference Spikes ITL and Wastes Goodput
+- 1.1 Opposite Hardware Profiles: Compute-Bound Prefill vs Bandwidth-Bound Decode
+- 1.2 How Prefill Bubbles and Chunked Prefill Contention Degrade ITL
+- 1.3 Worked Goodput Math: Colocated vs DistServe 2P1D Disaggregation
+- 2. Disaggregated Serving Architectures: DistServe, Splitwise, TetriInfer, Mooncake, SGLang, and Dynamo
+- 2.1 Control Plane and Data Plane Topologies: Router-Centric vs Decode-Centric
+- 2.2 Evolution of Disaggregated Systems: DistServe, Splitwise, TetriInfer, Arrow, and Mooncake
+- 2.3 Prefill Worker Pool Design: Latency-First vs Throughput-First Scheduling
+- 2.4 Decode Worker Pool Design: Continuous Batching, PDL, and CUDA Graphs
+- 2.5 Conditional Disaggregation and Latency-Aware Routing Policies
+- 2.6 Routing Factors Beyond Prompt Length
+- 2.7 Prefill Parallelism: Data and Pipeline Splits
+- 2.8 Speculative Branches on Top of Routing
+- 3. Prefill-to-Decode Worker Ratio Sizing and Asymmetric Parallelism
+- 3.1 First-Principles Worker Ratio Sizing
+- 3.2 Asymmetric Model Parallelism and On-the-Fly KV Layout Transpose
+- 4. KV Cache Transfer Bandwidth Math and NIXL / RDMA Transport
+- 4.1 Per-Request KV Cache Sizing Across MHA, GQA, MQA, and MLA
+- 4.2 RDMA and NVLink NIXL Transfer Latency vs the TTFT Budget
+- 4.3 PagedAttention Block Collation and Layer-by-Layer Overlap
+- 4.4 KV Cache Offloading, Context Limits, and Memory Hierarchy
+- 5. Heterogeneous GPU Pairing and Dynamic Cluster Scaling
+- 5.1 Matching Silicon to Phase Physics
+- 5.2 Dynamic Autoscaling, Role Flipping, and QoS Admission Control
+- 5.3 Kubernetes Autoscaling for Each Tier
+- 5.4 Graceful Degradation Before Rejection
+- 5.5 Scaling Balance, Shared Decode Pools, and Tail Latency
+- 6. Commands and Configurations That Matter
+- 6.1 SGLang Disaggregated Serving with Mooncake RDMA and NIXL Backends
+- 6.2 vLLM + LMCache + NIXL Zero-Copy Prefill-Decode Configuration
+- 6.3 NVIDIA Dynamo Heterogeneous Roles, Split Policy, and QoS Configuration
+- 7. How It Fails: Six Disaggregated Serving Failure Modes
+- 8. Hands-On Lab: Verifying Disaggregated Serving Models
+- Lab Venue and Execution Scope
+- Key takeaways
+- Checkpoint questions
+- Exercises
+- Sources and review notes
+- Primary Sources (Read in Full and Cited)
+- Inferences and Unverified Claims Note
+
+### 15.11 Advanced prefill-decode and KV cache tuning  [20263 words, ~101 min]  `part-15-inference/11-advanced-prefill-decode-and-kv-cache-tuning.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Split-KV Parallel Decode Attention and Fused Decode Megakernels
+- 1.1 Why Standard FlashAttention Underutilizes SMs During Decode
+- 1.2 Split-KV Parallel Decode: FlashDecoding, FlashInfer, and XQA
+- 1.3 Fused Decode Megakernels: FlashMLA, ThunderMLA, FlexDecoding, and POD-Attention
+- 1.4 FlexDecoding in Practice: Compiled Decode Kernels Without Custom CUDA
+- 1.5 POD-Attention: Matching Prefill and Decode Work on Each SM
+- 2. Chunked Prefill Token-Budget Tuning and Prefix-Cache Alignment
+- 2.1 The Prefill Bubble and Sarathi-Lean Token Budgeting
+- 2.2 The Over-Chunking Pitfall and Prefix-Cache Boundary Alignment
+- 3. KV Cache Quantization, Windowed Attention, and Selective Token Eviction
+- 3.1 Exact KV Cache Sizing Across MHA, GQA, MQA, and MLA
+- 3.2 FP8/INT4 KV Cache Quantization, Block Sizing, and Real-Time HQQ Policy Switching
+- 3.3 Sliding Window Attention, StreamingLLM Attention Sinks, and H2O / SnapKV Eviction
+- 4. Zero-Copy KV Cache Transfer, Page Collation, and Phase-Specific Parallelism
+- 4.1 KV Transfer Bandwidth Math and LMCache RDMA Page Collation
+- 4.2 Connector Topologies and Phase-Specific KV Transpose
+- 4.3 Five Strategies for Fast KV Transfer
+- 4.4 Page Size, Collation, and Transfer Buffer Sizing
+- 4.5 Choosing a Connector Pattern and Handling Failures
+- 5. Hierarchical KV Cache Offloading: HBM, Grace LPDDR5X, DDR5, and NVMe/GDS
+- 5.1 Four-Tier Memory Hierarchy and Grace Hopper / Blackwell NVLink-C2C
+- 5.2 Long-Context CAG vs RAG, CacheGen, and CacheBlend
+- 5.3 Paging KV Blocks and Trading Memory for Compute
+- 5.4 Exact Prefix Matching, Eviction, and Locality-Aware Routing
+- 6. Heterogeneous Hardware Economics and SLO-Aware Adaptive Schedulers
+- 6.1 Heterogeneous Prefill/Decode Pools: Splitwise and HexGen-2
+- 6.2 Conditional Routing, Mooncake Admission Control, TetriInfer, and Arrow
+- 6.3 Mixing GPU Generations and Phase-Specific Hardware
+- 6.4 Hybrid Prefill with CPU Workers
+- 6.5 Adaptive Scheduling: Imbalance, TetriInfer, and Arrow
+- 6.6 Elastic Scaling, Instance Flips, and Predictive Scaling
+- 6.7 Priority Classes, Feedback Loops, and Load Shedding
+- 6.8 Fault Recovery When a Node Fails
+- 7. Commands and Configurations That Matter
+- 7.1 LMCache + NIXL Zero-Copy Prefill-Decode Configuration (*AI Systems Performance Engineering* Ch. 18)
+- 7.2 Tiered LMCache Offloading, Chunked Prefill, and GDS Verification (`HLS` Ch. 7, `V12` Ch. 7, *AI Systems Performance Engineering* Ch. 5)
+- 7.3 Real-Time HQQ KV Cache Quantization and CUDA Stream KV Prefetching (*AI Systems Performance Engineering* Ch. 19)
+- 8. How It Fails: Six Production Failure Modes
+- 9. Hands-On Verification Lab
+- Checkpoint questions
+- Key takeaways
+- Exercises
+- Sources and review notes
+
+### 15.12 Dynamic and adaptive inference engine optimisations  [32103 words, ~160 min]  `part-15-inference/12-dynamic-and-adaptive-inference-engine-optimisations.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. CUDA Graphs for Decode Batch Sizes, Padding Buckets, and Memory Pools
+- 1.1 Eliminating Host Dispatch Overhead with Decode CUDA Graphs
+- 1.2 Decode Batch Padding Buckets and Decreasing-Batch Shared Memory Pools
+- 1.3 Time-Series CUDA Graph Prewarming and Dynamic Allocator Switching
+- 1.4 Adaptive Batching, Chunked Prefill, and Prefill-Decode Scheduling
+- 2. TorchCompile, TorchInductor, Kernel Autotuning, and Custom Triton Fused Kernels
+- 2.1 The PyTorch Compilation Pipeline and Inference Modes
+- 2.2 Custom OpenAI Triton Fused Kernels for RMSNorm, RoPE, SwiGLU, and AllReduce
+- 2.3 Runtime Kernel Autotuning, Occupancy-Aware Shared Memory, and Hot-Swapping
+- 2.4 Runtime Kernel Patching and Hot-Swappable Implementations
+- 3. Dynamic Speculative Decoding and Draft-Length Adaptation
+- 3.1 The Mathematics of Speculative Verification
+- 3.2 Speculative Architecture Variants: Draft-Target, EAGLE, Medusa, and Self-Speculative
+- 3.3 Dynamic Draft-Length Adaptation Under Varying Acceptance and Batch Load
+- 3.4 Speculative KV Prefetching for Faster TTFT
+- 4. Early Exit, Layer Skipping, Mixture of Depths, and Dynamic Precision Scaling
+- 4.1 Dynamic Early-Exit Networks, DASH Layer Skipping, Mixture of Depths, and LazyLLM
+- 4.2 Hysteretic Token-Level Precision Scaling and Real-Time KV Cache Compression
+- 4.3 Real-Time KV Cache Compression and Policy Switching
+- 5. Adaptive Parallelism, Congestion-Aware Scheduling, and Semantic Model Cascades
+- 5.1 Traffic-Driven Adaptive Parallelism Switching and NVL72 Congestion Scheduling
+- 5.2 Endpoint-Level Semantic Caching, Routers, and Tiered Model Cascades
+- 5.3 Topology-Aware and Congestion-Aware GPU Communication (*AI Systems Performance Engineering* Ch. 19, restored)
+- 6. Test-Time Compute Scaling, Multi-LoRA, Multimodal V1, and RL Runtime Tuning
+- 6.1 Test-Time Compute Scaling Budgets: Best-of-N and MCTS with Prefix Sharing
+- 6.2 Multimodal V1 Process Decoupling, Multi-LoRA Punica Kernels, and RL Runtime Tuning
+- 6.3 Reinforcement Learning Agents for Runtime Tuning
+- 7. Commands, Configurations, and Production Failure Modes
+- 7.1 Production Engine Launch Commands That Matter
+- 7.2 Five Production Failure Modes: Symptom, Diagnosis, and Fix
+- 7.3 Profiling-Driven Optimization
+- 7.4 Putting It Together
+- 8. Hands-On Verification Lab
+- Venue and Scope
+- Running the Self-Checking Lab
+- Checkpoint questions
+- Key takeaways
+- Exercises
+- Sources and review notes
+- Primary Sources Cited
+- Inferences and Verification Notes
+
+### 15.13 Profiling, debugging and tuning inference at scale  [29128 words, ~145 min]  `part-15-inference/13-profiling-debugging-and-tuning-inference-at-scale.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The Three-Layer Inference Profiling Funnel and Observability Stack
+- 1.1 The Observe-Hypothesize-Tune Loop and Three-Layer Profiling Funnel
+- 1.2 Production Telemetry with DCGM, Prometheus, and Alertmanager Rules
+- 1.3 NVTX Instrumentation, CUPTI Projection, and Nsight Systems / Compute
+- 1.4 Monitoring System Metrics, Counters, and Logs
+- 1.5 Inference Troubleshooting Recipes
+- 1.6 Alert Thresholds and Hardware Error Signals
+- 2. Diagnosing TTFT Spikes vs ITL / TPOT Stalls and Latency-Aware Scheduling
+- 2.1 Prefill vs Decode Roofline Mechanics
+- 2.2 Stall-Free Scheduling (Chunked Prefill) and Triangular Attention Math
+- 2.3 Latency-Aware Scheduling vs FIFO Queueing
+- 2.4 Dynamic Batching
+- 2.5 Continuous Batching and Continuous Scheduling
+- 2.6 Goodput and the Throughput-Latency Trade-Off
+- 3. Host CPU Scheduling Overhead, GIL Bottlenecks, and Streaming I/O Stalls
+- 3.1 Deconstructing Non-GPU Latency: Python GIL and Single-Threaded Preprocessing
+- 3.2 vLLM V1 Process Decoupling, Pinned PCIe Transfers, and SSE Streaming Flow Control
+- 3.3 Moving Preprocessing to the GPU
+- 4. KV Cache Thrashing, Preemption Debugging, and Memory Fragmentation Triage
+- 4.1 Diagnosing Preemption Storms: Recompute vs PCIe Swap Thrashing
+- 4.2 Prefix Cache Anomalies and PyTorch Caching Allocator Fragmentation
+- 4.3 Keeping Weights in GPU Memory and Shrinking the KV Cache
+- 4.4 Prefix Caching, Token Tries, and RadixAttention
+- 5. Multi-GPU NCCL Tail Latency, CUDA Graph Bugs, and Hardware Fault Triage
+- 5.1 Diagnosing NCCL AllReduce and MoE AllToAll Tail Latency
+- 5.2 Debugging CUDA Graph Capture, Replay, and Numerical Bugs
+- 5.3 The Zombie Pod Problem: Hardware XID 62 Deadlocks and Kubernetes Probes
+- 5.4 Overlapping Communication and Computation
+- 5.5 Power and Thermal Constraints
+- 5.6 Error Handling, Backpressure, and Warm Spares
+- 5.7 Debugging Correctness and Silent NCCL Failures
+- 6. Full-Stack Quantization and Application-Level Tuning at Scale
+- 6.1 Real-Time Inference Quantization: FP8, NVFP4, GPTQ, AWQ, SmoothQuant, and W4A8
+- 6.2 Application-Level Optimizations and Production Capacity Guardrails
+- 6.3 Prompt Compression in Practice
+- 6.4 Model Cascading and Fallback Routing
+- 6.5 Streaming Responses and Flow Control
+- 6.6 Debouncing, Request Coalescing, and Output Limits
+- 6.7 Full-Stack Optimization by Layer
+- 7. Hands-on lab: End-to-end profiling, debugging, and tuning verification
+- 7.1 Lab Venue and Production Diagnostic Commands
+- 7.2 Running the Self-Checking Python Verification Lab
+- Checkpoint questions
+- Key takeaways
+- Exercises
+- Sources and review notes
+- Primary Sources Cited
+- Inferences and Verification Notes
+
+### 15.14 Benchmarking: genai-perf, latency percentiles and goodput  [17977 words, ~89 min]  `part-15-inference/14-benchmarking-genai-perf-latency-percentiles-and-goodput.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Deconstructing GenAI Latency Percentiles and Throughput Metrics
+- 1.1 Time to First Token, Inter-Token Latency, Time Per Output Token, and End-to-End Latency
+- 1.2 Why Percentile Latencies (P50, P90, P95, P99) Beat Averages
+- 1.3 Token and Request Throughput Metrics
+- 1.4 Scaling Efficiency, Memory Efficiency, and Cost per Token
+- 1.5 Rigorous Benchmarking Methodology: Warmup, Synchronization, and Iteration Counts
+- 2. Queueing Theory, Little's Law, and Open-Loop vs Closed-Loop Load Models
+- 2.1 Little's Law (`L = lambda * W`) and Admission Queue Saturation
+- 2.2 Closed-Loop Concurrency Sweeps vs Open-Loop Poisson Arrivals
+- 3. Benchmarking Tooling: GenAI-Perf, Perf Analyzer, AIPerf, vLLM, and genai-bench
+- 3.1 NVIDIA GenAI-Perf and AIPerf
+- 3.2 Triton Perf Analyzer (`perf_analyzer`)
+- 3.3 vLLM Benchmark Suite (`benchmark_serving.py` and `vllm bench serve`)
+- 3.4 SGLang `genai-bench`, Locust Load Testing, and Dataset Profiling
+- 4. Goodput, the Latency-Throughput Pareto Frontier, and MLPerf Inference
+- 4.1 Defining Goodput vs Raw Headline Throughput
+- 4.2 Constructing the Latency-Throughput Pareto Frontier
+- 4.3 MLPerf Inference Benchmark: Server vs Offline Scenarios
+- 4.4 Cold Starts, Multi-Step Reasoning Agents, and Profiler Correlation
+- 5. End-to-End Optimization Benchmarks: Quantization, Prefix Caching, and Multi-GPU Scaling
+- 5.1 Step-by-Step Optimization Benchmark: `Qwen3-14B` FP16 vs AWQ 4-Bit on NVIDIA L40S
+- 5.2 Vertical (`TP`) vs Horizontal (`DP`) Multi-GPU Scaling: PCIe (`g6e`) vs NVLink (`p4d`)
+- 5.3 Distributed Scaling Efficiency, Amdahl's Law, and Accuracy Validation Gates
+- 6. How It Fails: Production Benchmarking Failure Modes and Remediation
+- 6.1 Failure Mode 1: Short Synthetic Prompts Hiding Quadratic RAG Prefill Collapse
+- 6.2 Failure Mode 2: Open-Loop Arrival Spikes Triggering KV Cache Preemption Loops
+- 6.3 Failure Mode 3: Single-Threaded Gateway CPU Tokenization Masquerading as a Slow GPU
+- 6.4 Prometheus Telemetry and Alerting Rules for SLO Enforcement
+- 7. Hands-On Lab: Deterministic Verification of Latency Percentiles, Little's Law, and Goodput
+- 7.1 Lab Venue and Scope
+- 7.2 Running the 25-Check Verification Suite
+- Checkpoint questions
+- Key takeaways
+- Exercises
+- Sources and review notes
+- Primary Sources Cited
+- Inferences and Verification Notes
+
+### 15.15 Autoscaling inference: HPA, KEDA and scale-to-zero  [13602 words, ~68 min]  `part-15-inference/15-autoscaling-inference-hpa-keda-and-scale-to-zero.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Why Legacy Autoscaling Signals Fail for LLM Serving
+- 1.1 The Decoupling of CPU, Memory, and GPU Activity
+- 1.2 Why `DCGM_FI_DEV_GPU_UTIL` Misleads Under Continuous Batching
+- 2. Custom Prometheus Metrics: Queue Depth, KV Cache, and Latency SLIs
+- 2.1 Scaling on Scheduler Queue Depth (`vllm:num_requests_waiting`)
+- 2.2 Scaling on KV Cache Saturation (`vllm:gpu_cache_usage_perc`)
+- 2.3 Scaling on Token Latency SLIs (TTFT and ITL) and `llm-d` WVA
+- 3. Kubernetes HPA Mechanics, Stabilization Windows, and Scaling Policies
+- 3.1 The HPA Control Loop Equation and Deadband Tolerance
+- 3.2 Tuning Stabilization Windows and Asymmetric Scaling Policies
+- 3.3 Why VPA Conflicts with HPA and How to Size Rolling Updates
+- 4. KEDA Architecture, `ScaledObject`, Scale-to-Zero, and KServe Concurrency
+- 4.1 Why KEDA Replaces `prometheus-adapter` for AI Factories
+- 4.2 Production KEDA `ScaledObject` and KServe Integration
+- 4.3 The Mechanics of Scale-to-Zero (`minReplicaCount: 0`)
+- 5. Cold-Start Anatomy: Image Pulls, Node Provisioning, and Weight Streaming
+- 5.1 Deconstructing the Five Phases of an LLM Cold Start
+- 5.2 Node Autoscaling: Cluster Autoscaler vs. Karpenter and Pre-Warmed Standby Nodes
+- 5.3 Storage Packaging and Weight Streaming (`modelcar`, OCI Volumes, `runai_streamer`, `GDS`)
+- 6. Production Failure Modes, Probe Design, and FinOps Cost Engineering
+- 6.1 Failure Mode 1: Queue-Depth Thrashing on Fast Models
+- 6.2 Failure Mode 2: Readiness Probe Cascading Outage During HPA Scale-Out
+- 6.3 Failure Mode 3: Multi-Turn Prefix Cache Miss Storm Across Autoscaled Replicas
+- 6.4 FinOps Cost Engineering: How Autoscaling Thresholds Govern `$/1M` Tokens
+- Commands and configurations that matter
+- 1. Production KServe `InferenceService` with KEDA and OpenTelemetry / Prometheus (*Generative AI on Kubernetes*, Chapter 4)
+- 2. Kubernetes Gateway API Inference Extension `InferencePool` (*Generative AI on Kubernetes*, Chapter 4)
+- 3. Diagnostic Commands for Autoscaling, Probes, and Cold Starts
+- Hands-on lab
+- Venue and Scope
+- Part 1: Run the Self-Checking Autoscaling & Cold-Start Verification Lab
+- Key takeaways
+- Checkpoint questions
+- Exercises
+- Sources and review notes
+- Inferences and Verification Notes
+
+### 15.16 Production serving stack and reliability  [15947 words, ~79 min]  `part-15-inference/16-production-serving-stack-and-reliability.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. End-to-End Production Serving Architecture and AI Gateways
+- 1.1 The Nine-Stage Request Lifecycle and Non-GPU Latency
+- 1.2 Layered Enterprise Architecture and Multi-Model Routing
+- 1.3 Kubernetes Gateway API Inference Extension and llm-d
+- 1.4 Local k3d Development vs Production Stack Options
+- 2. Admission Control, Token-Based Rate Limiting, Caching, and Guardrails
+- 2.1 Dual Token-Bucket Rate Limiting (RPM and TPM) and Tenant Quotas
+- 2.2 Semantic Caching, Prefix Caching, and Prompt Compression
+- 2.3 Runtime Safety Shields: NVIDIA NeMo Guardrails
+- 3. Safe Model Rollouts, Traffic Governance, and SSE Streaming Drain
+- 3.1 Canary, A/B Testing, Shadow, and Blue-Green Model Rollouts
+- 3.2 Server-Sent Events (SSE) Streaming and Graceful Connection Draining
+- 4. Kubernetes Health Probes, Silent GPU Deaths, and Hardware Fault Remediation
+- 4.1 The Zombie Pod Problem and Three-Probe Architecture
+- 4.2 Automated Hardware Fault Remediation (XID 62 + DCGM + NPD)
+- 5. Overload Protection: Circuit Breakers, Fallback Cascades, and Cost Resilience
+- 5.1 Admission Operating Zones and Hysteretic Circuit Breaking
+- How it fails
+- 1. Readiness Probe Cascading Outage During Autoscaling
+- 2. Silent GPU Halt (XID 62) and Tensor-Parallel Traffic Blackhole
+- 3. PCIe Host-Memory Swap Thrashing (Before v0.18) and Prefill-Starved Decode Stalls
+- 4. Single-Threaded CPU Tokenization Starvation and Silent FP8 NaN Spikes
+- Hands-on lab
+- Checkpoint questions
+- Key takeaways
+- Exercises
+- Sources and review notes
+- Inferences and Verification Notes
+
+### 15.17 Lab: serve and benchmark on GKE and Nebius  [11977 words, ~59 min]  `part-15-inference/17-lab-serve-and-benchmark-on-gke-and-nebius.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. GKE and Nebius MK8s GPU Cluster Architecture and Parallelism Trade-offs
+- 1.1 Selecting Node Pools and Verifying Hardware Topology
+- 1.2 Sub-GPU Sharing and Multi-GPU Parallelism
+- 2. Weight Caching and Fast Model Loading on GKE and Nebius
+- 2.1 The Six-Stage Startup Pipeline and Cold-Start Multipliers
+- 2.2 Configuring GKE GCS Fuse, Nebius Shared Filesystems, and Run:ai Model Streamer
+- 3. Deploying vLLM, SGLang, and TensorRT-LLM / NIM with Exact VRAM Budgets
+- 3.1 Anatomy of the GPU Memory Budget and Preemption Prevention
+- 3.2 Comparing vLLM, SGLang, and TensorRT-LLM / NIM Configurations
+- 4. Gateway API Inference Extension, Observability, and KEDA Autoscaling
+- 4.1 LLM-Aware Routing with Gateway API Inference Extension
+- 4.2 Prometheus + DCGM Scraping, TPOT Alerting, and KEDA Autoscaling
+- 5. Benchmarking Concurrency Sweeps and Analyzing Tail Latency
+- 5.1 Designing Realistic Traffic Profiles and Latency Decomposition
+- 5.2 Running Concurrency Sweeps with Benchmark CLI Tools
+- 6. How It Fails: Production Serving and Benchmarking Failure Modes
+- 7. Hands-on Lab: Verification Model and Cloud Teardown Checklist
+- Venue and Scope
+- 7.1 Running the Self-Checking Python Verification Lab
+- 7.2 Mandatory GKE and Nebius Teardown Checklist
+- Checkpoint questions
+- Key takeaways
+- Exercises
+- Sources and review notes
+- Primary Sources Cited
+- Inferences and Verification Notes
+
+### 15.18 Inference cost, capacity and cost per token  [18218 words, ~91 min]  `part-15-inference/18-inference-cost-capacity-and-cost-per-token.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Decomposing Inference Cost: Input Tokens, Output Tokens, and 3-Year TCO
+- 1.1 The Fundamental Cost-per-Million-Tokens Equation
+- 1.2 Full 3-Year AI Factory TCO and the Utilization Multiplier
+- 2. Goodput-Adjusted Cost per Million Tokens Under P99 Latency SLOs
+- 2.1 Defining Goodput Versus Raw Token Throughput
+- 2.2 Open-Loop Poisson Arrivals, Preemption Collapse, and Chunked Prefill
+- 3. KV Cache and Weight VRAM Sizing Across FP16, FP8, and INT4
+- 3.1 Exact KV Cache Mathematics and MHA vs. GQA Scaling
+- 3.2 Concurrency Capacity Matrix and the Non-Linear TP KV Dividend
+- 4. GPU Fleet Capacity Planning from Peak RPS and Diurnal Traffic Curves
+- 4.1 Little's Law Concurrency, Replica Throughput, and Regional N+1 Failover
+- 4.2 Diurnal Traffic Curves, the Three-Tier Purchasing Model, and DCGM Reapers
+- 5. Comparing Accelerator Economics: L4, L40S, A100, H100, H200, B200, and GB200 NVL72
+- 5.1 The Seven-Tier NVIDIA Inference Hardware Matrix
+- 5.2 The PCIe vs. NVLink SXM Crossover and Horizontal DP vs. Vertical TP Scaling
+- 6. Algorithmic Multipliers and Self-Hosted vs. Managed API Break-Even
+- 6.1 Economic Impact of Quantization, Prefix Caching, Speculative Decoding, and P/D Disaggregation
+- 6.2 Self-Hosted GPUs vs. Managed Commercial APIs: Break-Even Utilization Math
+- Commands and configurations that matter
+- 1. Production vLLM Deployment with Tuned KV Memory, Chunked Prefill, Prefix Caching, and Kubernetes Probes (`V12` Ch. 1, 8, 9, 11)
+- 2. Open-Loop Poisson Benchmarking and Real-Time Goodput / FinOps Telemetry (`V12` Ch. 10, `HLS` Ch. 9, `V19` Ch. 3 & 6)
+- 3. Prometheus Alerting Rules for SLO Goodput, KV Cache Saturation, and FinOps Zombie Detection (`V12` Ch. 8–11, `V19` Ch. 3, 6, 9)
+- How it fails
+- Hands-on lab: Self-Checking Inference Cost, Capacity, and Break-Even Simulator
+- Lab Venue and Execution Scope
+- Key takeaways
+- Exercises
+- Checkpoint questions (20)
+- Sources and review notes
+- Primary Sources (Read in Full and Migrated)
+- Inferences and Unverified Claims Note
+
+## Vol part-16-mlops-llmops (15 chapters)
+
+
+### 16.1 MLOps foundations and lifecycle  [17739 words, ~88 min]  `part-16-mlops-llmops/01-mlops-foundations-and-lifecycle.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The failure mode MLOps exists to prevent
+- 1.1 The classic incident: a notebook, a lucky seed, an unrecoverable dataset
+- 1.1.1 Why teams fail to install the discipline: the ML hierarchy of needs
+- 1.1.2 The cultural failure modes: HiPPO and the absence of Kaizen
+- 1.1.3 Why "ML in production" is not "ML in research": the five-dimension gap
+- 1.1.4 A threat that hides in the training set: data poisoning
+- 1.2 Why DevOps muscle alone is not enough
+- 1.3 What "governance" means in an ML system
+- 2. The end-to-end ML lifecycle
+- 2.1 Two phases: experimentation, then development-staging-production
+- 2.2 The artifacts at each stage
+- 2.3 The minimum mechanism at each gate
+- 3. The four pillars of MLOps
+- 3.1 Data: the artifact that is hardest to version
+- 3.2 Model: the artifact with the most versions per byte
+- 3.3 Code: the artifact DevOps already knows how to version
+- 3.4 Deployment: the artifact that lives in two systems at once
+- 3.5 The pillar diagram
+- 4. Maturity levels and the path from notebook to platform
+- 4.1 The three levels that everyone agrees on
+- 4.2 The capabilities that move you up
+- 4.3 The promotion gate, in code
+- 5. From MLOps to LLMOps
+- 5.1 What stays the same
+- 5.2 What changes: three new artifact types
+- 5.2.1 The four goals of LLMOps, and the SLO/SLA/KPI contract
+- 5.3 What changes: three new failure modes
+- 5.4 The extended lifecycle diagram
+- 6. The infrastructure context: MLOps inside an AI factory
+- 6.1 Who owns what on the platform
+- 6.2 The cluster primitives that enforce the lifecycle
+- 6.3 The data path through the AI factory
+- 6.4 The GPU node as the MLOps boundary
+- 7. How it fails
+- 7.1 "The data scientist left and we lost the pipeline"
+- 7.2 "The promotion was approved verbally"
+- 7.3 "The new model beat the offline metric but failed in production"
+- 7.4 "Two teams use different definitions of the same feature"
+- 7.5 "The corpus updated but the index did not"
+- 7.6 "The agent loop ran away"
+- 7.7 "Nobody tested the model against adversarial inputs"
+- 8. Hands-on lab
+- 8.0 Prerequisites
+- 8.1 Step 1: install a tracking server and a registry
+- 8.2 Step 2: version a dataset with DVC
+- 8.3 Step 3: train a model and log to MLflow
+- 8.4 Step 4: add a promotion gate
+- 8.5 Step 5: deploy the staged model behind KServe
+- 8.6 Step 6: smoke-test the deployment
+- 8.7 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.2 Data versioning and experiment tracking: DVC, MLflow, Weights and Biases  [12873 words, ~64 min]  `part-16-mlops-llmops/02-data-versioning-and-experiment-tracking-dvc-mlflow-weights-and-biases.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Data versioning: making a dataset an artifact
+- 1.1 The three properties that make dataset versioning hard
+- 1.2 DVC: Git for data and models
+- 1.3 lakeFS, Pachyderm, Delta Lake, and DVC compared
+- 1.4 The data versioning interface a training script should expose
+- 2. Experiment tracking: making a training run a record
+- 2.1 The experiment record contract
+- 2.1.1 Regulatory compliance and reproducibility as a legal requirement
+- 2.2 MLflow Tracking in practice
+- 2.3 Weights and Biases in practice
+- 2.4 Comparing runs: the killer feature
+- 2.5 What the platform team owns
+- 3. The handoff to the registry and the cluster boundary
+- 3.1 From run record to registered model
+- 3.2 Signing the artifact at the cluster boundary
+- 3.3 The Mermaid: tracking and registry together
+- 4. Choosing DVC, MLflow and Weights and Biases
+- 4.1 When to use what
+- 4.2 Combining DVC and MLflow
+- 4.3 A worked comparison: tabular classification on a synthetic dataset
+- 5. Operating the stack on GKE
+- 5.1 The components and where they live
+- 5.2 Authentication and IAM
+- 5.3 Backup and retention
+- 5.4 Observability of the tracker itself
+- 6. How it fails
+- 6.1 "The data scientist is using DVC on a laptop and the GCS bucket is gone"
+- 6.2 "The tracking server's Postgres ran out of connections"
+- 6.3 "The candidate AUC looks fine but the production model is broken"
+- 6.4 "The artifact URI is correct but the bytes are wrong"
+- 6.5 "The artifact is signed but the admission controller does not check"
+- 6.6 "The W&B run is in the cloud but the artifact is in the company's S3"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: wire DVC to the project's GCS bucket
+- 7.3 Step 2: version a v2 dataset and compare against v1
+- 7.4 Step 3: run the training script from Chapter 16.1 with two seeds
+- 7.5 Step 4: query the comparison from the MLflow REST API
+- 7.6 Step 5: promote the higher-AUC run, sign the artifact
+- 7.7 Step 6: verify the signature is checked at the cluster boundary
+- 7.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.3 Data pipelines and feature stores  [14680 words, ~73 min]  `part-16-mlops-llmops/03-data-pipelines-and-feature-stores.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The ML data pipeline
+- 1.1 Five stages, each with an artifact
+- 1.2 Choosing the right runtime for each stage
+- 1.3 The runtime shortcut: do the simple thing first
+- 1.4 Choosing the storage format: row-major vs column-major, text vs binary
+- 1.5 The data model: relational vs NoSQL, and why pipelines matter more than the model
+- 2. The feature store contract
+- 2.1 The two views: online and offline
+- 2.2 Point-in-time correctness
+- 2.3 Feast, Tecton, Vertex AI Feature Store and Databricks Feature Store
+- 2.4 A Feast entity and feature view, in code
+- 2.5 The feature freshness SLO
+- 2.6 The feature engineering taxonomy
+- 3. Validation: catching the silent bugs
+- 3.1 The four checks every stage runs
+- 3.2 A Great Expectations suite, in code
+- 3.3 Leakage checks: the silent killer
+- 3.4 Labels: hand, natural, weak, and the sampling patterns that feed them
+- 3.5 Feedback loop length: a design variable
+- 3.6 Sampling from a stream: reservoir and importance sampling
+- 3.7 Data lineage: where the data came from
+- 4.1 The pipeline as a DAG
+- 4.2 The serving system reads from the feature store
+- 4.3 The Mermaid: pipeline, feature store, and serving
+- 5. LLM data pipelines: corpus, chunking, embeddings, index
+- 5.1 Four artifacts unique to LLM data
+- 5.2 The index snapshot is the new dataset ID
+- 5.3 Freshness for retrieval indices
+- 5.4 Validation for LLM data
+- 6. Operating the pipeline and the feature store on GKE
+- 6.1 The components
+- 6.2 IAM and secrets
+- 6.3 Observability of the pipeline
+- 7. How it fails
+- 7.1 "The feature store says the user is gold, the warehouse says silver"
+- 7.2 "The training run used a 30-day-old feature snapshot"
+- 7.3 "The chunking policy silently changed"
+- 7.4 "The pipeline crashes on a missing column"
+- 7.5 "The feature store is hot-spotting on a single key"
+- 7.6 "Two teams are using two feature stores"
+- 8. Hands-on lab
+- 8.1 Prerequisites
+- 8.2 Step 1: define an entity and a feature view
+- 8.3 Step 2: load historical features for a training run
+- 8.4 Step 3: materialise features to the online store
+- 8.5 Step 4: read online features from the serving system
+- 8.6 Step 5: wire the pipeline DAG into Argo Workflows
+- 8.7 Step 6: add an LLM data stage
+- 8.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.4 Pipeline orchestration: Kubeflow Pipelines, Argo, Flyte, Airflow  [10693 words, ~53 min]  `part-16-mlops-llmops/04-pipeline-orchestration-kubeflow-pipelines-argo-flyte-airflow.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The four orchestrators and how they differ
+- 1.0 The orchestrator as the surface where Kaizen happens
+- 1.1 A unified mental model
+- 1.2 Argo Workflows
+- 1.3 Kubeflow Pipelines
+- 1.4 Flyte
+- 1.5 Airflow
+- 1.6 Comparison
+- 2. Building a DAG that actually runs
+- 2.1 The shape of a production pipeline
+- 2.2 The resource request is the contract
+- 2.3 Artefact passing without the file system
+- 2.4 Caching is the cheapest optimisation
+- 2.5 Retries and backoff
+- 3. GPU pool integration and gang scheduling
+- 3.1 Why default Kubernetes scheduling is not enough
+- 3.2 A Volcano PodGroup example
+- 3.3 The KAI Scheduler alternative
+- 4. Integration with the tracker, registry, and feature store
+- 4.1 The orchestrator as the glue
+- 4.2 Run records from the orchestrator
+- 4.3 Secrets and IAM
+- 5. Operating the orchestrator on GKE
+- 5.1 The components
+- 5.2 IAM and multi-tenancy
+- 5.3 Observability of the orchestrator
+- 6. How it fails
+- 6.1 "Two pods got GPUs, six are pending"
+- 6.2 "The DAG ran but the data is from yesterday"
+- 6.3 "The orchestrator's Postgres is full"
+- 6.4 "The artefact upload times out"
+- 6.5 "The pipeline is running on the wrong GPU pool"
+- 6.6 "The DAG fails on a missing IAM role"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: install Argo Workflows
+- 7.3 Step 2: install Volcano (or use an existing gang scheduler)
+- 7.4 Step 3: submit a multi-stage DAG
+- 7.5 Step 4: verify the gang scheduling
+- 7.6 Step 5: verify the integration with the tracker and registry
+- 7.7 Step 6: observe the orchestrator's metrics
+- 7.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.5 Distributed compute for ML: Ray, KubeRay, Training Operator and Katib  [9538 words, ~47 min]  `part-16-mlops-llmops/05-distributed-compute-for-ml-ray-kuberay-training-operator-and-katib.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The four tools and the workloads they fit
+- 1.1 Ray: general-purpose distributed Python
+- 1.2 KubeRay: the Kubernetes operator for Ray
+- 1.3 Kubeflow Training Operator: TFJob, PyTorchJob, MPIJob, XGBoostJob
+- 1.4 Kubeflow Katib: hyperparameter tuning and NAS
+- 1.5 Comparison
+- 2. Gang scheduling and GPU pool integration
+- 2.1 The contract is the resource request
+- 2.2 KAI Scheduler integration
+- 2.3 Topology binding
+- 3. Fault tolerance and elastic training
+- 3.1 What happens when a node dies
+- 3.2 A checkpoint-restart pattern with PyTorch Elastic
+- 3.3 A checkpoint-restart pattern with DeepSpeed
+- 3.4 Kueue for quota and preemption
+- 4. Integration with the orchestrator, tracker, and registry
+- 4.1 The DAG that runs a distributed training job
+- 4.2 The tracker integration
+- 4.3 The registry integration
+- 5. Operating the layer on GKE
+- 5.1 The components
+- 5.2 IAM and multi-tenancy
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "The job is stuck waiting for a worker"
+- 6.2 "The job failed because of an NCCL timeout"
+- 6.3 "The job lost a worker and restarted from scratch"
+- 6.4 "The sweep submitted 500 trials and the cluster ran out of GPUs"
+- 6.5 "The Ray cluster autoscaler added 100 worker pods"
+- 6.6 "The Training Operator job did not respect the resource quota"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: install the operators
+- 7.3 Step 2: submit a distributed training job
+- 7.4 Step 3: submit a Ray cluster and a Ray job
+- 7.5 Step 4: run a Katib sweep
+- 7.6 Step 5: verify gang scheduling
+- 7.7 Step 6: observe the distributed compute layer
+- 7.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.6 Model registry, CI/CD and GitOps for models  [11531 words, ~57 min]  `part-16-mlops-llmops/06-model-registry-ci-cd-and-gitops-for-models.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The registry contract
+- 1.1 What a registered model is
+- 1.2 The stages and what each gate looks like
+- 1.3 Lineage: the difference between a model and a registered model
+- 2. CI/CD for model artifacts
+- 2.1 The pipeline shape
+- 2.2 The training image is a release artefact
+- 2.3 The promotion gate as a CI step
+- 3. GitOps for the registry
+- 3.1 The shape
+- 3.2 The pull request is the promotion event
+- 3.3 The reconciler is the cluster primitive
+- 4. Deployment: canary, blue/green, and the rollback path
+- 4.1 The three deployment patterns
+- 4.2 The canary stages
+- 4.3 The rollback path is pre-staged
+- 4.4 What about the registry for LLMs?
+- 5. Operating the registry on GKE
+- 5.1 The components
+- 5.2 IAM and the four roles
+- 5.3 Backup and retention
+- 5.4 Observability of the registry
+- 6. How it fails
+- 6.1 "The registry says v9 is in production but the cluster is running v6"
+- 6.2 "The promotion PR was approved verbally"
+- 6.3 "The canary passed offline but failed in production"
+- 6.4 "The rollback took 18 minutes"
+- 6.5 "The canary aborted because Prometheus was down"
+- 6.6 "The audit log was deleted"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: deploy Argo CD and Argo Rollouts
+- 7.3 Step 2: declare the registry state in Git
+- 7.4 Step 3: submit a new training run
+- 7.5 Step 4: the promotion PR is opened by the pipeline
+- 7.6 Step 5: merge the PR; the reconciler moves the registry; the canary starts
+- 7.7 Step 6: trigger a rollback
+- 7.8 Step 7: query the audit log
+- 7.9 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.7 Model serving platforms: KServe, Seldon and BentoML  [12253 words, ~61 min]  `part-16-mlops-llmops/07-model-serving-platforms-kserve-seldon-and-bentoml.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The InferenceService contract
+- 1.1 What every serving platform must expose
+- 1.2 The InferenceService as a Kubernetes CRD
+- 1.3 The transformer and the explainer
+- 2. The three platforms: KServe, Seldon Core, BentoML
+- 2.1 KServe
+- 2.2 Seldon Core
+- 2.3 BentoML
+- 2.4 Comparison
+- 2.5 Project status in November 2026
+- 3. Autoscaling and traffic routing
+- 3.1 The three autoscaling modes
+- 3.2 Scale-to-zero for low-traffic models
+- 3.3 Canary and traffic routing
+- 3.4 A/B testing and shadow mode
+- 4. Multi-model serving, inference graphs and LLMs
+- 4.1 ModelMesh and multi-model endpoints
+- 4.2 Inference graphs
+- 4.3 BentoML multi-model
+- 4.4 LLM serving on KServe today
+- 5. Operating the serving platform on GKE
+- 5.1 The components
+- 5.2 Multi-tenancy
+- 5.3 IAM and secrets
+- 5.4 Observability of the serving platform
+- 6. How it fails
+- 6.1 "The serving system is OOM at p99"
+- 6.2 "The canary passed offline but failed in production"
+- 6.3 "The model artefact cannot be pulled"
+- 6.4 "Scale-to-zero caused a 30-second first-request latency"
+- 6.5 "Inference graph deadlock"
+- 6.6 "The autoscaler scaled to zero during a traffic spike"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: install KServe
+- 7.3 Step 2: deploy an InferenceService
+- 7.4 Step 3: send a request
+- 7.5 Step 4: deploy a canary
+- 7.6 Step 5: verify autoscaling
+- 7.7 Step 6: test scale-to-zero
+- 7.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.8 LLMOps: RAG, vector databases and agents  [9564 words, ~47 min]  `part-16-mlops-llmops/08-llmops-rag-vector-databases-and-agents.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. RAG architecture
+- 1.1 The five components
+- 1.2 The retriever
+- 1.3 The prompt assembler and the generator
+- 2. Vector databases
+- 2.1 The four production choices
+- 2.2 Milvus architecture
+- 2.3 Index snapshot and freshness
+- 2.4 pgvector for small-to-medium deployments
+- 3. Agent architectures
+- 3.1 The ReAct loop
+- 3.2 Function calling and tool schemas
+- 3.3 Multi-agent orchestration
+- 3.4 Agent observability
+- 4. Prompt engineering as a discipline
+- 4.1 The prompt template is an artifact
+- 4.2 Few-shot examples and prompt regression
+- 4.3 Cost control on the prompt
+- 5. Cost control and observability for LLM applications
+- 5.1 The cost model
+- 5.2 Per-request budgets
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "The retrieval index is stale"
+- 6.2 "The agent loop ran away"
+- 6.3 "The prompt change degraded accuracy"
+- 6.4 "The vector database is OOM"
+- 6.5 "The cost exploded overnight"
+- 6.6 "The agent hallucinated a tool call"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: install Milvus
+- 7.3 Step 2: install vLLM as the generator
+- 7.4 Step 3: index a small corpus
+- 7.5 Step 4: serve a RAG endpoint
+- 7.6 Step 5: query the RAG endpoint
+- 7.7 Step 6: run the agent loop
+- 7.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.9 LLM evaluation and guardrails  [10276 words, ~51 min]  `part-16-mlops-llmops/09-llm-evaluation-and-guardrails.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. LLM evaluation methodology
+- 1.1 The dimensions to measure
+- 1.2 The eval set as an artifact
+- 1.3 The eval suite in CI
+- 2. Automated metrics vs LLM-as-judge vs human evaluation
+- 2.1 The three evaluation modes
+- 2.2 Automated metrics: when they work and when they don't
+- 2.3 LLM-as-judge: the pattern and the bias
+- 2.4 Human evaluation: the gold standard
+- 3. Eval suites and CI integration
+- 3.1 The shape of a regression test
+- 3.2 Eval results as a metric
+- 3.3 Eval set drift and refresh
+- 4. Guardrails
+- 4.1 The four guardrail classes
+- 4.2 Safety and PII filters
+- 4.3 Jailbreak detection
+- 4.4 Factuality and hallucination detection
+- 5. Operating eval suites and guardrails on GKE
+- 5.0 The eval pipeline at a glance
+- 5.1 The components
+- 5.2 IAM and the audit log
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "The eval suite passed but the customer-facing accuracy dropped"
+- 6.2 "The LLM-as-judge is biased"
+- 6.3 "The safety filter is too aggressive"
+- 6.4 "The jailbreak classifier was bypassed"
+- 6.5 "The eval set is stale"
+- 6.6 "The LLM provider shipped an update"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: deploy the eval suite runner
+- 7.3 Step 2: deploy the guardrail classifiers
+- 7.4 Step 3: run the eval suite
+- 7.5 Step 4: query the eval results
+- 7.6 Step 5: run a prompt through the guardrails
+- 7.7 Step 6: refresh the eval set
+- 7.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.10 Monitoring, drift and continual learning  [10462 words, ~52 min]  `part-16-mlops-llmops/10-monitoring-drift-and-continual-learning.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The monitoring contract
+- 1.1 The four metric categories
+- 1.2 Operational metrics: the same as any service
+- 1.3 Input metrics: the data has drifted
+- 1.4 Output metrics: the model's behaviour has changed
+- 1.5 Feedback metrics: the ground truth has changed
+- 2. Drift detection
+- 2.1 The four drift types
+- 2.2 The statistical methods
+- 2.3 The reference distribution
+- 2.4 The alert thresholds
+- 3. Online evaluation
+- 3.1 The online evaluation loop
+- 3.2 The delayed ground truth problem
+- 3.3 Shadow mode and A/B testing
+- 4. Retraining triggers
+- 4.1 The three trigger types
+- 4.2 The retraining pipeline
+- 4.3 The retraining cooldown
+- 5. Operating monitoring and retraining on GKE
+- 5.1 The components
+- 5.2 IAM and the audit log
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "The drift detector is paged every hour"
+- 6.2 "The retraining pipeline retrains every day"
+- 6.3 "The model accuracy dropped but the drift detector didn't fire"
+- 6.4 "The retraining DAG succeeded but the new model is worse"
+- 6.5 "The ground truth never arrived"
+- 6.6 "The drift detector was bypassed"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: install Prometheus and Grafana
+- 7.3 Step 2: install Evidently for drift detection
+- 7.4 Step 3: deploy the retraining trigger
+- 7.5 Step 4: generate drift
+- 7.6 Step 5: observe the drift detector
+- 7.7 Step 6: observe the retraining trigger
+- 7.8 Step 7: observe the retraining DAG
+- 7.9 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.11 Cloud MLOps platforms: Vertex AI, SageMaker and Azure ML  [8872 words, ~44 min]  `part-16-mlops-llmops/11-cloud-mlops-platforms-vertex-ai-sagemaker-and-azure-ml.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The three managed stacks
+- 1.1 Vertex AI on GCP
+- 1.2 SageMaker on AWS
+- 1.3 Azure Machine Learning
+- 1.4 Comparison
+- 2. Managed vs self-hosted
+- 2.1 The decision matrix
+- 2.2 The cost model
+- 2.3 The portability contract
+- 3. Hybrid architectures
+- 3.1 The most common hybrid
+- 3.2 The GCP-native hybrid
+- 3.3 The Azure-native hybrid
+- 3.4 The most aggressive self-hosted
+- 4. Operating the managed stack
+- 4.1 IAM and multi-tenancy
+- 4.2 Cost attribution
+- 4.3 Observability
+- 4.4 Disaster recovery
+- 5. How it fails
+- 5.1 "The managed stack is too expensive"
+- 5.2 "We cannot migrate off the managed stack"
+- 5.3 "The GPU quota is exhausted"
+- 5.4 "The managed endpoint is slow"
+- 5.5 "The managed registry is down"
+- 6. Hands-on lab
+- 6.1 Prerequisites
+- 6.2 Step 1: enable Vertex AI APIs
+- 6.3 Step 2: create a Vertex AI Workbench instance
+- 6.4 Step 3: create a Vertex AI Pipeline
+- 6.5 Step 4: register the model in Vertex AI Model Registry
+- 6.6 Step 5: deploy the endpoint
+- 6.7 Step 6: query the endpoint
+- 6.8 Step 7: observe the cost
+- 6.9 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.12 NVIDIA enterprise stack: AI Enterprise, NGC and licensing  [9160 words, ~45 min]  `part-16-mlops-llmops/12-nvidia-enterprise-stack-ai-enterprise-ngc-and-licensing.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The NVAIE software stack
+- 1.1 The layers
+- 1.2 What the NVAIE subscription buys
+- 1.3 The license audit
+- 2. The NGC catalog
+- 2.1 What NGC is
+- 2.2 The NGC pull-through proxy
+- 2.3 The NGC API key and IAM
+- 3. NIM: the inference microservice
+- 3.1 What NIM is
+- 3.2 The NIM model's lifecycle
+- 3.3 NIM and the model registry
+- 4. NeMo: the LLM framework
+- 4.1 What NeMo is
+- 4.2 Fine-tuning with NeMo
+- 4.3 NeMo Guardrails
+- 5. RAPIDS: GPU-accelerated data science
+- 5.1 What RAPIDS is
+- 5.2 RAPIDS on the data engineering cluster
+- 5.3 RAPIDS for feature engineering
+- 6. Operating NVAIE on GKE
+- 6.1 The components
+- 6.2 IAM and the audit log
+- 6.3 Observability
+- 7. How it fails
+- 7.1 "The cluster cannot pull from NGC"
+- 7.2 "The NVAIE license is expired"
+- 7.3 "The NeMo fine-tuning is OOM"
+- 7.4 "The NIM autoscaler is too aggressive"
+- 7.5 "The RAPIDS job uses a different CUDA version than the training job"
+- 8. Hands-on lab
+- 8.1 Prerequisites
+- 8.2 Step 1: configure the NGC API key
+- 8.3 Step 2: deploy the NGC pull-through proxy
+- 8.4 Step 3: deploy the NIM microservice
+- 8.5 Step 4: query the NIM
+- 8.6 Step 5: run a NeMo fine-tuning
+- 8.7 Step 6: verify the licensing audit
+- 8.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.13 Governance, privacy and compliance for ML platforms  [10067 words, ~50 min]  `part-16-mlops-llmops/13-governance-privacy-and-compliance-for-ml-platforms.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The regulatory regimes
+- 1.1 The four regimes the platform must support
+- 1.2 The data lineage audit
+- 1.3 The EU AI Act risk classification
+- 2. The data lineage that satisfies the regulator
+- 2.1 The lineage graph
+- 2.2 The answer to the regulator
+- 2.3 The lineage contract
+- 3. The model card
+- 3.1 What the model card captures
+- 3.2 The fairness audit
+- 3.3 The consent record
+- 4. The right-to-be-forgotten workflow
+- 4.1 The GDPR Article 17 requirement
+- 4.2 The workflow
+- 4.3 The retraining cost
+- 5. Privacy-preserving ML
+- 5.1 The three patterns
+- 5.2 Federated learning on the cluster
+- 5.3 Differential privacy in training
+- 6. Operating governance and compliance on GKE
+- 6.1 The components
+- 6.2 IAM and the audit log
+- 6.3 Observability
+- 7. How it fails
+- 7.1 "The lineage graph is incomplete"
+- 7.2 "The model card is missing the fairness audit"
+- 7.3 "The right-to-be-forgotten Job was not triggered"
+- 7.4 "The audit log was deleted"
+- 7.5 "The consent record is stale"
+- 7.6 "The model was retrained on data from a customer who withdrew consent"
+- 8. Hands-on lab
+- 8.1 Prerequisites
+- 8.2 Step 1: install DataHub for lineage
+- 8.3 Step 2: wire the lineage into the pipeline
+- 8.4 Step 3: produce a model card
+- 8.5 Step 4: trigger a right-to-be-forgotten Job
+- 8.6 Step 5: verify the lineage graph
+- 8.7 Step 6: verify the consent record
+- 8.8 Step 7: verify the audit log
+- 8.9 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.14 Platform design: multi-tenant AI factory, quotas and chargeback  [12293 words, ~61 min]  `part-16-mlops-llmops/14-platform-design-multi-tenant-ai-factory-quotas-and-chargeback.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The multi-tenant primitives
+- 1.1 The shared resources
+- 1.2 The per-team primitives
+- 1.3 The IAM model
+- 1.4 Default deny-all network policy
+- 1.5 Pod security policies
+- 2. GPU quota pools
+- 2.1 The quota tiers
+- 2.2 Kueue ClusterQueues and LocalQueues
+- 2.3 Quota rebalancing and fairness
+- 2.4 Requests, limits, and QoS on shared nodes
+- 3. Chargeback and FinOps
+- 3.1 The cost model
+- 3.2 The FinOps dashboard
+- 3.3 The chargeback integration
+- 4. Self-service onboarding
+- 4.1 The onboarding flow
+- 4.2 The onboarding module
+- 4.3 The onboarding documentation
+- 5. SLO-based platform design
+- 5.1 The platform SLOs
+- 5.2 The team SLOs
+- 5.3 The error budget
+- 6. Operating the multi-tenant platform on GKE
+- 6.1 The components
+- 6.2 IAM and the per-team namespaces
+- 6.3 Observability
+- 6.4 Per-tenant logging
+- 7. How it fails
+- 7.1 "One team hogs the GPU pool"
+- 7.2 "The cost dashboard shows a team's bill exploded overnight"
+- 7.3 "The team's InferenceService is slow because of a noisy neighbour"
+- 7.4 "The team's data leaked to another team"
+- 7.5 "The team's model was promoted without their approval"
+- 7.6 "The team's namespace was deleted"
+- 8. Hands-on lab
+- 8.1 Prerequisites
+- 8.2 Step 1: install Kueue
+- 8.3 Step 2: create the ClusterQueues
+- 8.4 Step 3: provision a team's namespace
+- 8.5 Step 4: submit a training Job
+- 8.6 Step 5: query the FinOps dashboard
+- 8.7 Step 6: trigger the quota rebalancing alert
+- 8.8 Step 7: provision a second team
+- 8.9 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 16.15 Lab: end-to-end MLOps on GKE  [8540 words, ~42 min]  `part-16-mlops-llmops/15-lab-end-to-end-mlops-on-gke.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The capstone story arc
+- 1.1 The thirteen steps
+- 1.2 The data flow
+- 2. Step 1: provision the cluster
+- 3. Step 2: deploy the MLOps stack
+- 4. Step 3-4: ingest and version the dataset
+- 5. Step 5-6: train and track the experiment
+- 6. Step 7-8: evaluate and promote
+- 7. Step 9: deploy the InferenceService
+- 8. Step 10: monitor the model
+- 9. Step 11: retrain the model
+- 10. Step 12: handle a right-to-be-forgotten request
+- 11. Step 13: hand off to the team
+- 12. The capstone as a CI test
+- 13. How the capstone fails
+- 13.1 "The training stage crashed because the GPU node pool is exhausted"
+- 13.2 "The promotion gate failed because the data hash is missing"
+- 13.3 "The InferenceService deployment failed because the cluster binding is wrong"
+- 13.4 "The drift detector's threshold is too tight"
+- 13.5 "The right-to-be-forgotten Job did not retrain the model"
+- 13.6 "The audit log was deleted by a well-meaning engineer"
+- 14. What the team has built
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+## Vol part-17-operations (16 chapters)
+
+
+### 17.1 Observability foundations: metrics, logs and traces  [9143 words, ~45 min]  `part-17-operations/01-observability-foundations-metrics-logs-and-traces.md`
+- Observability at a glance
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The three pillars
+- 1.1 Metrics, logs, traces: what each is for
+- 1.2 The RED method for services
+- 1.3 The USE method for resources
+- 1.4 The golden signals
+- 2. The cardinality budget
+- 2.1 What cardinality is
+- 2.2 Safe and unsafe labels
+- 2.3 The consequences of getting cardinality wrong
+- 3. The data shape
+- 3.1 Metrics: Prometheus exposition format
+- 3.2 Logs: structured JSON
+- 3.3 Traces: OpenTelemetry
+- 3.4 Trace context propagation
+- 4. Observability for AI workloads
+- 4.1 What to observe at training time
+- 4.2 What to observe at serving time
+- 4.3 What to observe at on-call time
+- 5. Operating the observability stack on GKE
+- 5.1 The components
+- 5.2 IAM and the cardinality budget
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "Prometheus OOM'd because of a high-cardinality label"
+- 6.2 "The dashboards are stale"
+- 6.3 "The logs are searchable but not queryable"
+- 6.4 "The traces are incomplete"
+- 6.5 "The model quality signal is missing"
+- 6.6 "The observability stack is the bottleneck"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: install Prometheus and Grafana
+- 7.3 Step 2: install Loki
+- 7.4 Step 3: install the OpenTelemetry Collector
+- 7.5 Step 4: configure a workload to emit the three pillars
+- 7.6 Step 5: query the three pillars
+- 7.7 Step 6: build a unified dashboard
+- 7.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.2 Prometheus and Grafana  [11844 words, ~59 min]  `part-17-operations/02-prometheus-and-grafana.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Prometheus
+- 1.1 The Prometheus architecture
+- 1.2 Scrape configuration
+- 1.3 The exporters for AI infrastructure
+- 1.4 What Prometheus does for the platform
+- 1.5 Pushing metrics with the Pushgateway
+- 1.6 Custom metrics and exporters
+- 1.7 The Prometheus Operator
+- 1.8 Prometheus servers as platform resources
+- 1.9 ServiceMonitor and PrometheusRule resources
+- 1.10 Alertmanager
+- 1.11 The dead man's switch
+- 1.12 Node exporter, kube-state-metrics and the Prometheus adapter
+- 1.13 Organizing and federating Prometheus servers
+- 2. PromQL for AI workloads
+- 2.1 The basic PromQL
+- 2.2 PromQL for the AI infrastructure
+- 2.3 Recording rules
+- 2.4 Showback and chargeback
+- 3. Grafana
+- 3.1 The Grafana architecture
+- 3.2 The on-call dashboard
+- 3.3 The per-team dashboard
+- 3.4 Dashboard as code
+- 3.5 One dashboard or many
+- 4. Storage and retention
+- 4.1 The TSDB
+- 4.2 Retention
+- 4.3 Remote storage
+- 5. Operating Prometheus and Grafana on GKE
+- 5.1 The components
+- 5.2 IAM and the cardinality budget
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "Prometheus is using too much memory"
+- 6.2 "The dashboards are loading slowly"
+- 6.3 "The alert fires but the page is empty"
+- 6.4 "The retention period is too short"
+- 6.5 "The Thanos remote write is failing"
+- 6.6 "The cardinality budget is silently exceeded"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: install Prometheus
+- 7.3 Step 2: install the DCGM exporter
+- 7.4 Step 3: verify the scrape
+- 7.5 Step 4: build the on-call dashboard
+- 7.6 Step 5: write a recording rule
+- 7.7 Step 6: query the recording rules
+- 7.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.3 Logging with Loki and tracing with OpenTelemetry  [10609 words, ~53 min]  `part-17-operations/03-logging-with-loki-and-tracing-with-opentelemetry.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Loki
+- 1.1 The Loki architecture
+- 1.2 The Loki labels
+- 1.3 LogQL for AI workloads
+- 1.4 Structured logging
+- 1.5 Getting container logs off the node
+- 1.6 Kubernetes audit logs
+- 1.7 Kubernetes Events
+- 1.8 Alerting on logs and log access
+- 2. OpenTelemetry
+- 2.1 The OpenTelemetry architecture
+- 2.2 The OpenTelemetry Collector
+- 2.3 Tail sampling
+- 2.4 Trace context propagation
+- 2.5 Traces, spans and tags
+- 2.6 Tracing components on the platform
+- 2.7 Instrumentation and service meshes
+- 3. Integration with Grafana
+- 3.1 The unified Grafana data sources
+- 3.2 The trace-to-logs link
+- 3.3 The exemplar-to-trace link
+- 4. Operating Loki and OpenTelemetry on GKE
+- 4.1 The components
+- 4.2 IAM and the label cardinality
+- 4.3 Observability
+- 5. How it fails
+- 5.1 "Loki is running out of disk"
+- 5.2 "The trace context is broken"
+- 5.3 "The tail-sampling policy is dropping the interesting traces"
+- 5.4 "The structured logs are missing the schema"
+- 5.5 "The Collector is OOM"
+- 5.6 "The exemplar is missing"
+- 6. Hands-on lab
+- 6.1 Prerequisites
+- 6.2 Step 1: install Loki
+- 6.3 Step 2: install the OpenTelemetry Collector
+- 6.4 Step 3: install Tempo
+- 6.5 Step 4: deploy a workload with structured logging
+- 6.6 Step 5: query the logs by structured fields
+- 6.7 Step 6: instrument a workload with OTel
+- 6.8 Step 7: query the traces
+- 6.9 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.4 DCGM exporter and interpreting GPU metrics  [9346 words, ~46 min]  `part-17-operations/04-dcgm-exporter-and-interpreting-gpu-metrics.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The DCGM exporter
+- 1.1 What DCGM is
+- 1.2 Deploying the DCGM exporter
+- 1.3 The DCGM metric families
+- 1.4 What dcgm-exporter 4.9.0 renamed
+- 2. Reading the GPU metrics
+- 2.1 Load signals: utilisation, memory and clocks
+- 2.2 ECC errors
+- 2.3 Row remapping
+- 2.4 Xid errors
+- 2.5 Temperature, power and throttle counters
+- 2.6 NVLink and PCIe errors
+- 3. GPU fault-signal alerting
+- 3.1 The alert rules
+- 3.2 First action for each alert
+- 4. Operating the DCGM exporter on GKE
+- 4.1 The components
+- 4.2 The cardinality budget
+- 4.3 Watching the exporter itself
+- 5. How it fails
+- 5.1 "The DCGM exporter is not running on a GPU node"
+- 5.2 "The DCGM exporter is consuming too much CPU"
+- 5.3 "The GPU is in an ECC error storm"
+- 5.4 "The GPU is thermal-throttling"
+- 5.5 "The DCGM exporter metrics are stale"
+- 5.6 "The GPU labels are missing"
+- 6. Hands-on lab
+- 6.1 Prerequisites
+- 6.2 Step 1: install the DCGM exporter
+- 6.3 Step 2: verify the metrics flow
+- 6.4 Step 3: load the alert rules as a PrometheusRule
+- 6.5 Step 4: inject a fault
+- 6.6 Step 5: verify the alert fires
+- 6.7 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.5 Distributed observability and profiling  [8366 words, ~41 min]  `part-17-operations/05-distributed-observability-and-profiling.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The profiling stack
+- 1.1 The four profilers
+- 1.2 The profiling pipeline
+- 1.3 The profile format
+- 2. PyTorch Profiler
+- 2.1 The PyTorch Profiler basics
+- 2.2 The PyTorch Profiler integration with the trace
+- 2.3 The PyTorch Profiler dashboard
+- 3. Nsight Systems
+- 3.1 The Nsight Systems basics
+- 3.2 The Nsight Systems integration with the trace
+- 3.3 The Nsight Systems dashboard
+- 4. Nsight Compute
+- 4.1 The Nsight Compute basics
+- 4.2 The Nsight Compute metrics
+- 4.3 The Nsight Compute integration with Nsight Systems
+- 5. NCCL Profiler
+- 5.1 The NCCL Profiler basics
+- 5.2 The NCCL profile format
+- 5.3 The NCCL profile integration with the trace
+- 5.4 The NCCL profile dashboard
+- 6. Operating the profiling stack on GKE
+- 6.1 The components
+- 6.2 IAM and the profile cardinality
+- 6.3 Observability
+- 7. How it fails
+- 7.1 "The profile is too large"
+- 7.2 "The profile is not correlated with the trace"
+- 7.3 "The Nsight Systems profiler adds too much overhead"
+- 7.4 "The NCCL Profiler log is too large"
+- 7.5 "The Nsight Compute profile is missing the kernel"
+- 7.6 "The profile is stale"
+- 8. Hands-on lab
+- 8.1 Prerequisites
+- 8.2 Step 1: install the profile repository
+- 8.3 Step 2: deploy a training workload with PyTorch Profiler
+- 8.4 Step 3: run the workload and capture the profile
+- 8.5 Step 4: upload the profile to object storage
+- 8.6 Step 5: query the profile in Grafana
+- 8.7 Step 6: correlate the profile with the trace
+- 8.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.6 Alerting, SLOs and health checks for GPU clusters  [8639 words, ~43 min]  `part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The SLOs
+- 1.1 What an SLO is
+- 1.2 The SLOs for an AI factory
+- 1.3 The error budget
+- 1.4 Burn-rate alerting for a token API
+- 2. Alertmanager
+- 2.1 The Alertmanager architecture
+- 2.2 The alert routing
+- 2.3 The alert inhibition
+- 3. Health checks
+- 3.1 The Kubernetes health check primitives
+- 3.2 Health checks for AI workloads
+- 3.3 Health checks for GPU nodes
+- 4. The on-call runbook
+- 4.1 What the runbook contains
+- 4.2 The runbook template
+- 4.3 The runbook integration with Alertmanager
+- 5. Operating the alerting and SLO stack on GKE
+- 5.1 The components
+- 5.2 IAM and the alert routing
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "The on-call is paged for every alert"
+- 6.2 "The critical alert is not paged"
+- 6.3 "The SLO is breached but the alert does not fire"
+- 6.4 "The liveness probe fails and Kubernetes restarts the pod in a loop"
+- 6.5 "The error budget is exhausted but the team does not know"
+- 6.6 "The runbook is out of date"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: install Alertmanager
+- 7.3 Step 2: configure the alert routing
+- 7.4 Step 3: configure the runbook URLs
+- 7.5 Step 4: simulate a critical alert
+- 7.6 Step 5: verify the alert routing
+- 7.7 Step 6: verify the error budget
+- 7.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.7 Failure modes and detection  [10324 words, ~51 min]  `part-17-operations/07-failure-modes-and-detection.md`
+- The six failure families
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. GPU hardware failures
+- 1.1 The GPU failure catalogue
+- 1.2 The ECC error storm
+- 1.3 The GPU hang
+- 2. Network failures
+- 2.1 The network failure catalogue
+- 2.2 The NCCL timeout
+- 2.3 The network partition
+- 3. Storage failures
+- 3.1 The storage failure catalogue
+- 3.2 The object storage 5xx
+- 3.3 The local disk full
+- 4. Scheduler failures
+- 4.1 The scheduler failure catalogue
+- 4.2 OOMKilled is host memory, not GPU memory
+- 4.3 The image pull failure
+- 5. Container image failures
+- 5.1 The container image failure catalogue
+- 5.2 The image signature mismatch
+- 5.3 The image CVE
+- 6. Model serving failures
+- 6.1 The model serving failure catalogue
+- 6.2 The model OOM
+- 6.3 The model quality regression
+- 7. Operating the failure mode catalogue
+- 7.1 The catalogue structure
+- 7.2 The catalogue update
+- 7.3 The catalogue review
+- 8. How it fails
+- 8.1 "The on-call cannot find the failure mode in the catalogue"
+- 8.2 "The detection signal is wrong"
+- 8.3 "The runbook is missing the recovery step"
+- 8.4 "The failure mode cascades"
+- 8.5 "The alert is inhibited at the wrong moment"
+- 8.6 "The catalogue is stale"
+- 9. Hands-on lab
+- 9.1 Prerequisites
+- 9.2 Step 1: create the failure mode catalogue
+- 9.3 Step 2: configure the detection signals
+- 9.4 Step 3: verify the runbook integration
+- 9.5 Step 4: simulate a failure mode
+- 9.6 Step 5: verify the on-call runbook
+- 9.7 Step 6: review the catalogue
+- 9.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.8 Performance engineering methodology and decision trees  [9413 words, ~47 min]  `part-17-operations/08-performance-engineering-methodology-and-decision-trees.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The USE method
+- 1.1 The USE method in detail
+- 1.2 The USE method in action
+- 1.3 The USE method as a Grafana dashboard
+- 2. The roofline model
+- 2.1 The roofline model in detail
+- 2.2 The roofline model in action
+- 2.3 The roofline model as a profiling tool
+- 3. The performance decision tree
+- 3.1 The decision tree structure
+- 3.2 The decision tree in action
+- 3.3 The decision tree as a Grafana dashboard
+- 4. The cost-vs-latency trade-off
+- 4.1 The trade-off model
+- 4.2 The trade-off as a Grafana dashboard
+- 5. Capacity planning
+- 5.1 The capacity planning model
+- 5.2 The capacity planning dashboard
+- 6. Operating the performance engineering stack
+- 6.1 The components
+- 6.2 IAM and the performance methodology
+- 6.3 Observability
+- 7. How it fails
+- 7.1 "The team cannot find the bottleneck"
+- 7.2 "The roofline model is too theoretical"
+- 7.3 "The decision tree is too shallow"
+- 7.4 "The cost-vs-latency trade-off is not explicit"
+- 7.5 "The capacity planning forecast is wrong"
+- 7.6 "The performance methodology is not followed"
+- 8. Hands-on lab
+- 8.1 Prerequisites
+- 8.2 Step 1: deploy the USE method dashboard
+- 8.3 Step 2: run the USE method on a workload
+- 8.4 Step 3: compute the roofline for a sample kernel
+- 8.5 Step 4: follow the performance decision tree
+- 8.6 Step 5: build the cost-vs-latency trade-off
+- 8.7 Step 6: produce the capacity planning forecast
+- 8.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.9 The AI systems performance checklist (master)  [21838 words, ~109 min]  `part-17-operations/09-the-ai-systems-performance-checklist-master.md`
+- Master checklist at a glance
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. Hardware checklist
+- 1.1 GPU hardware
+- 1.2 CPU hardware
+- 1.3 Memory and storage hardware
+- 1.4 Planning for goodput and scale
+- 1.5 Superchip memory tiers
+- 1.6 Clocks, power, and thermals
+- 2. Software checklist
+- 2.1 Operating system
+- 2.2 NVIDIA software
+- 2.3 Cluster software
+- 2.4 Operating system tuning
+- 2.5 Drivers, memory limits, and containers
+- 2.6 Memory access on the GPU
+- 2.7 Warps, threads, and occupancy
+- 2.8 Kernel launch and scheduling
+- 2.9 Libraries, compilers, and autotuning
+- 2.10 GPU sharing and scheduling
+- 3. Network checklist
+- 3.1 Network hardware
+- 3.2 Network software
+- 3.3 Multi-GPU scaling and NVLink topology
+- 3.4 Distributed training network
+- 4. Storage checklist
+- 4.1 Object storage
+- 4.2 Distributed filesystem
+- 4.3 Local storage
+- 4.4 Feeding the GPUs
+- 4.5 Data formats and processing pipelines
+- 4.6 Checkpoints and logging overhead
+- 5. Model architecture checklist
+- 5.1 Attention and fused operations
+- 6. Training checklist
+- 6.1 Mixed precision and low-precision math
+- 6.2 Overlap, pipelines, and sharding
+- 6.3 Hyperparameters for throughput
+- 7. Inference checklist
+- 7.1 Batching and concurrency
+- 7.2 Serving runtimes and KV cache
+- 7.3 Quantization for serving
+- 7.4 Tail latency, warm-up, and isolation
+- 8. Operations checklist
+- 8.1 Performance tuning mindset
+- 8.2 Reproducibility and regression control
+- 8.3 Vendor codesign and adaptive tuning
+- 8.4 Energy-aware operations
+- 9. Security checklist
+- 9.1 Performance and security together
+- 10. Observability checklist
+- 10.1 Profiling to find bottlenecks
+- 10.2 Utilization, memory, network, and alerts
+- 11. Operating the master checklist
+- 11.1 The checklist score
+- 11.2 The checklist update
+- 11.3 The checklist review
+- 11.4 Work through the categories in order
+- 12. How it fails
+- 12.1 "The checklist is not used"
+- 12.2 "The checklist is stale"
+- 12.3 "The checklist score is not tracked"
+- 12.4 "The checklist items are too generic"
+- 12.5 "The checklist items are too specific"
+- 12.6 "The checklist score is 100% but the cluster is broken"
+- 13. Hands-on lab
+- 13.1 Prerequisites
+- 13.2 Step 1: deploy the checklist as a code
+- 13.3 Step 2: walk through every item
+- 13.4 Step 3: produce the score report
+- 13.5 Step 4: review the score with the platform team
+- 13.6 Step 5: update the checklist after the review
+- 13.7 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.10 Cluster lifecycle, upgrades and change management  [8303 words, ~41 min]  `part-17-operations/10-cluster-lifecycle-upgrades-and-change-management.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The upgrade types
+- 1.1 In-place upgrade
+- 1.2 Rolling upgrade
+- 1.3 Blue/green upgrade
+- 1.4 Canary upgrade
+- 2. What a GPU upgrade touches
+- 3. The GPU driver upgrade with canary pools
+- 3.1 Who runs the upgrade
+- 3.2 The drain policy
+- 3.3 The canary pool and the stages
+- 3.4 Window arithmetic
+- 4. The change management process
+- 4.1 The change request
+- 4.2 The peer review
+- 4.3 The automated tests
+- 4.4 The staging rollout
+- 5. The upgrade window
+- 5.1 The window selection
+- 5.2 The window announcement
+- 5.3 The window verification
+- 6. The rollback plan
+- 6.1 The rollback triggers
+- 6.2 The rollback procedure
+- 6.3 Rollback evidence
+- 6.4 The rollback communication
+- 7. Operating the lifecycle on GKE
+- 8. How it fails
+- 8.1 "The upgrade breaks the SLO"
+- 8.2 "The rollback does not work"
+- 8.3 "Nodes stick in a drain state"
+- 8.4 "The upgrade window is wrong"
+- 8.5 "A mixed fleet behaves differently"
+- 8.6 "The process is not followed"
+- 9. Hands-on lab
+- 9.1 Prerequisites
+- 9.2 Step 1: submit and review the change request
+- 9.3 Step 2: run the automated tests
+- 9.4 Step 3: upgrade the canary node
+- 9.5 Step 4: check the pass conditions
+- 9.6 Step 5: roll back and keep the evidence
+- 9.7 Step 6: verify the upgrade
+- 9.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.11 Incident response and game days  [8718 words, ~43 min]  `part-17-operations/11-incident-response-and-game-days.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The severity levels
+- 1.1 SEV-1: customer-facing outage
+- 1.2 SEV-2: degraded service
+- 1.3 SEV-3: internal issue
+- 2. The incident response process
+- 2.1 The process stages
+- 2.2 Detection
+- 2.3 Triage
+- 2.4 Mitigation
+- 2.5 Resolution
+- 2.6 Communication
+- 3. The Incident Commander role
+- 3.1 The IC's responsibilities
+- 3.2 The IC's authority
+- 3.3 The IC's communication
+- 4. Game days
+- 4.1 The game day plan
+- 4.2 The game day execution
+- 4.3 The game day post-mortem
+- 5. The post-mortem
+- 5.1 The blameless template
+- 5.2 The post-mortem review
+- 6. Operating the incident response process
+- 6.1 The components
+- 6.2 IAM and the incident response
+- 6.3 Observability
+- 7. How it fails
+- 7.1 "The on-call is paged but does not know what to do"
+- 7.2 "The IC is missing"
+- 7.3 "The comms cadence is wrong"
+- 7.4 "The post-mortem is not written"
+- 7.5 "The game day is skipped"
+- 7.6 "The post-mortem is not blameless"
+- 8. Hands-on lab
+- 8.1 Prerequisites
+- 8.2 Step 1: simulate an alert
+- 8.3 Step 2: triage the alert
+- 8.4 Step 3: mitigate the impact
+- 8.5 Step 4: resolve the incident
+- 8.6 Step 5: communicate
+- 8.7 Step 6: write the post-mortem
+- 8.8 Step 7: run a game day
+- 8.9 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.12 Capacity planning and cost optimisation  [7469 words, ~37 min]  `part-17-operations/12-capacity-planning-and-cost-optimisation.md`
+- Capacity and cost at a glance
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The capacity planning model
+- 1.1 The forecasting model
+- 1.2 The buffer calculation
+- 1.3 The procurement order
+- 2. The FinOps dashboard
+- 2.1 The cost model
+- 2.2 The FinOps dashboard
+- 2.3 The chargeback integration
+- 3. Right-sizing
+- 3.1 The right-sizing exercise
+- 3.2 The right-sizing metrics
+- 3.3 The right-sizing recommendations
+- 4. Reserved instances
+- 4.1 The reserved-instance strategy
+- 4.2 The utilisation target
+- 4.3 The renewal calendar
+- 5. Operating capacity planning and cost optimisation on GKE
+- 5.1 The components
+- 5.2 IAM and the cost optimisation
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "The forecast is wrong"
+- 6.2 "The right-sizing exercise finds nothing"
+- 6.3 "The reserved-instance commitment is wasted"
+- 6.4 "The chargeback is wrong"
+- 6.5 "The GPU bill grows without bound"
+- 6.6 "The cost optimisation is ad-hoc"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: deploy Kubecost
+- 7.3 Step 2: build the FinOps dashboard
+- 7.4 Step 3: run the capacity planning model
+- 7.5 Step 4: run the right-sizing exercise
+- 7.6 Step 5: query the chargeback
+- 7.7 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.13 Reliability engineering for AI infrastructure  [8800 words, ~44 min]  `part-17-operations/13-reliability-engineering-for-ai-infrastructure.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The reliability model
+- 1.1 The reliability triangle
+- 1.2 The reliability metrics
+- 1.3 The reliability tiers
+- 1.4 What a large GPU fleet really experiences
+- 2. The error budget
+- 2.1 The error budget model
+- 2.2 The error budget policy
+- 2.3 The error budget dashboard
+- 3. Chaos engineering
+- 3.1 The chaos engineering principles
+- 3.2 The chaos engineering tools
+- 3.3 The chaos engineering experiments
+- 4. Redundancy patterns
+- 4.1 N+1 GPU nodes
+- 4.2 Multi-region failover
+- 4.3 Active-active inference
+- 5. Operating reliability engineering on GKE
+- 5.1 The components
+- 5.2 IAM and the reliability discipline
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "The error budget is exhausted but the team continues to deploy"
+- 6.2 "The chaos engineering experiment is too aggressive"
+- 6.3 "The redundancy pattern is not tested"
+- 6.4 "The SLO is breached but the team does not know"
+- 6.5 "The reliability metrics are not tracked"
+- 6.6 "The reliability discipline is not followed"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: define the SLOs
+- 7.3 Step 2: track the error budget
+- 7.4 Step 3: run a chaos engineering experiment
+- 7.5 Step 4: observe the SLO during the experiment
+- 7.6 Step 5: run the failover drill
+- 7.7 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.14 Disaster recovery and data resilience  [8514 words, ~42 min]  `part-17-operations/14-disaster-recovery-and-data-resilience.md`
+- Disaster recovery at a glance
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The RTO/RPO targets
+- 1.1 The recovery time objective (RTO)
+- 1.2 The recovery point objective (RPO)
+- 1.3 The RTO/RPO matrix
+- 2. The backup strategy
+- 2.1 The backup types
+- 2.2 The backup targets
+- 2.3 The backup verification
+- 3. Multi-region replication
+- 3.1 Object storage replication
+- 3.2 Distributed filesystem replication
+- 3.3 Kubernetes state replication
+- 4. Ransomware defence
+- 4.1 Immutable backups
+- 4.2 Air-gapped backups
+- 4.3 The audit log as a ransomware defence
+- 5. Disaster recovery drills
+- 5.1 The drill plan
+- 5.2 The drill execution
+- 5.3 The drill post-mortem
+- 6. Operating disaster recovery on GKE
+- 6.1 The components
+- 6.2 IAM and the disaster recovery
+- 6.3 Observability
+- 7. How it fails
+- 7.1 "The backup is corrupted"
+- 7.2 "The RTO is exceeded"
+- 7.3 "The RPO is exceeded"
+- 7.4 "The ransomware deletes the backups"
+- 7.5 "The failover does not work"
+- 7.6 "The disaster recovery drill is skipped"
+- 8. Hands-on lab
+- 8.1 Prerequisites
+- 8.2 Step 1: configure the backup strategy
+- 8.3 Step 2: schedule regular backups
+- 8.4 Step 3: verify the backup
+- 8.5 Step 4: simulate a regional outage
+- 8.6 Step 5: measure the RTO and RPO
+- 8.7 Step 6: write the drill post-mortem
+- 8.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.15 On-call runbooks  [8126 words, ~40 min]  `part-17-operations/15-on-call-runbooks.md`
+- On-call at a glance
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. The runbook structure
+- 1.1 The 6-section template
+- 1.2 What the alert means
+- 1.3 Symptoms
+- 1.4 Diagnostic steps
+- 1.5 Mitigation steps
+- 1.6 Escalation path
+- 1.7 Post-mortem template
+- 2. The escalation policy
+- 2.1 The escalation triggers
+- 2.2 The escalation contacts
+- 2.3 The escalation communication
+- 3. The on-call rotation
+- 3.1 The rotation schedule
+- 3.2 The handover process
+- 3.3 The on-call responsibilities
+- 4. Maintaining the runbooks
+- 4.1 The review cycle
+- 4.2 The update process
+- 4.3 The freshness check
+- 5. Operating the on-call process on GKE
+- 5.1 The components
+- 5.2 IAM and the on-call process
+- 5.3 Observability
+- 6. How it fails
+- 6.1 "The runbook is missing"
+- 6.2 "The runbook is out of date"
+- 6.3 "The on-call does not know the rotation"
+- 6.4 "The handover is missing"
+- 6.5 "The escalation is not clear"
+- 6.6 "The on-call is overwhelmed"
+- 7. Hands-on lab
+- 7.1 Prerequisites
+- 7.2 Step 1: write the runbook template
+- 7.3 Step 2: write the runbook for a specific alert
+- 7.4 Step 3: configure the escalation policy
+- 7.5 Step 4: schedule the on-call rotation
+- 7.6 Step 5: configure the runbook URL in the alert
+- 7.7 Step 6: simulate an alert
+- 7.8 Step 7: follow the runbook
+- 7.9 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+### 17.16 AI-assisted operations and scaling toward very large clusters  [10821 words, ~54 min]  `part-17-operations/16-ai-assisted-operations-and-scaling-toward-very-large-clusters.md`
+- Why this matters for AI infrastructure
+- Prerequisites and outcomes
+- Prerequisites
+- Outcomes
+- 1. AI-assisted anomaly detection
+- 1.1 The pattern
+- 1.2 The implementation
+- 1.3 The deployment
+- 1.4 Alert summarisation with guardrails
+- 2. LLM-based runbook generation
+- 2.1 The pattern
+- 2.2 The validation
+- 2.3 The human-in-the-loop
+- 2.4 How LLM runbook assistants fail
+- 3. AI-assisted root cause analysis
+- 3.1 The pattern
+- 3.2 The trace correlation
+- 3.3 The log analysis
+- 3.4 Debugging a failed training run
+- 4. Capacity prediction
+- 4.1 The forecasting model
+- 4.2 The workload forecast
+- 4.3 The cost forecast
+- 5. Scaling toward very large clusters
+- 5.1 The scaling challenges
+- 5.2 Multi-cluster scheduling
+- 5.3 Multi-region failover
+- 5.4 Multi-tenant isolation at scale
+- 5.5 Prometheus cardinality at fleet scale
+- 5.6 Fleet automation: the cordon, drain and RMA loop
+- 6. Operating AI-assisted operations on GKE
+- 6.1 The components
+- 6.2 IAM and the AI-assisted operations
+- 6.3 Observability
+- 7. How it fails
+- 7.1 "The anomaly detection fires too many false positives"
+- 7.2 "The LLM-generated runbook is not actionable"
+- 7.3 "The AI-assisted root cause analysis is wrong"
+- 7.4 "The capacity prediction is wrong"
+- 7.5 "The multi-cluster queue is unbalanced"
+- 7.6 "The multi-region failover is slow"
+- 8. Hands-on lab
+- 8.1 Prerequisites
+- 8.2 Step 1: deploy the anomaly detection model
+- 8.3 Step 2: query the anomaly scores
+- 8.4 Step 3: generate a runbook with the LLM
+- 8.5 Step 4: review the runbook
+- 8.6 Step 5: run the AI-assisted root cause analysis
+- 8.7 Step 6: run the capacity prediction
+- 8.8 What to record
+- Exercises
+- Checkpoint questions
+- Sources and review notes
+- Cross-references to other handbook chapters
+- Migrated from `nvidia-devops`
+- Explicitly labelled inferences
+- Not verified on live hardware
+
+## Vol part-20-nebius-sre-interview (38 chapters)
+
+
+### 20.1 The Nebius loop and how to use this volume  [6524 words, ~32 min]  `part-20-nebius-sre-interview/01-the-nebius-loop-and-how-to-use-this-volume.md`
+- What the interviewer is testing
+- The core ideas
+- 1. The process, stage by stage
+- 2. What is known and what is not
+- 3. How the candidate reports differ, and what to make of it
+- 4. How interviews are scored, in general
+- 5. The think-aloud protocol as a script
+- 6. How to handle being stuck
+- 7. Logistics: Zoom and the setup checklist
+- 8. The official reading list, mapped to this volume and the library
+- 9. Questions to ask the recruiter this week
+- 10. A reader's map: which chapter serves which stage
+- How to answer out loud
+- Worked scenarios
+- Scenario 1. You freeze during the coding round
+- Scenario 2. A console round with a silent terminal
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- The Nebius architecture block, chapters 20.30 to 20.38
+- Sources and review notes
+
+### 20.2 The role in one page: the job posting line by line  [6929 words, ~34 min]  `part-20-nebius-sre-interview/02-the-role-in-one-page-the-job-posting-line-by-line.md`
+- What the interviewer is testing
+- The core ideas
+- 1. The posting in one picture
+- 2. Responsibilities, line by line
+- 3. What each responsibility likely means day to day
+- 4. Requirements, line by line
+- 5. The self-assessment template
+- 6. What Token Factory is, from public sources only
+- 7. The gap tracker: turning the table into a study order
+- 8. Sister Nebius SRE roles
+- 9. The honest gaps list
+- How to answer out loud
+- Worked scenarios
+- Scenario 1. Reading a filled table
+- Scenario 2. A line you have never done
+- Scenario 3. Explaining "tune autoscalers for GPU efficiency"
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+
+### 20.3 Triage method for a sick Linux box  [10528 words, ~52 min]  `part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Start with the problem statement, not a tool
+- 2. A method beats a favourite tool
+- 3. The first 60 seconds, command by command
+- 4. Reading load, run queue and pressure correctly
+- 5. Reading memory and disk output
+- 6. The USE method as a sweep
+- 7. RED and golden signals: from the box to the service
+- 8. Hypotheses out loud: the scientific method
+- 9. Drill-down after the 60 seconds
+- 10. Narrating a one-hour console round
+- 11. A sick box inside Kubernetes
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: load of 85 on a 48-CPU machine
+- Scenario 2: the disk is 100 percent busy
+- Scenario 3: swapping with a quiet run queue
+- Hands-on lab
+- What the container run showed
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+
+### 20.4 Files, descriptors, syscalls and permissions  [10570 words, ~52 min]  `part-20-nebius-sre-interview/04-files-descriptors-syscalls-and-permissions.md`
+- What the interviewer is testing
+- The core ideas
+- 1. A descriptor is a small number that points at a kernel object
+- 2. Three ceilings: per process, per system, and the cap on the cap
+- 3. Read /proc and lsof before you attach a tracer
+- 4. strace: how to read what it prints
+- 5. Blocks, inodes, and files that are deleted but still open
+- 6. Permission checks beyond the mode bits
+- 7. Containers and Kubernetes change the answer
+- How to answer out loud
+- Question 1. "A service logs Too many open files. What do you do?"
+- Question 2. "df shows the disk is full but du finds nothing. Why?"
+- Question 3. "The file is 666 and root runs the service, but it cannot open it."
+- Question 4. "How would you use strace on production, and what do you look at?"
+- Question 5. "A pod works locally and fails in the cluster with Permission denied."
+- Worked scenarios
+- Scenario 1: the gateway that stops accepting
+- Scenario 2: the disk that is full of nothing
+- Scenario 3: no space left, but half the disk is free
+- Scenario 4: mode 755 and still Permission denied
+- Scenario 5: the ACL that a chmod cancelled
+- Scenario 6: readable file, locked directory
+- Scenario 7: mode 777 and Read-only file system
+- Scenario 8: root cannot delete the file
+- Hands-on lab
+- Part A: offline checks
+- Part B: on Linux
+- What the container run showed
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Explicitly labelled inferences
+- Not verified
+
+### 20.5 CPU, memory, disk and the scheduler  [11569 words, ~57 min]  `part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Load average, utilisation and saturation
+- 2. The run queue and pressure stall information
+- 3. CPU throttling from cgroup limits in containers
+- 4. Steal time
+- 5. NUMA basics
+- 6. Page cache, anonymous memory and swap
+- 7. The OOM killer and how to read its log
+- 8. cgroup memory limits versus node memory
+- 9. Disk latency versus throughput
+- 10. perf and flame graphs
+- 11. eBPF tools at a high level
+- 12. Pinned memory and why GPU inference hosts hit host-memory limits
+- How to answer out loud
+- Worked scenarios
+- Scenario 1. High load, idle CPUs
+- Scenario 2. Slow container, idle node
+- Scenario 3. OOMKilled with free node memory
+- Scenario 4. No free memory
+- Scenario 5. Slow disk or just a busy one
+- Scenario 6. Pinned memory on a GPU host
+- Hands-on lab
+- What the container run showed
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+
+### 20.6 Network debugging from socket to switch  [12973 words, ~64 min]  `part-20-nebius-sre-interview/06-network-debugging-from-socket-to-switch.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Refused, timed out, reset: three different stories
+- 2. The method: split the path in half
+- 3. Reading ss: states and the two numbers
+- 4. SYN backlog and accept queue
+- 5. TIME_WAIT and ephemeral ports
+- 6. Conntrack: the table that fills quietly
+- 7. DNS failures and ndots in Kubernetes
+- 8. MTU and path MTU black holes
+- 9. Retransmits and reading tcpdump
+- 10. TLS handshake failures
+- 11. Idle timeouts and keepalive, the streaming problem
+- 12. The Kubernetes Service path
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: the full accept queue
+- Scenario 2: ports run out
+- Scenario 3: conntrack is full
+- Scenario 4: the slow external call in a pod
+- Scenario 5: large responses hang over an overlay
+- Scenario 6: the stream that dies at one minute
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+
+### 20.7 The console round: text tools, systemd and everyday operations  [11353 words, ~56 min]  `part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Build every pipeline in four moves
+- 2. The traps inside field splitting
+- 3. The Mac is not the interview box
+- 4. Percentiles by hand
+- 5. Reading journald and systemd units
+- 6. Processes, signals, zombies and PID 1
+- 7. cron and logrotate gotchas
+- 8. Disk, mount, user and group chores
+- 9. tar, rsync, curl and jq one-liners
+- 10. Bash that survives production
+- 11. How to behave in the room
+- How to answer out loud
+- Question 1. "Top talkers and the 5xx burst from this log."
+- Question 2. "What is your p95 and how do you know?"
+- Question 3. "A service restarts every few seconds. What do you do?"
+- Question 4. "A process will not die. Walk me through it."
+- Question 5. "Write a safe script to rotate and copy a directory."
+- Worked scenarios
+- Task 1. Top five clients (fixture `access.log`)
+- Task 2. Slowest requests (fixture `access.log`)
+- Task 3. The busiest error minutes (fixture `access.log`)
+- Task 4. Percentiles by hand (fixture `access.log`)
+- Task 5. Failed SSH logins (fixture `auth.log`)
+- Task 6. Restart counters (fixture `journal.txt`)
+- Task 7. Zombies and their parents (fixture `ps.txt`)
+- Task 8. Nearly full filesystems (fixture `df.txt`)
+- Task 9. Old big logs with spaces in the name (generated tree)
+- Task 10. Error codes in JSON lines (fixture `app.jsonl`)
+- Task 11. The percent sign in a crontab (fixture `crontab.txt`)
+- Task 12. Who can sudo (fixtures `passwd.txt` and `group.txt`)
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Explicitly labelled inferences
+- Not verified
+
+### 20.8 The coding round: what to expect and how to perform  [9550 words, ~47 min]  `part-20-nebius-sre-interview/08-the-coding-round-what-to-expect-and-how-to-perform.md`
+- What the interviewer is testing
+- The core ideas
+- 1. The coding round grades a process, and the code is only the last step
+- 2. The 60-minute structure
+- 3. Clarify and use examples as a specification
+- 4. How to think aloud without rambling
+- 5. Recovering when you are stuck
+- 6. Writing code that runs first time in a plain editor
+- 7. Testing by hand with edge-case checklists
+- 8. A reusable harness for practice
+- 9. Python tools that save time
+- 10. Go equivalents, briefly
+- 11. Pitfalls that cost points
+- 12. Follow-ups: when the parameters change
+- 13. A four-week practice routine
+- How to answer out loud
+- The first two minutes of any problem
+- Presenting brute force and the improvement
+- Before running or submitting
+- When the interviewer changes the problem
+- When you do not know
+- Worked scenarios
+- Scenario 1: string compression, start to finish
+- Scenario 2: top error endpoints from a log
+- Scenario 3: you are stuck on merge intervals
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.9 Algorithm patterns for SRE-flavoured problems  [14045 words, ~70 min]  `part-20-nebius-sre-interview/09-algorithm-patterns-for-sre-flavoured-problems.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Log parsing and aggregation with hash maps
+- 2. Sliding windows: rolling error rate and the maximum in a window
+- 3. Two pointers
+- 4. Heaps and top-k
+- 5. Interval merging and scheduling
+- 6. Rate limiters: four algorithms and their trade-offs
+- 7. LRU cache
+- 8. Consistent hashing with virtual nodes
+- 9. Retry with exponential backoff and jitter
+- 10. Topological sort and cycle detection
+- 11. BFS, DFS and shortest path on a service graph
+- 12. Union-find
+- 13. Binary search on the answer
+- 14. Streaming percentiles, and why you never average percentiles
+- 15. String compression and parsing
+- 16. Basic concurrency: queues, counters and asyncio
+- How to answer out loud
+- Worked scenarios
+- Scenario 1. A rolling error-rate alert with a quiet-period guard
+- Scenario 2. Fitting a maintenance job into GPU reservations
+- Scenario 3. Which services break, and what starts first
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.10 Complexity, latency numbers and measuring your own code  [8697 words, ~43 min]  `part-20-nebius-sre-interview/10-complexity-latency-numbers-and-measuring-your-own-code.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Say Big-O in a way that survives a follow-up
+- 2. The hidden costs of Python operations, measured
+- 3. Space against time
+- 4. The latency numbers, with sources and dates
+- 5. Arithmetic that makes the numbers useful
+- 6. Why the p99 of a fan-out is worse than the p99 of one call
+- 7. Caches and locality
+- 8. Measuring your own code with timeit and cProfile
+- 9. Why measured numbers differ from the textbook
+- 10. Will this loop of ten million items finish in a second?
+- How to answer out loud
+- Worked scenarios
+- Scenario A. The blocklist check
+- Scenario B. The fan-out dashboard that looks healthy
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.11 Coding practice set: 40 problems with tested solutions  [11623 words, ~58 min]  `part-20-nebius-sre-interview/11-coding-practice-set-40-problems-with-tested-solutions.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Run every problem the same way
+- 2. How to use the set
+- 3. The index
+- 4. Easy tier: twelve problems, fifteen minutes each
+- 5. Medium tier: sixteen problems, 25 to 30 minutes each
+- 6. Harder tier: eight problems, 40 minutes each
+- 7. Mini-projects: four SRE tasks
+- 8. A four-week schedule
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: compress a string, live
+- Scenario 2: the token bucket and its clock
+- Scenario 3: merge windows and the off-by-one
+- Scenario 4: the sliding median that only passes small tests
+- Scenario 5: the SLO burn tracker, in outline
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.12 Estimation toolkit for inference capacity  [11558 words, ~57 min]  `part-20-nebius-sre-interview/12-estimation-toolkit-for-inference-capacity.md`
+- What the interviewer is testing
+- The core ideas
+- 1. The estimation chain
+- 2. Weights memory by precision
+- 3. KV-cache memory per token and per request
+- 4. Concurrent requests per GPU
+- 5. Prefill is compute-bound, decode is bandwidth-bound
+- 6. How batching changes the numbers
+- 7. Tokens per second and requests per second per GPU
+- 8. GPUs for a target QPS, with headroom and N+1
+- 9. Cost per million tokens
+- 10. Utilisation and goodput
+- 11. The sanity checks
+- 12. Numbers every inference SRE should know
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: the opening question
+- Scenario 2: the long-context customer
+- Scenario 3: the alert that disagrees with the estimate
+- Scenario 4: is the cheaper GPU cheaper per token?
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.13 Design: a multi-tenant LLM inference API  [10288 words, ~51 min]  `part-20-nebius-sre-interview/13-design-a-multi-tenant-llm-inference-api.md`
+- What the interviewer is testing
+- What is public about Nebius, and what is my reasoning
+- The core ideas
+- 1. Requirements and numbers first (minutes 0 to 5)
+- 2. The API contract (minutes 5 to 8)
+- 3. The control plane and the data plane (minutes 8 to 10)
+- 4. The gateway: auth, quotas and rate limits by tokens (minutes 10 to 17)
+- 5. Usage metering for billing (minutes 17 to 19)
+- 6. The router: cache-aware and load-aware (minutes 19 to 26)
+- 7. Prefill and decode pools (minutes 26 to 29)
+- 8. Model placement and warm pools (minutes 29 to 31)
+- 9. Autoscaling signals (minutes 31 to 34)
+- 10. Regions and data residency (minutes 34 to 36)
+- 11. Tenant isolation and noisy neighbours (minutes 36 to 38)
+- 12. Streaming and backpressure (minutes 38 to 40)
+- 13. Failure handling and retries with budgets (minutes 40 to 42)
+- 14. Observability (minutes 42 to 43)
+- 15. Rollout (minutes 43 to 45)
+- 16. The whole picture in one diagram
+- 17. Trade-off tables for lookup
+- How to answer out loud
+- The 45-minute speaking plan
+- Question 1: "Design a multi-tenant LLM API."
+- Question 2: "How do you rate limit an LLM API?"
+- Question 3: "How does your router work?"
+- Question 4: "A replica is slow but not failing. What happens?"
+- Question 5: "How do you handle a tenant spike?"
+- Worked scenarios
+- Scenario 1: size a quota for a tenant
+- Scenario 2: TTFT doubled, GPU utilisation 40%
+- Scenario 3: the retry storm
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.14 Design: dedicated endpoints and safe model rollout  [9111 words, ~45 min]  `part-20-nebius-sre-interview/14-design-dedicated-endpoints-and-safe-model-rollout.md`
+- What the interviewer is testing
+- What is public, and what is my reasoning
+- The core ideas
+- 1. The endpoint as a spec, owned by a control plane
+- 2. Sizing the endpoint: GPU type, GPUs per replica, min and max
+- 3. Cold start has three costs
+- 4. Weights distribution and the custom-weights flow
+- 5. Readiness versus liveness for an engine
+- 6. Rolling, blue/green and canary when you cannot double your GPUs
+- 7. Surge budgets when GPUs are scarce
+- 8. Traffic shifting with a router, and the gates
+- 9. Automatic rollback signals
+- 10. Version skew
+- 11. Scale-to-zero and the minimum replica decision
+- How to answer out loud
+- Worked scenarios
+- Scenario A. Eight replicas, one spare GPU
+- Scenario B. Latency is green, quality is not
+- Scenario C. Shipping a custom checkpoint to a live endpoint
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.15 Design: an observability pipeline for very high volume  [10291 words, ~51 min]  `part-20-nebius-sre-interview/15-design-an-observability-pipeline-for-very-high-volume.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Start from the questions, then count the cost
+- 2. What to collect for an inference platform
+- 3. Cardinality is a budget, and labels are how you spend it
+- 4. Enforce the budget in three places
+- 5. Pull for metrics, push for traces and logs, and know the exceptions
+- 6. One Prometheus does not scale forever, so split it on purpose
+- 7. Long-term storage: choose by what breaks first
+- 8. Recording rules turn many series into few
+- 9. Logs: volume is the enemy, and metrics are the alert source
+- 10. Traces: head sampling is cheap, tail sampling keeps what matters
+- 11. Exemplars link a metric spike to one trace
+- 12. Metering for billing is a different system from operational metrics
+- 13. The pipeline loses data too, so decide where and in what order
+- 14. Monitor the monitoring
+- 15. Cost: know which knob moves which bill
+- The pipeline at a glance
+- How to answer out loud
+- Question 1: "How do you control cardinality?"
+- Question 2: "Head or tail sampling?"
+- Question 3: "Prometheus is out of memory. What now?"
+- Question 4: "How would you keep metrics for a year?"
+- Question 5: "How do you know your monitoring works?"
+- Worked scenarios
+- Scenario 1: A tenant label breaks Prometheus
+- Scenario 2: The tail sampler drops half of the slow traces
+- Scenario 3: Remote write is down for three hours
+- Scenario 4: Dashboard and invoice disagree by 2 percent
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.16 Design: GPU fleet health and capacity  [10897 words, ~54 min]  `part-20-nebius-sre-interview/16-design-gpu-fleet-health-and-capacity.md`
+- What the interviewer is testing
+- The core ideas
+- 1. A failing GPU shows up in three places before the customer notices
+- 2. The signals, with their real names
+- 3. What each Xid means for the fleet
+- 4. Passive and active checks
+- 5. Kubernetes node problem detector: where it fits
+- 6. The node lifecycle
+- 7. Blast radius: how automation avoids draining the fleet
+- 8. Spare pool and X+1 sizing
+- 9. Silent capacity loss: nodes that never rejoin
+- 10. Draining a node that is serving inference
+- 11. A fleet-level capacity SLO
+- 12. The vendor RMA flow, at a conceptual level
+- How to answer out loud
+- Worked scenarios
+- Scenario A. Three GPUs report Xid 79 within five minutes
+- Scenario B. The spare pool for a growing fleet
+- Scenario C. A node has been cordoned for nine days
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.17 System design drill sheet: twelve prompts  [10032 words, ~50 min]  `part-20-nebius-sre-interview/17-system-design-drill-sheet-twelve-prompts.md`
+- What the interviewer is testing
+- The core ideas
+- 0. How to use the twelve prompts
+- 1. GPU job scheduling [report]
+- 2. Model inference serving [report]
+- 3. Training data storage for thousands of GPUs [report]
+- 4. Detecting a failing GPU before the customer does [report]
+- 5. The SRE variant: incidents, capacity and rollout safety [report]
+- 6. Multi-region failover for dedicated endpoints [my addition]
+- 7. Usage metering and billing correctness [my addition]
+- 8. A prompt-cache or KV-cache tier [my addition]
+- 9. A model weights distribution system for cold start [my addition]
+- 10. An inference gateway rate limiter [my addition]
+- 11. Multi-tenant noisy-neighbour control [my addition]
+- 12. An SLO and alerting platform for 1,000 endpoints [my addition]
+- Scoring rubric
+- The first five minutes script
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: A prompt you have not drilled
+- Scenario 2: The interviewer changes a number
+- Hands-on lab
+- The one-page decision checklist
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.18 How LLM serving fails  [10202 words, ~51 min]  `part-20-nebius-sre-interview/18-how-llm-serving-fails.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Every failure is a story about three places where a request can wait
+- 2. Queue growth and TTFT spikes
+- 3. KV-cache exhaustion and preemption
+- 4. Long-context head-of-line blocking
+- 5. GPU OOM at startup versus at load
+- 6. CUDA and NCCL hangs and Xid errors
+- 7. Slow weight load, cold start and thundering herd on restart
+- 8. Probes that hurt: liveness kills and silent pool shrink [vendor]
+- 9. Retry amplification during a partial outage
+- 10. Noisy tenants
+- 11. Quality failures: finish_reason drift, corruption, speculative decoding and quantisation
+- 12. Version skew between router and engine
+- 13. A decision tree, an alert-to-cause table and a classifier
+- How to answer out loud
+- Worked scenarios
+- Scenario A. The 16-request burst
+- Scenario B. Pods restart under load
+- Scenario C. A rolling restart of eight replicas
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log (fact-check pass, 2026-11-09)
+
+### 20.19 SLIs, SLOs and alerts for token APIs  [11884 words, ~59 min]  `part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md`
+- What the interviewer is testing
+- The core ideas
+- 1. A token API breaks the usual SLI recipe
+- 2. Latency is three numbers, and end-to-end depends on length
+- 3. Why averages lie
+- 4. Per model and per tenant, and what it costs
+- 5. Error budgets: do the arithmetic
+- 6. Burn rate and the multiwindow alert
+- 7. Symptoms, not causes, and what pages
+- 8. Quality signals: the finish reason mix
+- 9. Goodput: speed that counts
+- 10. Dedicated versus serverless endpoints
+- 11. Measure at the gateway, explain at the engine
+- The rules and the calculator
+- How to answer out loud
+- Question 1: "Which SLIs and SLOs for a streaming chat endpoint?"
+- Question 2: "Explain burn-rate alerts. Give the numbers."
+- Question 3: "Why not alert on GPU utilisation or average latency?"
+- Question 4: "Would the SLO differ for dedicated and serverless?"
+- Question 5: "Your pager is too noisy. What do you do?"
+- Worked scenarios
+- Scenario 1: A deploy takes a dedicated endpoint down
+- Scenario 2: The TTFT page fires
+- Scenario 3: The tenant ticket is noisy
+- Scenario 4: Everything is green and users complain
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log (fact-check pass, 2026-11-09)
+
+### 20.20 Autoscaling GPU inference  [11619 words, ~58 min]  `part-20-nebius-sre-interview/20-autoscaling-gpu-inference.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Why CPU and GPU utilisation fail for LLM engines
+- 2. Signals that work, and the difference between leading and lagging
+- 3. The HPA formula, with a worked example
+- 4. Stabilization windows and flapping
+- 5. Scale-up latency, broken down
+- 6. Minimum replicas, X+1, and cost against latency
+- 7. Scale-down safety and connection draining
+- 8. Cluster autoscaler and GPU node pools
+- 9. Multi-model fleets and placement
+- 10. What other platforms do, kept separate from Nebius
+- How to answer out loud
+- Worked scenarios
+- Scenario A. The HPA arithmetic during a burst
+- Scenario B. The ramp that no reaction can catch
+- Scenario C. The sawtooth and the cut streams
+- Scenario D. The finance question
+- Hands-on lab
+- The files
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log (fact-check pass, 2026-11-09)
+
+### 20.21 Request routing, retries and overload control  [12093 words, ~60 min]  `part-20-nebius-sre-interview/21-request-routing-retries-and-overload-control.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Decide what is safe to retry before you decide how
+- 2. Timeouts must nest: client above gateway above engine
+- 3. Why per-request retries amplify an outage
+- 4. Retry budgets cap the damage
+- 5. Exponential backoff with jitter, and the maths
+- 6. Hedged requests and what they cost on GPUs
+- 7. Circuit breakers, outlier ejection and the panic threshold
+- 8. Load shedding, priority, 429 versus 503 and Retry-After
+- 9. Backpressure on streaming responses
+- 10. Cache-aware routing versus load-aware routing
+- 11. Connection draining and graceful termination
+- 12. Failover across regions with data-residency limits
+- 13. The code, in full
+- How to answer out loud
+- Worked scenarios
+- Scenario A. Two of eight replicas fail and the whole service goes down
+- Scenario B. A timeout audit
+- Scenario C. Streams die on every deploy
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log (fact-check pass, 2026-11-09)
+
+### 20.22 Operating vLLM, Triton, Ray and TensorRT-LLM  [10888 words, ~54 min]  `part-20-nebius-sre-interview/22-operating-vllm-triton-ray-and-tensorrt-llm.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Four tools, three layers: engine, server, orchestrator
+- 2. What each engine is for
+- 3. The knobs that decide memory
+- 4. The knobs that decide latency: token budget and chunked prefill
+- 5. Parallelism: tensor, pipeline, data and expert
+- 6. Quantisation, prefix caching and speculative decoding
+- 7. Start-up: what takes the time
+- 8. Health endpoints: what they prove and what they do not
+- 9. Upgrades and version skew
+- 10. Reading each engine's metrics
+- 11. The one-page comparison
+- How to answer out loud
+- Worked scenarios
+- Scenario A. The command line that passes review and still preempts
+- Scenario B. Slow rollout, pods killed during start
+- Scenario C. Picking an engine for a new customer
+- The code
+- Engine config reviewer
+- Kubernetes Deployment for vLLM
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log (fact-check pass, 2026-11-09)
+
+### 20.23 Kubernetes failure drills for GPU platforms  [9108 words, ~45 min]  `part-20-nebius-sre-interview/23-kubernetes-failure-drills-for-gpu-platforms.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Debug in a fixed order, from the object outward
+- 2. Know who owns each decision
+- 3. GPUs add three facts you must be able to say
+- 4. How to run a drill from this chapter
+- How to answer out loud
+- "A GPU pod is Pending. Walk me through it."
+- "A pod restarts every few minutes. OOM or probe?"
+- "A node is NotReady. What happens to its pods?"
+- "How do you upgrade GPU nodes without an outage?"
+- "An admission webhook is down and nothing deploys."
+- Worked scenarios
+- Drill 1: Pending pod that requests nvidia.com/gpu
+- Drill 2: ImagePullBackOff on a huge model image
+- Drill 3: CrashLoopBackOff, OOM or probe kill
+- Drill 4: A node goes NotReady
+- Drill 5: Eviction storm
+- Drill 6: A PDB blocks a drain
+- Drill 7: CoreDNS slow for half the lookups
+- Drill 8: A Service has no endpoints
+- Drill 9: The HPA does not scale
+- Drill 10: Device plugin missing after an upgrade
+- Drill 11: etcd is slow after a topology change
+- Drill 12: An admission webhook outage blocks deploys
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.24 Terraform for resilient GPU clusters  [10072 words, ~50 min]  `part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md`
+- What the interviewer is testing
+- The core ideas
+- 1. A cluster module is an API, and its inputs decide what mistakes are possible
+- 2. Remote state, locking and why the state is the crown jewel
+- 3. State splitting and blast radius
+- 4. Safe changes: read the plan, guard the stateful things, keep history
+- 5. Node pool design for GPUs: capacity, zones, drivers and upgrades
+- 6. Drift, and why the plan is a health check
+- 7. Secrets in a world where state is plain text
+- 8. Testing a module before it touches a cluster
+- 9. CI/CD for infrastructure
+- 10. Disaster recovery of the state itself
+- How to answer out loud
+- Worked scenarios
+- Scenario A. A plan says one destroy
+- Scenario B. Apply deleted a production node pool
+- Scenario C. The state bucket is deleted
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.25 PromQL, Grafana and tracing: the traps interviewers test  [9002 words, ~45 min]  `part-20-nebius-sre-interview/25-promql-grafana-and-tracing-traps.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Counters, resets and what rate really computes
+- 2. rate versus irate, and the range-selector trap
+- 3. Aggregate after rate, never before
+- 4. Histograms: keep le, then take the quantile once
+- 5. Gauges, saturation and dashboards that tell the truth
+- 6. Staleness, absent and silent alerts
+- 7. Joins: on, ignoring and group_left
+- 8. Alert rules: for, flapping and keep_firing_for
+- 9. Alertmanager: grouping, inhibition and routing
+- 10. Recording rules and naming
+- 11. Offset, subqueries and what they do to time
+- 12. Cardinality: the cost behind every label
+- 13. Tracing a streaming request
+- 14. Sampling and joining traces to metrics
+- How to answer out loud
+- Question 1: "What is wrong with a p99 panel that averages across pods?"
+- Question 2: "Explain rate versus irate and how you pick a window."
+- Question 3: "The alert never fired during the outage. Why?"
+- Question 4: "Pager noise is too high. What do you change?"
+- Question 5: "How would you trace a streaming request?"
+- Worked scenarios
+- Scenario 1: The flat p99
+- Scenario 2: The silent outage
+- Scenario 3: Forty pages for one cause
+- Hands-on lab
+- The 15 exercises: what is wrong with this query
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.26 The stress interview: production incident role-play  [11825 words, ~59 min]  `part-20-nebius-sre-interview/26-the-stress-interview-production-incident-role-play.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Take control in the first two minutes
+- 2. Mitigate before you find the root cause
+- 3. Narrate hypotheses in order of likelihood and cost to test
+- 4. Communicate status on a cadence
+- 5. Know when to roll back, and avoid the destructive command
+- 6. How the drill runner works
+- How to answer out loud
+- Worked scenarios
+- Incident 1: TTFT spike after a deploy
+- Incident 2: GPU pool shrinking silently
+- Incident 3: KV-cache pressure and a 429 storm
+- Incident 4: Regional partial outage with retry amplification
+- Incident 5: Model weights download stuck at cold start
+- Incident 6: Disk full on a GPU node
+- Incident 7: Certificate expiry
+- Incident 8: DNS: intermittent resolution failures
+- Incident 9: etcd latency
+- Incident 10: Bad config push
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.27 Post-mortems, on-call and incident leadership  [10119 words, ~50 min]  `part-20-nebius-sre-interview/27-post-mortems-on-call-and-incident-leadership.md`
+- What the interviewer is testing
+- The core ideas
+- 1. A behavioural answer about an incident is a short report with numbers
+- 2. Incident roles: one person decides, one person changes things, one person talks
+- 3. Severity definitions: tie them to customer impact and to a response
+- 4. A blameless post-mortem has a fixed structure and measured impact
+- 5. Action items are where most post-mortems fail
+- 6. Toil is the work that tells you what to automate
+- 7. A runbook is for the engineer who is half asleep
+- 8. On-call health is measured, not felt
+- 9. Error budgets turn a reliability argument into arithmetic
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: repair a weak post-mortem
+- Scenario 2: timeline and time-to-resolve from messy notes
+- Scenario 3: negotiate a Friday release with a budget in hand
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.28 The project deep dive and the final round  [8902 words, ~44 min]  `part-20-nebius-sre-interview/28-the-project-deep-dive-and-the-final-round.md`
+- What the interviewer is testing
+- The core ideas
+- 1. The round has two shapes and one skill
+- 2. Picking the one project
+- 3. The one-page dossier
+- 4. What the interviewer asks at each part, and the shape of a good answer
+- 5. Talking about trade-offs and mistakes honestly
+- 6. Why Nebius, why SRE, why inference
+- 7. Questions to ask the team leader
+- 8. Salary, notice and logistics, kept general
+- 9. The first-90-days answer
+- How to answer out loud
+- "Walk me through the project in two minutes"
+- "Why did you choose X over Y?"
+- "Tell me about something that went wrong"
+- "What would you do differently?"
+- "Why Nebius, why SRE, why inference?"
+- Worked scenarios
+- Scenario 1: choosing among three projects
+- Scenario 2: rewriting a weak decision
+- Scenario 3: a five-level ladder on one decision
+- Scenario 4: the logistics questions
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.29 The 8-week plan, the final week and the one-page cheat sheet  [10440 words, ~52 min]  `part-20-nebius-sre-interview/29-the-8-week-plan-the-final-week-and-the-cheat-sheet.md`
+- What the interviewer is testing
+- The core ideas
+- 1. The 8-week plan, with hours as a parameter
+- 2. Compressed versions: 3 weeks and 10 days
+- 3. The spaced-repetition drill list
+- 4. The mock-interview protocol
+- 5. The final week, the day before and the morning of
+- 6. The one-page cheat sheet
+- 7. After the interview
+- How to answer out loud
+- Worked scenarios
+- Scenario 1. A runway of six weeks
+- Scenario 2. Eight days left
+- Hands-on lab
+- The code
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+
+### 20.30 From AI factory to Token Factory: a public architecture map  [8399 words, ~41 min]  `part-20-nebius-sre-interview/30-nebius-ai-factory-to-token-factory-architecture.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Draw the product boundary before the boxes [official]
+- 2. Know the AI Cloud building blocks [official]
+- 3. Follow identity, project and billing boundaries [official]
+- 4. Trace one request through the documented API [official]
+- 5. Compare shared and dedicated inference as capacity products [official]
+- 6. Read lifecycle and readiness as two separate states [official]
+- 7. Separate serving concepts from serving implementation [official, vendor]
+- 8. Treat cache-aware routing as a published example [official, vendor]
+- 9. Read telemetry and the bill as separate views [official]
+- 10. Treat high availability as a capacity and ownership question [official, vendor]
+- 11. Plan recovery without inventing automatic failover [official, inference]
+- 12. Keep a reference design ready [inference]
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: A request fails just after endpoint creation
+- Scenario 2: Three replicas do worse than one
+- Scenario 3: Recovery after capacity is released
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.31 Nebius AI Cloud foundation: GPUs, fabric, storage and platform choices  [6598 words, ~32 min]  `part-20-nebius-sre-interview/31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Know the layers and who owns each
+- 2. Announced facilities are not orderable capacity
+- 3. Pick the GPU platform and region together
+- 4. Fabric: InfiniBand clusters and topology
+- 5. Network boundaries before workloads
+- 6. Match storage to data temperature
+- 7. Choose the orchestrator by who owns what
+- 8. Capacity, quota and cost are separate controls
+- 9. A customer-built reference pattern
+- 10. Plan recovery by failure domain
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: The GPU is announced but the project cannot create it
+- Scenario 2: Training slows down after moving from one node to four
+- Scenario 3: A node is repaired while the job keeps only local checkpoints
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.32 Token Factory: model lifecycle, serving and economics  [9676 words, ~48 min]  `part-20-nebius-sre-interview/32-token-factory-model-lifecycle-serving-and-economics.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Two products behind one API
+- 2. Identity: organisation, project, group, key
+- 3. Control plane, data plane and the routing key
+- 4. Lifecycle is deployment state, readiness is serving state
+- 5. Capacity: what is guaranteed and what is not
+- 6. Flavors and serving techniques, with the mechanism
+- 7. Cached tokens: a performance feature and a billing line
+- 8. Dynamic rate limits on Serverless
+- 9. Billing: tokens, GPU minutes, and three documented conflicts
+- 10. Where data goes: ZDR, speculative decoding, Data Lab, fine-tuning
+- 11. Post-training and custom weights
+- 12. Observability and deprecations
+- 13. Failure handling: what the customer sees and what to do
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: The bill did not drop
+- Scenario 2: The morning restart
+- Scenario 3: The surprise 429 ramp
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.33 AI Factory architecture on Nebius: patterns, HA and recovery  [8784 words, ~43 min]  `part-20-nebius-sre-interview/33-ai-factory-solution-architecture-ha-and-recovery.md`
+- What the interviewer is testing
+- The core ideas
+- 1. Turn a vague request into decision requirements
+- 2. Compose services by operating boundary
+- 3. What Nebius documents about regions and zones
+- 4. What each failure domain looks like and who owns it
+- 5. What the SLAs actually promise
+- 6. Dedicated endpoint capacity and recovery
+- 7. Pattern A: a managed Dedicated Endpoint behind your own gateway
+- 8. Pattern B: a customer-operated multi-region fleet
+- 9. Pattern C: share reserved GPUs between training and inference
+- 10. Recovery arithmetic: RPO, RTO and the lost work you can compute
+- 11. Security, tenancy and cost under failure
+- 12. A customer-ready review
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: Enterprise agent with compliance-sensitive prompts
+- Scenario 2: Training and inference share committed GPUs
+- Scenario 3: Unit economics deteriorate while latency looks fine
+- Scenario 4: The fleet database host dies
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.34 Nebius hardware, data centers and the GPU fleet  [7024 words, ~35 min]  `part-20-nebius-sre-interview/34-nebius-hardware-data-centers-and-the-gpu-fleet.md`
+- Why an SRE here should know this
+- The core ideas
+- 1. A fleet is a tree, and each level shares something
+- 2. How Nebius says it builds hardware, and why you care
+- 3. GPU generations set the shape of the failure domain
+- 4. The fabric: rails, leaves and what a leaf failure does
+- 5. Power and cooling are shared fates
+- 6. How hardware faults surface
+- 7. Storage hardware and what it does to recovery
+- 8. What benchmark and certification claims do and do not tell you
+- 9. Supply and capacity constraints, as filings state them
+- 10. The fleet failure-domain diagram
+- 11. Blast radius, spares and drain order with the model
+- 12. Firmware and driver fleets, and GPU return to vendor
+- How to answer out loud
+- Worked scenarios
+- Scenario 1: One NVL72 unit serves whole-rack replicas
+- Scenario 2: A leaf dies and nothing alerts
+- Scenario 3: A hall power event
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Questions to ask the interviewer
+- What I could not find
+- Sources and review notes
+- Verification log
+
+### 20.35 The Nebius API surface: gRPC, CLI, SDKs, IAM and Terraform  [7636 words, ~38 min]  `part-20-nebius-sre-interview/35-the-nebius-api-surface-grpc-cli-sdks-iam-and-terraform.md`
+- Why an SRE here should know this
+- The core ideas
+- 1. One API, several front doors
+- 2. The resource model: parent, metadata, spec, status
+- 3. Services and endpoints
+- 4. Long-running operations
+- 5. Update is full-replace, with a reset mask
+- 6. Pagination and read-after-write
+- 7. The error model and the retry decision
+- 8. Idempotency
+- 9. Identity and tokens
+- 10. Quotas, capacity and rate limits
+- 11. Layered retries and timeouts
+- 12. A safe fleet-automation client
+- 13. How Terraform fits
+- 14. Audit logs and tracing a failed call
+- 15. Token Factory has its own control plane
+- How to answer out loud
+- Worked scenarios
+- Scenario A: the CI job exits with 52
+- Scenario B: two 429s with different causes
+- Scenario C: a crash between submit and record
+- Scenario D: a 14-hour job fails with exit 7
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Questions to ask the interviewer
+- What I could not find
+- Sources and review notes
+- Verification log
+
+### 20.36 Managed Kubernetes and Soperator: how Nebius runs Kubernetes and Slurm  [7096 words, ~35 min]  `part-20-nebius-sre-interview/36-managed-kubernetes-and-soperator-how-nebius-runs-kubernetes-and-slurm.md`
+- Why an SRE here should know this
+- The core ideas
+- 1. What the managed service runs and what you run
+- 2. Node groups, GPU drivers and the fabric
+- 3. How nodes fail and how Nebius repairs them
+- 4. Upgrades are manual until a version dies
+- 5. Autoscaling and capacity
+- 6. How Soperator maps Slurm onto Kubernetes
+- 7. The jail and what a shared root costs you
+- 8. The custom resources, validated
+- 9. Two repair systems and one rule to avoid a fight
+- 10. Slurm-aware rollouts and node maintenance
+- 11. Ephemeral nodes, the Slurm power-saving path
+- 12. What this architecture creates and removes
+- 13. How to monitor it
+- 14. Debugging a stuck Slurm job versus a stuck pod
+- 15. Day-2 rules in one place
+- 16. A tested model of the replacement chain
+- How to answer out loud
+- "What do you know about our Kubernetes and Slurm offerings?"
+- "A GPU node fails under a long job. Walk me through it."
+- "How do you upgrade a GPU node group safely?"
+- "How would you monitor a Soperator cluster?"
+- Worked scenarios
+- Scenario 1: Half the nodes are drained and nothing is replaced
+- Scenario 2: A node group upgrade hangs for hours
+- Scenario 3: A resumed ephemeral node never gets its job
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Questions to ask the interviewer
+- What I could not find
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log
+
+### 20.37 Observability, status and operations on Nebius: what is visible and what is not  [6485 words, ~32 min]  `part-20-nebius-sre-interview/37-observability-status-and-operations-on-nebius.md`
+- Why an SRE here should know this
+- The core ideas
+- 1. The visibility map: three layers, and you own only one
+- 2. What Token Factory Observability documents
+- 3. Getting the data out: the federation path
+- 4. Endpoint state and rate-limit headers are free telemetry
+- 5. Customer-side SLIs on top of percentile-only data
+- 6. Reading the status page like data
+- 7. The failure modes Nebius has actually had
+- 8. Case study: the 2026-08-19 us-central1 post-mortem
+- 8b. What the SLA and support terms mean for your design
+- 9. The infrastructure layer is richer on Compute than on Token Factory
+- 10. Writing a post-mortem when the provider is the cause
+- 11. What an inference platform SRE would need inside
+- How to answer out loud
+- Question 1: "What can a customer see about a Token Factory endpoint?"
+- Question 2: "How would you know whether an outage is yours or Nebius's?"
+- Question 3: "How would you build an SLI from Nebius metrics?"
+- Question 4: "What went wrong on 2026-08-19 and what would you monitor?"
+- Worked scenarios
+- Scenario 1: "Is Token Factory reliable enough for us?"
+- Scenario 2: 503s at 02:10
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Connections to the rest of the handbook
+- Questions to ask the interviewer
+- What I could not find
+- Sources and review notes
+- Verification log
+
+### 20.38 Token Factory inference engineering: everything Nebius has published  [8353 words, ~41 min]  `part-20-nebius-sre-interview/38-token-factory-inference-engineering-everything-nebius-has-published.md`
+- Why an SRE here should know this
+- The core ideas
+- 1. What Nebius has not published
+- 2. Two products, one API, very different operating contracts
+- 3. Routing and the KV cache: the best-documented part
+- 4. Beyond HBM: the external cache tier
+- 5. Prefill and decode disaggregation: one case study, no general claim
+- 6. Speculative decoding is a full product line
+- 7. Quantisation, flavors and quality claims
+- 8. Rate limits, tiers and admission
+- 9. Model lifecycle: removal dates, flavors and fine-tuned weights
+- 10. Regions, failure domains and the us-central1 incident
+- 11. Hardware and benchmarks: what they do and do not prove
+- The master table
+- A reconstructed data plane, clearly labelled as inference
+- How to answer out loud
+- Question 1: "What do you know about our inference platform?"
+- Question 2: "Design our cache-aware router."
+- Question 3: "How would you improve the reliability of our dedicated endpoints?"
+- Question 4: "How would you detect silent quality regressions?"
+- Worked scenarios
+- Scenario A: three replicas worse than one
+- Scenario B: sizing the value of a shared cache tier
+- Scenario C: acceptance rate falls after a model update
+- Hands-on lab
+- Drill questions
+- Common mistakes and weak answers
+- Questions to ask the interviewer
+- What I could not find
+- Connections to the rest of the handbook
+- Sources and review notes
+- Verification log

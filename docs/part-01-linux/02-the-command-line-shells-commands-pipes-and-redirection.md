@@ -348,7 +348,7 @@ The table leaves out two points. First, **`>` destroys the previous contents of 
 
 **Pipes.** The `|` character connects the stdout of one command directly to the stdin of the next. No temporary file is needed. `ps -ef | grep slurmd | wc -l` is a complete example. The kernel keeps a small in-memory buffer between the two processes, and both run *at the same time*. This is the heart of the Unix philosophy. Many small tools each do one job, and you join them into pipelines. A pipe carries only stdout. Stderr still goes to the terminal unless you redirect it, as in `cmd1 2>&1 | cmd2`.
 
-![Infographic titled Streams, redirection and pipes. A program reads standard input as file descriptor 0 from the keyboard and writes standard output as descriptor 1 and standard error as descriptor 2 to the terminal. With cmd > out.txt 2>&1 both end up in the file. With cmd 2>&1 > out.txt the errors still reach the screen. A pipe turns the standard output of one command into the standard input of the next.](./img/ch02-fig2-streams.jpg)
+![Infographic titled Streams, redirection and pipes. A program reads standard input as file descriptor 0 from the keyboard and writes standard output as descriptor 1 and standard error as descriptor 2 to the terminal. With cmd  out.txt 2&1 both end up in the file. With cmd 2&1  out.txt the errors still reach the screen. A pipe turns the standard output of one command into the standard input of the next.](./img/ch02-fig2-streams.jpg)
 
 *Figure 1.2.7. Every process has three streams, the shell rewires them before the program starts, and the order of redirections decides where errors end up.*
 
