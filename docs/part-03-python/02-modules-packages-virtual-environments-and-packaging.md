@@ -409,23 +409,9 @@ To handle all four, Python runs a four-step search. It checks each candidate dir
 
 In step 2, Python looks for a file such as `d/name.py`, or a compiled form such as `d/name.pyc` or `d/name.so`.
 
-```mermaid
-flowchart TD
-    Start["Import 'name': scan candidate directories on sys.path (or parent.__path__)"] --> Loop["Next candidate directory d"]
-    Loop --> Step1{"1. Does d/name/__init__.py exist?"}
-    Step1 -->|Yes| RetReg["Return Regular Package immediately<br/>(runs __init__.py)"]
-    Step1 -->|No| Step2{"2. Does d/name.{py,pyc,so,...} exist?"}
-    Step2 -->|Yes| RetMod["Return Simple Module immediately"]
-    Step2 -->|No| Step3{"3. Is d/name a directory<br/>(no __init__.py)?"}
-    Step3 -->|Yes| Record["Record d/name in candidate list<br/>and KEEP SCANNING next d"]
-    Step3 -->|No| Next["4. Continue to next candidate d"]
-    Record --> More{"More candidate directories?"}
-    Next --> More
-    More -->|Yes| Loop
-    More -->|No| CheckNS{"Any d/name directories<br/>recorded in Step 3?"}
-    CheckNS -->|Yes| RetNS["Create & return Namespace Package<br/>(__path__ = _NamespacePath of recorded dirs,<br/>no __file__ attribute)"]
-    CheckNS -->|No| Err["Raise ModuleNotFoundError"]
-```
+![Four import models, PEP 420 namespace packages (__path__), and the 4-step search algorithm](./img/m3-02-1.svg)
+
+*Figure 3.2.17. Four import models, PEP 420 namespace packages (__path__), and the 4-step search algorithm, as a diagram.*
 
 The diagram hides one rule that matters most. In step 3, a bare directory without `__init__.py` does not end the search. Python records that directory and keeps scanning. Only when the whole scan finishes, with no regular package in step 1 and no simple module in step 2, does Python build a namespace package. Its `__path__` is a `_NamespacePath` that joins every recorded directory, and it has no `__file__` attribute.
 
@@ -437,7 +423,7 @@ For example, set `export PYTHONPATH=ns/part1:ns/part2`, then run `import sub.mod
 
 ![Two folders without __init__.py merge into one namespace package](./img/s02-nspkg.svg)
 
-*Figure 3.2.17. Two folders, one package: with no __init__.py, Python merges both sub directories into one namespace package.*
+*Figure 3.2.18. Two folders, one package: with no __init__.py, Python merges both sub directories into one namespace package.*
 
 ### Circular (`recursive`) imports: why `import recur1` fails while `import recur2` succeeds
 
@@ -445,7 +431,7 @@ Two modules can import each other without looping forever. The trick is the orde
 
 ![Why import recur1 fails while import recur2 first works](./img/p02-circular.jpg)
 
-*Figure 3.2.18. Why import recur1 fails: Y = 2 has not run when recur2 asks for it. Importing recur2 first works.*
+*Figure 3.2.19. Why import recur1 fails: Y = 2 has not run when recur2 asks for it. Importing recur2 first works.*
 
 `recur1.py` sets `X = 1`, then runs `import recur2`, then sets `Y = 2`. `recur2.py` runs `from recur1 import X` and then `from recur1 import Y`.
 
@@ -485,7 +471,7 @@ The src layout puts the package under `src/`. Tests can import `myops` only afte
 
 ![One virtual environment per project](./img/s02-venv.svg)
 
-*Figure 3.2.19. One environment per project: each .venv has its own python and site-packages, so two library versions do not clash.*
+*Figure 3.2.20. One environment per project: each .venv has its own python and site-packages, so two library versions do not clash.*
 
 Picture two projects on one machine. One needs one version of a library, and the other needs a different version. Without a virtual environment, both share the same installed packages, and one of them breaks.
 
@@ -551,7 +537,7 @@ The pip resolver has used backtracking since version 20.3. It searches for one s
 
 ![From requirements.in to a hashed lock](./img/s02-piptools.svg)
 
-*Figure 3.2.20. Declaring dependencies: pip-compile turns an abstract list into a hashed lock, and pip-sync makes the environment match it.*
+*Figure 3.2.21. Declaring dependencies: pip-compile turns an abstract list into a hashed lock, and pip-sync makes the environment match it.*
 
 Libraries and applications need different kinds of declarations, and swapping them causes trouble in both directions. A library declares abstract, compatible ranges, such as `requests>=2.28,<3`. A range lets the library sit alongside other packages that also depend on requests. An application or deployment needs a concrete lockfile instead. The lockfile lists exact versions of everything, including transitive dependencies, along with hashes. Every machine then installs the same bits.
 
@@ -583,7 +569,7 @@ Use one tool per environment. That is the rule to remember. Mixing pip and conda
 
 ![Choosing a packaging tool by situation](./img/s02-choosetool.svg)
 
-*Figure 3.2.21. Choosing a tool: match your situation to a row. A published library gets ranges, a deployed application gets a lockfile.*
+*Figure 3.2.22. Choosing a tool: match your situation to a row. A published library gets ranges, a deployed application gets a lockfile.*
 
 The table maps common situations to a tool, so start with your situation rather than with a tool you have heard about.
 
@@ -606,7 +592,7 @@ You have a tool that works on your laptop. Then a colleague wants it, and then a
 
 ![The main tables in pyproject.toml](./img/s02-pyproject.svg)
 
-*Figure 3.2.22. pyproject.toml: four tables cover the build backend, project metadata, command launchers and plugin entry points.*
+*Figure 3.2.23. pyproject.toml: four tables cover the build backend, project metadata, command launchers and plugin entry points.*
 
 Every packaged project declares its build in a `pyproject.toml` file. The standard for this file, set by PEP 517, 518 and 621, names the build backend and the project metadata. A build backend is the tool that turns your source folder into a distributable file. The example below is a complete tool.
 
@@ -651,6 +637,10 @@ Other backends are available. `setuptools` is still common, and it has legacy `s
 
 ### Building, installing, publishing
 
+![From source to wheel and sdist](./img/s02-build.svg)
+
+*Figure 3.2.24. Building and publishing: python -m build makes an sdist and a wheel, and a wheel installs without a build step.*
+
 Building turns your source into files you can distribute. The commands below install the build tools, build an sdist and a wheel, check them, upload them to a private index, and install them.
 
 ```bash
@@ -686,7 +676,7 @@ Check the tags of every wheel you plan to ship against the machines that will in
 
 ![Entry point plugin discovery](./img/s02-entrypoints.svg)
 
-*Figure 3.2.23. Entry points: an installed package advertises a plugin, and the core discovers, loads and registers it without edits.*
+*Figure 3.2.25. Entry points: an installed package advertises a plugin, and the core discovers, loads and registers it without edits.*
 
 Suppose your tool needs a new collector, such as one for GPUs. You do not want to edit the core every time. Entry points solve that problem. They let an installed distribution advertise its components to other programs, without any hard-coded imports. An entry point is a name plus a path to code, recorded in a package's metadata, where other programs can look it up. pytest plugins, Ansible and Click commands, and Prometheus collectors all work this way.
 
@@ -704,7 +694,7 @@ The loop discovers each plugin in the `myops.plugins` group, loads it, and regis
 
 ![Checking a GPU Python stack](./img/s02-gpucheck.svg)
 
-*Figure 3.2.24. GPU packaging: the host driver must be new enough for the CUDA runtime in the wheel, so check from the driver upward.*
+*Figure 3.2.26. GPU packaging: the host driver must be new enough for the CUDA runtime in the wheel, so check from the driver upward.*
 
 A training container can build without error and still fail on the first GPU call, with a message that the driver is too old. The notes below cover the packaging causes, and they show you how to check each one.
 
@@ -736,7 +726,7 @@ Check the driver and the CUDA runtime first, because a mismatch there breaks the
 
 ![A multi-stage Dockerfile](./img/s02-multistage.svg)
 
-*Figure 3.2.25. Multi-stage build: dependencies are installed in a build stage, then only the virtual environment is copied into the final image.*
+*Figure 3.2.27. Multi-stage build: dependencies are installed in a build stage, then only the virtual environment is copied into the final image.*
 
 Your service works on your laptop, and now it has to become an image that a cluster can pull. A multi-stage Dockerfile is the usual starting point for a Python service. Multi-stage means the file has more than one `FROM` line, and only the last one becomes the image you ship. The first stage builds the virtual environment. The second stage copies only that environment into a clean runtime image.
 

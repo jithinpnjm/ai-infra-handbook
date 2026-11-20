@@ -38,6 +38,10 @@ The tools themselves are introduced one at a time. Each section starts from a jo
 
 ### The tool landscape
 
+![Automation tool landscape](./img/n29-toolmap.svg)
+
+*Figure 2.29.1. Each automation tool owns a different part of the change process.*
+
 Before you pick a tool, you need to know which job it does. The table below lists the main options. Each one solves a different part of the same problem: a switch needs a new configuration, a cloud network needs a new subnet, or a whole fabric has to stay in a known state.
 
 A quick test works well here. Write the job in one sentence, such as change a device, provision a cloud resource, or check a running state. That sentence usually points to one row of the table, and the rest of the choice follows from that row. If the sentence names two jobs, split the task in two before you pick anything.
@@ -59,6 +63,10 @@ Think of a kitchen. One cook chops, one cook bakes, and one checks each plate be
 
 ### Axes for comparing them
 
+![Axes for comparing tools](./img/n29-axes.svg)
+
+*Figure 2.29.2. Tools differ on configuration versus provisioning, declarative versus imperative, push versus pull and mutable versus immutable.*
+
 Start with the two axes that clear up most of the confusion. Configuration management converges existing machines to a desired configuration, which is what Ansible and Nornir do. Provisioning creates and destroys resources, which is the job of Terraform. Both show up in network work, whether you are configuring a switch or creating a VPC. Network devices rarely run agents, so agentless tools that speak SSH, NETCONF, REST or gNMI dominate. Server tools such as Puppet and Chef need agents.
 
 Here is how to place a tool on the two axes. On the first axis, ask whether the tool describes an end state or a list of steps. On the second, ask whether it runs from one control machine or from each device. A tool that describes end states and runs from a control node sits in a different place from one that runs steps on each device, even when both claim to manage networks.
@@ -78,6 +86,10 @@ Picture an operator who needs the same change on thirty leaf switches before the
 The usual first attempt is a shell loop over a list of addresses. It works until one leaf stops to ask for a password, and then the loop waits forever on that one host. Ansible handles that case by design, with timeouts for each host and a summary at the end that names the hosts that failed.
 
 ### How it works
+
+![Ansible run](./img/n29-ansible.svg)
+
+*Figure 2.29.3. Ansible reads the inventory, runs each task's module and checks whether each device now matches.*
 
 Suppose you need the same change on every leaf switch in a fabric. Ansible can make that change from one machine, called the control node. It reads an inventory of hosts and runs playbooks. A playbook is made of tasks, and each task calls a module against the hosts.
 
@@ -277,6 +289,10 @@ If your job is mostly custom checks and branching, reach for Nornir. If it is mo
 
 ## 4. Terraform / OpenTofu for network resources
 
+![Terraform drift](./img/n29-drift.svg)
+
+*Figure 2.29.4. Terraform keeps a record of what should exist and shows where reality has drifted from it.*
+
 Picture a training network that someone changed by hand. A rule was added in the console to fix something urgent, and nobody wrote it down. Terraform keeps a record of what should exist, and it shows where reality has drifted. Terraform is declarative: you describe resources in HCL. `terraform plan` compares the state file, which records what Terraform believes exists, with your desired configuration and the refreshed reality. `terraform apply` then carries out the plan.
 
 Consider why the hand change matters. The console change works, so nobody notices it at first. Months later a rebuild recreates the network from the code, and the rule is missing. The rebuilt network then fails in a way that no code explains, because the code never described that rule. Terraform prevents this by keeping the code and the cloud in step with each other.
@@ -337,14 +353,9 @@ Why would a team merge so often? Small changes are easy to review, and a failed 
 
 The diagram below shows how the five components hand work to one another. A change enters on the left as a pull request, and each stage either lets it pass or stops it with a reason.
 
-```mermaid
-flowchart LR
-  PR["1. Peer review\n(pull/merge request)"] --> B["2. Build automation\nlint, unit tests, render configs, schema validation"]
-  B --> E["3. Test/dev/staging environment\ncontainerlab / virtual lab / Batfish"]
-  E --> V["4. Deployment validation\noperational-state, connectivity and performance tests"]
-  V --> D["5. Deployment strategy\nrolling, canary, blue/green, in place"]
-  D --> M["Monitor + rollback"]
-```
+![The five components of a network CI pipeline](./img/m2-29-1.svg)
+
+*Figure 2.29.5. The five components of a network CI pipeline, as a diagram.*
 
 The first component is peer review. Changes travel through pull requests on GitHub, GitLab, Gerrit or Bitbucket. The pipeline enforces required reviewers from CODEOWNERS, a protected main branch, and checks that must pass. Commit messages link to tickets, and pull requests stay small. Review the rendered diff of device configurations as well as the templates and data, because the pipeline posts that diff as a comment. A reviewer who sees "this change will add this line to these thirty devices" can judge it, where a reviewer shown only a template edit cannot.
 
@@ -418,17 +429,9 @@ Start with the lint and unit test jobs, since they give the fastest feedback, an
 
 A durable automation architecture separates its concerns into six components. If one big script does everything, it works until the first change of vendor, tool or team. Separation lets you replace one part without rewriting the rest. The diagram shows how requests flow in and how telemetry flows back.
 
-```mermaid
-flowchart TB
-  UI["User interactions\nGUI, ITSM tickets, dashboards, ChatOps, docs/reports"] --> ORCH
-  ORCH["Orchestration\nworkflows, approvals, ordering across domains"] --> ENG
-  SOT["Source of truth\ninventory + intent (NetBox/Nautobot/Git)"] --> ENG
-  ENG["Automation engine\nbackup, render, compliance, deploy, operations"] --> NET["Network infrastructure\nswitches, routers, firewalls, hosts, controllers"]
-  NET --> TEL["Telemetry and observability\nmetrics, logs, flows, traces"]
-  TEL --> UI
-  TEL --> ENG
-  ENG --> SOT
-```
+![Network automation architecture](./img/m2-29-2.svg)
+
+*Figure 2.29.6. Network automation architecture, as a diagram.*
 
 ### User interactions
 

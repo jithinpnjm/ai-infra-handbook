@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "26",
+  "name": "a26-argo-status",
+  "title": "Sync status and health status answer different questions",
+  "spec": "Two cards side by side on a light green panel, no time order so no number circles. Each card has two status badges at the top: a badge labelled Sync status and a badge labelled Health status. Card 1 (left) shows badges Synced and Degraded (Synced in green, Degraded in grey). Under the badges, a short text: Git and the cluster agree, but the thing Git describes is broken, such as a GPU pod that cannot be scheduled. A footer line in the card: the fix is in the workload or its node pool. Card 2 (right) shows badges OutOfSync and Healthy. Text: something works, but it no longer matches Git, so a change was made somewhere it should not have been. Footer line: the fix is in whoever changed the object by hand. Above both cards, a single line showing the four health values in monospace: Healthy, Progressing, Degraded, Missing. Orange outline on card 2 only, as the most important warning. No takeaway bar.",
+  "anchor": "### Architecture and objects",
+  "alt": "Synced with Degraded means Git and the cluster agree but the workload is broken; OutOfSync with Healthy means something was changed by hand.",
+  "cap": "Sync status says whether the cluster matches Git, and health status says whether the workload actually works."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "26",
+  "name": "a26-flux-chain",
+  "title": "Three Flux objects, each one feeding the next",
+  "spec": "Three boxes in a row from left to right, with number circles 1, 2, 3 above them in green (time order: fetch, apply, install). Box 1 labelled GitRepository (monospace), with a sub-label fetches the files, and a small note inside it: polls Git every minute (interval 1m). Arrow from box 1 to box 2 labelled with the text files. Box 2 labelled Kustomization (monospace), sub-label applies some of them, with a note dependsOn crds keeps the CRDs ahead of the things that use them. Box 2 is the orange item, with an orange outline, because the dependsOn ordering is the key point. Arrow from box 2 to box 3 labelled with the text applies. Box 3 labelled HelmRelease (monospace), sub-label installs a chart, with a note: checks every half hour (interval 30m). Each box has a simple icon: a folder for GitRepository, a gear for Kustomization, a package for HelmRelease. Light green panel behind the three boxes. No takeaway bar.",
+  "anchor": "### Argo CD vs Flux",
+  "alt": "A Flux GitRepository fetches files, a Kustomization applies them after its dependsOn, and a HelmRelease installs a chart.",
+  "cap": "In Flux, a GitRepository fetches the files, a Kustomization applies them, and a HelmRelease installs the chart."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "26",
+  "name": "a26-repo-layout",
+  "title": "One cluster directory points at shared infrastructure and app overlays",
+  "spec": "Left column: a large light green container labelled clusters/ (monospace) with a sub-label one directory per cluster: what runs there. Inside it, a box labelled prod-us (monospace) holding two file boxes stacked: infrastructure.yaml (sub-label Kustomization or Application) and apps.yaml. Also inside the container, a smaller box labelled staging-eu (monospace) with no arrows. Right column, top: a container labelled infrastructure/ (monospace) with sub-label platform components shared by clusters, holding a box base/ listing gpu-operator, network-operator, cert-manager, ingress, monitoring, kueue, policies (monospace, wrapped on several lines) and a box overlays/ listing staging and prod (monospace). Right column, bottom: a container labelled apps/ (monospace) with sub-label tenant and team applications, holding base/ listing inference-gateway and training-pipelines, and overlays/ listing staging and prod. Arrow 1 from infrastructure.yaml to the infrastructure/ container, labelled overlays/prod (monospace) at the arrow. Arrow 2 from apps.yaml to the apps/ container, labelled overlays/prod. The two arrows do not cross. A third box at the far bottom right labelled tenants/ (monospace), sub-label namespaces, quotas, RBAC, queues per team (generated from YAML), with no arrows. Orange outline on the clusters/ container as the root of reconciliation. No takeaway bar.",
+  "anchor": "## 4. Repository design",
+  "alt": "A cluster directory holds an infrastructure and an apps file, each pointing at the prod overlay of its shared folder.",
+  "cap": "Each cluster directory says what runs there, and it points at the prod overlays in the shared infrastructure and apps folders."
+ }
+]

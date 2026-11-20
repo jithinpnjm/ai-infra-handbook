@@ -97,6 +97,10 @@ cat /proc/sys/kernel/tainted ; cat /proc/modules | head -3
 
 ### Configuring modules persistently
 
+![One file chooses which modules load at boot and another sets their options and blacklist.](./img/l22-module-config.svg)
+
+*Figure 1.22.2. modules-load.d lists what to load, and modprobe.d sets how and whether it loads.*
+
 Two kinds of file keep a module loaded at boot and set its options. The first lists what to load. The second sets how it loads.
 
 ```ini
@@ -160,6 +164,10 @@ Six groups cover most DKMS failures. They are listed roughly in the order they h
 
 ### Why large fleets avoid compiling on nodes
 
+![A comparison of precompiled packages, golden images, the GPU Operator driver container and DKMS on nodes.](./img/l22-driver-delivery.svg)
+
+*Figure 1.22.3. Large fleets compile once in CI against a pinned kernel instead of compiling on compute nodes.*
+
 Large fleets work to a single rule. Compile the driver **once** in CI, against a **pinned kernel**. Ship the result, and never compile on a compute node. The table compares the four common ways to deliver it.
 
 | Approach | How | Pros | Cons |
@@ -183,7 +191,7 @@ A GPU node runs several NVIDIA pieces, and each one depends on the others. When 
 
 ![The NVIDIA driver stack on a node](./img/ch22-fig1-nvidia.jpg)
 
-*Figure 1.22.2. The layers of the NVIDIA stack, from user-space libraries to kernel modules and the GPU.*
+*Figure 1.22.4. The layers of the NVIDIA stack, from user-space libraries to kernel modules and the GPU.*
 
 ### Kernel modules and device nodes
 
@@ -221,6 +229,10 @@ You choose the flavour at install time, with `nvidia-driver-XXX-open` on Ubuntu,
 - **Clocks and framework memory settings.** Benchmark comparisons need stable clocks, and you get them from `nvidia-smi -lgc` for core clocks and `nvidia-smi -ac <mem_clock>,<graphics_clock>` for application clocks. In PyTorch, the caching allocator is tuned with `PYTORCH_ALLOC_CONF`, for example `expandable_segments:True`. Current PyTorch documentation names that variable as the main one and keeps `PYTORCH_CUDA_ALLOC_CONF` only as a backward-compatible alias, so older releases may know only the longer name. TensorFlow pre-allocates GPU memory unless `TF_FORCE_GPU_ALLOW_GROWTH=true` is set. Chapters 10.8 and 14.8 cover clocks and PyTorch tuning. They are not driver-install topics.
 
 ### Safe driver upgrade procedure (one node)
+
+![Seven steps to upgrade a GPU driver on one node before touching the fleet.](./img/l22-upgrade-steps.svg)
+
+*Figure 1.22.5. Cordon, upgrade, verify the build for the target kernel, reboot, validate, then uncordon and roll out in waves.*
 
 Run these seven steps on one node first, before the change goes anywhere near the fleet.
 
@@ -265,6 +277,10 @@ Distribution-signed modules can remove the enrolment step. Ubuntu, for example, 
 Two situations catch people out here. In the first, a node was tuned by hand last month, it behaved perfectly, and after a reboot the tuning is gone. In the second, a setting was written into a file at boot and did nothing at all, because the kernel key it targets only exists once a certain module is loaded. Both are cheap to prevent once you know the mechanism.
 
 ### Mechanics
+
+![A sysctl -w change is runtime only, while a file under /etc/sysctl.d persists across reboots.](./img/l22-sysctl-persist.svg)
+
+*Figure 1.22.6. Use sysctl -w to test and a sysctl.d file to make the setting survive a reboot.*
 
 `sysctl` reads and writes **kernel parameters** exposed under `/proc/sys`. The dotted name maps to a path, so `vm.swappiness` ↔ `/proc/sys/vm/swappiness`. Changes made with `sysctl -w` are **runtime only**, and that is the trap. The new value works until the next reboot, then it quietly disappears. To keep a change, write it to a file in `/etc/sysctl.d/NN-name.conf`. Those files are read in lexical order by `systemd-sysctl.service`, and later files win. `/etc/sysctl.conf` is also read, and the distribution defaults live in `/usr/lib/sysctl.d`.
 
@@ -366,7 +382,7 @@ Picture the ticket that reads: "Node 17 has no GPUs." Use this flow when `nvidia
 
 ![Troubleshooting flow: the node has no GPUs](./img/ch22-d2-luna.svg)
 
-*Figure 1.22.3. Troubleshooting flow: "the node has no GPUs".*
+*Figure 1.22.7. Troubleshooting flow: "the node has no GPUs".*
 
 Some symptoms do not fit neatly into the flow. The table lists them with their cause and their fix. If you see one of them, jump straight to its row.
 

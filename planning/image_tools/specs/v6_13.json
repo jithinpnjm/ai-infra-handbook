@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "13",
+  "name": "h13-herd-pull",
+  "title": "Pulling from the registry on every node versus one central import",
+  "spec": "Two horizontal lanes stacked vertically, each with a heading. Top lane titled Every node pulls from the registry: a column of 64 node boxes on the left, each with a short arrow pointing right into one shared box labelled Registry. Under the registry box a bar labelled 10 GB/s uplink. Beside the arrows a note: 64 nodes pulling a 15 GB image. Under the lane, a large orange label 96.0 s, the most important number in the picture. Bottom lane titled Import once, then share: one box labelled enroot import on the left, with one arrow to a file box labelled single .sqsh file on shared storage. From that file box, a short arrow fans into 64 small node boxes, each labelled with the same file name is read, so the file is shared rather than pulled again. Under the lane a green label 1.5 s for a single central import. Green takeaway bar at the bottom: import once, point every node at the squashfs file.",
+  "anchor": "### Why caching matters at job start",
+  "alt": "Sixty-four nodes pulling a 15 GB image from one registry take 96 seconds, while one central squashfs import takes 1.5 seconds.",
+  "cap": "Pulling the same image from the registry on every node is slow, while one central squashfs import serves every node."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "13",
+  "name": "h13-named-unnamed",
+  "title": "Unnamed versus named pyxis containers",
+  "spec": "Two side-by-side branches under one heading titled One srun task on a compute node. Left branch titled Unnamed container, set by --container-image only. A vertical chain of three boxes with arrows down: Container created before the step starts, then Step runs, then Container removed from ENROOT_DATA_PATH when the task completes. A grey label under the chain: unnamed containers are removed when the task completes. Right branch titled Named container, set by --container-name=NAME. A vertical chain of three boxes with arrows down: Container created and kept on the node after the step, then Later step with the same name reuses the unpacked root, with the import skipped, then Container persists until housekeeping removes it. An orange note on the right branch: named containers persist, so they need housekeeping. A small box at the bottom of the right branch labelled --container-save=PATH saves the container state to a squashfs file, with a dotted line to the named container box. No green takeaway bar.",
+  "anchor": "## 3. pyxis",
+  "alt": "An unnamed pyxis container is removed when its task ends, while a named container stays on the node and is reused by later steps.",
+  "cap": "An unnamed pyxis container is removed when its task finishes, while a named container stays on the node for later steps."
+ }
+]

@@ -1,0 +1,3 @@
+spec = """A host box containing two namespace boxes side by side, 'red' and 'default'. Inside each a stack of items: own interfaces, own IP addresses, own routing tables, own ARP and ND neighbour tables, own netfilter rules, own conntrack table, own /proc/net. Callout: 'two containers can both serve on port 8080: each has its own port space'. Monospace commands under 'red': 'ip netns add red', 'ip netns exec red ip link' (only a down loopback at first), 'ip -n red link set lo up'. Orange note: 'nsenter -t <pid> -n ip addr enters a container namespace by PID'."""
+
+print("Spec loaded successfully.")

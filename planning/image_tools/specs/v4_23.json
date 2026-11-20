@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "23",
+  "name": "a23-live-vs-modules",
+  "title": "Reusable modules and deployable live stacks",
+  "spec": "Two large side-by-side panels with a green heading each. Left panel titled 'modules/' with the note 'Reusable, versioned building blocks, nothing deploys by itself'. Inside it, four small blocks in a row labelled network, checkpoint-bucket, gke-cluster and gpu-pool, each with a box icon, and a fifth block iam-workload. Right panel titled 'live/' with the note 'Deployable stacks, one state each'. Inside it, a stack of three example boxes labelled prod, staging and lab (environment folders). Inside the prod box, a small grid of five stack boxes labelled network, storage, cluster, gpu-pools and observability, each with its own state icon (disk cylinder). A dashed arrow from the modules panel to the live panel, labelled 'Pinned version' in green, with the note 'Higher environments consume modules through pinned versions'. Orange outline on the stack box gpu-pools in prod, with the note 'A change here touches one pool in one region in production' as the single most important example. Numbered circles are not needed. Green takeaway bar at the bottom: 'A stack's path expresses its blast radius, so check the path first in a review.' Keep the dashed arrow as the only connector between panels.",
+  "anchor": "### Live vs modules",
+  "alt": "Reusable modules sit apart from live stacks, which are split by environment and region, each with its own state.",
+  "cap": "Reusable modules live apart from the live stacks that deploy them, and each live stack path shows how far a change can reach."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "23",
+  "name": "a23-terragrunt-dry",
+  "title": "One root file defines the backend for every stack below it",
+  "spec": "Top: one wide box titled 'live/stage/terragrunt.hcl (root)', with the text 'remote_state defined once, with the key built from path_relative_to_include()' and a small key icon. Below it, a row of stack boxes connected from the root by downward arrows, each arrow labelled with the monospace text include { path = find_in_parent_folders() }. Child stack boxes: 'services/hello-world-app/terragrunt.hcl' (the state key shown as services/hello-world-app/terraform.tfstate) and 'data-stores/mysql/terragrunt.hcl'. Each child box shows its own state icon (disk cylinder) with its own key path, so each stack has its own state. A dependency arrow goes from the hello-world-app box to the mysql box, labelled with the monospace text dependency mysql { config_path = \"../../data-stores/mysql\" }, pointing at the mysql box. Number circles 1 to 3 beside the sequence of run: 1 'Run terragrunt run-all apply', 2 'Apply data-stores/mysql first', 3 'Then apply services/hello-world-app'. Orange outline on the root box as the single most important item: the backend is written only once. Green takeaway bar at the bottom: 'Every stack gets its own state without anyone typing a key by hand.'",
+  "anchor": "### Keeping `live/` DRY with Terragrunt (*Terraform: Up and Running* Chapter 10)",
+  "alt": "A root Terragrunt file defines the S3 backend once, child stacks include it, and run-all applies the mysql stack before the app stack.",
+  "cap": "One root Terragrunt file defines the backend once, and each child stack gets its own state key from its folder path."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "23",
+  "name": "a23-test-stages",
+  "title": "Skip the slow stages while you iterate",
+  "spec": "A horizontal row of five stage boxes, left to right, each with a numbered circle (1 to 5, green) and a gear or test-tube icon, connected by arrows left to right. Stage 1 titled 'deploy_db' (monospace), with the note 'Slow, about 13 minutes'. Stage 2 titled 'deploy_app' (monospace). Stage 3 titled 'validate_app' (monospace). Stage 4 titled 'teardown_app' (monospace). Stage 5 titled 'teardown_db' (monospace). Below the row, a bracket spanning stage 1 and stage 5 labelled 'Skipped on later runs with SKIP_<stage>=true'. Under the bracket, a second line of monospace text: SKIP_deploy_db=true SKIP_teardown_db=true SKIP_teardown_app=true go test -timeout 30m. Above the stages, a green note: 'test_structure.RunTestStage wraps each stage, and the options are saved to disk'. Highlight stage 2 'deploy_app' and stage 3 'validate_app' in an orange outline as the stages that run on every iteration, the single most important part. Green takeaway bar at the bottom: 'Keep the oven on between batches of cookies, rather than heating it from cold every time.'",
+  "anchor": "## 3. Testing strategy",
+  "alt": "Test stages deploy_db through teardown_db, where skipping the database stages lets you iterate on the app stages alone.",
+  "cap": "Splitting an integration test into named stages lets you skip the slow database stages and re-run only the application stages."
+ }
+]

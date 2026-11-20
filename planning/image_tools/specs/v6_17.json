@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "17",
+  "name": "h17-select-place",
+  "title": "PBS select makes chunks and place decides where they go",
+  "spec": "Top strip: two text lines in monospace inside a light panel. Line 1: #PBS -l select=2:ncpus=64:mpiprocs=8:ngpus=8:mem=500gb, with a bracket under the 2 labelled two identical chunks, and a callout box beside the chunk text listing the chunk contents: ncpus=64, mpiprocs=8, ngpus=8, mem=500gb. Line 2: #PBS -l place=scatter:excl, with a callout labelled spread the chunks onto different hosts, each host used exclusively. Main area below: two host boxes side by side, labelled Host A and Host B, each drawn as a server with a grid of small cells for GPUs. Chunk 1 fills Host A and Chunk 2 fills Host B; each chunk box is labelled with the same four resource names. Between the hosts a dashed line marked scatter. Each host has a thick border labelled excl. Orange outline on the place=scatter:excl line since it decides where the chunks go. Note under the hosts: a vnode is a slice of a host, so a node in PBS may be a part of a host. Green takeaway bar at the bottom: The first line says how much each chunk holds, and the second says where the chunks go.",
+  "anchor": "### Request model: select and place",
+  "alt": "A PBS select line asks for two chunks, and place=scatter:excl puts each chunk on its own exclusive host.",
+  "cap": "In PBS, select sets how much each chunk holds and place sets where the chunks go."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "17",
+  "name": "h17-flux-subinstance",
+  "title": "A Flux subinstance inside an allocation",
+  "spec": "Outer large rounded box labelled Enclosing scheduler allocation, with a note: a block of nodes held for a fixed period. Inside it, a smaller rounded box labelled Flux subinstance, with its own small tree of flux-broker boxes drawn as three connected circles at the top. Inside the subinstance, a row of small job boxes labelled flux run, flux submit, and many small tasks. An arrow labelled flux batch SCRIPT enters the subinstance from the outside, with the script drawn as a small document icon. A dashed arrow at the bottom labelled when the script exits, the resources return to the enclosing instance points back from the subinstance to the outer box. A side label: flux proxy JOBID connects a shell to the running subinstance, with a dotted line into the subinstance. Orange outline on the subinstance box, the most important element. Green takeaway bar at the bottom: Every job can itself be a Flux instance, and its resources return when the script exits.",
+  "anchor": "## 4. Flux",
+  "alt": "A Flux batch script runs as a subinstance inside an allocation, and its resources return to the outer instance when it exits.",
+  "cap": "A Flux batch script runs as its own subinstance inside the allocation, and the resources return when the script exits."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "17",
+  "name": "h17-migration-steps",
+  "title": "Seven steps to move a site from another scheduler to Slurm",
+  "spec": "A vertical or snake-shaped chain of seven numbered boxes, each with a green number circle, joined by arrows in order. Box 1: Start with an inventory (list queues, node classes, limits, fair-share trees, reservations, hooks, license servers, user scripts). Box 2: Map the policies (queues become partitions or QOS, fair-share shares become accounts, hooks become job_submit and prolog or epilog scripts). Box 3: Translate the scripts (automated pass, then review). Box 4: Keep accounting continuous (export historical usage, seed fair-share, keep old reports for audits). Box 5: Run a parallel pilot (split nodes, dual-submit tests, train users and publish a command-map cheat sheet). Box 6: Cut over in node groups, keep a rollback window, decommission the old scheduler only after one full allocation cycle. Box 7: Revisit the workflow layer (Airflow, Nextflow or Snakemake DAGs). Box 6 has an orange outline since it is the step where the old scheduler is switched off. Green takeaway bar at the bottom: Decide who owns each step before you start.",
+  "anchor": "## 7. Migration plan (any scheduler to Slurm)",
+  "alt": "A migration to Slurm runs in seven steps, from inventory and policy mapping through a parallel pilot to a staged cutover.",
+  "cap": "A scheduler migration runs in seven ordered steps, from inventory through a parallel pilot to a staged cutover."
+ }
+]

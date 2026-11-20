@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Latency scaled to human time</title>
+  <desc>Ladder table scaling computer latency events from CPU cycles to physical server reboots into human time equivalents.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Latency scaled to human time</text>
+
+  
+  <g id="table-header">
+    <rect x="50" y="92" width="1500" height="52" rx="10" fill="#207448"/>
+    <line x1="810" y1="92" x2="810" y2="144" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+    <line x1="1130" y1="92" x2="1130" y2="144" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+    <text x="140" y="128" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Event</text>
+    <text x="970" y="128" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Typical latency</text>
+    <text x="1340" y="128" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Scaled</text>
+  </g>
+
+  
+
+  
+  <g id="row-1">
+    <rect x="50" y="160" width="1500" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="810" y1="160" x2="810" y2="234" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    <line x1="1130" y1="160" x2="1130" y2="234" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="76" y="179" width="36" height="36" rx="4"/>
+      <rect x="86" y="189" width="16" height="16" rx="2"/>
+      <line x1="85" y1="173" x2="85" y2="179"/>
+      <line x1="94" y1="173" x2="94" y2="179"/>
+      <line x1="103" y1="173" x2="103" y2="179"/>
+      <line x1="85" y1="215" x2="85" y2="221"/>
+      <line x1="94" y1="215" x2="94" y2="221"/>
+      <line x1="103" y1="215" x2="103" y2="221"/>
+      <line x1="70" y1="188" x2="76" y2="188"/>
+      <line x1="70" y1="197" x2="76" y2="197"/>
+      <line x1="70" y1="206" x2="76" y2="206"/>
+      <line x1="112" y1="188" x2="118" y2="188"/>
+      <line x1="112" y1="197" x2="118" y2="197"/>
+      <line x1="112" y1="206" x2="118" y2="206"/>
+    </g>
+    <text x="140" y="207" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU cycle</text>
+    <text x="970" y="207" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">0.3 ns</text>
+    <text x="1340" y="207" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">1 s</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="50" y="250" width="1500" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="810" y1="250" x2="810" y2="324" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    <line x1="1130" y1="250" x2="1130" y2="324" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="74" y="267" width="40" height="40" rx="4"/>
+      <line x1="74" y1="287" x2="114" y2="287"/>
+      <line x1="94" y1="267" x2="94" y2="307"/>
+      <circle cx="84" cy="277" r="3" fill="#207448"/>
+    </g>
+    <text x="140" y="297" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">L1 cache</text>
+    <text x="970" y="297" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">1 ns</text>
+    <text x="1340" y="297" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">3 s</text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="50" y="340" width="1500" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="810" y1="340" x2="810" y2="414" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    <line x1="1130" y1="340" x2="1130" y2="414" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="74" y="357" width="40" height="40" rx="4"/>
+      <rect x="81" y="363" width="26" height="11" rx="2"/>
+      <rect x="81" y="380" width="26" height="11" rx="2"/>
+    </g>
+    <text x="140" y="387" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">L2 cache</text>
+    <text x="970" y="387" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">3 ns</text>
+    <text x="1340" y="387" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">10 s</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="50" y="430" width="1500" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="810" y1="430" x2="810" y2="504" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    <line x1="1130" y1="430" x2="1130" y2="504" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="74" y="447" width="40" height="40" rx="4"/>
+      <rect x="80" y="452" width="28" height="7" rx="1.5"/>
+      <rect x="80" y="463" width="28" height="7" rx="1.5"/>
+      <rect x="80" y="474" width="28" height="7" rx="1.5"/>
+    </g>
+    <text x="140" y="477" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">L3 cache</text>
+    <text x="970" y="477" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">10 ns</text>
+    <text x="1340" y="477" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">33 s</text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="50" y="520" width="1500" height="74" rx="10" fill="#fff8f2" stroke="#db8129" stroke-width="3.5"/>
+    <line x1="810" y1="520" x2="810" y2="594" stroke="#db8129" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="1130" y1="520" x2="1130" y2="594" stroke="#db8129" stroke-opacity="0.3" stroke-width="1.5"/>
+    
+    <g stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="72" y="540" width="44" height="24" rx="3"/>
+      <rect x="77" y="544" width="7" height="10" rx="1"/>
+      <rect x="87" y="544" width="7" height="10" rx="1"/>
+      <rect x="97" y="544" width="7" height="10" rx="1"/>
+      <rect x="106" y="544" width="6" height="10" rx="1"/>
+      <line x1="77" y1="568" x2="77" y2="574"/>
+      <line x1="84" y1="568" x2="84" y2="574"/>
+      <line x1="91" y1="568" x2="91" y2="574"/>
+      <line x1="100" y1="568" x2="100" y2="574"/>
+      <line x1="107" y1="568" x2="107" y2="574"/>
+    </g>
+    <text x="140" y="567" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">DRAM</text>
+    <text x="970" y="567" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">100 ns</text>
+    <text x="1340" y="567" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">6 minutes</text>
+  </g>
+
+  
+  <g id="row-6">
+    <rect x="50" y="610" width="1500" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="810" y1="610" x2="810" y2="684" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    <line x1="1130" y1="610" x2="1130" y2="684" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="72" y="631" width="44" height="26" rx="3"/>
+      <rect x="78" y="636" width="15" height="16" rx="1.5"/>
+      <rect x="97" y="638" width="11" height="12" rx="1"/>
+      <line x1="112" y1="635" x2="112" y2="653"/>
+      <path d="M 72 642 A 2 2 0 0 1 72 646"/>
+    </g>
+    <text x="140" y="657" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NVMe / flash I/O</text>
+    <text x="970" y="657" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">10 to 100 µs</text>
+    <text x="1340" y="657" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">9 to 90 hours</text>
+  </g>
+
+  
+  <g id="row-7">
+    <rect x="50" y="700" width="1500" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="810" y1="700" x2="810" y2="774" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    <line x1="1130" y1="700" x2="1130" y2="774" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <ellipse cx="94" cy="725" rx="20" ry="8"/>
+      <path d="M 74 725 v 20 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8 v -20"/>
+      <path d="M 74 735 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8"/>
+      <circle cx="94" cy="725" r="2.5" fill="#207448"/>
+    </g>
+    <text x="140" y="747" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Rotational disk I/O</text>
+    <text x="970" y="747" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">1 to 10 ms</text>
+    <text x="1340" y="747" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">1 to 12 months</text>
+  </g>
+
+  
+  <g id="row-8">
+    <rect x="50" y="790" width="1500" height="74" rx="10" fill="#fff8f2" stroke="#db8129" stroke-width="3.5"/>
+    <line x1="810" y1="790" x2="810" y2="864" stroke="#db8129" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="1130" y1="790" x2="1130" y2="864" stroke="#db8129" stroke-opacity="0.3" stroke-width="1.5"/>
+    
+    <g stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="94" cy="827" r="18"/>
+      <ellipse cx="94" cy="827" rx="18" ry="7"/>
+      <line x1="94" y1="809" x2="94" y2="845"/>
+      <circle cx="83" cy="823" r="3" fill="#db8129"/>
+      <circle cx="105" cy="823" r="3" fill="#db8129"/>
+      <path d="M 83 823 Q 94 815 105 823"/>
+    </g>
+    <text x="140" y="837" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cross-continent network (SF to NY)</text>
+    <text x="970" y="837" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">40 ms</text>
+    <text x="1340" y="837" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">4 years</text>
+  </g>
+
+  
+  <g id="row-9">
+    <rect x="50" y="880" width="1500" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="810" y1="880" x2="810" y2="954" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    <line x1="1130" y1="880" x2="1130" y2="954" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="94" cy="919" r="17"/>
+      <line x1="94" y1="902" x2="94" y2="897"/>
+      <line x1="90" y1="897" x2="98" y2="897"/>
+      <line x1="106" y1="907" x2="109" y2="904"/>
+      <path d="M 94 919 L 94 909"/>
+      <path d="M 94 919 L 103 919"/>
+    </g>
+    <text x="140" y="927" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">TCP retransmit timeout</text>
+    <text x="970" y="927" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">1 to 3 s</text>
+    <text x="1340" y="927" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">centuries</text>
+  </g>
+
+  
+  <g id="row-10">
+    <rect x="50" y="970" width="1500" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="810" y1="970" x2="810" y2="1044" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    <line x1="1130" y1="970" x2="1130" y2="1044" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5"/>
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="74" y="990" width="40" height="20" rx="3"/>
+      <line x1="80" y1="1000" x2="94" y2="1000"/>
+      <circle cx="104" cy="1000" r="1.5" fill="#207448"/>
+      <path d="M 87 1024 A 8 8 0 1 1 102 1022"/>
+      <polyline points="100,1016 103,1022 97,1024"/>
+    </g>
+    <text x="140" y="1017" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Physical server reboot</text>
+    <text x="970" y="1017" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">minutes</text>
+    <text x="1340" y="1017" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">tens of millennia</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="1070" width="1500" height="80" rx="12" fill="#207448"/>
+    <text x="800" y="1120" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">a 10 µs disk read is really a cache hit, not a disk.</text>
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "30",
+  "name": "h30-staged-shutdown",
+  "title": "The staged shutdown: six stages, each giving up something to save something else",
+  "spec": "A horizontal timeline arrow across the middle, left to right, with six numbered step circles (r=24, green, white number) placed on it. Above the timeline at the left, a start marker labelled Power fails, with the note apcupsd runs onbattery and starts haltall. Stage 1 box above the timeline: Log the event and warn users, monospace wall. Stage 2 box below the timeline: Wait 30 minutes, with a branch arrow down to a small box labelled power returns, offbattery ends haltall. Stage 3 box: Power off the idle nodes, found by checking each node's load. Stage 4 box: Poll the UPS TIMELEFT value every minute until 5 minutes of battery remain. Stage 5 box: Stop the batch queue and cancel running jobs, monospace scontrol and scancel, then wait a minute. Stage 6 box at the far right: Power off all remaining compute nodes, then power off the head node. Each stage box has a one-line cost tag underneath in italic: stage 2 gives up time to ride through a brief outage; stage 3 gives up the idle nodes to save power for the busy ones; stage 5 gives up the running jobs to save the file system and hardware. Orange highlight on stage 5, the most costly step. Icons: a bell for stage 1, a clock for stage 2, a power plug for stage 3, a battery for stage 4, a stop sign for stage 5, a server rack for stage 6. No green takeaway bar.",
+  "anchor": "### 3.4 UPS and staged shutdown",
+  "alt": "A staged cluster shutdown logs and warns, waits 30 minutes, powers off idle nodes, polls battery time, cancels jobs and then powers off the rest.",
+  "cap": "A staged shutdown warns users, waits, powers off idle nodes, cancels jobs at five minutes of battery, and only then powers off the rest."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "30",
+  "name": "h30-psu-feed-designs",
+  "title": "Interleaved feeds crash every server; separate feeds lose only half",
+  "spec": "Two side-by-side panels separated by a vertical divider. Left panel titled Interleaved dual sources, with a red-free orange STOP label at the top. Two UPS boxes at the top: UPS A and UPS B. Under them, one server box containing six PSU boxes in a row, the first three linked to UPS A and the last three to UPS B, with thin lines. A callout on UPS A marked failure, and a note under the server: 3 PSUs lost, 5 of 6 rule broken, the server shuts down. Mark the server with a large X. Right panel titled N with two separate sources. Two UPS boxes at the top, UPS A and UPS B. Below them, two rows of server boxes: the top row of servers fed only from UPS A (all 6 cords), the bottom row fed only from UPS B (all 6 cords). A callout on UPS A failure marked affects only half the servers, and the bottom row stays green and running. Orange highlight on the failed UPS A in the right panel is not needed, use the left-panel X as the only orange element. Under the panels, a single line of text: the usual redundancy model assumes two feeds, but the server's own 5-of-6 PSUs change the answer. No green takeaway bar.",
+  "anchor": "### 3.2 Redundancy: why servers with internal power supplies need care",
+  "alt": "Interleaving three PSUs on each of two UPS sources takes every server down when one UPS fails, while splitting whole servers across UPS sources loses only half.",
+  "cap": "Wiring three power supplies to each of two UPS sources takes every server down if one UPS fails, but giving each source whole servers loses only half."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "30",
+  "name": "h30-cold-plate-loop",
+  "title": "Cold plates carry heat from the chips to a CDU, which passes it to facility water",
+  "spec": "A left-to-right loop diagram with four boxes and arrows. Box 1 on the left: Cold plates, drawn as a flat plate on a chip, with two sub-labels CPU and GPU. Arrow from Box 1 to Box 2 labelled warm liquid. Box 2 in the middle: CDU (coolant distribution unit, pump and box icon), with the sub-label pumps coolant around the loop. Arrow from Box 2 to Box 3 labelled heat passed to facility water. Box 3 on the right: Heat exchanger, with the label facility water loop. A return arrow runs from Box 2 back to Box 1 along the top, labelled coolant around the loop. A small sensor box with a drop icon labelled leak detection sits under the loop, attached by a dotted line to Box 1. Orange highlight on the cold plate box. Pipes drawn as thick lines in light green. Air-cooled parts shown as a small fan icon with the label fans cool the lower-power parts, placed under Box 1. No numbered steps. No green takeaway bar.",
+  "anchor": "## 5. Liquid cooling",
+  "alt": "Cold plates on the CPUs and GPUs send warm liquid to a CDU, which pumps coolant around the loop and passes the heat to facility water.",
+  "cap": "Cold plates on the chips send warm liquid to a CDU, which pumps coolant around the loop and passes the heat to facility water."
+ }
+]

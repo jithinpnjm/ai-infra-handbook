@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-module-by-hand",
+  "title": "Running a module by hand on the target",
+  "spec": "A left-to-right sequence of five boxes joined by orthogonal arrows, each with a green number circle (1 to 5). Box 1 on the left, drawn with a laptop icon and titled Control node: the monospace command ANSIBLE_KEEP_REMOTE_FILES=1 ansible gpu001 -m ansible.builtin.copy -vvv. Arrow to Box 2, drawn with a server icon and titled gpu001 target: a box holding AnsiballZ_copy.py, with the note the wrapper stays on disk, and the monospace remote path /home/automation/.ansible/tmp/ansible-tmp-.../AnsiballZ_copy.py shown in the output. Arrow labelled ssh gpu001 to Box 3: monospace cd /home/automation/.ansible/tmp/ansible-tmp-*/. Arrow to Box 4: monospace python3 AnsiballZ_copy.py explode, with the note unpacks the module and its arguments into ./debug_dir. Arrow to Box 5: monospace python3 AnsiballZ_copy.py execute, with the note runs the module, where you can add a print or start pdb. Orange highlight on Box 5, the moment to add a print or pdb. A small note near Box 5: the module sees the real files, PATH and permissions. Bottom warning note in plain text: the kept folder holds the arguments you passed, so delete it when you finish. Green takeaway bar at the bottom: Because you are on the target, the module sees the real files, the real PATH and the real permissions.",
+  "anchor": "## 6. Reproducing a module run by hand",
+  "alt": "A module wrapper is kept on the target, unpacked with explode, and run with execute so its failure can be inspected on the host.",
+  "cap": "Keeping the module wrapper on the target lets you unpack it and run it by hand, where you can see what the module actually saw."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-agent-forwarding",
+  "title": "Why become breaks SSH agent forwarding for git",
+  "spec": "A left-to-right chain with two lanes drawn as two rows. Top row, a path that works: a laptop box titled Your login session with a key icon labelled ssh-add -L, with the agent socket SSH_AUTH_SOCK inside it; an arrow labelled ForwardAgent=yes to a target box titled Target, running the git task with become: false; a tick and the note the clone works. Bottom row, the failing path: the same laptop box and the same forwarded agent arrow to a target box where the git task has become: true; an intermediate box titled sudo starts a clean environment with the note SSH_AUTH_SOCK is dropped unless env_keep keeps it; then a box with the note git has no agent to ask, leading to a result box labelled Permission denied (publickey). Orange highlight on the sudo box, the step that drops the variable. A small label at the bottom of the lower row: the key was fine, the environment was not. Monospace labels: SSH_AUTH_SOCK, ForwardAgent=yes, become: true, become: false, env_keep. Green takeaway bar at the bottom: Check 3 is about privilege, and it is the one that catches most people, so make sure the git task does not set become: true.",
+  "anchor": "### Connection layer (UNREACHABLE)",
+  "alt": "Agent forwarding works for a git task without become, but sudo drops the SSH_AUTH_SOCK variable when the task runs with become, so the clone fails.",
+  "cap": "The forwarded SSH agent works only without become, because sudo starts a clean environment that drops the SSH_AUTH_SOCK variable."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-debugger-paths",
+  "title": "Two ways to change a failed task in the debugger",
+  "spec": "A top-to-bottom flow. Start box at the top: A task fails, and the (debug) prompt opens, with the note the task stays in memory. Below it, a split into two branches side by side. Left branch titled Change the argument: monospace command task.args['name'] = 'fixed', then an arrow to a box labelled r (redo), with the note re-runs the task with the change. Right branch titled Change the variable: monospace command task_vars['x'] = 1, then an arrow to a box labelled u (update_task), with the note re-templates task.args from the original expression, then an arrow down to a box labelled r (redo). Both branches meet at a bottom box labelled Task runs again. Side notes: p task.args, p task_vars and p result._result are shown as print commands above the split. Orange highlight on the update_task step, the one the right branch needs before redo takes effect. Below the diagram, a small table-like list of exit commands: c (continue) keeps the task failed; q (quit) aborts. Green takeaway bar at the bottom: Use the debugger to experiment on one failing host, then write the fix into the playbook.",
+  "anchor": "### The interactive debugger",
+  "alt": "In the task debugger you either edit the rendered arguments and redo, or edit a variable, run update_task and then redo.",
+  "cap": "In the task debugger you can edit the rendered arguments and redo, or edit a variable, update the task, and then redo."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-group-failures",
+  "title": "Grouping 200 failures into a short list of causes",
+  "spec": "A left-to-right pipeline of five stations, each a box with a green number circle (1 to 5) above it, joined by orthogonal arrows. At the far left, a stack of log lines titled ansible-playbook output, drawn as many thin rows with FAILED and UNREACHABLE labels among them. Station 1: box labelled grep -E fatal:|FAILED with the note keeps only the failure lines. Station 2: box labelled sed s/.*=> // with the note strips the front of each line, leaving the message. Station 3: box labelled sort with the note puts identical messages next to each other. Station 4: box labelled uniq -c with the note counts each message. Station 5: box labelled sort -rn with the note lists the most common message first. At the far right, a ranked list of count and message rows, with the top row highlighted in orange. Monospace labels for each command. Below the pipeline, a note: examine one representative from each group, then sort the failing hosts by group, rack or OS. Green takeaway bar at the bottom: Group the errors first, then examine a few representatives from each group.",
+  "anchor": "## 9. Debugging at scale and in CI",
+  "alt": "A grep, sed, sort, uniq and sort pipeline turns a long list of failure lines into a ranked count of distinct error messages.",
+  "cap": "A short shell pipeline groups many failure lines by message and ranks the most common message first."
+ }
+]

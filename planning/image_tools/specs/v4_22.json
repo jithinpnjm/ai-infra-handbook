@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "22",
+  "name": "a22-strategy-ladder",
+  "title": "Pick the first secret strategy your provider supports",
+  "spec": "A descending staircase or ladder of seven numbered steps (green number circles 1 to 7), with step 1 at the top left and step 7 at the bottom right, each step a wide box with one outline icon. Step 1, key-off or identity badge icon, title 'Avoid secrets altogether', text 'Prefer identity-based access over passwords and keys'. Step 2, cloud with lock icon, title 'Let the target service generate and store the secret', text 'Terraform stores only the secret reference'. Step 3, empty box with lock icon, title 'Create the secret container, not the value', text 'A CI step, an operator or a rotation job sets the value out of band'. Step 4, clock or sparkle icon, title 'Ephemeral and write-only features', text 'Values exist only during the run'. Step 5, secret manager or cloud icon, title 'Read the value at apply time', text 'A data source reads it from a secret manager'. Step 6, shield icon, title 'Encrypt state', text 'Backend encryption, and client-side encryption in OpenTofu'. Step 7, orange outline (the last resort, drawn as the single most important warning), terminal or environment variable icon, title 'Environment variables', text 'Pass TF_VAR_db_password from the CI secret store and accept that it ends up in state'. Above the staircase, a green note: 'Work down the list until one fits your case.' Green takeaway bar at the bottom: 'The first strategy that your provider and version support is usually the right one.'",
+  "anchor": "## 2. Strategies, from best to worst",
+  "alt": "Seven secret strategies ordered from best to worst, ending with environment variables as the last resort.",
+  "cap": "Seven secret strategies run from best to worst, and the first one your provider and version supports is usually the right choice."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "22",
+  "name": "a22-federated-auth",
+  "title": "Short-lived federated credentials instead of stored keys",
+  "spec": "Left to right flow with four numbered steps (number circles 1 to 4, green). Step 1: a box with a CI pipeline or runner icon titled 'CI job', text 'Runs terraform plan'. Arrow to step 2: a box with an id-card or badge icon titled 'Signed token from its own identity provider', text 'The CI system proves who it is'. Arrow to step 3: a box with a shield or policy icon titled 'The cloud checks the trust', text 'Trust policy conditions on repo, branch and environment'. Arrow to step 4: a box with a clock icon titled 'Temporary credential for one role', text 'Short-lived, valid only for one role, expires before anyone can misuse it'. The arrow into step 3 is orange, as the single most important check. Above the flow, a note: 'No key is stored in the repo or in CI variables.' Below the flow, two small boxes side by side: 'AWS: assume_role in provider' and 'GCP: impersonate_service_account' showing where the role is named. Green takeaway bar at the bottom: 'The caller stays the same, and the permission comes from the role.' Monospace label in step 3: AssumeRoleWithWebIdentity.",
+  "anchor": "## 3. Authenticating providers",
+  "alt": "A CI job presents a signed identity token, the cloud checks the trust conditions, and returns a short-lived role credential.",
+  "cap": "A CI job trades its own signed identity token for a short-lived credential for one role, so no static key is stored."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "22",
+  "name": "a22-layered-k8s",
+  "title": "Create the cluster in one stack, configure Kubernetes in the next",
+  "spec": "Two stacked panels, top and bottom, with a downward arrow between them. Top panel, green outline, numbered circle 1, titled 'Stack 1: create the cluster', containing one cluster icon box labelled google_container_cluster in monospace with the text 'Cluster provisioning'. The arrow between the panels carries the note 'The cluster must exist before this stack runs'. Bottom panel, numbered circle 2, titled 'Stack 2: configure the providers and add-ons', containing three boxes left to right connected by arrows: first a box with an arrow-in icon titled 'Data sources', text 'data google_container_cluster and data google_client_config'; second a box with a gear icon titled 'kubernetes and helm providers', text 'Configured from the data sources'; third a box with a puzzle icon titled 'Add-ons', text 'For example a GPU operator or an ingress controller'. Orange outline on the bottom panel title as the single most important rule: 'Build the cluster first, configure the providers in a later stack'. A green note to the left of the top panel: 'Provider endpoints are unknown at plan time when the cluster is created in the same apply.' Green takeaway bar at the bottom: 'Two stacks stop the cluster and its add-ons from failing together.'",
+  "anchor": "### Provider dependency ordering and the \"provider depends on resource\" problem",
+  "alt": "Stack one creates the GKE cluster and stack two reads it with data sources to configure the kubernetes and helm providers.",
+  "cap": "The cluster is created in one stack, and a second stack configures the Kubernetes and Helm providers from data sources."
+ }
+]

@@ -77,6 +77,10 @@ Closures are also a lightweight alternative to a class with a single method. A c
 
 ## 2. Decorators
 
+![How a decorator rebinds a function](./img/s11-decorator.svg)
+
+*Figure 3.11.1. A decorator is a function that takes a function and returns a replacement, usually a wrapper.*
+
 Suppose every service in your team needs the same timing code, and the function bodies keep changing underneath it. You do not want to edit each function, and you do not want to forget one. A decorator wraps the function once, when Python defines it.
 
 `@decorator` above a `def` is exactly `f = decorator(f)`, executed at definition time. In plain words, a decorator is any callable that takes a callable and returns a replacement, often a wrapper. Every later call goes through that replacement.
@@ -204,6 +208,10 @@ When you write a decorator, add `functools.wraps` and a precise type hint from t
 
 ### Lookup order
 
+![Attribute lookup with descriptors](./img/s11-lookup.svg)
+
+*Figure 3.11.2. Lookup order: a data descriptor wins over the instance dictionary, which wins over non-data descriptors.*
+
 Here is a scene that costs people an afternoon. You set an attribute on an object, read it back, and get the class's value instead of yours. Nothing is corrupted. The reason is that `obj.name` checks several places in a fixed order, and the order decides which value you get when two places hold the same name.
 
 Roughly, Python does the following inside `object.__getattribute__`:
@@ -215,18 +223,9 @@ Roughly, Python does the following inside `object.__getattribute__`:
 
 The flowchart below shows the same four steps as a picture.
 
-```mermaid
-flowchart TD
-  A["obj.name"] --> B{"name found on type MRO?"}
-  B -- "data descriptor" --> C["descriptor.__get__ (wins over instance dict)"]
-  B -- "otherwise" --> D{"in instance __dict__?"}
-  D -- yes --> E["return instance value"]
-  D -- no --> F{"non-data descriptor or plain class attr?"}
-  F -- yes --> G["descriptor.__get__ / class attr"]
-  F -- no --> H{"__getattr__ defined?"}
-  H -- yes --> I["__getattr__(name)"]
-  H -- no --> J["AttributeError"]
-```
+![Lookup order](./img/m3-11-1.svg)
+
+*Figure 3.11.3. Lookup order, as a diagram.*
 
 `__getattribute__` runs on every access, so override it with extreme care. If you must, call `super().__getattribute__` to avoid infinite recursion.
 
@@ -331,6 +330,10 @@ When a framework field behaves strangely, check whether it is a descriptor befor
 
 ### What class does
 
+![How a class is created](./img/s11-classcreate.svg)
+
+*Figure 3.11.4. The class statement runs the body, then calls type (or a metaclass) to build the class object.*
+
 Every class statement is a small program that builds an object. Once you see the steps, a framework that seems to change your class after you define it makes more sense.
 
 A class statement executes its body in a new namespace. Then it calls `type(name, bases, namespace)`, or the metaclass you name, to build the class object. Classes are objects created at run time, so you can call `type(...)` yourself to make one:
@@ -419,6 +422,10 @@ class Host2(metaclass=decorate_all_meta(tracer)):
 Both versions trace every method call, and you change the decorator by editing one line. The class decorator returns the augmented class, which is the simpler design. The metaclass version adds a trick the decorator does not have: it can also give its classes methods that they inherit. Those methods come with a limit, which the next section explains by looking at how Python searches for attributes.
 
 ### Metaclasses and the two-tree inheritance model
+
+![Instance-of versus inherits-from](./img/s11-twotrees.svg)
+
+*Figure 3.11.5. Two trees: instances link to their classes, and classes link to their metaclass, while subclasses inherit from bases.*
 
 A **metaclass** is the class of a class. The name sounds worse than the idea. By default that class is `type`: `str.__class__ is type`, and `type.__class__ is type`.
 

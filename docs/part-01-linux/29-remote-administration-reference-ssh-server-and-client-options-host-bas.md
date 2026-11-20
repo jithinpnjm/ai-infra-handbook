@@ -62,6 +62,10 @@ Suppose your laptop connects to a server for the first time. The server hands ov
 
 ### Two kinds of cryptography
 
+![Public-key cryptography handles identity and key exchange, and symmetric encryption protects the session.](./img/l29-two-crypto.svg)
+
+*Figure 1.29.1. SSH uses each kind of cryptography for the job it does best.*
+
 **Symmetric encryption** uses one shared secret key to both encrypt and decrypt. It is fast and cheap, so it carries the bulk of the data. The catch is that both parties must somehow already hold the same key. Getting that key to the other side safely is the hard part, and it is the part public-key cryptography solves.
 
 **Asymmetric (public-key) encryption** uses a *pair* of keys. What one key encrypts, only the other can decrypt. In practice, neither key can be derived from the other. Some algorithms let the private key recompute the public key, but not the reverse. OpenSSH stores the public key inside the private key file. You publish the **public key** freely and keep the **private key** secret. Two parties can then establish trust without sending a secret. You prove you hold the private key by signing something the other side can verify. And anyone can send you a message that only you can read.
@@ -78,7 +82,7 @@ When you install the server package, host keys are generated automatically. If y
 
 ![The sequence of a session](./img/ch29-d1-luna.svg)
 
-*Figure 1.29.1. The sequence of a session.*
+*Figure 1.29.2. The sequence of a session.*
 
 The login runs in seven steps.
 
@@ -214,6 +218,10 @@ Give each machine you visit often its own `Host` block, and keep the general blo
 
 ## 5. Forwarding: environment, ports, X11 and agent
 
+![Environment, port, X11 and agent forwarding all ride inside one SSH connection.](./img/l29-forwarding-kinds.svg)
+
+*Figure 1.29.3. Forwarding sends extra traffic through the single encrypted SSH connection.*
+
 Suppose the only thing you can reach from your laptop is port 22 on one bastion. Forwarding is the trick that makes that single open port enough, because it sends extra traffic through the single encrypted SSH connection. The server opens no extra connections for it. Being able to reach port 22 is enough.
 
 - **Environment variables.** With `SendEnv LANG LC_*` on the client and `AcceptEnv LANG LC_*` on the server, settings such as the locale follow you into the remote session. Both sides must agree. Some variables could subvert the system, such as `LD_PRELOAD`, so the server refuses them unless it explicitly allows it. That allowance is `PermitUserEnvironment`, which also reads `~/.ssh/environment`. Use it with great care.
@@ -275,6 +283,10 @@ Use `Match` when service accounts, administrators or an internal network need ru
 ## 7. Restricting a key, and host-based authentication
 
 ### Restrict what a key may do
+
+![Options placed before a key in authorized_keys limit where it may connect from and what it may run.](./img/l29-restricted-key.svg)
+
+*Figure 1.29.4. A key limited to one command from one subnet is worth far less to an attacker than a general key.*
 
 Give your monitoring system a narrow capability instead of a shell. A key that can read one status page is worth far less to an attacker than a key that can do anything. In `authorized_keys`, options placed before the key limit what that key can do:
 
@@ -441,6 +453,10 @@ Add `set -g mouse on` to `~/.tmux.conf` to select text, resize panes and switch 
 Learn the start-or-attach command for whichever tool you use. That one command gets you back into a session after every dropped connection.
 
 ## 10. IPMI: managing the machine behind the machine
+
+![The BMC with the tools used to reach its console, sensors and power control.](./img/l29-ipmi-tools.svg)
+
+*Figure 1.29.5. IPMI reaches the hardware even when the operating system is down, so isolate it on a management network.*
 
 Suppose a node stops answering SSH, and nobody can reach its operating system. That is the 2 a.m. case from the start of this chapter, and the hardware may still be reachable. IPMI is the standard way to reach it.
 

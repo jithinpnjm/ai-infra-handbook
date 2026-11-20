@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "31",
+  "name": "h31-build-order",
+  "title": "Build a GPU cluster from the bottom up, one layer at a time",
+  "spec": "An ascending staircase of eight stacked layer boxes, drawn from bottom-left (layer 1) to top-right (layer 8), each box a step up from the one below, with an upward arrow along the staircase edge labelled build order, bottom to top. Each box has a number circle (r=24, green, white number) and an icon beside its title. Layer 1: Facility power and cooling (lightning-bolt icon), sub-label check the rack power budget before the chassis goes in. Layer 2: Out-of-band and in-band networks (network icon), sub-label BMC to the OOB switch, host NICs to the in-band switch. Layer 3: Bare-metal provisioning (server icon), sub-label DHCP and TFTP from nodes.csv, then a golden image. Layer 4: Identity (key or badge icon), sub-label LDAP or FreeIPA with SSSD, UIDs and GIDs match on every node. Layer 5: Fabrics and parallel storage (disk cylinder icon), sub-label Subnet Manager, ibdiagnet, then mount the parallel filesystem. Layer 6: Scheduler and cgroup isolation (gear icon), sub-label slurm.conf, gres.conf and cgroup.conf generated from hardware.csv. Layer 7: Acceptance gates and burn-in (gauge icon), sub-label NHC, HPL, IOR and a 24 to 72 hour burn-in. Layer 8: Telemetry, alerting and backup (chart icon), sub-label Prometheus scraping, alert rules checked, backups verified. Orange highlight on layer 6 with a small tag: rookie mistake, Slurm installed on day one before identity and storage. No green takeaway bar.",
+  "anchor": "## 2. Build order and dependency chains",
+  "alt": "A new GPU cluster is built in eight layers from facility power up to telemetry and backup, with each layer depending on the one below it.",
+  "cap": "A new GPU cluster is built in eight layers, from facility power at the bottom to telemetry and backup at the top, and each layer depends on the one below."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "31",
+  "name": "h31-single-source-pipeline",
+  "title": "One inventory in, every config out",
+  "spec": "Left-to-right flow with three columns: inputs on the left, generators in the middle, outputs on the right. Four input boxes stacked vertically on the left, each with a file icon: hardware.csv (sub-label machines), nodes.csv (sub-label how each machine boots), users.csv (sub-label who may use the cluster), train.sbatch (sub-label a researcher's job script). Note inside a container around the three CSV inputs: all live in Git. Four generator boxes in the middle column, aligned with their inputs: gen_slurm_conf.py, gen_provision.py, identity_gen.py, sbatch_lint.py. Output boxes on the right: a container labelled slurm/ holding slurm.conf, gres.conf and cgroup.conf, with an arrow from gen_slurm_conf.py to that container; a box provision/dnsmasq.conf and iPXE scripts for gen_provision.py; a box identity/ holding users.ldif, sacctmgr.sh and mkhomes.sh for identity_gen.py; and for sbatch_lint.py an output box labelled no findings. From the slurm/ container, one arrow to a check box slurmconf_lint.py. Orange highlight on the hardware.csv input, the single row that updates every subsystem. Keep arrows orthogonal and avoid crossings. No numbered steps. No green takeaway bar.",
+  "anchor": "## 3. Single-source-of-truth pipeline lab",
+  "alt": "Each inventory file feeds one generator, and the generators write the Slurm, DHCP, identity and job-check outputs.",
+  "cap": "Each inventory file feeds one generator, and together they write every scheduler, boot and identity config from one source of truth."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "31",
+  "name": "h31-acceptance-gates",
+  "title": "Ten acceptance gates, ordered from cheapest to most expensive",
+  "spec": "Ten numbered boxes in a snake path: gates 1 to 5 in a top row from left to right, then gates 6 to 10 in a bottom row from right to left, with arrows between consecutive gates, so the path reads in order. Each box has a number circle (r=24, green, white number) and an icon: gate 1 a thermometer, gate 2 a chip, gate 3 a key, gate 4 a single server, gate 5 a link between GPUs, gate 6 a network switch, gate 7 a disk cylinder, gate 8 a clock or queue, gate 9 a quota gauge, gate 10 a flame for burn-in. Box labels: 1 Out-of-Band and Sensors; 2 Host Health and PCIe/NVLink; 3 Cluster Identity and MUNGE; 4 Single-Node GPU and Memory; 5 Intra-Node NVLink Collectives; 6 Inter-Node RDMA Fabric; 7 Parallel Storage I/O; 8 Scheduler and cgroup Isolation; 9 Policy and Quota Enforcement; 10 Fault Injection and 72h Burn-In. Above the row a thin arrow labelled cheapest to most expensive, left to right on top and reversed on the bottom. Orange highlight on gate 10. No green takeaway bar.",
+  "anchor": "## 4. Ten-gate acceptance testing and burn-in protocol",
+  "alt": "The ten acceptance gates run from out-of-band sensors through identity, GPU, network, storage and scheduler checks to a 72-hour fault-injection burn-in.",
+  "cap": "The ten acceptance gates run from cheap out-of-band checks to a 72-hour burn-in, and each gate assumes the ones before it have passed."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "31",
+  "name": "h31-drill-recovery-loop",
+  "title": "Drill 1: from a dropped GPU back to service",
+  "spec": "A horizontal loop of five boxes with arrows between them in order, numbered 1 to 5 with number circles, then a return arrow from box 5 back to a final state box labelled State=RESUME. Box 1: Dropped GPU, with a monospace note Xid 79, GPU has fallen off the bus, and a warning icon. Box 2: Epilog or NHC exits non-zero. Box 3: Drain the node with a reason and a ticket, monospace scontrol update NodeName=gpu003 State=DRAIN Reason=NHC GPU count 7/8 Xid 79 ticket INC-1042. Box 4: Cold power cycle through Redfish (ForceOff and On), or an RMA replacement, shown as two alternative small sub-boxes joined by or. Box 5: Re-run Gate 2 and Gate 5, the GPU health and single-node collective checks. Final box: State=RESUME, with a check icon. Orange highlight on box 3, the drain step that records why the node is out. No green takeaway bar.",
+  "anchor": "## 5. Day-2 operations drills: practicing the bad day",
+  "alt": "A dropped GPU makes the node exit its check, get drained with a ticket, be power cycled or replaced, pass gates 2 and 5, and return to service.",
+  "cap": "A dropped GPU drains its node with a ticket, then the node is power cycled or replaced, re-checked, and only then resumed."
+ }
+]

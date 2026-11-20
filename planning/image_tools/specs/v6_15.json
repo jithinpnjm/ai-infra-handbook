@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "15",
+  "name": "h15-upgrade-hops",
+  "title": "A version path with one upgrade per hop",
+  "spec": "A horizontal chain of four version boxes left to right, each a rounded box with the version number large: 22.05, then 23.11, then 25.05, then 26.05. Each box is joined to the next by an arrow, and each arrow carries a small label: upgrade step 1, upgrade step 2, upgrade step 3. Above the chain a heading box titled Path planner output for 22.05 to 26.05 (3 upgrade steps). Under the chain, a bracket spanning the arrows with the text: from 24.11 on, a release accepts in-place upgrades from the previous three releases. Below that a small two-row strip: the top row is labelled Release and the bottom row is labelled Accepts in-place upgrades from. Show two cells only: release 25.05 with 24.11, 24.05, 23.11 beneath it, and release 26.05 with 25.11, 25.05, 24.11 beneath it, the 26.05 cell outlined in orange as the target. Green takeaway bar at the bottom: Each arrow is one upgrade, and the planner takes the furthest compatible step.",
+  "anchor": "### A path planner",
+  "alt": "A version path from 22.05 to 26.05 takes three upgrade steps, one per hop within the in-place upgrade window.",
+  "cap": "The upgrade planner splits an old-to-new jump into hops, where each hop stays inside the in-place upgrade window."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "15",
+  "name": "h15-sdiag-order",
+  "title": "Reading sdiag in a fixed order",
+  "spec": "A top box labelled Run sdiag twice, sixty seconds apart, with a clock icon, and an arrow down into a vertical list of four numbered boxes, each with a green number circle at left and joined by downward arrows. Box 1 titled Server thread count: check it against the max_rpc_cnt ceiling (256 maximum) and the net.core.somaxconn backlog; a value stuck at the ceiling means requests queue for a worker. Box 2 titled Main schedule statistics and Backfill stats: compare Last cycle and Mean cycle in microseconds, and check Last depth cycled. Box 3 titled RPC statistics by message type and by user: find the RPC type and the user that flood the daemon, for example a loop of squeue calls that shows as REQUEST_JOB_INFO. Box 4 titled DBD Agent queue size: after slurmdbd restarts, watch the value drain back to 0. Box 3 has an orange outline because it is the box that points to the user causing the load. Right side of the box 3, a small note: throttle the polling loop and point users to cached metrics. Green takeaway bar at the bottom: Read the four sections in order before you change any setting.",
+  "anchor": "### 7.1 Deep dive: Diagnosing `slurmctld` RPC queue saturation with `sdiag`",
+  "alt": "Four sdiag sections, read in order, show whether the controller's threads, scheduler loops, RPC callers or accounting queue is the bottleneck.",
+  "cap": "Reading the four sdiag sections in a fixed order shows whether threads, scheduler loops, a looping user or the accounting queue is the bottleneck."
+ }
+]

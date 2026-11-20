@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "05",
+  "name": "r05-reset-ladder",
+  "title": "ResetType as a ladder from gentle to forceful",
+  "spec": "A vertical ladder drawn as four horizontal rungs stacked top to bottom, joined on the left by a thin vertical rail with a downward arrow labelled gentler at top, more forceful at bottom. Rung 1, green, at the top, labelled Graceful: two value boxes GracefulShutdown (ask the OS to shut down cleanly, then power off) and GracefulRestart (ask the OS to shut down cleanly, then start again). A note on the right: start here, so disks flush and services stop. Rung 2, labelled Force: two value boxes ForceOff (turn off immediately, with no clean shutdown) and ForceRestart (shut down immediately and non-gracefully, then start again). A note: use only when the OS is frozen, since files can corrupt and jobs can be killed. Rung 3, labelled Power cycle: two value boxes PowerCycle (behaves like removing power and then restoring it) and FullPowerCycle (behaves like removing the utility power lines and restoring them). A note: use when a restart does not clear a hardware fault. Rung 4, orange, labelled Diagnostic: one value box Nmi (send a diagnostic interrupt, non-maskable interrupt, that normally halts the system for diagnostics). A note: for debugging a hang. A separate grey column at the far right, titled Turn on and other values, lists On (turn the system on), ForceOn (turn on immediately), PushPowerButton (act as if someone pressed the physical power button), and Pause, Resume and Suspend (mostly for virtual machines). No number circles, because rungs are not a time order. No takeaway bar.",
+  "anchor": "### What each `ResetType` means",
+  "alt": "ResetType values are ordered from graceful restarts to forced restarts, power cycles and a diagnostic interrupt.",
+  "cap": "Choose the gentlest ResetType that works, because graceful options let the operating system save work, while forced and power options can lose it."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "05",
+  "name": "r05-power-escalation",
+  "title": "Graceful first, escalate only if LastResetTime does not advance",
+  "spec": "A top-down flowchart with numbered process boxes and decision diamonds, in one main column with one side branch on the right. Top process box, numbered 1: read the ComputerSystem resource for PowerState, Status and the Reset action with its ResetType@Redfish.AllowableValues. A short side note under it: if PowerState is Off, use On, because GracefulRestart or ForceRestart return 409 Conflict. Process box, numbered 2: issue GracefulRestart, or GracefulShutdown for maintenance, then start a bounded polling loop on PowerState and LastResetTime. Decision diamond, numbered 3: graceful timer expired and LastResetTime not advanced? Yes arrow goes down to an orange process box: escalate to ForceRestart or ForceOff. No arrow goes to a green end box: node has restarted cleanly. Side branch from step 2 on the right: a grey box labelled POST times out, a socket timeout or 504 Gateway Timeout from a management proxy; an arrow from it leads to a box labelled do NOT send a second ForceRestart straight away; then a box labelled re-read PowerState, LastResetTime and the SEL entries first. Arrow from that box returns to the decision diamond. Number circles r=24 on steps 1, 2 and 3 only. No takeaway bar.",
+  "anchor": "### 5.1 Designing idempotent node power-control workflows",
+  "alt": "A power controller reads state, tries a graceful restart, escalates to a forced action only when LastResetTime has not advanced, and re-reads state after a timeout.",
+  "cap": "A safe power controller reads state first, tries a graceful restart, and escalates to a forced reset only when the reset timer expires without a new LastResetTime."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "05",
+  "name": "r05-event-sweep",
+  "title": "Push events as a wake-up call, backed by a five-minute sweep",
+  "spec": "A left-to-right layout in three zones. Left zone, grey container labelled BMC fleet, showing a stack of three small BMC boxes labelled BMC, with a note: each BMC has an EventDestination subscription with a Context naming the rack and node role. Middle zone, green container labelled Redundant pair of HTTPS webhook receivers on the management network, containing two receiver boxes stacked. Arrow from the BMC fleet to the receivers labelled Event push (POST). Right zone: two stacked boxes. Top box labelled Read the resource and its parent LogService over verified TLS, connected by an arrow from the receivers labelled OriginOfCondition as a wake-up signal. Bottom box labelled Low-frequency sweep every 5 minutes, connected by a loop arrow from the receivers back to the BMC fleet labelled conditional GET with If-None-Match, with a return arrow labelled not modified costs almost nothing. Orange note near the push arrow: event streams keep no history, so events lost during an outage are gone, and the sweep catches the state. Under the middle zone, a small settings row of four labels joined by a thin bar: RegistryPrefixes ResourceEvent, Alert, TaskEvent, Environmental; DeliveryRetryPolicy RetryForeverWithBackoff; SendHeartbeat and HeartbeatIntervalMinutes. No number circles needed. Green takeaway bar at the bottom: push gives fast response, and the sweep guarantees that no state change was missed.",
+  "anchor": "### 5.3 Scaling event-driven monitoring across a thousand BMCs",
+  "alt": "BMCs push events to a redundant pair of receivers, which read the current state, while a five-minute conditional sweep checks for missed changes.",
+  "cap": "Push events give fast notice of faults, and a five-minute conditional sweep catches any change that a lost event would have hidden."
+ }
+]

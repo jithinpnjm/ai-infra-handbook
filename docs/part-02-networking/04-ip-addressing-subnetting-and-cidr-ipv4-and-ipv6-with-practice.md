@@ -130,15 +130,9 @@ Suppose one block has to serve several groups of different sizes. A rack of serv
 
 The diagram shows how each split leaves a remainder for the next subnet.
 
-```mermaid
-flowchart TB
-  P["Parent block: 10.50.0.0/22\n(1,024 IPs: 10.50.0.0 - 10.50.3.255)"] --> A["Subnet A (400 hosts)\n10.50.0.0/23 (512 IPs)"]
-  P --> R1["Remainder: 10.50.2.0/23"]
-  R1 --> B["Subnet B (200 hosts)\n10.50.2.0/24 (256 IPs)"]
-  R1 --> R2["Remainder: 10.50.3.0/24"]
-  R2 --> C["Subnet C (100 hosts)\n10.50.3.0/25 (128 IPs)"]
-  R2 --> D["Subnet D (50 hosts) -> 10.50.3.128/26 (64 IPs)\n+ P2P /31s: 10.50.3.192/31, 10.50.3.194/31"]
-```
+![VLSM, supernetting and summarisation](./img/m2-04-1.svg)
+
+*Figure 2.4.2. VLSM, supernetting and summarisation, as a diagram.*
 
 Now divide `10.50.0.0/22`, which holds 1,024 addresses from 10.50.0.0 to 10.50.3.255. You need subnets for five needs: A with 400 hosts, B with 200, C with 100, D with 50, and E with two point-to-point links. For each group, find the smallest block that holds its hosts. The smallest block is always a power of two that is at least as big as the need.
 
@@ -216,6 +210,10 @@ Prefixes use CIDR style, as in `2001:db8:a0b:12f0::/64`. In a URL, wrap a litera
 
 ### Address types
 
+![IPv6 address types](./img/n04-ipv6types.svg)
+
+*Figure 2.4.3. The first digits of an IPv6 address tell you its type, and multicast replaces broadcast.*
+
 The table lists the prefixes you will meet most often. The first few digits tell you the address type, so learn to read them. It is like recognising a country from the first digits of a phone number.
 
 | Prefix | Type | Notes |
@@ -241,6 +239,10 @@ The second is the link-local address, which only works on the local network. Thi
 When `ip -6 address show` labels an address `scope link`, it is link-local. A label of `scope global` marks the internet-facing address.
 
 ### Structure and the /64 convention
+
+![Structure of an IPv6 address](./img/n04-ipv6struct.svg)
+
+*Figure 2.4.4. A global IPv6 address is a site prefix, a subnet ID and a 64-bit interface ID, and subnets are almost always /64.*
 
 A global unicast address usually has three parts: a routing prefix, a subnet ID and a 64-bit interface ID. The first part says which organisation, the second says which network inside it, and the third says which interface. The block below shows that split for one example.
 
@@ -288,6 +290,10 @@ Check both families on Linux with `ip -4 address show` and `ip -6 address show`.
 Every packet starts with a header, and the header fields tell the routers what to do with it. If the address says where the packet is going, the other fields say how long it may live, what is inside and how urgent it is. Here is the IPv4 header first.
 
 ### IPv4 header (20 bytes minimum)
+
+![IPv4 header fields](./img/n04-ipv4hdr.svg)
+
+*Figure 2.4.5. The IPv4 header is 20 bytes minimum, with fragmentation fields, TTL and a protocol field.*
 
 ```text
  0                   1                   2                   3

@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>The seven labs</title>
+  <desc>Staircase progression of the seven networking and validation labs, highlighting the transition from underlay leaf-spine fabric to EVPN-VXLAN overlay, ending with an evidence checklist.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+
+  
+  <text x="60" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The seven labs</text>
+
+  
+  <rect x="60" y="110" width="1180" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="104" cy="148" r="24" fill="#207448" />
+  <text x="104" y="148" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  <circle cx="158" cy="148" r="16" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 158 138 L 158 158 M 148 148 L 168 148 M 158 136 L 155 139 M 158 136 L 161 139 M 158 160 L 155 157 M 158 160 L 161 157 M 146 148 L 149 145 M 146 148 L 149 151 M 170 148 L 167 145 M 170 148 L 167 151" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <text x="194" y="156" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">Lab 1 </tspan>
+    <tspan font-size="24">three namespaces and a router (routing, forwarding, MTU, ICMP)</tspan>
+  </text>
+
+  
+  <rect x="110" y="208" width="1180" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="154" cy="246" r="24" fill="#207448" />
+  <text x="154" y="246" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  <path d="M 208 234 L 196 256 L 220 256 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+  <circle cx="208" cy="234" r="4" fill="#207448" />
+  <circle cx="196" cy="256" r="4" fill="#207448" />
+  <circle cx="220" cy="256" r="4" fill="#207448" />
+  
+  <text x="244" y="254" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">Lab 2 </tspan>
+    <tspan font-size="24">FRR in namespaces running OSPF (link state)</tspan>
+  </text>
+
+  
+  <rect x="160" y="306" width="1180" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="204" cy="344" r="24" fill="#207448" />
+  <text x="204" y="344" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  <rect x="248" y="332" width="10" height="7" rx="1.5" fill="#207448" />
+  <rect x="264" y="332" width="10" height="7" rx="1.5" fill="#207448" />
+  <rect x="242" y="351" width="8" height="6" rx="1.5" fill="#207448" />
+  <rect x="257" y="351" width="8" height="6" rx="1.5" fill="#207448" />
+  <rect x="272" y="351" width="8" height="6" rx="1.5" fill="#207448" />
+  <path d="M 253 339 L 246 351 M 253 339 L 261 351 M 253 339 L 276 351 M 269 339 L 246 351 M 269 339 L 261 351 M 269 339 L 276 351" stroke="#207448" stroke-width="1.5" />
+  
+  <text x="294" y="352" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">Lab 3 </tspan>
+    <tspan font-size="24">leaf-spine fabric with containerlab, eBGP unnumbered, ECMP</tspan>
+  </text>
+
+  
+  <path d="M 230 382 L 230 472" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <rect x="255" y="408" width="840" height="50" rx="8" fill="#e8f1ea" stroke="#db8129" stroke-width="2" />
+  <text x="275" y="442" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">underlay does not change, the overlay is a new layer on top</text>
+
+  
+  <rect x="210" y="482" width="1180" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="254" cy="520" r="24" fill="#207448" />
+  <text x="254" y="520" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  <path d="M 308 508 L 320 514 L 308 520 L 296 514 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+  <path d="M 296 523 L 308 529 L 320 523" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+  <path d="M 296 531 L 308 537 L 320 531" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+  
+  <text x="344" y="528" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">Lab 4 </tspan>
+    <tspan font-size="24">EVPN-VXLAN overlay with tenant VRFs on the same fabric</tspan>
+  </text>
+
+  
+  <rect x="260" y="580" width="1180" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="304" cy="618" r="24" fill="#207448" />
+  <text x="304" y="618" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+  
+  <path d="M 358 604 L 370 609 L 370 619 C 370 627 358 633 358 633 C 358 633 346 627 346 619 L 346 609 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+  <path d="M 354 618 L 357 621 L 363 615" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <text x="394" y="626" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">Lab 5 </tspan>
+    <tspan font-size="24">overlays, VPNs and tunnels with namespaces</tspan>
+  </text>
+
+  
+  <rect x="310" y="678" width="1180" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="354" cy="716" r="24" fill="#207448" />
+  <text x="354" y="716" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+  
+  <circle cx="396" cy="716" r="4" fill="#207448" />
+  <circle cx="418" cy="704" r="3.5" fill="#207448" />
+  <circle cx="420" cy="716" r="3.5" fill="#207448" />
+  <circle cx="418" cy="728" r="3.5" fill="#207448" />
+  <path d="M 400 716 L 414 704 M 400 716 L 416 716 M 400 716 L 414 728" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  
+  <text x="444" y="724" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">Lab 6 </tspan>
+    <tspan font-size="24">load balancing, anycast and failure testing</tspan>
+  </text>
+
+  
+  <rect x="360" y="776" width="1180" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="404" cy="814" r="24" fill="#207448" />
+  <text x="404" y="814" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">7</text>
+  
+  <path d="M 444 808 L 438 814 L 444 820 M 464 808 L 470 814 L 464 820" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 449 814 L 453 818 L 460 810" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <text x="494" y="822" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">Lab 7 </tspan>
+    <tspan font-size="24">a validation harness (tests as code)</tspan>
+  </text>
+
+  
+  <rect x="60" y="900" width="1480" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="644" y="920" width="28" height="36" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M 653 920 V 917 C 653 915.5 654.5 914 656 914 H 660 C 661.5 914 663 915.5 663 917 V 920 Z" fill="#207448" />
+  <path d="M 650 930 L 653 933 L 659 927 M 650 942 L 653 945 L 659 939" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <text x="692" y="948" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Evidence checklist</text>
+</svg>

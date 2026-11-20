@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>GCP GPU VM networking generations</title>
+  <desc>Visual comparison of GCP GPU VM networking generations across A3, A3 Mega, and A3 Ultra and A4 architectures, including shared requirements and provider guide note.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">GCP GPU VM networking generations</text>
+
+  
+  <rect x="50" y="140" width="480" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(75, 162)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="44" height="44" rx="6" />
+    <rect x="16" y="16" width="24" height="24" rx="3" />
+    <line x1="2" y1="20" x2="6" y2="20" />
+    <line x1="2" y1="28" x2="6" y2="28" />
+    <line x1="2" y1="36" x2="6" y2="36" />
+    <line x1="50" y1="20" x2="54" y2="20" />
+    <line x1="50" y1="28" x2="54" y2="28" />
+    <line x1="50" y1="36" x2="54" y2="36" />
+    <line x1="20" y1="2" x2="20" y2="6" />
+    <line x1="28" y1="2" x2="28" y2="6" />
+    <line x1="36" y1="2" x2="36" y2="6" />
+    <line x1="20" y1="50" x2="20" y2="54" />
+    <line x1="28" y1="50" x2="28" y2="54" />
+    <line x1="36" y1="50" x2="36" y2="54" />
+  </g>
+  <text x="145" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">A3 (8-GPU H100)</text>
+
+  
+  <rect x="70" y="240" width="440" height="85" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="95" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">multiple NICs including</tspan>
+    <tspan x="95" dy="34">gVNIC</tspan>
+  </text>
+
+  
+  <rect x="70" y="345" width="440" height="150" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="95" y="388" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">GPUDirect-TCPX</tspan>
+    <tspan x="95" dy="36">(TCP-based GPUDirect path,</tspan>
+    <tspan x="95" dy="36">NCCL plugin)</tspan>
+  </text>
+
+  
+  <rect x="560" y="140" width="480" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(585, 162)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="18" rx="4" />
+    <rect x="4" y="32" width="48" height="18" rx="4" />
+    <circle cx="14" cy="15" r="2.5" fill="#207448" />
+    <circle cx="22" cy="15" r="2.5" fill="#207448" />
+    <circle cx="14" cy="41" r="2.5" fill="#207448" />
+    <circle cx="22" cy="41" r="2.5" fill="#207448" />
+    <line x1="34" y1="15" x2="44" y2="15" />
+    <line x1="34" y1="41" x2="44" y2="41" />
+  </g>
+  <text x="655" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">A3 Mega</text>
+
+  
+  <rect x="580" y="230" width="440" height="52" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="605" y="265" font-family="sans-serif" font-size="24" fill="#303a36">nine physical NICs</text>
+
+  
+  <rect x="580" y="292" width="440" height="52" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="605" y="327" font-family="sans-serif" font-size="24" fill="#303a36">up to 1,800 Gbps</text>
+
+  
+  <rect x="580" y="354" width="440" height="84" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="605" y="388" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="605" dy="0">GPUDirect-TCPXO</tspan>
+    <tspan x="605" dy="34">adds offload</tspan>
+  </text>
+
+  
+  <rect x="580" y="448" width="440" height="124" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="605" y="482" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="605" dy="0">NCCL plugin plus</tspan>
+    <tspan x="605" dy="34">fastrak receive-data-path</tspan>
+    <tspan x="605" dy="34">manager sidecar</tspan>
+  </text>
+
+  
+  <rect x="580" y="582" width="440" height="52" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="605" y="617" font-family="sans-serif" font-size="24" fill="#303a36">compact placement policies</text>
+
+  
+  <rect x="1070" y="140" width="480" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1095, 162)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="12" r="7" />
+    <circle cx="12" cy="42" r="7" />
+    <circle cx="44" cy="42" r="7" />
+    <line x1="24" y1="18" x2="16" y2="36" />
+    <line x1="32" y1="18" x2="40" y2="36" />
+    <line x1="19" y1="42" x2="37" y2="42" />
+  </g>
+  <text x="1165" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">A3 Ultra and A4</text>
+
+  
+  <rect x="1090" y="230" width="440" height="60" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="1115" y="268" font-family="sans-serif" font-size="24" fill="#303a36">RoCE on ConnectX-7 NICs</text>
+
+  
+  <rect x="1090" y="305" width="440" height="60" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="1115" y="343" font-family="sans-serif" font-size="24" fill="#303a36">ten physical NICs</text>
+
+  
+  <rect x="1090" y="380" width="440" height="60" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="1115" y="418" font-family="sans-serif" font-size="24" fill="#303a36">up to 3,600 Gbps</text>
+
+  
+  <rect x="1090" y="455" width="440" height="85" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="1115" y="490" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0">dedicated RDMA</tspan>
+    <tspan x="1115" dy="34">VPC networks</tspan>
+  </text>
+
+  
+  <rect x="50" y="740" width="1500" height="215" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(80, 758)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="48" height="40" rx="6" />
+    <line x1="4" y1="28" x2="52" y2="28" />
+    <circle cx="16" cy="18" r="3" fill="#207448" />
+    <circle cx="28" cy="18" r="3" fill="#207448" />
+    <circle cx="40" cy="18" r="3" fill="#207448" />
+    <circle cx="16" cy="38" r="3" fill="#207448" />
+    <circle cx="28" cy="38" r="3" fill="#207448" />
+    <circle cx="40" cy="38" r="3" fill="#207448" />
+  </g>
+  <text x="150" y="798" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Shared requirements</text>
+
+  
+  <rect x="80" y="820" width="1440" height="52" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="110" y="854" font-family="sans-serif" font-size="24" fill="#303a36">multiple VPC networks (management VPC plus data VPCs)</text>
+
+  
+  <rect x="80" y="884" width="1440" height="52" rx="10" fill="#ffffff" stroke="#c2dcce" stroke-width="2" />
+  <text x="110" y="918" font-family="sans-serif" font-size="24" fill="#303a36">GPU NIC MTU 8244 or the documented jumbo value</text>
+
+  
+  <rect x="50" y="980" width="1500" height="80" rx="12" fill="#fdf6ee" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(75, 992)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22" />
+    <line x1="28" y1="16" x2="28" y2="28" />
+    <circle cx="28" cy="38" r="2" fill="#db8129" />
+  </g>
+  <text x="155" y="1030" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Read the provider's current guide; exact flags change between generations</text>
+</svg>

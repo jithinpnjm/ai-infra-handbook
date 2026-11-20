@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>The five components of a network CI pipeline</title>
+  <desc>Visual diagram of the five components of a network CI pipeline: Peer review, Build automation, Test/dev/staging environment, Deployment validation, Deployment strategy, and Monitor + rollback.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The five components of a network CI pipeline</text>
+
+  
+
+  
+  <rect x="70" y="150" width="430" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="270" y1="188" x2="270" y2="232" />
+    <circle cx="270" cy="188" r="6" fill="#e8f1ea" />
+    <circle cx="270" cy="232" r="6" fill="#e8f1ea" />
+    <path d="M 270 232 C 270 212 300 216 300 200 L 300 188" />
+    <circle cx="300" cy="188" r="6" fill="#e8f1ea" />
+    <path d="M 293 226 L 299 232 L 311 220" />
+  </g>
+  
+  <text x="285" y="280" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">1. Peer review</text>
+  <text x="285" y="335" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">(pull/merge request)</text>
+
+  
+  <line x1="500" y1="335" x2="585" y2="335" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="585" y="150" width="430" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="800" cy="210" r="10" />
+    <path d="M 795 186 L 805 186 L 807 192 C 810 193 813 195 816 197 L 822 194 L 829 201 L 826 207 C 828 210 829 213 830 216 L 836 217 L 836 227 L 830 228 C 829 231 828 234 826 237 L 829 243 L 822 250 L 816 247 C 813 249 810 251 807 252 L 805 258 L 795 258 L 793 252 C 790 251 787 249 784 247 L 778 250 L 771 243 L 774 237 C 772 234 771 231 770 228 L 764 227 L 764 217 L 770 216 C 771 213 772 210 774 207 L 771 201 L 778 194 L 784 197 C 787 195 790 193 793 192 Z" />
+  </g>
+  
+  <text x="800" y="280" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">2. Build automation</text>
+  <text x="800" y="330" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">lint, unit tests,</text>
+  <text x="800" y="368" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">render configs,</text>
+  <text x="800" y="406" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">schema validation</text>
+
+  
+  <line x1="1015" y1="335" x2="1100" y2="335" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1100" y="150" width="430" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="1275" y="174" width="80" height="66" rx="8" stroke-dasharray="6 4" />
+    <line x1="1315" y1="192" x2="1295" y2="224" />
+    <line x1="1315" y1="192" x2="1335" y2="224" />
+    <line x1="1295" y1="224" x2="1335" y2="224" />
+    <circle cx="1315" cy="192" r="5" fill="#e8f1ea" stroke-width="3" />
+    <circle cx="1295" cy="224" r="5" fill="#e8f1ea" stroke-width="3" />
+    <circle cx="1335" cy="224" r="5" fill="#e8f1ea" stroke-width="3" />
+  </g>
+  
+  <text x="1315" y="268" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">3. Test/dev/staging</text>
+  <text x="1315" y="306" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">environment</text>
+  <text x="1315" y="358" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">containerlab /</text>
+  <text x="1315" y="396" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">virtual lab / Batfish</text>
+
+  
+  <path d="M 1315 520 L 1315 550 Q 1315 570 1295 570 L 305 570 Q 285 570 285 590 L 285 620" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+
+  
+  <rect x="70" y="620" width="430" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 264 694 A 26 26 0 1 1 306 694" />
+    <circle cx="285" cy="682" r="4" fill="#207448" />
+    <line x1="285" y1="682" x2="299" y2="667" />
+    <line x1="285" y1="656" x2="285" y2="661" />
+    <line x1="267" y1="664" x2="271" y2="668" />
+    <line x1="303" y1="664" x2="299" y2="668" />
+    <path d="M 306 690 L 312 696 L 322 684" stroke-width="3" />
+  </g>
+  
+  <text x="285" y="736" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">4. Deployment</text>
+  <text x="285" y="774" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">validation</text>
+  <text x="285" y="826" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">operational-state,</text>
+  <text x="285" y="864" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">connectivity and</text>
+  <text x="285" y="902" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">performance tests</text>
+
+  
+  <line x1="500" y1="805" x2="585" y2="805" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="585" y="620" width="430" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="770" cy="675" r="5" fill="#e8f1ea" />
+    <path d="M 775 675 C 785 675 790 658 800 658 C 810 658 815 675 825 675" />
+    <path d="M 775 675 C 785 675 790 692 800 692 C 810 692 815 675 825 675" />
+    <circle cx="800" cy="658" r="5" fill="#e8f1ea" />
+    <circle cx="800" cy="692" r="5" fill="#e8f1ea" />
+    <circle cx="830" cy="675" r="5" fill="#e8f1ea" />
+  </g>
+  
+  <text x="800" y="736" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">5. Deployment</text>
+  <text x="800" y="774" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">strategy</text>
+  <text x="800" y="836" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">rolling, canary,</text>
+  <text x="800" y="874" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">blue/green, in place</text>
+
+  
+  <line x1="1015" y1="805" x2="1100" y2="805" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1100" y="620" width="430" height="370" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+  
+  <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="1285" y="666" width="60" height="42" rx="4" />
+    <line x1="1315" y1="708" x2="1315" y2="718" />
+    <line x1="1303" y1="718" x2="1327" y2="718" />
+    <path d="M 1291 688 L 1300 688 L 1305 680 L 1312 696 L 1317 685 L 1323 688 L 1339 688" />
+    <path d="M 1342 660 C 1335 650 1320 648 1308 653 C 1296 658 1291 668 1293 676" />
+    <path d="M 1344 650 L 1342 660 L 1332 662" />
+  </g>
+  
+  <text x="1315" y="790" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Monitor + rollback</text>
+</svg>

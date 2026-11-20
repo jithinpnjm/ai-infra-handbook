@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-register-set-fact",
+  "title": "register keeps the raw output, set_fact keeps the clean value",
+  "spec": "A left-to-right row of four boxes, each with a green number circle (1 to 4) above it, joined by orthogonal arrows. Box 1, titled Run the command, shows the monospace text nvidia-smi --query-gpu=driver_version --format=csv,noheader and the note Ansible runs it on the host. Arrow 1 is labelled register: drv. Box 2, titled Raw result in drv, lists the fields rc, stdout, stdout_lines, stderr, changed, failed, start, end, delta and cmd inside a light green panel, with the note the whole dictionary. Arrow 2 is labelled set_fact. Box 3, titled Clean value in current_driver, shows the monospace text drv.stdout_lines[0] | trim. Arrow 3 leads to Box 4, titled debug var: drv, which prints the whole structure so you can check each piece. Orange highlight on Box 3, the cleaned value that later tasks read. Green takeaway bar at the bottom: Keep the raw output in register and the cleaned value in set_fact, so each variable does one job.",
+  "anchor": "## 2. Registered results and set_fact",
+  "alt": "A command's output is registered as a raw dictionary, set_fact trims the first line into a clean value, and debug shows the whole structure.",
+  "cap": "The register step keeps the whole raw result, and set_fact turns one field of it into the clean value later tasks read."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-limit-hostvars",
+  "title": "Why --limit breaks cross-host templates",
+  "spec": "Two side-by-side panels with the same three-row picture each: a playbook box at the top, and below it a row of host boxes. Left panel titled Full run, with the note the play covers the whole cluster. Its host boxes are lb01, web1..3 and gpu001..032, all marked with a green tick labelled facts gathered. Below them a box labelled hostvars is complete, then an arrow down to a box labelled template writes every backend address. Right panel titled Run with --limit lb01, showing the command ansible-playbook site.yml --limit lb01 in monospace. Only the lb01 box is marked facts gathered; web1..3 and gpu001..032 are grey and marked not gathered. An arrow goes down to a box labelled hostvars for web1..3 or gpu001..032 is empty or undefined. From there an orange arrow leads to an outcome box labelled the template fails, or writes blank addresses. Below both panels, a green fix bar lists two boxes: first, a monospace play block with the lines - hosts: cluster, gather_facts: true, tasks: [], tags: [always]; second, the word cache, as in fact caching. Green takeaway bar at the bottom: Before a limited run that templates across hosts, gather facts for the whole group.",
+  "anchor": "### Magic variables",
+  "alt": "A limited run gathers facts only for one host, so hostvars for the other hosts is empty and the template fails or writes blank addresses.",
+  "cap": "Running with --limit gathers facts for only one host, so a template that reads other hosts gets empty values."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-lookup-control-node",
+  "title": "Lookups run on the control node, module results come from the target",
+  "spec": "Three vertical zones side by side with a central task box. Left zone, a container titled Control node, with the note where you type ansible-playbook. Inside it, four small stacked boxes in monospace labelled lookup('file'), lookup('url'), lookup('env') and community.hashi_vault.hashi_vault, with the note lookups run here, when the template is rendered. A lane arrow from the Control node container points right into the centre box labelled Task uses the value. Right zone, a container titled Target host, with the note the machine being configured. Inside it a box labelled Module such as ansible.builtin.setup, drawn with a gear icon. An arrow from the Target host to the centre box is labelled register. Orange highlight on the Control node container and its arrow, with the note lookups never run on the targets. Green takeaway bar at the bottom: For data from a target, use a module and register instead, because a module runs on the host it describes.",
+  "anchor": "## 4. Lookups",
+  "alt": "Lookups read data on the control node, while a module reads data on the target and returns it with register.",
+  "cap": "Lookups fetch values on the control node when a template is rendered, while data from a target comes back through a module and register."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-extract-pipeline",
+  "title": "map extract turns a group of hosts into a list of addresses",
+  "spec": "A left-to-right assembly line of boxes with orthogonal arrows. Box 1 at the far left is a list titled gpu_nodes, drawn as stacked rows showing gpu001, gpu002 and an ellipsis. A hostvars cylinder sits above the first station, labelled hostvars, with a small note per row reading ansible_host. Station 1 is a box labelled map('extract', hostvars, 'ansible_host') with a green number circle 1 above it, with the note for each name, look up that host's ansible_host inside hostvars. Arrow to Station 2, a box labelled list with a green number circle 2 above it. Arrow to the final box at the far right titled Result, a plain list of addresses, drawn as stacked rows labelled 10.1.10.1 and 10.1.10.2 with an ellipsis. The Result box is highlighted in orange as the value ready for the next filter. Green takeaway bar at the bottom: The extract filter does the most work here, because it pulls one hostvar from many hosts at once.",
+  "anchor": "## 6. Filters for configuration generation",
+  "alt": "The map extract filter looks up ansible_host for each host name in hostvars, and the list filter returns a plain list of addresses.",
+  "cap": "The map extract filter pulls one host variable for each name in a group, and the list filter turns the result into a plain list of addresses."
+ }
+]

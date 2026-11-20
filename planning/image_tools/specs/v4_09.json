@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "a09-site-order",
+  "title": "site.yml imports the tiers in dependency order",
+  "spec": "A top-to-bottom or left-to-right chain of five boxes, joined by orthogonal arrows, each box with a green number circle (1 to 5) for the import order. Box 1: baseline.yml with a small tag label baseline and the note OS baseline on every host. Box 2: database.yml with tag label db and the note PostgreSQL on the db group. Box 3: app.yml with tag label app and the note application on the app group. Box 4: web.yml with tag label web and the note nginx reverse proxy. Box 5: verify.yml with tag label verify and the note end-to-end verification. Above the chain, a monospace file card titled playbooks/site.yml listing the five import_playbook lines in order. Beside the arrows, two small notes: --tags db runs only the tagged tier, and -l app limits the run to one host group, both in monospace. Box 3 and Box 4 are linked by a note the app must answer before the proxy sends it traffic. Orange highlight on the arrow from Box 2 to Box 3, labelled the database must exist before the app tries to connect. Green takeaway bar at the bottom: The database must exist before the app tries to connect, and the app must answer before the proxy sends it traffic.",
+  "anchor": "## 2. Project layout",
+  "alt": "The site playbook imports baseline, database, app, web and verify in that order so each tier is ready before the next one depends on it.",
+  "cap": "The site playbook imports five tier playbooks in dependency order, so each tier is ready before the next one depends on it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "a09-release-switch",
+  "title": "Release directories and the atomic current symlink switch",
+  "spec": "Left panel: a folder tree drawn with folder icons, titled /opt/fleetapp/. Inside it: releases/ containing two sub-folders, v1.4.1 with the note previous, which holds src/ and venv/, and v1.4.2 with the note new; shared/ with the note persistent data and config shared across releases; and a link icon labelled current pointing to releases/v1.4.2. Middle: a large orthogonal arrow from the new release folder to the current link, labelled switch current in one step. Right panel: a rollback box with the monospace command ansible-playbook playbooks/app.yml -e app_version=v1.4.1, and an arrow from it back to current labelled point it back to releases/v1.4.1, then restart the service. Orange highlight on the current link, the one pointer the service reads. A small note: app_keep_releases: 5 keeps the newest five releases; the release pruning command is shown in monospace. Green takeaway bar at the bottom: Rolling back is the same flip in reverse, and the old folder is still there to go back to.",
+  "anchor": "## 5. The application play: release directories and an atomic switch",
+  "alt": "Each release lives in its own folder, a current symlink points at the live one, and rollback repoints it to the previous folder.",
+  "cap": "Each release gets its own folder and a current symlink points at the live one, so switching or rolling back is a single pointer change."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "a09-verify-paths",
+  "title": "Verification checks the path a user takes, then each app node",
+  "spec": "A left-to-right flow of three numbered steps with green number circles 1, 2 and 3. A left column box titled verify.yml, drawn with a shield or check icon. Step 1 box: HTTPS endpoint answers, with the monospace line https://{{ nginx_server_name }}/readyz and the note the path a user takes, delegated to localhost. An arrow from Step 1 leads into a small nginx box, drawn with a router icon, labelled nginx, which leads to a Step 2 box. Step 2 box: Version served matches what we deployed, with the monospace check app_version and the note the assert compares the served version with the pinned one. Arrow from Step 2 to a Step 3 box: Every app node reports ready (direct), with the monospace line http://{{ hostvars[item]['ansible_host'] }}:{{ app_port }}/readyz, drawn as a fan-out to two app node boxes labelled app01 and app02, each with the note asked directly. Orange highlight on the Step 3 fan-out, labelled a single broken host is found even when nginx would have routed around it. Green takeaway bar at the bottom: Modules verify state, while uri and assert verify behaviour, and you need both.",
+  "anchor": "## 7. Verification play",
+  "alt": "The verification play calls the HTTPS readiness URL through nginx, checks the served version, then asks each app node directly.",
+  "cap": "The verification play tests the public HTTPS path first, checks the served version, and then asks each app node directly."
+ }
+]

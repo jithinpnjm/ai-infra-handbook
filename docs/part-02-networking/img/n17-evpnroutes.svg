@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>The five EVPN route types</title>
+  <desc>Visual infographic explaining the five EVPN route types, their purposes, and multihoming grouping.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The five EVPN route types</text>
+
+  
+  <g>
+    
+    <rect x="50" y="110" width="1200" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="110" cy="190" r="28" fill="#207448" />
+    <text x="110" y="199" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="185" cy="162" r="6" fill="#207448" />
+      <line x1="185" y1="168" x2="168" y2="186" />
+      <line x1="185" y1="168" x2="202" y2="186" />
+      <circle cx="168" cy="188" r="5" />
+      <circle cx="202" cy="188" r="5" />
+      <line x1="168" y1="193" x2="185" y2="210" />
+      <line x1="202" y1="193" x2="185" y2="210" />
+      <circle cx="185" cy="214" r="5" fill="#207448" />
+    </g>
+
+    
+    <text x="240" y="172" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Ethernet Auto-Discovery</text>
+    <text x="240" y="224" font-family="sans-serif" font-size="24" fill="#303a36">multihoming, fast convergence and aliasing</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="50" y="300" width="1200" height="160" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+    
+    
+    <circle cx="110" cy="380" r="28" fill="#db8129" />
+    <text x="110" y="389" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="160" y="356" width="50" height="36" rx="6" />
+      <line x1="170" y1="392" x2="170" y2="400" />
+      <line x1="178" y1="392" x2="178" y2="400" />
+      <line x1="186" y1="392" x2="186" y2="400" />
+      <line x1="194" y1="392" x2="194" y2="400" />
+      <polyline points="168,374 176,374 180,366 186,382 190,374 198,374" />
+    </g>
+
+    
+    <text x="240" y="352" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">MAC/IP Advertisement</text>
+    
+    
+    <rect x="635" y="322" width="370" height="42" rx="21" fill="#db8129" />
+    <text x="820" y="351" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">heart of host reachability</text>
+
+    
+    <text x="240" y="398" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">host MAC (and optionally IP) with VNI and VTEP next hop,</tspan>
+      <tspan x="240" dy="32">MAC mobility</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="50" y="490" width="1200" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="110" cy="570" r="28" fill="#207448" />
+    <text x="110" y="579" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="166" cy="570" r="7" fill="#207448" />
+      <line x1="173" y1="570" x2="198" y2="550" />
+      <line x1="173" y1="570" x2="198" y2="570" />
+      <line x1="173" y1="570" x2="198" y2="590" />
+      <circle cx="204" cy="550" r="5" />
+      <circle cx="204" cy="570" r="5" />
+      <circle cx="204" cy="590" r="5" />
+    </g>
+
+    
+    <text x="240" y="552" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Inclusive Multicast Ethernet Tag</text>
+    <text x="240" y="604" font-family="sans-serif" font-size="24" fill="#303a36">builds the BUM replication list, 'I am in VNI x'</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="50" y="680" width="1200" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="110" cy="760" r="28" fill="#207448" />
+    <text x="110" y="769" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="160" y1="782" x2="210" y2="782" stroke-width="6" />
+      <rect x="162" y="740" width="18" height="16" rx="2" fill="#207448" />
+      <rect x="190" y="740" width="18" height="16" rx="2" />
+      <line x1="171" y1="756" x2="171" y2="779" />
+      <line x1="199" y1="756" x2="199" y2="779" />
+    </g>
+
+    
+    <text x="240" y="742" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Ethernet Segment</text>
+    <text x="240" y="794" font-family="sans-serif" font-size="24" fill="#303a36">designated-forwarder election among multihomed leaves</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="50" y="870" width="1200" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="110" cy="950" r="28" fill="#207448" />
+    <text x="110" y="959" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">5</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="185" cy="950" r="24" />
+      <line x1="168" y1="950" x2="202" y2="950" />
+      <line x1="185" y1="933" x2="185" y2="967" />
+      <polyline points="174,942 168,950 174,958" />
+      <polyline points="196,942 202,950 196,958" />
+    </g>
+
+    
+    <text x="240" y="932" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">IP Prefix</text>
+    <text x="240" y="984" font-family="sans-serif" font-size="24" fill="#303a36">prefixes into IP-VRFs</text>
+  </g>
+
+  
+  <g>
+    
+    <path d="M 1255 190 H 1295 A 15 15 0 0 1 1310 205 V 460 A 15 15 0 0 0 1325 475 A 15 15 0 0 0 1310 490 V 745 A 15 15 0 0 1 1295 760 H 1255" 
+          stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none" />
+    
+    
+    <rect x="1345" y="445" width="205" height="60" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1447" y="484" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">multihoming</text>
+  </g>
+</svg>

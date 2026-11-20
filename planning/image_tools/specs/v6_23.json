@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "23",
+  "name": "h23-statelite-flow",
+  "title": "A statelite xCAT build: six steps from media to booted nodes",
+  "spec": "Six numbered step cards arranged in two rows of three, read left to right then down to the second row, with a thin arrow linking each card to the next, and number circles 1 to 6 in time order. Row one. Step 1, title: Import media and define nodes. Monospace label: copycds, then mkdef node[1-100]. Icon: a disk or a DVD. Step 2, title: Assign addresses with a regex rule. Monospace label: chtab on hosts.ip. Icon: a network address. Step 3, title: Build the statelite image. Monospace label: genimage, then chdef compute provmethod. Icon: a box or a package. Row two. Step 4, title: Set writable RAM paths. Plain label: the NFS root is read-only, so each litefile path gets writable tmpfs space in RAM. Note at least 15 entries. Icon: a sticky note. Step 5, title: Inject keys and accounts, then pack. Monospace label: add_ssh, add_passwd, liteimg. Icon: a key. Step 6, title: Generate services and boot. Monospace label: makehosts, makedhcp, makedns, nodeset, rpower node[1-100] boot. Icon: a power symbol. Orange highlight on step 5, labelled the single most important item: skip it and the nodes boot without keys and accounts. Under the figure, one grey line: the steps follow the xCAT recipe and each step depends on the one before. No takeaway bar.",
+  "anchor": "#### Loading and Controlling: Step-by-step `statelite` provisioning workflow (Chapters 26 and 28)",
+  "alt": "A six-step xCAT statelite build: import media, define nodes, build the image, set writable paths, inject keys, then boot.",
+  "cap": "A statelite xCAT build runs from media import and node definitions through the image and its writable paths to the boot, in that order."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "23",
+  "name": "h23-bcm-image-flow",
+  "title": "BCM image flow: the head copy reaches every node, and each node returns to the known good state",
+  "spec": "A top-down flow. At the top, a wide box labelled Head node, with a stack icon, containing two smaller items: software image at /cm/images/<image>, and CMDaemon. Arrow down labelled updateprovisioners, with the note pushes head-copy changes to provisioning nodes. Middle row, a box labelled Provisioning nodes, which serve images to other nodes. Arrow down labelled serves the category's software image. Bottom row, two side-by-side boxes for node types, each linked from the provisioning nodes with one arrow. Left bottom box titled Diskless node: the image is copied into memory, tmpfs, shown as a small box inside a RAM icon. Right bottom box titled Diskful node: local disk contents are checked against the image, and any differing content is corrected, shown as a disk icon with a check mark. A side note box, not connected by an arrow, in the top-right: Category groups nodes and sets their software image. Another side note in the top-left above the head node box: Node installer, an early boot phase that identifies the node, partitions the disks and syncs the image, then hands over to the OS. Orange highlight on the diskful box's correction step, labelled the single most important item: drift is corrected at boot. Green takeaway bar at the bottom, one sentence from the source: a node that reboots checks itself against the image, so differences are corrected. Keep all arrows orthogonal and avoid crossings.",
+  "anchor": "## 5. NVIDIA Base Command Manager (BCM)",
+  "alt": "BCM head node pushes the software image to provisioning nodes, which serve diskless and diskful compute nodes.",
+  "cap": "In BCM, the head node's software image reaches each compute node through provisioning nodes, and each node is corrected to match it at boot."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "23",
+  "name": "h23-warewulf-overlays",
+  "title": "Warewulf overlays: templates rendered per node, applied at two times",
+  "spec": "A left-to-right layout. Left box: Container image, a chroot tree drawn as a stack of layers, labelled image unchanged by overlays. Left-middle box: Overlay, a folder of files and .ww templates. Middle box: nodes.conf, labelled per-node attributes, drawn as a table card with rows of node name, IP and image. An arrow from nodes.conf into the overlay box, labelled renders each template for each node. A right-middle box: Rendered files for one node, with the sub-label one file per template. Arrow from the overlay to rendered files. Arrows from the image and the rendered files converge into a single node box at the far right, labelled node filesystem. Two timing lanes beneath the node box: a lane labelled System overlays with the text applied once during early boot, on initramfs, and a lane labelled Runtime overlays with the text fetched and applied periodically while the node runs. A dashed callout from the node box: wwctl overlay blame <node> shows which overlay contributed each file. Orange highlight on the template rendering arrow, labelled the single most important item: the node record becomes the source for each file. No takeaway bar.",
+  "anchor": "### Architecture",
+  "alt": "Warewulf overlays are .ww templates rendered from nodes.conf for each node and applied at early boot and at runtime.",
+  "cap": "Warewulf renders overlay templates from each node's record, and applies the result over the image at boot and while the node runs."
+ }
+]

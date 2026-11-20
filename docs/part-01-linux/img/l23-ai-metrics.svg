@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>AI efficiency metrics</title>
+  <desc>Visual reference table of key AI training and inference efficiency metrics and definitions</desc>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  
+  <text x="70" y="72" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">AI efficiency metrics</text>
+
+  
+  <rect x="70" y="105" width="450" height="60" rx="10" fill="#207448"/>
+  <text x="100" y="146" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Metric</text>
+
+  <rect x="540" y="105" width="990" height="60" rx="10" fill="#207448"/>
+  <text x="570" y="146" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Definition</text>
+
+  
+  <rect x="70" y="180" width="450" height="88" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(90, 196)">
+    <path d="M 6 44 A 26 26 0 1 1 50 44" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="36" x2="42" y2="18" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="36" r="4" fill="#db8129"/>
+  </g>
+  <text x="165" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Throughput</text>
+
+  <rect x="540" y="180" width="990" height="88" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  <text x="570" y="234" font-family="sans-serif" font-size="24" fill="#303a36">tokens/s or samples/s per GPU and aggregate</text>
+
+  
+  <rect x="70" y="280" width="450" height="114" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(90, 310)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="28,14 28,28 40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 28 4 A 24 24 0 0 1 52 28" fill="none" stroke="#207448" stroke-width="6"/>
+  </g>
+  <text x="165" y="348" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Step time breakdown</text>
+
+  <rect x="540" y="280" width="990" height="114" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="570" y="328" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="570" dy="0">data wait, H2D, forward, backward,</tspan>
+    <tspan x="570" dy="36">communication, optimizer, checkpoint</tspan>
+  </text>
+
+  
+  <rect x="70" y="406" width="450" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(90, 422)">
+    <rect x="10" y="10" width="36" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="18" y1="2" x2="18" y2="10" stroke="#207448" stroke-width="4"/>
+    <line x1="38" y1="2" x2="38" y2="10" stroke="#207448" stroke-width="4"/>
+    <line x1="18" y1="46" x2="18" y2="54" stroke="#207448" stroke-width="4"/>
+    <line x1="38" y1="46" x2="38" y2="54" stroke="#207448" stroke-width="4"/>
+    <line x1="2" y1="18" x2="10" y2="18" stroke="#207448" stroke-width="4"/>
+    <line x1="2" y1="38" x2="10" y2="38" stroke="#207448" stroke-width="4"/>
+    <line x1="46" y1="18" x2="54" y2="18" stroke="#207448" stroke-width="4"/>
+    <line x1="46" y1="38" x2="54" y2="38" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="28" r="6" fill="#207448"/>
+  </g>
+  <text x="165" y="461" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MFU</text>
+
+  <rect x="540" y="406" width="990" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="570" y="460" font-family="sans-serif" font-size="24" fill="#303a36">achieved model FLOPs/s divided by peak hardware FLOPs/s</text>
+
+  
+  <rect x="70" y="506" width="450" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(90, 522)">
+    <circle cx="12" cy="42" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="44" cy="14" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="18" y1="37" x2="22" y2="33" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="23" x2="38" y2="19" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="165" y="561" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Scaling efficiency</text>
+
+  <rect x="540" y="506" width="990" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="570" y="560" font-family="sans-serif" font-size="24" fill="#303a36">throughput(N) divided by N times throughput(1)</text>
+
+  
+  <rect x="70" y="606" width="450" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(90, 622)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="18,29 25,36 39,20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="165" y="661" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Goodput</text>
+
+  <rect x="540" y="606" width="990" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="570" y="660" font-family="sans-serif" font-size="24" fill="#303a36">fraction of time making forward training progress</text>
+
+  
+  <rect x="70" y="706" width="450" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(90, 722)">
+    <rect x="4" y="14" width="12" height="28" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="40" y="14" width="12" height="28" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="28" r="6" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="3 3"/>
+  </g>
+  <text x="165" y="761" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">GPU idle gaps (bubbles)</text>
+
+  <rect x="540" y="706" width="990" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="570" y="760" font-family="sans-serif" font-size="24" fill="#303a36">time between kernels or collectives</text>
+
+  
+  <rect x="70" y="806" width="450" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(90, 822)">
+    <rect x="6" y="8" width="44" height="32" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="20,40 14,48 30,40" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <polyline points="18,24 24,18 30,24 38,16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="165" y="861" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Inference</text>
+
+  <rect x="540" y="806" width="990" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="570" y="860" font-family="sans-serif" font-size="24" fill="#303a36">TTFT, TPOT, p99, tokens/s/GPU</text>
+
+  
+  <rect x="70" y="924" width="1460" height="76" rx="14" fill="#207448"/>
+  <text x="800" y="971" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">start with throughput and the step-time breakdown before you tune anything else.</text>
+</svg>

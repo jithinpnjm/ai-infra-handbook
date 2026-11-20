@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170">
+  <title>VM networking modes</title>
+  <desc>Visual comparison table of virtual machine networking modes, their implementation mechanisms, and primary use cases.</desc>
+
+  
+  <rect width="1600" height="1170" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">VM networking modes</text>
+
+  
+  <g id="table-header">
+    <rect x="50" y="95" width="1500" height="52" rx="8" fill="#207448"/>
+    <text x="265" y="132" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Mode</text>
+    <text x="780" y="132" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">How</text>
+    <text x="1315" y="132" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Use</text>
+  </g>
+
+  
+  <g id="row-slirp">
+    <rect x="50" y="163" width="1500" height="126" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="480" y1="163" x2="480" y2="289" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+    <line x1="1080" y1="163" x2="1080" y2="289" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+
+    
+    <g transform="translate(72, 198)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="18" r="12"/>
+      <path d="M8 50 c0-12 9-18 20-18 s20 6 20 18"/>
+    </g>
+
+    <text x="148" y="236" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">User-mode (SLIRP)</text>
+    <text x="510" y="234" font-family="sans-serif" font-size="24" fill="#303a36">QEMU NAT with port forwarding</text>
+    <text x="1110" y="234" font-family="sans-serif" font-size="24" fill="#303a36">quick tests, slow</text>
+  </g>
+
+  
+  <g id="row-libvirt-nat">
+    <rect x="50" y="305" width="1500" height="126" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="480" y1="305" x2="480" y2="431" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+    <line x1="1080" y1="305" x2="1080" y2="431" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+
+    
+    <g transform="translate(72, 340)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="12" width="44" height="32" rx="6"/>
+      <circle cx="18" cy="28" r="3" fill="#207448"/>
+      <circle cx="28" cy="28" r="3" fill="#207448"/>
+      <circle cx="38" cy="28" r="3" fill="#207448"/>
+      <line x1="16" y1="12" x2="16" y2="4"/>
+      <line x1="40" y1="12" x2="40" y2="4"/>
+    </g>
+
+    <text x="148" y="357" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="148" dy="0">libvirt NAT network</tspan>
+      <tspan x="148" dy="36">(default)</tspan>
+    </text>
+    <text x="510" y="355" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="510" dy="0">virbr0 bridge, dnsmasq, NAT,</tspan>
+      <tspan x="510" dy="34" font-family="monospace">guests on 192.168.122.0/24</tspan>
+    </text>
+    <text x="1110" y="355" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1110" dy="0">dev and test,</tspan>
+      <tspan x="1110" dy="34">not reachable from outside</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-linux-bridge">
+    <rect x="50" y="447" width="1500" height="126" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="480" y1="447" x2="480" y2="573" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+    <line x1="1080" y1="447" x2="1080" y2="573" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+
+    
+    <g transform="translate(72, 482)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="20" rx="4"/>
+      <line x1="14" y1="26" x2="14" y2="48"/>
+      <line x1="42" y1="26" x2="42" y2="48"/>
+      <line x1="6" y1="48" x2="50" y2="48"/>
+    </g>
+
+    <text x="148" y="520" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Linux bridge</text>
+    <text x="510" y="497" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="510" dy="0">tap devices on host bridge br0</tspan>
+      <tspan x="510" dy="34">enslaving the NIC</tspan>
+    </text>
+    <text x="1110" y="520" font-family="sans-serif" font-size="24" fill="#303a36">servers that must be reachable</text>
+  </g>
+
+  
+  <g id="row-macvtap">
+    <rect x="50" y="589" width="1500" height="126" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="480" y1="589" x2="480" y2="715" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+    <line x1="1080" y1="589" x2="1080" y2="715" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+
+    
+    <g transform="translate(72, 624)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="6"/>
+      <path d="M18 20 l10 8 l-10 8"/>
+      <line x1="32" y1="36" x2="40" y2="36"/>
+    </g>
+
+    <text x="148" y="662" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">macvtap</text>
+    <text x="510" y="660" font-family="sans-serif" font-size="24" fill="#303a36">virtual interface on a physical NIC</text>
+    <text x="1110" y="660" font-family="sans-serif" font-size="24" fill="#303a36">simple</text>
+  </g>
+
+  
+  <g id="row-ovs">
+    <rect x="50" y="731" width="1500" height="126" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <line x1="480" y1="731" x2="480" y2="857" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+    <line x1="1080" y1="731" x2="1080" y2="857" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+
+    
+    <g transform="translate(72, 766)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="44" height="36" rx="6"/>
+      <line x1="14" y1="22" x2="42" y2="22"/>
+      <line x1="14" y1="34" x2="42" y2="34"/>
+      <circle cx="20" cy="22" r="3" fill="#207448"/>
+      <circle cx="36" cy="34" r="3" fill="#207448"/>
+    </g>
+
+    <text x="148" y="804" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Open vSwitch</text>
+    <text x="510" y="802" font-family="sans-serif" font-size="24" fill="#303a36">programmable switch</text>
+    <text x="1110" y="802" font-family="sans-serif" font-size="24" fill="#303a36">cloud-scale SDN</text>
+  </g>
+
+  
+  <g id="row-sriov">
+    <rect x="50" y="873" width="1500" height="126" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    <line x1="480" y1="873" x2="480" y2="999" stroke="#db8129" stroke-opacity="0.35" stroke-width="2"/>
+    <line x1="1080" y1="873" x2="1080" y2="999" stroke="#db8129" stroke-opacity="0.35" stroke-width="2"/>
+
+    
+    <g transform="translate(72, 908)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="28" rx="4"/>
+      <line x1="14" y1="36" x2="14" y2="48"/>
+      <line x1="24" y1="36" x2="24" y2="44"/>
+      <line x1="34" y1="36" x2="34" y2="48"/>
+      <line x1="44" y1="36" x2="44" y2="44"/>
+      <circle cx="28" cy="22" r="4" fill="#db8129"/>
+    </g>
+
+    <text x="148" y="925" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="148" dy="0">SR-IOV VF or</tspan>
+      <tspan x="148" dy="36">NIC passthrough</tspan>
+    </text>
+    <text x="510" y="944" font-family="sans-serif" font-size="24" fill="#303a36">VF or PF into the guest</text>
+    <text x="1110" y="923" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1110" dy="0">near-native throughput</tspan>
+      <tspan x="1110" dy="34">including RDMA</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="1035" width="1500" height="85" rx="12" fill="#207448"/>
+
+    
+    <g transform="translate(80, 1050)" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="26" r="12"/>
+      <line x1="32" y1="26" x2="48" y2="26"/>
+      <line x1="42" y1="26" x2="42" y2="34"/>
+      <line x1="48" y1="26" x2="48" y2="34"/>
+    </g>
+
+    <text x="150" y="1088" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">decide the network mode first, it determines who can reach the guest.</text>
+  </g>
+</svg>

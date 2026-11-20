@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "a03-push-pull",
+  "title": "Push sends work out, pull lets each machine ask for it",
+  "spec": "Two side-by-side panels, each with a green heading. Left panel, heading 'Push (Ansible)': one box 'Control node' at the top with a gear icon, and a row of three target boxes 'web1', 'web2', 'web3' beneath it (or GPU nodes). Solid arrows from the control node down to each target, labelled 'SSH: sends the task'. Note under the panel: 'No agent is installed on the targets. The control node decides when work happens.' Right panel, heading 'Pull (agent-based)': a server box 'Central server' at the top, and the same three target boxes beneath, each with a small 'agent' badge. Arrows point UP from each target to the server, labelled 'asks for work'. Note under the panel: 'Each machine decides when to ask. An agent runs on every machine.' Orange outline on the Push panel's control node, as the Ansible approach used in this chapter. Small caption at the bottom: 'Puppet, Chef and Salt pull. Ansible pushes.'",
+  "anchor": "## 1. What Ansible is",
+  "alt": "Ansible pushes tasks from the control node over SSH with no agent, while pull tools have each machine ask a server for work.",
+  "cap": "Ansible pushes tasks from a control node over SSH without an agent, while pull tools have each machine ask a server for work."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "a03-split-tools",
+  "title": "Terraform builds the machines, Ansible configures them",
+  "spec": "A left-to-right chain of three boxes with arrows between them, each with a numbered circle. Box 1, cloud icon, title 'Terraform', text 'Builds a new pool of GPU VMs with the right network and disks'. Box 2, power-button icon, title 'cloud-init', text 'Handles the first boot, with a user and an SSH key'. Box 3, gear icon, title 'Ansible', text 'Installs the driver, sets the kernel parameters and starts the monitoring agent'. Arrow 1 to 2 labelled 'machines exist'. Arrow 2 to 3 labelled 'machines can be reached over SSH'. Above the chain, a grey banner: 'Each tool does one part of the job.' Under box 3, an orange note: 'Ansible decides what runs on the machines.' No other items.",
+  "anchor": "### Where it fits",
+  "alt": "Terraform creates the GPU VMs, cloud-init handles the first boot, and Ansible configures the driver, kernel and monitoring agent.",
+  "cap": "Terraform creates the machines, cloud-init handles the first boot, and Ansible decides what runs on them."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "a03-linear-wait",
+  "title": "The linear strategy makes every host wait at each task",
+  "spec": "A timeline with three horizontal lanes labelled 'gpu01', 'gpu02' and 'gpu03', and time running left to right. Each lane has task boxes in order. Task 1 box in all three lanes, green, labelled 'ok'. Task 2 box: in gpu01 and gpu03 green 'ok'; in gpu02 a red-outline box 'failed'. A dashed vertical barrier after task 2 across all lanes, labelled 'linear: wait until every host finishes this task'. After the barrier, gpu02's lane shows a grey box 'dropped from later tasks' with a number '1'-step number circle on the barrier. Task 3 boxes appear only in gpu01 and gpu03, green, labelled 'ok'. The recap label at the far right of gpu02 lane: 'failed in the recap'. Orange highlight on the 'failed' box in gpu02. Caption under the timeline: 'One slow or failing host can hold up the whole run.'",
+  "anchor": "## 2. How Ansible executes a task",
+  "alt": "Under the linear strategy, a host that fails one task is dropped from later tasks while the other hosts wait at the next barrier.",
+  "cap": "Under the linear strategy, a host that fails is dropped from later tasks while the other hosts wait at each barrier."
+ }
+]

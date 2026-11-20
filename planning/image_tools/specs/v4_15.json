@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "15",
+  "name": "a15-module-idempotency-loop",
+  "title": "A module reads, compares, changes only if needed, and reports changed",
+  "spec": "A horizontal row of four step boxes left to right, joined by arrows in time order, with number circles 1 to 4. Each box has a simple outline icon above its title. Box 1, title Read the current state, icon gauge. Box 2, title compute the difference, icon balance scale or two overlapping squares. Box 3, title change only if needed, icon gear, drawn with the orange outline because it is the step that must not run when nothing differs. Box 4, title report changed accurately, icon clock or checkmark in a window. Under box 3 a short note line: runs only when the state differs. Below the row, a green panel titled Thermostat with a thermostat icon and three short lines of secondary text: reads the room temperature; compares it with the setting; turns the heater on only when the room is too cold. Draw a thin dotted line from each thermostat line up to the matching step box, so the analogy maps onto the four steps. No takeaway bar.",
+  "anchor": "## 2. Writing a module",
+  "alt": "A module reads the current state, computes the difference, changes only if needed, and reports changed accurately.",
+  "cap": "An idempotent module reads the current state first and changes the system only when the state differs from the request."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "15",
+  "name": "a15-module-test-ladder",
+  "title": "Five steps to test a module, from simplest to most complete",
+  "spec": "A staircase of five steps rising from bottom left to top right, with equal step width. Each step is a box with a number circle (1 to 5) at its left, a simple outline icon and a title, plus one line of secondary text for what that step catches. Step 1, title Run the module directly, icon terminal window, text: catches crashes in the logic before Ansible is involved. Step 2, title Run it ad hoc, icon gear, text: checks that Ansible passes the arguments and reads the result. Step 3, title Write unit tests with pytest, icon checklist, text: runs without a GPU, using a mock. Step 4, title Run ansible-test sanity, icon shield, text: checks documentation and style. Step 5, title Run the module twice, icon two looping arrows, drawn with the orange outline, text: the second run reports changed as false. Arrows: a single thin arrow runs up the staircase from step 1 to step 5, labelled simplest to most complete. Monospace text for the commands in the titles where they appear. No takeaway bar.",
+  "anchor": "### Testing a module",
+  "alt": "Five testing steps climb from running the module directly to running it twice and confirming changed is false.",
+  "cap": "Each of the five test steps catches a different kind of mistake, so you should not skip ahead."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "15",
+  "name": "a15-eda-remediation-flow",
+  "title": "An EDA rule hands remediation to a job template",
+  "spec": "A left-to-right flow of four boxes joined by three solid arrows, numbered 1 to 4 in time order. Box 1, icon bell, title Alertmanager source on port 5000, sub-label alert GPUXid79 firing. Box 2, icon rulebook or scroll, title rule Cordon on Xid 79, sub-label condition matches. Box 3, icon window, title run_job_template drain-and-diagnose-node, monospace sub-label target_node from the alert. Box 4, icon server, title managed node. Arrow 1 to 2 labelled condition matches. Arrow 2 to 3 labelled run_job_template. Arrow 3 to 4 labelled runs the job on the node. Box 3 is drawn with the orange outline. Under box 3, a dashed callout box containing three short lines: credentials, Execution Environment, approval rules, with a note that the rule itself does not do the work. Keep the callout outside the arrow path so no arrow crosses it. No takeaway bar.",
+  "anchor": "### Event-Driven Ansible (EDA)",
+  "alt": "An EDA rule matches a firing GPUXid79 alert and launches the drain-and-diagnose-node job template on the node.",
+  "cap": "An EDA rule hands the remediation to a job template, which holds the credentials and approval rules rather than the rule itself."
+ }
+]

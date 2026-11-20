@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Certificates and public-key infrastructure</title>
+  <desc>Visual explanation of public-key infrastructure showing trust store, root certificate authority, intermediate certificate authority, leaf certificate, and server private key.</desc>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Certificates and public-key infrastructure</text>
+
+  
+
+  
+  <line x1="700" y1="245" x2="882" y2="245" stroke="#207448" stroke-width="3.5" stroke-dasharray="10,6"/>
+  <polygon points="882,236 900,245 882,254" fill="#207448"/>
+  <text x="800" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">contains</text>
+
+   Intermediate CA (signs) -->
+  <line x1="1210" y1="350" x2="1210" y2="432" stroke="#207448" stroke-width="3.5"/>
+  <polygon points="1201,432 1210,450 1219,432" fill="#207448"/>
+  <text x="1232" y="408" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">signs</text>
+
+   Leaf certificate (signs) -->
+  <line x1="1210" y1="660" x2="1210" y2="742" stroke="#207448" stroke-width="3.5"/>
+  <polygon points="1201,742 1210,760 1219,742" fill="#207448"/>
+  <text x="1232" y="718" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">signs</text>
+
+  
+  <line x1="700" y1="865" x2="900" y2="865" stroke="#207448" stroke-width="3.5"/>
+
+  
+  <g id="node-trust-store">
+    <rect x="80" y="140" width="620" height="210" rx="14" ry="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 136,166 L 158,174 L 158,198 C 158,212 147,222 136,226 C 125,222 114,212 114,198 L 114,174 Z" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M 126,196 L 133,203 L 147,189" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    
+    <text x="180" y="202" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Client trust store:</text>
+    <text x="108" y="262" font-family="sans-serif" font-size="24" fill="#303a36">OS / browser /</text>
+    <text x="108" y="304" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">/etc/ssl/certs</tspan>
+      <tspan font-family="sans-serif"> / container image</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-root-ca">
+    <rect x="900" y="140" width="620" height="210" rx="14" ry="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="932" y="166" width="38" height="46" rx="4" ry="4" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="940" y1="176" x2="962" y2="176" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="940" y1="184" x2="956" y2="184" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="962" cy="204" r="10" stroke="#207448" stroke-width="3" fill="#e8f1ea"/>
+    <path d="M 957,212 L 954,222 L 962,217 L 970,222 L 967,212" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    
+    <text x="1000" y="202" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Root CA</text>
+    <text x="928" y="262" font-family="sans-serif" font-size="24" fill="#303a36">(self-signed, in the trust store;</text>
+    <text x="928" y="304" font-family="sans-serif" font-size="24" fill="#303a36">offline)</text>
+  </g>
+
+  
+  <g id="node-intermediate-ca">
+    <rect x="900" y="450" width="620" height="210" rx="14" ry="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="942" y="474" width="34" height="42" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <rect x="928" y="484" width="34" height="42" rx="4" stroke="#207448" stroke-width="4" fill="#e8f1ea"/>
+    <line x1="935" y1="494" x2="955" y2="494" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="935" y1="502" x2="949" y2="502" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="952" cy="514" r="4" stroke="#207448" stroke-width="2.5" fill="none"/>
+    
+    <text x="1000" y="512" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Intermediate CA</text>
+    <text x="928" y="576" font-family="sans-serif" font-size="24" fill="#303a36">(online, issues leaf certs)</text>
+  </g>
+
+  
+  <g id="node-server-private-key">
+    <rect x="80" y="760" width="620" height="210" rx="14" ry="14" fill="#fffaf5" stroke="#db8129" stroke-width="3.5"/>
+    
+    <circle cx="126" cy="800" r="14" stroke="#db8129" stroke-width="4" fill="none"/>
+    <circle cx="126" cy="800" r="5" stroke="#db8129" stroke-width="3" fill="none"/>
+    <line x1="136" y1="810" x2="160" y2="834" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="151" y1="825" x2="157" y2="819" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="157" y1="831" x2="163" y2="825" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="184" y="822" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Server private key</text>
+    <text x="108" y="886" font-family="sans-serif" font-size="24" fill="#303a36">(never leaves the server/HSM)</text>
+  </g>
+
+  
+  <g id="node-leaf-cert">
+    <rect x="900" y="760" width="620" height="210" rx="14" ry="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="930" y="784" width="42" height="52" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="938" y1="796" x2="964" y2="796" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="938" y1="804" x2="958" y2="804" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="938" y1="812" x2="952" y2="812" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="958" cy="823" r="7" stroke="#207448" stroke-width="2.5" fill="#e8f1ea"/>
+    
+    <text x="1000" y="822" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Leaf certificate:</text>
+    <text x="928" y="880" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">CN/SAN </tspan>
+      <tspan font-family="monospace">api.example.com</tspan>
+      <tspan font-family="sans-serif">,</tspan>
+    </text>
+    <text x="928" y="922" font-family="sans-serif" font-size="24" fill="#303a36">public key, validity</text>
+  </g>
+</svg>

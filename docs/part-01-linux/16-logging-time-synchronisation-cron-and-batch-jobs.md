@@ -141,6 +141,10 @@ UDP can drop messages, and it has no authentication or encryption. For anything 
 
 ### Journal versus syslog
 
+![Eight severity levels from emerg at 0 to debug at 7.](./img/l16-severity.svg)
+
+*Figure 1.16.1. A smaller severity number means a more urgent message.*
+
 The journal and syslog store messages in very different ways, so compare them before you pick a design. The table sets them side by side.
 
 | | journald | rsyslog / syslog-ng |
@@ -195,6 +199,10 @@ Before you go hunting, pick the unit and the time window first, then add the sev
 
 ## 3. Rotating logs
 
+![Renaming a log does not move a process that holds it open, so the daemon must reopen it.](./img/l16-rotation-inode.svg)
+
+*Figure 1.16.2. A process keeps writing to the same inode after rename, so rotation needs a reopen or copytruncate.*
+
 Text logs grow without limit, so something has to trim them, and that job falls to log rotation. Rotation splits a log into a series of chunks. On a typical host you might find `auth.log` as the current file, with `auth.log.1`, `.2.gz` and `.3.gz` behind it. Deleting the oldest lines from the front of a file is impractical, so rotation renames files instead. It deletes the oldest file, shifts each number up, renames the current file to `.1`, and creates a fresh empty file.
 
 Distributions run `logrotate` once a day, either from a cron job or from a systemd timer called `logrotate.timer`. The global settings live in `/etc/logrotate.conf`, and each package adds its own file in `/etc/logrotate.d/`. Here is an example for Slurm logs:
@@ -240,7 +248,7 @@ Once you run a fleet, the logs on each node stop being the archive and become a 
 
 ![Central logging for clusters](./img/ch16-d1-luna.svg)
 
-*Figure 1.16.1. Central logging for clusters.*
+*Figure 1.16.3. Central logging for clusters.*
 
 Reliability comes first, because a log you never received cannot be investigated. Agents should buffer to disk and retry, because syslog over UDP is not acceptable for audit-relevant logs. Back-pressure must never stall the application that writes the log.
 
@@ -288,7 +296,7 @@ Three clocks matter to a programmer. `CLOCK_REALTIME` is wall time, and it jumps
 
 ![Linux clocks and time synchronisation](./img/ch16-d2-luna.svg)
 
-*Figure 1.16.2. Hardware RTC, kernel clocks, and NTP slewing versus stepping.*
+*Figure 1.16.4. Hardware RTC, kernel clocks, and NTP slewing versus stepping.*
 
 ### Time zones
 
@@ -402,7 +410,7 @@ You inherit a node that runs a dozen unattended jobs, and the only documentation
 
 ![Reading a cron line](./img/ch16-fig1-cron.jpg)
 
-*Figure 1.16.3. The five time fields of a cron line and what the example means.*
+*Figure 1.16.5. The five time fields of a cron line and what the example means.*
 
 ```text
 # minute  hour  day-of-month  month  day-of-week   command
@@ -438,6 +446,10 @@ Work around this in your crontab and in your scripts. Use absolute paths for com
 Output goes to the owner by mail if a mailer exists. Otherwise it is discarded. Redirect it yourself with `>> /var/log/job.log 2>&1`, or send it to the journal with `| logger -t myjob`. Set `MAILTO=` to send mail elsewhere or to turn it off. Cron logs each job's start and failure to syslog or the journal, so `journalctl -u cron`, `grep CRON /var/log/syslog`, or `/var/log/cron` on RHEL will show you what happened.
 
 ### Making cron jobs safe
+
+![A cron line wrapped with flock, timeout and logger guards.](./img/l16-safe-cron.svg)
+
+*Figure 1.16.6. Guards against overlap, hangs and lost output make a cron job safe on a fleet.*
 
 This file shows a safe pattern you can copy. It sets the shell and the path, turns off mail, and wraps the job in two guards.
 

@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>PFC: lossless links by backpressure</title>
+  <desc>Sequence diagram illustrating Priority Flow Control (PFC) pause and resume backpressure mechanism between a receiving switch and sender switch.</desc>
+
+  <defs>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12, 3 7" fill="#db8129" />
+    </marker>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12, 3 7" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">PFC: lossless links by backpressure</text>
+
+  
+  <line x1="380" y1="240" x2="380" y2="1020" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" opacity="0.45" />
+  <line x1="1220" y1="240" x2="1220" y2="1020" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" opacity="0.45" />
+
+  
+  <rect x="80" y="125" width="600" height="115" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="110" y="160" width="56" height="46" rx="6" />
+    <circle cx="124" cy="183" r="4" fill="#207448" />
+    <circle cx="138" cy="183" r="4" fill="#207448" />
+    <circle cx="152" cy="183" r="4" fill="#207448" />
+    <path d="M120 170 h36 M156 170 l-6 -4 M156 170 l-6 4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="415" y="193" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Sender / upstream switch</text>
+
+  
+  <rect x="920" y="125" width="600" height="115" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="945" y="160" width="56" height="46" rx="6" />
+    <circle cx="959" cy="183" r="4" fill="#207448" />
+    <circle cx="973" cy="183" r="4" fill="#207448" />
+    <circle cx="987" cy="183" r="4" fill="#207448" />
+    <path d="M960 170 h36 M960 170 l6 -4 M960 170 l6 4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1260" y="174" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1260" dy="0">Receiving switch</tspan>
+    <tspan x="1260" dy="38">(ingress buffer)</tspan>
+  </text>
+
+  
+  <circle cx="845" cy="330" r="24" fill="#207448" />
+  <text x="845" y="338" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <rect x="880" y="275" width="640" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="905" y="307" width="56" height="46" rx="6" />
+    <line x1="919" y1="312" x2="919" y2="348" />
+    <line x1="933" y1="312" x2="933" y2="348" />
+    <line x1="947" y1="312" x2="947" y2="348" />
+    <path d="M905 322 h56" stroke-dasharray="3 3" />
+    <polygon points="933,316 926,328 940,328" fill="#207448" />
+  </g>
+  <text x="1225" y="322" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1225" dy="0">queue for priority 3</tspan>
+    <tspan x="1225" dy="34">fills past XOFF threshold</tspan>
+  </text>
+
+  
+  <line x1="1220" y1="460" x2="384" y2="460" stroke="#db8129" stroke-width="4.5" marker-end="url(#arrow-orange)" />
+  <circle cx="455" cy="431" r="24" fill="#db8129" />
+  <text x="455" y="439" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <rect x="490" y="405" width="620" height="52" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <text x="800" y="440" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">PFC pause (priority 3, time=65535 quanta)</text>
+
+  
+  <circle cx="755" cy="570" r="24" fill="#207448" />
+  <text x="755" y="578" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <rect x="80" y="515" width="640" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="133" cy="570" r="26" />
+    <rect x="122" y="557" width="7" height="26" rx="2" fill="#207448" />
+    <rect x="137" y="557" width="7" height="26" rx="2" fill="#207448" />
+  </g>
+  <text x="415" y="562" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="415" dy="0">stops sending priority 3,</tspan>
+    <tspan x="415" dy="34">other priorities continue</tspan>
+  </text>
+
+  
+  <circle cx="845" cy="710" r="24" fill="#207448" />
+  <text x="845" y="718" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <rect x="880" y="655" width="640" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="905" y="687" width="56" height="46" rx="6" />
+    <line x1="919" y1="692" x2="919" y2="728" />
+    <line x1="933" y1="692" x2="933" y2="728" />
+    <path d="M933 708 v20 M926 720 l7 8 l7 -8" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1225" y="702" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1225" dy="0">buffer drains</tspan>
+    <tspan x="1225" dy="34">below XON threshold</tspan>
+  </text>
+
+  
+  <line x1="1220" y1="840" x2="384" y2="840" stroke="#207448" stroke-width="4.5" marker-end="url(#arrow-green)" />
+  <circle cx="475" cy="811" r="24" fill="#207448" />
+  <text x="475" y="819" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  <rect x="510" y="785" width="580" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <text x="800" y="820" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">PFC pause with time=0 (resume)</text>
+
+  
+  <circle cx="755" cy="950" r="24" fill="#207448" />
+  <text x="755" y="958" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+  <rect x="80" y="895" width="640" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="133" cy="950" r="26" />
+    <polygon points="126,936 146,950 126,964" fill="#207448" />
+  </g>
+  <text x="415" y="960" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">resumes sending priority 3</text>
+</svg>

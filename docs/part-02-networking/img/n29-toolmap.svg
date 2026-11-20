@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which tool owns which job</title>
+  <desc>Visual infographic mapping network automation jobs to their respective tools and operational categories.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="14" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="14" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which tool owns which job</text>
+
+  
+  <g id="job-1">
+    <rect x="70" y="130" width="460" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(90, 177)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="8" width="52" height="34" rx="6" />
+      <circle cx="14" cy="25" r="3" fill="#207448" />
+      <circle cx="28" cy="25" r="3" fill="#207448" />
+      <circle cx="42" cy="25" r="3" fill="#207448" />
+      <line x1="14" y1="34" x2="14" y2="40" />
+      <line x1="28" y1="34" x2="28" y2="40" />
+      <line x1="42" y1="34" x2="42" y2="40" />
+    </g>
+    <text x="168" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="168" dy="0">Push config to</tspan>
+      <tspan x="168" dy="38">existing devices</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="300" y1="280" x2="300" y2="330" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)" />
+
+  <g id="tools-1">
+    <rect x="70" y="330" width="460" height="230" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="96" y="386" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">Ansible (agentless, YAML</tspan>
+      <tspan x="96" dy="34">playbooks, idempotent</tspan>
+      <tspan x="96" dy="34">modules), Nornir (Python</tspan>
+      <tspan x="96" dy="34">framework, threaded runner)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="job-2">
+    <rect x="570" y="130" width="460" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(590, 177)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 36 C 6 36 2 32 2 26 C 2 21 6 17 11 16 C 13 8 21 3 30 3 C 39 3 46 8 49 16 C 53 17 56 21 56 26 C 56 32 52 36 46 36 Z" />
+      <line x1="29" y1="21" x2="29" y2="31" />
+      <line x1="24" y1="26" x2="34" y2="26" />
+    </g>
+    <text x="668" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="668" dy="0">Provision cloud</tspan>
+      <tspan x="668" dy="36">and controller</tspan>
+      <tspan x="668" dy="36">resources</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="280" x2="800" y2="330" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  <g id="tools-2">
+    <rect x="570" y="330" width="460" height="230" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="596" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="596" dy="0">Terraform / OpenTofu</tspan>
+      <tspan x="596" dy="36">(declarative, state,</tspan>
+      <tspan x="596" dy="36">plan/apply)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="job-3">
+    <rect x="1070" y="130" width="460" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1090, 177)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="12" r="6" />
+      <circle cx="16" cy="44" r="6" />
+      <circle cx="44" cy="24" r="6" />
+      <line x1="16" y1="18" x2="16" y2="38" />
+      <path d="M 16 34 C 28 34 34 30 40 27" />
+    </g>
+    <text x="1168" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1168" dy="0">Review, test,</tspan>
+      <tspan x="1168" dy="38">deploy</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1300" y1="280" x2="1300" y2="330" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  <g id="tools-3">
+    <rect x="1070" y="330" width="460" height="230" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="1096" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1096" dy="0">Git + CI</tspan>
+      <tspan x="1096" dy="36">(GitHub Actions,</tspan>
+      <tspan x="1096" dy="36">GitLab CI, Jenkins)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="job-4">
+    <rect x="70" y="610" width="460" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(90, 657)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 C 48 30 38 44 28 50 C 18 44 8 30 8 14 Z" />
+      <path d="M 20 28 L 26 34 L 38 20" />
+    </g>
+    <text x="168" y="675" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="168" dy="0">Verify before</tspan>
+      <tspan x="168" dy="38">and after</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="300" y1="760" x2="300" y2="810" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  <g id="tools-4">
+    <rect x="70" y="810" width="460" height="230" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="96" y="905" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">Batfish, pyATS/Genie,</tspan>
+      <tspan x="96" dy="36">Suzieq</tspan>
+    </text>
+  </g>
+
+  
+  <g id="job-5">
+    <rect x="570" y="610" width="460" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(590, 657)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="38" rx="4" />
+      <line x1="16" y1="18" x2="38" y2="18" />
+      <line x1="16" y1="28" x2="32" y2="28" />
+      <circle cx="42" cy="38" r="10" fill="#e8f1ea" />
+      <path d="M 39 38 L 41 40 L 46 35" />
+    </g>
+    <text x="668" y="675" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="668" dy="0">Chain tickets</tspan>
+      <tspan x="668" dy="38">to automation</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="760" x2="800" y2="810" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  <g id="tools-5">
+    <rect x="570" y="810" width="460" height="230" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="596" y="890" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="596" dy="0">StackStorm, n8n,</tspan>
+      <tspan x="596" dy="36">Temporal, Airflow,</tspan>
+      <tspan x="596" dy="36">ServiceNow Flow</tspan>
+    </text>
+  </g>
+
+  
+  <g id="job-6">
+    <rect x="1070" y="610" width="460" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1090, 657)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="12" r="7" />
+      <circle cx="12" cy="42" r="6" />
+      <circle cx="44" cy="42" r="6" />
+      <line x1="28" y1="19" x2="15" y2="37" />
+      <line x1="28" y1="19" x2="41" y2="37" />
+      <line x1="18" y1="42" x2="38" y2="42" stroke-dasharray="3 3" />
+    </g>
+    <text x="1168" y="675" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1168" dy="0">Intent-based</tspan>
+      <tspan x="1168" dy="38">fabric operation</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1300" y1="760" x2="1300" y2="810" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  <g id="tools-6">
+    <rect x="1070" y="810" width="460" height="230" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="1096" y="872" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1096" dy="0">vendor controllers</tspan>
+      <tspan x="1096" dy="34">(Arista CloudVision,</tspan>
+      <tspan x="1096" dy="34">NVIDIA UFM/NetQ,</tspan>
+      <tspan x="1096" dy="34">Nokia EDA)</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="70" y="1075" width="1460" height="75" rx="16" fill="#207448" />
+  <text x="800" y="1122" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Write the job in one sentence; that points to one row</text>
+</svg>

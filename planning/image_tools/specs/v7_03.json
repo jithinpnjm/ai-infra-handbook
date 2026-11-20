@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "03",
+  "name": "r03-patch-outcomes",
+  "title": "Three possible outcomes of one PATCH with mixed properties",
+  "spec": "A top-down decision tree. At the top, a wide box labelled PATCH with three properties, with the body shown in monospace below its title: AssetTag set to A2 (writable), SerialNumber set to X (read-only), Bogus set to 1 (not a property). Two arrows fan out from it, labelled with the two outcomes. Left branch, green: a box labelled at least one property succeeds, with the sub-line AssetTag becomes A2; below it a box with status 200 OK and the sub-line updated resource plus an @Message.ExtendedInfo array listing PropertyNotWritable for SerialNumber and PropertyUnknown for Bogus. Orange note on this box: the status says success, but two properties were ignored. Right branch, grey: a box labelled every property is read-only, unknown or invalid, or the body is an empty object, with a box below it showing status 400 Bad Request, sub-line error body with PropertyNotWritable or NoOperation, and a final small label nothing on the BMC changed. A third small box at the bottom of the tree, separated and grey, labelled other failures, with two short labels: 412 Precondition Failed (If-Match stale, re-read and retry) and 428 Precondition Required (If-Match missing). No number circles needed, and no takeaway bar.",
+  "anchor": "### 4.2 The `PATCH` partial-success rule (DSP0266 §7.6)",
+  "alt": "A PATCH with one valid property returns 200 with ignored properties listed, while a PATCH with no valid property returns 400 and changes nothing.",
+  "cap": "A PATCH can return 200 OK even when some of its properties were ignored, so the body must be read along with the status code."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "03",
+  "name": "r03-patch-vs-post",
+  "title": "PATCH changes a value, POST makes something or does something",
+  "spec": "A side-by-side comparison with two tall columns and a shared top row of two example request boxes. Left column, green panel titled PATCH: change a value that already exists. Under it, three example lines as small boxes: AssetTag or HostName; BootSourceOverrideTarget (one-time boot override); /Bios/Settings (stage BIOS attributes). A note: only the properties you name change, and anything left out stays untouched. Right column, grey panel titled POST: make something new or make something happen. Under it, two sub-boxes. Sub-box one: Create a member, example new subscription under /redfish/v1/EventService/Subscriptions. Sub-box two: Run an action, example POST to /redfish/v1/Systems/System_0/Actions/ComputerSystem.Reset with body ResetType GracefulRestart. A note under sub-box two: POST is not idempotent, so sending a reset twice may reboot the server twice. Above the two columns, a row of two example request labels: PATCH example, a property change written as a value; POST example, a verb written as an action. Orange highlight on the note under the POST action sub-box. A thin wording at the very bottom, with no arrowhead, reads Never PATCH PowerState Off to shut a server down. Number circles are not needed. Green takeaway bar at the bottom: Use POST when you want an operation to happen, and PATCH when you want a value to change.",
+  "anchor": "### 1.1 `PATCH` (properties) versus `POST` (actions and creation)",
+  "alt": "PATCH changes an existing property, while POST creates a member or invokes an action such as a reset.",
+  "cap": "Use PATCH to change a property value and POST to create a member or to run an action such as a reset."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "03",
+  "name": "r03-array-patch",
+  "title": "Positional PATCH on an array: keep, remove, replace",
+  "spec": "A horizontal worked example in three rows. Top row, grey: the starting array shown as three boxes in a row with index labels 0, 1, 2 above them, containing 10.0.0.1, 10.0.0.2, 10.0.0.3. Middle row, a request box in monospace reading PATCH NTPServers with the body [ {}, null, 10.0.0.9 ], with three thin arrows dropping from its three entries to the three position boxes above, labelled with step numbers 1, 2 and 3 in number circles r=24. Under the position boxes, three annotation boxes, one per position, each with its rule: position 0, empty object, keep the element unchanged (10.0.0.1 kept); position 1, null, remove the element and shift the rest left (10.0.0.2 removed); position 2, new value, replace the element at that position (10.0.0.3 becomes 10.0.0.9). Bottom row, green panel: the result array of two boxes, 10.0.0.1 and 10.0.0.9, with an arrow from the annotation row into it. Orange note on the bottom panel: the order matters, so a mistake in one position changes the whole list. A thin label beside the request box: a new value at a position beyond the end appends it. No takeaway bar.",
+  "anchor": "### 1.2 `PATCH` on array properties and `@Redfish.OperationApplyTime` (DSP0266 §7.7 & §7.12)",
+  "alt": "A PATCH to an array keeps the first entry, removes the second with null, and replaces the third with a new address.",
+  "cap": "A PATCH to a list works by position, so an empty object keeps an entry, null removes it, and a value replaces it."
+ }
+]

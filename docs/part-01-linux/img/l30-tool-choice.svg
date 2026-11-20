@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140">
+  <title>Which tool for which job</title>
+  <desc>Infographic table mapping file sharing and copying needs to recommended tools.</desc>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which tool for which job</text>
+
+  
+  <rect x="405" y="125" width="640" height="55" rx="8" fill="#207448"/>
+  <text x="435" y="163" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">You want to</text>
+
+  <rect x="1065" y="125" width="475" height="55" rx="8" fill="#207448"/>
+  <text x="1095" y="163" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Use</text>
+
+  
+  <rect x="60" y="195" width="310" height="206" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="201" y="222" width="26" height="32" rx="3"/>
+    <path d="M 211 222 V 214 H 233 V 242 H 227"/>
+  </g>
+  <text x="215" y="296" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="215" dy="0">temporary and</tspan>
+    <tspan x="215" dy="38">regular copying</tspan>
+  </text>
+  <path d="M 370 243 H 390 V 298 H 405 M 390 298 V 353 H 370" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <rect x="405" y="195" width="640" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="430" y="237" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="430" dy="0">temporarily make files available</tspan>
+    <tspan x="430" dy="34">on a trusted network</tspan>
+  </text>
+
+  <rect x="1065" y="195" width="475" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <rect x="1085" y="225" width="46" height="36" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+  <path d="M 1093 238 L 1099 243 L 1093 248 M 1105 248 H 1119" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1148" y="251" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">python3 -m http.server</text>
+
+  
+  <rect x="405" y="305" width="640" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="430" y="347" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="430" dy="0">copy files across machines,</tspan>
+    <tspan x="430" dy="34">repeatedly</tspan>
+  </text>
+
+  <rect x="1065" y="305" width="475" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <path d="M 1108 333 A 18 18 0 1 1 1090 353" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 1104 328 L 1111 333 L 1105 340" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 1108 373 A 18 18 0 1 1 1126 353" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 1112 378 L 1105 373 L 1111 366" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1148" y="361" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">rsync over SSH</text>
+
+  
+  <rect x="60" y="415" width="310" height="206" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <rect x="199" y="440" width="14" height="14" rx="2"/>
+    <rect x="217" y="440" width="14" height="14" rx="2"/>
+    <rect x="199" y="458" width="14" height="14" rx="2"/>
+    <rect x="217" y="458" width="14" height="14" rx="2"/>
+  </g>
+  <text x="215" y="525" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Windows sharing</text>
+  <path d="M 370 463 H 390 V 518 H 405 M 390 518 V 573 H 370" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <rect x="405" y="415" width="640" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="430" y="471" font-family="sans-serif" font-size="25" fill="#303a36">share regularly with Windows</text>
+
+  <rect x="1065" y="415" width="475" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <path d="M 1088 474 H 1102 L 1106 468 H 1124 A 3 3 0 0 1 1127 471 V 488 A 3 3 0 0 1 1124 491 H 1088 A 3 3 0 0 1 1085 488 V 474 Z" stroke="#207448" stroke-width="3" fill="none"/>
+  <line x1="1098" y1="483" x2="1114" y2="483" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+  <text x="1148" y="471" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Samba (SMB)</text>
+
+  
+  <rect x="405" y="525" width="640" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="430" y="581" font-family="sans-serif" font-size="25" fill="#303a36">mount Windows shares on Linux</text>
+
+  <rect x="1065" y="525" width="475" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <rect x="1086" y="557" width="42" height="28" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+  <line x1="1094" y1="575" x2="1104" y2="575" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="1118" cy="571" r="3" fill="#207448"/>
+  <text x="1148" y="581" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">mount -t cifs</text>
+
+  
+  <rect x="60" y="635" width="310" height="316" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 200 710 H 230 A 11 11 0 0 0 233 689 A 17 17 0 0 0 203 684 A 13 13 0 0 0 191 704 A 11 11 0 0 0 200 710 Z" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round"/>
+  <text x="215" y="760" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="215" dy="0">Linux-to-Linux</tspan>
+    <tspan x="215" dy="38">and cloud</tspan>
+  </text>
+  <path d="M 370 683 H 390 V 793 H 405 M 390 793 V 903 H 370" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <rect x="405" y="635" width="640" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="430" y="677" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="430" dy="0">small-scale sharing between Linux</tspan>
+    <tspan x="430" dy="34">machines, minimal setup</tspan>
+  </text>
+
+  <rect x="1065" y="635" width="475" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <rect x="1093" y="674" width="24" height="20" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+  <path d="M 1098 674 V 666 A 7 7 0 0 1 1112 666 V 674" stroke="#207448" stroke-width="3" fill="none"/>
+  <circle cx="1105" cy="684" r="2.5" fill="#207448"/>
+  <text x="1148" y="691" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">SSHFS</text>
+
+  
+  <rect x="405" y="745" width="640" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="430" y="787" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="430" dy="0">larger filesystems from a</tspan>
+    <tspan x="430" dy="34">NAS or server</tspan>
+  </text>
+
+  <rect x="1065" y="745" width="475" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <ellipse cx="1108" cy="775" rx="19" ry="6" stroke="#207448" stroke-width="3" fill="none"/>
+  <path d="M 1089 775 V 788 C 1089 792 1097 795 1108 795 C 1119 795 1127 792 1127 788 V 775" stroke="#207448" stroke-width="3" fill="none"/>
+  <path d="M 1089 788 V 801 C 1089 805 1097 808 1108 808 C 1119 808 1127 805 1127 801 V 788" stroke="#207448" stroke-width="3" fill="none"/>
+  <text x="1148" y="801" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">NFS</text>
+
+  
+  <rect x="405" y="855" width="640" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="430" y="911" font-family="sans-serif" font-size="25" fill="#303a36">cloud storage</text>
+
+  <rect x="1065" y="855" width="475" height="96" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <path d="M 1092 918 H 1122 A 11 11 0 0 0 1125 897 A 17 17 0 0 0 1095 892 A 13 13 0 0 0 1083 912 A 11 11 0 0 0 1092 918 Z" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round"/>
+  <text x="1148" y="897" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1148" dy="0">FUSE-based filesystems</tspan>
+    <tspan x="1148" dy="32">or the provider's CLI</tspan>
+  </text>
+
+  
+  <rect x="60" y="985" width="1480" height="90" rx="12" fill="#fef7f0" stroke="#db8129" stroke-width="2.5"/>
+  <circle cx="108" cy="1030" r="20" stroke="#db8129" stroke-width="3" fill="none"/>
+  <line x1="108" y1="1020" x2="108" y2="1031" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="108" cy="1039" r="2" fill="#db8129"/>
+  <text x="150" y="1039" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">large-scale sharing between many locations and users is not covered by this table.</text>
+</svg>

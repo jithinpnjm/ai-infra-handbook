@@ -1,0 +1,942 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "h01-pipeline-conveyor",
+  "title": "Pipelining: 104 cycles instead of 500",
+  "spec": "Two horizontal conveyor lanes, one above the other, each lane labelled with its case. Top lane title: Without a pipeline. Bottom lane title: With a pipeline. Each lane carries the same five stage boxes in order, left to right: load from memory, normalize mantissas, add, correct, write result back. Each stage box is numbered 1 to 5 in time order. Each element is drawn as a small green block that moves through the stages. Top lane: element 1 passes through all five stages, then element 2 starts only after element 1 has left the last stage, and so on. Label under the top lane: 500 cycles for N = 100 elements with S = 5. Bottom lane: element 1 passes through the five stages, and each later element enters one stage-slot behind the element ahead of it, so the blocks form a staircase. Orange highlight on the first element's full pass, labelled pipeline fill time (S cycles). Label under the bottom lane: 104 cycles = K x (N - 1) + S, with K = 1, N = 100, S = 5. Formula line above the lanes: Total cycles = K * (N - 1) + S. Plain note at the bottom: pipelining is a different idea from vectorization. No takeaway bar.",
+  "anchor": "### Parallelism, pipelining, and the nine levels of cluster parallelism",
+  "alt": "Five-stage pipeline: 100 elements take 104 cycles pipelined versus 500 without a pipeline.",
+  "cap": "A pipeline overlaps the stages of successive elements, so 100 elements finish in 104 cycles instead of 500."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "h01-rpeak-rmax",
+  "title": "Rpeak is the ceiling, Rmax is what you measure",
+  "spec": "One long horizontal bar on the top labelled Rpeak, the theoretical ceiling: every arithmetic unit finishes an instruction on every clock cycle, with no waiting. Under its left part, a shorter green bar aligned to the left edge, labelled Rmax, the best sustained rate measured on HPL. The empty space between the end of the Rmax bar and the end of the Rpeak bar is orange, labelled the cost of real work: waiting for memory, waiting for the network, waiting for the slowest node, and heat or power limits. Below the bars, a formula line: HPL efficiency = Rmax / Rpeak. Worked example beneath it: 38 PFLOP/s Rmax against 48.0 PFLOP/s Rpeak gives 79% HPL efficiency. Three small question marks or check boxes beside the Rmax label, one per question: which precision, dense or sparse, peak or measured. Green takeaway bar at the bottom with the sentence: Never accept a FLOPS figure without its precision, its sparsity mode, and its efficiency ratio.",
+  "anchor": "## 2. Measuring speed: FLOPS, precision, peak and achieved",
+  "alt": "Rpeak is the theoretical ceiling, Rmax is the measured HPL rate, and the gap is the cost of real work.",
+  "cap": "Rmax is the measured HPL rate, always below the theoretical Rpeak ceiling, and the gap is the cost of waiting."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "h01-power-on-order",
+  "title": "Power-on order: storage first, compute in staggered groups",
+  "spec": "Top row: three hazard cards side by side, each with a warning icon. Card 1 title: Electrical inrush and boot-storm service overload. Card 2 title: Multi-rack disk array spin-up torque and controller sequencing. Card 3 title: Hot-corridor thermal baking. Each card has a one-line label. Card 1: power draw jumps by dozens or thousands of kilowatts; all nodes request data at once. Card 2: shelves and disks start in order; controllers expect a fixed order. Card 3: servers blow hot air into a shared hot aisle; neighbours with fans off get no cooling. Below the cards, a left-to-right flow of three numbered steps with arrows between them (time order, number circles 1, 2, 3). Step 1 box: Storage first, disk shelves and then controllers in the order the controllers expect. Step 2 box: Compute nodes in staggered groups, so electrical load and request load stay manageable. Step 3 box: Racks spaced out in time, so running servers keep the hot corridor under control. Each step box has an icon of a power switch or a gear. Orange arrow from the hazard cards down to the step boxes, labelled write the startup order down and keep it on a card at the rack. No takeaway bar.",
+  "anchor": "### Power-on surge hazards and startup sequencing",
+  "alt": "Three hazards of powering on a cluster lead to a startup order: storage first, then compute nodes in staggered groups.",
+  "cap": "Powering on storage first and then compute nodes in staggered groups keeps the electrical load, the request load, and the heat within limits."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "02",
+  "name": "h02-job-lifecycle",
+  "title": "One job from login to epilogue",
+  "spec": "A left-to-right row of five numbered step cards connected by arrows, number circles 1 to 5 in time order. Each card has a title, a short label, and an icon. Step 1, title: Connect to the access node. Label: ssh client, password, private key or 2FA; edit, compile, copy data. Icon: a laptop with a terminal window. Step 2, title: Queue the job. Label: sbatch names the executable, arguments, MPI processes, nodes, memory, GPUs and licenses; batch output goes to files. Icon: a stacked queue of documents. Step 3, title: Schedule and run the prologue. Label: the scheduler selects compute nodes and runs prolog to prepare the node for the job. Icon: a clock or a gear. Step 4, title: Start and run. Label: mpirun or mpiexec starts on the allocated node list and launches the job across the compute nodes. Icon: a chip with arrows. Step 5, title: Terminate and run the epilogue. Label: epilog makes sure every user process has exited and temp directories are cleaned, then the job is marked completed and usage is logged. Icon: a broom or a checkmark. Under step 3 and step 5, small orange tags: a missed epilogue lets leftover processes slow the next user's job. Under the row, a thin grey bar labelled hidden from the user: account management, quotas, monitoring, time sync, backups. No takeaway bar.",
+  "anchor": "### A typical user session and the job life cycle",
+  "alt": "A batch job passes through five steps: login, queueing, prologue, parallel run, and epilogue.",
+  "cap": "A batch job moves from login to queueing, the prologue, the parallel run, and finally the epilogue that cleans up the nodes."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "02",
+  "name": "h02-torus-ring",
+  "title": "The loop that shortens the trip",
+  "spec": "Top panel: a ring of eight green node circles labelled 0 to 7 drawn around a closed circle, so the ring has no end. Two arrows leave node 0, one clockwise and one counter-clockwise, meeting at node 4, the far point. The arc from 0 to 4 is labelled 4 hops, one way round the loop. Orange highlight on node 4 labelled farthest point. A short caption beside the ring: the message can travel either way around the ring. Bottom panel: the formula line Max hops (3D torus) = [N/2] + [M/2] + [K/2], then the worked line for an 8 x 8 x 8 torus: 4 + 4 + 4 = 12 hops. Each of the three terms has a small label: X dimension, Y dimension, Z dimension. Plain note under the formula: the loop is what makes the formula work; without it the far side of each dimension would be a full length away. No takeaway bar.",
+  "anchor": "### Fabric topologies and the 3D torus hop formula",
+  "alt": "In a ring, the farthest node is half the ring away, so an 8 by 8 by 8 3D torus has at most 12 hops.",
+  "cap": "The wrap-around loop in a torus halves the longest trip in each dimension, so an 8 by 8 by 8 torus has at most 12 hops."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "02",
+  "name": "h02-numa-pinning",
+  "title": "Two sockets, local RAM, and pinning a process to its room",
+  "spec": "Two side-by-side socket panels, labelled Socket 0 and Socket 1, each a large light green panel containing a cores block and a local RAM block beneath it. A slower interconnect bar between the two sockets labelled inter-socket link, drawn in a lighter dashed line. Left scene titled Unpinned: a process icon drawn as a dashed arrow that hops between Socket 0 and Socket 1 over time, with a label core migration every few milliseconds, and its memory stays on Socket 0, so a cross-socket arrow labelled slow remote memory read crosses the interconnect. Right scene titled Pinned with numactl or MPI binding: the same process as a solid green block sitting on Socket 0 cores, with its memory on Socket 0 RAM, and no arrow crosses the interconnect. Orange highlight on the cross-socket arrow in the unpinned scene. Small caption beside the pinned scene: processor affinity and memory affinity, bound per parallel process. Analogy strip at the bottom: a craftsman who stays in one room keeps the work flowing, while one who walks to the other room every few minutes spends the day carrying tools. No takeaway bar.",
+  "anchor": "### SMP vs NUMA, process/memory pinning, HyperThreading trick, and RDMA vs RoCE",
+  "alt": "Unpinned processes migrate across sockets and read remote memory slowly, while pinned processes keep their cores and memory on one socket.",
+  "cap": "Pinning a process to its local NUMA cores and memory avoids the slow trips across sockets that an unpinned process keeps making."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "03",
+  "name": "h03-amdahl-floor",
+  "title": "The serial slice does not shrink",
+  "spec": "Two horizontal bars stacked vertically, each bar representing the total work T(1) as one full-width block. Top bar labelled 1 processor. Bottom bar labelled 1,024 processors. Each bar has a thin orange block on its left labelled serial, 1 - p = 0.01, which is the same width in both bars. The rest of each bar is a green parallel block labelled parallel, p = 0.99. In the top bar the green block is one solid piece. In the bottom bar the green block is split into 1,024 thin vertical slices, drawn as a fine comb, labelled split across 1,024 processors. Beside the bottom bar, a short label: the orange serial slice still takes the same time on every processor count. A result line under the bars: Amdahl speedup on 1,024 processors: 91.2x, under 9% efficiency. Second line: ceiling as n grows: 1 / (1 - p) = 100x. Plain caption beneath, in one sentence: a fixed serial section sets a floor under the whole run. Orange used only on the serial slice. No takeaway bar.",
+  "anchor": "## 2. Amdahl's law (strong scaling)",
+  "alt": "A fixed serial slice stays the same width however many processors split the parallel part, so speedup tops out at 100x for p = 0.99.",
+  "cap": "The serial share of a program stays the same size however many processors split the parallel part, which caps the speedup."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "03",
+  "name": "h03-halo-exchange",
+  "title": "Halo exchange between neighbouring blocks",
+  "spec": "A 2 by 2 grid of four large green square blocks, each labelled rank 0, rank 1, rank 2, rank 3 in its corner. Inside each block, a lighter interior area labelled interior compute, d cubed points, and a thin border strip around the edge labelled halo, ghost cells. Between neighbouring blocks, double-headed arrows across the shared edges, each labelled halo swap. Each block has arrows to its neighbours on each side, so each rank swaps with its neighbours. A callout at one block: in 3D each rank has 6 neighbours across 6 faces, surface 6 times d squared. Second panel to the right, titled shrinking blocks under strong scaling: the same grid cut into many smaller squares, the interior areas become smaller and the halo border becomes a larger share of each block. Orange highlight on the halo border in the second panel, labelled communication share grows. Formula line at the bottom: communication-to-computation ratio = 6 / d. Plain caption: as the blocks shrink, the edges become a bigger share of each block. No takeaway bar.",
+  "anchor": "## 9. Load balance, domain decomposition, and halo exchanges",
+  "alt": "Each rank swaps halo cells with its neighbours, and shrinking blocks make the halo a larger share of each block.",
+  "cap": "Each rank swaps border cells with its neighbours, and as blocks shrink the border becomes a bigger share of the work."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "03",
+  "name": "h03-ring-allreduce",
+  "title": "Ring AllReduce: a relay in two phases",
+  "spec": "A large circle of eight green GPU nodes labelled GPU 0 to GPU 7, arranged around a ring, with arrows around the ring in one direction, each arrow passing one chunk to the next GPU. Two labelled phases shown as two concentric arcs or two stacked rows beside the ring. Phase 1, title: ReduceScatter. Each GPU sends and receives one chunk at a time, and the sums build up on each GPU. Phase 2, title: AllGather. The completed chunks circulate around the ring until every GPU holds the full answer. A side label on the ring: the tensor is split into n chunks, with n = 8. Number circles 1 and 2 on the two phases in time order. Step count label: 2 * (n - 1) steps in total. Formula box at the bottom: Volume per rank = 2 * ((n - 1) / n) * M. Worked line: a 1 GB tensor on 8 GPUs, each GPU sends 1.75 GB. Orange highlight on the latency term 2 * (n - 1), labelled the latency term grows linearly with rank count. Plain caption: ring AllReduce is a relay where each GPU passes a piece to the next until everyone holds the full answer. No takeaway bar.",
+  "anchor": "## 8. A communication cost model (Hockney model and ring AllReduce)",
+  "alt": "Ring AllReduce on eight GPUs runs ReduceScatter then AllGather, passing chunks around the ring for 2 times (n - 1) steps.",
+  "cap": "Ring AllReduce passes chunks around a ring in two phases, so each GPU sends about twice the tensor size in total."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "04",
+  "name": "h04-eager-deadlock",
+  "title": "Two blocking sends wait for each other",
+  "spec": "Two vertical swimlanes side by side, each headed by its participant name: Rank 0 on the left, Rank 1 on the right. Time runs top to bottom, with a small time axis label on the far left. Top band, a light grey box across both lanes labelled small message, eager protocol: MPI_Send returns at once, a note with a green check. Below it a divider labelled larger message, rendezvous protocol. In the lower band: Rank 0 lane shows a box MPI_Send to Rank 1, with a horizontal arrow from the Rank 0 lane to the Rank 1 lane labelled header, then a box beneath reading blocked until Rank 1 calls MPI_Recv. Rank 1 lane shows a box MPI_Send to Rank 0, with a horizontal arrow from the Rank 1 lane to the Rank 0 lane labelled header, then a box beneath reading blocked until Rank 0 calls MPI_Recv. Both arrows are horizontal and drawn on separate rows so they do not cross. Neither lane has a MPI_Recv box below its blocked send. Orange highlight on the two blocked boxes, labelled deadlock, forever. Caption at the bottom of the lanes: the code did not change, the data got bigger, and that was enough to expose the bug. Above the rendezvous band, a short note: a tiny 1 KB array uses eager. Green takeaway bar at the bottom: Never write symmetric blocking MPI_Send pairs that rely on eager buffering.",
+  "anchor": "## 2. Point-to-point communication: eager vs. rendezvous and deadlocks",
+  "alt": "Two ranks that both call blocking MPI_Send wait for each other forever once the message exceeds the eager limit.",
+  "cap": "Two ranks that both send before receiving work with small messages, but deadlock once the messages pass the rendezvous threshold."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "04",
+  "name": "h04-debug-ladder",
+  "title": "The four-layer ladder for a hung job",
+  "spec": "A vertical ladder of four wide rungs, stacked top to bottom, numbered 1 to 4 in number circles in time order, with arrows running down the left side between rungs labelled walk in order, start at the top. Each rung is a light green panel with an icon on the left and a title, plus one line of checks. Rung 1 title: Layer 1, process launch, exit codes, and OS limits. Icon: a gear or a terminal. Checks line: count processes on every node, check ulimit -l is unlimited, decode exit codes 137, 139 and 143. Rung 2 title: Layer 2, rendezvous. Icon: a handshake or two nodes linked. Checks line: confirm processes found each other's IP addresses, set NCCL_SOCKET_IFNAME, check the firewall allows the ephemeral port range. Rung 3 title: Layer 3, NCCL initialization. Icon: a chip with a network line. Checks line: NCCL_DEBUG=INFO, confirm the log says Using network IB, NCCL_RUN_DIAGNOSTICS=1, ncclras on port 28028 for a MISMATCH row. Rung 4 title: Layer 4, physical fabric health. Icon: a cable or switch. Checks line: ibstat, sudo sminfo, perfquery -x for rising error counters, RoCE PFC pause counters. Orange highlight on rung 1, labelled a missing memlock limit looks like a switch problem, so start at the top. Right-side note beside rung 4: the bottom layers are the most expensive to check. Green takeaway bar at the bottom: Walk the 4-layer debugging ladder in strict order.",
+  "anchor": "## 10. Troubleshooting guide: the 4-layer ladder and real init hangs",
+  "alt": "Hung multi-node jobs are diagnosed in four layers: process launch and limits, rendezvous, NCCL initialization, and physical fabric health.",
+  "cap": "A hung multi-node job is diagnosed by checking four layers in order, from process launch and limits down to the physical fabric."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "05",
+  "name": "h05-race-lost-update",
+  "title": "Two threads, one counter, one lost update",
+  "spec": "A horizontal timeline from left to right, time flowing rightward, with two thread lanes stacked vertically: Thread A on top, Thread B below. A shared memory cell drawn as a box in the middle of the figure, labelled shared counter, holding the old value. Step 1 (number circle 1): both threads read the shared counter at the same moment; two arrows leave the counter box, one into Thread A and one into Thread B, each labelled read the old value. Step 2 (number circle 2): each thread adds 1 in its own register, shown as a small box inside each lane labelled add one in register. Step 3 (number circle 3): both threads write back to the shared counter; two arrows point into the counter box, one from each lane, labelled write back. The second write overwrites the first. Orange highlight on the second write, labelled overwrites the other thread's update, one increment lost. Side panel at the right, titled no ordering between the accesses: a data race means two or more threads access one location at the same time, at least one writes, and nothing orders the accesses. Caption under the panel: the result depends on timing, and timing changes from run to run. Green takeaway bar at the bottom: use reduction(+ : var) for accumulations. Arrows must not cross each other; the two read arrows and the two write arrows are drawn on separate rows.",
+  "anchor": "### Data races and why \"it passed my test\" proves nothing",
+  "alt": "Two threads read the same counter, both add one, and the second write overwrites the first, losing an update.",
+  "cap": "Two threads that read and write one shared counter at the same time can overwrite each other's update, so an increment is lost."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "05",
+  "name": "h05-false-sharing",
+  "title": "Different elements, same cache line",
+  "spec": "Top panel titled Packed array: one wide grey memory strip labelled cache line, 64 bytes on x86 and Arm. Inside the strip, eight adjacent slots labelled packed[0] through packed[7], each one double, eight in a row. Below the strip, eight small green thread icons labelled Thread 0 to Thread 7, each with a short arrow pointing up to its own slot. Above the strip, a curved orange arrow loops labelled invalidates the line for the other cores, with the label the line bounces between cores. Caption: no data race, every thread writes a different index, yet the line bounces. Bottom panel titled Padded array: the same eight threads, but each slot sits in its own cache line, drawn as eight separate strips, each labelled padded slot with PAD = 16 doubles, 128 bytes per slot. A green check mark on this panel labelled no shared line, no bouncing. Plain note at the bottom: Apple M-series lines are 128 bytes, which holds 16 doubles. No takeaway bar.",
+  "anchor": "### False sharing across CPU cache lines",
+  "alt": "Adjacent per-thread array elements share one cache line, so each write invalidates the line for the other cores.",
+  "cap": "Threads writing to neighbouring elements of one cache line keep invalidating it for each other, which slows the loop even without a data race."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "05",
+  "name": "h05-first-touch",
+  "title": "First touch decides which socket holds the page",
+  "spec": "Two side-by-side scenes on a two-socket server. Each scene shows two socket blocks, Socket 0 on the left and Socket 1 on the right, each with its own RAM block beneath it and a cores block above it. A dashed link between the sockets labelled inter-socket bus, UPI or Infinity Fabric. Left scene titled Serial initialization: a single thread icon on Socket 0 labelled Thread 0 runs a serial fill loop; a stack of page blocks flows into Socket 0 RAM, all of them labelled first touch by Thread 0. Then 64 thread icons on Socket 1 run the parallel compute loop; their read arrows cross the inter-socket bus to Socket 0 RAM, drawn in orange, labelled every read crosses the bus, bandwidth halved. Right scene titled Parallel initialization with schedule(static): thread icons on both sockets each touch their own chunk; page blocks land in the RAM of the socket whose thread touched them, shown in green; the read arrows stay inside each socket and do not cross the bus. Caption under the right scene: the first thread to touch a page is the thread that will use it. Number circles 1 and 2 on the steps in the left scene. No takeaway bar.",
+  "anchor": "## 3. Affinity, NUMA first-touch page placement, and hybrid oversubscription",
+  "alt": "Serial initialization puts every page on one socket, while parallel initialization places each page on the socket of the thread that uses it.",
+  "cap": "Linux places each page on the NUMA node of the thread that first writes it, so a serial fill leaves the whole array on one socket."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "06",
+  "name": "h06-loader-order",
+  "title": "Where the dynamic loader looks for a shared library",
+  "spec": "A vertical stack of five search-location boxes, numbered 1 to 5 in order, each box with a short arrow pointing down to the next, and a small label on each arrow reading not found, keep searching. Box 1 title: DT_RPATH embedded in the binary, used only if DT_RUNPATH is absent. Box 2 title: LD_LIBRARY_PATH environment variable, directories searched left to right. Box 3 title: DT_RUNPATH embedded in the binary at link time, set with -Wl,-rpath. Box 4 title: /etc/ld.so.cache, built by ldconfig from /etc/ld.so.conf. Box 5 title: default OS directories, /lib64 and /usr/lib64. A green stop marker at the bottom right labelled first match wins. Left side of the stack: a small icon of a binary file, labelled ELF binary needs libmpi.so, libcudart.so, libstdc++.so. Box 2 is highlighted in orange, with a callout arrow to the right: an old copy in LD_LIBRARY_PATH wins over the newer copy named by RUNPATH. Right side panel, titled tools to see the search: ldd ./myapp, readelf -d ./myapp grep -i path, LD_DEBUG=libs ./myapp, shown as three small monospace lines. Green takeaway bar at the bottom with the sentence: Know the order and you can predict which copy will load.",
+  "anchor": "## 1. The problem: how Linux finds binaries and shared libraries",
+  "alt": "The dynamic loader searches five locations in a fixed order, and the first match wins.",
+  "cap": "The dynamic loader checks five locations in a fixed order, so an old LD_LIBRARY_PATH copy can win over a newer RUNPATH copy."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "06",
+  "name": "h06-minicluster-sequence",
+  "title": "Eleven steps from the control node to the cloned fleet",
+  "spec": "A left-to-right flow of eleven numbered step cards, arranged in three phase bands labelled from top to bottom or left to right: Phase A, build the reference node (steps 1 to 5); Phase B, test the minicluster (steps 6 to 10); Phase C, clone the fleet (step 11). Number circles 1 to 11 in time order, with arrows between consecutive cards. Step 1: Install the control (head) server. Step 2: Install and configure the network file system server, set exports and run exportfs -av. Step 3: Install the first reference compute node. Step 4: Install the communication software stack, OFED with memlock unlimited. Step 5: Install the second compute node. Step 6: Assemble a minicluster from the control node and the two compute nodes. Step 7: Install compilers and test packages onto the shared file system tree. Step 8: Benchmark the communication equipment between the two compute nodes. Step 9: Install and configure Slurm. Step 10: Run end-to-end task completion tests. Step 11: Clone the verified reference compute node to the remaining compute nodes. Under step 11, a warning box in orange with two bullets: replace /dev/disk/by-id references with generic device names such as /dev/sda1, and clear the MAC bindings in 70-persistent-net.rules. A small icon on each card: a server rack, a folder, a chip, a network cable, a gear, a checkmark. Caption under phase B: testing the minicluster catches most problems while it is still one machine to fix. Green takeaway bar at the bottom: build and test on the minicluster before you clone anything.",
+  "anchor": "## 4. Node setup, minicluster staging, and the shared software tree (*Supercomputers for Linux Sysadmins* Chapter 24)",
+  "alt": "A minicluster deployment runs eleven steps from the control server through testing to cloning the reference node.",
+  "cap": "The eleven-step minicluster sequence builds a reference node, tests it on a small cluster, and only then clones it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "06",
+  "name": "h06-opt-apps-layout",
+  "title": "One read-only software tree, split by CPU baseline",
+  "spec": "Top banner: a wide light green bar labelled /opt/apps, exported read-only to all login and compute nodes, with a small padlock icon and the word read-only. Below the banner, two side-by-side subtree panels, each with a folder icon. Left panel labelled x86-64-v3, the AVX2 baseline subtree, containing two stacked boxes: gcc/15.1.0 and openmpi/5.0.7-gcc15. Right panel labelled x86-64-v4, the AVX-512 baseline subtree, shown as an empty or lightly drawn panel to show the second baseline. Beneath both panels, a wide box labelled cuda/12.6.0, CUDA toolkits, userspace nvcc and libcudart, spanning both. Below all of that, a separate grey bar labelled /opt/modulefiles, Lmod Core, Compiler and MPI hierarchy per architecture, with an arrow from it up to the subtrees. Orange highlight on the padlock, labelled read-only mount stops accidental edits by a running job. Plain label on the left: a node with a newer CPU still runs the build for the baseline it matches. No takeaway bar.",
+  "anchor": "### Designing the shared `/opt/apps` software tree",
+  "alt": "The shared software tree is organized by CPU baseline, with CUDA and the module files alongside.",
+  "cap": "The shared software tree is split by CPU baseline and mounted read-only, so a newer node still runs the build it matches."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "h07-munge-credential",
+  "title": "How munge proves who sent a request",
+  "spec": "Two node boxes side by side with a gap between them. The left box is titled Submitting node and holds a small user icon labelled user alice. The right box is titled Controller node and holds a box labelled slurmctld. Each node box contains a box labelled munged. Step 1: inside the left box, an arrow runs from the user into munged, labelled ask for a credential. Step 2: munged encodes a short credential holding the numeric UID and GID, drawn as a small token card with a clock icon labelled validity window, five minutes by default. Step 3: a green arrow labelled credential sent with the request crosses the gap from the left munged to the right munged. Step 4: inside the right box, munged decodes the credential, and an arrow leads out from it to a result box labelled numeric UID and GID reported back. Below both node boxes sits one wide key box labelled /etc/munge/munge.key, with a note beside it reading same key on every node. Two dotted lines run from the key box up into each munged box. Orange highlight on the key box, the single most important item. Number circles 1 to 4 mark the steps in time order. Green takeaway bar at the bottom: This is how Slurm can trust user 1042 sent this without passwords.",
+  "anchor": "## 6. Authentication: munge, and its successor",
+  "alt": "Munge encodes a credential on the sending node and the controller decodes it with the same shared key.",
+  "cap": "Munge lets the controller trust a user ID because every node decodes the same credential with one shared key."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "h07-bringup-order",
+  "title": "First bring-up order for a new Slurm cluster",
+  "spec": "A left-to-right chain of eight numbered step boxes, arranged in two rows of four with an arrow from the end of row one down to the start of row two. Each box has a green number circle with its step number 1 to 8 and a small outline icon, then a bold title and a short line of text. Step 1, title Users and time: create the slurm and munge users with fixed, identical UIDs on all nodes; confirm chrony is synchronised. Step 2, title Munge: create the key on one node, copy it to all nodes with mode 0400 and owner munge, then test with munge -n | unmunge. Step 3, title Database: install MariaDB, create the slurm_acct_db database and the slurm user. Step 4, title slurmdbd: write slurmdbd.conf with mode 600 and owner slurm, start it, and read its log because it creates the tables on first start. Step 5, title Controller: put slurm.conf in /etc/slurm, create the state and log directories owned by slurm, start slurmctld. Step 6, title Compute nodes: start slurmd on each node, copy the config or use configless mode. Step 7, title Accounting hierarchy: run the sacctmgr commands. Step 8, title Verify: run sinfo, scontrol ping, and sacct. Each arrow goes from one step to the next, and every step is drawn in the same size box. Above the row of boxes, a short orange note reads each step depends on the one before it. Green takeaway bar at the bottom reads Order matters when you bring a cluster up for the first time.",
+  "anchor": "## 11. Bringing it up, and verifying",
+  "alt": "Eight numbered steps bring up a Slurm cluster in order, from users and munge through the database and daemons to verification.",
+  "cap": "A first Slurm install works in eight ordered steps, and each one depends on the step before it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "h07-upgrade-order",
+  "title": "Upgrade order: database, controller, then nodes",
+  "spec": "A horizontal chain of three large boxes left to right with arrows between them. Box 1 titled slurmdbd, with a small database cylinder icon, labelled database first. Box 2 titled slurmctld, with a gear icon, labelled controller second. Box 3 titled slurmd and clients, with a server icon, labelled nodes last. Number circles 1, 2 and 3 sit on the boxes in time order. Above the chain, a box with a shield icon lists the two steps before you start: take a database backup, copy StateSaveLocation. Beneath the chain, a note reads stay within the supported compatibility window. Orange highlight on the arrow between box 2 and box 3. Green takeaway bar at the bottom reads Reversing that order is how a rolling upgrade turns into a stuck cluster.",
+  "anchor": "### Versions and upgrades",
+  "alt": "Slurm upgrades go in order: slurmdbd first, then slurmctld, then slurmd and the clients.",
+  "cap": "Upgrade slurmdbd first, then slurmctld, then the compute nodes and clients, so no daemon meets a message it cannot read."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "08",
+  "name": "h08-switch-rank",
+  "title": "Keeping neighboring MPI ranks on one leaf switch",
+  "spec": "Two panels side by side, each titled with its case. Above both panels, one wide box labelled top spine, the switch that joins the two leaf switches. Under it, two leaf switch boxes in each panel: s0 on the left and s1 on the right of the left panel, drawn with the same layout in the right panel. Left panel title: Default alphabetical ranks. Leaf s0 holds node boxes n0, n2, n4 and n6. Leaf s1 holds node boxes n1, n3, n5 and n7. A job receives n0, n1, n2 and n3, shown as four small rank cards in order: Rank 0 on n0 (s0), Rank 1 on n1 (s1), Rank 2 on n2 (s0), Rank 3 on n3 (s1). Under the cards, three labelled pairs written as text, not arrows: 0 <-> 1, 1 <-> 2, 2 <-> 3, each marked with a short label crosses the top spine. Right panel title: With TopologyParam=SwitchAsNodeRank. The same two leaf switches and nodes. The allocated nodes are re-listed in the order n0, n2, n1, n3, shown as four rank cards: Rank 0 on n0 (s0), Rank 1 on n2 (s0), Rank 2 on n1 (s1), Rank 3 on n3 (s1). Under the cards, a note reads consecutive ranks stay on the same leaf switch. Orange highlight on the crossing pairs in the left panel. Number circles are not used. Green takeaway bar at the bottom reads Consecutive ranks stay on the same leaf switch, so most of the neighbor traffic stays one hop away.",
+  "anchor": "## 5. Topology awareness (`topology.conf` / `topology.yaml` and `SwitchAsNodeRank`)",
+  "alt": "Default node ordering alternates leaf switches so every neighbor pair crosses the spine, while SwitchAsNodeRank groups neighbors on one leaf.",
+  "cap": "With SwitchAsNodeRank, Slurm orders the allocated nodes by leaf switch so neighboring MPI ranks stay on one switch."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "08",
+  "name": "h08-node-states",
+  "title": "How a node moves between states",
+  "spec": "A left-to-right flow with state boxes drawn as rounded rectangles, each with a small icon. In the top row, three green-outlined state boxes in order from left to right: IDLE (icon: empty box), MIXED (icon: half-filled box, caption only some CPUs in use), ALLOCATED (icon: full box, caption all CPUs in use). Arrows run left to right between them, labelled a job lands on it, then only some of its CPUs are in use, then all of them are. Above the top row, a caption box reads A healthy node sits in IDLE until a job lands on it. Below the top row, a second row with a warning-triangle icon: a dark-outlined box labelled DOWN with a small asterisk mark, reached by an arrow from the top row labelled slurmd stops answering. A dashed arrow from DOWN back up to IDLE labelled resume or ReturnToService. In the bottom-right area, two boxes in sequence: DRAINING, then DRAINED. An arrow from the top row into DRAINING labelled administrator drains the node for repair. An arrow from DRAINING to DRAINED labelled once the node is empty. A small note under DRAINING reads last jobs finish, and the reason appears with sinfo -R. Orange highlight on the DOWN box. Green takeaway bar at the bottom reads Read the reason before you change anything else.",
+  "anchor": "### Node states, state suffix symbols (`*`, `$`, `~`, `#`, `!`, `%`, `@`, `^`), and `ReturnToService`",
+  "alt": "A node goes from IDLE to MIXED to ALLOCATED as jobs land, falls to DOWN when slurmd stops answering, and drains through DRAINING to DRAINED.",
+  "cap": "A node moves from IDLE to MIXED to ALLOCATED as jobs land, and it leaves service through DOWN or a drain."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "08",
+  "name": "h08-cgroup-fence",
+  "title": "The controller promises, the cgroup enforces",
+  "spec": "Two lanes side by side. The left lane is titled slurmctld, the controller, and sits above a box labelled select/cons_tres. The right lane is titled slurmstepd on the node. Lane flow top to bottom with numbered steps in time order, each step a green number circle. Step 1 in the left lane: box labelled slurmctld picks the nodes and the cores, and records the choice. An arrow crosses from the left lane to the right lane. Step 2 in the right lane: box labelled slurmstepd creates the job cgroup, then writes the RAM and device limits into it. Step 3 in the right lane, below step 2: box labelled only then starts the user tasks. Inside a dashed fence drawn around the user tasks box, the label kernel checks every access against the limits. Beside the fence, a small note: ConstrainDevices=yes hides the GPUs the job did not get. A thin side note with a warning icon reads without ConstrainDevices=yes, CUDA_VISIBLE_DEVICES is only a hint. The fence box is orange as the single most important item. A thin arrow from the controller's record in step 1 to the cgroup limits in step 2 is labelled the controller's choice is a promise. Green takeaway bar at the bottom reads The controller's choice is a promise, and the cgroup is what keeps the promise.",
+  "anchor": "## 4. Resource selection (`select/cons_tres`) and cgroup containment",
+  "alt": "The controller chooses cores and GPUs, then slurmstepd creates the job cgroup with RAM and device limits before the user tasks start.",
+  "cap": "The controller decides what a job gets, and slurmstepd fences the job in with kernel limits before its tasks start."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "09",
+  "name": "h09-fairtree-walk",
+  "title": "Fair Tree ranks users by walking the account tree",
+  "spec": "A tree drawn top to bottom. At the top, a box labelled root. Two account boxes under it: physics with the label shares 60, S 0.60, U 0.965, LF 0.622, and biology with the label shares 40, S 0.40, U 0.035, LF 11.400. Biology is drawn on the left and physics on the right, with biology visited first. Under biology, two user boxes: carol, labelled FairShare 1.00, and dave, labelled FairShare 0.75. Under physics, two user boxes: bob, labelled FairShare 0.50, and alice, labelled FairShare 0.25. Each user box carries a number circle showing the visit order in time order: carol 1, dave 2, bob 3, alice 4. Small text next to biology reads LF above 1 means under-served. Small text next to physics reads LF below 1 means over-served. A thin dashed line marks the depth-first walk through the tree in visit order. Orange highlight on the biology box, the account that outranks physics. Green takeaway bar at the bottom reads Biology outranks physics, so both biology users come before both physics users, whatever their usage.",
+  "anchor": "### The simulator",
+  "alt": "Fair Tree sorts sibling accounts by level fairshare, so biology outranks physics and its users rank above physics users.",
+  "cap": "Fair Tree ranks the under-served biology account first, so both of its users rank above both physics users."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "09",
+  "name": "h09-backfill-gap",
+  "title": "Backfill fills the gap before a planned large job",
+  "spec": "A horizontal time axis from left to right labelled time, with a vertical marker at the right side labelled planned start of the large job. A top lane shows the node field: a wide grey block labelled large multi-node job, waiting, which starts at the planned start marker, drawn with a dashed outline and a PLANNED tag. Above the large job's planned start, a row of small running job blocks labelled running small jobs finish and free nodes; their ends are marked on the axis. In the gap between now and the planned start, two candidate job blocks appear in the lower lane. First candidate, green block labelled short job with accurate --time: it fits fully inside the gap and has a green check icon, with an arrow pointing left-to-right into the gap labelled backfills now. Second candidate, grey block labelled long job with loose --time: it is drawn longer than the gap and crosses the planned start marker, with a cross icon, and the note cannot fit before the planned start. The orange highlight is on the gap between now and the planned start. Number circles are not used. Green takeaway bar at the bottom reads Accurate time limits let more jobs backfill.",
+  "anchor": "## 5. Backfill",
+  "alt": "A short job with an accurate time limit fits in the gap before a large job's planned start, while a long job with a loose limit does not.",
+  "cap": "Backfill starts a short job early only when its time limit ends before the large job's planned start."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "09",
+  "name": "h09-preempt-flow",
+  "title": "Preemption from urgent arrival to freed GPUs",
+  "spec": "A vertical sequence of numbered steps down the left side, each a box with a green number circle in time order. Step 1: an urgent job arrives and every GPU is busy. Step 2: the scheduler finds lower-priority jobs whose resources would satisfy the request. Step 3: those jobs receive SIGCONT and SIGTERM straight away. Step 4: the grace time runs out and the jobs receive SIGKILL. Step 5: the preempted jobs are cancelled, requeued or suspended, depending on the mode. Step 6: the urgent job starts on the freed GPUs. To the right of step 5, three mode boxes stacked vertically, each linked by a short arrow from step 5: CANCEL labelled ends the job, REQUEUE labelled back to PENDING with --requeue, and SUSPEND,GANG labelled frozen in memory. The SUSPEND,GANG box is drawn with the orange highlight and carries a warning icon with the note unsuitable for GPU training. The REQUEUE box carries a checkpoint icon with the note needs checkpoints to resume. Green takeaway bar at the bottom reads For GPU training, choose REQUEUE with checkpoints, and reserve a scavenger QOS for work that can resume.",
+  "anchor": "## 6. Preemption",
+  "alt": "Preemption sends signals to lower-priority jobs, then cancels, requeues or suspends them so the urgent job can start on the freed GPUs.",
+  "cap": "Preemption stops lower-priority jobs after a grace period so an urgent job can start, and the mode decides what happens to them."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "h10-task-remap",
+  "title": "A job sees its GPUs renumbered from zero",
+  "spec": "Three columns from left to right. Left column: a node box titled gpu node with eight small GPU boxes in one row, labelled /dev/nvidia0 through /dev/nvidia7. Only /dev/nvidia3 and /dev/nvidia7 are filled green and marked allocated; the other six are light grey with a small padlock icon, and a bracket under the grey boxes reads hidden by ConstrainDevices=yes. A caption under the node box reads the cgroup exposes /dev/nvidia3 and /dev/nvidia7. Middle column: a single box labelled SLURM_JOB_GPUS=3,7, with an arrow from the green GPUs into it. Right column: two task boxes stacked vertically with a note that they run with --gpus-per-task=1. Task 0 box reads CUDA_VISIBLE_DEVICES=0 and below it a small label reads physical GPU 3. Task 1 box reads CUDA_VISIBLE_DEVICES=1 and below it a small label reads physical GPU 7. Thin arrows run from the middle box to each task box, labelled relative to the job. Number circles are not used. Orange highlight on the relative-to-the-job label, the single most important point. Green takeaway bar at the bottom reads The job sees a renumbered world, so scripts should follow the renumbering, not the physical labels.",
+  "anchor": "### What the job sees",
+  "alt": "Allocated GPUs 3 and 7 appear inside the job as CUDA_VISIBLE_DEVICES 0 and 1, one for each task.",
+  "cap": "Inside a job, the allocated GPUs are renumbered from zero, so physical GPU 3 can appear as device 0."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "h10-numa-binding",
+  "title": "GPU and CPU binding on a two-socket node",
+  "spec": "A two-socket node drawn as one wide outline. Left half: a box titled Socket 0, NUMA 0, with a label Cores=0-31 and a row of four GPU boxes labelled GPU 0, GPU 1, GPU 2, GPU 3. Right half: a box titled Socket 1, NUMA 1, with a label Cores=32-63 and a row of four GPU boxes labelled GPU 4, GPU 5, GPU 6, GPU 7. Below the node, a row of three option cards side by side, each with a small outline icon. Card 1 title: --gpu-bind=closest. Text: each task is bound to the nearest GPU, with CPUs from the same NUMA node. Card 2 title: --gres-flags=enforce-binding. Text: CPUs come only from the cores bound to the job's GPUs, and the job may wait longer. Card 3 title: --gres-flags=disable-binding. Text: any core on the node can be used, for a job that wants more CPUs than its GPUs have bound to them. A thin dashed line from card 1 points to the socket that holds the chosen GPU. The card 2 border is orange as the single most important item. Below the cards, a small note reads check the layout with nvidia-smi topo -m. Green takeaway bar at the bottom reads Bind when ranks need their GPUs close to their CPUs, and confirm the layout first.",
+  "anchor": "## 3. Binding GPUs to tasks and CPUs",
+  "alt": "On a two-socket node, GPUs 0 to 3 sit on socket 0 with cores 0 to 31, and GPUs 4 to 7 sit on socket 1 with cores 32 to 63.",
+  "cap": "On a two-socket node, each GPU has a local socket, so binding keeps a rank's CPUs and GPU on the same side."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "h10-sharing-spectrum",
+  "title": "Sharing one GPU trades isolation for density",
+  "spec": "A horizontal arrow across the top of the figure, labelled more isolation on the left and more density on the right. Above the arrow, a separate box at the far left labelled Whole GPU, the default for training, with a note never share, and an icon of one full GPU block. Below the arrow, three cards placed left to right in increasing density order: card 1 MIG (Multi-Instance GPU) with an icon of a GPU split into blocks, note hardware partitioned, strong isolation, static layout, no NVLink across slices. Card 2 MPS (Multi-Process Service) with an icon of several small processes on one GPU, note several processes share one GPU, a percentage of GPU resources each, no memory isolation, trusted users only. Card 3 Sharding with an icon of a clock dividing time into slices, note takes turns on a GPU, does not fence processes or constrain device memory by default. Each card has a bold title and a short line of text, with the same size boxes. The card 2 box has the orange highlight as the single most important item for shared work. Green takeaway bar at the bottom reads Each sharing method trades isolation for density, so choose by what the workload can tolerate.",
+  "anchor": "## 5. Sharing a GPU: MIG, MPS and sharding",
+  "alt": "Whole GPUs, MIG, MPS and sharding sit on a spectrum from strong isolation to high density.",
+  "cap": "Each way of sharing a GPU gives up some isolation to fit more jobs on one device."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-batch-vs-steps",
+  "title": "Commands without srun run once, on the first node",
+  "spec": "Two panels side by side. Left panel titled Batch script, with a short script box listing three lines in monospace: echo Start, then srun hostname, then echo End. Above the script box, two directive lines in monospace: #SBATCH --nodes 2 and #SBATCH --ntasks-per-node 2. Right panel titled Allocation of two nodes, with two large node boxes stacked vertically. The top node box is labelled n10 and carries a green badge reading Step 0, first allocated node. The bottom node box is labelled n11. Arrow 1: from the echo Start line to the top node box only, with a label runs once. Arrow 2: from the srun hostname line to both node boxes. Inside the top node box, two small task blocks, each labelled n10. Inside the bottom node box, two small task blocks, each labelled n11. A caption under the task blocks reads runs four times across the two nodes, in arbitrary completion order. Arrow 3: from the echo End line to the top node box only, labelled runs once. Below the right panel, a dashed note box with an orange border reads without srun, the second node stays idle. Number circles are not used. Green takeaway bar at the bottom reads A command without srun runs once, on the first node.",
+  "anchor": "## 1. Allocations, batch jobs and steps",
+  "alt": "In a two-node batch script, echo lines run once on the first node, while srun hostname runs four tasks across both nodes.",
+  "cap": "In a multi-node batch script, only the lines that start with srun reach the second node."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-array-grid",
+  "title": "Mapping array task 5 onto a learning-rate and batch-size grid",
+  "spec": "A grid drawn as a table with four columns and three rows. Column headers across the top, left to right: learning rate 1e-4 (LR index 0), 3e-4 (LR index 1), 1e-3 (LR index 2), 3e-3 (LR index 3). Row labels down the left side, top to bottom: batch size 16 (BS index 0), batch size 32 (BS index 1), batch size 64 (BS index 2). Each cell shows its array task number in a green square: row 16 holds tasks 0, 1, 2, 3; row 32 holds tasks 4, 5, 6, 7; row 64 holds tasks 8, 9, 10, 11. The cell for task 5, in the row for batch size 32 and the column for 3e-4, has the orange highlight. Beside the grid, a small arithmetic panel with three lines in monospace: LR_IDX = 5 % 4 = 1, BS_IDX = 5 / 4 = 1, pair = (3e-4, 32). Under the grid, a note reads %4 throttle: four training runs read the dataset at once, and the other eight wait. Number circles are not used. Green takeaway bar at the bottom reads Modulo picks the learning rate, and integer division picks the batch size.",
+  "anchor": "### 2D hyperparameter grid search with job arrays (*Distributed AI Systems* Chapter 8)",
+  "alt": "Array task 5 maps to learning rate 3e-4 and batch size 32 using modulo and integer division.",
+  "cap": "Each array task index maps to one learning rate and one batch size, so task 5 runs 3e-4 with batch size 32."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-dependency-chain",
+  "title": "A training run split across segments, then evaluated",
+  "spec": "A left-to-right chain of three job boxes with arrows between them. Box 1, labelled J1, train segment 1, with a small script icon labelled train.sh. Box 2, labelled J2, train segment 2, resumes from latest checkpoint, with a script icon labelled train.sh. Box 3, labelled J3, evaluate, with a script icon labelled evaluate.sh. Arrow from J1 to J2, labelled --dependency=afterany:$J1, with a note beneath reading a timeout counts as a failure, so afterany lets the chain continue. Arrow from J2 to J3, labelled --dependency=afterok:$J2, with a note beneath reading the evaluation runs only if segment 2 succeeds. Number circles 1, 2 and 3 mark the boxes in time order. Below box 2, an orange-bordered note box reads if a job with afterok fails, the dependent job stays pending with DependencyNeverSatisfied; add --kill-on-invalid-dep=yes to cancel it instead. Green takeaway bar at the bottom reads Each segment resumes from the latest checkpoint, so no work repeats.",
+  "anchor": "## 6. Dependencies and pipelines",
+  "alt": "Two training segments run one after another with afterany, and an evaluation job runs with afterok after the last segment.",
+  "cap": "Dependencies chain training segments and an evaluation job so the run continues past one time limit."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-signal-requeue",
+  "title": "A warning signal, a clean stop, and a requeue",
+  "spec": "Three swim lanes drawn as horizontal bands, top to bottom: Batch shell (the script), Training (srun python train.py), slurmctld (controller). Time flows left to right. Number circles mark steps in time order. Step 1, in the batch shell lane: an arrow arrives labelled #SBATCH --signal=B:USR1@600, with the note 600 seconds before the time limit, the batch shell receives USR1. Step 2, in the batch shell lane: a box labelled trap runs checkpoint_and_requeue. Step 3, arrow from the batch shell lane to the training lane, labelled kill -TERM on the training process, with a note that the training program writes a checkpoint on SIGTERM. Step 4, in the batch shell lane after the wait: a box labelled wait for training to exit. Step 5, arrow from the batch shell lane up to the slurmctld lane, labelled scontrol requeue $SLURM_JOB_ID. Step 6, in the slurmctld lane: a box labelled job goes back to the queue with the same job ID. A small note in the slurmctld lane reads the next run sees SLURM_RESTART_COUNT increase. The step 5 arrow is orange as the single most important item. Green takeaway bar at the bottom reads Periodic checkpoints are the real safety net; the signal handler saves the wait for the next checkpoint.",
+  "anchor": "## 7. Time limits, signals, checkpoints, requeue",
+  "alt": "At a warning signal, the batch shell stops the training process, waits for it to exit, and requeues the job with the same ID.",
+  "cap": "A warning signal lets the batch script stop training cleanly and requeue the job under the same ID."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-launch-styles",
+  "title": "Two launch styles: srun per GPU or torchrun per node",
+  "spec": "Two panels side by side, each titled with its style. Left panel title: Style A, srun with one task per GPU. A top box labelled srun python train.py, with arrows fanning out to four node boxes labelled node 1 to node 4. Each node box holds a row of eight small rank boxes, one per GPU. A label under the left panel reads Slurm starts every rank. Right panel title: Style B, one torchrun per node. A top box labelled srun torchrun, with arrows to four node boxes labelled node 1 to node 4. Each node box holds one wide torchrun box, and inside it a row of eight small rank boxes started by torchrun. A label under the right panel reads Slurm sees one task per node. Below both panels, a comparison strip with two rows of short text. Row for Style A: Slurm keeps control of binding, cgroups, accounting per step and signals; train.py reads SLURM_PROCID, SLURM_LOCALID and SLURM_NTASKS. Row for Style B: torchrun adds elastic features and sets the rank variables for you; the cost is coarser per-rank binding and GPU isolation. Orange highlight on the label Slurm sees one task per node, the single most important item. Green takeaway bar at the bottom reads Pick the launch style before you write the batch script, because the training code has to match it.",
+  "anchor": "## 2. Two launch styles",
+  "alt": "Style A starts every GPU rank from srun, while style B starts one torchrun per node that launches the eight local ranks.",
+  "cap": "Style A lets Slurm start every GPU rank, while style B lets torchrun start the ranks on each node."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-glue-translation",
+  "title": "Translating Slurm variables into PyTorch variables",
+  "spec": "Two columns of boxes with a narrow translation band between them. Left column, titled Slurm variables, five boxes top to bottom: SLURM_PROCID (global task number), SLURM_LOCALID (position on its own node), SLURM_NTASKS (total number of tasks), SLURM_JOB_NODELIST (compressed nodelist), SLURM_JOB_ID (job number). Right column, titled PyTorch variables, five boxes in the same top-to-bottom order: RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR, MASTER_PORT. Five horizontal arrows run straight across the middle band, one per row, each labelled with its rule: the first row labelled global task number, the second labelled position on node, the third labelled total tasks, the fourth labelled first host in the nodelist, the fifth labelled 10000 plus job ID modulo 20000. The arrows are parallel and do not cross. In the middle band, above the arrows, a small box labelled dist_env() holds the rule set. Beneath the MASTER_ADDR and MASTER_PORT boxes, a dashed loop arrow labelled a value already set in the environment wins. The fifth arrow (MASTER_PORT) has the orange highlight as the single most important rule. Green takeaway bar at the bottom reads The glue only maps variables; it does not prove the network is fast.",
+  "anchor": "## 3. The glue, tested",
+  "alt": "Five Slurm variables map straight across to RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR and MASTER_PORT.",
+  "cap": "The glue maps five Slurm variables onto the PyTorch rendezvous variables, and a value you set yourself wins."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-master-addr-trap",
+  "title": "A loopback MASTER_ADDR splits one job into isolated groups",
+  "spec": "Two panels side by side. Left panel title: MASTER_ADDR set to 127.0.0.1. Two node boxes, node A and node B, drawn apart with no connection between them. Each node box holds its own group box labelled 1-node process group. A dashed double-headed line between node A and node B is crossed out with the note gradients are never synchronized across nodes. A status note under the left panel reads training looks normal and does not crash. Right panel title: MASTER_ADDR from the first host in the nodelist. The same two node boxes, now both with arrows pointing into one wide shared box labelled one process group across both nodes. The shared box shows a sub-label first host in the nodelist. Orange highlight on the two isolated groups in the left panel, the single most important item. Green takeaway bar at the bottom reads Derive MASTER_ADDR from the nodelist, and never use 127.0.0.1 on a multi-node job.",
+  "anchor": "## 7. Framework patterns",
+  "alt": "A MASTER_ADDR of 127.0.0.1 gives each node its own process group, while the first host in the nodelist joins all nodes into one group.",
+  "cap": "Setting MASTER_ADDR to 127.0.0.1 on a multi-node job splits it into separate single-node groups that never sync gradients."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-diagnose-ladder",
+  "title": "Diagnosing the fabric in three rungs",
+  "spec": "A vertical ladder with three rungs stacked from the bottom up, each rung a wide box with a green number circle and an outline icon. Rung 1 at the bottom, titled Reachability: each node pings the others, command srun -N 2 bash -c echo hostname and ping. Rung 2 in the middle, titled AllReduce sweep: tensor sizes 1, 10, 100 and 500 MB, with 3 warmup calls and 10 timed calls, and a formula line bandwidth = (size_mb * 2 * 10) / elapsed. Rung 3 at the top, titled Point-to-point latency: 100 round trips of a one-element tensor between rank 0 and the target, with a formula line one-way latency = (elapsed / 200) * 1e6 microseconds. An arrow on the left side runs up the ladder labelled work from small to large. A note beside rung 1 reads If this fails, nothing above it can work. Beside rung 3 is a short branch note: low bandwidth means bisect the node list with exclude. Orange highlight on rung 1, the single most important rung. Green takeaway bar at the bottom reads Test reachability first, then bandwidth, then latency.",
+  "anchor": "## 8. Failure and diagnosis",
+  "alt": "A three-step check tests node reachability, then AllReduce bandwidth across sizes, then point-to-point latency.",
+  "cap": "Check node reachability first, then all-reduce bandwidth, then point-to-point latency, because each step depends on the one below."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "13",
+  "name": "h13-herd-pull",
+  "title": "Pulling from the registry on every node versus one central import",
+  "spec": "Two horizontal lanes stacked vertically, each with a heading. Top lane titled Every node pulls from the registry: a column of 64 node boxes on the left, each with a short arrow pointing right into one shared box labelled Registry. Under the registry box a bar labelled 10 GB/s uplink. Beside the arrows a note: 64 nodes pulling a 15 GB image. Under the lane, a large orange label 96.0 s, the most important number in the picture. Bottom lane titled Import once, then share: one box labelled enroot import on the left, with one arrow to a file box labelled single .sqsh file on shared storage. From that file box, a short arrow fans into 64 small node boxes, each labelled with the same file name is read, so the file is shared rather than pulled again. Under the lane a green label 1.5 s for a single central import. Green takeaway bar at the bottom: import once, point every node at the squashfs file.",
+  "anchor": "### Why caching matters at job start",
+  "alt": "Sixty-four nodes pulling a 15 GB image from one registry take 96 seconds, while one central squashfs import takes 1.5 seconds.",
+  "cap": "Pulling the same image from the registry on every node is slow, while one central squashfs import serves every node."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "13",
+  "name": "h13-named-unnamed",
+  "title": "Unnamed versus named pyxis containers",
+  "spec": "Two side-by-side branches under one heading titled One srun task on a compute node. Left branch titled Unnamed container, set by --container-image only. A vertical chain of three boxes with arrows down: Container created before the step starts, then Step runs, then Container removed from ENROOT_DATA_PATH when the task completes. A grey label under the chain: unnamed containers are removed when the task completes. Right branch titled Named container, set by --container-name=NAME. A vertical chain of three boxes with arrows down: Container created and kept on the node after the step, then Later step with the same name reuses the unpacked root, with the import skipped, then Container persists until housekeeping removes it. An orange note on the right branch: named containers persist, so they need housekeeping. A small box at the bottom of the right branch labelled --container-save=PATH saves the container state to a squashfs file, with a dotted line to the named container box. No green takeaway bar.",
+  "anchor": "## 3. pyxis",
+  "alt": "An unnamed pyxis container is removed when its task ends, while a named container stays on the node and is reused by later steps.",
+  "cap": "An unnamed pyxis container is removed when its task finishes, while a named container stays on the node for later steps."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "14",
+  "name": "h14-prolog-epilog-timeline",
+  "title": "Where prolog and epilog run in one job",
+  "spec": "A horizontal timeline from left to right, drawn as one compute node lane headed Compute node (every node in the allocation). Boxes in order left to right with arrows between them: 1 Allocation of the job (box), 2 Prolog (box, subtitle runs as root on the node before the job step), 3 Job steps run (box), 4 Epilog (box, subtitle runs as root on every node when the allocation is released), 5 Node released (box). Number circles 1 to 5 above the boxes for the time order. A separate box above the timeline at the left, headed Controller host, labelled PrologSlurmctld and EpilogSlurmctld, with the note once per job, with a dotted line down to the allocation and release points. Below the Prolog box, an orange branch arrow labelled Prolog exits non-zero leads to a box labelled Node set to DRAIN, which leads to a box labelled Job requeued, with the note held unless nohold_on_prolog_fail is set. Below the Epilog box, a branch arrow labelled Epilog fails leads to a box labelled Node set to DRAIN. Grey note on the far right: PrologEpilogTimeout limits how long each script may run. No green takeaway bar.",
+  "anchor": "## 1. Prolog and epilog",
+  "alt": "A prolog runs before a job's steps and an epilog after the allocation is released, and a failing prolog drains the node.",
+  "cap": "The prolog runs before the job's steps on each node, and a failing prolog drains that node and requeues the job."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "14",
+  "name": "h14-health-check-flow",
+  "title": "How a health check drains a bad node",
+  "spec": "A top-to-bottom flow with a left-to-right row of checks. Top box labelled Slurm runs HealthCheckProgram every HealthCheckInterval, with a small note as root on compute nodes, chosen by HealthCheckNodeState, and CYCLE spreads the runs across the interval. An arrow down to a wide green container labelled Health check script, which holds six small check boxes in a row or two rows: GPU count (nvidia-smi -L), GPU Xid errors (dmesg), Free space in /tmp, Required mounts, Clock sync (chronyc), InfiniBand port state (ibstat). Each check box has a tick or cross marker. An arrow from the container to a diamond labelled Any check failed? Left branch labelled No leads to a box labelled Silent, log per node. Right branch labelled Yes leads to an orange-outlined box labelled scontrol update NodeName=... State=drain Reason=..., with the note the script runs this itself, with one combined reason. Under the drain box a small note: Operators read the reason with sinfo -R. Green takeaway bar at the bottom: Any action to be taken must be explicitly performed by the program.",
+  "anchor": "## 2. Health checks",
+  "alt": "A health-check script runs six checks, and when one fails it drains the node itself with a combined reason.",
+  "cap": "The health-check script runs its checks and drains the node itself, because Slurm does not drain a node just because a check failed."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "14",
+  "name": "h14-unkillable-escalation",
+  "title": "How Slurm escalates a stuck process",
+  "spec": "A horizontal row of four boxes, each with a green number circle (1 to 4) above it, joined by arrows left to right. Box 1: Process stuck in state D, ignores SIGKILL, waiting on uninterruptible I/O. Box 2: Wait UnkillableStepTimeout, default 60 seconds or five times MessageTimeout, whichever is larger. Box 3: Run UnkillableStepProgram, if set, as root on the node, collecting stack traces, lsof output, nvidia-smi output and hung mount information, and sending an alert. Box 4 (orange outline, the most important step): Drain the node to prevent future jobs from being scheduled on the node. Under the row, a box with a left-pointing arrow labelled stuck causes: a hung network file system, a dead NIC with outstanding RDMA operations, or a GPU Xid error. Green takeaway bar at the bottom: Fix the underlying cause, and plan on rebooting the node.",
+  "anchor": "## 4. Unkillable steps and stuck jobs",
+  "alt": "A stuck process that ignores SIGKILL leads Slurm to wait, run a diagnostic program and drain the node.",
+  "cap": "When a process ignores SIGKILL, Slurm waits, runs a diagnostic program, and drains the node so no new jobs land on it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "15",
+  "name": "h15-upgrade-hops",
+  "title": "A version path with one upgrade per hop",
+  "spec": "A horizontal chain of four version boxes left to right, each a rounded box with the version number large: 22.05, then 23.11, then 25.05, then 26.05. Each box is joined to the next by an arrow, and each arrow carries a small label: upgrade step 1, upgrade step 2, upgrade step 3. Above the chain a heading box titled Path planner output for 22.05 to 26.05 (3 upgrade steps). Under the chain, a bracket spanning the arrows with the text: from 24.11 on, a release accepts in-place upgrades from the previous three releases. Below that a small two-row strip: the top row is labelled Release and the bottom row is labelled Accepts in-place upgrades from. Show two cells only: release 25.05 with 24.11, 24.05, 23.11 beneath it, and release 26.05 with 25.11, 25.05, 24.11 beneath it, the 26.05 cell outlined in orange as the target. Green takeaway bar at the bottom: Each arrow is one upgrade, and the planner takes the furthest compatible step.",
+  "anchor": "### A path planner",
+  "alt": "A version path from 22.05 to 26.05 takes three upgrade steps, one per hop within the in-place upgrade window.",
+  "cap": "The upgrade planner splits an old-to-new jump into hops, where each hop stays inside the in-place upgrade window."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "15",
+  "name": "h15-sdiag-order",
+  "title": "Reading sdiag in a fixed order",
+  "spec": "A top box labelled Run sdiag twice, sixty seconds apart, with a clock icon, and an arrow down into a vertical list of four numbered boxes, each with a green number circle at left and joined by downward arrows. Box 1 titled Server thread count: check it against the max_rpc_cnt ceiling (256 maximum) and the net.core.somaxconn backlog; a value stuck at the ceiling means requests queue for a worker. Box 2 titled Main schedule statistics and Backfill stats: compare Last cycle and Mean cycle in microseconds, and check Last depth cycled. Box 3 titled RPC statistics by message type and by user: find the RPC type and the user that flood the daemon, for example a loop of squeue calls that shows as REQUEST_JOB_INFO. Box 4 titled DBD Agent queue size: after slurmdbd restarts, watch the value drain back to 0. Box 3 has an orange outline because it is the box that points to the user causing the load. Right side of the box 3, a small note: throttle the polling loop and point users to cached metrics. Green takeaway bar at the bottom: Read the four sections in order before you change any setting.",
+  "anchor": "### 7.1 Deep dive: Diagnosing `slurmctld` RPC queue saturation with `sdiag`",
+  "alt": "Four sdiag sections, read in order, show whether the controller's threads, scheduler loops, RPC callers or accounting queue is the bottleneck.",
+  "cap": "Reading the four sdiag sections in a fixed order shows whether threads, scheduler loops, a looping user or the accounting queue is the bottleneck."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "16",
+  "name": "h16-scale-in-drain",
+  "title": "Scaling in a Slurm worker pod without killing a job",
+  "spec": "A vertical flow of numbered steps, top to bottom, with green number circles at the left of each box and downward arrows between them. Two vertical lanes are optional but keep the flow simple: one column. Box 1: Kubernetes or the operator chooses a slurmd pod for scale-in. Box 2: The controller sets the pod-cordon annotation on the pod, which drains the Slurm node. Box 3: The controller waits for the Slurm node to reach DRAINED. Diamond: Is the node DRAINED, with no running jobs? If No, a loop arrow labelled Check again later goes back up to box 3. If Yes, an arrow leads to Box 4: Delete the pod. Box 4 has an orange outline, since it is the step that must never happen while a job still runs. Beside the flow, a side note box: Pod conditions mirror the Slurm node state, such as Idle, Allocated, Mixed, Down, Drain. Green takeaway bar at the bottom: A pod is never removed while a job is still using it.",
+  "anchor": "### How the operator talks to Slurm",
+  "alt": "The operator drains a Slurm worker, waits until it has no running jobs, and only then deletes the pod.",
+  "cap": "The operator drains a Slurm worker and deletes its pod only after the node has no running jobs."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "17",
+  "name": "h17-select-place",
+  "title": "PBS select makes chunks and place decides where they go",
+  "spec": "Top strip: two text lines in monospace inside a light panel. Line 1: #PBS -l select=2:ncpus=64:mpiprocs=8:ngpus=8:mem=500gb, with a bracket under the 2 labelled two identical chunks, and a callout box beside the chunk text listing the chunk contents: ncpus=64, mpiprocs=8, ngpus=8, mem=500gb. Line 2: #PBS -l place=scatter:excl, with a callout labelled spread the chunks onto different hosts, each host used exclusively. Main area below: two host boxes side by side, labelled Host A and Host B, each drawn as a server with a grid of small cells for GPUs. Chunk 1 fills Host A and Chunk 2 fills Host B; each chunk box is labelled with the same four resource names. Between the hosts a dashed line marked scatter. Each host has a thick border labelled excl. Orange outline on the place=scatter:excl line since it decides where the chunks go. Note under the hosts: a vnode is a slice of a host, so a node in PBS may be a part of a host. Green takeaway bar at the bottom: The first line says how much each chunk holds, and the second says where the chunks go.",
+  "anchor": "### Request model: select and place",
+  "alt": "A PBS select line asks for two chunks, and place=scatter:excl puts each chunk on its own exclusive host.",
+  "cap": "In PBS, select sets how much each chunk holds and place sets where the chunks go."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "17",
+  "name": "h17-flux-subinstance",
+  "title": "A Flux subinstance inside an allocation",
+  "spec": "Outer large rounded box labelled Enclosing scheduler allocation, with a note: a block of nodes held for a fixed period. Inside it, a smaller rounded box labelled Flux subinstance, with its own small tree of flux-broker boxes drawn as three connected circles at the top. Inside the subinstance, a row of small job boxes labelled flux run, flux submit, and many small tasks. An arrow labelled flux batch SCRIPT enters the subinstance from the outside, with the script drawn as a small document icon. A dashed arrow at the bottom labelled when the script exits, the resources return to the enclosing instance points back from the subinstance to the outer box. A side label: flux proxy JOBID connects a shell to the running subinstance, with a dotted line into the subinstance. Orange outline on the subinstance box, the most important element. Green takeaway bar at the bottom: Every job can itself be a Flux instance, and its resources return when the script exits.",
+  "anchor": "## 4. Flux",
+  "alt": "A Flux batch script runs as a subinstance inside an allocation, and its resources return to the outer instance when it exits.",
+  "cap": "A Flux batch script runs as its own subinstance inside the allocation, and the resources return when the script exits."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "17",
+  "name": "h17-migration-steps",
+  "title": "Seven steps to move a site from another scheduler to Slurm",
+  "spec": "A vertical or snake-shaped chain of seven numbered boxes, each with a green number circle, joined by arrows in order. Box 1: Start with an inventory (list queues, node classes, limits, fair-share trees, reservations, hooks, license servers, user scripts). Box 2: Map the policies (queues become partitions or QOS, fair-share shares become accounts, hooks become job_submit and prolog or epilog scripts). Box 3: Translate the scripts (automated pass, then review). Box 4: Keep accounting continuous (export historical usage, seed fair-share, keep old reports for audits). Box 5: Run a parallel pilot (split nodes, dual-submit tests, train users and publish a command-map cheat sheet). Box 6: Cut over in node groups, keep a rollback window, decommission the old scheduler only after one full allocation cycle. Box 7: Revisit the workflow layer (Airflow, Nextflow or Snakemake DAGs). Box 6 has an orange outline since it is the step where the old scheduler is switched off. Green takeaway bar at the bottom: Decide who owns each step before you start.",
+  "anchor": "## 7. Migration plan (any scheduler to Slurm)",
+  "alt": "A migration to Slurm runs in seven steps, from inventory and policy mapping through a parallel pilot to a staged cutover.",
+  "cap": "A scheduler migration runs in seven ordered steps, from inventory through a parallel pilot to a staged cutover."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "18",
+  "name": "h18-close-to-open",
+  "title": "NFS close-to-open consistency: when a reader sees a write",
+  "spec": "A two-lane time diagram. Two vertical swimlanes side by side, headed Client A (writer) on the left and Client B (reader) on the right, with a time axis running top to bottom labelled time. Four numbered steps in top-to-bottom order, each with a green number circle. Step 1 in Client A's lane: Write to the file, held in A's cache. Step 2 in Client B's lane: Open and read the file, with an orange box labelled stale data, since the write is not yet visible. Step 3 in Client A's lane: Close the file. Step 4 in Client B's lane: Open the file again and read the new data, shown in green. Beside steps 2 and 4, a note: a write becomes visible to another client only after the writer closes the file and the reader opens it. A grey side note at the bottom: noac or lookupcache=none fixes this, at a large cost, because every access asks the server again. No green takeaway bar.",
+  "anchor": "## 2. NFS: what it is and where it ends",
+  "alt": "An NFS reader sees a writer's data only after the writer closes the file and the reader opens it again.",
+  "cap": "On NFS a write becomes visible to another client only after the writer closes the file and the reader opens it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "18",
+  "name": "h18-stripe-alignment",
+  "title": "Stripe-aligned and unaligned writes to one shared file",
+  "spec": "Top band: one long horizontal bar representing a shared file, divided into four equal cells labelled stripe 1, stripe 2, stripe 3 and stripe 4. Above the bar a bracket labelled one stripe size on one cell. Below the bar two rows, each with a label on the left. Row 1 titled Unaligned boundary: Rank A on Node A writes a piece that ends in the middle of stripe 2, shown as a blue block covering stripe 1 and half of stripe 2; Rank B on Node B writes a piece that starts in the middle of stripe 2, shown as a green block covering the other half of stripe 2 and stripe 3 and stripe 4. Stripe 2 is outlined in orange because both ranks touch it. Two curved arrows between Node A and Node B labelled lock moves back and forth, each move costs a round trip. Row 2 titled Aligned boundary: Rank A writes exactly stripe 1 and stripe 2, Rank B writes exactly stripe 3 and stripe 4, so no stripe is touched by both ranks and no lock arrows appear. Green takeaway bar at the bottom: Aligning the boundary removes most of that lock traffic.",
+  "anchor": "## 5. I/O patterns and what breaks",
+  "alt": "Two ranks writing one file lock-bounce when their boundary splits a stripe, but not when the boundary sits on a stripe edge.",
+  "cap": "When two ranks share a stripe, their locks bounce between nodes, so aligning the write boundary to the stripe size removes that traffic."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "18",
+  "name": "h18-bytes-per-param",
+  "title": "Bytes per parameter in a mixed-precision Adam checkpoint",
+  "spec": "A single long horizontal stacked bar, representing one parameter, drawn to scale with its segments left to right and labelled with byte counts above each segment. Segment 1, 2 bytes, labelled bf16 weights. Segment 2, 4 bytes, labelled fp32 master weights. Segment 3, 8 bytes, wider than the first two, labelled two fp32 Adam moments. A bracket over the three solid segments labelled 14 bytes per parameter. A dashed segment to the right of the bracket, 4 bytes, labelled fp32 gradients in some stacks, which brings the total to about 18 bytes. Below the bar, a worked example box: 70B parameters times 14 bytes gives about 0.98 TB per checkpoint. A small orange note on the dashed segment: check the byte count for your framework and sharding. Green takeaway bar at the bottom: Per-parameter byte counts are the common accounting, and you should verify them for your own framework.",
+  "anchor": "## 6. Arithmetic you should be able to do",
+  "alt": "A mixed-precision Adam checkpoint holds about 14 bytes per parameter, so a 70B model writes about 0.98 TB.",
+  "cap": "A mixed-precision Adam checkpoint holds about 14 bytes per parameter, so a 70B model writes about 0.98 TB."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "19",
+  "name": "h19-stripe-roundrobin",
+  "title": "Round-robin striping: chunks alternate across OSTs",
+  "spec": "A title line at the top: 1 GiB file, stripe_size 1 MiB, stripe_count 4. Across the top, a long horizontal bar labelled 1 GiB file, cut into eight equal small blocks in a row, each block labelled with its chunk number in time order: chunk 0 through chunk 7, read left to right. A short label at the right end of the row: more chunks continue to the right. Each block is colored by its OST slot, with a small label inside each block: slot 0, slot 1, slot 2, slot 3, slot 0, slot 1, slot 2, slot 3. Below the row, four wide OST boxes side by side labelled OST slot 0, OST slot 1, OST slot 2 and OST slot 3. Each OST box has a label: one object holds 256 MiB, which is the bytes per OST object. Do not draw arrows from chunks to boxes; use the color and the slot labels instead, so no arrows cross. Under the row, two bracket annotations. First bracket spans from the middle of chunk 2 to the middle of chunk 5 and is labelled 3 MiB read at offset 2.5 MiB touches slots 0, 1, 2, 3. Second bracket covers only the left part of chunk 0 and is labelled 512 KiB read at offset 0 touches slot 0 only. Orange note near the top-right of the row, the single most important item: not two contiguous halves. Green takeaway bar: a file with stripe_count 1 is limited to a single OST. No other text.",
+  "anchor": "### The raid0 layout",
+  "alt": "A 1 GiB file with four stripes sends 1 MiB chunks round-robin to four OST slots, so each slot holds 256 MiB.",
+  "cap": "With raid0 striping, consecutive 1 MiB chunks alternate across the OST objects, so the file is not split into two halves."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "19",
+  "name": "h19-pfl-bands",
+  "title": "A progressive file layout: three components by file offset",
+  "spec": "A title line at the top: Progressive File Layout for a 1 GiB file. One long horizontal axis labelled file offset, from 0 at the left to the end of the file at the right. The axis has tick marks labelled 0, 4 MiB, 64 MiB and 1024 MiB. Above the axis, three adjacent segments, each a different shade of green, drawn in proportion to their byte span. Segment one spans 0 to 4 MiB and is labelled component 1 with the text stripe_count=1 stripe_size=1 MiB. The segment is very narrow, so put its label above the segment with a short leader line. Segment two spans 4 MiB to 64 MiB and is labelled component 2 with the text stripe_count=4 stripe_size=1 MiB. Segment three spans 64 MiB to 1024 MiB, the wide one at the right, labelled component 3 with the text stripe_count=16 stripe_size=4 MiB. Under each segment, a small row of OST boxes showing how many OSTs the component uses: one box for component 1, four boxes for component 2, and sixteen small boxes for component 3 drawn as a compact grid that fits the width. Orange highlight on the stripe size change at the start of component 3, labelled the stripe size becomes 4 MiB only in the last component. Plain note under the axis: small components keep the smaller chunk size so small reads do not pull in more data than they need. No takeaway bar.",
+  "anchor": "### Progressive File Layouts (PFL) and other layouts",
+  "alt": "A 1 GiB progressive file layout with three components: 1 stripe, then 4 stripes, then 16 stripes with 4 MiB chunks.",
+  "cap": "A progressive file layout splits a file into components by offset, so small reads and large reads each get a suitable stripe setting."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "19",
+  "name": "h19-failover-sequence",
+  "title": "A server failover from the first missed response to the evicted client",
+  "spec": "A left-to-right row of six numbered step cards connected by arrows, number circles 1 to 6 in time order. Step 1, title: Primary server stops responding. Step 2, title: Cluster manager confirms the server is gone. Its label: tells the partner to take over the target. Step 3, title: Partner mounts the target. Its label: mounts the MDT or OST from the shared storage. Step 4, title: Recovery starts. Its label: clients still connected begin to reconnect. Step 5, title: Clients in time replay. Its label: clients that reconnect in time replay their uncommitted requests, and the job sees a pause. Step 6, title: Late clients are evicted. Its label: a client that arrives after the window closes is evicted, and its applications see errors until it remounts. Card icons: step 1 a server with a warning mark, step 2 a gear, step 3 a disk cylinder, step 4 a clock, step 5 a checkmark, step 6 a lock or a closed door. Step 5 and step 6 are two branches of the same recovery window: draw them as one stacked pair under step 4, joined by arrows from step 4, so the row stays at five columns. Orange tag under step 6: the logs are the first place to look after a failover. No takeaway bar. Keep the flow top to bottom or left to right with no crossing arrows.",
+  "anchor": "## 5. Failure and recovery model",
+  "alt": "Failover steps: primary stops, partner takes over the target, clients reconnect and replay in time or are evicted.",
+  "cap": "After a server failover, clients that reconnect within the recovery window see only a pause, while late clients are evicted."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "20",
+  "name": "h20-beegfs-write-path",
+  "title": "A BeeGFS write: metadata makes the plan, storage targets hold the chunks",
+  "spec": "A left-to-right flow with three main boxes and one side box. Left box: Client, labelled beegfs.ko kernel module, with a window icon. Middle box, upper row: Metadata service, labelled beegfs-meta, with a gear icon. Right box, lower row: Storage targets, labelled beegfs-storage, drawn as two small stacked disk cylinders. Three numbered steps in time order, each a horizontal arrow with a number circle on it. Step 1, arrow from Client to Metadata service, labelled create file. Step 2, a return arrow drawn from Metadata service back to Client, labelled records the name and the stripe pattern, the plan for where the chunks go. Step 3, arrow from Client down-right to Storage targets, labelled sends the file chunks to the storage targets named in the plan. Keep the three arrows from crossing: place the Client at the left, the Metadata service above the middle, and the Storage targets at the lower right so the step 2 return arrow runs under the step 1 arrow. Side box at the top right, dashed outline with no arrows: Management service, labelled mgmtd, with the note keeps the list of nodes and targets so clients and servers can find one another. Under the Storage targets box, a small grey note: each target is a local file system on a storage server. Orange tag on step 2 only, the single most important item: the stripe pattern is set before any chunk moves. No takeaway bar.",
+  "anchor": "## 2. BeeGFS",
+  "alt": "BeeGFS write: the client creates the file on metadata, which records the stripe pattern, then sends chunks to storage targets.",
+  "cap": "In a BeeGFS write, the metadata service records the stripe pattern first, and the client then sends chunks to the storage targets named in that plan."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "20",
+  "name": "h20-gds-bounce-vs-direct",
+  "title": "Buffered reads bounce through host DRAM, GPUDirect Storage skips it",
+  "spec": "A title line at the top: one 100.0 GB read into GPU memory. Two horizontal rows, one above the other, each with a short row title on its left. Top row title: Legacy buffered I/O path. Its boxes from left to right: NVMe or storage NIC, then Host DRAM page cache, then User-space CPU buffer, then GPU HBM. Between the first box and the page cache, a short arrow labelled PCIe crossing 1. Between the user-space buffer and GPU HBM, a short arrow labelled cudaMemcpyHostToDevice, PCIe crossing 2. Between the page cache and the user-space buffer, an arrow labelled CPU copy. Under the top row, a label: 2 PCIe crossings and 200.0 GB of host DRAM read and write traffic. The Host DRAM page cache box is the orange highlight, labelled bounce buffer. Bottom row title: GPUDirect Storage path. Its boxes from left to right: NVMe or storage NIC, then GPU HBM (BAR1). One arrow between them labelled peer-to-peer DMA via cuFileRead, one PCIe crossing. A small box above the arrow labelled nvidia-fs.ko loaded. Under the bottom row, a label: 1 PCIe crossing and 0.0 GB of host DRAM bounce traffic. Keep the host DRAM box absent from the bottom row, so the difference is visible by omission. Icons: a disk cylinder for NVMe, a network port for the storage NIC, a memory chip for host DRAM, a chip for the GPU, a window for the user-space buffer. No takeaway bar.",
+  "anchor": "### 8.1 The AI data path: GPUDirect Storage (`GDS`) and NVMe staging (Volume 15)",
+  "alt": "A buffered read crosses PCIe twice through host DRAM, while GPUDirect Storage moves data once with no host DRAM bounce.",
+  "cap": "A buffered read crosses PCIe twice and bounces through host DRAM, while GPUDirect Storage moves the data once without touching host DRAM."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "20",
+  "name": "h20-ec-efficiency-bars",
+  "title": "Usable capacity: data pieces divided by all pieces",
+  "spec": "A title line at the top, then the formula line: Efficiency = D / (D + P), where D is data pieces and P is parity pieces. Below, a horizontal axis from 0% to 100% with tick marks at 0, 50, 100. Four horizontal bars stacked one above another, each with a label on the left and a percentage at the bar's end. Bar 1: 1+1 RAID-1 or buddy mirroring, 50.0%. Bar 2: 8+2 RAID-6 or EC, 80.0%. Bar 3: 16+2 distributed EC, 88.89%. Bar 4: 146+4 VAST-style wide EC, 97.33%. Bar lengths are drawn to scale against the 0% to 100% axis. Each bar has a green fill, and the 8+2 bar is the one with the orange outline, labelled example: 8 data pieces and 2 parity pieces, so 8 of every 10 pieces are useful data. Under the bars, a plain note: wider stripes keep more of the capacity usable, while a single stripe of 1+1 keeps only half. No takeaway bar.",
+  "anchor": "## 5. WEKA (WekaFS) and other distributed filesystems (*Supercomputers for Linux Sysadmins* Chapter 9)",
+  "alt": "Usable capacity bars: 1+1 mirror 50 percent, 8+2 erasure coding 80 percent, 16+2 88.89 percent, 146+4 97.33 percent.",
+  "cap": "Wider erasure-coded stripes keep more of the raw capacity usable than a simple mirror does."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "21",
+  "name": "h21-collective-buffer",
+  "title": "Collective buffering: many small writes become a few large aligned ones",
+  "spec": "Two side-by-side panels, each with a title. Left panel title: Independent writes. Draw four small boxes labelled rank stacked on the left, each with a few short arrows fanning out to a long bar labelled shared file. The arrows are many, short and scattered across the bar, drawn as small jagged marks, so the picture looks busy. Under the left panel, a grey label: many small noncontiguous requests. Right panel title: Collective buffering, two-phase I/O. Same four small boxes labelled rank on the left. Step 1 arrows, labelled exchange over the fabric, run from each rank box to two aggregator boxes in the middle, each labelled aggregator rank with the small text cb_nodes. Step 2 arrows, labelled large contiguous, stripe-aligned writes, run from each aggregator box to the long bar labelled shared file, which is drawn split into a few wide blocks with stripe boundary marks between them. Number circles 1 and 2 mark the two phases in time order. Arrows must not cross: place the ranks in one column, the aggregators in the middle column, and the file bar at the right. Orange highlight on the wide stripe-aligned blocks in the right panel, labelled the single most important item: few large writes. Under the right panel, a grey label: many small noncontiguous requests become a few large ones. No takeaway bar.",
+  "anchor": "## 1. Parallel I/O in HPC: MPI-IO and HDF5",
+  "alt": "Independent writes scatter many small requests, while collective buffering gathers data on aggregators that write large aligned blocks.",
+  "cap": "Collective buffering gathers data onto a few aggregator ranks, which then write large stripe-aligned blocks instead of many small scattered writes."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "21",
+  "name": "h21-dcp-reshard",
+  "title": "Save on four ranks, load on two and one without rewriting the shards",
+  "spec": "A title line at the top. Left column titled Save with 4 ranks. Four stacked file boxes labelled __0_0.distcp, __1_0.distcp, __2_0.distcp and __3_0.distcp, each with a small note shard (2, 3) per rank, drawn as a stack that reads as one group. Below them a separate box labelled .metadata, with the note records which slice of which tensor lives where. Draw the four shard files as one group container, labelled shard files. Right column, upper panel titled load with 2 ranks: two boxes, each labelled loaded shard (4, 3), each with the text reassembled_equal=True. Right column, lower panel titled load with 1 rank: one wide box labelled loaded shard (8, 3) with the text reassembled_equal=True. Arrows: from the group container of shard files, one arrow to the upper panel and one arrow to the lower panel, each labelled reads only the slices each rank needs. From the .metadata box, one arrow to the right column, labelled tells each rank where its slices are. The two right-column arrows must not cross the left column. Orange note on the shard files group, the single most important item: the shard files are never rewritten. Under the whole figure, a plain note: the number of ranks can change between save and load. No takeaway bar.",
+  "anchor": "### Tested: sharded checkpoint and resharding",
+  "alt": "A checkpoint saved as four shard files and a metadata file is loaded back onto two ranks and onto one rank.",
+  "cap": "A distributed checkpoint saved from four ranks can be loaded onto two or one rank because the metadata records where each slice lives."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "21",
+  "name": "h21-commit-protocol",
+  "title": "The crash-safe commit: five steps, then a restart that scans and verifies",
+  "spec": "A left-to-right row of five numbered step cards connected by arrows, number circles 1 to 5 in time order. Step 1, title: Write shards to a temporary directory. Label: each rank writes its shards into step-N.tmp and calls fsync on them. Icon: a disk cylinder. Step 2, title: Record the manifest. Label: the coordinator writes a SHA-256 digest for each shard into MANIFEST.json, then calls fsync on it. Icon: a fingerprint or a document. Step 3, title: Rename atomically. Label: step-N.tmp becomes step-N, then the parent directory is fsynced. Icon: a tag or an arrow. Step 4, title: Move the latest pointer. Label: write a temp file, then rename it over latest. Icon: a pointer or flag. Step 5, title: Restart and verify. Label: scan for the newest step directory whose manifest and shard hashes verify. Icon: a magnifier or a shield. Below the row, a second band titled What a crash leaves behind, with three small cards in a row, each linked by a thin line back to the step where it happens. Card A, crash before rename: only a step-N.tmp directory is left, and readers ignore it, so latest stays on the last good step. Card B, crash before latest: latest is stale, and the scan finds the newer step-300 directory. Card C, corrupted shard after a commit: the hash check fails, so the loader falls back to the previous valid step. Orange highlight on step 5, labelled the single most important item: latest is a hint, the manifest and hashes are the truth. No takeaway bar.",
+  "anchor": "## 3. Crash-safe commits (tested)",
+  "alt": "Five-step crash-safe commit: temporary write, manifest, atomic rename, latest pointer, and a verified restart scan.",
+  "cap": "The commit writes to a temporary directory, renames it atomically, and on restart trusts only directories whose hashes verify."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "21",
+  "name": "h21-loader-overlap",
+  "title": "Overlap: copy batch N+1 to the GPU while the GPU computes batch N",
+  "spec": "A title line at the top. Three horizontal swimlanes stacked one above another, each with a lane title on its left: Loader workers, Copy stream, Compute stream. Time runs left to right with a time arrow along the bottom. In the Loader workers lane, two green blocks in sequence: prepare batch N+1, then prepare batch N+2, each block drawn above the compute block it overlaps. In the Copy stream lane, two green blocks: copy batch N+1 to GPU, labelled non_blocking, then copy batch N+2 to GPU, drawn under the compute blocks they overlap. In the Compute stream lane, two green blocks: compute batch N, then compute batch N+1. The blocks in the three lanes must line up so that the loader and copy blocks sit under the compute block of the previous batch: prepare batch N+1 and copy batch N+1 both sit under compute batch N. A small handshake marker, a grey vertical tick labelled wait_stream, sits at the start of each compute block, linked to its copy block. Orange highlight on the wait_stream handshake, labelled the single most important item: compute waits only for its own copy. Under the lanes, a grey note: if the overlap is missing, the GPU goes idle at the start of every iteration, shown as a short hatched gap at the start of a compute block. No takeaway bar.",
+  "anchor": "### Workers, pinned memory, and overlap",
+  "alt": "Loader and copy stream prepare the next batch while the GPU computes the current one, with a wait_stream handshake.",
+  "cap": "Prefetching and a separate copy stream let the next batch move to the GPU while the current batch computes."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "22",
+  "name": "h22-ipxe-handshake",
+  "title": "iPXE chain-load: the second DHCP request carries option 175",
+  "spec": "A sequence diagram drawn as four vertical swimlanes side by side, each lane headed by its participant name: Node firmware (PXE ROM), iPXE program, DHCP and TFTP server, HTTP server. Messages are horizontal arrows from the sender's lane to the receiver's lane, in top-to-bottom time order, each arrow labelled with its text and numbered with a small step number. Message 1, from Node firmware to DHCP and TFTP server, labelled first DHCP request, no option 175. Message 2, from DHCP and TFTP server back to Node firmware, labelled reply with boot file ipxe.efi (UEFI) or undionly.kpxe (BIOS). Message 3, from Node firmware to DHCP and TFTP server, labelled fetch the boot file over TFTP. Message 4, from DHCP and TFTP server back to Node firmware, labelled iPXE program arrives. Message 5, from iPXE program to DHCP and TFTP server, labelled second DHCP request, option 175 set, tag ipxe. Message 6, from DHCP and TFTP server back to iPXE program, labelled reply with an HTTP URL to boot.ipxe, not another binary. Orange highlight on message 6, the single most important item, with the small note this breaks the loop. Message 7, from iPXE program to HTTP server, labelled fetch boot.ipxe script over HTTP. Keep the lanes in this order so no arrow crosses another arrow. No takeaway bar.",
+  "anchor": "### iPXE",
+  "alt": "The node boots iPXE over TFTP, then iPXE sends a second DHCP request with option 175 and receives an HTTP script URL.",
+  "cap": "iPXE sends a second DHCP request with option 175, so the server answers with a script URL instead of loading iPXE again."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "22",
+  "name": "h22-stateless-layers",
+  "title": "A stateless node: a read-only image in RAM, writes go to a layer above it",
+  "spec": "A vertical stack of three wide layer boxes in the centre, read from bottom to top. Bottom layer, labelled Read-only image: rootfs.squashfs, downloaded into RAM at every boot, with a lock icon and the note never changes. Middle layer, labelled Writable layer: tmpfs or overlayfs, with a window or layers icon and the note every write lands here. Top layer, labelled Running node: systemd and the jobs, with a gear icon. Arrows: a single upward arrow between the layers, labelled reboot returns the node to the clean image, drawn on the right side as a return path from the top layer down to the bottom layer, not crossing the boxes. To the right of the stack, a separate column, titled Per-node identity, injected at first boot: a grey box listing SSH host keys, machine-id, hostname, Munge key, credentials, with a shield icon, and one arrow into the running node labelled injected from the provisioning server or a secret store. The identity box must not sit inside the shared image; draw it outside the stack with a dashed outline and the note not in the shared image. Below the stack, a dashed box titled Hybrid option: local NVMe for scratch, logs and container layers, with a disk cylinder icon and one arrow into the running node. Orange highlight on the reboot return path, labelled the single most important item: a reboot is a clean state. No takeaway bar.",
+  "anchor": "## 4. Stateless, stateful and hybrid nodes",
+  "alt": "A stateless node runs a read-only squashfs image with a writable tmpfs or overlayfs layer, while identity is injected per node at first boot.",
+  "cap": "A stateless node runs from a read-only image in RAM, so a reboot returns it to a clean state, and per-node identity is injected at boot."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "22",
+  "name": "h22-dtb-triage",
+  "title": "Boot triage: check D, T, B and I in order and stop at the first failure",
+  "spec": "A title line at the top. A left-to-right row of four stage cards connected by arrows, number circles 1 to 4 in time order. Card 1, large letter D, title DHCP, question: Did the node get an address and the right boot information? Icon: a network port. Card 2, large letter T, title Transfer, question: Did the bootloader download? Icon: a download arrow into a box. Card 3, large letter B, title Boot-mode, question: Does the binary match the firmware? Icon: a chip with a UEFI or BIOS label. Card 4, large letter I, title Image, question: Did kernel, initramfs and root load and start the OS? Icon: a window or a terminal. Under each card, one short grey check line: card 1, tcpdump port 67 or port 68 and the DHCP server logs; card 2, tcpdump port 69, the server log and the HTTP status codes; card 3, ipxe.efi versus undionly.kpxe, x86_64 versus ARM64 and Secure Boot shim; card 4, serial console output, the rd.break initramfs shell and a missing NIC driver. Under the row, a decision band with a red-free stop rule drawn as an orange bar: stop at the first failing stage. Below that, a small grey note: if the node never got its boot file name, the image stage is irrelevant. Keep card text sized so each line wraps inside its card with padding. No takeaway bar.",
+  "anchor": "## 8. Boot triage",
+  "alt": "Boot triage walks four stages in order, DHCP, Transfer, Boot-mode and Image, and stops at the first one that fails.",
+  "cap": "Boot triage checks DHCP, transfer, boot mode and image in that order, and the first failing stage is where you start the fix."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "23",
+  "name": "h23-statelite-flow",
+  "title": "A statelite xCAT build: six steps from media to booted nodes",
+  "spec": "Six numbered step cards arranged in two rows of three, read left to right then down to the second row, with a thin arrow linking each card to the next, and number circles 1 to 6 in time order. Row one. Step 1, title: Import media and define nodes. Monospace label: copycds, then mkdef node[1-100]. Icon: a disk or a DVD. Step 2, title: Assign addresses with a regex rule. Monospace label: chtab on hosts.ip. Icon: a network address. Step 3, title: Build the statelite image. Monospace label: genimage, then chdef compute provmethod. Icon: a box or a package. Row two. Step 4, title: Set writable RAM paths. Plain label: the NFS root is read-only, so each litefile path gets writable tmpfs space in RAM. Note at least 15 entries. Icon: a sticky note. Step 5, title: Inject keys and accounts, then pack. Monospace label: add_ssh, add_passwd, liteimg. Icon: a key. Step 6, title: Generate services and boot. Monospace label: makehosts, makedhcp, makedns, nodeset, rpower node[1-100] boot. Icon: a power symbol. Orange highlight on step 5, labelled the single most important item: skip it and the nodes boot without keys and accounts. Under the figure, one grey line: the steps follow the xCAT recipe and each step depends on the one before. No takeaway bar.",
+  "anchor": "#### Loading and Controlling: Step-by-step `statelite` provisioning workflow (Chapters 26 and 28)",
+  "alt": "A six-step xCAT statelite build: import media, define nodes, build the image, set writable paths, inject keys, then boot.",
+  "cap": "A statelite xCAT build runs from media import and node definitions through the image and its writable paths to the boot, in that order."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "23",
+  "name": "h23-bcm-image-flow",
+  "title": "BCM image flow: the head copy reaches every node, and each node returns to the known good state",
+  "spec": "A top-down flow. At the top, a wide box labelled Head node, with a stack icon, containing two smaller items: software image at /cm/images/<image>, and CMDaemon. Arrow down labelled updateprovisioners, with the note pushes head-copy changes to provisioning nodes. Middle row, a box labelled Provisioning nodes, which serve images to other nodes. Arrow down labelled serves the category's software image. Bottom row, two side-by-side boxes for node types, each linked from the provisioning nodes with one arrow. Left bottom box titled Diskless node: the image is copied into memory, tmpfs, shown as a small box inside a RAM icon. Right bottom box titled Diskful node: local disk contents are checked against the image, and any differing content is corrected, shown as a disk icon with a check mark. A side note box, not connected by an arrow, in the top-right: Category groups nodes and sets their software image. Another side note in the top-left above the head node box: Node installer, an early boot phase that identifies the node, partitions the disks and syncs the image, then hands over to the OS. Orange highlight on the diskful box's correction step, labelled the single most important item: drift is corrected at boot. Green takeaway bar at the bottom, one sentence from the source: a node that reboots checks itself against the image, so differences are corrected. Keep all arrows orthogonal and avoid crossings.",
+  "anchor": "## 5. NVIDIA Base Command Manager (BCM)",
+  "alt": "BCM head node pushes the software image to provisioning nodes, which serve diskless and diskful compute nodes.",
+  "cap": "In BCM, the head node's software image reaches each compute node through provisioning nodes, and each node is corrected to match it at boot."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "23",
+  "name": "h23-warewulf-overlays",
+  "title": "Warewulf overlays: templates rendered per node, applied at two times",
+  "spec": "A left-to-right layout. Left box: Container image, a chroot tree drawn as a stack of layers, labelled image unchanged by overlays. Left-middle box: Overlay, a folder of files and .ww templates. Middle box: nodes.conf, labelled per-node attributes, drawn as a table card with rows of node name, IP and image. An arrow from nodes.conf into the overlay box, labelled renders each template for each node. A right-middle box: Rendered files for one node, with the sub-label one file per template. Arrow from the overlay to rendered files. Arrows from the image and the rendered files converge into a single node box at the far right, labelled node filesystem. Two timing lanes beneath the node box: a lane labelled System overlays with the text applied once during early boot, on initramfs, and a lane labelled Runtime overlays with the text fetched and applied periodically while the node runs. A dashed callout from the node box: wwctl overlay blame <node> shows which overlay contributed each file. Orange highlight on the template rendering arrow, labelled the single most important item: the node record becomes the source for each file. No takeaway bar.",
+  "anchor": "### Architecture",
+  "alt": "Warewulf overlays are .ww templates rendered from nodes.conf for each node and applied at early boot and at runtime.",
+  "cap": "Warewulf renders overlay templates from each node's record, and applies the result over the image at boot and while the node runs."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "24",
+  "name": "h24-lookup-path",
+  "title": "A user lookup on a node: local files first, then the SSSD cache, and LDAP only on a miss",
+  "spec": "A left-to-right flow. Left box: Lookup, with the monospace text id alice or getent passwd alice, icon: a terminal window. Arrow to a box titled nsswitch.conf, with monospace text passwd: files sss, icon: a gear. From it, a first branch to a box titled files, the local /etc/passwd file, icon: a document. If the name is found there, a short arrow to a green answer box titled Answer. Second branch from nsswitch.conf to a box titled sss, SSSD, icon: a shield. From SSSD, a decision diamond titled cache hit? Yes branch goes to the Answer box, labelled from cache, entry_cache_timeout 5400 s. No branch goes down to a box titled LDAP over ldaps://, with the failover note ldap1 and ldap2, icon: a clock or a server. From LDAP, an arrow back up to SSSD labelled stored in cache, then to Answer. A small grey note beside SSSD: enumerate = false, so SSSD looks up one name and never lists the whole directory. Orange highlight on the nsswitch.conf order arrow, labelled the single most important item: if the order is reversed, the directory is asked first for every lookup. Keep all arrows orthogonal and no arrow crosses another. No takeaway bar.",
+  "anchor": "## 4. SSSD, nsswitch and PAM on the nodes",
+  "alt": "A node resolves a user through nsswitch: local files, then the SSSD cache, and only on a miss a query to LDAP.",
+  "cap": "A node checks local files, then the SSSD cache, and asks LDAP only when the cache has no answer."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "24",
+  "name": "h24-launch-lookups",
+  "title": "Job launch on many nodes: who answers the user lookup",
+  "spec": "Two side-by-side panels with titles. Left panel title: Each node asks the directory. A grid of many small node boxes, each labelled node, drawn compactly in three rows. One single arrow from the node grid container to a box at the right titled LDAP directory, labelled every node calls getpwnam() and initgroups() at task launch. Under the arrow, the note thousands of queries at the same moment. Orange highlight on this arrow and the note, labelled the single most important item: the lookup storm at job start. Right panel title: Slurm passes the answer down. A single box at the top labelled Slurm controller, with an arrow down to a grid of the same small node boxes, labelled passwd and group data sent with the job. Each node box inside has a small tag resolved locally. A note under the grid: verify support and semantics on your Slurm version. The right panel has no arrow to the LDAP directory, and a small grey note under the title: enable_nss_slurm in LaunchParameters. Keep the two panels separate with a vertical divider. No takeaway bar.",
+  "anchor": "### Compute nodes",
+  "alt": "Without enable_nss_slurm, every node queries LDAP at job start; with it, the controller passes the user data down.",
+  "cap": "Each compute node normally queries the directory at job start, but enable_nss_slurm lets the controller pass the user data down instead."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "24",
+  "name": "h24-offboard-order",
+  "title": "Offboarding in order: close the front door first",
+  "spec": "A top-to-bottom sequence of five numbered step cards, number circles 1 to 5 in time order, each card a wide horizontal box with a title and a one-line label, and a thin arrow linking each card to the next. Step 1, title: Disable LDAP login. Label: lock the account first, so nothing new can start. Icon: a lock. Step 2, title: Zero or remove Slurm associations. Label: set the sacctmgr limits to zero or remove the associations, and keep the accounting history. Icon: a ledger or a book. Step 3, title: Reassign or archive files. Label: move or archive the user's files, as the policy says. Icon: a folder with an arrow. Step 4, title: Remove SSH keys and revoke tokens. Label: remove the SSH keys, then revoke tokens such as API keys, registry tokens, object store keys and Slurm REST JWTs. Icon: a key with a cross. Step 5, title: Disable cloud and Kubernetes access. Label: the last door to close. Icon: a cloud. A grey side note beside step 2: never delete historical job records. A grey side note beside step 4: the last step is usually the one that leaves a token alive. Orange highlight on step 1, labelled the single most important item: lock the front door first, so every later step starts from a known state. No takeaway bar.",
+  "anchor": "## 6. Slurm accounting alignment",
+  "alt": "Offboarding order: disable LDAP login, zero Slurm associations, reassign files, remove keys and tokens, then disable cloud access.",
+  "cap": "Offboarding works best in a fixed order that closes the login path first and keeps the Slurm accounting history."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "25",
+  "name": "h25-proxyjump-hop",
+  "title": "ProxyJump passes the connection through the bastion",
+  "spec": "Two side-by-side panels. Left panel titled ProxyJump (ssh -J), the recommended choice. Three boxes in a row: Laptop (holds the private keys, labelled keys stay on the laptop), Bastion (labelled jump host, passes the encrypted connection through), login (labelled login.cluster.internal). Arrows run left to right from Laptop to Bastion to login. Under the arrow to login, a monospace label reads ssh -J user@bastion user@login. A bracket spans from Laptop to login with the text end to end encrypted. Right panel titled ForwardAgent yes (ssh -A), marked to avoid. Same three boxes, but the Bastion box holds an agent socket icon with a warning mark, and the label reads root on the intermediate host can use the agent socket. Orange note on the right panel: this exposes the user's agent socket to root on intermediate hosts. Keep the two panels equal in size, separated by a vertical divider. No green takeaway bar.",
+  "anchor": "### Client-side practices (document these for users)",
+  "alt": "ProxyJump sends an encrypted SSH connection through the bastion while keys stay on the laptop, unlike agent forwarding.",
+  "cap": "ProxyJump passes an end-to-end encrypted connection through the bastion and keeps your keys on the laptop."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "25",
+  "name": "h25-x11-role-swap",
+  "title": "The X11 role swap: the workstation is the server",
+  "spec": "Two large boxes side by side with an arrow between them. Left box titled Your workstation, containing a monitor icon and the label X server, with the sub-labels owns the physical or virtual display, display :0, keyboard, mouse. Right box titled Cluster node, containing a window icon and the label X client, with the sub-label graphical application, for example xclock. An arrow runs from the X client in the cluster node box to the X server in the workstation box, labelled X protocol over UNIX domain or TCP sockets. Monospace commands under the X server box: xclock -display :0 and export DISPLAY=:0. Above the two boxes, a small note: the program is the client, the workstation is the server. Orange note on the arrow or the server box: the role is swapped, so workstation security matters too. No numbered steps, no green takeaway bar.",
+  "anchor": "### X11 and graphical tools (*Supercomputers for Linux Sysadmins* Chapter 18)",
+  "alt": "In X11 the X server runs on the user's workstation and the graphical program on the cluster is the X client.",
+  "cap": "In X11 the workstation runs the X server and the program running on the cluster is the client."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "25",
+  "name": "h25-ood-request-chain",
+  "title": "How an Open OnDemand request reaches the compute node",
+  "spec": "A left-to-right chain of four boxes with numbered step circles 1 to 4 above them. Box 1: User browser (monitor icon), arrow labelled HTTPS 443 to box 2. Box 2: Apache front end (gear or server icon), with the label authenticates the user. Arrow labelled reverse proxies each user to her PUN via Unix domain sockets to box 3. Box 3: Per-User NGINX (PUN), with the sub-label runs as the user, starts per-user NGINX processes (PUNs). Ruby and Node web apps are shown inside as a small note, and the label job submission and interactive apps. Arrow labelled reverse proxies to interactive apps via TCP sockets runs from Apache (box 2) down to box 4. Box 4, placed below box 3 in the lower right: Compute node, containing the interactive apps labelled RStudio, Jupyter and VNC desktop. The Apache to compute node arrow must not cross the PUN arrow. Orange highlight on the PUN box: it runs as the user, so file access follows the user's real permissions. No green takeaway bar.",
+  "anchor": "### Architecture (from the OOD documentation)",
+  "alt": "Open OnDemand's Apache checks the user, hands traffic to that user's PUN, and proxies interactive apps on compute nodes over TCP.",
+  "cap": "Open OnDemand's Apache authenticates you, passes your traffic to your own PUN, and proxies interactive apps on compute nodes."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "26",
+  "name": "h26-trap-pipeline",
+  "title": "How an SNMP trap reaches your handler script",
+  "spec": "Left-to-right flow with four numbered step circles (1 to 4) above boxes. Box 1: Switch, PDU or UPS (device icon) with the label sends Trap, and a note UDP port 162 on the arrow to box 2. Box 2: snmptrapd (manager, monitoring server icon), with a small monospace line authCommunity log,execute,net public inside the box. Arrow labelled traphandle NET-SNMP-EXAMPLES-MIB::netSnmpExampleHeartbeatNotification runs to box 3. Box 3: Handler script (script icon) with the monospace label /tmp/demo, and a note production should use a non-/tmp path. Arrow from box 3 to box 4. Box 4: a document icon with the monospace label trap log line written to a log file, shown as /tmp/demo.log. Below box 3, a separate panel titled stdin lines, containing three stacked rows: line 1 sender hostname, line 2 sender IP and transport, then oid val pairs one per line after that. The arrow from snmptrapd to the handler is labelled with stdin. Orange highlight on box 2 with the note a community mismatch drops the trap before the handler runs. No green takeaway bar.",
+  "anchor": "### SNMP, `snmpconf`, and `snmptrapd` handlers",
+  "alt": "A device trap reaches snmptrapd, which checks the community and runs a handler that reads the sender and variables from standard input.",
+  "cap": "A trap goes from the device to snmptrapd, which checks the community and then runs your handler script with the trap details on standard input."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "26",
+  "name": "h26-ups-shutdown-order",
+  "title": "Who shuts down first when the power goes out",
+  "spec": "A horizontal timeline arrow across the top, left to right, with four numbered step circles (1 to 4) on it. Marker 1: Grid outage (lightning or plug icon). Marker 2 below the timeline: UPS carries the load for at least 10 to 30 minutes (battery icon). Marker 3: 5 minutes without utility power, labelled controlled cluster shutdown starts, with the text that prohibits new jobs. Marker 4 at the far right: the final stage. Below the timeline, two lanes of boxes in order. Lane 1 box, placed first, labelled Compute nodes stop first, with the tag upsmon slave (shut down first). Lane 2 box, placed last, labelled Network file systems and monitoring servers, with the tag upsmon master (shut down last, attached to the UPS). An arrow runs from the Compute nodes box to the Network file systems box. Orange highlight on the arrow or the upsmon master box: the master shuts down last. No green takeaway bar.",
+  "anchor": "### UPS monitoring with Network UPS Tools (`NUT`) and `apcupsd`",
+  "alt": "On a grid outage the UPS carries the load, then compute nodes shut down first and file systems and monitoring shut down last.",
+  "cap": "During a long outage the compute nodes shut down first, and the file systems and monitoring servers shut down last."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "26",
+  "name": "h26-alert-decision",
+  "title": "Decide between a page, a ticket and a graph",
+  "spec": "A top-down decision flow. Start box at top: Symptom seen, with a bell icon. Diamond or rounded question box: needs human action? Two exits. Yes branch goes right to a box PAGE, shown as an orange-highlighted box with an alarm icon, with example text: rack where 40 percent of GPUs show Xid 79. No branch goes down to a second question box: degradation? Yes branch goes right to box TICKET (clipboard icon), with the label degradations. No branch goes down to box GRAPH (chart icon), with example text: GPU at 99 C might be fine for a minute. Below the PAGE box, a small note: every paged alert needs a runbook. Above the flow, a one-line title in the diagram: alert on symptoms that need human action; graph everything else. No numbered steps. No green takeaway bar.",
+  "anchor": "## 5. Alerting",
+  "alt": "A symptom becomes a page if it needs immediate human action, a ticket if it is a degradation, and otherwise just a graph.",
+  "cap": "A symptom pages someone only when it needs immediate human action, becomes a ticket when it is a degradation, and otherwise stays on a graph."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "26",
+  "name": "h26-util-vs-tensor",
+  "title": "GPU_UTIL can read 99 percent while the tensor cores sit idle",
+  "spec": "Three horizontal meter bars stacked vertically, each with a full track of 100 percent and a green fill for its value. Bar 1 labelled DCGM_FI_DEV_GPU_UTIL, sub-label a kernel was running, value 99 percent, filled almost fully. Bar 2 labelled DCGM_FI_PROF_PIPE_TENSOR_ACTIVE, sub-label Tensor Cores busy, value 4 percent, short fill. Bar 3 labelled DCGM_FI_PROF_DRAM_ACTIVE, sub-label HBM memory interface busy, value 82 percent, long fill. Orange highlight on Bar 2, the short tensor bar, with the note tensor cores idle. Beside Bar 3, a note: high DRAM with low tensor means memory-bound. A small caption at the bottom with the example labels: 64-GPU job, H100 GPUs draw 260 W of a possible 700 W. No numbered steps. No green takeaway bar.",
+  "anchor": "## 3. GPU metrics with DCGM",
+  "alt": "A job can show 99 percent GPU utilisation while its tensor activity is 4 percent and DRAM activity is 82 percent.",
+  "cap": "GPU utilisation alone can show 99 percent while the tensor cores are nearly idle, so check the profiling fields too."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "27",
+  "name": "h27-snapshot-vs-backup",
+  "title": "Snapshots and mirrors share the failure domain, a backup does not",
+  "spec": "Three side-by-side panels separated by thin dividers, each headed by a name. Panel 1 titled Snapshot: a storage array box containing two items, Live data and Snapshot, both inside the same outline, with a label same array and same admin credentials across the box. A small note: deleted together. Panel 2 titled Replication (mirror): a Primary box on the left and a Mirror box on the right, with one arrow from Primary to Mirror labelled deletions and corruption copied. A note: the mirror deletes it too. Panel 3 titled Backup: a Primary box on the left and, separated by a dashed line that marks a separate system, a Backup copy box on the right, labelled immutable or offline copy. Each panel has an icon: a camera for snapshot, two disks for mirror, a locked box for backup. Orange highlight on Panel 3 (backup) as the only copy that survives a bad change. Keep text at least 24 px. No numbered steps. No green takeaway bar.",
+  "anchor": "## 2. Principles",
+  "alt": "Snapshots and mirrors sit in the same failure domain as the live data and copy deletions, while a separate backup survives a bad change.",
+  "cap": "A snapshot or mirror lives in the same failure domain as the data and copies deletions too, so only a separate backup protects against a bad change."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "27",
+  "name": "h27-link-dest-snapshots",
+  "title": "Hard links make a second snapshot cost only its changes",
+  "spec": "Two snapshot folder boxes side by side, left labelled snaps/day1 and right labelled snaps/day2. Inside snaps/day1, file boxes f1.bin and f7.bin, with a size note of 200 files, 4,004 KB in total. Inside snaps/day2, file boxes f1.bin and f7.bin. An arrow from day1 f1.bin to day2 f1.bin, labelled same inode (hard link, no extra space). The day2 f7.bin box is drawn new and highlighted, labelled new inode, modified file. A monospace command above the arrow between the boxes: rsync -a --delete --link-dest=$PWD/snaps/day1 data/ snaps/day2/. Under the day2 box, a sum block: first snapshot 4,004 KB, plus changes 24 KB, equals 4,028 KB together. Orange highlight on the new f7.bin box. Numbered steps: 1 for the first snapshot run, 2 for the second run. No green takeaway bar.",
+  "anchor": "### rsync, batch updates, and hard-link snapshots",
+  "alt": "A second rsync snapshot hard-links the unchanged file to the first snapshot and only the modified file takes new space.",
+  "cap": "A second rsync snapshot hard-links unchanged files to the first, so it only takes new space for the files that changed."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "27",
+  "name": "h27-dr-restore-order",
+  "title": "Restore the control plane in dependency order",
+  "spec": "A vertical stack of six numbered boxes, top to bottom, connected by downward arrows, with a step number circle beside each box. Box 1: Identity (key icon). Box 2: DNS (globe icon). Box 3: Provisioning (server rack icon). Box 4: Storage (disk cylinder icon). Box 5: Scheduler (clock or gear icon). Box 6: Users (person icon). Between box 5 and box 6 the arrow is the only one labelled then users. A thin side note on the left reads each layer depends on the one before it. Orange highlight on box 1 with the note restore first, since everything depends on it. No green takeaway bar. Keep the stack compact with equal spacing.",
+  "anchor": "## 7. Ransomware and insider risk",
+  "alt": "A full recovery restores identity, DNS, provisioning, storage, scheduler and then users, each layer depending on the one before.",
+  "cap": "Restore identity first, then DNS, provisioning, storage and the scheduler, and bring users back last."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "27",
+  "name": "h27-restore-test-tiers",
+  "title": "Three levels of restore testing, from daily to quarterly",
+  "spec": "A three-step staircase rising from bottom-left to top-right. Step 1 at the bottom left, labelled Level 1, with the tag daily, the text automated restore of a random file, and a note checksum compare. Step 2 in the middle, labelled Level 2, with the tag weekly, the text restore of a database dump into a scratch instance, and a note followed by a smoke query. Step 3 at the top right, labelled Level 3, with the tag quarterly, the text full-system recovery drill. Arrows run up the staircase from Step 1 to Step 2 to Step 3. Each step has a small icon: a file with a check mark, a database cylinder, a full server rack. Orange highlight on Step 3 as the most complete test. Below the staircase, a single line of text: each level proves a bigger part of the restore. No numbered step circles beyond the level labels. No green takeaway bar.",
+  "anchor": "## 8. Restore testing and metrics",
+  "alt": "Restore testing has three levels: a daily random file restore with checksum, a weekly database restore with a smoke query, and a quarterly full recovery drill.",
+  "cap": "Restore testing has three levels, from a daily file restore with a checksum to a quarterly full-system recovery drill."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "28",
+  "name": "h28-bonnie-layers",
+  "title": "Where bonnie++ really wrote: the page cache, not the disk",
+  "spec": "A vertical stack of three layer boxes connected by downward arrows, with numbered step circles 1 to 3 beside them. Top box 1: bonnie++ Per Chr test, with the sub-label one-byte writes and the reported figure 739 Kbytes/sec at 99% CPU. A monospace note under it: write(3, \"6\", 1) = 1 and no fsync(2). Arrow down labelled one-byte vfs_write() calls. Middle box 2: OS page cache, with the sub-label 1,176,936 one-byte vfs_write() calls, and a small note: cachestat 1 shows 100.00% page-cache hits and dirties. Arrow down, drawn dashed, to box 3. Bottom box 3: Disk, drawn grey and empty, with the label 0 disk IOPS from iostat -sxz 1 and the note no block_rq_issue events. Side tags on the right of each box name the tool that showed it: strace for box 1, bpftrace and cachestat for box 2, iostat and bpftrace for box 3. Orange highlight on box 3, the layer the test never reached. A green panel on the left is not needed. No green takeaway bar.",
+  "anchor": "## 1. Methodology (Systems Performance, chapter 12)",
+  "alt": "bonnie++ made a million one-byte writes into the page cache, and no disk I/O happened, so the test measured memory.",
+  "cap": "The bonnie++ test made about a million one-byte writes into the page cache and never reached the disk."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "28",
+  "name": "h28-acceptance-order",
+  "title": "Cluster acceptance runs in eight ordered stages",
+  "spec": "Eight numbered boxes arranged in a snake path, four per row, left to right on the top row and right to left on the bottom row, with arrows between consecutive boxes. Each box has a number circle (r=24, green, white number) and an icon beside its title. Box 1: Inventory and firmware audit (chip icon), sub-label BIOS, BMC, NIC and GPU firmware match the baseline. Box 2: Burn in the hardware (flame or thermometer icon), sub-label 24 to 72 hours, watch for errors and thermal throttling. Box 3: Per-node performance (gauge icon), sub-label compare each node with the peer median, flag any node below 95 percent of the median. Box 4: Validate the fabric (network icon), sub-label ib_write_bw and ib_send_lat, then nccl-tests at scale. Box 5: Validate storage (disk cylinder icon), sub-label IOR, mdtest and fio. Box 6: Run the system end to end (server rack icon), sub-label full-cluster HPL, then a multi-day training-like job. Box 7: Smoke-test the scheduler and software (gear icon), sub-label Slurm, containers, identity and monitoring. Box 8: Document the results (document icon), sub-label sign off before each payment milestone. Orange highlight on box 2, where infant mortality shows up. No green takeaway bar.",
+  "anchor": "## 4. Acceptance testing and burn-in",
+  "alt": "Acceptance testing runs eight stages in order, from inventory and burn-in through fabric, storage and end-to-end tests to signed-off documentation.",
+  "cap": "Acceptance testing runs in eight ordered stages, starting with inventory and burn-in and ending with signed documentation."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "28",
+  "name": "h28-batch-halving",
+  "title": "Halve the batch size to tell a network-bound job from a compute-bound one",
+  "spec": "Top-down decision flow. Start box at top: DDP gradient all_reduce at 60 GB/s on a 100 GB/s NIC, with a note the gradient payload stays fixed when the batch size changes. Step number circle 1 beside an arrow down labelled halve the batch size. Diamond or question box: does NIC throughput stay at 60 GB/s? Two exits. Left exit, labelled yes, leads to a green box: stays at 60 GB/s, so the network is the bottleneck, result communication-bound. Right exit, labelled no, leads to a second box: drops to 40 GB/s, so the GPUs are not finishing compute fast enough to keep the NIC busy, result compute-bound. Below both results, step number circle 2 with the box double the batch size as a reverse check, with two notes: a communication-bound job keeps the NIC pinned at 60 GB/s, and a compute-bound job spends a shrinking share of each iteration in all_reduce. Orange highlight on the communication-bound result box. No green takeaway bar.",
+  "anchor": "### NCCL tests",
+  "alt": "Halving the batch size shows whether the NIC stays pinned at 60 GB/s, which means communication-bound, or drops to 40 GB/s, which means compute-bound.",
+  "cap": "Halving the batch size tells you whether the NIC stays pinned, which means the job is communication-bound, or drops, which means it is compute-bound."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "29",
+  "name": "h29-mpi-models",
+  "title": "Hybrid MPI carries its own MPI, bind MPI borrows the host's",
+  "spec": "Two side-by-side panels separated by a vertical divider. Left panel titled Hybrid model. Top row: a box labelled Host launcher (srun or mpirun, with the sub-label host MPI). Below it, a box labelled Container, holding a box labelled container MPI, with the note PMIx compatible with the host. An arrow from the host launcher down to the container, labelled starts apptainer exec per rank. A monospace note under the panel: srun --mpi=pmix apptainer exec --nv --cleanenv -B /scratch:/scratch myenv.sif python train.py. Right panel titled Bind model. Top row: the same Host launcher box with host MPI. Below it, a container box with no MPI inside, and an arrow from a box labelled Host MPI libraries into the container, labelled bind-mounted with -B. A note: admins must allow user bind mounts. Under both panels, a two-row comparison strip with labels: Self-contained, portable (hybrid) versus exact host MPI match, tied to that cluster paths (bind). Orange highlight on the bind model's Host MPI libraries arrow. No numbered steps. No green takeaway bar.",
+  "anchor": "### MPI",
+  "alt": "In the hybrid model the container carries its own MPI, while in the bind model the host MPI libraries are mounted into a container that has none.",
+  "cap": "The hybrid model ships MPI inside the container, while the bind model mounts the host's MPI libraries into a container that has none."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "29",
+  "name": "h29-glibc-mismatch",
+  "title": "Why --nv fails when the container's glibc is too old",
+  "spec": "Left-to-right flow with three boxes and arrows. Box 1 on the left: Host OS, Ubuntu 24.04 with glibc 2.39 (chip icon), with the note GPU node. Box 2 in the middle: Host NVIDIA driver libraries, libcuda.so and libnvidia-ml.so, labelled bind-mounted by --nv. An arrow from Box 1 to Box 2 labelled compiled against the host glibc. Box 3 on the right: Container, Ubuntu 18.04 with glibc 2.27 (box icon). An arrow from Box 2 to Box 3 labelled injected into the container. Below the arrow into Box 3, a red-free warning in orange: GLIBC_2.34 not found (required by libcuda.so.1). Under Box 3 a note: rebase onto a base whose glibc is at least as new as the host. Monospace command above Box 2: apptainer exec --nv old.sif nvidia-smi. Orange highlight on the error message. No numbered steps. No green takeaway bar.",
+  "anchor": "### GPUs",
+  "alt": "The --nv flag injects host libcuda built against a newer glibc, so an older container image fails with a GLIBC_2.34 not found error.",
+  "cap": "The --nv flag injects host driver libraries built against a newer glibc, so an older container image fails with a GLIBC_2.34 not found error."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "29",
+  "name": "h29-repro-levels",
+  "title": "Four levels of reproducibility, each asking more of the process",
+  "spec": "A four-step staircase rising from bottom-left to top-right, with step number circles 1 to 4 on the treads. Step 1 at the bottom: Rerun, sub-label the same image, depends on immutability. Step 2: Rebuild, sub-label the same image from the same recipe, depends on a deterministic build. Step 3: Reuse, sub-label the environment on another system, depends on portability. Step 4 at the top: Understand, sub-label what is inside and where it came from, depends on provenance and metadata. Each step has a small icon: a lock for rerun, a hammer for rebuild, a plug for reuse, a magnifying glass for understand. Arrows run up the staircase from step 1 to step 4. Side note on the right: most teams aim for the first two levels and make the last two possible. Orange highlight on step 4, the level that needs provenance. No green takeaway bar.",
+  "anchor": "## 4. Reproducibility discipline",
+  "alt": "Reproducibility has four levels, rerun, rebuild, reuse and understand, and each level depends on a different property.",
+  "cap": "Reproducibility has four levels, from rerunning the same image to understanding what is inside it, and each one needs more of the process."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "30",
+  "name": "h30-staged-shutdown",
+  "title": "The staged shutdown: six stages, each giving up something to save something else",
+  "spec": "A horizontal timeline arrow across the middle, left to right, with six numbered step circles (r=24, green, white number) placed on it. Above the timeline at the left, a start marker labelled Power fails, with the note apcupsd runs onbattery and starts haltall. Stage 1 box above the timeline: Log the event and warn users, monospace wall. Stage 2 box below the timeline: Wait 30 minutes, with a branch arrow down to a small box labelled power returns, offbattery ends haltall. Stage 3 box: Power off the idle nodes, found by checking each node's load. Stage 4 box: Poll the UPS TIMELEFT value every minute until 5 minutes of battery remain. Stage 5 box: Stop the batch queue and cancel running jobs, monospace scontrol and scancel, then wait a minute. Stage 6 box at the far right: Power off all remaining compute nodes, then power off the head node. Each stage box has a one-line cost tag underneath in italic: stage 2 gives up time to ride through a brief outage; stage 3 gives up the idle nodes to save power for the busy ones; stage 5 gives up the running jobs to save the file system and hardware. Orange highlight on stage 5, the most costly step. Icons: a bell for stage 1, a clock for stage 2, a power plug for stage 3, a battery for stage 4, a stop sign for stage 5, a server rack for stage 6. No green takeaway bar.",
+  "anchor": "### 3.4 UPS and staged shutdown",
+  "alt": "A staged cluster shutdown logs and warns, waits 30 minutes, powers off idle nodes, polls battery time, cancels jobs and then powers off the rest.",
+  "cap": "A staged shutdown warns users, waits, powers off idle nodes, cancels jobs at five minutes of battery, and only then powers off the rest."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "30",
+  "name": "h30-psu-feed-designs",
+  "title": "Interleaved feeds crash every server; separate feeds lose only half",
+  "spec": "Two side-by-side panels separated by a vertical divider. Left panel titled Interleaved dual sources, with a red-free orange STOP label at the top. Two UPS boxes at the top: UPS A and UPS B. Under them, one server box containing six PSU boxes in a row, the first three linked to UPS A and the last three to UPS B, with thin lines. A callout on UPS A marked failure, and a note under the server: 3 PSUs lost, 5 of 6 rule broken, the server shuts down. Mark the server with a large X. Right panel titled N with two separate sources. Two UPS boxes at the top, UPS A and UPS B. Below them, two rows of server boxes: the top row of servers fed only from UPS A (all 6 cords), the bottom row fed only from UPS B (all 6 cords). A callout on UPS A failure marked affects only half the servers, and the bottom row stays green and running. Orange highlight on the failed UPS A in the right panel is not needed, use the left-panel X as the only orange element. Under the panels, a single line of text: the usual redundancy model assumes two feeds, but the server's own 5-of-6 PSUs change the answer. No green takeaway bar.",
+  "anchor": "### 3.2 Redundancy: why servers with internal power supplies need care",
+  "alt": "Interleaving three PSUs on each of two UPS sources takes every server down when one UPS fails, while splitting whole servers across UPS sources loses only half.",
+  "cap": "Wiring three power supplies to each of two UPS sources takes every server down if one UPS fails, but giving each source whole servers loses only half."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "30",
+  "name": "h30-cold-plate-loop",
+  "title": "Cold plates carry heat from the chips to a CDU, which passes it to facility water",
+  "spec": "A left-to-right loop diagram with four boxes and arrows. Box 1 on the left: Cold plates, drawn as a flat plate on a chip, with two sub-labels CPU and GPU. Arrow from Box 1 to Box 2 labelled warm liquid. Box 2 in the middle: CDU (coolant distribution unit, pump and box icon), with the sub-label pumps coolant around the loop. Arrow from Box 2 to Box 3 labelled heat passed to facility water. Box 3 on the right: Heat exchanger, with the label facility water loop. A return arrow runs from Box 2 back to Box 1 along the top, labelled coolant around the loop. A small sensor box with a drop icon labelled leak detection sits under the loop, attached by a dotted line to Box 1. Orange highlight on the cold plate box. Pipes drawn as thick lines in light green. Air-cooled parts shown as a small fan icon with the label fans cool the lower-power parts, placed under Box 1. No numbered steps. No green takeaway bar.",
+  "anchor": "## 5. Liquid cooling",
+  "alt": "Cold plates on the CPUs and GPUs send warm liquid to a CDU, which pumps coolant around the loop and passes the heat to facility water.",
+  "cap": "Cold plates on the chips send warm liquid to a CDU, which pumps coolant around the loop and passes the heat to facility water."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "31",
+  "name": "h31-build-order",
+  "title": "Build a GPU cluster from the bottom up, one layer at a time",
+  "spec": "An ascending staircase of eight stacked layer boxes, drawn from bottom-left (layer 1) to top-right (layer 8), each box a step up from the one below, with an upward arrow along the staircase edge labelled build order, bottom to top. Each box has a number circle (r=24, green, white number) and an icon beside its title. Layer 1: Facility power and cooling (lightning-bolt icon), sub-label check the rack power budget before the chassis goes in. Layer 2: Out-of-band and in-band networks (network icon), sub-label BMC to the OOB switch, host NICs to the in-band switch. Layer 3: Bare-metal provisioning (server icon), sub-label DHCP and TFTP from nodes.csv, then a golden image. Layer 4: Identity (key or badge icon), sub-label LDAP or FreeIPA with SSSD, UIDs and GIDs match on every node. Layer 5: Fabrics and parallel storage (disk cylinder icon), sub-label Subnet Manager, ibdiagnet, then mount the parallel filesystem. Layer 6: Scheduler and cgroup isolation (gear icon), sub-label slurm.conf, gres.conf and cgroup.conf generated from hardware.csv. Layer 7: Acceptance gates and burn-in (gauge icon), sub-label NHC, HPL, IOR and a 24 to 72 hour burn-in. Layer 8: Telemetry, alerting and backup (chart icon), sub-label Prometheus scraping, alert rules checked, backups verified. Orange highlight on layer 6 with a small tag: rookie mistake, Slurm installed on day one before identity and storage. No green takeaway bar.",
+  "anchor": "## 2. Build order and dependency chains",
+  "alt": "A new GPU cluster is built in eight layers from facility power up to telemetry and backup, with each layer depending on the one below it.",
+  "cap": "A new GPU cluster is built in eight layers, from facility power at the bottom to telemetry and backup at the top, and each layer depends on the one below."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "31",
+  "name": "h31-single-source-pipeline",
+  "title": "One inventory in, every config out",
+  "spec": "Left-to-right flow with three columns: inputs on the left, generators in the middle, outputs on the right. Four input boxes stacked vertically on the left, each with a file icon: hardware.csv (sub-label machines), nodes.csv (sub-label how each machine boots), users.csv (sub-label who may use the cluster), train.sbatch (sub-label a researcher's job script). Note inside a container around the three CSV inputs: all live in Git. Four generator boxes in the middle column, aligned with their inputs: gen_slurm_conf.py, gen_provision.py, identity_gen.py, sbatch_lint.py. Output boxes on the right: a container labelled slurm/ holding slurm.conf, gres.conf and cgroup.conf, with an arrow from gen_slurm_conf.py to that container; a box provision/dnsmasq.conf and iPXE scripts for gen_provision.py; a box identity/ holding users.ldif, sacctmgr.sh and mkhomes.sh for identity_gen.py; and for sbatch_lint.py an output box labelled no findings. From the slurm/ container, one arrow to a check box slurmconf_lint.py. Orange highlight on the hardware.csv input, the single row that updates every subsystem. Keep arrows orthogonal and avoid crossings. No numbered steps. No green takeaway bar.",
+  "anchor": "## 3. Single-source-of-truth pipeline lab",
+  "alt": "Each inventory file feeds one generator, and the generators write the Slurm, DHCP, identity and job-check outputs.",
+  "cap": "Each inventory file feeds one generator, and together they write every scheduler, boot and identity config from one source of truth."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "31",
+  "name": "h31-acceptance-gates",
+  "title": "Ten acceptance gates, ordered from cheapest to most expensive",
+  "spec": "Ten numbered boxes in a snake path: gates 1 to 5 in a top row from left to right, then gates 6 to 10 in a bottom row from right to left, with arrows between consecutive gates, so the path reads in order. Each box has a number circle (r=24, green, white number) and an icon: gate 1 a thermometer, gate 2 a chip, gate 3 a key, gate 4 a single server, gate 5 a link between GPUs, gate 6 a network switch, gate 7 a disk cylinder, gate 8 a clock or queue, gate 9 a quota gauge, gate 10 a flame for burn-in. Box labels: 1 Out-of-Band and Sensors; 2 Host Health and PCIe/NVLink; 3 Cluster Identity and MUNGE; 4 Single-Node GPU and Memory; 5 Intra-Node NVLink Collectives; 6 Inter-Node RDMA Fabric; 7 Parallel Storage I/O; 8 Scheduler and cgroup Isolation; 9 Policy and Quota Enforcement; 10 Fault Injection and 72h Burn-In. Above the row a thin arrow labelled cheapest to most expensive, left to right on top and reversed on the bottom. Orange highlight on gate 10. No green takeaway bar.",
+  "anchor": "## 4. Ten-gate acceptance testing and burn-in protocol",
+  "alt": "The ten acceptance gates run from out-of-band sensors through identity, GPU, network, storage and scheduler checks to a 72-hour fault-injection burn-in.",
+  "cap": "The ten acceptance gates run from cheap out-of-band checks to a 72-hour burn-in, and each gate assumes the ones before it have passed."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "31",
+  "name": "h31-drill-recovery-loop",
+  "title": "Drill 1: from a dropped GPU back to service",
+  "spec": "A horizontal loop of five boxes with arrows between them in order, numbered 1 to 5 with number circles, then a return arrow from box 5 back to a final state box labelled State=RESUME. Box 1: Dropped GPU, with a monospace note Xid 79, GPU has fallen off the bus, and a warning icon. Box 2: Epilog or NHC exits non-zero. Box 3: Drain the node with a reason and a ticket, monospace scontrol update NodeName=gpu003 State=DRAIN Reason=NHC GPU count 7/8 Xid 79 ticket INC-1042. Box 4: Cold power cycle through Redfish (ForceOff and On), or an RMA replacement, shown as two alternative small sub-boxes joined by or. Box 5: Re-run Gate 2 and Gate 5, the GPU health and single-node collective checks. Final box: State=RESUME, with a check icon. Orange highlight on box 3, the drain step that records why the node is out. No green takeaway bar.",
+  "anchor": "## 5. Day-2 operations drills: practicing the bad day",
+  "alt": "A dropped GPU makes the node exit its check, get drained with a ticket, be power cycled or replaced, pass gates 2 and 5, and return to service.",
+  "cap": "A dropped GPU drains its node with a ticket, then the node is power cycled or replaced, re-checked, and only then resumed."
+ }
+]

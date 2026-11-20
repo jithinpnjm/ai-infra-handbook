@@ -1,0 +1,332 @@
+[
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "01",
+  "name": "d01-selection-steps",
+  "title": "Five steps to choose an accelerator, hard limits first",
+  "spec": "A vertical flow of five numbered steps with downward arrows between them and number circles 1 to 5. Step 1: What is the main job? Pre-training, LoRA or full fine-tuning, real-time inference, batch inference, rendering. Step 2: How much memory does the job need? Apply the training multiplier or the inference KV-cache and safety-margin formula. Step 3: Is the bottleneck math or memory? Compute-bound prefill or bandwidth-bound decode. Step 4: How do the GPUs talk to each other? Tensor Parallelism needs AllReduce after every layer, SXM with NVLink for multi-GPU serving and multi-node training. Step 5 (orange): Remove any candidate that breaks a hard limit before any scoring: rack power ceiling, missing NVLink, no native FP8. Beside step 5, a grey note: a server that cannot be powered does not matter how well it scores. Monospace for FP8, NVLink, AllReduce, TTFT and ITL where used.",
+  "anchor": "### 1.3 The five-step selection scorecard and inference economics",
+  "alt": "Five steps to choose an accelerator",
+  "cap": "Accelerator selection: decide the job, size its memory, find the bottleneck, check the links, then drop candidates that break a hard limit before scoring."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "01",
+  "name": "d01-three-planes",
+  "title": "Three separate network planes on one DGX node",
+  "spec": "One large box labelled DGX node in the centre, with three labelled groups of ports leaving it to three separate switch boxes on the right, one above the other, each with a cable and no shared path. Plane 1, top: Compute fabric, East-West, 8 single-port ConnectX-7 NICs, 400 Gbps NDR InfiniBand or RoCEv2, to a box labelled compute switches, traffic: GPU-to-GPU NCCL collectives. Plane 2, middle: Storage and in-band management fabric, North-South, 2 dual-port BlueField-3 DPUs, to a box labelled storage and management network, traffic: parallel file system I/O, Slurm and Kubernetes control, NGC pulls, Prometheus, SSH. Plane 3, bottom: Out-of-band management, 1 GbE RJ45 BMC port, to a box labelled isolated management VLAN, traffic: Redfish, IPMI, KVM-over-IP, virtual media. Orange highlight on the rule label beside plane 2 with the text: never mix with East-West traffic. Monospace for ConnectX-7, BlueField-3, NCCL, Redfish and IPMI.",
+  "anchor": "### 4.2 Three physical network planes and the rail-optimized topology",
+  "alt": "Three network planes on a DGX node",
+  "cap": "Three planes: GPU collectives, storage and management, and out-of-band control each run on their own network so one cannot slow another."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "01",
+  "name": "d01-baseline-stages",
+  "title": "Five-stage baseline before a repaired DGX returns to service",
+  "spec": "A left-to-right flow of five boxes with arrows, each a numbered stage with a title and one check line. Stage 1: Out-of-band Redfish health, thermal and power check, PSU redundancy and wattage. Stage 2: Unified DGX Firmware Container check, show_version across BMC, BIOS, CPLDs, retimers, NVSwitches, GPU VBIOS and NICs. Stage 3: In-band GPU, NVLink, PCIe ACS, storage and kernel module baseline, 8 GPUs visible, 0 uncorrected ECC, nvidia_peermem and nvidia_fs loaded. Stage 4: NVSM chassis audit, DCGM Level 3 diagnostics, and InfiniBand rail check, 8 compute rails Active. Stage 5 (orange): Data-path throughput benchmarks, intra-node AllReduce and GPUDirect Storage read. A bracket above the flow labelled outside in. A small grey end label: then release to Slurm or Kubernetes. Monospace for show_version, nvsm show health, dcgmi diag -r 3, ibstat and all_reduce_perf.",
+  "anchor": "## Commands and configurations that matter",
+  "alt": "Five-stage baseline check for a DGX node",
+  "cap": "Node baseline: check the BMC, firmware, host and GPUs, chassis and fabric, then data-path bandwidth before release."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "02",
+  "name": "d02-topo-symbols",
+  "title": "The topology symbols from fastest path to slowest",
+  "spec": "A vertical ladder of five rungs from top to bottom, each rung a horizontal bar with the symbol at the left and a short path description, and an arrow on the left side running down labelled slower path. Rung 1 (green, top): NV18, 18 bonded NVLink links through the NVSwitch chips, 900 GB/s per GPU, best GPU-to-GPU path. Rung 2: PIX, at most one PCIe switch, GPU to mlx5 or NVMe, 64 GB/s each way. Rung 3: PXB, several PCIe switches with no host bridge, slightly more latency than PIX. Rung 4: PHB or NODE, same socket through the CPU root complex, degraded, NCCL may turn off GPUDirect RDMA. Rung 5 (orange, bottom): SYS, across the UPI link between sockets, worst host path. A grey side note at the bottom: SYS does not mean NVLink is down. Monospace for NV18, PIX, PXB, PHB, NODE, SYS and NCCL.",
+  "anchor": "### 5.1 Decoding the topology matrix symbols",
+  "alt": "Topology matrix symbols from fastest to slowest",
+  "cap": "Topology symbols: NV18 is the fastest GPU path, and SYS, which crosses the socket link, is the slowest host path."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "02",
+  "name": "d02-sys-misbinding",
+  "title": "A GPU paired with a NIC on the far socket",
+  "spec": "Two stacked horizontal path diagrams for comparison. Top panel, labelled healthy pairing: GPU 0 on CPU socket 0 goes to PCIe switch 0 and then to mlx5_0 on the same switch, a short path marked PIX with a green tick and the note: never leaves the switch. Bottom panel, labelled mis-binding from NCCL_IB_HCA: GPU 0 on socket 0 goes up through switch 0 to CPU 0, across the Intel UPI link to CPU 1, down through switch 3 to mlx5_6, marked SYS with an orange highlight on the UPI link. Under the bottom panel, a note: each hop adds delay and shares a link with other traffic, so the whole collective slows to match. Monospace for GPU 0, mlx5_0, mlx5_6, NCCL_IB_HCA, PIX, SYS, UPI.",
+  "anchor": "### 5.2 Real-world failure: the `GPU 0` to `mlx5_6` (`SYS`) mis-binding",
+  "alt": "Healthy and mis-bound GPU to NIC paths",
+  "cap": "Mis-binding: a GPU paired with a NIC on the other socket sends every packet across the CPU socket link."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "02",
+  "name": "d02-numa-ranks",
+  "title": "Which local ranks belong to which NUMA node",
+  "spec": "Two large side-by-side boxes, labelled CPU socket 0 (NUMA node 0) on the left and CPU socket 1 (NUMA node 1) on the right, each containing its own cores, its own 1 TB DDR5, and its devices. Left box holds cores 0-55, GPUs 0 to 3, mlx5_0 to mlx5_3, and nvme0 to nvme3, with a bracket labelled local ranks 0 to 3. Right box holds cores 56-111, GPUs 4 to 7, mlx5_4 to mlx5_7, and nvme4 to nvme7, with a bracket labelled local ranks 4 to 7. Between the two boxes a narrow dashed link labelled UPI, with a red cross and the note: keep kernel launches and host copies off this link. Orange highlight on the UPI link. Small monospace command at the bottom: numactl --hardware. Monospace for the core ranges and device names.",
+  "anchor": "### 3.1 Dual Intel Xeon Platinum 8480C and NUMA split",
+  "alt": "Ranks pinned to the NUMA node that owns their GPU",
+  "cap": "NUMA pinning: ranks 0 to 3 stay on socket 0 and ranks 4 to 7 stay on socket 1, so launches never cross the socket link."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "03",
+  "name": "d03-rack-elevation",
+  "title": "Two-node rack elevation under the 18 kW limit",
+  "spec": "A tall narrow rack drawing in side view, with units labelled on the left edge in RU numbers, showing only the items the source lists and leaving the other units as plain blank space with no label. Items from top to bottom: RU 1-2, Top-of-Rack compute switch, 32x 400G, Feeds A and B. RU 3-4, Out-of-band management switch, 48x 1G, Feed A. RU 6-9, HGX server node 1, 82 kg, 7.9 kW, Feeds A and B. RU 10-11, a hatched 3U service and thermal gap. RU 12-15, HGX server node 2, 82 kg, 7.9 kW, Feeds A and B. RU 20-22, storage leaf switch, 24x 200G, Feeds A and B. A side panel on the right with a horizontal bar gauge: total load 16.4 kW against an 18.0 kW rack limit, 1.6 kW headroom. Orange highlight on the gauge headroom. Monospace for RU numbers and the kW values.",
+  "anchor": "### 5.3 Worked 18 kW rack elevation, power derating, and single-feed survival test",
+  "alt": "Rack elevation for two HGX nodes under an 18 kW limit",
+  "cap": "Rack elevation: two 7.9 kW nodes plus switches fit under the 18 kW rack limit, with 1.6 kW of headroom."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "03",
+  "name": "d03-airflow-shadowing",
+  "title": "Why the rear GPU row breathes pre-heated air",
+  "spec": "A side view of an air-cooled HGX chassis with air arrows. Left edge: cold intake air at 18 degrees C from the cold aisle, arrows entering the front. Front row box labelled GPUs 0 to 3, each dumping up to 700 W of heat, with a warm-air arrow leaving it. Warm air then flows into a rear row box labelled GPUs 4 to 7, marked with a red outline and the note: breathes pre-heated exhaust. A grey dashed bypass duct labelled OEM internal baffles, which in a poor design is missing, drawn going around the front row directly to the rear row. Orange highlight on the rear row with the note: thermal slowdown, SW Thermal Slowdown Active. A bottom note: synchronous training runs at the speed of the slowest GPU. Monospace for GPUs 0 to 3, GPUs 4 to 7 and SW Thermal Slowdown: Active.",
+  "anchor": "### 5.1 Airflow shadowing and Closed-Loop Liquid Cooling (CLLC)",
+  "alt": "Airflow shadowing on the rear GPU row",
+  "cap": "Airflow shadowing: the front GPUs heat the air that reaches the rear GPUs, so the rear row throttles without proper baffles."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "03",
+  "name": "d03-xid79-escalation",
+  "title": "Escalating an Xid 79 fault to the OEM, not NVIDIA",
+  "spec": "A top-to-bottom flow with three numbered steps and a branch at the top. Top box: Xid 79, GPU has fallen off the bus, on an OEM server. An arrow down to a crossed-out side box: do not open an RMA with NVIDIA for a replacement GPU, the OEM holds the hardware warranty. Step 1: run nvidia-bug-report.sh on the host to capture kernel, driver and Xid state. Step 2: export the OEM BMC hardware diagnostic bundle, from Lenovo XClarity, Dell SupportAssist or HPE Active Health System. Step 3: open a severity-one hardware ticket with OEM Premier Support, attaching both bundles, and ask for both a replacement PCIe riser cable and an SXM GPU FRU. Orange highlight on step 3 with the note: bringing both parts avoids a second visit. Monospace for nvidia-bug-report.sh and the bundle names.",
+  "anchor": "### 3.3 How to escalate `Xid 79` (`GPU has fallen off the bus`) on an OEM server",
+  "alt": "Escalation path for an Xid 79 fault on an OEM server",
+  "cap": "Xid 79 escalation: collect the driver and BMC evidence, then open the ticket with the OEM, which dispatches the parts."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "04",
+  "name": "d04-coherence-boundary",
+  "title": "Which links are hardware cache-coherent and which are not",
+  "spec": "A two-part diagram. Left panel, labelled inside one Superchip: a Grace CPU box and a GPU box joined by a link labelled NVLink-C2C 900 GB/s, with a green tick and the label hardware cache-coherent, ATS unified virtual address space. Right panel, labelled across GPUs: several GPU boxes, four or more, joined through a central box labelled NVSwitch, with a link labelled shared global physical address space for peer-to-peer loads and stores, and a red-outlined note on each GPU cache: L1 and L2 not globally coherent across GPUs. Under the right panel a green box: use NCCL collectives or NVSHMEM barriers for ordering. Orange highlight on the right panel's GPU caches. Monospace for NVLink-C2C, NVSwitch, NCCL and NVSHMEM.",
+  "anchor": "### 3.2 What hardware cache coherence means and the crucial GPU-to-GPU boundary",
+  "alt": "Coherent CPU-GPU link versus non-coherent GPU-GPU caches",
+  "cap": "Coherence boundary: the CPU-to-GPU NVLink-C2C path is hardware coherent, but GPU caches across NVSwitch are not, so software must synchronize them."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "04",
+  "name": "d04-two-tier-memory",
+  "title": "Two memory tiers on a Grace Superchip and the prefetch between them",
+  "spec": "Two stacked horizontal bands, a fast tier on top and a roomy tier below, with a prefetch arrow between them. Top band labelled Tier 1, GPU HBM3 or HBM3e, 4.0 to 8.0 TB/s per GPU, with a small list of contents: hot working-set tensors, active layer weights, activations, active KV-cache blocks. Bottom band labelled Tier 2, Grace CPU LPDDR5X, about 500 GB/s, accessed at 450 GB/s per direction over NVLink-C2C, with contents: cold or overflow structures, unscheduled MoE expert weights, master FP32 weights, Adam momentum and variance, evicted KV-cache blocks. A curved arrow from the bottom band up to the top band labelled cudaMemPrefetchAsync on a secondary CUDA stream. Orange highlight on the top band with the note: HBM is roughly 16 to 32 times faster than LPDDR5X, so the hot data stays here. Monospace for cudaMemPrefetchAsync and the numbers.",
+  "anchor": "### 5.1 Two-tier memory placement: keeping hot tensors in HBM and cold overflow in LPDDR5X",
+  "alt": "Two memory tiers with prefetch between them",
+  "cap": "Two tiers: hot tensors stay in HBM, while cold overflow sits in Grace LPDDR5X and is prefetched into HBM before use."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "04",
+  "name": "d04-transfer-bars",
+  "title": "One pass over 1,200 GB on PCIe versus NVLink-C2C",
+  "spec": "Two horizontal bars on a shared time axis from 0 to 20 seconds. Top bar, labelled PCIe Gen5 x16 at 64 GB/s, extends to the full length marked 18.75 s, colour grey. Bottom bar, labelled NVLink-C2C at 450 GB/s, a much shorter bar marked 2.67 s, coloured green with an orange highlight. A bracket between the two bar ends labelled 7.03 times faster on the link. A small note under the bars: dataset 1,200 GB, one unidirectional pass, the GNN feature-table example. Monospace for 18.75 s, 2.67 s, 64 GB/s and 450 GB/s.",
+  "anchor": "### 3.3 Real-world impact: solving the 1.2 TB Graph Neural Network bottleneck",
+  "alt": "Transfer time for 1,200 GB over two links",
+  "cap": "Transfer time: moving 1,200 GB once takes 18.75 seconds over PCIe Gen5 x16 but 2.67 seconds over NVLink-C2C."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "05",
+  "name": "d05-power-path",
+  "title": "How facility power reaches the chips in an NVL72 rack",
+  "spec": "A left-to-right flow of four boxes with arrows. Box 1: Facility power, 415 V three-phase AC, arriving from the building. Box 2: Power shelves, pwr-01 to pwr-08, six 5.5 kW power supplies per shelf, up to 33 kW each, converting AC to DC. Box 3: DC busbar along the rack and DC power connectors at the rear of each compute tray, blind-mated. Box 4: Compute trays, with a note that the switch trays are powered in the same rack. Above box 2 a small side box with the note: larger internal energy storage smooths millisecond load spikes, and rear RJ45 ports handle hardware power brakes. Under the flow, a grey equation line: 8 shelves times 33 kW equals 264 kW installed, against a 130 to 150 kW draw. Orange highlight on box 2. Monospace for 415 V, pwr-01 to pwr-08, DC busbar and 264 kW.",
+  "anchor": "### 3.2 How power reaches the chips: AC to DC",
+  "alt": "Power path from facility AC to the compute trays",
+  "cap": "Power path: the power shelves convert facility AC to DC, which reaches the compute trays over the rack busbar, with spare shelf capacity for headroom."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "05",
+  "name": "d05-cooling-loop",
+  "title": "Two separate cooling loops with a CDU between them",
+  "spec": "A horizontal layout with two loops separated by a central box. Left side: a loop labelled rack coolant loop, sealed, touching the electronics, with cold plates on the Grace Blackwell Superchips and NVSwitch chips, connected by hoses and manifolds with quick-disconnect couplings, and a pump. Centre box labelled CDU, Coolant Distribution Unit, moves heat from the rack loop to the facility loop. Right side: a loop labelled facility water loop, carrying the heat to the building, typically supplied at 20 to 30 degrees C, and a note for warm-water designs at 30 in and 45 out for evaporative towers. Under the CDU a small grey note: first-pass sizing 150 to 200 litres per minute with a 10 to 12 degree rise for about 130 kW. A separate air-cooled band labelled residual heat into room air, with the note: the reference architecture says hybrid cooling, so ask NVIDIA for the exact split. Orange highlight on the CDU. Monospace for CDU, 20 to 30 C and 150 to 200 L/min.",
+  "anchor": "### 3.3 Cooling: hybrid, not fully liquid",
+  "alt": "Rack coolant loop, CDU and facility water loop",
+  "cap": "Cooling: the sealed rack loop cools the chips, a CDU moves the heat to the facility water loop, and some residual heat still goes to room air."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "05",
+  "name": "d05-failure-domains",
+  "title": "What one failed switch tray or compute tray takes down",
+  "spec": "A two-panel comparison. Left panel, labelled switch tray failure: a column of 18 small horizontal bars labelled NVLink planes 1 to 18, with two bars crossed out and marked removed, and the rest green. Beside it, a single GPU row showing 16 of 18 links, with the note: every GPU loses 2 of 18 links, bandwidth drops from 1.8 TB/s to 1.6 TB/s. Right panel, labelled compute tray failure: a rack of 18 tray slots, one tray marked failed with a red outline, with its 4 GPUs and its Linux instance removed, the other 68 GPUs marked as keeping all 18 links. Orange highlight on the left panel's crossed-out bars. Monospace for 16 of 18, 1.8 TB/s, 1.6 TB/s, 68 GPUs.",
+  "anchor": "## 6. Failure domains and NVLink partitions",
+  "alt": "Failure effect of a switch tray versus a compute tray",
+  "cap": "Failure domains: a switch tray failure costs every GPU two of its eighteen links, while a compute tray failure removes only its own four GPUs."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "06",
+  "name": "d06-two-storage",
+  "title": "Two separate storage systems on a SuperPOD",
+  "spec": "Two side-by-side panels around a row of GPU compute trays in the centre. Left panel, labelled System 1, High-Performance Storage, HPS: a parallel file system, POSIX interface, many storage servers, reached over a dedicated BlueField-3 400G RoCEv2 storage port, certified for Grace aarch64 and GPUDirect Storage, workload: dataset reads and checkpoint bursts. Right panel, labelled System 2, User Storage: an enterprise NFS share on the in-band Ethernet fabric, at least 100 GbE DR1, workload: /home directories, admin scripts, cluster logs, Mission Control and Base Command Manager HA state. A bracket under both panels: separate hardware, so a metadata storm on one does not stall the other. Orange highlight on the HPS panel. Monospace for POSIX, RoCEv2, GPUDirect Storage, /home and NFS.",
+  "anchor": "### 4.1 High-Performance Storage and User Storage, Standard and Enhanced tiers",
+  "alt": "High-performance storage and user storage side by side",
+  "cap": "Two storage systems: a parallel file system for data and checkpoints, and a separate NFS share for home directories and logs."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "06",
+  "name": "d06-checkpoint-stages",
+  "title": "Two-stage checkpoint: local NVMe first, then a background flush",
+  "spec": "A left-to-right flow of three boxes with arrows, with a split at the middle. Box 1: 64 GPUs each write their own shard in parallel, about 15.3 GB per GPU and 122.5 GB per 8-GPU node, with torch.distributed.checkpoint. Arrow to Box 2 labelled stage 1, local NVMe at /raid, about 8.17 seconds at 15 GB/s per node, with a green note: GPUs resume immediately. From Box 2 a branch arrow to Box 3 labelled stage 2, background flush to the shared file system and S3 object storage, with an atomic rename and SHA-256 check. Under Box 3 two timing notes: about 98 s at 10 GB/s NAS, or about 21.8 s at 45 GB/s Standard SU write. Orange highlight on the stage 1 box with the note: the training stall ends here. Monospace for torch.distributed.checkpoint, /raid, 8.17 seconds and SHA-256.",
+  "anchor": "### 4.2 Why text training is limited by checkpoint writes",
+  "alt": "Two-stage checkpoint write",
+  "cap": "Checkpoint staging: each node writes its shard to local NVMe in about eight seconds so the GPUs resume, and the copy to shared storage runs in the background."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "06",
+  "name": "d06-bucket-overlap",
+  "title": "Gradient buckets overlap communication with the backward pass",
+  "spec": "A two-row timeline on a shared time axis from left to right. Top row labelled backward compute on the GPU: a series of blocks labelled backward for layer groups, one after another. Bottom row labelled AllReduce on the network: a series of blocks, each starting as soon as its gradient bucket is ready, placed under the compute blocks with a small offset. Dashed arrows from each compute block end down to the matching AllReduce block start, labelled bucket ready, launch asynchronous AllReduce. At the far right, a last AllReduce block that extends past the end of the compute row, highlighted in orange with the note: only the last bucket is exposed. A small note: the PyTorch DDP default bucket size is 25 MB. Monospace for loss.backward, AllReduce and bucket.",
+  "anchor": "### 3.3 Collective algorithms and InfiniBand versus RoCEv2 economics",
+  "alt": "Bucketed AllReduce overlapping the backward pass",
+  "cap": "Bucket overlap: each gradient bucket starts its AllReduce while later layers are still computing, so only the final bucket adds waiting time."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "07",
+  "name": "d07-altitude-derating",
+  "title": "Maximum supply air temperature by site altitude",
+  "spec": "A horizontal three-step bar chart, one bar per altitude band, read left to right from sea level to the highest band. Band 1: 0 to 1,000 ft, supply temperature up to 35 C, bar full height. Band 2: 1,000 to 5,000 ft, up to 30 C, a shorter bar. Band 3: 5,000 to 10,000 ft, up to 25 C, the shortest bar, highlighted in orange with the note: the setpoint must drop below 25 C at these sites. Under the bars, a line for the maximum operating altitude of 3,048 m (10,000 ft). A side note: thinner air carries less heat per cubic foot, so the allowed temperature falls with altitude. Monospace for 0 to 1,000 ft, 1,000 to 5,000 ft, 5,000 to 10,000 ft, 35 C, 30 C and 25 C.",
+  "anchor": "### 1.1 Node specifications: size, weight, power, air, altitude and noise",
+  "alt": "Allowed supply temperature by altitude band",
+  "cap": "Altitude derating: the allowed supply air temperature falls from 35 C at sea level to 25 C above 5,000 feet."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "07",
+  "name": "d07-cable-limits",
+  "title": "Maximum cable length and the 90 percent design limit",
+  "spec": "A horizontal bar pair for each of three cable types, stacked. Row 1: passive DAC 100G, a full bar labelled max 5 m and a shorter bar inside it labelled design limit 4.5 m. Row 2: passive DAC 400G, full bar labelled max 3 m, inner bar labelled design limit 2.7 m. Row 3: active optical cable AOC, full bar labelled max 30 m, inner bar labelled design limit 27 m. A dashed vertical line at the design limit of each row. Orange highlight on the 400G row with the note: patch panels and extra switches are not allowed on InfiniBand. Below the chart a small note: keep every run under the design limit, counting vertical routing and bend radius. Monospace for DAC, AOC, 5 m, 4.5 m, 3 m, 2.7 m, 30 m and 27 m.",
+  "anchor": "### 5.1 Copper and optical cables, and the 90 percent length rule",
+  "alt": "Cable maximum lengths and 90 percent limits",
+  "cap": "Cable limits: plan every InfiniBand run under 90 percent of the maximum length for its cable type."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "08",
+  "name": "d08-blocking-ratio",
+  "title": "Compute leaves at 1 to 3 blocking versus non-blocking storage leaves",
+  "spec": "Two side-by-side leaf-switch panels for comparison. Left panel, labelled compute leaf SN5600D, 1:3 blocking: a box with 72 host ports drawn as small squares along the bottom, and 24 uplink ports along the top connected to the spine, with a bar chart beside it showing 24 uplinks against 72 downlinks, one third as tall. Note: 72 downlinks to 24 uplinks is 1:3 blocking, acceptable for bursty compute traffic. Right panel, labelled storage leaf, non-blocking: a box with 72 storage downlinks and 72 uplinks to the spine, two equal bars, with the note: 1:1, arrays are never limited by the leaf. Orange highlight on the left panel's uplink bar. Monospace for 24 x 400G, 72 x 400G, 1:3 and 1:1.",
+  "anchor": "### 4.1 Compute leaves at 1:3 and storage leaves that never block",
+  "alt": "Compute leaves blocking 1 to 3 versus non-blocking storage leaves",
+  "cap": "Blocking ratio: compute leaves carry 72 downlinks on 24 uplinks, while storage leaves match uplinks to downlinks so arrays are never limited."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "08",
+  "name": "d08-runai-split",
+  "title": "Where the Run:ai control plane and cluster components run",
+  "spec": "Two stacked panels with a connecting arrow between them. Top panel, labelled user-space Kubernetes cluster: the Run:ai control plane backend, with the note: central multi-cluster orchestration, tenant quotas, user interface and API. Bottom panel, labelled administrative Kubernetes infrastructure: the Run:ai cluster components, with the note: close to the DGX GB300 hardware and the hardware operators. A dashed arrow from the top panel down to the bottom panel labelled the backend manages cluster components. Orange highlight on the bottom panel's note about the hardware. Monospace for Run:ai, user-space Kubernetes and administrative Kubernetes.",
+  "anchor": "### 6.1 The NVIDIA Run:ai two-cluster split on BCM-managed SuperPODs",
+  "alt": "Run:ai control plane and cluster components on two clusters",
+  "cap": "Run:ai split: the control plane sits on the user-space cluster for central management, and its cluster components sit on the administrative cluster near the hardware."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "09",
+  "name": "d09-leaf-placement",
+  "title": "Where the compute leaf switches sit in an eight-rack row",
+  "spec": "A top-down plan of a row of eight compute racks drawn as a line of eight labelled boxes, racks 1 to 8, with three alternative placements shown in three bands. Band 1, labelled ToR, top of rack: one small leaf box sitting on top of each compute rack, with the note: switch heat goes into every compute rack, longest span 8 racks. Band 2, labelled MoR, middle of row: a dedicated network rack placed between racks 4 and 5, with lines fanning to all 8 racks, with the note: shortest span, 6 racks, switches out of compute racks. Band 3, labelled EoR, end of row: a dedicated network rack placed after rack 8 at the far end, with lines fanning to all 8 racks, with the note: longest span, 10 racks. Orange highlight on the MoR band with the note: keeps active optical cables under the 27 m limit. Monospace for ToR, MoR, EoR and the rack numbers 1 to 8.",
+  "anchor": "### 2.2 Physical placement of Compute Leaf switches: ToR vs MoR vs EoR",
+  "alt": "Top-of-rack, middle-of-row and end-of-row leaf placement",
+  "cap": "Leaf placement: middle-of-row gives the shortest cable span, while end-of-row gives the longest and top-of-rack adds heat to every compute rack."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "09",
+  "name": "d09-hash-collision",
+  "title": "Why five-tuple hashing piles elephant flows onto one spine link",
+  "spec": "A left-to-right diagram. Left: several elephant flows drawn as thick arrows, labelled RoCEv2 flows on UDP port 4791 with one-to-one address pairs, entering a box labelled leaf switch running static five-tuple hash. Right: four spine links drawn as parallel lanes leaving the box. Lane 1 is marked saturated at 100 percent with the flows stacked into it and packet drops. Lanes 2 to 4 are marked under 15 percent utilization and idle. Orange highlight on the saturated lane with the note: the hash is working as designed, it simply has too few values to spread the flows. Under the diagram, a green box: enable DLB, GLB or sDLB, plus DCQCN ECN and PFC. Monospace for UDP 4791, five-tuple hash, 100 percent and under 15 percent.",
+  "anchor": "### 3.1 Why five-tuple hashing fails for RoCEv2",
+  "alt": "Elephant flows colliding on one spine link under static hashing",
+  "cap": "Hash collision: RoCEv2 flows have little header variety, so static hashing can stack them on one spine link while the others sit idle."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "10",
+  "name": "d10-six-stages",
+  "title": "The six acceptance stages, in order, before a pod serves researchers",
+  "spec": "A left-to-right flow of six numbered boxes with arrows between them, each box a stage with a title and one line of the main check. Stage 1: Physical acceptance, PDU load balanced, breaker headroom above 20 percent, inlet below 27 C under load. Stage 2: Server acceptance, zero firmware drift, nvidia-smi topo -m matches the fleet matrix. Stage 3: Network acceptance, LLDP matches the cabling plan, every rail at or above 90 percent of line rate, no PFC pause storms. Stage 4: Storage acceptance, concurrent all-node fio and mdtest meet targets, timed checkpoint save and restore. Stage 5: Cluster acceptance, HPL and ClusterKit pass, 24 to 72 hour burn-in with zero unplanned node drops. Stage 6: Operational acceptance, live alert injection pages on-call, executed rollback drill, runbooks readable outside the cluster. Under each box a small evidence label: Stage 1 signed checklist and thermal photos; Stage 2 firmware diff and topo archive; Stage 3 per-rail bandwidth matrix; Stage 4 fio and checkpoint logs; Stage 5 HPL report and burn-in log; Stage 6 alert delivery log and rollback log. Orange highlight on stage 5 with the note: never waive the burn-in. Monospace for fio, mdtest, HPL, ClusterKit, LLDP and PFC.",
+  "anchor": "## 5. Six stages of commissioning and acceptance",
+  "alt": "Six commissioning and acceptance stages",
+  "cap": "Six acceptance stages: each stage must pass, in order, and leaves evidence, before the pod serves researchers."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "11",
+  "name": "d11-power-tiers",
+  "title": "Three tiers that carry power from the facility to the node",
+  "spec": "A left-to-right chain of three large boxes with arrows, each box a tier. Box 1: Tier 1, utility or UPS feed and branch breakers, three-phase 208, 380, 400 or 415 V circuits, derated to 80 percent of nameplate for continuous load. Box 2: Tier 2, smart rack PDUs, metered per-phase inlets, locking per-receptacle outlets, exporting PowerWatts and LineInputVoltage telemetry, with remote outlet switching for an AC power cycle. Box 3: Tier 3, node power supplies or rack power shelves, DGX H100 six 3.3 kW supplies, DGX B200 five of six, GB300 eight 33 kW shelves. Under box 1 a small formula line: nameplate kW equals square root of 3 times volts times amps times power factor over 1,000, then 0.80 for continuous. Orange highlight on box 1's 80 percent derating with the note: the breaker is never run at its limit for long hours. Monospace for 80 percent, sqrt(3), PowerWatts and LineInputVoltage.",
+  "anchor": "### 2.1 The three tiers of data center power distribution and 80% breaker derating",
+  "alt": "Three tiers from facility circuit to node power supply",
+  "cap": "Power tiers: facility circuits are derated to 80 percent, smart PDUs meter each feed, and node supplies must keep enough units energized."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "11",
+  "name": "d11-airflow-direction",
+  "title": "Front-to-back airflow passes cold air over the optics first",
+  "spec": "Two side-view panels for comparison, each a switch box with a row of optical ports on its front edge and a fan at one end. Left panel, labelled front-to-back, recommended: cold aisle air arrows enter at the front port panel and pass over the optics first, then across the switch ASIC and power supplies, leaving as hot exhaust at the rear into the hot aisle. A green tick with the note: optics get the coolest air. Right panel, labelled back-to-front, not chosen: air enters at the rear power supplies and exits at the front port panel, so the pre-heated air reaches the optics last, with a red note: optics run hotter and need larger heatsinks. Orange highlight on the optics in the right panel. A small note below both: never mix airflow directions in one rack. Monospace for OSFP and front-to-back.",
+  "anchor": "### 3.3 Choosing fan airflow direction: Front-to-Back vs Back-to-Front vs Bidirectional",
+  "alt": "Front-to-back and back-to-front switch airflow",
+  "cap": "Airflow direction: front-to-back airflow reaches the front-panel optics with cold air, while back-to-front airflow heats them last."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "12",
+  "name": "d12-zero-stages",
+  "title": "Per-GPU model memory for a 70B model at each ZeRO stage",
+  "spec": "A vertical bar chart with four bars from left to right, labelled DDP ZeRO-0, ZeRO-1, ZeRO-2 and ZeRO-3 slash FSDP. Bar heights to scale against a horizontal dashed line labelled 80 GB H100 memory. DDP bar: 1,120.0 GB, far above the line, marked does not fit. ZeRO-1 bar: 293.12 GB, above the line, marked does not fit. ZeRO-2 bar: 155.31 GB, above the line, marked does not fit. ZeRO-3 bar: 17.50 GB, below the line, green, marked fits with 62.5 GB left for activations. Under each bar a short label of what is sharded: nothing; optimizer states; optimizer and gradients; weights, gradients and optimizer. Orange highlight on the ZeRO-3 bar. Monospace for 1,120.0 GB, 293.12 GB, 155.31 GB, 17.50 GB and 80 GB.",
+  "anchor": "### 3.2 Why plain DDP runs out of memory, and what ZeRO changes",
+  "alt": "Per-GPU memory for a 70B model at each ZeRO stage",
+  "cap": "ZeRO stages: only full sharding of weights, gradients and optimizer state brings a 70B model under the 80 GB limit on 64 GPUs."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "12",
+  "name": "d12-gang-deadlock",
+  "title": "Two jobs deadlock on plain Kubernetes, but a gang scheduler admits one at a time",
+  "spec": "Two stacked panels for comparison. Top panel, labelled plain Kubernetes Jobs, deadlock: a cluster of four node boxes. Job A holds two nodes and job B holds the other two. Each job shows two pods waiting, pending for a node that never frees up. A circular arrow between job A and job B with the note: each waits for the other to release nodes. Under the panel a red note: all 64 GPUs held, no useful work, until the rendezvous times out after about 30 minutes. Bottom panel, labelled with a gang scheduler, Kueue, Volcano, PyTorchJob or Run:ai: the same four nodes, with job A admitted as a whole group onto all its nodes and job B queued outside until the gang fits. A green tick with the note: all pods start or none start. Orange highlight on the circular arrow in the top panel. Monospace for Kueue, Volcano, PyTorchJob and Run:ai.",
+  "anchor": "### 4.1 An Indexed Job, a headless Service and the flaw without gang scheduling",
+  "alt": "Deadlock between two partial jobs versus gang scheduling",
+  "cap": "Gang scheduling: the default scheduler can leave two jobs holding half the nodes each, while a gang scheduler admits a whole job or none of it."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "12",
+  "name": "d12-incident-phases",
+  "title": "Three time-bounded phases of a GPU failure response",
+  "spec": "A horizontal timeline with three phase blocks in sequence, left to right, each a box with a time limit above it. Phase 1 block, time limit 5 minutes or less, titled Initial response: confirm the fault with nvidia-smi, dmesg Xid or DCGM health watch; terminate the stalled synchronous job. Phase 2 block, time limit 15 minutes or less, titled Mitigation: GPU reset, OS reboot or Redfish power cycle; run dcgmi diag -r 2; if it passes resume from checkpoint; if not cordon the node, take a spare and resume. Phase 3 block, time limit 30 to 60 minutes, titled Recovery and post-incident: collect nvidia-bug-report.sh, nvsm dump health and BMC logs; dispatch hardware RMA for the cordoned node. A branch arrow from phase 2 going down to a side box labelled spare node, resume from checkpoint. Orange highlight on phase 1 with the note: one dead GPU blocks all 64 at the collective barrier. Monospace for nvidia-smi, dmesg, dcgmi diag -r 2 and nvsm dump health.",
+  "anchor": "### 5.3 The three-phase GPU failure incident response playbook",
+  "alt": "Three time-bounded phases of GPU failure response",
+  "cap": "Failure playbook: confirm and stop the stalled job within five minutes, try mitigation and a spare within fifteen, then collect evidence and open the RMA."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "13",
+  "name": "d13-power-wall",
+  "title": "GPU demand crossing the 150 kW facility wall between months 9 and 10",
+  "spec": "A line chart with months 0 to 10 on the horizontal axis and GPU count on the vertical axis. Two rising curves: a combined demand line from about 26 GPUs at month 0, through about 70 at month 6, about 98 at month 8, about 115 at month 9, to about 136 at month 10. A second thin line above it is not drawn. A horizontal dashed line across the chart labelled facility ceiling, 150 kW at about 1.3 kW per GPU, roughly 115 to 117 GPUs. The demand line crosses the ceiling between month 9 and month 10, marked with an orange highlight at the crossing with the note: a 118th GPU cannot be plugged into a 150 kW room. Small annotations under the chart: offload interruptible training to cloud spot, move to denser H200 or B200 GPUs, or book a second data hall a year ahead. Monospace for 150 kW, 1.3 kW and the month labels 0 to 10.",
+  "anchor": "### 2.1 Seasonal forecast, the 70 percent reorder trigger and the facility wall",
+  "alt": "Forecast GPU demand against the facility power ceiling",
+  "cap": "Power wall: with the inference and training forecast combined, demand passes the 150 kW room limit between months nine and ten."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "13",
+  "name": "d13-allocation-gap",
+  "title": "Reserved GPUs versus GPUs doing math",
+  "spec": "Two horizontal bars side by side on a shared percentage scale from 0 to 100 percent. Top bar labelled Kubernetes allocation, nvidia.com/gpu requests, filled to 98 percent in grey. Bottom bar labelled DCGM SM activity over 30 days, filled to 12 percent in green. A bracket between the bar ends labelled the gap is where the money goes. Beside the top bar a small note: reserved GPUs still count against the quota. Beside the bottom bar a note: the GPUs that do the math. Orange highlight on the 12 percent bar with the note: check this before you approve a purchase. Monospace for nvidia.com/gpu, DCGM_FI_PROF_SM_ACTIVE, 98 percent and 12 percent.",
+  "anchor": "### 1.1 Why 98 percent allocation can hide 12 percent utilization",
+  "alt": "Allocated GPUs versus GPUs doing math",
+  "cap": "Allocation gap: a dashboard can show 98 percent of GPUs reserved while the silicon is busy only 12 percent of the time."
+ },
+ {
+  "part": "part-09-nvidia-systems",
+  "ch": "14",
+  "name": "d14-fabric-membership",
+  "title": "Why every instance must join the same GPU cluster object",
+  "spec": "Two side-by-side panels for comparison, each showing three GPU instances drawn as boxes with their network paths. Left panel, labelled instances not in one gpu_cluster: each instance connects through a VPC Ethernet path with a red label, NCCL falls back to standard VPC Ethernet, with the note: multi-node bandwidth drops to a fraction of line rate, and the GPUs themselves look healthy. Right panel, labelled all instances reference one nebius_compute_v1_gpu_cluster: the same three instances all attached to one shared InfiniBand fabric box labelled infiniband_fabric, with a green tick and the note: NCCL uses the lossless InfiniBand interfaces. Orange highlight on the left panel's VPC Ethernet fallback path. Monospace for nebius_compute_v1_gpu_cluster, infiniband_fabric and VPC Ethernet.",
+  "anchor": "### 3.1 The Nebius AI Cloud resource model and InfiniBand GPU cluster membership",
+  "alt": "Instances on one InfiniBand fabric versus VPC Ethernet fallback",
+  "cap": "Fabric membership: instances that share one GPU cluster object use the InfiniBand fabric, while unattached instances fall back to slower Ethernet."
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "20",
+  "name": "h20-beegfs-write-path",
+  "title": "A BeeGFS write: metadata makes the plan, storage targets hold the chunks",
+  "spec": "A left-to-right flow with three main boxes and one side box. Left box: Client, labelled beegfs.ko kernel module, with a window icon. Middle box, upper row: Metadata service, labelled beegfs-meta, with a gear icon. Right box, lower row: Storage targets, labelled beegfs-storage, drawn as two small stacked disk cylinders. Three numbered steps in time order, each a horizontal arrow with a number circle on it. Step 1, arrow from Client to Metadata service, labelled create file. Step 2, a return arrow drawn from Metadata service back to Client, labelled records the name and the stripe pattern, the plan for where the chunks go. Step 3, arrow from Client down-right to Storage targets, labelled sends the file chunks to the storage targets named in the plan. Keep the three arrows from crossing: place the Client at the left, the Metadata service above the middle, and the Storage targets at the lower right so the step 2 return arrow runs under the step 1 arrow. Side box at the top right, dashed outline with no arrows: Management service, labelled mgmtd, with the note keeps the list of nodes and targets so clients and servers can find one another. Under the Storage targets box, a small grey note: each target is a local file system on a storage server. Orange tag on step 2 only, the single most important item: the stripe pattern is set before any chunk moves. No takeaway bar.",
+  "anchor": "## 2. BeeGFS",
+  "alt": "BeeGFS write: the client creates the file on metadata, which records the stripe pattern, then sends chunks to storage targets.",
+  "cap": "In a BeeGFS write, the metadata service records the stripe pattern first, and the client then sends chunks to the storage targets named in that plan."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "20",
+  "name": "h20-gds-bounce-vs-direct",
+  "title": "Buffered reads bounce through host DRAM, GPUDirect Storage skips it",
+  "spec": "A title line at the top: one 100.0 GB read into GPU memory. Two horizontal rows, one above the other, each with a short row title on its left. Top row title: Legacy buffered I/O path. Its boxes from left to right: NVMe or storage NIC, then Host DRAM page cache, then User-space CPU buffer, then GPU HBM. Between the first box and the page cache, a short arrow labelled PCIe crossing 1. Between the user-space buffer and GPU HBM, a short arrow labelled cudaMemcpyHostToDevice, PCIe crossing 2. Between the page cache and the user-space buffer, an arrow labelled CPU copy. Under the top row, a label: 2 PCIe crossings and 200.0 GB of host DRAM read and write traffic. The Host DRAM page cache box is the orange highlight, labelled bounce buffer. Bottom row title: GPUDirect Storage path. Its boxes from left to right: NVMe or storage NIC, then GPU HBM (BAR1). One arrow between them labelled peer-to-peer DMA via cuFileRead, one PCIe crossing. A small box above the arrow labelled nvidia-fs.ko loaded. Under the bottom row, a label: 1 PCIe crossing and 0.0 GB of host DRAM bounce traffic. Keep the host DRAM box absent from the bottom row, so the difference is visible by omission. Icons: a disk cylinder for NVMe, a network port for the storage NIC, a memory chip for host DRAM, a chip for the GPU, a window for the user-space buffer. No takeaway bar.",
+  "anchor": "### 8.1 The AI data path: GPUDirect Storage (`GDS`) and NVMe staging (Volume 15)",
+  "alt": "A buffered read crosses PCIe twice through host DRAM, while GPUDirect Storage moves data once with no host DRAM bounce.",
+  "cap": "A buffered read crosses PCIe twice and bounces through host DRAM, while GPUDirect Storage moves the data once without touching host DRAM."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "20",
+  "name": "h20-ec-efficiency-bars",
+  "title": "Usable capacity: data pieces divided by all pieces",
+  "spec": "A title line at the top, then the formula line: Efficiency = D / (D + P), where D is data pieces and P is parity pieces. Below, a horizontal axis from 0% to 100% with tick marks at 0, 50, 100. Four horizontal bars stacked one above another, each with a label on the left and a percentage at the bar's end. Bar 1: 1+1 RAID-1 or buddy mirroring, 50.0%. Bar 2: 8+2 RAID-6 or EC, 80.0%. Bar 3: 16+2 distributed EC, 88.89%. Bar 4: 146+4 VAST-style wide EC, 97.33%. Bar lengths are drawn to scale against the 0% to 100% axis. Each bar has a green fill, and the 8+2 bar is the one with the orange outline, labelled example: 8 data pieces and 2 parity pieces, so 8 of every 10 pieces are useful data. Under the bars, a plain note: wider stripes keep more of the capacity usable, while a single stripe of 1+1 keeps only half. No takeaway bar.",
+  "anchor": "## 5. WEKA (WekaFS) and other distributed filesystems (*Supercomputers for Linux Sysadmins* Chapter 9)",
+  "alt": "Usable capacity bars: 1+1 mirror 50 percent, 8+2 erasure coding 80 percent, 16+2 88.89 percent, 146+4 97.33 percent.",
+  "cap": "Wider erasure-coded stripes keep more of the raw capacity usable than a simple mirror does."
+ }
+]

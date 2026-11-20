@@ -47,12 +47,9 @@ Come back to this list once you have worked through the lab.
 
 Suppose a packet reaches a switch and never arrives at its destination. To find where it was lost, you need to know the path it took inside the device, in the same way you need the floor plan of a building to find a lost parcel in it. Whether the device is a Linux box or a 51.2 Tb/s ASIC, every switch and router follows the same four steps.
 
-```mermaid
-flowchart LR
-  A["1. Media → memory\nPHY clocks bits into the receive ring; CPU/ASIC interrupted"] --> B["2. Process\nlookup, filter, NAT, rewrite headers, classify"]
-  B --> C["3. Switch across the fabric\nbus, crossbar, or shared memory"]
-  C --> D["4. Memory → media\ntransmit ring; output queue + QoS scheduler; PHY clocks onto the wire"]
-```
+![How a network device moves a packet](./img/m2-11-1.svg)
+
+*Figure 2.11.1. How a network device moves a packet, as a diagram.*
 
 The first step puts the frame into memory. Think of a mailroom with a row of numbered pigeonholes. The receive ring is a circular set of preallocated packet buffers, the pigeonholes. The NIC or PHY writes each arriving frame into the next free buffer and interrupts a processor or the ASIC. The device then swaps in an empty buffer and moves a pointer to the filled one into an input queue. Moving pointers instead of copying packets is the central optimisation, because copying data is the most expensive thing a forwarding path can do. Linux NIC drivers work this way with RX descriptor rings and `sk_buff` or page-pool buffers. You can run `ethtool -g` to see ring sizes, and `ethtool -S` to see per-queue drops.
 
@@ -86,6 +83,10 @@ Crossbars have two problems you should know about. The first is contention. If t
 
 ### Cut-through versus store-and-forward, and buffers
 
+![Cut-through versus store-and-forward](./img/n11-cutthrough.svg)
+
+*Figure 2.11.2. Store-and-forward checks the whole frame first, while cut-through starts sending after the destination header.*
+
 Once a packet is inside the device, the switch must decide when to send it on. There are two choices, and each one trades latency against protection from corrupt frames. Waiting costs time, and not waiting costs safety.
 
 With store-and-forward, the switch receives the whole frame and verifies the FCS before forwarding. Latency grows with frame size. Take a 9000-byte jumbo frame on a 10 Gb/s link. It needs 7.2 µs just to serialise, which means just to be put on the wire at that speed. The benefit is that corrupt frames are never forwarded.
@@ -112,7 +113,7 @@ How does one cable carry several VLANs without mixing them up? A trunk link carr
 
 ![A VLAN trunk carries tagged frames](./img/n11-fig1-vlan.jpg)
 
-*Figure 2.11.1. The 802.1Q tag carries the VLAN ID across a trunk link.*
+*Figure 2.11.3. The 802.1Q tag carries the VLAN ID across a trunk link.*
 
 ```text
 | Dst MAC | Src MAC | 0x8100 (TPID) | PCP(3) DEI(1) VID(12) | EtherType | payload | FCS |
@@ -128,6 +129,10 @@ QinQ (802.1ad) stacks two tags, an outer service tag and an inner customer tag, 
 
 ### Port types
 
+![VLAN port modes](./img/n11-portmodes.svg)
+
+*Figure 2.11.4. Access ports carry one untagged VLAN, trunks carry many tagged VLANs, and the native VLAN is the one sent untagged.*
+
 Each switch port has a mode, and the mode decides which frames it accepts and sends. It is the port's job description. The table compares the modes.
 
 | Port mode | Behaviour |
@@ -142,6 +147,10 @@ The native VLAN deserves attention. It is the one VLAN whose frames travel on a 
 A few practices follow from this. Do not use VLAN 1 for anything. Prune trunks so they carry only the VLANs you need, which limits broadcast domains and blast radius. Disable unused ports and place them in a black-hole VLAN. Disable DTP and auto-trunking negotiation. Document VLAN IDs and subnets in the address plan from chapter 2.4.
 
 ### Inter-VLAN routing
+
+![Inter-VLAN routing options](./img/n11-intervlan.svg)
+
+*Figure 2.11.5. Hosts in different VLANs reach each other only through a layer 3 gateway, built as sub-interfaces, SVIs or on the leaf.*
 
 Hosts in different VLANs reach each other through a layer-3 gateway, since a VLAN is by definition a closed broadcast domain. There are three common ways to build one.
 
@@ -193,7 +202,7 @@ STP settles the topology in four stages, and it helps to think of a group of str
 
 ![Spanning Tree blocks one link](./img/n11-fig2-stp.jpg)
 
-*Figure 2.11.2. STP keeps one loop-free path and blocks the redundant link.*
+*Figure 2.11.6. STP keeps one loop-free path and blocks the redundant link.*
 
 Picture three switches wired in a triangle, all left at the default priority. The one with the lowest MAC address becomes the root, which is why an old closet switch can win by accident. The other two each choose their cheapest path to it as the root port. On the link between those two, one end is blocked, and that single blocked port is what cuts the loop. If an active link fails, the blocked port wakes up and takes over.
 

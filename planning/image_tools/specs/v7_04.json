@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "04",
+  "name": "r04-day0-rotation",
+  "title": "Day 0 bootstrap: rotate the factory password before discovery",
+  "spec": "A vertical flowchart with five numbered process boxes in one column, joined by down arrows, with one decision diamond and one branch. Start terminal at top, labelled first session is up (201 Created). Step 1 box: read the login body for @Message.ExtendedInfo. Decision diamond beneath it: PasswordChangeRequired in the message? A No arrow goes straight to a grey box labelled continue to hardware discovery. A Yes arrow goes down to a green box labelled bootstrap rotation branch, before any hardware discovery. Step 2 box: check whether RequireChangePasswordAction is true in AccountService, by following the account link or querying /redfish/v1/AccountService. Decision diamond: RequireChangePasswordAction true? Yes arrow goes left to step 3a box: call the ManagerAccount.ChangePassword action with NewPassword and SessionAccountPassword. No arrow goes right to step 3b box: send a PATCH with the new password to the user's own ManagerAccount URI. Both step 3a and step 3b arrows merge into step 4 box: read ManagerAccount back to confirm PasswordChangeRequired is false, then verify GET /redfish/v1/Systems returns 200 OK. Step 5 box: create the dedicated ReadOnly and Operator service accounts, then disable HTTPBasicAuth on AccountService. Number circles r=24 on steps 1 to 5. Orange note beside the step 1 decision: a successful 201 Created does not mean the node is ready; the next GET returns 403 Forbidden with PasswordChangeRequired. No takeaway bar.",
+  "anchor": "### 6.3 Designing zero-touch factory password rotation on Day 0",
+  "alt": "A Day 0 script checks the login for PasswordChangeRequired, rotates the password, verifies access, then creates service accounts.",
+  "cap": "A new BMC can log in yet refuse every other request until its factory password is rotated, so the onboarding script must handle that state before any discovery."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "04",
+  "name": "r04-override-precedence",
+  "title": "Privilege Registry overrides: which rule wins",
+  "spec": "A vertical three-tier precedence stack, drawn as three stacked boxes with down arrows labelled checked first, then, and last, reading top to bottom. Top box, green, numbered 1: PropertyOverrides, applies to one property. Sub-lines: ManagerAccount Password can be changed with ConfigureSelf or ConfigureUsers; every other ManagerAccount property still needs ConfigureUsers. Middle box, numbered 2: ResourceURIOverrides, applies to specific URI instances. Sub-line: for example /redfish/v1/Systems/VM6. Bottom box, numbered 3: SubordinateOverrides, applies by place in the tree, lowest precedence. Sub-lines split into two small boxes side by side under it: left box, EthernetInterface under ComputerSystem needs ConfigureComponents to PATCH, so an Operator can configure a host NIC; right box, EthernetInterface under Manager needs ConfigureManager, so only an Administrator can reconfigure the BMC out-of-band NIC. Orange highlight on the right box with the note: the position of a resource in the tree matters as much as its name. Number circles r=24 with 1, 2, 3 on the three tier boxes. No takeaway bar.",
+  "anchor": "### 3.1 Privilege Registry overrides, logical AND/OR, and Restricted Roles (DSP0266 §13.4.2–13.4.3)",
+  "alt": "Privilege Registry overrides apply in order: property first, then URI, then position in the tree.",
+  "cap": "The Privilege Registry checks property overrides first, then URI overrides, then subordinate overrides, which is why the same NIC can need different privileges on the host and on the BMC."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "04",
+  "name": "r04-session-leak",
+  "title": "A scraper that never logs out versus one that uses try and finally",
+  "spec": "Two side-by-side lanes, each drawn as a short row of boxes left to right with arrows. Left lane, grey panel titled Naive scraper (cron every 30 seconds): box 1 Log in and open a session; box 2 Read chassis sensors and print temperatures; box 3 Exit the Python process, with an orange highlight and a note that the DELETE on the session URI is never sent. Below the left lane, an arithmetic strip with three small boxes joined by multiplication and equals signs: 2 logins a minute, times 30 minutes SessionTimeout, equals 60 session slots used per BMC. Below that, a red-free outlined box labelled session table fills, new logins are refused, including provisioning and power fencing. Right lane, green panel titled Safe client: box 1 try, log in and open a session; box 2 read the sensors; box 3 finally, send DELETE to the session URI. Under the right lane, three short bullets as separate boxes: wrap every login in try and finally; reuse one long-lived session for several reads to the same BMC; give the scraper its own ReadOnly account so an admin can end orphaned sessions one at a time. Number circles r=24 on the three steps of each lane. No takeaway bar.",
+  "anchor": "### 6.1 Anatomy of a session-table exhaustion outage",
+  "alt": "A scraper that logs in every thirty seconds without deleting its session fills the BMC session table, while a try and finally block always logs out.",
+  "cap": "A script that logs in on a schedule without deleting its session fills the BMC session table within the idle timeout, so every client needs a logout in a finally block."
+ }
+]

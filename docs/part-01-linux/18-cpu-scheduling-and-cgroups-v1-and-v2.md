@@ -103,6 +103,10 @@ The time a runnable task waits for a CPU is **scheduler latency**, also called r
 
 ### Scheduling classes and policies
 
+![Scheduling classes are ordered, with real-time tasks above all fair tasks.](./img/l18-sched-classes.svg)
+
+*Figure 1.18.2. The real-time class sits above every fair task, which makes it powerful and dangerous.*
+
 Suppose a real-time job spins on a CPU, and the shell you need to fix it stops responding. That happens when the scheduling class is wrong for the job. Each task has a **scheduling policy**, and each policy belongs to a **class**. The classes are strictly ordered, so a task in a higher class always runs before any task in a lower class.
 
 | Class (highest first) | Policies | Meaning |
@@ -164,7 +168,7 @@ The diagram shows idle balance in action. CPU 2 has nothing to run, so the balan
 
 ![Load balancing and migration cost](./img/ch18-d2-luna.svg)
 
-*Figure 1.18.2. Load balancing and migration cost.*
+*Figure 1.18.3. Load balancing and migration cost.*
 
 If a latency-sensitive thread keeps moving between cores, pin it with affinity and keep its memory local.
 
@@ -245,6 +249,10 @@ A few pitfalls catch people out. Pinning on a shared host can collide with other
 
 ### Isolation: keeping the kernel and others off chosen cores
 
+![Boot and runtime settings that keep the kernel, interrupts and other tasks off chosen CPUs.](./img/l18-isolation.svg)
+
+*Figure 1.18.4. Isolation keeps the rest of the system off the cores you reserve for latency-sensitive work.*
+
 Picture a dedicated data-loader core that loses cycles each time the kernel or a system service wakes up on it. Isolation keeps the rest of the system off those cores. For latency- or jitter-sensitive work, such as dedicated data-loader or communication cores, real-time threads or benchmarks, you remove housekeeping work from some CPUs.
 
 | Mechanism | Effect |
@@ -285,6 +293,10 @@ Cgroups form a **tree**, also called a hierarchy. The tree appears as a special 
 
 ### v1 versus v2
 
+![Version 1 uses one tree per controller, and version 2 uses a single unified tree.](./img/l18-cgroup-v1-v2.svg)
+
+*Figure 1.18.5. In v2 every process belongs to exactly one cgroup in a single hierarchy.*
+
 A GPU node that works on one distribution can behave differently on the next, because the cgroup layout may change under your tools. Knowing which version you run is the first step.
 
 | | cgroups v1 | cgroups v2 |
@@ -322,7 +334,7 @@ Before you trust a container runtime with your cgroups, build one yourself. The 
 
 ![cgroup v2 is one tree](./img/ch18-fig1-cgtree.jpg)
 
-*Figure 1.18.3. In cgroup v2 every group is a directory; its control files set limits for all member processes.*
+*Figure 1.18.6. In cgroup v2 every group is a directory; its control files set limits for all member processes.*
 
 ```bash
 cd /sys/fs/cgroup
@@ -367,6 +379,10 @@ Before you write to any cgroup file, check who owns that part of the tree.
 
 ## 7. The CPU controller: weight, quota and throttling
 
+![Weight shares CPU proportionally under contention, while quota sets a hard ceiling.](./img/l18-weight-quota.svg)
+
+*Figure 1.18.7. A weight is a proportion that only matters under contention, but a quota is a ceiling that always applies.*
+
 ### Weight (shares): relative fairness
 
 Suppose two sibling groups compete for the same CPU. How much each one gets depends on its weight, and only when both groups are busy. A weight is a promise about proportions, not a cap.
@@ -407,7 +423,7 @@ The diagram traces one throttling period from start to finish.
 
 ![Quota: hard ceiling (CFS bandwidth control)](./img/ch18-d3-luna.svg)
 
-*Figure 1.18.4. Quota: hard ceiling (CFS bandwidth control).*
+*Figure 1.18.8. Quota: hard ceiling (CFS bandwidth control).*
 
 Notice that the average looks healthy while the pauses hide inside each period.
 
@@ -463,7 +479,7 @@ systemd owns the tree on most systems. It organises the tree into **slices**. `-
 
 ![Systemd, Docker, Slurm and the cgroup tree](./img/ch18-d4-luna.svg)
 
-*Figure 1.18.5. Systemd, Docker, Slurm and the cgroup tree.*
+*Figure 1.18.9. Systemd, Docker, Slurm and the cgroup tree.*
 
 Notice that Kubernetes gets its own slice, `kubepods.slice`, with a branch for each QoS class.
 
@@ -512,7 +528,7 @@ When a node gets slow, start with the flowchart below. It walks you through the 
 
 ![Troubleshooting](./img/ch18-d5-luna.svg)
 
-*Figure 1.18.6. Troubleshooting.*
+*Figure 1.18.10. Troubleshooting.*
 
 Read the flowchart from the top, one question at a time. Each answer sends you to a different family of fixes.
 

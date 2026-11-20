@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Putting it together: a minimal automation pipeline</title>
+  <desc>Visual infographic of a network automation pipeline detailing Source of truth, Validate, Render, Test, Deliver, Verify, with a failure branch to Rollback / alert and a passing loop through Monitor and detect drift.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Putting it together: a minimal automation pipeline</text>
+
+  
+
+  
+  <path d="M 490 215 L 590 215" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1010 215 L 1110 215" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1320 320 L 1320 410" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1320 620 L 1320 710" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1110 815 L 1010 815" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 800 710 L 800 620" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
+  
+  <g transform="translate(820, 646)">
+    <rect width="80" height="38" rx="8" fill="#fdf5ec" stroke="#db8129" stroke-width="2" />
+    <text x="40" y="27" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">fail</text>
+  </g>
+
+  
+  <path d="M 590 815 L 490 815" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+  
+  <g transform="translate(498, 746)">
+    <rect width="84" height="38" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="42" y="27" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">pass</text>
+  </g>
+
+  
+  <path d="M 280 710 L 280 320" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+
+  
+
+  
+  <g transform="translate(70, 110)">
+    <rect width="420" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="42" cy="42" r="24" fill="#207448" />
+    <text x="42" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g transform="translate(182, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="2" width="44" height="52" rx="6" />
+      <circle cx="21" cy="20" r="4" fill="#207448" />
+      <circle cx="21" cy="38" r="4" fill="#207448" />
+      <circle cx="35" cy="28" r="4" fill="#207448" />
+      <path d="M 21 24 L 21 34 M 21 34 C 21 28 35 34 35 32" />
+    </g>
+    
+    <text x="210" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Source of truth</text>
+    <text x="210" y="164" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(Git YAML / NetBox)</text>
+  </g>
+
+  
+  <g transform="translate(590, 110)">
+    <rect width="420" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="42" cy="42" r="24" fill="#207448" />
+    <text x="42" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g transform="translate(182, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 4 L 48 12 C 48 34 28 48 28 52 C 28 48 8 34 8 12 Z" />
+      <path d="M 18 28 L 25 35 L 38 18" />
+    </g>
+    
+    <text x="210" y="112" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Validate</text>
+    <text x="210" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(JSON Schema,</text>
+    <text x="210" y="182" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">pydantic)</text>
+  </g>
+
+  
+  <g transform="translate(1110, 110)">
+    <rect width="420" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="42" cy="42" r="24" fill="#207448" />
+    <text x="42" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g transform="translate(182, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="2" width="44" height="52" rx="6" />
+      <path d="M 18 24 L 14 29 L 18 34" />
+      <path d="M 38 24 L 42 29 L 38 34" />
+      <path d="M 30 18 L 26 40" />
+    </g>
+    
+    <text x="210" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Render</text>
+    <text x="210" y="164" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(Jinja2 templates)</text>
+  </g>
+
+  
+  <g transform="translate(1110, 410)">
+    <rect width="420" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="42" cy="42" r="24" fill="#207448" />
+    <text x="42" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g transform="translate(182, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 4 L 34 4 M 24 4 L 24 18 L 10 46 C 8 50 11 54 16 54 L 40 54 C 45 54 48 50 46 46 L 32 18 L 32 4" />
+      <path d="M 16 38 L 40 38" />
+      <circle cx="28" cy="46" r="2" fill="#207448" />
+    </g>
+    
+    <text x="210" y="112" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Test</text>
+    <text x="210" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(emulation: containerlab,</text>
+    <text x="210" y="182" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Batfish, unit tests)</text>
+  </g>
+
+  
+  <g transform="translate(1110, 710)">
+    <rect width="420" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="42" cy="42" r="24" fill="#207448" />
+    <text x="42" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <g transform="translate(182, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="22" width="48" height="30" rx="6" />
+      <circle cx="16" cy="37" r="3" fill="#207448" />
+      <circle cx="28" cy="37" r="3" fill="#207448" />
+      <circle cx="40" cy="37" r="3" fill="#207448" />
+      <path d="M 28 22 L 28 6 M 20 14 L 28 6 L 36 14" />
+    </g>
+    
+    <text x="210" y="112" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Deliver</text>
+    <text x="210" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(NETCONF/gNMI/</text>
+    <text x="210" y="182" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">REST/CLI, staged)</text>
+  </g>
+
+  
+  <g transform="translate(590, 710)">
+    <rect width="420" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="42" cy="42" r="24" fill="#207448" />
+    <text x="42" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <g transform="translate(182, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 44 A 22 22 0 1 1 48 44" />
+      <line x1="28" y1="44" x2="38" y2="24" />
+      <circle cx="28" cy="44" r="4" fill="#207448" />
+    </g>
+    
+    <text x="210" y="112" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Verify</text>
+    <text x="210" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(state assertions,</text>
+    <text x="210" y="182" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">telemetry)</text>
+  </g>
+
+  
+  <g transform="translate(590, 410)">
+    <rect width="420" height="210" rx="16" fill="#fdf5ec" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(182, 30)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 48 L 6 48 Z" />
+      <line x1="28" y1="20" x2="28" y2="34" />
+      <circle cx="28" cy="42" r="2" fill="#db8129" />
+    </g>
+    
+    <text x="210" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Rollback / alert</text>
+  </g>
+
+  
+  <g transform="translate(70, 710)">
+    <rect width="420" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="42" cy="42" r="24" fill="#207448" />
+    <text x="42" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+    
+    <g transform="translate(182, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <path d="M 8 28 L 18 28 L 23 16 L 31 40 L 37 28 L 48 28" />
+    </g>
+    
+    <text x="210" y="124" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Monitor and</text>
+    <text x="210" y="164" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">detect drift</text>
+  </g>
+
+</svg>

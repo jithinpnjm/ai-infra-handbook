@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <title>Why a cloud GPU node differs</title>
+  <desc>Infographic explaining why a cloud GPU node differs, illustrating noisy neighbours, virtual topology, passthrough and SR-IOV, and nested virtualisation around a central cloud GPU node.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why a cloud GPU node differs</text>
+
+  
+  <line x1="800" y1="340" x2="800" y2="430" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
+  <circle cx="800" cy="340" r="5" fill="#207448"/>
+  <circle cx="800" cy="430" r="5" fill="#207448"/>
+
+  <line x1="800" y1="640" x2="800" y2="730" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
+  <circle cx="800" cy="640" r="5" fill="#207448"/>
+  <circle cx="800" cy="730" r="5" fill="#207448"/>
+
+  <line x1="520" y1="535" x2="580" y2="535" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
+  <circle cx="520" cy="535" r="5" fill="#207448"/>
+  <circle cx="580" cy="535" r="5" fill="#207448"/>
+
+  <line x1="1020" y1="535" x2="1080" y2="535" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
+  <circle cx="1020" cy="535" r="5" fill="#207448"/>
+  <circle cx="1080" cy="535" r="5" fill="#207448"/>
+
+  
+  <g id="box-noisy-neighbours">
+    <rect x="360" y="130" width="880" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(390, 155)">
+      <rect x="12" y="12" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="20" y1="4" x2="20" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="36" y1="4" x2="36" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="20" y1="44" x2="20" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="36" y1="44" x2="36" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M4 22 C2 25, 2 31, 4 34" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M52 22 C54 25, 54 31, 52 34" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="465" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Noisy neighbours</text>
+    <line x1="390" y1="225" x2="1210" y2="225" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5"/>
+    <text x="390" y="265" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">shared CPU caches, memory bandwidth, NIC;</text>
+    <text x="390" y="302" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">shows as %steal and latency outliers</text>
+  </g>
+
+  
+  <g id="box-passthrough-sriov">
+    <rect x="50" y="380" width="470" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(80, 405)">
+      <rect x="8" y="6" width="40" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="16" y1="50" x2="16" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="24" y1="50" x2="24" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="32" y1="50" x2="32" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="50" x2="40" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M18 20 H38 M18 32 H38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="80" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Passthrough and SR-IOV</text>
+    <line x1="80" y1="515" x2="490" y2="515" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5"/>
+    <text x="80" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">whole GPU passed through,</text>
+    <text x="80" y="585" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">NIC as virtual function;</text>
+    <text x="80" y="620" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">provider sets bandwidth</text>
+    <text x="80" y="655" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">caps, MTU, counters</text>
+  </g>
+
+  
+  <g id="box-cloud-gpu-node">
+    <rect x="580" y="430" width="440" height="210" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    <rect x="580" y="430" width="440" height="10" rx="4" fill="#db8129"/>
+    
+    <g transform="translate(772, 465)">
+      <rect x="4" y="6" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="18" y="18" width="20" height="18" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="4" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="2"/>
+      <circle cx="10" cy="42" r="2.5" fill="#207448"/>
+      <circle cx="17" cy="42" r="2.5" fill="#207448"/>
+    </g>
+    <text x="800" y="575" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#303a36">cloud GPU node</text>
+  </g>
+
+  
+  <g id="box-virtual-topology">
+    <rect x="1080" y="380" width="470" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1110, 405)">
+      <circle cx="28" cy="14" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="14" cy="42" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="42" cy="42" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="24" y1="21" x2="17" y2="35" stroke="#207448" stroke-width="4"/>
+      <line x1="32" y1="21" x2="39" y2="35" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="1110" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Virtual topology</text>
+    <line x1="1110" y1="515" x2="1520" y2="515" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5"/>
+    <text x="1110" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the NUMA layout and</text>
+    <text x="1110" y="585" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">PCIe tree the provider</text>
+    <text x="1110" y="620" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">presents; flat view stops</text>
+    <text x="1110" y="655" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">NCCL choosing best paths</text>
+  </g>
+
+  
+  <g id="box-nested-virtualisation">
+    <rect x="360" y="730" width="880" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(390, 755)">
+      <rect x="6" y="6" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="16" y="16" width="24" height="24" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="22" x2="28" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="22" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="465" y="795" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Nested virtualisation</text>
+    <line x1="390" y1="825" x2="1210" y2="825" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5"/>
+    <text x="390" y="865" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">two layers of exits;</text>
+    <text x="390" y="902" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">often disabled on GPU types</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="980" width="1500" height="80" rx="12" fill="#207448"/>
+    <text x="800" y="1030" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">if a workload is slower in the cloud, check these four before you blame the software.</text>
+  </g>
+</svg>

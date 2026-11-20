@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140" style="background-color: #f5f8f5;">
+  <title>Two translation stages</title>
+  <desc>Visual comparison of two address translation approaches in virtualization: shadow page tables versus nested paging (EPT/NPT).</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="78" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Two translation stages</text>
+
+  
+
+  
+  <g id="box-guest-virtual">
+    <rect x="50" y="135" width="300" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="172" y="160" width="56" height="46" rx="6" />
+      <line x1="172" y1="174" x2="228" y2="174" />
+      <circle cx="183" cy="167" r="2" fill="#207448" stroke="none" />
+      <circle cx="191" cy="167" r="2" fill="#207448" stroke="none" />
+      <line x1="184" y1="192" x2="216" y2="192" stroke-width="3" />
+    </g>
+    <text x="200" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">guest virtual</text>
+  </g>
+
+  
+  <g id="arrow-guest-page-tables">
+    <text x="500" y="198" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">guest page tables</text>
+    <line x1="350" y1="225" x2="650" y2="225" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  </g>
+
+  
+  <g id="box-guest-physical">
+    <rect x="650" y="135" width="300" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="772" y="164" width="56" height="40" rx="5" />
+      <line x1="782" y1="204" x2="782" y2="212" />
+      <line x1="792" y1="204" x2="792" y2="212" />
+      <line x1="808" y1="204" x2="808" y2="212" />
+      <line x1="818" y1="204" x2="818" y2="212" />
+      <rect x="781" y="173" width="9" height="18" rx="2" stroke-width="3" />
+      <rect x="795" y="173" width="9" height="18" rx="2" stroke-width="3" />
+      <rect x="810" y="173" width="9" height="18" rx="2" stroke-width="3" />
+    </g>
+    <text x="800" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">guest physical</text>
+  </g>
+
+  
+  <g id="arrow-host-mapping">
+    <text x="1100" y="198" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">host mapping</text>
+    <line x1="950" y1="225" x2="1250" y2="225" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  </g>
+
+  
+  <g id="box-host-physical">
+    <rect x="1250" y="135" width="300" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1374" y="162" width="52" height="52" rx="6" />
+      <rect x="1386" y="174" width="28" height="28" rx="3" stroke-width="3" />
+      <line x1="1384" y1="154" x2="1384" y2="162" stroke-width="3" />
+      <line x1="1400" y1="154" x2="1400" y2="162" stroke-width="3" />
+      <line x1="1416" y1="154" x2="1416" y2="162" stroke-width="3" />
+      <line x1="1384" y1="214" x2="1384" y2="222" stroke-width="3" />
+      <line x1="1400" y1="214" x2="1400" y2="222" stroke-width="3" />
+      <line x1="1416" y1="214" x2="1416" y2="222" stroke-width="3" />
+      <line x1="1366" y1="172" x2="1374" y2="172" stroke-width="3" />
+      <line x1="1366" y1="188" x2="1374" y2="188" stroke-width="3" />
+      <line x1="1366" y1="204" x2="1374" y2="204" stroke-width="3" />
+      <line x1="1426" y1="172" x2="1434" y2="172" stroke-width="3" />
+      <line x1="1426" y1="188" x2="1434" y2="188" stroke-width="3" />
+      <line x1="1426" y1="204" x2="1434" y2="204" stroke-width="3" />
+    </g>
+    <text x="1400" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">host physical</text>
+  </g>
+
+  
+
+  
+  <g id="approach-shadow-page-tables">
+    
+    <rect x="50" y="350" width="725" height="740" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 390 380 L 424 380 L 434 390 L 434 424 L 390 424 Z" stroke-dasharray="5 5" />
+      <path d="M 402 392 L 436 392 L 446 402 L 446 436 L 402 436 Z" fill="#ffffff" />
+      <line x1="412" y1="410" x2="436" y2="410" stroke-width="3" />
+      <line x1="412" y1="422" x2="436" y2="422" stroke-width="3" />
+    </g>
+
+    
+    <text x="412" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Shadow page tables (older)</text>
+
+    
+    <line x1="80" y1="520" x2="745" y2="520" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25" />
+
+    
+    <rect x="80" y="555" width="665" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="412" y="612" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36" text-anchor="middle">
+      <tspan x="412" dy="0">hypervisor intercepts every</tspan>
+      <tspan x="412" dy="38">guest page-table change</tspan>
+    </text>
+
+    
+    <rect x="80" y="715" width="665" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="412" y="772" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36" text-anchor="middle">
+      <tspan x="412" dy="0">keeps combined guest-virtual</tspan>
+      <tspan x="412" dy="38">to host-physical tables</tspan>
+    </text>
+
+    
+    <rect x="80" y="875" width="665" height="185" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="412" y="974" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">many exits</text>
+  </g>
+
+  
+  <g id="approach-nested-paging">
+    
+    <rect x="825" y="350" width="725" height="740" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1160" y="378" width="56" height="54" rx="6" fill="#ffffff" />
+      <line x1="1178" y1="378" x2="1178" y2="432" stroke-width="3" />
+      <line x1="1198" y1="378" x2="1198" y2="432" stroke-width="3" />
+      <line x1="1160" y1="396" x2="1216" y2="396" stroke-width="3" />
+      <line x1="1160" y1="414" x2="1216" y2="414" stroke-width="3" />
+    </g>
+
+    
+    <text x="1187" y="462" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1187" dy="0">Nested paging</tspan>
+      <tspan x="1187" dy="38">(EPT on Intel, NPT on AMD)</tspan>
+    </text>
+
+    
+    <line x1="855" y1="520" x2="1520" y2="520" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25" />
+
+    
+    <rect x="855" y="545" width="665" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1187" y="584" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">hardware walks both tables</text>
+
+    
+    <rect x="855" y="620" width="665" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1187" y="659" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">a two-dimensional page walk</text>
+
+    
+    <rect x="855" y="695" width="665" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="1187" y="734" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">fewer exits</text>
+
+    
+    <rect x="855" y="770" width="665" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1187" y="809" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">but a TLB miss costs more memory reads</text>
+
+    
+    <rect x="855" y="845" width="665" height="215" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="1187" y="915" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+      <tspan x="1187" dy="0">worst case 24 reads with 4-level paging</tspan>
+      <tspan x="1187" dy="44">in both dimensions, 8 with 1 GiB huge pages</tspan>
+      <tspan x="1187" dy="44">in both guest and host</tspan>
+    </text>
+  </g>
+</svg>

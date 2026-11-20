@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "14",
+  "name": "r14-settings-staging",
+  "title": "A BIOS change waits on a staging tray until the reset moves it to live",
+  "spec": "Three columns left to right, each titled by its moment in time, joined by two arrows. Column 1 titled Before the PATCH. Column 2 titled After the PATCH. Column 3 titled After the reset. Each column holds two stacked boxes: a box labelled Live, sub-line the /Bios resource, and a box labelled Pending, sub-line the /Bios/Settings object. Column 1: Live shows PowerProfile Balanced; Pending shows an empty object. Column 2: Live still shows PowerProfile Balanced, and Pending shows PowerProfile MaxPerf. Column 3: Live shows PowerProfile MaxPerf, and Pending is cleared back to an empty object. Arrow from column 1 to column 2, labelled PATCH to /Bios/Settings, with a note 200 and a ResetRequired message. Arrow from column 2 to column 3, labelled POST ComputerSystem.Reset GracefulRestart. Orange note under column 2, the single key item: the live value still shows the old number, so the change is correct and the reset is still needed. Monospace for /Bios, /Bios/Settings, PowerProfile, Balanced, MaxPerf, ComputerSystem.Reset. No number circles and no takeaway bar.",
+  "anchor": "### 2.1 The Settings resource pattern",
+  "alt": "A BIOS PATCH stays pending while the live value keeps the old setting until a reset moves it live.",
+  "cap": "A BIOS change sits in the pending Settings object until a reset moves it into the live value."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "14",
+  "name": "r14-boot-override",
+  "title": "A Once network boot switches itself off, but a Continuous one reinstalls the node every restart",
+  "spec": "Two horizontal timelines stacked one above the other, time running left to right, each with three restart markers labelled restart 1, restart 2, restart 3, shown as small vertical ticks with a circle at each. Top timeline, green, titled Once. Restart 1 box: network boot, Pxe or UefiHttp. Between restart 1 and restart 2, a small note: the override switches itself off, BootSourceOverrideEnabled goes back to Disabled. Restart 2 box: normal boot from local disk. Restart 3 box: normal boot from local disk. Bottom timeline, orange as the single key item, titled Continuous. Restart 1 box: network boot. Restart 2 box: network boot again. Restart 3 box: network boot again. Under the bottom timeline, a loop arrow labelled installer runs, disk rebuilt, node reboots, installer runs again. A small grey legend at the right: BootSourceOverrideEnabled values Once, Continuous, Disabled, and BootSourceOverrideTarget values Pxe and UefiHttp. Monospace for BootSourceOverrideEnabled, BootSourceOverrideTarget, Once, Continuous, Disabled, Pxe, UefiHttp. No number circles and no takeaway bar.",
+  "anchor": "## 3. Boot override: one time or forever",
+  "alt": "A Once boot override uses the network once and then boots from disk, while a Continuous override reinstalls on every restart.",
+  "cap": "A Once boot override uses the network one time and then boots from disk, while a Continuous override reinstalls the node on every restart."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "14",
+  "name": "r14-bmc-escalation",
+  "title": "Recovering a bricked BMC escalates from an in-band reset to a full AC power drain",
+  "spec": "A top-to-bottom ladder of three numbered step boxes joined by down arrows, each with a green number circle (1, 2, 3), with a symptom box at the top: BMC does not answer ping, SSH or Redfish; host is up; fans at 100 percent. Step 1 box, title In-band reset from the host, sub-line the reset travels from the host OS to the BMC, written in the notes as ipmitool bmc reset cold. Step 2 box, title Chassis BMC reset or recovery image, sub-line when the flash is corrupted, field staff use it. Step 3 box, title Full AC power drain at the PDU, sub-line cuts the power so the BMC standby power also goes off, then restore it. A grey side note beside step 1: Manager.Reset needs a working BMC, so it cannot help here. An orange-bordered box at the bottom, the single key item, titled Prevention: update the BMC in a first small wave, keep the recovery procedure written down, and never update BMC firmware on a whole rack at once. Monospace for ping, SSH, Redfish, ipmitool bmc reset cold, Manager.Reset, PDU. No takeaway bar.",
+  "anchor": "### Scenario 3: A \"bricked\" BMC after a bad firmware push",
+  "alt": "A bricked BMC recovers by an in-band reset first, then a chassis reset or recovery image, then an AC power drain.",
+  "cap": "A bricked BMC recovers in three steps, starting with an in-band reset from the host and ending with a full AC power drain."
+ }
+]

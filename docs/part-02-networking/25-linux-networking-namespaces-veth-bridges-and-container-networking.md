@@ -38,6 +38,10 @@ Docker, CNI, Multus and SR-IOV are all introduced from scratch, because each one
 
 ## 1. Network namespaces
 
+![What a network namespace holds](./img/n25-netns.svg)
+
+*Figure 2.25.1. A network namespace is a complete independent copy of the network stack, so each container has its own ports, routes and firewall.*
+
 Suppose two containers on one host both want to serve on port 8080. You can run both, because each container has its own port space. That isolation comes from the network namespace, a mechanism you need to understand before anything else in this chapter.
 
 A **network namespace** is a complete, independent copy of the network stack. Each copy has its own network interfaces, IP addresses, routing tables, ARP and ND neighbour tables, netfilter rules, conntrack table, `/proc/net`, sockets, port numbers, and sysctls under `net.*`. Processes inside a namespace see only that namespace. It is like giving each tenant of a building their own private phone exchange, with their own extension numbers, instead of one shared switchboard. The namespace also solves the "one TCP/IP stack per OS" problem that motivated hypervisors, and it does so without a separate kernel.
@@ -81,7 +85,7 @@ Picture a host with two containers that each believe they are alone on the netwo
 
 ![Containers, veth pairs and a bridge](./img/n25-fig1-veth.jpg)
 
-*Figure 2.25.1. Each container namespace is cabled to a bridge by a veth pair.*
+*Figure 2.25.2. Each container namespace is cabled to a bridge by a veth pair.*
 
 Container networking is nothing more than the primitives from the last section, assembled by software. You learn what the software does by building the same thing yourself, once, with plain commands. After that, a CNI plugin or Docker's network driver reads as a long script that you have already run.
 
@@ -120,22 +124,9 @@ Follow a packet from container A to container B on the same bridge, slowly, one 
 
 A packet from A to the internet takes a different path. The default route of A points at the bridge IP, and the packet enters the host IP stack. It passes FORWARD and then POSTROUTING masquerade, and it leaves through the NIC with the address of the host. Return traffic is un-NATed by conntrack and delivered back through the bridge. The outside world never learns that the container exists. It only talks to the host.
 
-```mermaid
-flowchart LR
-  subgraph NS1["netns c1 (10.10.0.11)"]
-    E1["eth0"]
-  end
-  subgraph NS2["netns c2 (10.10.0.12)"]
-    E2["eth0"]
-  end
-  subgraph HOST["host netns"]
-    V1["veth-c1"] --- BR["br0 10.10.0.1\n(L2 bridge + L3 gateway)"] --- V2["veth-c2"]
-    BR --> RT["IP stack: routing, netfilter (FORWARD, MASQUERADE)"] --> NIC["eth0 (host IP)"]
-  end
-  E1 --- V1
-  E2 --- V2
-  NIC --> W["Network"]
-```
+![DNS inside: per-namespace resolv.conf under /etc/netns/<ns>/resolv.conf](./img/m2-25-1.svg)
+
+*Figure 2.25.3. DNS inside: per-namespace resolv.conf under /etc/netns/<ns>/resolv.conf, as a diagram.*
 
 Bridge and NAT are not the only option. A routed veth has no bridge. Instead, it uses one /32 route per container that points at the host end of the veth, with proxy ARP or a routing protocol. This is the model of Calico. Macvlan puts the container directly on the physical LAN with its own MAC address. Host-to-container traffic on the same parent does not work unless the host has a macvlan sub-interface too. Ipvlan L3 routes container IPs through the parent, so there is no MAC explosion. Host networking skips the namespace entirely, and SR-IOV and DPDK bypass the kernel with hardware or user-space paths.
 
@@ -152,6 +143,10 @@ sudo ip link add ipv0 link eth0 type ipvlan mode l3 ; sudo ip link set ipv0 netn
 If you run the macvlan commands, the container gets its own address on the physical LAN. The ipvlan container shares the MAC address of the parent NIC while keeping its own IP. Choose the model that matches what the workload needs: a NAT path, a LAN address, or a bypass.
 
 ## 3. Docker networking
+
+![Docker network modes](./img/n25-dockermodes.svg)
+
+*Figure 2.25.4. Docker offers six network modes, from the default bridge to sharing the host namespace.*
 
 Picture a developer who runs a web server in a container, publishes port 8080, and expects only the office network to reach it. The firewall on the host has a rule that should block outside access, yet the port answers from anywhere. The Docker network model explains why. Docker inserts its own rules ahead of the firewall's rules, so a published port takes a path the firewall never checks. The paragraphs below follow the model from its three concepts to the places where the surprise hides.
 
@@ -193,6 +188,10 @@ Production GPU clusters rarely use the network features of Docker directly. Kube
 Kubernetes does not use the CNM of Docker. It uses CNI, a simpler specification that came from CoreOS and now belongs to the CNCF. A CNI **plugin** is an executable. You give it a JSON network configuration and some environment variables that describe the container, and it configures networking for that container. CNI needs no daemon, and it is cross-platform. The whole contract fits in one sentence: when a container starts, the runtime runs the plugin once with the word ADD, and when the container ends, it runs it once with DEL.
 
 ### How it works
+
+![CNI ADD sequence](./img/n25-cniadd.svg)
+
+*Figure 2.25.5. The runtime calls the CNI plugin, which wires the interface into the pod namespace and asks IPAM for an address.*
 
 Walk through the life of one new pod, step by step. The runtime creates the empty namespace that the pod will live in. It then looks in the configuration folder and finds the network plugin's instructions. It runs the plugin with the word ADD, and passes in the namespace path and the name of the interface. The plugin creates the cable, asks the address manager for a free address, sets the routes, and reports back what it did. When the pod is deleted, the same plugin runs again with the word DEL, so nothing is left behind.
 
@@ -256,6 +255,10 @@ Start with two pods on one node that share a bridge, and follow the packet as yo
 Routed CNIs take a different path, and you can see it in the routes. Calico gives each pod a /32 route on the host, such as `10.244.1.5 dev caliXXXX scope link`. Proxy ARP answers the ARP request of the pod for its default gateway at 169.254.1.1. Pod-to-pod traffic on the same node then goes pod, veth, host routing, veth, pod, with no bridge at all.
 
 ### Different nodes
+
+![Pod to pod across nodes](./img/n25-crossnode.svg)
+
+*Figure 2.25.6. Cross-node pod traffic either rides inside an overlay tunnel or follows plain routes to the other node.*
 
 Follow one request from a pod on node 1 to a pod on node 2, step by step. The packet leaves the first pod through its veth and reaches the node's routing table. The route says the destination lives on another node, and it points at a tunnel device. The tunnel wraps the whole packet inside a new outer packet addressed to node 2. Node 2 unwraps it, sees the inner packet is for its local pod, and delivers it. The walkthrough is the same whichever overlay you use. Only the names of the devices and the port numbers change.
 

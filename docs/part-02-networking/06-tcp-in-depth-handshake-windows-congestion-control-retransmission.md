@@ -99,18 +99,9 @@ Layers can mix. IP is connectionless, TCP over it is connection-oriented, and HT
 
 Every TCP segment carries this header, much like every parcel carries a label. The options at the end decide how the connection behaves, so read those fields closely when you debug a connection.
 
-```mermaid
-flowchart LR
-  subgraph H["TCP header (20 bytes + options)"]
-    direction TB
-    A["Source port (16) | Destination port (16)"]
-    B["Sequence number (32)"]
-    C["Acknowledgement number (32)"]
-    D["Data offset (4) | Reserved | Flags: CWR ECE URG ACK PSH RST SYN FIN | Window (16)"]
-    E["Checksum (16) | Urgent pointer (16)"]
-    F["Options (TLV, up to 40 bytes): MSS, window scale, SACK-permitted, SACK blocks, timestamps, fast open"]
-  end
-```
+![The TCP header and options](./img/m2-06-1.svg)
+
+*Figure 2.6.1. The TCP header and options, as a diagram.*
 
 The **sequence number** is the byte offset of the first payload byte in this direction's stream. SYN and FIN each use up one sequence number. The **acknowledgement number** is the next byte the receiver expects. It works as a cumulative ACK, which means "I have everything before this byte." If you have received everything up to byte 15 and say "I expect 16 next", the sender knows everything up to byte 15 arrived.
 
@@ -128,21 +119,11 @@ Every TCP connection starts with a three-packet exchange. If that exchange fails
 
 ![The TCP three-way handshake](./img/n06-fig1-handshake.jpg)
 
-*Figure 2.6.1. SYN, SYN-ACK, ACK: the three packets that open a TCP connection.*
+*Figure 2.6.2. SYN, SYN-ACK, ACK: the three packets that open a TCP connection.*
 
-```mermaid
-sequenceDiagram
-  participant C as Client (CLOSED)
-  participant S as Server (LISTEN)
-  C->>S: SYN seq=x, MSS, WS, SACK-perm, TS  (client → SYN_SENT)
-  S->>C: SYN+ACK seq=y ack=x+1, options  (server → SYN_RCVD)
-  C->>S: ACK ack=y+1  (client → ESTABLISHED, server → ESTABLISHED)
-  Note over C,S: data: segments with seq, ACKs cumulative / selective
-  C->>S: FIN seq=m  (client → FIN_WAIT_1)
-  S->>C: ACK  (client → FIN_WAIT_2, server → CLOSE_WAIT)
-  S->>C: FIN  (server → LAST_ACK)
-  C->>S: ACK  (client → TIME_WAIT for 2×MSL = 60 s on Linux, server → CLOSED)
-```
+![The handshake, data transfer and teardown](./img/m2-06-2.svg)
+
+*Figure 2.6.3. The handshake, data transfer and teardown, as a diagram.*
 
 Why three packets? Each side has to prove it can both send and receive. Each side also has to agree on its starting sequence number. Think of two people on a bad phone line. One says "can you hear me?", the other says "yes, can you hear me?", and the first says "yes". Only then do both know the line works in both directions. Two messages cannot do both things in both directions, so TCP needs three. The initial sequence numbers, or ISNs, are unpredictable. RFC 6528 describes a hash of the 4-tuple plus a secret. That stops off-path attackers from injecting data or forging connections. It also stops stale segments from an older connection on the same 4-tuple from being taken as new data.
 
@@ -204,6 +185,10 @@ Errors are another job for TCP. Packets can be lost or mangled on the internet, 
 
 ## 5. Reliability: ACKs, retransmission and the RTO
 
+![RTO and fast retransmit](./img/n06-loss.svg)
+
+*Figure 2.6.4. A lost segment is detected either by a timer expiring or by three duplicate ACKs.*
+
 TCP counts bytes, not packets. Receivers send cumulative ACKs that name the next byte they expect. Senders retransmit anything that is not acknowledged in time. This is the same idea as a courier asking for a signature on each delivery and sending again if none comes back. Two events trigger a retransmission.
 
 The first trigger is the retransmission timeout, or RTO. The sender starts a timer for each segment. If no ACK arrives before the timer runs out, the sender retransmits and doubles the RTO. That is exponential backoff, which means each wait is twice the one before. The sender keeps going up to `tcp_retries2`, whose default is 15, or about 15 minutes. Then it declares the connection dead. The RTO comes from a smoothed RTT and its variance: `RTO = SRTT + 4 × RTTVAR`. Linux sets a minimum of 200 ms, `TCP_RTO_MIN`, and a maximum of 120 s. An RTO is the expensive loss signal. The pipe has gone quiet, so TCP collapses its congestion window to one segment, or to the initial window, and restarts slow start. When you see `TCPTimeouts` rise in `nstat`, you are paying that cost.
@@ -222,6 +207,10 @@ Reordering looks like loss to TCP. Parallel paths, multi-queue NICs and ECMP fla
 
 ## 6. Flow control: the sliding window
 
+![The sliding window](./img/n06-window.svg)
+
+*Figure 2.6.5. The window slides forward as ACKs arrive, letting the sender keep many segments in flight.*
+
 Picture a receiver whose application is busy, with a buffer that is nearly full. The receiver cannot take much more data, so it has to say so. TCP does that with a receive window.
 
 The receiver advertises `rwnd`, which is how many more bytes it can buffer. The sender may have at most the smaller of `rwnd` and `cwnd` in flight. `cwnd` is the congestion window, covered in section 7. "In flight" means sent but not yet acknowledged. As ACKs arrive, the window slides forward, like a frame moving along a long sheet of paper and always covering the bytes that may be sent right now. That lets the sender keep many segments on the wire, instead of sending one and waiting for its reply.
@@ -235,6 +224,10 @@ The receiving application can be the bottleneck too. If it reads slowly, its buf
 The window field is 16 bits, so it tops out at 65,535 bytes. That is far too small for modern paths. The window-scale option fixes this by multiplying the field by 2^shift. It is negotiated only in the SYN. Consider a 100 Gb/s link with a 1 ms RTT. Its bandwidth-delay product is 12.5 MB, which needs a scale factor of at least 8. Keep window scaling on with `tcp_window_scaling=1`, and watch for middleboxes that strip the option.
 
 ### Bandwidth-delay product and buffers
+
+![Bandwidth-delay product](./img/n06-bdp.svg)
+
+*Figure 2.6.6. The amount of data needed in flight to fill a path grows with bandwidth and distance.*
 
 Here is the idea behind the bandwidth-delay product. Imagine a pipe that you want to keep completely full of water. The amount of water in the pipe at any moment equals the pipe's flow rate times the time the water takes to travel its length. A network path is the same, with bandwidth as the flow rate and RTT as the travel time there and back. The maximum throughput of one connection is about `window / RTT`. To fill a path, the window must be at least the BDP, which is bandwidth times RTT. The table shows the BDP for five kinds of path.
 
@@ -270,19 +263,13 @@ Flow control protects the receiver. But the network between two hosts can be the
 
 ![How TCP finds its sending rate](./img/n06-fig2-cwnd.jpg)
 
-*Figure 2.6.2. Slow start, congestion avoidance and a loss event shape the congestion window.*
+*Figure 2.6.7. Slow start, congestion avoidance and a loss event shape the congestion window.*
 
 Several variables matter here. `cwnd` is the congestion window. `ssthresh` is the slow-start threshold. `rwnd` is the receive window. The initial window, IW10, is 10 segments on modern Linux, and you can set it per route with `initcwnd`. MSS is the segment size.
 
-```mermaid
-flowchart LR
-  SS["Slow start\ncwnd +1 MSS per ACK → doubles per RTT"] -- "cwnd ≥ ssthresh" --> CA["Congestion avoidance\ncwnd +1 MSS per RTT (linear)"]
-  CA -- "3 dup ACKs / SACK loss" --> FR["Fast retransmit + fast recovery\nssthresh = cwnd/2 (Reno) ; cwnd = ssthresh"]
-  FR --> CA
-  CA -- "RTO" --> RTO["ssthresh = cwnd/2 ; cwnd = 1-10 MSS"]
-  RTO --> SS
-  SS -- "loss" --> FR
-```
+![Congestion control](./img/m2-06-3.svg)
+
+*Figure 2.6.8. Congestion control, as a diagram.*
 
 **Slow start** is anything but slow, despite its name. The window doubles each RTT, because TCP adds one MSS for every ACK, and each RTT brings back as many ACKs as segments sent. The window keeps growing from IW up to `ssthresh`. Short flows, such as a small HTTP response or an RPC, finish inside slow start and never reach line rate. For them, the initial window and the RTT decide the completion time. That is why IW10 matters, and why tricks that skip handshakes, such as QUIC, TLS 1.3 0-RTT and connection reuse, help.
 
@@ -375,20 +362,9 @@ An increase in `TCPTimeouts` means RTOs, and that is bad. `ListenOverflows` mean
 
 When a TCP symptom appears, start with whether the connection succeeds, and follow the branch that matches. Following the order stops you from tuning buffers when the real problem is a closed port.
 
-```mermaid
-flowchart TD
-  Q["TCP symptom"] --> A{"Can connect?"}
-  A -- "refused" --> A1["No listener / reject rule: ss -tlnp on server; check bind address (127.0.0.1 vs 0.0.0.0)"]
-  A -- "timeout" --> A2["SYN dropped: tcpdump both ends; routing, SG/NSG/firewall, rp_filter, listen queue (nstat)"]
-  A -- "connects" --> B{"Throughput low?"}
-  B -- "yes" --> B1{"ss -ti: which limit?"}
-  B1 -- "cwnd_limited / retrans" --> B2["Loss/congestion: path counters, drops at NIC/switch, CC algorithm, ECN"]
-  B1 -- "rwnd_limited / zero window" --> B3["Receiver app slow or buffer too small: app profile, rmem"]
-  B1 -- "sndbuf_limited" --> B4["Increase wmem or fix app write pattern"]
-  B1 -- "app_limited" --> B5["Application not sending enough: look at the app"]
-  B -- "no, but latency spikes" --> C["Nagle+delayed ACK, RTO events, accept queue, GC pauses, conntrack, bufferbloat (tcp_notsent_lowat)"]
-  B -- "resets" --> D["Idle timeouts on LB/NAT/firewall; app crash; keepalives; RST source IP/TTL in tcpdump"]
-```
+![A diagnostic flow](./img/m2-06-4.svg)
+
+*Figure 2.6.9. A diagnostic flow, as a diagram.*
 
 Each branch names the first place to look. Confirm the branch with the commands above before you change any setting.
 

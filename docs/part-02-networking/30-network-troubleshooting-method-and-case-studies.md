@@ -124,13 +124,9 @@ At each test, ask two questions. What is the actual state of the system and the 
 
 Take a flow that fails between a spine and a host. The midpoint test is at the leaf. If the leaf's counters show the packet arrived and also left, the fault lies past the leaf, so you move toward the host. If the packet never left the leaf, the fault lies before it, so you move toward the spine. Each answer narrows the path, and a few tests can point at a single device.
 
-```mermaid
-flowchart LR
-  S["Source host"] --> L1["Leaf A"] --> SP["Spine"] --> L2["Leaf B"] --> D["Destination host"]
-  classDef t fill:#fde68a,stroke:#b45309;
-  SP:::t
-  note["Test at the spine first:\npackets present and correct?\nyes → look downstream (Leaf B, dest)\nno → look upstream (Leaf A, source)"]
-```
+![Half split and move](./img/m2-30-1.svg)
+
+*Figure 2.30.2. Half split and move, as a diagram.*
 
 In this diagram, the first test happens at the spine. Its answer tells you which half to search next.
 
@@ -162,6 +158,10 @@ Before you call an incident closed, record the temporary fix as debt and schedul
 
 ## 4. A practical workflow
 
+![Troubleshooting workflow](./img/n30-workflow.svg)
+
+*Figure 2.30.3. Define the symptom in measurable terms and gather evidence before changing anything.*
+
 When an alert fires in the middle of the night, the order of your first steps matters. This workflow gives you that order, so that the pressure of the moment does not make you skip a step.
 
 Imagine the same alert handled two ways. In the first, the engineer starts changing settings at once, and the evidence is gone by the time the cause would have shown itself. In the second, the engineer writes down the symptom, saves the counters, and only then changes one thing. The second engineer loses a few minutes and keeps the evidence that tells the real story.
@@ -181,6 +181,10 @@ Working bottom up is a rule of thumb. Physical problems are the cheapest to rule
 Next time you start, write the symptom in measurable terms before you touch a command.
 
 ## 5. The diagnostic kit
+
+![Diagnostic kit contents](./img/n30-kit.svg)
+
+*Figure 2.30.4. One scripted collector gathers the same evidence from any node in under a minute.*
 
 A kit saves time at 2 a.m., when nobody remembers the right commands. Keep one standard, scripted collector, so anyone can gather the same evidence in under a minute on any node and attach it to the ticket. The script is read-only, so gathering evidence never changes the state you are trying to explain.
 
@@ -226,21 +230,9 @@ Start with scope. Does the failure happen on every client, or only on A? Then fo
 
 Suppose only one client fails. You now know the fault is near that client, or on the path from it, and not in the server that every other client reaches. That single answer removes half of the tree, and the remaining questions are shorter because the search space is smaller.
 
-```mermaid
-flowchart TD
-  A["A cannot reach B (service X)"] --> N{"Same on all clients,\nor only A?"}
-  N -- "only A" --> AL["A's local config: IP, mask, gateway, DNS, proxy, firewall, VPN, route (ip route get)"]
-  N -- "all" --> B{"B up and listening?\nss -tlnp on B; local curl"}
-  B -- "no" --> BL["Service/host problem: process, bind address, resources, logs"]
-  B -- "yes" --> P{"ping/nc from A\nto B:port"}
-  P -- "refused (RST)" --> R1["Firewall reject or wrong port/address"]
-  P -- "timeout" --> H["Half-split the path: traceroute/mtr; capture at midpoint and both ends"]
-  H --> H1{"SYN reaches B?"}
-  H1 -- "no" --> H2["Drop between: ACL, security group, routing, VLAN, ARP, MTU of the SYN"]
-  H1 -- "yes, no SYN-ACK back" --> H3["B-side firewall/listen queue/conntrack/rp_filter"]
-  H1 -- "SYN-ACK leaves B, not seen by A" --> H4["Return path: asymmetric route, NAT, stateful FW, policy routing"]
-  P -- "works" --> APP["Layer 7: DNS, TLS, auth, app config, proxy, MTU for large payloads"]
-```
+![Connectivity: "A cannot reach B"](./img/m2-30-2.svg)
+
+*Figure 2.30.5. Connectivity: "A cannot reach B", as a diagram.*
 
 Read the diagram as a set of questions. A refusal (RST) points to a firewall reject or a wrong port or address. A timeout means a packet was lost somewhere, so you half-split the path and capture at the midpoint and both ends. If the connection works, the problem sits higher up, in DNS, TLS, authentication or the application itself.
 
@@ -349,6 +341,10 @@ Ping uses small packets, so it never reaches the path where the offload fails. S
 The workaround is `ethtool -K eth0 tx off`, and the lasting fix is to update the driver and firmware. The lesson: tell apart a harmless "bad cksum" on the sender from bad checksums seen at the receiver (chapter 2.26).
 
 ### Case 8: PFC storm collapses an NCCL job
+
+![PFC storm case](./img/n30-pfcstorm.svg)
+
+*Figure 2.30.6. A pause storm spreads backwards through the fabric until throughput drops to zero, and early ECN marking prevents it.*
 
 A multi-node job runs fine for five minutes, and then throughput falls to zero. The same fabric passes `ib_write_bw` when it is idle. On the hosts, `ethtool -S` shows `rx_pause` counters rising by millions per second. The ECN thresholds on the switches were set too high. The buffers filled before ECN or CNP could slow the senders. So the switches fired hard PFC pauses, which spread and froze the fabric.
 

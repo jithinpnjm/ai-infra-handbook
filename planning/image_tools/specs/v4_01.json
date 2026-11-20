@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "01",
+  "name": "a01-secret-order",
+  "title": "Remediate a committed secret in four steps",
+  "spec": "Four boxes in a row from left to right, each with a numbered circle (1 to 4) and one outline icon. Box 1, orange outline (the most important step), key icon, title 'Revoke and rotate', text 'Revoke and rotate the credential right away, because a copy may already exist'. Box 2, lock icon, title 'Remove the secret from the current tree', text 'Replace it with a reference to a secret manager'. Box 3, clock-with-history or branch icon, title 'Purge history (optional)', text 'git filter-repo --path secrets.yml --invert-paths', then 'Force-push, and ask collaborators to re-clone'. Box 4, shield icon, title 'Prevent the next leak', text 'Add gitleaks or push protection, and .gitignore entries'. Arrows point from box 1 to 2, 2 to 3, and 3 to 4. Under box 1, a short note: 'Rotation comes first. You cannot take back a copy that someone already made.' Under box 3, a note: 'Rewriting history is slow and never complete.'",
+  "anchor": "## 11. Secrets and sensitive history",
+  "alt": "Four ordered steps for a leaked secret: rotate it first, remove it from the tree, optionally purge history, then prevent a repeat.",
+  "cap": "When a secret is committed, rotate it first, then remove it, purge history if needed, and prevent the next leak."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "01",
+  "name": "a01-onto",
+  "title": "rebase --onto moves only the feature-B commits",
+  "spec": "Top to bottom, two parts. Top row, a horizontal line labelled 'main' with a single box labelled 'squash commit' on it (the one new commit that the squash merge of feature-A created). Below it, a second horizontal line labelled 'feature-A' with two grey boxes 'A1' and 'A2' (the old commits, which no longer match anything on main). Branching off A2 is a third line labelled 'feature-B' with two green boxes 'B1' and 'B2'. Step 1 (number circle), an arrow labelled 'git rebase --onto main feature-A feature-B' pointing down to the final state. Final state row, a line labelled 'main' with the squash commit followed by two green boxes 'B1' and 'B2' now sitting on top of it. The grey A1 and A2 boxes are not copied across. Orange note on the grey boxes: 'Without --onto, the old feature-A commits would be replayed too.'",
+  "anchor": "## 7. Merge, rebase and history shape",
+  "alt": "The rebase --onto command replays only the feature-B commits onto main after feature-A was squash-merged.",
+  "cap": "The rebase onto command moves only the feature-B commits onto main after feature-A was squash-merged."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "01",
+  "name": "a01-reflog-rescue",
+  "title": "The reflog rescues a commit lost by reset --hard",
+  "spec": "Three steps left to right, each with a numbered circle. Step 1, icon of a warning triangle or reset arrow, box text 'git reset --hard' with note 'The commit is still in the object store until cleanup'. Step 2, clock or ship's-log icon, box text 'git reflog' showing one line 'HEAD@{1}: commit: ...' with the line before the mistake highlighted. Step 3, branch icon, box text 'git branch rescue HEAD@{1}' with note 'The lost commit is back on a new branch'. Arrows connect 1 to 2 to 3. Orange highlight on the HEAD@{1} line. Under the row, a small note panel: 'The reflog is local only, so it does not survive a fresh clone.'",
+  "anchor": "## 8. Undoing things safely",
+  "alt": "A commit lost by reset --hard is found in the reflog as HEAD@{1} and restored onto a new branch.",
+  "cap": "After a reset --hard, git reflog shows the lost commit, and a new branch can point back to it."
+ }
+]

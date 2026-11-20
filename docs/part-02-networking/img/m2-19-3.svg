@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Troubleshooting congestion in AI fabrics</title>
+  <desc>A diagnostic decision tree for troubleshooting congestion, packet drops, PFC pauses, and ECN markings in AI fabrics.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Troubleshooting congestion in AI fabrics</text>
+
+  
+  <rect x="250" y="95" width="1100" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 290 152 A 22 22 0 1 1 326 152"/>
+    <line x1="308" y1="140" x2="320" y2="124"/>
+    <circle cx="308" cy="140" r="3" fill="#207448"/>
+  </g>
+  <text x="360" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Low collective bandwidth / long step time</text>
+
+  
+  <line x1="330" y1="180" x2="330" y2="218" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  
+  <rect x="80" y="220" width="500" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="110" y="260" width="38" height="28" rx="4"/>
+    <path d="M 129 298 L 129 316 M 121 308 L 129 316 L 137 308"/>
+  </g>
+  <text x="175" y="275" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">Any drops on</tspan>
+    <tspan x="175" dy="40">lossless class?</tspan>
+  </text>
+
+  
+  <line x1="580" y1="290" x2="678" y2="290" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="630" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <rect x="680" y="220" width="840" height="140" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+  
+  <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 733 268 L 758 312 L 708 312 Z"/>
+    <line x1="733" y1="282" x2="733" y2="296"/>
+    <circle cx="733" cy="304" r="2" fill="#db8129"/>
+  </g>
+  <text x="785" y="263" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="785" dy="0">PFC/headroom/ECN mismatch; priority mismatch</tspan>
+    <tspan x="785" dy="32">NIC↔switch; watchdog fired; wrong DSCP mapping</tspan>
+  </text>
+
+  
+  <line x1="330" y1="360" x2="330" y2="413" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="345" y="392" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="start">no</text>
+
+  
+  
+  <rect x="80" y="415" width="500" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="129" cy="485" r="22"/>
+    <line x1="123" y1="474" x2="123" y2="496"/>
+    <line x1="135" y1="474" x2="135" y2="496"/>
+  </g>
+  <text x="175" y="470" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">PFC pause</tspan>
+    <tspan x="175" dy="40">counters high?</tspan>
+  </text>
+
+  
+  <line x1="580" y1="485" x2="678" y2="485" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="630" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <rect x="680" y="415" width="840" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 712 468 L 754 468 L 739 487 L 739 505 L 727 505 L 727 487 Z"/>
+  </g>
+  <text x="785" y="458" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="785" dy="0">Congestion → PFC: lower ECN thresholds,</tspan>
+    <tspan x="785" dy="32">check load balancing, find the incast victim;</tspan>
+    <tspan x="785" dy="32">storm? find the source port; deadlock?</tspan>
+  </text>
+
+  
+  <line x1="330" y1="555" x2="330" y2="608" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="345" y="587" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="start">no</text>
+
+  
+  
+  <rect x="80" y="610" width="500" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 115 680 L 132 663 L 149 680 L 149 704 L 115 704 Z"/>
+    <circle cx="132" cy="677" r="3" fill="#207448"/>
+  </g>
+  <text x="175" y="665" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">ECN marks /</tspan>
+    <tspan x="175" dy="40">CNPs high?</tspan>
+  </text>
+
+  
+  <line x1="580" y1="680" x2="678" y2="680" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="630" y="670" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <rect x="680" y="610" width="840" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="718" cy="680" r="5" fill="#207448"/>
+    <circle cx="748" cy="664" r="5" fill="#207448"/>
+    <circle cx="748" cy="696" r="5" fill="#207448"/>
+    <line x1="723" y1="677" x2="743" y2="667"/>
+    <line x1="723" y1="683" x2="743" y2="693"/>
+  </g>
+  <text x="785" y="654" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="785" dy="0">Congestion handled by DCQCN but constant:</tspan>
+    <tspan x="785" dy="32">hot links, hash collisions, oversubscription;</tspan>
+    <tspan x="785" dy="32">improve LB, check ECMP imbalance</tspan>
+  </text>
+
+  
+  <line x1="330" y1="750" x2="330" y2="803" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="345" y="782" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="start">no</text>
+
+  
+  
+  <rect x="80" y="805" width="500" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="110" y="855" width="40" height="32" rx="4"/>
+    <path d="M 122 887 L 122 879 L 138 879 L 138 887"/>
+  </g>
+  <text x="175" y="860" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">Link/NIC errors,</tspan>
+    <tspan x="175" dy="40">MTU, speed?</tspan>
+  </text>
+
+  
+  <line x1="580" y1="875" x2="678" y2="875" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="630" y="865" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <rect x="680" y="805" width="840" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="714" y="861" width="22" height="28" rx="3"/>
+    <path d="M 742 869 L 752 875 L 742 881"/>
+  </g>
+  <text x="785" y="860" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="785" dy="0">Optics/CRC errors, degraded link speed,</tspan>
+    <tspan x="785" dy="37">MTU mismatch, wrong lane count</tspan>
+  </text>
+
+  
+  <path d="M 330 945 L 330 1070 L 678 1070" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="345" y="980" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="start">no</text>
+
+  
+  
+  <rect x="680" y="1000" width="840" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="716" y="1054" width="32" height="32" rx="4"/>
+    <rect x="724" y="1062" width="16" height="16" rx="2"/>
+    <line x1="724" y1="1048" x2="724" y2="1054"/>
+    <line x1="740" y1="1048" x2="740" y2="1054"/>
+    <line x1="724" y1="1086" x2="724" y2="1092"/>
+    <line x1="740" y1="1086" x2="740" y2="1092"/>
+    <line x1="710" y1="1062" x2="716" y2="1062"/>
+    <line x1="710" y1="1078" x2="716" y2="1078"/>
+    <line x1="748" y1="1062" x2="754" y2="1062"/>
+    <line x1="748" y1="1078" x2="754" y2="1078"/>
+  </g>
+  <text x="785" y="1043" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="785" dy="0">Software/topology: NCCL config (HCA, GID, TC),</tspan>
+    <tspan x="785" dy="32">CPU/NUMA/PCIe, rail mismatch,</tspan>
+    <tspan x="785" dy="32">slow node (stragglers)</tspan>
+  </text>
+</svg>

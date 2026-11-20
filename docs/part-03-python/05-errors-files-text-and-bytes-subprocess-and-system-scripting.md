@@ -100,16 +100,9 @@ To raise an exception, write `raise ValueError("bad value")`, and add context wh
 
 An exception object gives you several handles. These include `exc.args`, `str(exc)`, `repr(exc)` and `exc.__traceback__`. Python 3.11 added `exc.add_note("hint")`, which attaches a note to the exception. `traceback.format_exc()` returns the traceback as text. `logging.exception()` logs your message together with the traceback, and you call it inside a handler.
 
-```mermaid
-flowchart TD
-    Try["Execute try: block"] --> Check{"Exception raised?"}
-    Check -->|No| Else["Run else: block<br/>(only if try succeeded)"]
-    Check -->|Yes| Match{"Matches except Exc as var?"}
-    Match -->|Yes| Handler["Run except block<br/>(sys.exception() / var.__cause__)<br/>then auto-run: del var"]
-    Match -->|No| FinallyUnwind["Run finally: block<br/>and propagate exception upward"]
-    Else --> FinallyOk["Run finally: block<br/>and continue after try"]
-    Handler --> FinallyOk
-```
+![Mechanics](./img/m3-05-1.svg)
+
+*Figure 3.5.2. Mechanics, as a diagram.*
 
 **The `except Exc as var:` scope rule.** The name var lives only inside its `except` block. Python **automatically unbinds it (`del var`) when that block exits**, even if var held a value before the `try`. The reason is the traceback. An exception's `__traceback__` attribute points at the stack frames, and those frames hold their local variables. If var stayed bound, the exception would point back at itself through the frame, and that loop is a reference cycle. A cycle delays garbage collection and keeps memory in use. If you need the exception object after the `try` statement finishes, assign it to a separate variable inside the handler:
 
@@ -943,7 +936,7 @@ Conventional exit codes are worth knowing, because they are the only part of a f
 
 ![How logging moves a record](./img/s05-logging.svg)
 
-*Figure 3.5.2. Logging: a logger drops records below its level, then a handler and a formatter send the rest to a destination.*
+*Figure 3.5.3. Logging: a logger drops records below its level, then a handler and a formatter send the rest to a destination.*
 
 A job fails halfway through a sweep of the fleet, and someone opens the terminal where it ran. The window is full of progress lines, the useful one has scrolled away, and the output was piped into a file that the next run overwrote. The normal output of a program is rarely enough at that moment. You need to know which host failed, when it failed and what the script was trying to do.
 
@@ -1030,7 +1023,7 @@ Prefer `pathlib` over string manipulation and `os.path`. A `Path` object knows h
 
 ![Atomic replace for safe writes](./img/s05-atomic.svg)
 
-*Figure 3.5.3. Safe writes: write a temp file, then replace the target in one step so readers never see half a file.*
+*Figure 3.5.4. Safe writes: write a temp file, then replace the target in one step so readers never see half a file.*
 
 Writing a file in place can leave it truncated. That happens if the process crashes or the disk fills up, and readers may see partial content in the meantime. The safer pattern writes to a temporary file in the same directory, which keeps it on the same file system. It then flushes and fsyncs the file, and finally calls `os.replace()`, which performs an atomic rename. Readers see the old file or the new one, never a half-written mixture.
 
@@ -1171,7 +1164,7 @@ A cleanup script collects a file name from a directory listing and pastes it int
 
 ![Safe defaults for subprocess.run](./img/s05-subproc.svg)
 
-*Figure 3.5.4. Safe subprocess defaults: pass an argument list, set a timeout, and raise on a non-zero exit.*
+*Figure 3.5.5. Safe subprocess defaults: pass an argument list, set a timeout, and raise on a non-zero exit.*
 
 ```python
 import subprocess, shlex
@@ -1303,7 +1296,7 @@ Reading `/proc` and `/sys` directly is cheap, and it needs no extra dependency. 
 
 ![Graceful shutdown with a signal handler](./img/s05-signals.svg)
 
-*Figure 3.5.5. Graceful shutdown: the signal handler sets a flag, the loop finishes its item, then cleanup runs.*
+*Figure 3.5.6. Graceful shutdown: the signal handler sets a flag, the loop finishes its item, then cleanup runs.*
 
 ```python
 import signal, threading

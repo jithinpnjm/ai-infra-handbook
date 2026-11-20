@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Four SDN control plane models</title>
+  <desc>Visual infographic showing four SDN control plane models on a slider spectrum from all on device to all central: Distributed, Augmented, Hybrid, and Replace.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four SDN control plane models</text>
+
+  
+  <g id="slider-spectrum">
+    
+    <rect x="50" y="100" width="220" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="160" y="132" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">all on device</text>
+
+    <rect x="1330" y="100" width="220" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1440" y="132" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">all central</text>
+
+    
+    <rect x="290" y="117" width="1020" height="12" rx="6" fill="#cfded2"/>
+    <rect x="290" y="119" width="1020" height="8" rx="4" fill="#207448" fill-opacity="0.25"/>
+
+    
+    
+    <line x1="228" y1="146" x2="228" y2="205" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 3"/>
+    <circle cx="228" cy="123" r="14" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+    <circle cx="228" cy="123" r="5" fill="#ffffff"/>
+
+    
+    <line x1="610" y1="135" x2="610" y2="205" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 3"/>
+    <circle cx="610" cy="123" r="14" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+    <circle cx="610" cy="123" r="5" fill="#ffffff"/>
+
+    
+    <line x1="991" y1="135" x2="991" y2="205" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 3"/>
+    <circle cx="991" cy="123" r="14" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+    <circle cx="991" cy="123" r="5" fill="#ffffff"/>
+
+    
+    <line x1="1372" y1="146" x2="1372" y2="205" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 3"/>
+    <circle cx="1372" cy="123" r="14" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+    <circle cx="1372" cy="123" r="5" fill="#ffffff"/>
+  </g>
+
+  
+  <g id="model-distributed">
+    <rect x="50" y="205" width="355" height="635" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <rect x="68" y="223" width="319" height="114" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(200, 233)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="10"/>
+      <circle cx="28" cy="16" r="4" fill="#207448"/>
+      <circle cx="42" cy="38" r="4" fill="#207448"/>
+      <circle cx="14" cy="38" r="4" fill="#207448"/>
+      <circle cx="28" cy="32" r="3" fill="#207448"/>
+      <line x1="28" y1="16" x2="42" y2="38"/>
+      <line x1="42" y1="38" x2="14" y2="38"/>
+      <line x1="14" y1="38" x2="28" y2="16"/>
+    </g>
+    <text x="228" y="323" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Distributed</text>
+
+    
+    <rect x="68" y="353" width="319" height="467" rx="12" fill="#ffffff" stroke="#cfded2" stroke-width="1.5"/>
+    <text x="228" y="450" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="228" dy="0">control plane runs</tspan>
+      <tspan x="228" dy="38">on the forwarding</tspan>
+      <tspan x="228" dy="38">devices</tspan>
+      <tspan x="228" dy="56">(OSPF/IS-IS/BGP</tspan>
+      <tspan x="228" dy="38">everywhere)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="model-augmented">
+    <rect x="432" y="205" width="355" height="635" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <rect x="450" y="223" width="319" height="114" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(582, 233)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="10"/>
+      <rect x="10" y="10" width="18" height="14" rx="3" fill="#207448"/>
+      <rect x="10" y="34" width="36" height="14" rx="3"/>
+      <path d="M 28 17 H 38 V 28"/>
+      <polyline points="34,25 38,29 42,25"/>
+    </g>
+    <text x="610" y="323" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Augmented</text>
+
+    
+    <rect x="450" y="353" width="319" height="467" rx="12" fill="#ffffff" stroke="#cfded2" stroke-width="1.5"/>
+    <text x="610" y="440" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="610" dy="0">distributed stays,</tspan>
+      <tspan x="610" dy="38">off-box processes</tspan>
+      <tspan x="610" dy="38">influence the RIB</tspan>
+      <tspan x="610" dy="54">(PCE, BGP</tspan>
+      <tspan x="610" dy="38">controllers,</tspan>
+      <tspan x="610" dy="38">Fibbing, I2RS)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="model-hybrid">
+    <rect x="813" y="205" width="355" height="635" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <rect x="831" y="223" width="319" height="114" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(963, 233)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="10"/>
+      <line x1="12" y1="20" x2="44" y2="20"/>
+      <line x1="12" y1="36" x2="44" y2="36"/>
+      <circle cx="18" cy="20" r="3" fill="#207448"/>
+      <circle cx="38" cy="20" r="3" fill="#207448"/>
+      <circle cx="18" cy="36" r="3" fill="#207448"/>
+      <circle cx="38" cy="36" r="3" fill="#207448"/>
+    </g>
+    <text x="991" y="323" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Hybrid</text>
+
+    
+    <rect x="831" y="353" width="319" height="467" rx="12" fill="#ffffff" stroke="#cfded2" stroke-width="1.5"/>
+    <text x="991" y="420" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="991" dy="0">centralised control</tspan>
+      <tspan x="991" dy="36">plane runs in</tspan>
+      <tspan x="991" dy="36">parallel with the</tspan>
+      <tspan x="991" dy="36">distributed one</tspan>
+      <tspan x="991" dy="50">(controller</tspan>
+      <tspan x="991" dy="36">speaking</tspan>
+      <tspan x="991" dy="36">BGP/OpenFlow</tspan>
+      <tspan x="991" dy="36">alongside OSPF)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="model-replace">
+    <rect x="1195" y="205" width="355" height="635" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <rect x="1213" y="223" width="319" height="114" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1344, 233)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="10"/>
+      <rect x="14" y="10" width="28" height="12" rx="3" fill="#207448"/>
+      <line x1="28" y1="22" x2="28" y2="34"/>
+      <polyline points="23,30 28,35 33,30"/>
+      <rect x="10" y="36" width="36" height="12" rx="3"/>
+    </g>
+    <text x="1372" y="323" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Replace</text>
+
+    
+    <rect x="1213" y="353" width="319" height="467" rx="12" fill="#ffffff" stroke="#cfded2" stroke-width="1.5"/>
+    <text x="1372" y="440" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1372" dy="0">no distributed</tspan>
+      <tspan x="1372" dy="38">control plane,</tspan>
+      <tspan x="1372" dy="38">controller programs</tspan>
+      <tspan x="1372" dy="38">the FIB directly</tspan>
+      <tspan x="1372" dy="54">(classic OpenFlow,</tspan>
+      <tspan x="1372" dy="38">P4Runtime)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="orange-note">
+    <rect x="50" y="865" width="1500" height="80" rx="14" fill="#fdf5ec" stroke="#db8129" stroke-width="2.5"/>
+    <g transform="translate(80, 879)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="22"/>
+      <line x1="26" y1="16" x2="26" y2="28"/>
+      <circle cx="26" cy="36" r="2" fill="#db8129"/>
+    </g>
+    <text x="150" y="915" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">what happens when the controller or its connectivity fails?</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="970" width="1500" height="80" rx="14" fill="#207448"/>
+    <text x="800" y="1020" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">a control plane supplies topology, reachability and policy</text>
+  </g>
+</svg>

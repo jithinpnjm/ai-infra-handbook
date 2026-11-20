@@ -55,17 +55,15 @@ Do not treat extra bandwidth as the fix for congestion. Plan for the contention 
 
 Imagine a packet arriving at a busy switch port. Before it can leave, the switch has to decide what the packet is, what to do with it, whether to delay it, and where to queue it. The toolbox below is the set of steps that does that. You can read the diagram as a pipeline, where each stage hands the packet to the next.
 
-```mermaid
-flowchart LR
-  A["Classify\n(match fields: DSCP, 802.1p, 5-tuple, interface)"] --> B["Mark\n(set DSCP/PCP/ECN, internal class)"]
-  B --> C["Police / shape\n(rate limit; drop/remark vs delay)"]
-  C --> D["Queue\n(per-class queues, buffers)"]
-  D --> E["Schedule\n(strict priority, WFQ/DRR, shaping)"]
-  D --> F["Manage queue length\n(tail drop, WRED, ECN, CoDel)"]
-  E --> G["Transmit"]
-```
+![The QoS toolbox](./img/m2-19-1.svg)
+
+*Figure 2.19.1. The QoS toolbox, as a diagram.*
 
 ### Classification and marking
+
+![QoS marking fields](./img/n19-markings.svg)
+
+*Figure 2.19.2. DSCP, PCP and MPLS traffic class each carry the class a packet belongs to at a different layer.*
 
 Classification decides which class a packet belongs to. Marking writes that decision into the packet, so downstream devices do not have to inspect it again. It is like a boarding pass: the airline decides once which group you belong to, prints it on the pass, and every gate after that just reads the group number. Several fields can carry a marking.
 
@@ -85,6 +83,10 @@ Markings also need explicit handling as traffic crosses tunnels and hops. When a
 The unmarked Internet is a different problem. ISPs usually ignore or rewrite DSCP, so end-to-end QoS across the public Internet is not available. QoS is a domain tool. Applications that need quality across the Internet rely on other means, such as CDNs, SD-WAN path selection, adaptive codecs and QUIC.
 
 ### Policing and shaping
+
+![Policing versus shaping](./img/n19-policeshape.svg)
+
+*Figure 2.19.3. A policer drops or remarks excess traffic, while a shaper buffers it and releases it at the configured rate.*
 
 Two tools limit a rate, and they behave very differently when traffic exceeds it. A simple way to remember them is a bouncer and a queue marshal. The bouncer turns away anyone over the limit. The marshal asks them to wait.
 
@@ -136,6 +138,10 @@ Pick the qdisc for each interface based on what you need it to protect, and chec
 
 ## 3. Data-centre congestion points
 
+![Congestion points in a Clos fabric](./img/n19-congestionpoints.svg)
+
+*Figure 2.19.4. Congestion can appear at every tier of a 1:1 fabric, from the leaf downlink to microbursts.*
+
 Suppose you run a Clos fabric with line-rate servers. Congestion can still appear in several places, even when the fabric is 1:1. A fabric that is fair on average can still have one unlucky port at a given instant. The table shows where each one appears and what causes it.
 
 | Point | Cause |
@@ -167,7 +173,7 @@ Dropping packets is the old response to a filling queue. A dropped packet is a c
 
 ![ECN marking and CNP](./img/n19-fig1-ecn-v2.jpg)
 
-*Figure 2.19.1. Marked packets reach the receiver, which sends a congestion notice back to the sender.*
+*Figure 2.19.5. Marked packets reach the receiver, which sends a congestion notice back to the sender.*
 
 | ECT | CE | Meaning |
 |---|---|---|
@@ -193,23 +199,15 @@ Here is the same story as a timeline, from a single receiver's point of view. A 
 
 ![PFC pause and resume](./img/n19-fig2-pfc.jpg)
 
-*Figure 2.19.2. XOFF triggers a pause frame; XON resumes the priority.*
+*Figure 2.19.6. XOFF triggers a pause frame; XON resumes the priority.*
 
 Picture one faulty network card that keeps telling its neighbour to stop sending. The neighbour pauses, then its own neighbour pauses too, and the stoppage spreads back along the path like a line of cars that halts when one car breaks down. Priority Flow Control is designed to stop a queue from overflowing, but it has this dangerous side. The explanation below describes the mechanism first, and then the ways it can go wrong.
 
 ECN is polite and slow. Sometimes a burst arrives faster than the message can travel back, and the queue is about to overflow right now. For that moment the fabric needs a brake that works at the next hop, not at the far end. PFC is that brake. It keeps RoCE traffic from dropping, but you should know that it pauses whole priorities. That trade-off shapes everything in this section. Priority Flow Control (PFC, IEEE 802.1Qbb) pauses traffic one priority at a time. A congested receiver sends a PFC pause frame upstream. This is a MAC control frame with EtherType 0x8808, opcode 0x0101, and destination 01:80:C2:00:00:01. The frame carries a class-enable vector, which says which of the 8 priorities it covers. It also carries a 16-bit pause time for each priority, counted in units of 512 bit-times. The maximum is 65535, and 0 means resume. The upstream sender stops transmitting that priority, not the whole link, for the pause time.
 
-```mermaid
-sequenceDiagram
-  participant S as Sender / upstream switch
-  participant R as Receiving switch (ingress buffer)
-  Note over R: queue for priority 3 fills past XOFF threshold
-  R->>S: PFC pause (priority 3, time=65535 quanta)
-  Note over S: stops sending priority 3, other priorities continue
-  Note over R: buffer drains below XON threshold
-  R->>S: PFC pause with time=0 (resume)
-  Note over S: resumes sending priority 3
-```
+![PFC: lossless links by backpressure](./img/m2-19-2.svg)
+
+*Figure 2.19.7. PFC: lossless links by backpressure, as a diagram.*
 
 Picture a receiver that sends a pause and then, a moment later, sends a second pause because its buffer is still high. The first pause is not wasted. Each pause carries a timer, and a timer that runs out returns the traffic to the sender, so the receiver keeps renewing the pause while the queue stays high. This renewal is why a long-lived pause looks like a steady stream of frames on a port counter, rather than one event.
 
@@ -241,6 +239,10 @@ Now the restoration stage. The watchdog keeps watching, and when pause frames fa
 The watchdog trades a few lost packets for keeping the rest of the fabric alive. Your application sees that loss, either through RoCE retransmission or a job restart. Treat every watchdog trigger as a fabric-level incident marker, and alert on it.
 
 ## 7. DCQCN: ECN and PFC together
+
+![DCQCN thresholds](./img/n19-dcqcn.svg)
+
+*Figure 2.19.8. ECN marking starts well below the PFC XOFF level so senders slow down before any pause.*
 
 Picture a fabric that uses ECN for most congestion, and PFC only when ECN falls behind. That arrangement is what DCQCN sets up. DCQCN (Data Center Quantized Congestion Notification, from Microsoft and Mellanox, SIGCOMM 2015) is the standard congestion control for RoCEv2. It combines two signals, a gentle early one and a hard last one.
 
@@ -334,18 +336,9 @@ Picture a training job whose step time has doubled overnight. The scheduler show
 
 A training job is slow, and the cause could be congestion, a bad link or software. It is easy to guess at this point, and just as easy to guess wrong, so it helps to follow a fixed route. Start from the symptom in the top box of the flowchart, and follow the arrows one branch at a time. Each branch names what to check next.
 
-```mermaid
-flowchart TD
-  S["Low collective bandwidth / long step time"] --> A{"Any drops on lossless class?"}
-  A -- "yes" --> A1["PFC/headroom/ECN mismatch; priority mismatch NIC↔switch; watchdog fired; wrong DSCP mapping"]
-  A -- "no" --> B{"PFC pause counters high?"}
-  B -- "yes" --> B1["Congestion → PFC: lower ECN thresholds, check load balancing, find the incast victim; storm? find the source port; deadlock?"]
-  B -- "no" --> C{"ECN marks / CNPs high?"}
-  C -- "yes" --> C1["Congestion handled by DCQCN but constant: hot links, hash collisions, oversubscription; improve LB, check ECMP imbalance"]
-  C -- "no" --> D{"Link/NIC errors, MTU, speed?"}
-  D -- "yes" --> D1["Optics/CRC errors, degraded link speed, MTU mismatch, wrong lane count"]
-  D -- "no" --> E["Software/topology: NCCL config (HCA, GID, TC), CPU/NUMA/PCIe, rail mismatch, slow node (stragglers)"]
-```
+![Troubleshooting congestion in AI fabrics](./img/m2-19-3.svg)
+
+*Figure 2.19.9. Troubleshooting congestion in AI fabrics, as a diagram.*
 
 A few habits make this faster. Look for the straggler, because one slow node or link can slow the whole job. Compare per-port counters across identical ports, since an outlier often means a bad cable or optic. Correlate PFC bursts with the job phases. Confirm that ECN is actually marking, by watching the counter increase, before you tune thresholds.
 

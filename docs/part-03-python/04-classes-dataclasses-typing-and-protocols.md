@@ -663,19 +663,15 @@ The ABC enforces its contract at instantiation time. A subclass that misses an a
 
 Fluent Python Chapter 13, `Examples 13-7` to `13-14`, shows the full pattern. Ramalho's `Tombola(ABC)` defines two `@abstractmethod`s, `.load(iterable)` and `.pick()`. The `.pick()` method raises `LookupError` when the container is empty, and `LookupError` is the parent of `IndexError` and `KeyError`. The class also has two concrete methods built on them, `.loaded()` and `.inspect()`. `BingoCage(Tombola)` and `LottoBlower(Tombola)` implement the abstract methods. `@Tombola.register class TomboList(list):` is a virtual subclass, which you can verify by comparing `TomboList.__mro__` with `Tombola._abc_registry`. Structural ABCs work without any registration. `collections.abc.Sized` checks its `__subclasshook__` for a `"__len__"` entry in the class's `__mro__` dictionaries. So `class Struggle:` with `def __len__(self): return 23` satisfies `isinstance(Struggle(), abc.Sized)` and `issubclass(Struggle, abc.Sized)` automatically, without inheritance or `.register()`. Fluent Python Chapter 13 also contrasts duck typing, goose typing, static nominal typing and static duck typing through `typing.Protocol`. It shows runtime monkey patching too, such as `FrenchDeck.__setitem__ = set_card`, which enables `random.shuffle(deck)`. Use an ABC when you want shared concrete behavior, enforced abstract methods and runtime checks.
 
-```mermaid
-flowchart TD
-    Typing["Python Interface & Type Checking Models (Fluent Python Chapter 13)"] --> Duck["1. Duck Typing (Runtime)<br/>Call methods directly (len, __getitem__)"]
-    Typing --> Goose["2. Goose Typing (Runtime ABCs)<br/>abc.ABC, @abstractmethod, isinstance(x, Sequence)"]
-    Typing --> Nominal["3. Static Nominal Typing (mypy/pyright)<br/>Explicit class/ABC inheritance & annotations"]
-    Typing --> StaticDuck["4. Static Duck Typing (typing.Protocol)<br/>Structural conformance without inheritance"]
-```
+![Abstract base classes](./img/m3-04-1.svg)
+
+*Figure 3.4.6. Abstract base classes, as a diagram.*
 
 ### Protocols (structural typing)
 
 ![Protocol structural typing](./img/s04-protocol.svg)
 
-*Figure 3.4.6. A Protocol is satisfied by any class that has the right methods, with no inheritance needed.*
+*Figure 3.4.7. A Protocol is satisfied by any class that has the right methods, with no inheritance needed.*
 
 Suppose a refactor splits one storage client into two, and a pile of `isinstance` checks still names the old class. The tests pass for reasons that have nothing to do with what the code actually needs. A **protocol** avoids that trap. It describes an interface by the methods an object has, with no inheritance required. This is the "if it quacks like a duck" idea. Static checkers verify that an object conforms. `@runtime_checkable` allows `isinstance` checks, but those check only that the methods exist.
 
@@ -699,7 +695,7 @@ Choose a Protocol for interfaces at boundaries, where the implementers are third
 
 ![What @dataclass generates](./img/s04-dataclass.svg)
 
-*Figure 3.4.7. A dataclass generates __init__, __repr__ and __eq__ from the field list.*
+*Figure 3.4.8. A dataclass generates __init__, __repr__ and __eq__ from the field list.*
 
 You have just written the fourth `__init__`, the fourth `__repr__` and the fourth `__eq__` for what is really the same kind of record. Nothing in those lines is new, and every one of them can drift. That is the moment to reach for a data class builder. A **dataclass** is a class whose boring methods Python writes for you from the field annotations. The table compares the builders, so you can pick one for the job at hand.
 
@@ -801,7 +797,7 @@ Pydantic v2 uses a Rust core, which makes it fast. Version 1 has a different API
 
 ![Static checking of type hints](./img/s04-typehints.svg)
 
-*Figure 3.4.8. Type hints are read by a static checker before running, and Python itself does not enforce them at run time.*
+*Figure 3.4.9. Type hints are read by a static checker before running, and Python itself does not enforce them at run time.*
 
 You change a function so that it takes a node object instead of a node name, and nothing complains until a scheduled job fails at 2 a.m. A type checker would have complained at your desk, before lunch. **Type hints**, defined in PEP 484 and its successors, record what you intend a value to be. CPython ignores them at runtime and stores them in `__annotations__`. Tools do the enforcing. mypy, pyright (through Pylance), pyre, pytype and many IDEs read the hints and report mismatches before your code runs. Libraries such as pydantic and FastAPI also read them at runtime, so the hints do real work in those cases.
 

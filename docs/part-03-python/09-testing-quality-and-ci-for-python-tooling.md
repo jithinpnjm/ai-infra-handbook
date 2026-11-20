@@ -39,16 +39,15 @@ Treat this list as your checklist for the rest of the chapter.
 
 ## 1. Test strategy for infrastructure code
 
+![The test pyramid](./img/s09-pyramid.svg)
+
+*Figure 3.9.1. Test strategy: many fast unit tests, fewer integration tests, and very few end-to-end tests.*
+
 Start your test strategy with a question: what does this code meet in the wild? Infrastructure code mostly runs in degraded conditions. A node answers slowly, or answers halfway. The cases you will meet most often are timeouts, partial outputs, `[N/A]` fields, empty lists, 500s and permission errors. Your test strategy has to cover them, not only the happy path. The diagram shows the layers, from fast unit tests at the base to a few end-to-end tests at the top.
 
-```mermaid
-flowchart TB
-  E2E["End-to-end / canary\n(real cluster, few tests, slow, flaky-prone)"]
-  INT["Integration\n(containers, kind, localstack, real DB)"]
-  CON["Contract\n(API schemas, recorded fixtures, consumer-driven)"]
-  UNIT["Unit\n(pure logic, fakes, milliseconds, thousands)"]
-  UNIT --> CON --> INT --> E2E
-```
+![Test strategy for infrastructure code](./img/m3-09-1.svg)
+
+*Figure 3.9.2. Test strategy for infrastructure code, as a diagram.*
 
 Read the diagram from the bottom up. Unit tests are the cheapest, so you will write thousands of them, and each one runs in milliseconds. End-to-end tests run against a real cluster, and there are only a few, because they are slow and prone to flakiness.
 
@@ -144,6 +143,10 @@ Suppose a test calls a real API. The test is slow, it depends on the network, an
 
 ### Dependency injection beats patching
 
+![Dependency injection in tests](./img/s09-di.svg)
+
+*Figure 3.9.3. Dependency injection: pass a fake client in tests instead of patching module internals.*
+
 Give the code its collaborators as arguments, and the tests can swap them out. This habit is called dependency injection, and it is the gentlest way to test code with dependencies. The `Drainer` below takes its Kubernetes client, its clock and its sleep function from the caller.
 
 ```python
@@ -215,6 +218,10 @@ With pytest-asyncio, or the pytest plugin from anyio, mark tests as `async def`.
 A parser you trust passes every example in its test file. Then someone feeds it an input with an empty field, and it dies. Example-based tests check the inputs you thought of. The tests in this section check more than that: they go looking for the inputs you missed.
 
 ### Property-based testing with Hypothesis
+
+![Property-based testing](./img/s09-hypothesis.svg)
+
+*Figure 3.9.4. Hypothesis generates many inputs, finds a failure, and shrinks it to a minimal example.*
 
 You state a property that must hold for all inputs, and Hypothesis searches for counterexamples. A property is a rule about behaviour, not one hand-picked example. When Hypothesis finds a counterexample, it shrinks the input to a minimal case, which is much easier to debug. This works well for parsers, serialisers, validators and arithmetic on units.
 
@@ -345,15 +352,9 @@ Here is how a weak pipeline hurts. A broken commit merges on Friday, and Monday'
 
 ### Pipeline architecture
 
-```mermaid
-flowchart LR
-  A["Push / PR"] --> B["Lint + format + types\n(fast, fail early)"]
-  B --> C["Unit tests\n(matrix: Python 3.10-3.12, OS)"]
-  C --> D["Integration tests\n(containers, kind)"]
-  D --> E["Build wheel / image\n+ SBOM + scan"]
-  E --> F["Publish on tag\n(trusted publishing, signed)"]
-  C --> G["Coverage + artefacts"]
-```
+![Pipeline architecture](./img/m3-09-2.svg)
+
+*Figure 3.9.5. Pipeline architecture, as a diagram.*
 
 Order the jobs from cheap to expensive. Run independent jobs in parallel, and cache dependencies. Make the required checks branch-protected, so nothing merges while it is red.
 

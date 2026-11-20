@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "12",
+  "name": "r12-tls-trust",
+  "title": "A client trusts a BMC only when a known CA signed its certificate",
+  "spec": "A top-to-bottom layout. At the top centre, a box labelled Lab CA, sub-line from tls_setup.py, with an arrow down to a box at the bottom centre labelled BMC server, sub-line server certificate for 127.0.0.1, with the arrow labelled signs. Three client boxes stacked on the left, each with one arrow to the BMC server box, each box with a monospace command line and a result tag. Client 1 (green): curl --cacert ca.pem, result 200, sub-line the named CA signed the server certificate. Client 2 (grey): curl with no CA option, result exit 60, sub-line certificate not trusted, the safe default that fails on purpose. Client 3 (orange, the single key item): curl -k, result 200, sub-line no checking at all, so a fake BMC would also work. A small grey note under the BMC box: a working request is not the same as a verified one. No number circles and no takeaway bar.",
+  "anchor": "## 1. First, TLS: stop using `-k`",
+  "alt": "A curl request with the lab CA is verified, the default request is refused, and curl -k works but checks nothing.",
+  "cap": "A client trusts a BMC only when a CA it knows signed the certificate, and curl -k skips that check entirely."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "12",
+  "name": "r12-session-lifecycle",
+  "title": "The Python client logs in, retries once after a 401, and always logs out",
+  "spec": "A vertical flow of numbered step boxes, top to bottom, each with a green number circle. Step 1 box title Log in with a session, with a side box to its right joined by a dashed arrow labelled LoginError with the status code, sub-line 401 means wrong password and 503 means busy BMC. Arrow down to step 2 box title Make the request, sub-line timeout set on every request. From step 2, a loop arrow curving out to the right and back into step 2, labelled 401 while holding a token, renew the session once and repeat the request. Arrow down from step 2 to step 3 box title Work done, sub-line the caller reads its values. Arrow down from step 3 to step 4 box, orange border as the single key item, title Finally block: log out, sub-line runs even when the code in the middle raises an error. Monospace for LoginError, 401, 503 and the step titles that name code. No takeaway bar.",
+  "anchor": "### 2.1 The client I used in all labs",
+  "alt": "The Python Redfish client logs in, sets timeouts, renews the session once after a 401, and logs out in a finally block.",
+  "cap": "The Python Redfish client always logs out in a finally block, and it renews the session once when a 401 arrives mid-run."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "12",
+  "name": "r12-serial-batches",
+  "title": "Ansible serial runs a risky change in batches that a failure can stop",
+  "spec": "A left-to-right sequence of three batch blocks in time order, each block drawn as a row of small grey squares, one square per host, with a green number circle above each block (1, 2, 3). Batch 1 has one square, labelled a small first batch, 1 host. Batch 2 has eight squares, labelled 8 hosts. Batch 3 is the widest block, labelled 25 percent of hosts. Between each pair of batches, a check gate box labelled Check results before the next batch. An orange border on the gate box after batch 2 as the single key item, with a red-free stop mark, labelled Stop when failures pass the limit, using max_fail_percentage or any_errors_fatal. Above the batches, a left-side label forks, with a short line saying how many hosts run at once inside a batch. Monospace for forks, serial, max_fail_percentage and any_errors_fatal. No takeaway bar.",
+  "anchor": "### 3.3 Scale in Ansible",
+  "alt": "Ansible serial runs a risky change in small then larger batches, with a failure check between batches.",
+  "cap": "Ansible serial runs a risky change in small batches first, and a failure limit stops the run before the next batch."
+ }
+]

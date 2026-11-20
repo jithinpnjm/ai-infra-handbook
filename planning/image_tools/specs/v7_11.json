@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "11",
+  "name": "r11-overwrite-policy",
+  "title": "A full log either drops the oldest entry or drops the newest one",
+  "spec": "Two horizontal rows, one above the other, each showing a log as a row of five equal slots drawn full, with a label Full at capacity at the left end of each row. Top row titled WrapsWhenFull. A new-entry arrow enters from the right and points at the oldest slot on the left, which is labelled Oldest entry overwritten; the new entry is shown in a slot at the right end labelled Newest entry kept. Grey note under the top row: the first sign of trouble can disappear under later noise. Bottom row titled NeverOverWrites. A new-entry arrow enters from the right, but it stops at a blocked end with a small bar, and the arrow is labelled New entry discarded; the slots stay unchanged. Orange note under the bottom row, the single key item: the log silently stops recording just when something bad is happening. Small tags at the right side of each row: WrapsWhenFull warns at 95 percent full; NeverOverWrites warns at 80 percent full. Monospace for the policy names WrapsWhenFull and NeverOverWrites. No number circles and no takeaway bar.",
+  "anchor": "## 4. What the log tells you about itself",
+  "alt": "A wrapping log overwrites its oldest entry when full, while a never-overwrite log discards new entries.",
+  "cap": "A wrapping log overwrites its oldest entries when full, while a never-overwrite log silently discards new ones."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "11",
+  "name": "r11-crash-timeline",
+  "title": "Three log layers on one UTC timeline isolate a crash",
+  "spec": "Three horizontal swimlanes stacked top to bottom, each lane headed by its name on the left: Application and scheduler, Host Linux kernel, BMC hardware log. A shared UTC time axis runs along the bottom, with a vertical band across all three lanes labelled review window, from T minus 5 minutes to T plus 5 minutes, with T marked at the centre. Lane 1 box with sub-line sacct job record and stderr log. A marker at T equals 0 in lane 1, orange as the single key item, labelled first error, the rank process dies or times out. Lane 2 dashed-outline box labelled dmesg and journald, sub-line may never reach disk when the host kernel freezes. Lane 3 box labelled SEL and EventLog, sub-line keeps writing on independent standby power. Numbered green circles: 1 at the T marker (anchor the window from the scheduler and application logs), 2 inside lane 3 (rf_logs.py show with --since set to T minus 5 minutes), 3 at a small cluster of three markers in lane 3 labelled one EventGroupId group, with an arrow from that cluster to a box labelled the faulted resource, reached through Links.OriginOfCondition. Monospace for sacct, dmesg, rf_logs.py, EventGroupId, Links.OriginOfCondition. No takeaway bar.",
+  "anchor": "### 8.1 Reconstructing a cross-layer hardware crash timeline",
+  "alt": "A crash review puts scheduler, host kernel and BMC log entries on one UTC window around the first error.",
+  "cap": "A crash review lines up scheduler, host kernel and BMC entries on one UTC window around the first error."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "11",
+  "name": "r11-rma-order",
+  "title": "Collect evidence in four steps, and clear the BMC log last",
+  "spec": "A vertical stack of four numbered step boxes, top to bottom, joined by down arrows, each with a green number circle. A left label reads Before any reset or repair, with a thin arrow running down the left edge to show that the order matters. Step 1 box title Capture the readable BMC event logs, sub-line rf_logs.py show, then save the raw JSON from SEL/Entries and EventLog/Entries. Step 2 box title Trigger the out-of-band bundle, sub-line rf_logs.py collect with --out, which runs LogService.CollectDiagnosticData, then checks the byte count and exits 7 on a mismatch. Step 3 box title Capture the in-band host bundle, sub-line sudo nvsm dump health on DGX, or sudo nvidia-bug-report.sh, only if SSH to the host OS still works. Step 4 box, orange border as the single key item, title Clear the BMC log last, sub-line only after the repair and both bundles are archived in the ticket; pass LogEntriesETag, and a stale ETag gets 412 Precondition Failed. A small grey gate box between step 3 and step 4 labelled both bundles in the ticket. Monospace for rf_logs.py show, rf_logs.py collect, sudo nvsm dump health, sudo nvidia-bug-report.sh, LogEntriesETag, 412 Precondition Failed. No takeaway bar.",
+  "anchor": "### 8.4 End-to-end RMA evidence collection workflow (`CollectDiagnosticData` + `nvsm`)",
+  "alt": "Before an RMA repair, capture the BMC logs, the BMC bundle and the host bundle, and clear the BMC log last.",
+  "cap": "Before any RMA repair, collect the BMC logs and both diagnostic bundles, and clear the BMC log only at the end."
+ }
+]

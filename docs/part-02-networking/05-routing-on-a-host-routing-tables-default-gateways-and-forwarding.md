@@ -56,18 +56,9 @@ The lookup ends in one of five outcomes.
 
 The diagram shows the same decision in order. The rules pick a table, the lookup picks a route, and the route type decides what happens to the packet.
 
-```mermaid
-flowchart TD
-  P["Packet to dst D (locally generated or received)"] --> R{"Policy rules (ip rule)\nselect table(s) in priority order"}
-  R --> L{"Lookup D in table:\nlocal → main → default (per rules)"}
-  L -- "match (longest prefix, then lowest metric)" --> T{"Route type"}
-  L -- "no match in any table" --> N["ENETUNREACH / ICMP net unreachable"]
-  T -- "local/broadcast" --> D1["Deliver to this host"]
-  T -- "unicast, scope link (connected)" --> D2["ARP/NDP for D itself on dev; send frame"]
-  T -- "unicast via G" --> D3["ARP/NDP for G on dev; send frame to G's MAC"]
-  T -- "blackhole" --> D4["Drop silently"]
-  T -- "unreachable / prohibit" --> D5["Drop + ICMP unreachable / admin prohibited"]
-```
+![The routing decision](./img/m2-05-1.svg)
+
+*Figure 2.5.2. The routing decision, as a diagram.*
 
 Keep these five outcomes in mind, because every command in this chapter is a way of finding out which one applies. When a packet misbehaves, ask which of the five it hit.
 
@@ -153,6 +144,10 @@ The first command returns a gateway, the second is on-link, and the third asks w
 
 ## 3. Routing tables, rules and special routes
 
+![Linux routing tables and rules](./img/n05-rules.svg)
+
+*Figure 2.5.3. Rules in ip rule decide which routing table the kernel looks in, starting with local, then main, then default.*
+
 A single routing table is not enough for a server with several networks, because one list cannot express "traffic from this NIC goes this way". So Linux keeps several. Each table has a number. Names for some of them live in `/etc/iproute2/rt_tables`. Linux has up to 2^32 routing tables in total.
 
 | Table | ID | Content |
@@ -225,6 +220,10 @@ These rules have practical results that you can predict. A packet to the Interne
 The `src` attribute pins the source for a route. For example, `ip route add 10.30.0.0/16 via ... src 10.20.0.45` does that. DHCP and NetworkManager often set it for you. If replies leave with the wrong source address, check the bound address first, then the route's `src`.
 
 ## 5. Multiple interfaces: weak host model, rp_filter and asymmetric routing
+
+![Weak host model with two NICs](./img/n05-weakhost.svg)
+
+*Figure 2.5.4. Linux routes replies by destination only, so a reply can leave on a different NIC than the request arrived on.*
 
 Consider a server with two NICs on two subnets. A request arrives on NIC B, addressed to B's address, and the reply leaves through NIC A. That happens because Linux uses the weak host model for IPv4. In plain words, "weak host" means the machine thinks of its addresses as belonging to the whole host, not to one particular card. The kernel accepts a packet addressed to any of its local addresses, on any interface. Subject to the ARP policies in chapter 2.3, it may also answer from any interface.
 
@@ -348,6 +347,10 @@ A router sends an ICMP Redirect when it forwards a packet out the same interface
 
 ## 8. Multipath (ECMP) routes
 
+![ECMP multipath route](./img/n05-ecmp.svg)
+
+*Figure 2.5.5. A multipath route has several equal-cost next hops, and the hash policy decides which packet details pick the path.*
+
 Suppose two links lead to the same destination, and both cost the same. It would be wasteful to leave one idle. A multipath route lets the host use both. A route can have several equal-cost next hops. The kernel picks one next hop per flow, using a hash, so that the packets of a flow stay in order. A hash is a quick calculation that turns details of a packet into a number, so the same flow always lands on the same path.
 
 ```bash
@@ -385,24 +388,19 @@ Docker's `docker0` (172.17.0.0/16) appears as a connected route, and it can coll
 
 When a host cannot reach a destination, you can work through the diagram from the top. Each branch names the next check you run, from the route, to the neighbour, to the packets on the wire. If your first check shows a sensible route, move on to the neighbour check. Following the order stops you from jumping to a favourite theory.
 
-```mermaid
-flowchart TD
-  S["Can't reach D"] --> A{"ip route get D\nsensible dev, via, src?"}
-  A -- "RTNETLINK: Network is unreachable" --> A1["No route: add default/static route; is the NIC up/has address?"]
-  A -- "wrong dev / wrong src" --> A2["Metric, duplicate default, overlapping prefix, missing policy rule; fix routes/rules"]
-  A -- ok --> B{"Can I reach the next hop?\nip neigh / arping / ping gateway"}
-  B -- "neighbour FAILED/INCOMPLETE" --> B1["L2 problem: VLAN, cable, switch port, wrong gateway IP, firewall on ARP"]
-  B -- ok --> C{"tcpdump on the egress NIC:\ndo packets leave? replies return?"}
-  C -- "leave, no reply" --> C1["Remote/transit problem: gateway has no route back, NAT, firewall, asymmetric path; traceroute/mtr"]
-  C -- "reply arrives on another NIC" --> C2["Asymmetric routing: rp_filter, policy routing"]
-  C -- "do not leave" --> C3["Local firewall/qdisc/xfrm, source address, MTU (ping -M do), netns confusion"]
-```
+![Diagnosing routing problems](./img/m2-05-2.svg)
+
+*Figure 2.5.6. Diagnosing routing problems, as a diagram.*
 
 The checklist below lists the commands for these checks. They are `ip -br addr`, `ip -br link`, `ip route show table all`, `ip rule show`, `ip route get <dest> [from <src>]`, `ip neigh`, `sysctl net.ipv4.conf.all.rp_filter net.ipv4.ip_forward`, `ss -tn`, `tracepath`, `mtr -n`, `sudo tcpdump -ni any`, `nstat -z | grep -i drop`, `nft list ruleset` and `conntrack -L`.
 
 Document the intended routing for each class of server. Then automate an audit that compares the actual routes with the intended ones.
 
 ## 12. Case study: a GPU server with six networks
+
+![GPU server with six networks](./img/n05-sixnets.svg)
+
+*Figure 2.5.7. One default route on management, a static route for storage, and one subnet per rail keep each kind of traffic on its own NIC.*
 
 Consider a GPU server with `eno1` on management (10.20.0.0/24, carrying the default route), `eno2` on storage (10.30.4.0/24, reaching the NFS and Lustre servers at 10.30.0.0/16), and eight back-end NICs, `ens1f0..ens8f0`, for RoCE rails. Each rail gets one /24, `10.100.R.0/24`, with no gateway. The rail switches run in L2, or they are routed with a /31 per link. This is the kind of machine that turns the chapter into a real puzzle.
 

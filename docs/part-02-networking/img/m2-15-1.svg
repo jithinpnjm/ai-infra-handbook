@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Autonomous systems and why BGP exists</title>
+  <desc>Visual infographic showing Autonomous Systems peering via eBGP sessions between an enterprise AI cluster, transit providers, and content cloud.</desc>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Autonomous systems and why BGP exists</text>
+
+  
+
+  
+  <g id="as65000">
+    <rect x="50" y="360" width="400" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="250" y="405" text-anchor="middle" font-family="sans-serif" fill="#303a36">
+      <tspan x="250" dy="0" font-size="30" font-weight="bold">AS 65000</tspan>
+      <tspan x="250" dy="36" font-size="24" font-weight="bold">(enterprise / AI cluster)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="as65001">
+    <rect x="600" y="110" width="400" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="155" text-anchor="middle" font-family="sans-serif" fill="#303a36">
+      <tspan x="800" dy="0" font-size="30" font-weight="bold">AS 65001</tspan>
+      <tspan x="800" dy="36" font-size="24" font-weight="bold">(transit provider)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="as65003">
+    <rect x="600" y="610" width="400" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="655" text-anchor="middle" font-family="sans-serif" fill="#303a36">
+      <tspan x="800" dy="0" font-size="30" font-weight="bold">AS 65003</tspan>
+      <tspan x="800" dy="36" font-size="24" font-weight="bold">(transit provider 2)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="as65002">
+    <rect x="1150" y="360" width="400" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1350" y="405" text-anchor="middle" font-family="sans-serif" fill="#303a36">
+      <tspan x="1350" dy="0" font-size="30" font-weight="bold">AS 65002</tspan>
+      <tspan x="1350" dy="36" font-size="24" font-weight="bold">(content / cloud)</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <path d="M 410,520 C 525,520 525,320 640,320" fill="none" stroke="#207448" stroke-width="4" />
+
+  
+  <path d="M 410,620 C 525,620 525,820 640,820" fill="none" stroke="#207448" stroke-width="4" />
+
+  
+  <path d="M 960,320 C 1075,320 1075,520 1190,520" fill="none" stroke="#207448" stroke-width="4" />
+
+  
+  <path d="M 960,820 C 1075,820 1075,620 1190,620" fill="none" stroke="#207448" stroke-width="4" />
+
+  
+  <line x1="800" y1="410" x2="800" y2="730" stroke="#207448" stroke-width="4" />
+
+  
+
+  
+  <g id="badge-ab">
+    <rect x="475" y="400" width="100" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="525" y="428" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">eBGP</text>
+  </g>
+
+  
+  <g id="badge-ac">
+    <rect x="475" y="700" width="100" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="525" y="728" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">eBGP</text>
+  </g>
+
+  
+  <g id="badge-bd">
+    <rect x="1025" y="400" width="100" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1075" y="428" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">eBGP</text>
+  </g>
+
+  
+  <g id="badge-cd">
+    <rect x="1025" y="700" width="100" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1075" y="728" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">eBGP</text>
+  </g>
+
+  
+  <g id="badge-bc">
+    <rect x="750" y="510" width="100" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="538" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">eBGP</text>
+  </g>
+
+  
+
+  
+  <g id="node-A">
+    <rect x="90" y="480" width="320" height="180" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <circle cx="250" cy="535" r="24" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <line x1="236" y1="528" x2="264" y2="528" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <polyline points="258,522 264,528 258,534" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="264" y1="542" x2="236" y2="542" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <polyline points="242,536 236,542 242,548" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="250" y="625" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Border router</text>
+  </g>
+
+  
+  <g id="node-B">
+    <rect x="640" y="230" width="320" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="800" cy="285" r="24" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="786" y1="278" x2="814" y2="278" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <polyline points="808,272 814,278 808,284" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="814" y1="292" x2="786" y2="292" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <polyline points="792,286 786,292 792,298" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="800" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Edge</text>
+  </g>
+
+  
+  <g id="node-C">
+    <rect x="640" y="730" width="320" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="800" cy="785" r="24" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="786" y1="778" x2="814" y2="778" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <polyline points="808,772 814,778 808,784" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="814" y1="792" x2="786" y2="792" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <polyline points="792,786 786,792 792,798" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="800" y="875" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Edge</text>
+  </g>
+
+  
+  <g id="node-D">
+    <rect x="1190" y="480" width="320" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1350" cy="535" r="24" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="1336" y1="528" x2="1364" y2="528" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <polyline points="1358,522 1364,528 1358,534" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="1364" y1="542" x2="1336" y2="542" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <polyline points="1342,536 1336,542 1342,548" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="1350" y="625" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Edge</text>
+  </g>
+</svg>

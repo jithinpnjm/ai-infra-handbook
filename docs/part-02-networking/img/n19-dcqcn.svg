@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>DCQCN threshold ladder</title>
+  <desc>Visual explanation of the DCQCN threshold ladder showing queue-depth thresholds for XON, Kmin, Kmax, and XOFF with ECN and PFC operational boundaries.</desc>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">DCQCN threshold ladder</text>
+
+  
+  <rect x="320" y="110" width="960" height="110" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(352, 137)">
+    <path d="M 28 6 L 50 14 L 50 32 C 50 44 39 52 28 56 C 17 52 6 44 6 32 L 6 14 Z" fill="#fdf3e7" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 28 20 L 28 36 M 28 42 L 28 44" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="435" y="152" font-family="sans-serif">
+    <tspan x="435" dy="0" font-size="30" font-weight="bold" fill="#db8129">PFC: last-resort safety net,</tspan>
+    <tspan x="435" dy="38" font-size="25" fill="#303a36">ingress buffer thresholds</tspan>
+  </text>
+
+  
+  <path d="M 750 280 Q 750 250 780 250 L 890 250 Q 920 250 920 220 Q 920 250 950 250 L 1060 250 Q 1090 250 1090 280" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  
+  <rect x="45" y="410" width="560" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(75, 438)">
+    <rect x="4" y="10" width="48" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <circle cx="16" cy="28" r="4" fill="#207448" />
+    <circle cx="28" cy="28" r="4" fill="#207448" />
+    <circle cx="40" cy="28" r="4" fill="#207448" />
+    <path d="M 12 18 L 44 18 M 12 38 L 44 38" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  </g>
+  <text x="75" y="542" font-family="sans-serif">
+    <tspan x="75" dy="0" font-size="30" font-weight="bold" fill="#207448">ECN: early, flow-level signal,</tspan>
+    <tspan x="75" dy="44" font-size="25" fill="#303a36">egress queue thresholds:</tspan>
+    <tspan x="75" dy="36" font-size="25" fill="#303a36">switch marks, receiver sends CNP,</tspan>
+    <tspan x="75" dy="36" font-size="25" fill="#303a36">sender reduces rate</tspan>
+  </text>
+
+  
+  <path d="M 665 495 Q 640 495 640 540 L 640 560 Q 640 572 607 572 Q 640 572 640 584 L 640 605 Q 640 650 665 650" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  
+  
+  <rect x="686" y="495" width="8" height="155" fill="#207448" opacity="0.3" rx="4" />
+  <rect x="686" y="280" width="8" height="65" fill="#db8129" opacity="0.35" rx="4" />
+  
+  <line x1="690" y1="865" x2="690" y2="265" stroke="#303a36" stroke-width="4" stroke-linecap="round" />
+  
+  <polygon points="690,248 680,272 700,272" fill="#303a36" />
+
+  
+  <line x1="690" y1="345" x2="750" y2="345" stroke="#db8129" stroke-width="4" />
+  <line x1="690" y1="495" x2="750" y2="495" stroke="#207448" stroke-width="4" />
+  <line x1="690" y1="650" x2="750" y2="650" stroke="#207448" stroke-width="4" />
+  <line x1="690" y1="795" x2="750" y2="795" stroke="#207448" stroke-width="4" />
+
+  
+  <circle cx="690" cy="345" r="9" fill="#db8129" stroke="#ffffff" stroke-width="3" />
+  <circle cx="690" cy="495" r="9" fill="#207448" stroke="#ffffff" stroke-width="3" />
+  <circle cx="690" cy="650" r="9" fill="#207448" stroke="#ffffff" stroke-width="3" />
+  <circle cx="690" cy="795" r="9" fill="#207448" stroke="#ffffff" stroke-width="3" />
+
+  
+  <rect x="750" y="295" width="790" height="100" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(775, 317)">
+    <circle cx="28" cy="28" r="24" fill="#fdf3e7" stroke="#db8129" stroke-width="4" />
+    <line x1="22" y1="18" x2="22" y2="38" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <line x1="34" y1="18" x2="34" y2="38" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="855" y="355" font-family="sans-serif">
+    <tspan font-size="30" font-weight="bold" fill="#db8129">XOFF 1000 KB </tspan>
+    <tspan font-size="25" fill="#303a36">(PFC pause)</tspan>
+  </text>
+
+  
+  <rect x="750" y="445" width="790" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <g transform="translate(775, 470)">
+    <rect x="4" y="4" width="48" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <path d="M 12 42 L 26 26 L 36 34 L 44 14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="855" y="490" font-family="sans-serif">
+    <tspan x="855" dy="0" font-size="30" font-weight="bold" fill="#207448">Kmax 500 KB with Pmax 0.20</tspan>
+    <tspan x="855" dy="36" font-size="25" fill="#303a36">(marking probability tops out)</tspan>
+  </text>
+
+  
+  <rect x="750" y="600" width="790" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <g transform="translate(775, 622)">
+    <circle cx="28" cy="28" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <path d="M 18 38 L 18 16 L 38 24 L 18 30" fill="#207448" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+  </g>
+  <text x="855" y="645" font-family="sans-serif">
+    <tspan x="855" dy="0" font-size="30" font-weight="bold" fill="#207448">Kmin 100 KB</tspan>
+    <tspan x="855" dy="36" font-size="25" fill="#303a36">(ECN marking starts)</tspan>
+  </text>
+
+  
+  <rect x="750" y="750" width="790" height="95" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <g transform="translate(775, 770)">
+    <circle cx="28" cy="28" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <polygon points="23,18 40,28 23,38" fill="#207448" stroke="#207448" stroke-width="2" stroke-linejoin="round" />
+  </g>
+  <text x="855" y="808" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">XON 50 KB</text>
+
+  
+  <rect x="45" y="945" width="1510" height="70" rx="12" fill="#207448" />
+  <text x="800" y="989" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">ECN acts first and PFC is the backstop; XON sits below XOFF</text>
+</svg>

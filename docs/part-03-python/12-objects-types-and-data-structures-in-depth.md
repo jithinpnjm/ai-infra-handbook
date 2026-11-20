@@ -5301,6 +5301,10 @@ Mutability is also a choice a class can make. A class can also be mutable or not
 
 ## Shared references and copies
 
+![Shallow versus deep copy](./img/s12-copies.svg)
+
+*Figure 3.12.5. A shallow copy shares the inner objects, while a deep copy duplicates them.*
+
 A bug that changes three places at once usually comes down to one line of assignment. Assignment stores a reference to an object, not a copy of it. Two names can point to one list. Here, `X` is also referenced from inside `L` and from inside `D`, so three separate places lead back to one list:
 
 ```

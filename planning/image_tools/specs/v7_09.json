@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "09",
+  "name": "r09-pcie-link",
+  "title": "A PCIe link trained down from Gen5 x16 to Gen3 x8 keeps about one-eighth of its bandwidth",
+  "spec": "Two horizontal bars drawn on the same scale, stacked one above the other, each starting from the same left edge. Top bar, full green, labelled Gen5 x16, sub-line 32 GT/s on each of 16 lanes, about 64 GB/s. Bottom bar, short, labelled Gen3 x8, sub-line 8 GT/s on each of 8 lanes, about 8 GB/s; the bottom bar is about one-eighth the length of the top bar and is the single orange item. Small label beside the bottom bar: about one-eighth of the original bandwidth. Above the bars, a formula line: Bandwidth is roughly generation rate times lanes. Under the bars, a small grey note: a lane is one pair of wires that carries data in each direction. Orange note on the bottom bar: no error message is produced, the link is simply slower and the device keeps working. No arrows, no number circles, no takeaway bar.",
+  "anchor": "## 4. PCIe: the hidden speed limit",
+  "alt": "A Gen5 x16 PCIe link carries about 64 GB/s, while a link trained down to Gen3 x8 carries about 8 GB/s.",
+  "cap": "A PCIe link that trains down from Gen5 x16 to Gen3 x8 keeps only about one-eighth of its bandwidth, with no error message."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "09",
+  "name": "r09-port-triage",
+  "title": "Four Redfish port fields to read in order when a fast port runs slow",
+  "spec": "A vertical checklist of four numbered step boxes, top to bottom, joined by down arrows, each with a green number circle. Step 1 box title LinkState and LinkStatus, sub-line Enabled with LinkDown or NoLink means check SignalDetected next. Two arrows branch right from step 1 into two small grey boxes. Upper branch: SignalDetected false, sub-line no light reaches the receive fibers; check an unplugged cable, swapped TX and RX polarity, or a powered-off leaf switch port. Lower branch: SignalDetected true with LinkStatus Training or LinkDown, sub-line transceivers see light but cannot lock FEC or auto-negotiation; check a mismatched port protocol or an incompatible FEC setting. Arrow down to step 2 box title CurrentSpeedGbps versus MaxSpeedGbps, sub-line a 400G port at LinkUp with 200 Gbps means the link negotiated down to half speed. Arrow down to step 3 box title ActiveWidth versus Width, sub-line 2 of 4 lanes active means dead or dirty optical lanes; clean the connector first. Step 3 box has the orange border as the single most important item. Arrow down to step 4 box title PortMetrics through the Metrics link, sub-line RX and TX bytes, frame and symbol errors, and optical power per lane; watch for a slow decline in optical power. Monospace labels for LinkState, LinkStatus, SignalDetected, CurrentSpeedGbps, MaxSpeedGbps, ActiveWidth, Width, PortMetrics. No takeaway bar.",
+  "anchor": "### 6.2 Diagnosing optical and copper `Port` speed mismatches",
+  "alt": "A four-step order for reading Redfish Port fields: link state, speed, lane width, then port metrics.",
+  "cap": "Read the four Port fields in order, because each step narrows the question for the next one."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "09",
+  "name": "r09-gates",
+  "title": "Three gates that run rf_hardware.py across a node's life",
+  "spec": "Three large boxes in a left-to-right row, each with a green number circle (1, 2, 3) and joined by right-pointing arrows in time order, with a left-side label Node lifecycle over time. Gate 1 box title Pre-OS Day-0 racking gate, sub-line run rf_hardware.py against all BMC IPs from the head node before DHCP or PXE, giving a punch list of unseated PCIe risers, dark 400G ports and missing NVMe drives. Gate 2 box, orange border as the single most important gate, title Post-maintenance return-to-service gate, sub-line do not run scontrol update NodeName=node State=RESUME or kubectl uncordon until rf_hardware.py exits 0 and reports 0 flagged. Gate 3 box title Weekly fleet baseline diff, sub-line run rf_hardware.py across all nodes with fleet_run.py and compare the counts of PCIeDevices, Ports and Drives with the saved Day-1 JSON inventory. Monospace for rf_hardware.py, fleet_run.py, scontrol update NodeName=node State=RESUME, kubectl uncordon, PCIeDevices, Ports, Drives. Below gate 2, a small grey box labelled 0 flagged with an arrow pointing up into gate 2 to show the exit condition. No takeaway bar.",
+  "anchor": "### 6.4 Integrating `rf_hardware.py` into Day-0 and Day-2 automation",
+  "alt": "Three checkpoints run rf_hardware.py at racking, after maintenance, and in a weekly fleet diff.",
+  "cap": "The script runs at three points in a node's life, and the return-to-service gate blocks a node until it reports 0 flagged."
+ }
+]

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "12",
+  "name": "a12-vault-indirection",
+  "title": "Plaintext pointers in one file, encrypted values in another",
+  "spec": "Two file cards side by side with a bold connector between them. Left card, a plaintext file with a green check icon, titled group_vars/all/vars.yml, marked reviewed in PRs. Inside it three monospace rows: db_password: \"{{ vault_db_password }}\", registry_token: \"{{ vault_registry_token }}\", slurm_munge_key_b64: \"{{ vault_munge_key_b64 }}\". Right card, a locked box icon, titled group_vars/all/vault.yml, marked encrypted. Inside it three monospace rows, each with the value shown as a sealed block: vault_db_password, vault_registry_token, vault_munge_key_b64, with the values drawn as hidden ciphertext bars. Between the two cards, orthogonal arrows from each left row to the matching right row, each arrow labelled points to. Above the connector, a small note in plain text: a reviewer reads the names in a pull request and never sees the values. Below both cards, two small monospace notes: grep -r db_password shows where the secret is used, and ansible-vault view shows the vault names. Orange highlight on the arrow from db_password to vault_db_password. Green takeaway bar at the bottom: The label is public, and the drawer is not.",
+  "anchor": "### The `vault_` indirection pattern",
+  "alt": "A plaintext vars file points each variable at a vault_ name in an encrypted vault file, so reviewers can read the names without seeing the values.",
+  "cap": "The plaintext vars file points each variable at a vault_ name, while the values stay encrypted in a separate vault file."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "12",
+  "name": "a12-vault-ids",
+  "title": "Vault IDs keep dev and prod passwords apart",
+  "spec": "Two vertical lanes side by side, each with a lane title: dev on the left and prod on the right. Left lane: a key card labelled dev@~/.vault_pass_dev in monospace, an arrow down to a box titled group_vars/dev/vault.yml with the header note $ANSIBLE_VAULT;1.2;AES256;dev, and a tick with the label opens. Right lane: a key card labelled prod@prompt in monospace, an arrow down to a box titled group_vars/prod/vault.yml with the header note $ANSIBLE_VAULT;1.2;AES256;prod, and a tick with the label opens. A dashed orange X between the lanes, labelled dev password cannot open prod, drawn as the single important item. Above both lanes, a single box with the monospace line vault_identity_list = dev@~/.vault_pass_dev, prod@~/.vault_pass_prod, with a note the playbook run loads both keys without flags. At the bottom of the prod lane, a small note: the prod password stays with fewer people, or only with the CI or AAP credential store. Green takeaway bar at the bottom: Separate passwords per environment mean a developer with dev access cannot decrypt prod.",
+  "anchor": "### Vault IDs: multiple passwords",
+  "alt": "Each environment's vault file names its own vault ID in its header, so the dev password cannot open the prod file.",
+  "cap": "Each vault file records its own label, so a developer holding only the dev password cannot open the prod file."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "12",
+  "name": "a12-leak-paths",
+  "title": "Where a secret can leak and the control that closes each path",
+  "spec": "A two-column map. Left column titled Leak path, with six stacked boxes, each with a small warning icon: --diff and -v output; a register followed by a later debug of that result; command or shell arguments, visible in ps and shell history; an Environment= line in a world-readable unit file; fact caching that keeps a secret saved as a fact; module errors that echo arguments. Right column titled Control, with six matching boxes connected to each leak by orthogonal arrows: diff: false and no_log: true; no_log: true on the sensitive task; pass the value through a file with mode 0600, through stdin, or through environment:; EnvironmentFile= with mode 0600 or 0640 and the right owner; cacheable: false and a protected cache directory; prefer no_log over trusting the module. Monospace labels for each setting name. Orange highlight on the command or shell arrow, the path that shows the secret in ps. Green takeaway bar at the bottom: Treat no_log: true and diff: false as the default for any task that handles a secret.",
+  "anchor": "## 3. Keeping secrets out of output",
+  "alt": "Each leak path for a secret, such as diff output, registered results, command arguments or unit files, has a matching control.",
+  "cap": "Each place a secret can leak, from diff output to unit files, has a specific setting that closes it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "12",
+  "name": "a12-two-phase-rotation",
+  "title": "Two-phase overlap rotation with no downtime",
+  "spec": "A horizontal timeline with three phase columns left to right, each with a green number circle and a bold title. Phase 1 titled Expand: a provider box with two key tokens, v1 and v2, both drawn valid at the same time; the note create a second valid credential, such as user_v2 or a secondary API key or cert. Phase 2 titled Roll consumers: a row of consumer boxes labelled app nodes, drawn as server icons, each switching to v2, with a monospace note ansible rolling update with serial, and a verify health tick. Phase 3 titled Contract: the provider box with v1 struck through and v2 kept, with the note once every consumer is verified on v2 and connection logs show zero v1 use, revoke or drop v1 on the provider. Orange highlight on Phase 3, the step that removes the old credential. Above the timeline, a thin bar labelled both valid, no downtime spanning Phase 1 and Phase 2. Green takeaway bar at the bottom: Add the new credential, deploy the consumers, then remove the old one.",
+  "anchor": "## 7. Rotation and incident response",
+  "alt": "Two-phase rotation first adds a second valid credential, then rolls every consumer to it, and only then revokes the old one.",
+  "cap": "Two-phase rotation adds a second valid credential, moves every consumer over, and only then revokes the old one."
+ }
+]

@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>SSH hardening choices</title>
+  <desc>Visual infographic explaining SSH hardening configuration options, group match overrides, bastion jump host access, and the safe testing workflow.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">SSH hardening choices</text>
+
+  
+  <g>
+    <rect x="50" y="120" width="830" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(80, 142)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 0 L 36 0 L 48 12 L 48 52 L 8 52 Z" />
+      <polyline points="36,0 36,12 48,12" />
+      <line x1="16" y1="22" x2="40" y2="22" />
+      <line x1="16" y1="32" x2="40" y2="32" />
+      <line x1="16" y1="42" x2="30" y2="42" />
+    </g>
+
+    <text x="150" y="178" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">/etc/ssh/sshd_config.d/10-hardening.conf</text>
+
+    
+    
+    <rect x="80" y="215" width="770" height="48" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="106" y="247" font-family="monospace" font-size="24" fill="#303a36">PermitRootLogin no</text>
+
+    
+    <rect x="80" y="275" width="770" height="48" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="106" y="307" font-family="monospace" font-size="24" fill="#303a36">PasswordAuthentication no</text>
+
+    
+    <rect x="80" y="335" width="770" height="48" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="106" y="367" font-family="monospace" font-size="24" fill="#303a36">PubkeyAuthentication yes</text>
+
+    
+    <rect x="80" y="395" width="770" height="48" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="106" y="427" font-family="monospace" font-size="24" fill="#303a36">AuthenticationMethods publickey</text>
+
+    
+    <rect x="80" y="455" width="770" height="48" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="106" y="487" font-family="monospace" font-size="24" fill="#303a36">AllowGroups ssh-users hpc-users</text>
+
+    
+    <rect x="80" y="515" width="770" height="48" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="106" y="547" font-family="monospace" font-size="24" fill="#303a36">MaxAuthTries 3</text>
+
+    
+    <rect x="80" y="575" width="770" height="48" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="106" y="607" font-family="monospace" font-size="24" fill="#303a36">AllowAgentForwarding no</text>
+
+    
+    <rect x="80" y="635" width="770" height="48" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="106" y="667" font-family="monospace" font-size="24" fill="#303a36">AllowTcpForwarding no</text>
+
+    
+    <rect x="80" y="695" width="770" height="48" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="106" y="727" font-family="monospace" font-size="24" fill="#303a36">LogLevel VERBOSE</text>
+  </g>
+
+  
+  <g>
+    <rect x="920" y="120" width="630" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(950, 148)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="18" r="10" />
+      <path d="M 8 46 C 8 36 16 32 24 32 C 32 32 40 36 40 46" />
+      <circle cx="42" cy="16" r="7" />
+      <path d="M 40 28 C 46 30 50 34 50 44" />
+    </g>
+
+    <text x="1025" y="184" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">Match Group hpc-users</text>
+
+    
+    <rect x="950" y="235" width="570" height="205" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+
+    <text x="980" y="315" font-family="monospace" font-size="28" font-weight="bold" fill="#db8129">AllowTcpForwarding yes</text>
+    <text x="980" y="380" font-family="sans-serif" font-size="24" fill="#303a36">enabled for that group only</text>
+  </g>
+
+  
+  <g>
+    <rect x="920" y="520" width="630" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(950, 545)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 52 L 6 18 L 14 18 L 14 26 L 22 26 L 22 18 L 30 18 L 30 26 L 38 26 L 38 18 L 46 18 L 46 52 Z" />
+      <rect x="20" y="36" width="12" height="16" rx="6" />
+    </g>
+
+    <text x="1025" y="584" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">bastion</text>
+
+    
+    <rect x="950" y="635" width="570" height="105" rx="10" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="980" y="698" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">ssh -J bastion node01</text>
+  </g>
+
+  
+  
+  <g>
+    <rect x="50" y="820" width="410" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <circle cx="95" cy="865" r="24" fill="#207448" />
+    <text x="95" y="874" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(145, 837)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="52" height="42" rx="6" />
+      <polyline points="12,18 20,24 12,30" />
+      <line x1="24" y1="30" x2="34" y2="30" />
+      <polyline points="38,20 42,26 48,16" stroke-width="3.5" />
+    </g>
+
+    <text x="255" y="960" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">sudo sshd -t</text>
+  </g>
+
+  
+  <line x1="460" y1="920" x2="520" y2="920" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g>
+    <rect x="520" y="820" width="360" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <circle cx="565" cy="865" r="24" fill="#207448" />
+    <text x="565" y="874" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(615, 837)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 44 20 A 18 18 0 1 0 46 28" />
+      <polyline points="36,10 46,20 54,10" />
+    </g>
+
+    <text x="700" y="960" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">reload</text>
+  </g>
+
+  
+  <line x1="880" y1="920" x2="940" y2="920" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g>
+    <rect x="940" y="820" width="610" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <circle cx="985" cy="865" r="24" fill="#207448" />
+    <text x="985" y="874" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(1035, 837)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="20" width="36" height="26" rx="4" />
+      <path d="M 16 20 V 12 A 10 10 0 0 1 36 12 V 20" />
+      <circle cx="26" cy="33" r="2.5" fill="#207448" />
+    </g>
+
+    <text x="1245" y="938" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="1245" dy="0">keep an existing session open</tspan>
+      <tspan x="1245" dy="36">while testing</tspan>
+    </text>
+  </g>
+</svg>

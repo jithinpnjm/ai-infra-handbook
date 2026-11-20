@@ -1,0 +1,243 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>An open-source network monitoring stack</title>
+  <desc>Visual architecture of an open-source network monitoring stack spanning devices, telemetry collectors, time-series storage, log aggregation, visualization, alerting, and automated remediation.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">An open-source network monitoring stack</text>
+
+  
+  <rect x="40" y="100" width="370" height="740" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  <text x="60" y="145" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Devices</text>
+
+  
+  <g id="node-sw">
+    <rect x="60" y="170" width="330" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(75, 185)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="8" width="56" height="34" rx="4" />
+      <path d="M 10 20 L 22 20 M 18 16 L 22 20 L 18 24" />
+      <path d="M 46 30 L 34 30 M 38 26 L 34 30 L 38 34" />
+      <circle cx="12" cy="34" r="2" fill="#207448" />
+      <circle cx="20" cy="34" r="2" fill="#207448" />
+    </g>
+    <text x="145" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Switches</text>
+    <text x="75" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">(gNMI / SNMP /</tspan>
+      <tspan x="75" dy="32">sFlow / syslog)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-host">
+    <rect x="60" y="380" width="330" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(75, 395)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="6" width="48" height="42" rx="4" />
+      <line x1="12" y1="20" x2="44" y2="20" />
+      <line x1="12" y1="34" x2="44" y2="34" />
+      <circle cx="12" cy="13" r="2" fill="#207448" />
+      <circle cx="18" cy="13" r="2" fill="#207448" />
+    </g>
+    <text x="145" y="432" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">GPU servers:</text>
+    <text x="75" y="482" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">node_exporter,</tspan>
+      <tspan x="75" dy="32">ethtool, IB/RDMA,</tspan>
+      <tspan x="75" dy="32">DCGM</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-probe">
+    <rect x="60" y="620" width="330" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(75, 635)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="28" cy="28" r="24" />
+      <circle cx="28" cy="28" r="14" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+      <line x1="28" y1="28" x2="46" y2="12" />
+    </g>
+    <text x="145" y="672" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Probes:</text>
+    <text x="75" y="722" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">blackbox, TWAMP,</tspan>
+      <tspan x="75" dy="32">ping mesh</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="node-gnmic">
+    <rect x="470" y="110" width="350" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(485, 122)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="8" width="44" height="40" rx="4" />
+      <polyline points="14,24 24,34 42,16" />
+    </g>
+    <text x="550" y="155" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">gNMIc / Telegraf</text>
+    <text x="485" y="212" font-family="sans-serif" font-size="24" fill="#303a36">(gnmi, snmp)</text>
+  </g>
+
+  
+  <g id="node-snmpx">
+    <rect x="470" y="280" width="350" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(485, 292)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="10" width="44" height="34" rx="4" />
+      <circle cx="16" cy="27" r="4" fill="#207448" />
+      <circle cx="28" cy="27" r="4" fill="#207448" />
+      <circle cx="40" cy="27" r="4" fill="#207448" />
+    </g>
+    <text x="550" y="348" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">snmp_exporter</text>
+  </g>
+
+  
+  <g id="node-flow">
+    <rect x="470" y="425" width="350" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(485, 437)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 8 16 Q 28 8 48 16" />
+      <path d="M 8 28 Q 28 20 48 28" />
+      <path d="M 8 40 Q 28 32 48 40" />
+      <polyline points="40,24 48,28 40,32" />
+    </g>
+    <text x="550" y="468" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">goflow2 / pmacct /</text>
+    <text x="485" y="515" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="485" dy="0">ElastiFlow</tspan>
+      <tspan x="485" dy="32">(sFlow, IPFIX)</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="node-sysl">
+    <rect x="360" y="930" width="460" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(380, 945)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="8" y="6" width="40" height="44" rx="4" />
+      <line x1="16" y1="18" x2="36" y2="18" />
+      <line x1="16" y1="28" x2="36" y2="28" />
+      <line x1="16" y1="38" x2="28" y2="38" />
+    </g>
+    <text x="445" y="985" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Syslog</text>
+    <text x="380" y="1035" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="380" dy="0">(rsyslog/Vector) →</tspan>
+      <tspan x="380" dy="30">Loki/Elastic</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="node-prom">
+    <rect x="890" y="330" width="330" height="270" rx="14" fill="#fff7f0" stroke="#db8129" stroke-width="3.5" />
+    
+    <g transform="translate(915, 350)" stroke="#db8129" stroke-width="3" fill="none">
+      <ellipse cx="28" cy="14" rx="22" ry="8" />
+      <path d="M 6 14 v 24 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8 v -24" />
+      <path d="M 6 26 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8" />
+      <circle cx="28" cy="26" r="3" fill="#db8129" />
+    </g>
+    <text x="980" y="388" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Metrics TSDB</text>
+    <text x="915" y="445" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="915" dy="0">Prometheus /</tspan>
+      <tspan x="915" dy="38">VictoriaMetrics /</tspan>
+      <tspan x="915" dy="38">Mimir</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="node-graf">
+    <rect x="1270" y="390" width="290" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1290, 405)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="6" width="48" height="42" rx="4" />
+      <line x1="14" y1="36" x2="14" y2="24" stroke-width="4" />
+      <line x1="26" y1="36" x2="26" y2="16" stroke-width="4" />
+      <line x1="38" y1="36" x2="38" y2="28" stroke-width="4" />
+    </g>
+    <text x="1355" y="445" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Grafana</text>
+    <text x="1290" y="500" font-family="sans-serif" font-size="26" fill="#303a36">dashboards</text>
+  </g>
+
+  
+  <g id="node-am">
+    <rect x="1270" y="660" width="290" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1290, 675)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 28 8 A 16 16 0 0 0 12 24 C 12 34 8 38 8 38 L 48 38 C 48 38 44 34 44 24 A 16 16 0 0 0 28 8 z" />
+      <circle cx="28" cy="44" r="4" fill="#207448" />
+    </g>
+    <text x="1355" y="725" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Alertmanager</text>
+  </g>
+
+  
+  <g id="node-ticket">
+    <rect x="1250" y="870" width="310" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1265, 885)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="8" width="44" height="34" rx="4" />
+      <path d="M 6 18 L 28 30 L 50 18" />
+    </g>
+    <text x="1330" y="925" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Pager / ticket /</text>
+    <text x="1265" y="968" font-family="sans-serif" font-size="26" fill="#303a36">ChatOps</text>
+  </g>
+
+  
+  <g id="node-auto">
+    <rect x="1250" y="1030" width="310" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1265, 1045)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="28" cy="28" r="14" />
+      <path d="M 28 8 L 28 14 M 28 42 L 28 48 M 8 28 L 14 28 M 42 28 L 48 28" />
+    </g>
+    <text x="1330" y="1082" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Webhook →</text>
+    <text x="1265" y="1125" font-family="sans-serif" font-size="24" fill="#303a36">automation (chapter 2.29)</text>
+  </g>
+
+  
+  
+  <path d="M 390 200 L 470 180" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 390 260 L 470 330" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 390 310 L 430 310 L 430 480 L 470 480" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 225 345 L 225 990 L 360 990" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 390 440 L 440 440 L 440 640 L 850 640 L 850 490 L 890 490" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 390 715 L 865 715 L 865 540 L 890 540" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 820 180 L 865 180 L 865 380 L 890 380" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 820 340 L 890 410" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 820 480 L 890 450" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1220 440 L 1270 440" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1220 520 L 1245 520 L 1245 710 L 1270 710" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 820 1020 L 1240 1020 L 1240 500 L 1270 500" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1415 795 L 1415 870" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1530 795 L 1530 1030" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+</svg>

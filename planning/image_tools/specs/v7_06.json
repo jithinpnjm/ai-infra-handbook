@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "06",
+  "name": "r06-type-to-schema",
+  "title": "Reading an @odata.type string and finding its schema files",
+  "spec": "A left-to-right layout in three zones. Left zone: a wide monospace box holding the string #ComputerSystem.v1_17_0.ComputerSystem, with three bracket-style labels beneath its three parts, joined by thin lines: first part ComputerSystem labelled the resource type (namespace); middle part v1_17_0 labelled the version, major 1, minor 17, errata 0; last part ComputerSystem labelled the type name inside that version. Middle zone: an arrow from the string to two stacked file boxes. Top file box, grey, monospace name ComputerSystem.json, titled unversioned file (front door): lines allowed URIs such as /redfish/v1/Systems/{ComputerSystemId}, and capabilities: insertable, updatable, deletable; no property details. Bottom file box, green, monospace name ComputerSystem.v1_17_0.json, titled versioned file (floor plan): lines properties, types, readonly flags, required fields and actions for that version. Right zone: a small box labelled references from other resources, with an arrow pointing to the unversioned file and the note always points to the unversioned definition so nothing depends on one version. Orange highlight on the versioned file box with the note: the version in the type string is a promise that the validator checks the payload against. Number circles not needed. No takeaway bar.",
+  "anchor": "## 2. From `@odata.type` to the schema file",
+  "alt": "An @odata.type string splits into namespace, version and type name, which select an unversioned file and a versioned file.",
+  "cap": "The @odata.type string names the schema version, and that version selects the versioned file that holds the real properties."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "06",
+  "name": "r06-step-back",
+  "title": "Stepping back through minor versions to find where a property is defined",
+  "spec": "A vertical flow of numbered boxes, top to bottom, joined by down arrows, with a decision diamond after each step. Start box, numbered 1: a structured property in the payload is not in the versioned file for the current version. Step 2 box: step the version back to 1.4.0 and look there. Decision diamond: defined here? No arrow goes down to step 3 box: step back to 1.3.0 and look there; a decision diamond after it; No arrow goes down to step 4 box: step back to 1.2.0, and so on; the diamond then leads on. Yes arrow from any decision goes right to a green end box labelled found: the file that defines the property, which tells you when it was first introduced. Number circles r=24 on steps 1 to 4 and the ellipsis step written as a box labelled and so on. Orange note beside step 2: each step back is a fact about history. No takeaway bar.",
+  "anchor": "## 3. Versioning: what a client must do",
+  "alt": "A client that cannot find a structured property in the current version steps back through earlier minor versions until it finds the definition.",
+  "cap": "When a structured property is missing from the current version's schema, a client steps back through earlier minor versions until it finds where the property was defined."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "06",
+  "name": "r06-message-decision",
+  "title": "A MessageId as the key: registry lookup drives the decision",
+  "spec": "A left-to-right alert pipeline of five boxes joined by right-pointing arrows, with a branch at the end. Box 1: a BMC error reply, showing the MessageId Base.1.17.PropertyNotWritable in monospace. Box 2: lookup in the message registry (Base registry), with three small output tags beneath it: Message template with %1 placeholder, Severity, Resolution. Box 3: read the Severity and decide. A branch from box 3 splits into two arrows: upper arrow to a box labelled page a person, lower arrow to a box labelled open a low-priority ticket. Box 4, on the lower path, is a green box labelled copy the English text and Resolution into the ticket for the human. An orange note under box 3 with the text the decision never depends on the English text, it depends on the MessageId. Two small grey callout boxes beside box 1: match the ID, not the sentence, and the same MessageId appears in logs, events and errors. Number circles r=24 on boxes 1 to 3 only, since they are in time order. No takeaway bar.",
+  "anchor": "## 6. Message registries: how errors and events get their text",
+  "alt": "A monitoring job reads the MessageId, looks up the severity in the registry, and decides whether to page a person or open a ticket.",
+  "cap": "An alert pipeline should decide from the MessageId and its registry severity, not from the English sentence, which a vendor may reword."
+ }
+]

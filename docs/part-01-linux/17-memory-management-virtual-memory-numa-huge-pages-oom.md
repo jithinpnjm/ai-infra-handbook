@@ -110,6 +110,10 @@ The diagram traces one translation from the virtual address to the answer. Notic
 
 ### Demand paging, page faults, memory states
 
+![Touching a page triggers a cheap minor fault or a slow major fault that reads storage.](./img/l17-page-faults.svg)
+
+*Figure 1.17.3. Linux hands out virtual memory immediately and backs it with physical pages only when touched.*
+
 Linux hands out virtual memory right away, but it gives out physical memory only when a page is touched. This is called demand paging. A call to `malloc(1<<30)`, or an `mmap` of a gigabyte, consumes almost no RAM until those pages are written. Each virtual page sits in one of four states. It can be unallocated. It can be allocated but not mapped, because nobody has touched it yet. It can be mapped to RAM, or mapped to swap after being paged out. Moving from allocated but unmapped to mapped is a page fault.
 
 Faults come in two kinds, and the difference is cost:
@@ -124,6 +128,10 @@ PSS, or proportional set size, fixes that problem. It divides shared pages among
 The working set size, or WSS, is the memory a process actively uses. Performance collapses when the WSS exceeds available RAM. It improves greatly when the working set fits in the CPU caches. No standard WSS metric appears in common tools, which report RSS instead. Estimates are still possible. The `wss` tool uses idle-page tracking. The "memory shrinking" negative experiment reduces available memory step by step until swapping starts, but run it only in a test environment.
 
 ### Overcommit
+
+![Three overcommit policies and when the failure shows up.](./img/l17-overcommit.svg)
+
+*Figure 1.17.4. Only mode 2 enforces a hard limit, while the others defer failure to first touch and the OOM killer.*
 
 Linux can grant more virtual memory than RAM plus swap. That sounds reckless until you remember how programs behave: they reserve far more address space than they ever touch. Programs rarely use everything they allocate, so the kernel makes that bet. The setting `vm.overcommit_memory` controls the policy.
 
@@ -179,7 +187,7 @@ The diagram shows a two-socket layout, with GPUs and NICs attached to each socke
 
 ![UMA versus NUMA](./img/ch17-d3-luna.svg)
 
-*Figure 1.17.3. UMA versus NUMA.*
+*Figure 1.17.5. UMA versus NUMA.*
 
 The NUMA trap is common on AI hosts, and it is easy to miss. A data-loading process runs on node 0 and allocates its buffers there. The GPU it feeds, though, is attached to node 1. Every host-to-device copy then crosses the interconnect, because the memory sits on node 0 while the GPU hangs off node 1's PCIe root. Picture a warehouse on the wrong side of town: the goods are correct, but every delivery pays the cross-town drive. The fix is to bind the loader's CPUs and memory to the GPU's node, which section 7 covers. Before you start a loader, check which node the GPU lives on, and bind to that node.
 
@@ -195,7 +203,7 @@ When free memory falls, Linux responds in stages. The diagram shows the order, r
 
 ![How Linux frees memory](./img/ch17-d4-luna.svg)
 
-*Figure 1.17.4. How Linux frees memory.*
+*Figure 1.17.6. How Linux frees memory.*
 
 The steps run roughly in order as pressure rises, and the last step is the OOM killer. The next paragraphs explain each of the knobs that shape those steps.
 
@@ -223,7 +231,7 @@ When reclaim fails, the kernel invokes the **out-of-memory (OOM) killer**. Recla
 
 ![When memory runs out](./img/ch17-fig1-oom.jpg)
 
-*Figure 1.17.5. From low free memory to an OOM kill, and where to look afterwards.*
+*Figure 1.17.7. From low free memory to an OOM kill, and where to look afterwards.*
 
 The victim gets no chance to clean up, because it receives `SIGKILL` rather than `SIGTERM`. There is no exception handler, no final checkpoint, no flush. Partial checkpoints and GPU state may be left behind. A parent process, or Kubernetes, sees the exit status `137`, which is 128 + 9.
 
@@ -372,6 +380,10 @@ Grace-based systems, such as GH200 and GB200, expose CPU memory as NUMA nodes. D
 Bind by topology rather than by habit, and check `numactl -H` on every new platform. The machine will tell you where its memory and its GPUs live; the mistake is assuming they live in the same place.
 
 ## 8. Huge pages and transparent huge pages
+
+![Explicit huge pages are reserved in a pool, while transparent huge pages are used automatically by the kernel.](./img/l17-thp-modes.svg)
+
+*Figure 1.17.8. THP is automatic and can add latency spikes, while explicit huge pages give a guaranteed page size.*
 
 A database team once asked for huge pages on every node, and the reason was simple. Their working set was large and their TLB was thrashing. Here is the problem a huge page solves. A 256 GiB dataset mapped with 4 KiB pages needs 67 million page-table entries. The TLB can cache only a few dozen of them, so the program misses constantly and pays for a page walk on most accesses.
 
@@ -523,6 +535,10 @@ Budget host memory for each node in pieces, the way you would budget a household
 A common mistake is multiplying workers across GPUs: 8 GPUs x 16 workers x 2 GB can exceed RAM before you notice. Another is putting checkpoints in `/dev/shm` without a size cap. Monitor `MemAvailable`, PSI, per-cgroup `memory.stat` and the OOM counters.
 
 ### Swap and memory policy summary
+
+![A table of starting memory settings for training, inference, login and Kubernetes nodes.](./img/l17-memory-policy.svg)
+
+*Figure 1.17.9. Start from the row for your node type and change it only after you measure.*
 
 The table brings the settings together by node type, so you can compare them side by side. Read it as a set of starting positions, not as law.
 

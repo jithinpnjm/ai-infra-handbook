@@ -74,11 +74,15 @@ Before you debug a container, decide which of those four pieces is the likely ca
 
 ## 2. The namespace types
 
+![The clone, unshare and setns calls create or join namespaces.](./img/l19-ns-syscalls.svg)
+
+*Figure 1.19.2. Three system calls do all the namespace work: create with clone, move with unshare and join with setns.*
+
 Two services on one host can both insist on port 80, and neither one notices the other. The network namespace is what makes that possible. A **namespace** wraps a global system resource, so that the processes inside it see their own isolated copy. Changes made inside are visible only to members of that namespace, never to anyone outside it. Every process always belongs to exactly one namespace of each type, starting with the host's initial namespaces, often called the "init" namespaces.
 
 ![The eight namespace types](./img/ch19-fig1-nstypes.jpg)
 
-*Figure 1.19.2. Each namespace type gives a process its own view of one kind of resource.*
+*Figure 1.19.3. Each namespace type gives a process its own view of one kind of resource.*
 
 | Namespace | Clone flag | Isolates | Notes |
 |---|---|---|---|
@@ -131,7 +135,7 @@ Run `ps` inside a container and the list starts at PID 1. That surprise is a PID
 
 ![PID namespaces](./img/ch19-d2-luna.svg)
 
-*Figure 1.19.3. PID namespaces.*
+*Figure 1.19.4. PID namespaces.*
 
 PID 1 is the init of its namespace, and it follows three special rules. The first rule is that PID 1 has no default signal actions. A signal sent from inside the namespace reaches PID 1 only if PID 1 installed a handler for it. `SIGKILL` and `SIGSTOP` from inside are ignored. From the parent namespace they still work, which is how `docker stop`, `kubectl delete pod` and the kubelet's `SIGTERM` followed by `SIGKILL` reach the process.
 
@@ -161,6 +165,10 @@ This is the PID namespace at work. It gives the container's processes their own 
 
 ### Mount namespaces and propagation
 
+![Mount propagation flags control whether mount events pass between namespaces.](./img/l19-mount-propagation.svg)
+
+*Figure 1.19.5. A shared mount can leak events back to the host, so runtimes make the root private or slave first.*
+
 A naive mount inside a new namespace can leak back to the host, which surprises people the first time they see it. To understand why, start with how a new mount namespace is built. It begins with a **copy** of its parent's mount table. Mounts and unmounts made later inside it do not affect the other namespace. Propagation flags on each mount point decide what may cross between them.
 
 | Flag | Meaning |
@@ -177,6 +185,10 @@ The leak is a real risk. `systemd` makes `/` shared by default, so a naive new m
 Before you set `mountPropagation` on a pod, decide which direction the mounts need to travel.
 
 ### chroot versus pivot_root
+
+![chroot only changes the visible root, while pivot_root swaps the root mount and detaches the old one.](./img/l19-chroot-pivot.svg)
+
+*Figure 1.19.6. Container runtimes use pivot_root because chroot is not a security boundary.*
 
 Here is why the difference matters. If a process can still reach the old root, `chroot` has not isolated it. `chroot(2)` changes a process's root directory, but the old root can stay reachable through open file descriptors, or through `fchdir` tricks if the process has root privilege. It is a convenience, not a security boundary.
 
@@ -210,7 +222,7 @@ Run these commands and watch where each change lands. The file in the top layer 
 
 ![OverlayFS: layers, copy-up and whiteouts](./img/ch19-d5-luna.svg)
 
-*Figure 1.19.4. OverlayFS layers, copy-up on write, and 0/0 whiteouts on delete.*
+*Figure 1.19.7. OverlayFS layers, copy-up on write, and 0/0 whiteouts on delete.*
 
 Four behaviours matter most in practice. The first is **copy-up**. The first write to a file that lives in a lower layer copies the entire file into the upper layer. Metadata-only changes copy only metadata, on modern kernels with `metacopy`. A training job that appends to a multi-GB file baked into an image therefore triggers a huge copy. A database stored in the image layer does the same. The copy doubles disk use and can fill the node's image storage, at `/var/lib/containerd` or `/var/lib/docker`. The result is evictions and `NodeNotReady`. Mutable and large data belongs in volumes, such as bind mounts, `emptyDir`, hostPath or PVCs, because volumes bypass overlay completely.
 
@@ -248,7 +260,7 @@ The standard way to connect a namespace is a **veth pair**. Think of it as a vir
 
 ![Network namespaces](./img/ch19-d3-luna.svg)
 
-*Figure 1.19.5. Network namespaces.*
+*Figure 1.19.8. Network namespaces.*
 
 The commands below build this wiring by hand. Run them in order on a disposable host, and you will see each step for yourself. Then ping in both directions to confirm the link works.
 
@@ -283,7 +295,7 @@ Inside the namespace, root has capabilities only over resources that the namespa
 
 ![User namespaces and UID mapping](./img/ch19-d6-luna.svg)
 
-*Figure 1.19.6. User namespace UID mapping via /proc/PID/uid_map and shared-storage caveats.*
+*Figure 1.19.9. User namespace UID mapping via /proc/PID/uid_map and shared-storage caveats.*
 
 ```bash
 unshare --user --map-root-user bash        # become "root" inside, mapped to your UID outside
@@ -316,13 +328,17 @@ When you run `docker run` or the kubelet starts a pod, a chain of programs does 
 
 ![Putting it together: what a runtime does](./img/ch19-d4-luna.svg)
 
-*Figure 1.19.7. Putting it together: what a runtime does.*
+*Figure 1.19.10. Putting it together: what a runtime does.*
 
 The OCI runtime spec, in `config.json`, lists every namespace, mount, capability, cgroup path and hook. `runc spec` generates a template for you. Reading a real container's `config.json` is the best way to learn what your platform configures. The shim keeps the container's stdio and exit status after `runc` exits, so containerd can restart without killing the containers.
 
 When a container fails at start, look at the step that failed, not only at the final error.
 
 ## 9. Containers, VMs and lightweight VMs
+
+![A comparison of VMs, containers, microVMs and gVisor on kernel, isolation, start time and GPU access.](./img/l19-isolation-compare.svg)
+
+*Figure 1.19.11. A container uses the native GPU driver through device nodes, while a VM needs passthrough or vGPU.*
 
 Every choice here is a trade. Choosing between a container and a VM means trading isolation against start time and GPU access. The table compares four options.
 

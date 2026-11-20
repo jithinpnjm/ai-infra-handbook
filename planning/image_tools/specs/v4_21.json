@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "21",
+  "name": "a21-count-vs-foreach",
+  "title": "Removing one item from the middle: count versus for_each",
+  "spec": "Two side-by-side panels with a green heading each. Left panel titled 'count (index is identity)'. Top row shows a list of three boxes indexed [0], [1], [2] with the names a100-train, h100-train, a100-infer. The middle box h100-train is struck through and removed with a dashed outline. Below, a row of arrows showing a100-infer sliding from index [2] down to index [1]. Outcome boxes: one orange-outlined box (the most important item) reading 'a100-infer is replaced' and a grey box reading 'the index [1] now names a different pool'. Right panel titled 'for_each (key is identity)'. Top row shows three boxes labelled with keys a100-train, h100-train, a100-infer (the keys shown as names in quotes, no indexes). The h100-train box is removed with a dashed outline. Nothing else moves. Outcome box in green reading 'Only h100-train is destroyed' and a second green box reading 'a100-infer is untouched'. Use a disk-stack or gear icon on each box. No number circles, since the boxes are not steps in time order. Under both panels, a green note: 'Use count only when you would never tell two instances apart.' Green takeaway bar at the bottom: 'If each instance has a name you care about, use for_each with stable keys.' Arrows: only the slide arrow in the left panel, no crossing arrows.",
+  "anchor": "## 2. for_each",
+  "alt": "Removing a middle item shifts indexes under count and replaces a later pool, while for_each destroys only the removed key.",
+  "cap": "Removing a middle item under count shifts later indexes and replaces a pool nobody touched, while for_each destroys only the removed key."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "21",
+  "name": "a21-lifecycle-order",
+  "title": "Order of checks and replacement under lifecycle",
+  "spec": "A left-to-right sequence of four numbered steps (green number circles 1 to 4). Step 1: a box with a clipboard icon titled 'precondition', showing the condition data.aws_ec2_instance_type.selected.default_vcpus >= 16 in monospace and the message 'Login nodes need at least 16 vCPUs.' A small note under step 1: 'The check runs before creation.' Arrow to step 2: a box with a plus or new-node icon titled 'Create the replacement first', with the label 'create_before_destroy = true'. Arrow to step 3: a box with a trash or minus icon titled 'Destroy the old one', text 'Creates its replacement before destroying the old one'. Arrow to step 4: a box with a magnifier icon titled 'postcondition', showing the condition self.public_ip == \"\" in monospace and the message 'Login nodes must not have public IPs.' Orange outline on step 4 as the single most important check. A small green note under step 4: 'A node that comes up with a public address fails the run.' Green takeaway bar at the bottom: 'Preconditions guard the input, postconditions guard the result.'",
+  "anchor": "## 6. The lifecycle block",
+  "alt": "A login node runs its precondition, creates a replacement before destroying the old node, then checks its postcondition.",
+  "cap": "Under the lifecycle block, the precondition runs before creation, the replacement is created before the old node is destroyed, and the postcondition checks the result."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "21",
+  "name": "a21-if-else-index-trap",
+  "title": "The if/else [0] index trap and the one(concat()) fix",
+  "spec": "Top section: two resource boxes stacked vertically, each with a cloud or user icon. Upper box: monospace 'neo_cloudwatch_full_access', with the label 'count = var.give_neo_cloudwatch_full_access ? 1 : 0'. Lower box: monospace 'neo_cloudwatch_read_only', with the label 'count = var.give_neo_cloudwatch_full_access ? 0 : 1'. Note inside each box: for any input exactly one of the two lists is empty. Arrows from both boxes into one box titled 'Output reads [0] from each list', with the monospace text full_access[0].policy_arn in one branch and read_only[0].policy_arn in the other. An alert icon beside this box in orange (the single most important item) with the error text 'index 0 out of range for list of length 0'. Bottom section, titled 'Fix', one green box with the monospace text one(concat(full_access[*].policy_arn, read_only[*].policy_arn)) and the note 'The concat joins the two splat lists, and one() returns the single element or null'. No number circles, since these are not in time order. Green takeaway bar at the bottom: 'Splat both lists and let one() pick, so no branch reads index zero from an empty list.'",
+  "anchor": "## 5. Conditionals",
+  "alt": "Two opposite count toggles leave one list empty, so reading index zero fails; one of concat with one fixes it.",
+  "cap": "Two opposite count toggles leave one list empty, so the output should combine the splat lists with concat and one instead of reading index zero."
+ }
+]

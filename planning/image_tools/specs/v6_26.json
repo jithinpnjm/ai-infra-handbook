@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "26",
+  "name": "h26-trap-pipeline",
+  "title": "How an SNMP trap reaches your handler script",
+  "spec": "Left-to-right flow with four numbered step circles (1 to 4) above boxes. Box 1: Switch, PDU or UPS (device icon) with the label sends Trap, and a note UDP port 162 on the arrow to box 2. Box 2: snmptrapd (manager, monitoring server icon), with a small monospace line authCommunity log,execute,net public inside the box. Arrow labelled traphandle NET-SNMP-EXAMPLES-MIB::netSnmpExampleHeartbeatNotification runs to box 3. Box 3: Handler script (script icon) with the monospace label /tmp/demo, and a note production should use a non-/tmp path. Arrow from box 3 to box 4. Box 4: a document icon with the monospace label trap log line written to a log file, shown as /tmp/demo.log. Below box 3, a separate panel titled stdin lines, containing three stacked rows: line 1 sender hostname, line 2 sender IP and transport, then oid val pairs one per line after that. The arrow from snmptrapd to the handler is labelled with stdin. Orange highlight on box 2 with the note a community mismatch drops the trap before the handler runs. No green takeaway bar.",
+  "anchor": "### SNMP, `snmpconf`, and `snmptrapd` handlers",
+  "alt": "A device trap reaches snmptrapd, which checks the community and runs a handler that reads the sender and variables from standard input.",
+  "cap": "A trap goes from the device to snmptrapd, which checks the community and then runs your handler script with the trap details on standard input."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "26",
+  "name": "h26-ups-shutdown-order",
+  "title": "Who shuts down first when the power goes out",
+  "spec": "A horizontal timeline arrow across the top, left to right, with four numbered step circles (1 to 4) on it. Marker 1: Grid outage (lightning or plug icon). Marker 2 below the timeline: UPS carries the load for at least 10 to 30 minutes (battery icon). Marker 3: 5 minutes without utility power, labelled controlled cluster shutdown starts, with the text that prohibits new jobs. Marker 4 at the far right: the final stage. Below the timeline, two lanes of boxes in order. Lane 1 box, placed first, labelled Compute nodes stop first, with the tag upsmon slave (shut down first). Lane 2 box, placed last, labelled Network file systems and monitoring servers, with the tag upsmon master (shut down last, attached to the UPS). An arrow runs from the Compute nodes box to the Network file systems box. Orange highlight on the arrow or the upsmon master box: the master shuts down last. No green takeaway bar.",
+  "anchor": "### UPS monitoring with Network UPS Tools (`NUT`) and `apcupsd`",
+  "alt": "On a grid outage the UPS carries the load, then compute nodes shut down first and file systems and monitoring shut down last.",
+  "cap": "During a long outage the compute nodes shut down first, and the file systems and monitoring servers shut down last."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "26",
+  "name": "h26-alert-decision",
+  "title": "Decide between a page, a ticket and a graph",
+  "spec": "A top-down decision flow. Start box at top: Symptom seen, with a bell icon. Diamond or rounded question box: needs human action? Two exits. Yes branch goes right to a box PAGE, shown as an orange-highlighted box with an alarm icon, with example text: rack where 40 percent of GPUs show Xid 79. No branch goes down to a second question box: degradation? Yes branch goes right to box TICKET (clipboard icon), with the label degradations. No branch goes down to box GRAPH (chart icon), with example text: GPU at 99 C might be fine for a minute. Below the PAGE box, a small note: every paged alert needs a runbook. Above the flow, a one-line title in the diagram: alert on symptoms that need human action; graph everything else. No numbered steps. No green takeaway bar.",
+  "anchor": "## 5. Alerting",
+  "alt": "A symptom becomes a page if it needs immediate human action, a ticket if it is a degradation, and otherwise just a graph.",
+  "cap": "A symptom pages someone only when it needs immediate human action, becomes a ticket when it is a degradation, and otherwise stays on a graph."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "26",
+  "name": "h26-util-vs-tensor",
+  "title": "GPU_UTIL can read 99 percent while the tensor cores sit idle",
+  "spec": "Three horizontal meter bars stacked vertically, each with a full track of 100 percent and a green fill for its value. Bar 1 labelled DCGM_FI_DEV_GPU_UTIL, sub-label a kernel was running, value 99 percent, filled almost fully. Bar 2 labelled DCGM_FI_PROF_PIPE_TENSOR_ACTIVE, sub-label Tensor Cores busy, value 4 percent, short fill. Bar 3 labelled DCGM_FI_PROF_DRAM_ACTIVE, sub-label HBM memory interface busy, value 82 percent, long fill. Orange highlight on Bar 2, the short tensor bar, with the note tensor cores idle. Beside Bar 3, a note: high DRAM with low tensor means memory-bound. A small caption at the bottom with the example labels: 64-GPU job, H100 GPUs draw 260 W of a possible 700 W. No numbered steps. No green takeaway bar.",
+  "anchor": "## 3. GPU metrics with DCGM",
+  "alt": "A job can show 99 percent GPU utilisation while its tensor activity is 4 percent and DRAM activity is 82 percent.",
+  "cap": "GPU utilisation alone can show 99 percent while the tensor cores are nearly idle, so check the profiling fields too."
+ }
+]

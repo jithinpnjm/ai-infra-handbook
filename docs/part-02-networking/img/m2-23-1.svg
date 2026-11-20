@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080">
+  <title>Netfilter architecture</title>
+  <desc>Visual infographic showing packet flow and hook points through the Linux Netfilter architecture.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Netfilter architecture</text>
+
+  
+  
+  <path d="M 215 595 L 255 595" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 530 595 L 570 595" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 670 480 L 670 380" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <rect x="684" y="414" width="76" height="32" rx="6" fill="#f5f8f5"/>
+  <text x="722" y="438" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">local</text>
+
+  
+  <path d="M 805 265 L 847 265" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1027 265 L 1069 265" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1204 380 L 1204 480" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 670 710 L 670 915 L 802 915" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <rect x="686" y="874" width="102" height="32" rx="6" fill="#f5f8f5"/>
+  <text x="737" y="898" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">forward</text>
+
+  
+  <path d="M 1072 915 L 1204 915 L 1204 710" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1339 595 L 1379 595" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+
+  
+  <rect x="535" y="150" width="270" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 650 200 L 650 214 L 690 214 L 690 200"/>
+    <path d="M 670 172 L 670 204 M 662 196 L 670 204 L 678 196"/>
+  </g>
+  <text x="670" y="254" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">input</text>
+  <text x="670" y="300" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="670" dy="0">(mangle,</tspan>
+    <tspan x="670" dy="30">filter, SNAT*)</tspan>
+  </text>
+
+  
+  <rect x="847" y="150" width="180" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="915" y="172" width="44" height="36" rx="4"/>
+    <line x1="915" y1="184" x2="959" y2="184"/>
+    <circle cx="923" cy="178" r="2" fill="#207448"/>
+    <path d="M 925 196 L 931 200 L 925 204 M 935 204 L 945 204"/>
+  </g>
+  <text x="937" y="268" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="937" dy="0">Local</tspan>
+    <tspan x="937" dy="38">process</tspan>
+  </text>
+
+  
+  <rect x="1069" y="150" width="270" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 1184 194 L 1184 214 L 1224 214 L 1224 194"/>
+    <path d="M 1204 204 L 1204 172 M 1196 180 L 1204 172 L 1212 180"/>
+  </g>
+  <text x="1204" y="246" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">output</text>
+  <text x="1204" y="286" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1204" dy="0">(raw, conntrack,</tspan>
+    <tspan x="1204" dy="28">mangle, DNAT,</tspan>
+    <tspan x="1204" dy="28">filter)</tspan>
+  </text>
+
+  
+
+  
+  <rect x="40" y="480" width="175" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="106" y="502" width="44" height="32" rx="4"/>
+    <line x1="114" y1="534" x2="114" y2="540"/>
+    <line x1="122" y1="534" x2="122" y2="540"/>
+    <line x1="130" y1="534" x2="130" y2="540"/>
+    <line x1="138" y1="534" x2="138" y2="540"/>
+    <path d="M 128 494 L 128 518 M 122 512 L 128 518 L 134 512"/>
+  </g>
+  <text x="127" y="582" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="127" dy="0">Packet</tspan>
+    <tspan x="127" dy="36">in from</tspan>
+    <tspan x="127" dy="36">NIC</tspan>
+  </text>
+
+  
+  <rect x="255" y="480" width="275" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 372 500 L 413 500 C 413 524 392.5 538 392.5 538 C 392.5 538 372 524 372 500 Z"/>
+    <path d="M 382 516 L 390 524 L 404 510"/>
+  </g>
+  <text x="392" y="584" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">prerouting</text>
+  <text x="392" y="630" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="392" dy="0">(raw, conntrack,</tspan>
+    <tspan x="392" dy="30">mangle, DNAT)</tspan>
+  </text>
+
+  
+  <rect x="570" y="480" width="200" height="230" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="670,498 692,520 670,542 648,520"/>
+    <path d="M 670 512 L 670 528 M 662 520 L 678 520"/>
+  </g>
+  <text x="670" y="598" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="670" dy="0">Routing</tspan>
+    <tspan x="670" dy="38">decision</tspan>
+  </text>
+
+  
+  <rect x="1069" y="480" width="270" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 1184 500 L 1224 500 C 1224 524 1204 538 1204 538 C 1204 538 1184 524 1184 500 Z"/>
+    <path d="M 1196 514 L 1212 514 M 1208 510 L 1212 514 L 1208 518"/>
+  </g>
+  <text x="1204" y="584" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">postrouting</text>
+  <text x="1204" y="630" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1204" dy="0">(mangle, SNAT /</tspan>
+    <tspan x="1204" dy="30">masquerade)</tspan>
+  </text>
+
+  
+  <rect x="1379" y="480" width="170" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1442" y="502" width="44" height="32" rx="4"/>
+    <line x1="1450" y1="534" x2="1450" y2="540"/>
+    <line x1="1458" y1="534" x2="1458" y2="540"/>
+    <line x1="1466" y1="534" x2="1466" y2="540"/>
+    <line x1="1474" y1="534" x2="1474" y2="540"/>
+    <path d="M 1464 518 L 1464 494 M 1458 500 L 1464 494 L 1470 500"/>
+  </g>
+  <text x="1464" y="582" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1464" dy="0">Packet</tspan>
+    <tspan x="1464" dy="36">out to</tspan>
+    <tspan x="1464" dy="36">NIC</tspan>
+  </text>
+
+  
+
+  
+  <rect x="802" y="810" width="270" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 922 836 L 938 850 L 922 864 M 936 836 L 952 850 L 936 864"/>
+  </g>
+  <text x="937" y="918" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">forward</text>
+  <text x="937" y="964" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(mangle, filter)</text>
+
+</svg>

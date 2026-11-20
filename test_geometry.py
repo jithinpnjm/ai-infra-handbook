@@ -1,33 +1,40 @@
-# Let's test the geometry with gap = 270
-col1_left = 50
-col1_right = 680
-col1_w = 630
-col1_cx = (col1_left + col1_right) / 2 # 365
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import re
 
-col2_left = 950
-col2_right = 1550
-col2_w = 600
+# Test script for layout geometry
+print("Verifying geometry...")
 
-gap_x1 = col1_right # 680
-gap_x2 = col2_left  # 950
-gap_w = gap_x2 - gap_x1 # 270
-gap_cx = (gap_x1 + gap_x2) / 2 # 815
+box_w = 660
+box_h = 94
 
-print(f"Col 1: {col1_left} to {col1_right} (w={col1_w}), center={col1_cx}")
-print(f"Col 2: {col2_left} to {col2_right} (w={col2_w})")
-print(f"Gap: {gap_x1} to {gap_x2} (w={gap_w}), center={gap_cx}")
-
-# Let's check horizontal labels:
-labels_h = [
-    ("data descriptor", 24),
-    ("yes", 24),
-    ("yes", 24),
-    ("yes", 24)
+boxes = [
+    ("Box 1", "baseline.yml", "baseline", "OS baseline on every host"),
+    ("Box 2", "database.yml", "db", "PostgreSQL on the db group"),
+    ("Box 3", "app.yml", "app", "application on the app group"),
+    ("Box 4", "web.yml", "web", "nginx reverse proxy"),
+    ("Box 5", "verify.yml", "verify", "end-to-end verification")
 ]
-for lbl, sz in labels_h:
-    w = len(lbl) * 0.6 * sz
-    pad = (gap_w - w) / 2
-    print(f"Label '{lbl}': w={w:.1f}px, padding on each side={pad:.1f}px")
-    assert pad >= 16, f"Padding too small for {lbl}"
 
-print("All horizontal labels fit with >= 16px padding!")
+# Check text fitting inside each box
+# Box starts at x = 470, ends at 1130
+# Circle: cx = 512, r=24 -> ends at 536
+# Icon: x = 550 to 606 (width 56)
+# Text starts at x = 625
+avail_w = 1130 - 625 - 16 # 16px right padding
+print(f"Available width for text inside tier boxes: {avail_w}px")
+
+for name, title, tag, note in boxes:
+    # title is 30px bold sans (or mono)
+    # tag is 24px mono in badge
+    # note is 24px sans
+    w_title = len(title) * 30 * 0.62 # mono
+    w_tag = len(tag) * 24 * 0.62 + 24 # badge with padding
+    w_note = len(note) * 24 * 0.6
+    print(f"{name}:")
+    print(f"  Title ({title}): {w_title:.1f}px + Tag ({tag}): {w_tag:.1f}px = {w_title + 16 + w_tag:.1f}px (avail {avail_w})")
+    assert (w_title + 16 + w_tag) <= avail_w
+    print(f"  Note ({note}): {w_note:.1f}px (avail {avail_w})")
+    assert w_note <= avail_w
+
+print("All tier box text fits with >= 16px padding!")

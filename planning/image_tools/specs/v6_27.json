@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "27",
+  "name": "h27-snapshot-vs-backup",
+  "title": "Snapshots and mirrors share the failure domain, a backup does not",
+  "spec": "Three side-by-side panels separated by thin dividers, each headed by a name. Panel 1 titled Snapshot: a storage array box containing two items, Live data and Snapshot, both inside the same outline, with a label same array and same admin credentials across the box. A small note: deleted together. Panel 2 titled Replication (mirror): a Primary box on the left and a Mirror box on the right, with one arrow from Primary to Mirror labelled deletions and corruption copied. A note: the mirror deletes it too. Panel 3 titled Backup: a Primary box on the left and, separated by a dashed line that marks a separate system, a Backup copy box on the right, labelled immutable or offline copy. Each panel has an icon: a camera for snapshot, two disks for mirror, a locked box for backup. Orange highlight on Panel 3 (backup) as the only copy that survives a bad change. Keep text at least 24 px. No numbered steps. No green takeaway bar.",
+  "anchor": "## 2. Principles",
+  "alt": "Snapshots and mirrors sit in the same failure domain as the live data and copy deletions, while a separate backup survives a bad change.",
+  "cap": "A snapshot or mirror lives in the same failure domain as the data and copies deletions too, so only a separate backup protects against a bad change."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "27",
+  "name": "h27-link-dest-snapshots",
+  "title": "Hard links make a second snapshot cost only its changes",
+  "spec": "Two snapshot folder boxes side by side, left labelled snaps/day1 and right labelled snaps/day2. Inside snaps/day1, file boxes f1.bin and f7.bin, with a size note of 200 files, 4,004 KB in total. Inside snaps/day2, file boxes f1.bin and f7.bin. An arrow from day1 f1.bin to day2 f1.bin, labelled same inode (hard link, no extra space). The day2 f7.bin box is drawn new and highlighted, labelled new inode, modified file. A monospace command above the arrow between the boxes: rsync -a --delete --link-dest=$PWD/snaps/day1 data/ snaps/day2/. Under the day2 box, a sum block: first snapshot 4,004 KB, plus changes 24 KB, equals 4,028 KB together. Orange highlight on the new f7.bin box. Numbered steps: 1 for the first snapshot run, 2 for the second run. No green takeaway bar.",
+  "anchor": "### rsync, batch updates, and hard-link snapshots",
+  "alt": "A second rsync snapshot hard-links the unchanged file to the first snapshot and only the modified file takes new space.",
+  "cap": "A second rsync snapshot hard-links unchanged files to the first, so it only takes new space for the files that changed."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "27",
+  "name": "h27-dr-restore-order",
+  "title": "Restore the control plane in dependency order",
+  "spec": "A vertical stack of six numbered boxes, top to bottom, connected by downward arrows, with a step number circle beside each box. Box 1: Identity (key icon). Box 2: DNS (globe icon). Box 3: Provisioning (server rack icon). Box 4: Storage (disk cylinder icon). Box 5: Scheduler (clock or gear icon). Box 6: Users (person icon). Between box 5 and box 6 the arrow is the only one labelled then users. A thin side note on the left reads each layer depends on the one before it. Orange highlight on box 1 with the note restore first, since everything depends on it. No green takeaway bar. Keep the stack compact with equal spacing.",
+  "anchor": "## 7. Ransomware and insider risk",
+  "alt": "A full recovery restores identity, DNS, provisioning, storage, scheduler and then users, each layer depending on the one before.",
+  "cap": "Restore identity first, then DNS, provisioning, storage and the scheduler, and bring users back last."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "27",
+  "name": "h27-restore-test-tiers",
+  "title": "Three levels of restore testing, from daily to quarterly",
+  "spec": "A three-step staircase rising from bottom-left to top-right. Step 1 at the bottom left, labelled Level 1, with the tag daily, the text automated restore of a random file, and a note checksum compare. Step 2 in the middle, labelled Level 2, with the tag weekly, the text restore of a database dump into a scratch instance, and a note followed by a smoke query. Step 3 at the top right, labelled Level 3, with the tag quarterly, the text full-system recovery drill. Arrows run up the staircase from Step 1 to Step 2 to Step 3. Each step has a small icon: a file with a check mark, a database cylinder, a full server rack. Orange highlight on Step 3 as the most complete test. Below the staircase, a single line of text: each level proves a bigger part of the restore. No numbered step circles beyond the level labels. No green takeaway bar.",
+  "anchor": "## 8. Restore testing and metrics",
+  "alt": "Restore testing has three levels: a daily random file restore with checksum, a weekly database restore with a smoke query, and a quarterly full recovery drill.",
+  "cap": "Restore testing has three levels, from a daily file restore with a checksum to a quarterly full-system recovery drill."
+ }
+]

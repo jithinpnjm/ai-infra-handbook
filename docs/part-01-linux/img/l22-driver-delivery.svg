@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170">
+  <title>Four ways to deliver a GPU driver</title>
+  <desc>Infographic comparing four ways to deliver a GPU driver: Precompiled kmod packages, Golden image, GPU Operator driver container, and DKMS on nodes.</desc>
+
+  
+  <rect width="1600" height="1170" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four ways to deliver a GPU driver</text>
+
+  
+  <g>
+    
+    <rect x="60" y="105" width="440" height="65" rx="8" fill="#207448" />
+    <text x="280" y="146" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Approach</text>
+
+    
+    <rect x="540" y="105" width="480" height="65" rx="8" fill="#207448" />
+    <text x="780" y="146" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Pros</text>
+
+    
+    <rect x="1060" y="105" width="480" height="65" rx="8" fill="#207448" />
+    <text x="1300" y="146" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Cons</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="60" y="210" width="440" height="165" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 265)">
+      <rect x="12" y="12" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="20" y="20" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      
+      <line x1="20" y1="4" x2="20" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="4" x2="28" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="36" y1="4" x2="36" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="20" y1="44" x2="20" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="44" x2="28" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="36" y1="44" x2="36" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="4" y1="20" x2="12" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="4" y1="28" x2="12" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="4" y1="36" x2="12" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="44" y1="20" x2="52" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="44" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="44" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="165" y="280" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Precompiled</tspan>
+      <tspan x="165" dy="38">kmod packages</tspan>
+    </text>
+
+    
+    <rect x="540" y="210" width="480" height="165" rx="10" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+    <text x="570" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="570" dy="0">no compiler on nodes,</tspan>
+      <tspan x="570" dy="38">deterministic</tspan>
+    </text>
+
+    
+    <rect x="1060" y="210" width="480" height="165" rx="10" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+    <text x="1090" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" dy="0">tied to supported</tspan>
+      <tspan x="1090" dy="38">kernel list</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="60" y="415" width="440" height="165" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 470)">
+      <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="6" y1="14" x2="6" y2="42" stroke="#207448" stroke-width="4" />
+      <line x1="50" y1="14" x2="50" y2="42" stroke="#207448" stroke-width="4" />
+      <path d="M 6 28 A 22 8 0 0 0 50 28" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 42 A 22 8 0 0 0 50 42" fill="none" stroke="#207448" stroke-width="4" />
+    </g>
+    
+    <text x="165" y="485" font-family="sans-serif" fill="#303a36">
+      <tspan x="165" dy="0" font-size="30" font-weight="bold">Golden image</tspan>
+      <tspan x="165" dy="38" font-size="24">(Packer plus Ansible)</tspan>
+    </text>
+
+    
+    <rect x="540" y="415" width="480" height="165" rx="10" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+    <text x="570" y="485" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="570" dy="0">reproducible, rollback is</tspan>
+      <tspan x="570" dy="38">the previous image, fits PXE</tspan>
+    </text>
+
+    
+    <rect x="1060" y="415" width="480" height="165" rx="10" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+    <text x="1090" y="505" font-family="sans-serif" font-size="24" fill="#303a36">needs an image pipeline</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="60" y="620" width="440" height="165" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 675)">
+      <rect x="6" y="8" width="44" height="40" rx="5" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="6" y1="20" x2="50" y2="20" stroke="#207448" stroke-width="3" />
+      <circle cx="14" cy="14" r="2.5" fill="#207448" />
+      <circle cx="22" cy="14" r="2.5" fill="#207448" />
+      <circle cx="30" cy="14" r="2.5" fill="#207448" />
+      <line x1="14" y1="29" x2="30" y2="29" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="38" x2="42" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    
+    <text x="165" y="690" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">GPU Operator</tspan>
+      <tspan x="165" dy="38">driver container</tspan>
+    </text>
+
+    
+    <rect x="540" y="620" width="480" height="165" rx="10" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+    <text x="570" y="690" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="570" dy="0">Kubernetes-native</tspan>
+      <tspan x="570" dy="38">lifecycle</tspan>
+    </text>
+
+    
+    <rect x="1060" y="620" width="480" height="165" rx="10" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+    <text x="1090" y="690" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" dy="0">needs the node's kernel</tspan>
+      <tspan x="1090" dy="38">and headers available</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="60" y="825" width="440" height="165" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(85, 880)">
+      <circle cx="28" cy="28" r="10" fill="none" stroke="#db8129" stroke-width="4" />
+      <circle cx="28" cy="28" r="17" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8 5.3" />
+      <line x1="28" y1="5" x2="28" y2="11" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="45" x2="28" y2="51" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="5" y1="28" x2="11" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="45" y1="28" x2="51" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="12" y1="12" x2="16" y2="16" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="40" x2="44" y2="44" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="12" y1="44" x2="16" y2="40" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="16" x2="44" y2="12" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="165" y="915" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">DKMS on nodes</text>
+
+    
+    <rect x="540" y="825" width="480" height="165" rx="10" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+    <text x="570" y="895" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="570" dy="0">easy on a workstation</tspan>
+      <tspan x="570" dy="38">or tiny cluster</tspan>
+    </text>
+
+    
+    <rect x="1060" y="825" width="480" height="165" rx="10" fill="#ffffff" stroke="#e8f1ea" stroke-width="2" />
+    <text x="1090" y="915" font-family="sans-serif" font-size="24" fill="#303a36">fragile at scale</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="1030" width="1480" height="95" rx="10" fill="#207448" />
+    <text x="800" y="1070" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">compile the driver once in CI against a pinned kernel</tspan>
+      <tspan x="800" dy="32">and never compile on a compute node.</tspan>
+    </text>
+  </g>
+</svg>

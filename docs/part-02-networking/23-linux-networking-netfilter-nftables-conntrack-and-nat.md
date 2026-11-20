@@ -52,15 +52,9 @@ There are five IPv4 and IPv6 hooks. Each one is a fixed point in the packet path
 
 Notice that `prerouting` runs before the routing decision. That is why destination NAT (DNAT) happens there, while source NAT (SNAT) and masquerade happen in `postrouting`, after routing. DNAT has to change the destination before the kernel decides where to send the packet, and SNAT has to wait until the kernel has chosen the outgoing interface.
 
-```mermaid
-flowchart LR
-  IN["Packet in from NIC"] --> PRE["prerouting\n(raw, conntrack, mangle, DNAT)"]
-  PRE --> RT{"Routing decision"}
-  RT -- "local" --> INP["input\n(mangle, filter, SNAT*)"] --> PROC["Local process"]
-  RT -- "forward" --> FWD["forward\n(mangle, filter)"] --> POST["postrouting\n(mangle, SNAT / masquerade)"]
-  PROC --> OUT["output\n(raw, conntrack, mangle, DNAT, filter)"] --> POST
-  POST --> NIC["Packet out to NIC"]
-```
+![Netfilter architecture](./img/m2-23-1.svg)
+
+*Figure 2.23.1. Netfilter architecture, as a diagram.*
 
 The path a packet takes depends on where it starts and where it ends. The table lists the hooks each path visits, in order.
 
@@ -211,9 +205,13 @@ If you run Kubernetes or a NAT gateway, you will eventually read this table. Con
 
 ![Conntrack table](./img/n23-fig1-conntrack.jpg)
 
-*Figure 2.23.1. Conntrack remembers each flow so replies can be matched.*
+*Figure 2.23.2. Conntrack remembers each flow so replies can be matched.*
 
 ### States
+
+![Conntrack states](./img/n23-states.svg)
+
+*Figure 2.23.3. A flow moves from NEW to ESTABLISHED once traffic is seen in both directions.*
 
 Think of conntrack states as stages in a visit. A new visitor arrives at the gate and is written in a book, and that is NEW. Once a reply comes back from the house they went to, the visit is known to be real, and the state becomes ESTABLISHED. A reply that belongs to an earlier visit but comes through a different gate is RELATED. A message that matches no visit at all is INVALID. Walk through a simple web request with these four stages in mind, and the rules that mention them will read like plain sentences.
 
@@ -250,6 +248,10 @@ sysctl net.netfilter.nf_conntrack_tcp_timeout_established net.netfilter.nf_connt
 Read an entry like this one from left to right: `tcp 6 431999 ESTABLISHED src=10.0.0.5 dst=198.51.100.7 sport=51000 dport=443 src=198.51.100.7 dst=203.0.113.9 sport=443 dport=40001 [ASSURED] mark=0 use=1`. The first tuple is the original direction, as the packet arrived. The second tuple is the reply direction, as it will look on the wire after NAT. Here that means the NAT address 203.0.113.9 and the translated port 40001.
 
 ### Sizing, timeouts and exhaustion
+
+![Conntrack exhaustion](./img/n23-exhaust.svg)
+
+*Figure 2.23.4. A full conntrack table drops new connections silently, and five remedies are applied in order.*
 
 Imagine a busy gateway at night. New connections from many services start to time out, but nobody has changed anything, CPU is low, and the bandwidth graph looks calm. The problem is a table that has quietly filled up. Every flow the gateway handles takes one entry, and entries stay alive for as long as their timeouts allow. When the table is full, the gateway does not tell the client anything. It drops the new connection. The paragraphs below explain what fills the table, how long entries live, and the order in which to fix it.
 
@@ -290,6 +292,10 @@ Walk through the race one step at a time. A client sends two questions to the sa
 Two UDP packets with the same 5-tuple, sent at the same moment, can race to create the conntrack entry through NAT. Take A and AAAA DNS queries sent from one source port as an example. Both ask the same question in two forms, and a resolver library sends them together. One of the two is dropped. On older kernels, this race caused the infamous 5-second DNS timeouts (chapter 2.8), because the client waited the full retry period for an answer that never came. Mitigations include `single-request-reopen`, NodeLocal DNSCache, newer kernels, or `notrack` for DNS. Use `notrack` for DNS only once you have the stateless rules in place.
 
 ## 3. NAT in practice
+
+![NAT and conntrack](./img/n23-natfirst.svg)
+
+*Figure 2.23.5. Only the first packet of a flow traverses the nat table, and conntrack applies the stored translation to the rest.*
 
 Consider a team that changes a NAT rule in the morning and sees no effect on connections already open. The change is correct. It applies only to new flows, because the mapping for each open flow was written into conntrack when that flow began. Once you know that, NAT stops being magic. It becomes a set of decisions taken at the start of each flow and remembered afterwards, and that memory is why the sections below worry so much about ports and tables.
 

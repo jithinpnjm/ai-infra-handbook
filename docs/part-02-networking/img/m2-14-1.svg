@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Neighbour formation</title>
+  <desc>Sequence diagram illustrating IS-IS neighbour formation and database synchronization between IS A and IS B.</desc>
+
+  <defs>
+    
+    <marker id="arrow-right" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 1 2 L 17 9 L 1 16 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-left" viewBox="0 0 18 18" refX="1" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 17 2 L 1 9 L 17 16 Z" fill="#207448" />
+    </marker>
+    
+    <filter id="card-shadow" x="-4%" y="-6%" width="108%" height="116%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#303a36" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Neighbour formation</text>
+
+  
+  <line x1="320" y1="210" x2="320" y2="1140" stroke="#207448" stroke-width="4" stroke-dasharray="8 8" opacity="0.45" />
+  <line x1="1280" y1="210" x2="1280" y2="1140" stroke="#207448" stroke-width="4" stroke-dasharray="8 8" opacity="0.45" />
+
+  
+  
+  <g id="participant-a" filter="url(#card-shadow)">
+    <rect x="180" y="110" width="280" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(202, 130)">
+      <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 16 28 L 40 28 M 28 16 L 28 40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="5" fill="#207448" />
+    </g>
+    <text x="350" y="170" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">IS A</text>
+  </g>
+
+  
+  <g id="participant-b" filter="url(#card-shadow)">
+    <rect x="1140" y="110" width="280" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1162, 130)">
+      <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 16 28 L 40 28 M 28 16 L 28 40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="5" fill="#207448" />
+    </g>
+    <text x="1310" y="170" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">IS B</text>
+  </g>
+
+  
+
+  
+  <g id="step-1">
+    
+    <circle cx="240" cy="270" r="24" fill="#207448" />
+    <text x="240" y="279" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <rect x="380" y="235" width="840" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="271" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">IIH (neighbours heard: none), hold time, padded to MTU</text>
+
+    
+    <line x1="324" y1="300" x2="1272" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow-right)" />
+  </g>
+
+  
+  <g id="step-2">
+    
+    <circle cx="1360" cy="385" r="24" fill="#207448" />
+    <text x="1360" y="394" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <rect x="400" y="350" width="800" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="386" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">IIH (neighbours heard: A), hold time, padded to MTU</text>
+
+    
+    <line x1="1276" y1="415" x2="328" y2="415" stroke="#207448" stroke-width="4" marker-end="url(#arrow-left)" />
+  </g>
+
+  
+  <g id="step-3" filter="url(#card-shadow)">
+    
+    <rect x="70" y="475" width="700" height="114" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <path d="M 70 489 A 14 14 0 0 1 84 475 L 88 475 L 88 589 L 84 589 A 14 14 0 0 1 70 575 Z" fill="#db8129" />
+
+    
+    <circle cx="125" cy="532" r="24" fill="#db8129" />
+    <text x="125" y="541" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <text x="175" y="522" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="175" dy="0">sees itself... A lists B in next hello</tspan>
+      <tspan x="175" dy="34">→ both two-way (3-way handshake, RFC 5303)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-4">
+    
+    <circle cx="1360" cy="650" r="24" fill="#207448" />
+    <text x="1360" y="659" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+
+    
+    <rect x="450" y="615" width="700" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="651" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">CSNP: summary of every LSP in B's database</text>
+
+    
+    <line x1="1276" y1="680" x2="328" y2="680" stroke="#207448" stroke-width="4" marker-end="url(#arrow-left)" />
+  </g>
+
+  
+  <g id="step-5">
+    
+    <circle cx="240" cy="760" r="24" fill="#207448" />
+    <text x="240" y="769" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+
+    
+    <rect x="440" y="725" width="720" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="761" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">PSNP: request for LSPs A lacks or has older</text>
+
+    
+    <line x1="324" y1="790" x2="1272" y2="790" stroke="#207448" stroke-width="4" marker-end="url(#arrow-right)" />
+  </g>
+
+  
+  <g id="step-6" filter="url(#card-shadow)">
+    
+    <rect x="830" y="850" width="700" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 830 864 A 14 14 0 0 1 844 850 L 848 850 L 848 964 L 844 964 A 14 14 0 0 1 830 950 Z" fill="#207448" />
+
+    
+    <circle cx="885" cy="907" r="24" fill="#207448" />
+    <text x="885" y="916" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+
+    
+    <text x="935" y="897" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="935" dy="0">sets SRM (Send Route Message) flag</tspan>
+      <tspan x="935" dy="34">for requested LSPs</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-7">
+    
+    <circle cx="1360" cy="1025" r="24" fill="#207448" />
+    <text x="1360" y="1034" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+
+    
+    <rect x="650" y="990" width="300" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="1026" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">LSPs (flooded)</text>
+
+    
+    <line x1="1276" y1="1055" x2="328" y2="1055" stroke="#207448" stroke-width="4" marker-end="url(#arrow-left)" />
+  </g>
+
+  
+  <circle cx="320" cy="1140" r="8" fill="#207448" />
+  <circle cx="1280" cy="1140" r="8" fill="#207448" />
+</svg>

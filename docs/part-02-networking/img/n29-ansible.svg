@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>How an Ansible run works</title>
+  <desc>Visual infographic explaining how an Ansible run works from control node to leaf switch, showing execution paths for Linux servers and network devices, followed by the idempotency verification step.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How an Ansible run works</text>
+
+  
+  <rect x="40" y="130" width="430" height="780" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(65, 155)">
+    <rect x="0" y="0" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="42" x2="28" y2="54" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="54" x2="40" y2="54" stroke="#207448" stroke-width="4"/>
+    <path d="M 12 16 L 20 21 L 12 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="24" y1="26" x2="36" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="140" y="195" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">control node</text>
+
+  
+  <rect x="60" y="235" width="390" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="80" y="275">pip install ansible-core</tspan>
+    <tspan x="80" y="320">ansible-galaxy</tspan>
+    <tspan x="80" y="354">collection install</tspan>
+    <tspan x="80" y="388">arista.eos cisco.ios</tspan>
+    <tspan x="80" y="422">ansible.netcommon</tspan>
+  </text>
+
+  
+  <rect x="60" y="455" width="390" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 502)">
+    <rect x="6" y="4" width="44" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 18 4 V 1 H 38 V 4" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="16" cy="18" r="3" fill="#207448"/>
+    <line x1="24" y1="18" x2="42" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="16" cy="28" r="3" fill="#207448"/>
+    <line x1="24" y1="28" x2="42" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="16" cy="38" r="3" fill="#207448"/>
+    <line x1="24" y1="38" x2="42" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="155" y="542" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">inventory (hosts)</text>
+
+  
+  <rect x="60" y="625" width="390" height="265" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 650)">
+    <path d="M 10 6 L 36 6 L 46 16 L 46 50 L 10 50 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 36 6 V 16 H 46" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 18 28 L 24 34 L 38 20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="18" y1="42" x2="38" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="155" y="690" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">playbook</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" y="745">(tasks, each calls</tspan>
+    <tspan x="85" y="785">a module)</tspan>
+  </text>
+
+  
+  <line x1="470" y1="520" x2="508" y2="520" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="510" y="420" width="240" height="200" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(602, 445)">
+    <rect x="4" y="14" width="48" height="28" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="14" cy="22" r="2.5" fill="#207448"/>
+    <circle cx="22" cy="22" r="2.5" fill="#207448"/>
+    <circle cx="30" cy="22" r="2.5" fill="#207448"/>
+    <line x1="12" y1="32" x2="44" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 38 28 L 44 32 L 38 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="630" y="545" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="630" dy="0">leaf</tspan>
+    <tspan x="630" dy="38">switch</tspan>
+  </text>
+
+  
+  <path d="M 750 480 H 770 V 325 H 788" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M 750 560 H 770 V 705 H 788" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="790" y="185" width="410" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(815, 210)">
+    <rect x="4" y="8" width="48" height="18" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="4" y="30" width="48" height="18" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="12" cy="17" r="2" fill="#207448"/>
+    <circle cx="18" cy="17" r="2" fill="#207448"/>
+    <circle cx="12" cy="39" r="2" fill="#207448"/>
+    <circle cx="18" cy="39" r="2" fill="#207448"/>
+    <line x1="28" y1="17" x2="44" y2="17" stroke="#207448" stroke-width="2"/>
+    <line x1="28" y1="39" x2="44" y2="39" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="885" y="250" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Linux servers:</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="815" y="310">SSH, copy a small module</tspan>
+    <tspan x="815" y="352">to the target, run it</tspan>
+    <tspan x="815" y="394">there, remove it</tspan>
+  </text>
+
+  
+  <rect x="790" y="530" width="410" height="350" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(815, 555)">
+    <circle cx="28" cy="28" r="22" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="16" y1="28" x2="40" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 34 22 L 40 28 L 34 34" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="28" y1="16" x2="28" y2="40" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 22 22 L 28 16 L 34 22" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="885" y="595" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">network devices:</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="815" y="650">no Python on device, so</tspan>
+    <tspan x="815" y="690">network modules run on</tspan>
+    <tspan x="815" y="730">the control node and</tspan>
+    <tspan x="815" y="770">reach the device through</tspan>
+    <tspan x="815" y="810">a connection plugin</tspan>
+  </text>
+
+  
+  <path d="M 1200 325 H 1220 V 500 H 1238" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M 1200 705 H 1220 V 540 H 1238" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="1240" y="330" width="320" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1372, 355)">
+    <path d="M 28 6 L 48 14 V 28 C 48 40 28 50 28 50 C 28 50 8 40 8 28 V 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 18 27 L 25 34 L 38 19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1400" y="445" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Final step:</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1260" y="495">check whether the</tspan>
+    <tspan x="1260" y="535">device now matches</tspan>
+    <tspan x="1260" y="575">(idempotent),</tspan>
+    <tspan x="1260" y="615">summary of which</tspan>
+    <tspan x="1260" y="655">hosts changed</tspan>
+  </text>
+</svg>

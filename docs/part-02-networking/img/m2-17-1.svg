@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>A packet through a tunnel</title>
+  <desc>Visual explanation of packet tunneling from Host A to Host M via underlay routers C, E, and H, showing the virtual link tunnel between headend Router C and tailend Router H.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="15" refY="8" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="15" refY="8" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="95" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A packet through a tunnel</text>
+
+  
+  <path d="M 442.5 490 V 340 Q 442.5 310 472.5 310 H 1127.5 Q 1157.5 310 1157.5 340 V 490" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow-orange)" />
+
+  <rect x="555" y="222" width="490" height="58" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <text x="800" y="259" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="26" font-weight="bold" fill="#303a36">virtual link [C,H] (tunnel)</text>
+
+  
+  <rect x="50" y="490" width="190" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="117" y="530" width="56" height="38" rx="5" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+  <line x1="145" y1="568" x2="145" y2="582" stroke="#207448" stroke-width="3.5" />
+  <line x1="131" y1="582" x2="159" y2="582" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="127" y1="545" x2="147" y2="545" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <text x="145" y="650" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Host A</text>
+
+  
+  <path d="M 240 605 H 295" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="295" y="490" width="295" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="442.5" cy="550" r="26" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+  <path d="M 430 543 H 455 M 450 538 L 455 543 L 450 548" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 455 557 H 430 M 435 552 L 430 557 L 435 562" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="442.5" y="625" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Router C</text>
+  <text x="442.5" y="672" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="24" fill="#303a36">(tunnel headend)</text>
+
+  
+  <path d="M 590 605 H 645" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="645" y="490" width="310" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="800" cy="550" r="26" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+  <path d="M 787.5 543 H 812.5 M 807.5 538 L 812.5 543 L 807.5 548" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 812.5 557 H 787.5 M 792.5 552 L 787.5 557 L 792.5 562" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="800" y="625" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Router E</text>
+  <text x="800" y="672" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="24" fill="#303a36">(underlay transit)</text>
+
+  
+  <path d="M 955 605 H 1010" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1010" y="490" width="295" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="1157.5" cy="550" r="26" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+  <path d="M 1145 543 H 1170 M 1165 538 L 1170 543 L 1165 548" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 1170 557 H 1145 M 1150 552 L 1145 557 L 1150 562" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1157.5" y="625" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Router H</text>
+  <text x="1157.5" y="672" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="24" fill="#303a36">(tunnel tailend)</text>
+
+  
+  <path d="M 1305 605 H 1360" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1360" y="490" width="190" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="1427" y="530" width="56" height="38" rx="5" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+  <line x1="1455" y1="568" x2="1455" y2="582" stroke="#207448" stroke-width="3.5" />
+  <line x1="1441" y1="582" x2="1469" y2="582" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="1437" y1="545" x2="1457" y2="545" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <text x="1455" y="650" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Host M</text>
+</svg>

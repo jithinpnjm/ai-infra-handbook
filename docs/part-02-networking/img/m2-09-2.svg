@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>How PAT works</title>
+  <desc>Sequence diagram illustrating how Port Address Translation (PAT) maps private IP and port to public IP and port, forwards traffic to an external server, and translates response traffic back.</desc>
+
+  <defs>
+    <marker id="arrow-right" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 14 8 L 2 14 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-left" viewBox="0 0 16 16" refX="2" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 14 2 L 2 8 L 14 14 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How PAT works</text>
+
+  
+  <line x1="200" y1="275" x2="200" y2="1040" stroke="#207448" stroke-width="2" stroke-dasharray="6,6" opacity="0.35" />
+  <line x1="800" y1="275" x2="800" y2="1040" stroke="#207448" stroke-width="2" stroke-dasharray="6,6" opacity="0.35" />
+  <line x1="1400" y1="275" x2="1400" y2="1040" stroke="#207448" stroke-width="2" stroke-dasharray="6,6" opacity="0.35" />
+
+  
+  <rect x="50" y="130" width="300" height="145" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="175" y="145" width="50" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="200" y1="179" x2="200" y2="190" stroke="#207448" stroke-width="4" />
+  <line x1="185" y1="190" x2="215" y2="190" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  
+  <text x="200" y="228" text-anchor="middle" fill="#303a36">
+    <tspan x="200" dy="0" font-family="sans-serif" font-size="30" font-weight="bold">Inside host</tspan>
+    <tspan x="200" dy="32" font-family="monospace" font-size="24">10.0.0.5:51000</tspan>
+  </text>
+
+  
+  <rect x="480" y="130" width="640" height="145" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="772" y="160" width="56" height="26" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="784" y1="160" x2="776" y2="146" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="816" y1="160" x2="824" y2="146" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <circle cx="786" cy="173" r="3" fill="#207448" />
+  <circle cx="800" cy="173" r="3" fill="#207448" />
+  <circle cx="814" cy="173" r="3" fill="#207448" />
+  
+  <text x="800" y="228" text-anchor="middle" fill="#303a36">
+    <tspan x="800" dy="0" font-family="sans-serif" font-size="30" font-weight="bold">NAT gateway</tspan>
+    <tspan x="800" dy="32" font-family="monospace" font-size="24">(inside 10.0.0.1, outside 203.0.113.9)</tspan>
+  </text>
+
+  
+  <rect x="1250" y="130" width="300" height="145" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="1374" y="146" width="52" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="1415" cy="153" r="2" fill="#207448" />
+  <rect x="1374" y="164" width="52" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="1415" cy="171" r="2" fill="#207448" />
+  <rect x="1374" y="182" width="52" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="1415" cy="189" r="2" fill="#207448" />
+  
+  <text x="1400" y="228" text-anchor="middle" fill="#303a36">
+    <tspan x="1400" dy="0" font-family="sans-serif" font-size="30" font-weight="bold">Server</tspan>
+    <tspan x="1400" dy="32" font-family="monospace" font-size="24">198.51.100.7:443</tspan>
+  </text>
+
+  
+  <circle cx="260" cy="340" r="24" fill="#207448" />
+  <text x="260" y="348" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <rect x="300" y="302" width="400" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="500" y="334" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="500" dy="0">src 10.0.0.5:51000 →</tspan>
+    <tspan x="500" dy="30">dst 198.51.100.7:443</tspan>
+  </text>
+  <line x1="200" y1="392" x2="792" y2="392" stroke="#207448" stroke-width="3" marker-end="url(#arrow-right)" />
+
+  
+  <rect x="460" y="425" width="680" height="120" rx="16" fill="#fffdfa" stroke="#db8129" stroke-width="3" />
+  <circle cx="505" cy="485" r="24" fill="#db8129" />
+  <text x="505" y="493" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="820" y="458" text-anchor="middle" fill="#303a36">
+    <tspan x="820" dy="0" font-family="sans-serif" font-size="30" font-weight="bold">create mapping</tspan>
+    <tspan x="820" dy="35" font-family="monospace" font-size="24">10.0.0.5:51000 ⇄ 203.0.113.9:40001</tspan>
+    <tspan x="820" dy="30" font-family="sans-serif" font-size="24">(tracked flow)</tspan>
+  </text>
+
+  
+  <circle cx="855" cy="613" r="24" fill="#207448" />
+  <text x="855" y="621" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <rect x="900" y="575" width="400" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1100" y="607" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1100" dy="0">src 203.0.113.9:40001 →</tspan>
+    <tspan x="1100" dy="30">dst 198.51.100.7:443</tspan>
+  </text>
+  <line x1="800" y1="665" x2="1392" y2="665" stroke="#207448" stroke-width="3" marker-end="url(#arrow-right)" />
+
+  > N -->
+  <circle cx="1345" cy="733" r="24" fill="#207448" />
+  <text x="1345" y="741" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <rect x="900" y="695" width="400" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1100" y="727" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1100" dy="0">src 198.51.100.7:443 →</tspan>
+    <tspan x="1100" dy="30">dst 203.0.113.9:40001</tspan>
+  </text>
+  <line x1="1400" y1="785" x2="808" y2="785" stroke="#207448" stroke-width="3" stroke-dasharray="8,6" marker-end="url(#arrow-left)" />
+
+  
+  <rect x="470" y="818" width="660" height="96" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="515" cy="866" r="24" fill="#207448" />
+  <text x="515" y="874" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  <text x="815" y="857" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="815" dy="0">lookup mapping in state table,</tspan>
+    <tspan x="815" dy="34">translate back</tspan>
+  </text>
+
+  > H -->
+  <circle cx="745" cy="983" r="24" fill="#207448" />
+  <text x="745" y="991" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+  <rect x="300" y="945" width="400" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="500" y="977" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="500" dy="0">src 198.51.100.7:443 →</tspan>
+    <tspan x="500" dy="30">dst 10.0.0.5:51000</tspan>
+  </text>
+  <line x1="800" y1="1035" x2="208" y2="1035" stroke="#207448" stroke-width="3" stroke-dasharray="8,6" marker-end="url(#arrow-left)" />
+
+  
+  <line x1="170" y1="1040" x2="230" y2="1040" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="770" y1="1040" x2="830" y2="1040" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="1370" y1="1040" x2="1430" y2="1040" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+</svg>

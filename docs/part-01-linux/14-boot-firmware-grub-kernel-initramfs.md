@@ -111,6 +111,10 @@ These commands tell you which mode a machine booted in, and what it will try nex
 
 ### Secure Boot
 
+![Each stage of the boot verifies the next, up to the kernel modules.](./img/l14-secure-boot.svg)
+
+*Figure 1.14.3. A signed chain from firmware to kernel modules means an unsigned GPU driver module will not load.*
+
 With **Secure Boot**, the firmware runs only boot code that is cryptographically **signed** by a key it trusts. A signature here works like a wax seal: the code carries a stamp the firmware can check before it runs a single instruction. Hardware vendors ship with Microsoft's keys. Distributions therefore use a small Microsoft-signed **`shim`**, which verifies and runs **GRUB**. GRUB verifies the **kernel**, and when the kernel is locked down, the kernel verifies **kernel modules**. The distribution's own key is built into shim. You can enrol more keys as **Machine Owner Keys (MOK)** with `mokutil`.
 
 Microsoft requires hardware vendors that ship Windows 8 and later to use Secure Boot. An unsigned boot loader is therefore rejected, and the operating system never starts. Major Linux distributions avoid this by shipping signed boot loaders, usually a UEFI build of GRUB behind a signed `shim`. The firmware runs the shim, and the shim runs GRUB. Some distributions go further on machines that must meet a strict security rule, and they require the whole boot sequence, including the kernel, to be signed.
@@ -200,6 +204,10 @@ grub> boot
 `Esc` returns you to the menu. If you land at the minimal `grub rescue>` prompt, GRUB could not find its modules or config. Then set `prefix` and `root` by hand, and run `insmod normal` and `normal`.
 
 ### GRUB configuration: do not edit `grub.cfg`
+
+![Settings and scripts feed a generator that writes grub.cfg, which you should never edit by hand.](./img/l14-grub-config.svg)
+
+*Figure 1.14.4. grub.cfg is generated, so change /etc/default/grub or /etc/grub.d and regenerate.*
 
 GRUB reads `grub.cfg`, which lives in `/boot/grub/` or `/boot/grub2/`. On EFI systems there is also a small stub on the ESP. **The file is generated, so your edits will be overwritten.** That surprises almost everyone once: you edit the file, boot works, and the next kernel update quietly throws your work away. Make your changes in the right place, and then regenerate the file. The workflow has four steps.
 
@@ -350,7 +358,7 @@ Read the diagram from top to bottom. Each arrow is one hand-off, from the boot l
 
 ![The initial RAM filesystem (initramfs)](./img/ch14-d2-luna.svg)
 
-*Figure 1.14.3. The initial RAM filesystem (initramfs).*
+*Figure 1.14.5. The initial RAM filesystem (initramfs).*
 
 The two families of distributions use different tools. Debian and Ubuntu use `initramfs-tools`, while RHEL, Fedora and SUSE use `dracut`. The table compares the commands for each.
 
@@ -443,6 +451,10 @@ Before you change a unit file, check which location it lives in, because a copy 
 
 ## 7. Diagnosing and repairing boot problems
 
+![A table that maps common boot symptoms to their likely cause and first action.](./img/l14-boot-symptoms.svg)
+
+*Figure 1.14.6. Identify the failing boot stage first, then change only one thing before testing again.*
+
 The moment a node will not boot, it is tempting to start changing things. Resist that, because every change you make without a note hides the cause a little further. Follow the same routine every time, because it stops you changing too much at once.
 
 Step 1 is to identify the stage that fails, as section 1 explains. Step 2 is to get a console, such as a serial console, a BMC or KVM, a hypervisor console, or cloud serial output. You can read cloud serial output with `gcloud compute instances get-serial-port-output`. Step 3 is to read the messages. Remove `quiet splash` and add `console=`, so that you can see the output. Step 4 is to boot an older kernel or a rescue medium. Step 5 is to change one thing at a time.
@@ -518,7 +530,7 @@ The diagram traces a network boot from the first DHCP request to the hand-off to
 
 ![Network booting: DHCP, TFTP, PXE and NFS root](./img/ch14-d3-luna.svg)
 
-*Figure 1.14.4. Network booting: DHCP, TFTP, PXE and NFS root.*
+*Figure 1.14.7. Network booting: DHCP, TFTP, PXE and NFS root.*
 
 ### Components
 

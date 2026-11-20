@@ -62,6 +62,10 @@ When you troubleshoot an Ethernet link, ask first whether it is switched and ful
 
 ## 2. MAC addresses
 
+![MAC address structure](./img/n03-macbits.svg)
+
+*Figure 2.3.1. The first three octets name the vendor, and two bits of the first octet say unicast or multicast and burned-in or locally set.*
+
 Imagine a mailroom where every desk has a number. Mail can only be delivered if the number is on the envelope. Every network interface needs an address that identifies it on the local wire, and that address is the MAC. A **MAC address** is 48 bits, written as six hex octets such as `52:54:00:12:34:56`. It identifies a network interface, not a host. A server with four NICs has four MAC addresses, and virtual NICs add more. The bits inside the address carry meaning, and you can read them straight off the diagram.
 
 ```text
@@ -94,6 +98,10 @@ sudo ip link set dev eth0 promisc on         # (tcpdump does this for you)
 Before you clone a VM or a NIC, check its MAC address, because a duplicate is the usual cause of MAC flapping. Two desks with the same number make the mail carrier shuttle back and forth between them.
 
 ## 3. The Ethernet frame
+
+![Ethernet frame layout](./img/n03-frame.svg)
+
+*Figure 2.3.2. Every Ethernet frame has the same field order, which lets a NIC decide in hardware.*
 
 Every frame on the wire has the same layout, the way every envelope has the address in the same place. That predictability is what lets a network card make decisions in hardware while the rest of the frame is still arriving. The diagram shows the fields in order. Keep it nearby when a capture or a counter points at one field.
 
@@ -171,7 +179,7 @@ Picture a receptionist in a building who has never met anyone. At first they do 
 
 ![How a switch learns and forwards](./img/n03-fig1-switch-v2.jpg)
 
-*Figure 2.3.1. A switch learns source MACs per port, looks up the destination, then forwards or floods.*
+*Figure 2.3.3. A switch learns source MACs per port, looks up the destination, then forwards or floods.*
 
 ### Learning, forwarding and flooding
 
@@ -184,23 +192,9 @@ When a frame arrives on port *P*, the switch does two things. First it learns: i
 - If the destination is unknown unicast, broadcast or unfiltered multicast, the switch floods the frame to every other port in the VLAN.
 - Frames addressed to the switch's own MAC, such as management traffic, go to its control plane.
 
-```mermaid
-sequenceDiagram
-  participant A as Host A (MAC a, port 1)
-  participant S as Switch
-  participant B as Host B (MAC b, port 2)
-  participant C as Host C (MAC c, port 3)
-  A->>S: frame src=a dst=b (b unknown)
-  Note over S: learn a→port1, unknown unicast: FLOOD to ports 2,3
-  S->>B: frame (accepted)
-  S->>C: frame (ignored: not its MAC)
-  B->>S: reply src=b dst=a
-  Note over S: learn b→port2, a known: forward only to port 1
-  S->>A: reply
-  A->>S: next frame src=a dst=b
-  Note over S: both known: forward only to port 2
-  S->>B: frame
-```
+![Learning, forwarding and flooding](./img/m2-03-1.svg)
+
+*Figure 2.3.4. Learning, forwarding and flooding, as a diagram.*
 
 Read the diagram from top to bottom, and you will see the first frame flood, because the switch has never seen host B. B's reply teaches the switch where B is, so the next frames go to one port only. In the first frame, the switch learns where A is. In the reply, it learns where B is. From then on the conversation is private.
 
@@ -255,6 +249,10 @@ A wrong mask causes trouble in either direction, because the host's picture of "
 
 ### IPv4 ARP (Address Resolution Protocol)
 
+![ARP request and reply](./img/n03-arp.svg)
+
+*Figure 2.3.5. An ARP request is broadcast to the whole segment, and the owner of the address answers with a unicast reply.*
+
 An ARP request is an Ethernet broadcast. It asks a question to the whole room: "who has 203.0.113.12? tell 203.0.113.10". If you capture one with `tcpdump`, you will see every host receive it. The owner replies with a unicast ARP reply that carries its MAC address. The requester stores the mapping in the ARP cache, which Linux calls the neighbour table. Other hosts that see the request may also learn the sender's mapping. You can think of the whole exchange as asking "who is Alice?" in a hall and Alice answering "me, I am at desk 12".
 
 An ARP packet is 28 bytes long. It sits after the Ethernet header, with EtherType 0x0806. Its fields are laid out below.
@@ -302,6 +300,10 @@ Each row is set per interface, through the `<if>` part of the key.
 A common recipe for multi-homed servers, with one subnet per NIC (for example one IP per rail or GPU NIC), is `arp_ignore=1`, `arp_announce=2` and `rp_filter=2` in loose mode. Add policy routing with one routing table per NIC (chapter 2.24), so replies leave on the interface that received the request. This is a frequent cause of incidents that appear only after another NIC is plugged in, so if you run this design, write the recipe down. The reason it helps is plain. Each setting makes the server answer only for the address that belongs to the card the question arrived on.
 
 ### IPv6 Neighbor Discovery (NDP)
+
+![IPv6 Neighbor Discovery steps](./img/n03-ndp.svg)
+
+*Figure 2.3.6. A new IPv6 host builds a link-local address, checks it with DAD, then learns the prefix from a router advertisement.*
 
 IPv6 has no broadcast, so it needs a different way to ask the same question. It uses ICMPv6 messages instead. They are carried inside IPv6 rather than as a separate Ethernet protocol, and they go to multicast addresses.
 

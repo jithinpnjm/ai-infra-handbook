@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>The five capability sets</title>
+  <desc>Visual infographic explaining Linux capability sets: Permitted, Effective, Inheritable, Bounding, and Ambient, along with inspection and configuration commands.</desc>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The five capability sets</text>
+
+  
+
+  
+  <g>
+    <rect x="50" y="140" width="800" height="126" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 86 182 L 106 174 L 126 182 C 126 210 106 226 106 226 C 106 226 86 210 86 182 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 98 200 L 104 206 L 116 194" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="160" y="182" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Permitted</text>
+    <text x="160" y="220" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" dy="0">upper bound of what the thread may hold</tspan>
+      <tspan x="160" dy="30">in its effective set</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="286" width="800" height="116" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="4"/>
+    
+    <rect x="88" y="342" width="36" height="28" rx="4" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 96 342 V 330 C 96 322 116 322 116 330 V 342" fill="none" stroke="#db8129" stroke-width="4"/>
+    <circle cx="106" cy="354" r="3" fill="#db8129"/>
+    <path d="M 106 357 V 364" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <text x="160" y="336" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">Effective</text>
+    <text x="160" y="376" font-family="sans-serif" font-size="24" fill="#303a36">what the kernel checks right now</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="422" width="800" height="116" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="106" cy="454" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 106 462 V 480 M 90 494 L 106 480 L 122 494" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="90" cy="502" r="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="122" cy="502" r="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="160" y="472" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Inheritable</text>
+    <text x="160" y="512" font-family="sans-serif" font-size="24" fill="#303a36">may be passed across execve</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="558" width="800" height="136" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="82" y1="596" x2="130" y2="596" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <rect x="88" y="608" width="36" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 96 625 L 116 625" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="160" y="600" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Bounding</text>
+    <text x="160" y="640" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" dy="0">limit on what can ever be gained through execve,</tspan>
+      <tspan x="160" dy="30">dropping is irreversible for the process tree</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="714" width="800" height="116" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 90 782 C 84 782 80 777 80 771 C 80 766 84 761 89 761 C 91 753 97 747 106 747 C 114 747 121 753 122 759 C 126 759 132 763 132 769 C 132 775 127 782 120 782 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <text x="160" y="764" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Ambient</text>
+    <text x="160" y="804" font-family="sans-serif" font-size="24" fill="#303a36">kept across execve of non-privileged programs</text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="890" y="140" width="660" height="206" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="920" y="160" width="46" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 928 174 L 935 180 L 928 186" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="938" y1="186" x2="948" y2="186" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <rect x="920" y="210" width="600" height="114" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1"/>
+    <text x="940" y="252" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="940" dy="0">grep Cap /proc/self/status</tspan>
+      <tspan x="940" dy="36">(CapInh CapPrm CapEff CapBnd CapAmb)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="890" y="376" width="660" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="920" y="396" width="46" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="943" cy="413" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="943" y1="402" x2="943" y2="406" stroke="#207448" stroke-width="3"/>
+    <line x1="943" y1="420" x2="943" y2="424" stroke="#207448" stroke-width="3"/>
+    <line x1="932" y1="413" x2="936" y2="413" stroke="#207448" stroke-width="3"/>
+    <line x1="950" y1="413" x2="954" y2="413" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="920" y="446" width="600" height="76" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1"/>
+    <text x="940" y="493" font-family="monospace" font-size="24" fill="#303a36">capsh --decode=...</text>
+  </g>
+
+  
+  <g>
+    <rect x="890" y="576" width="660" height="254" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="920" y="596" width="46" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 928 610 L 935 616 L 928 622" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="938" y1="622" x2="948" y2="622" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <rect x="920" y="646" width="600" height="156" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1"/>
+    <text x="940" y="705" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="940" dy="0">sudo setcap cap_net_bind_service=+ep</tspan>
+      <tspan x="940" dy="44">/usr/local/bin/myserver</tspan>
+    </text>
+  </g>
+</svg>

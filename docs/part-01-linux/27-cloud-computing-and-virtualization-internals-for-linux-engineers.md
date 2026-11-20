@@ -128,6 +128,10 @@ The mitigations come in two groups. **Resource controls** give performance isola
 
 ### Why a cloud GPU node behaves differently
 
+![Noisy neighbours, virtual topology, passthrough limits and nested virtualisation explain most cloud surprises.](./img/l27-cloud-gpu-diffs.svg)
+
+*Figure 1.27.1. Check these four differences before blaming the software for a slower cloud GPU node.*
+
 A GPU node in the cloud is not the same machine as one in your own rack, even when the GPU model matches. Four differences explain most surprises.
 
 1. **Noisy neighbours.** Other tenants share the host's CPU caches, memory bandwidth, NIC and sometimes the fabric. You see it as `%steal` and as latency outliers, and you cannot fix it from inside the guest.
@@ -147,7 +151,7 @@ Two jobs feel slow this week, and they have nothing in common except the symptom
 
 ![Three ways to virtualise](./img/ch27-d1-luna.svg)
 
-*Figure 1.27.1. Three ways to virtualise.*
+*Figure 1.27.2. Three ways to virtualise.*
 
 The top stack has a full VM with its own kernel. The middle stack has no guest kernel at all, because every container shares the host kernel. The bottom stack keeps a guest kernel, but a minimal one behind a small hypervisor. Count the kernels, and you can predict most of the differences that follow.
 
@@ -230,6 +234,10 @@ That is the trade-off to weigh. Cloud operators get the best visibility from con
 
 ### VM, bare metal or container for GPUs?
 
+![Five ways to run GPU workloads compared by their pros and cons.](./img/l27-gpu-options.svg)
+
+*Figure 1.27.3. Each option trades control for convenience, so read the cons column as carefully as the pros.*
+
 Your team has a GPU workload and must choose where it will run. Five options are common, and each one trades control for convenience. The table sets out the pros, the cons and the typical use of each.
 
 | Option | Pros | Cons | Typical use |
@@ -277,6 +285,10 @@ Know the **metadata server**. It holds instance attributes, scheduling and preem
 Before you commit a GPU workload to a cloud, test the network and storage with your own pattern, not the advertised numbers.
 
 ## 5. Resource controls under the USE method
+
+![Each software limit paired with the signals that show whether it is binding.](./img/l27-limits-use.svg)
+
+*Figure 1.27.4. Utilisation is measured against the limit, not the physical resource, which is what makes the table useful in a shared cloud.*
 
 Your dashboards show the physical machine, but the limit that slows your container is a software setting. Traditional tools are blind to software-imposed limits. In cloud environments, those limits are often the first thing you hit. To find them, extend the USE table from chapter 1.23 with **limits**.
 

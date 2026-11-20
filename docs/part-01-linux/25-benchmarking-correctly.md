@@ -132,6 +132,10 @@ For each new micro-benchmark, decide first which dimensions matter for your work
 
 ## 4. Methodology
 
+![Passive benchmarking reads a report afterwards, while active benchmarking watches the system during the run.](./img/l25-passive-active.svg)
+
+*Figure 1.25.2. Active benchmarking confirms what is tested and what limits it while the benchmark runs.*
+
 Methods differ in how much they teach you. One engineer runs a tool, pastes the output into slides and moves on. Another runs the same tool and watches the system while it works. The table lists the methods, and it helps you choose one for each situation.
 
 | Method | What | Notes |
@@ -158,9 +162,17 @@ The conclusion is that the first test measures 1-byte *buffered filesystem write
 
 ### Ramping load and acceptable latency
 
+![Throughput and latency plotted against stepped load, with the knee marked.](./img/l25-ramp-knee.svg)
+
+*Figure 1.25.3. The result is the highest load whose latency is still acceptable, not the highest throughput.*
+
 Add clients, threads or QPS in increments, and hold each level long enough for the system to settle. Plot throughput and latency percentiles against load, and mark the **knee**, the point where the curve bends. Report the highest load whose latency is acceptable to a customer. Going from 990,000 IOPS at 5 ms to 1,000,000+ IOPS at 50 ms is not an achievement, and no user is better off for it. The right number to publish is 990,000. Then verify with the USE method that some resource really reached its limit, or you are only measuring the generator. Always record **latency distributions**, not just means.
 
 ### The checklist
+
+![Six questions to ask of any benchmark result before accepting it.](./img/l25-six-questions.svg)
+
+*Figure 1.25.4. Each question catches a different way a benchmark result can mislead you.*
 
 Put every result through six questions before you accept it. Each one catches a different way a result can mislead you.
 
@@ -189,7 +201,7 @@ Picture a team that spends a week choosing between two load generators, then run
 
 ![A benchmark you can trust](./img/ch25-fig1-bench.jpg)
 
-*Figure 1.25.2. A reproducible benchmark fixes the setup, warms up, measures steady state, repeats and reports median and spread.*
+*Figure 1.25.5. A reproducible benchmark fixes the setup, warms up, measures steady state, repeats and reports median and spread.*
 
 1. **Question and success criterion.** Write down the question and what counts as a pass. For example, does node X deliver at least 95% of the fleet median on a reference step? Or can this fabric sustain at least 90% of line rate for a 1 GiB all-reduce across 16 nodes? Without a criterion, the result can never pass or fail.
 2. **Record the environment** automatically. Capture the hardware: CPU model, microcode, BIOS version and settings, DIMMs, GPU model, SKU and VBIOS, NIC model and firmware, PCIe link width and speed, and topology. Capture the OS as well: kernel, boot parameters, sysctls, governor, and THP. Capture drivers and libraries, meaning the NVIDIA driver, CUDA, cuDNN, NCCL, MOFED/DOCA, PyTorch or the framework, and the container image digest. Then capture the cluster settings, such as scheduler, cgroup limits, and CPU, memory and GPU binding. Finally, capture clocks, power limits, and the software versions of the benchmark tool. Keep a script that dumps all of it next to your results.
@@ -372,6 +384,10 @@ Industry results are vendor-tuned, and they often use the best configuration, sp
 ## 7. Statistics, sanity checks and reporting
 
 ### Sanity-check arithmetic you should do instantly
+
+![Quick arithmetic shows when a claimed number exceeds a physical limit.](./img/l25-sanity-math.svg)
+
+*Figure 1.25.6. Do the arithmetic with units and treat any number above a physical limit as a measurement error.*
 
 Before you repeat a number to a colleague or a customer, run these checks in your head first. Each row shows the arithmetic and the verdict, and each verdict is one you can reach in seconds.
 

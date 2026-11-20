@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-batch-vs-steps",
+  "title": "Commands without srun run once, on the first node",
+  "spec": "Two panels side by side. Left panel titled Batch script, with a short script box listing three lines in monospace: echo Start, then srun hostname, then echo End. Above the script box, two directive lines in monospace: #SBATCH --nodes 2 and #SBATCH --ntasks-per-node 2. Right panel titled Allocation of two nodes, with two large node boxes stacked vertically. The top node box is labelled n10 and carries a green badge reading Step 0, first allocated node. The bottom node box is labelled n11. Arrow 1: from the echo Start line to the top node box only, with a label runs once. Arrow 2: from the srun hostname line to both node boxes. Inside the top node box, two small task blocks, each labelled n10. Inside the bottom node box, two small task blocks, each labelled n11. A caption under the task blocks reads runs four times across the two nodes, in arbitrary completion order. Arrow 3: from the echo End line to the top node box only, labelled runs once. Below the right panel, a dashed note box with an orange border reads without srun, the second node stays idle. Number circles are not used. Green takeaway bar at the bottom reads A command without srun runs once, on the first node.",
+  "anchor": "## 1. Allocations, batch jobs and steps",
+  "alt": "In a two-node batch script, echo lines run once on the first node, while srun hostname runs four tasks across both nodes.",
+  "cap": "In a multi-node batch script, only the lines that start with srun reach the second node."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-array-grid",
+  "title": "Mapping array task 5 onto a learning-rate and batch-size grid",
+  "spec": "A grid drawn as a table with four columns and three rows. Column headers across the top, left to right: learning rate 1e-4 (LR index 0), 3e-4 (LR index 1), 1e-3 (LR index 2), 3e-3 (LR index 3). Row labels down the left side, top to bottom: batch size 16 (BS index 0), batch size 32 (BS index 1), batch size 64 (BS index 2). Each cell shows its array task number in a green square: row 16 holds tasks 0, 1, 2, 3; row 32 holds tasks 4, 5, 6, 7; row 64 holds tasks 8, 9, 10, 11. The cell for task 5, in the row for batch size 32 and the column for 3e-4, has the orange highlight. Beside the grid, a small arithmetic panel with three lines in monospace: LR_IDX = 5 % 4 = 1, BS_IDX = 5 / 4 = 1, pair = (3e-4, 32). Under the grid, a note reads %4 throttle: four training runs read the dataset at once, and the other eight wait. Number circles are not used. Green takeaway bar at the bottom reads Modulo picks the learning rate, and integer division picks the batch size.",
+  "anchor": "### 2D hyperparameter grid search with job arrays (*Distributed AI Systems* Chapter 8)",
+  "alt": "Array task 5 maps to learning rate 3e-4 and batch size 32 using modulo and integer division.",
+  "cap": "Each array task index maps to one learning rate and one batch size, so task 5 runs 3e-4 with batch size 32."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-dependency-chain",
+  "title": "A training run split across segments, then evaluated",
+  "spec": "A left-to-right chain of three job boxes with arrows between them. Box 1, labelled J1, train segment 1, with a small script icon labelled train.sh. Box 2, labelled J2, train segment 2, resumes from latest checkpoint, with a script icon labelled train.sh. Box 3, labelled J3, evaluate, with a script icon labelled evaluate.sh. Arrow from J1 to J2, labelled --dependency=afterany:$J1, with a note beneath reading a timeout counts as a failure, so afterany lets the chain continue. Arrow from J2 to J3, labelled --dependency=afterok:$J2, with a note beneath reading the evaluation runs only if segment 2 succeeds. Number circles 1, 2 and 3 mark the boxes in time order. Below box 2, an orange-bordered note box reads if a job with afterok fails, the dependent job stays pending with DependencyNeverSatisfied; add --kill-on-invalid-dep=yes to cancel it instead. Green takeaway bar at the bottom reads Each segment resumes from the latest checkpoint, so no work repeats.",
+  "anchor": "## 6. Dependencies and pipelines",
+  "alt": "Two training segments run one after another with afterany, and an evaluation job runs with afterok after the last segment.",
+  "cap": "Dependencies chain training segments and an evaluation job so the run continues past one time limit."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-signal-requeue",
+  "title": "A warning signal, a clean stop, and a requeue",
+  "spec": "Three swim lanes drawn as horizontal bands, top to bottom: Batch shell (the script), Training (srun python train.py), slurmctld (controller). Time flows left to right. Number circles mark steps in time order. Step 1, in the batch shell lane: an arrow arrives labelled #SBATCH --signal=B:USR1@600, with the note 600 seconds before the time limit, the batch shell receives USR1. Step 2, in the batch shell lane: a box labelled trap runs checkpoint_and_requeue. Step 3, arrow from the batch shell lane to the training lane, labelled kill -TERM on the training process, with a note that the training program writes a checkpoint on SIGTERM. Step 4, in the batch shell lane after the wait: a box labelled wait for training to exit. Step 5, arrow from the batch shell lane up to the slurmctld lane, labelled scontrol requeue $SLURM_JOB_ID. Step 6, in the slurmctld lane: a box labelled job goes back to the queue with the same job ID. A small note in the slurmctld lane reads the next run sees SLURM_RESTART_COUNT increase. The step 5 arrow is orange as the single most important item. Green takeaway bar at the bottom reads Periodic checkpoints are the real safety net; the signal handler saves the wait for the next checkpoint.",
+  "anchor": "## 7. Time limits, signals, checkpoints, requeue",
+  "alt": "At a warning signal, the batch shell stops the training process, waits for it to exit, and requeues the job with the same ID.",
+  "cap": "A warning signal lets the batch script stop training cleanly and requeue the job under the same ID."
+ }
+]

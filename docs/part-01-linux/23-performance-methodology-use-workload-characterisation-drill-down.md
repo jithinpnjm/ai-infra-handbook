@@ -91,6 +91,10 @@ Two points cause the most confusion. Bandwidth is the maximum possible throughpu
 
 ### Latency and time scales
 
+![Typical latencies scaled so that one CPU cycle takes one second.](./img/l23-latency-scale.svg)
+
+*Figure 1.23.2. Scaling latencies to human time shows how large the gaps between memory, disk and network are.*
+
 Convert everything to time when you can, because time is the one currency every component accepts. You cannot compare 100 network I/Os with 50 disk I/Os. You can compare 100 ms of network time with 50 ms of disk time. It also helps to know the orders of magnitude, so that a suspicious number stands out before you dig. The table below scales things so that a 0.3 ns CPU cycle equals one second. Read the scaled column as a rough map of how far apart the events are.
 
 | Event | Typical latency | Scaled |
@@ -210,7 +214,7 @@ A host is slow, and someone wants an answer now. Run these commands in the first
 
 ![The 60-second Linux checklist](./img/ch23-fig1-60s.jpg)
 
-*Figure 1.23.2. Ten commands, one line each, that give a first view of a slow host.*
+*Figure 1.23.3. Ten commands, one line each, that give a first view of a slow host.*
 
 | # | Command | What to check |
 |---|---|---|
@@ -248,7 +252,7 @@ The diagram below is the loop, and it is worth reading once as a picture of the 
 
 ![The USE method](./img/ch23-d2-luna.svg)
 
-*Figure 1.23.3. The USE method.*
+*Figure 1.23.4. The USE method.*
 
 When you read the results, check in this order. Errors come first, because they are cheap and objective. Saturation comes second, because any amount of it matters. Utilisation comes third, because it needs interpretation.
 
@@ -293,6 +297,10 @@ For LLM serving, duration splits into queue time, time to first token (TTFT), ti
 
 ## 7. Workload characterisation
 
+![Four questions about who, why, what and when characterise the load before measuring speed.](./img/l23-workload-4q.svg)
+
+*Figure 1.23.5. Characterise the input load, not the resulting performance.*
+
 A cluster is busy and nobody can say why. Before you study how fast anything runs, look at what is being asked of it. Characterise the **input**, not the resulting performance. Ask four questions about the load:
 
 - Who is causing the load? Name the user, job, tenant, client IP or process.
@@ -318,7 +326,7 @@ Drill-down narrows the search in three stages, from the whole fleet down to one 
 
 ![Three-stage drill-down](./img/ch23-d3-luna.svg)
 
-*Figure 1.23.4. Three-stage drill-down.*
+*Figure 1.23.6. Three-stage drill-down.*
 
 ### Five whys
 
@@ -342,6 +350,10 @@ Static performance tuning audits the configuration at rest. Ask whether each com
 
 ### Performance mantras
 
+![The performance mantras ranked from most to least effective.](./img/l23-mantras.svg)
+
+*Figure 1.23.7. The order of the mantras is the point: eliminating work beats making it cheaper.*
+
 Performance mantras rank the fixes, from most effective to least, and the ranking is more useful than the list. Don't do it. Remove unneeded work, such as a redundant copy or a debug sync. Next, do it, but don't do it again. Cache the tokenized data, the compiled kernels or the KV prefix cache. Then do it less, by reducing polling, checkpoint frequency and logging. Do it later with async checkpointing or write-back. Do it when they're not looking, with off-peak maintenance or background compaction. Do it concurrently, overlapping communication and compute with multiple streams or data-loader workers. Last, do it more cheaply with faster hardware, lower precision or a better algorithm.
 
 Before you tune anything, check the configuration at rest and compare it against your baseline.
@@ -354,7 +366,7 @@ Plot the performance you deliver, such as tokens/s, samples/s or requests/s, aga
 
 ![Reading scalability curves](./img/ch23-d4-luna.svg)
 
-*Figure 1.23.5. Reading scalability curves.*
+*Figure 1.23.8. Reading scalability curves.*
 
 - Linear: performance grows in proportion. That rarely lasts.
 - Contention: part of the work is serial or shared. A lock, a data loader, the all-reduce or a single metadata server can be that part.
@@ -440,6 +452,10 @@ Before the next incident, check that every host has the crisis tools installed.
 
 ## 13. AI-specific measures of efficiency
 
+![Outcome metrics that measure work delivered, such as throughput, MFU, scaling efficiency and goodput.](./img/l23-ai-metrics.svg)
+
+*Figure 1.23.9. Use outcome metrics rather than raw utilisation because they measure work delivered.*
+
 Raw utilisation numbers are weak signals on accelerators, as the `GPU-Util` example in section 5 showed. Use the outcome metrics in the table below, because they measure work delivered rather than time occupied.
 
 | Metric | Definition | Use |
@@ -487,7 +503,7 @@ Here is the whole chapter as one flow, the way you would walk through it during 
 
 ![Putting a method into practice: a template](./img/ch23-d5-luna.svg)
 
-*Figure 1.23.6. Putting a method into practice: a template.*
+*Figure 1.23.10. Putting a method into practice: a template.*
 
 Follow the flow in the diagram. Start with the problem statement, then set a baseline. Run the 60-second checklist and a USE sweep. If a resource is implicated, drill down on it. Otherwise, analyse the workload and latency, and audit the static configuration. Form a hypothesis, change one thing, and predict the result. Then verify against the baseline, quantify the gain and document the work. Finally, add monitoring and alerts, and update the checklist or runbook.
 

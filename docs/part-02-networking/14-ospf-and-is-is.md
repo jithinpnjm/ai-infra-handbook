@@ -95,6 +95,10 @@ Why does IS-IS look so different from OSPF? IS-IS stands for Intermediate System
 
 ### NSAP/NET addressing
 
+![IS-IS NET address](./img/n14-net.svg)
+
+*Figure 2.14.1. A NET has an area part, a unique System ID and an N-selector of 00.*
+
 Each IS has an OSI address, called a NET (network entity title). Think of it as the router's name tag. An example is `49.0001.1921.6800.1001.00`. The address has three parts, as the block below shows.
 
 ```text
@@ -118,18 +122,9 @@ TLV space is large, so the logical LSP is split into fragments, like a long lett
 
 The sequence below shows how two neighbours come up. Read it from top to bottom, and notice that each step depends on the one before.
 
-```mermaid
-sequenceDiagram
-  participant A as IS A
-  participant B as IS B
-  A->>B: IIH (neighbours heard: none), hold time, padded to MTU
-  B->>A: IIH (neighbours heard: A), hold time, padded to MTU
-  Note over A: sees itself... A lists B in next hello → both two-way (3-way handshake, RFC 5303)
-  B->>A: CSNP: summary of every LSP in B's database
-  A->>B: PSNP: request for LSPs A lacks or has older
-  Note over B: sets SRM (Send Route Message) flag for requested LSPs
-  B->>A: LSPs (flooded)
-```
+![Neighbour formation](./img/m2-14-1.svg)
+
+*Figure 2.14.2. Neighbour formation, as a diagram.*
 
 Each hello carries the list of neighbours the sender has heard. That list is the two-way check. The hello also carries the hold time the peer should use. A typical setup uses a 10 s hello and a 30 s hold, with faster timers when you need quicker convergence. Hello padding fills the hello out to the interface MTU during adjacency formation, so an MTU mismatch shows up early. An adjacency that comes up but later fails on large LSPs is the classic sign that padding is missing.
 
@@ -203,17 +198,9 @@ Each router originates exactly one Router LSA, type 1, per area. Links are infer
 
 A neighbour moves through a fixed set of states, a bit like two people getting to know each other. The diagram shows the path, and the steps below it tell you what happens at each stop.
 
-```mermaid
-stateDiagram-v2
-  [*] --> Down
-  Down --> Init: hello received (no 2-way)
-  Init --> TwoWay: my router ID seen in neighbour's hello
-  TwoWay --> ExStart: (DR/BDR elected) decide to form adjacency
-  ExStart --> Exchange: master/slave chosen, DBD sequence agreed
-  Exchange --> Loading: DBDs exchanged, LSRs sent for missing LSAs
-  Loading --> Full: databases synchronised
-  Full --> Down: dead timer / BFD down
-```
+![Neighbour state machine](./img/m2-14-2.svg)
+
+*Figure 2.14.3. Neighbour state machine, as a diagram.*
 
 1. Hello comes first. The neighbours must agree on hello and dead intervals, area ID, and network type and subnet mask on multi-access links. They must also agree on authentication, stub flags and MTU. The MTU appears in DBD packets. A mismatch leaves the adjacency stuck in ExStart or Exchange.
 2. Two-way is confirmed when each router sees its own ID in the neighbour's list of neighbours seen. On broadcast networks, only the DR and BDR reach Full with everyone. Other pairs stay in 2-Way.
@@ -230,6 +217,10 @@ The LSA header carries several fields, and it is worth knowing the main ones. LS
 When an LSA changes, it floods in an LSU to every neighbour except the one it came from. Each receiver acknowledges it, either explicitly in an LSAck or implicitly by flooding it back. The receiver installs the LSA only if it is newer by sequence, and then it floods onward. The originator retransmits until it gets an acknowledgment. Flooding stays inside an area, so you control the flooding cost by sizing the area. A smaller area means less news for every router to process.
 
 ### Network types, DR and BDR
+
+![OSPF DR and BDR](./img/n14-drbdr.svg)
+
+*Figure 2.14.4. Electing a DR and BDR cuts the number of adjacencies on a shared segment from n(n-1)/2 to two per router.*
 
 The network type decides whether OSPF runs an election. If every pair of routers formed its own relationship on a shared Ethernet segment, the number of relationships would explode, which is why elections exist. The table compares the common types, so you can pick the right one.
 
@@ -252,11 +243,15 @@ A large flat OSPF domain puts everyone's SPF and flooding load on every router. 
 
 ![OSPF areas](./img/n14-fig1-areas.jpg)
 
-*Figure 2.14.1. Area 0 connects the other areas through area border routers.*
+*Figure 2.14.5. Area 0 connects the other areas through area border routers.*
 
 Special area types reduce state. A stub area drops external LSAs and uses a default route instead. A totally stubby area also drops inter-area routes. An NSSA is a stub area that can still originate external routes through type 7 LSAs. Inter-area routing acts like distance vector at the ABR level, so areas must stay loop-free through the backbone. Modern data centres usually use a single area of up to a few hundred routers. Larger scales often avoid OSPF in favour of IS-IS or BGP.
 
 ### Cost, SPF and ECMP
+
+![OSPF cost reference bandwidth](./img/n14-cost.svg)
+
+*Figure 2.14.6. With the default 100 Mb/s reference, a 1G and a 100G link have the same cost of 1.*
 
 Cost equals the reference bandwidth divided by the interface bandwidth, with a minimum of 1. The default reference is 100 Mb/s, so every link at or above 100 Mb/s costs 1. That means a 100G link and a 1G link look identical, which defeats the purpose of cost. Always set `auto-cost reference-bandwidth` high, to 400000 or more Mb/s, and set it the same on every router. Otherwise, set the interface costs explicitly.
 
@@ -296,6 +291,10 @@ vtysh -c 'show ip ospf neighbor' -c 'show ip ospf interface' -c 'show ip ospf da
 For IPv6, use `ipv6 ospf6` and `router ospf6`.
 
 ## 6. OSPF versus IS-IS: choosing
+
+![OSPF versus IS-IS](./img/n14-choose.svg)
+
+*Figure 2.14.7. Both converge in sub-second time with tuning and BFD, so pick the one your team can operate.*
 
 Choosing between the two is a question about your team as much as about the protocol. A protocol your engineers cannot debug at three in the morning is the wrong protocol. The table compares them on the points that usually decide it.
 

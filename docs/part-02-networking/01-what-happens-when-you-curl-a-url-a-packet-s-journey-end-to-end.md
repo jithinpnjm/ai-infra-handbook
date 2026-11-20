@@ -56,29 +56,9 @@ Before we go step by step, look at the whole trip once. Think of sending a parce
 
 *Figure 2.1.1. The six stages of a curl request: DNS, route, ARP, TCP, TLS and HTTP.*
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant U as curl (user space)
-  participant K as Linux kernel (stack)
-  participant N as NIC / switch / router path
-  participant D as DNS resolver
-  participant S as Server (example.com)
-  U->>K: getaddrinfo("example.com") - resolver library, /etc/nsswitch.conf, /etc/hosts
-  K->>D: DNS query (UDP/53) to configured resolver, via routing + ARP/ND + Ethernet
-  D-->>K: A / AAAA records (IP addresses, TTL)
-  U->>K: socket(), connect(IP:443)
-  K->>K: route lookup (longest prefix), source address, ARP/ND for next hop
-  K->>S: TCP SYN
-  S-->>K: SYN-ACK
-  K->>S: ACK (connection established)
-  U->>S: TLS ClientHello (SNI, ALPN)
-  S-->>U: ServerHello, certificate chain, key share, Finished
-  U->>S: Finished (TLS 1.3: encrypted application data may follow)
-  U->>S: HTTP request: GET / HTTP/1.1 (or HTTP/2)
-  S-->>U: HTTP response: status, headers, body
-  U->>S: FIN / close (or connection reuse)
-```
+![The whole journey in one picture](./img/m2-01-1.svg)
+
+*Figure 2.1.2. The whole journey in one picture, as a diagram.*
 
 Every packet between user and server crosses the same physical sequence: process → socket → TCP/IP stack → queueing discipline → NIC driver → wire → switch → router(s) → … → server NIC → stack → process. Do not worry yet about what each word means. You will meet every one of them in its own section, and by the end the sequence will read like a sentence. Keep that order in your head. The next sections walk along it one stop at a time.
 
@@ -99,6 +79,10 @@ strace -f -tt -e trace=openat,socket,connect,sendto,recvfrom,sendmsg,recvmsg,clo
 The `strace` output tells the story best, because it is the program's own diary. You will see `curl` open `/etc/resolv.conf`, `/etc/nsswitch.conf` and `/etc/hosts`, which is it looking up how to find a name. Then it creates a `socket(AF_INET, SOCK_DGRAM, ...)` for DNS, which is the phone line it will use to ask the question. After that come a `socket(AF_INET6 or AF_INET, SOCK_STREAM, ...)` and a `connect(...)` for TCP, which is a second line for the real conversation. The `sendto` and `recvfrom` calls that follow carry the TLS and HTTP bytes.
 
 ## 3. Step 1: name resolution (what is the IP address?)
+
+![Seven stages of name resolution](./img/n01-dnschain.svg)
+
+*Figure 2.1.3. The C library tries the files, the local stub or cache, the search domains and finally the recursive resolver, in order.*
 
 Right now `curl` has a name and nowhere to send anything. Computers route by numbers, which are IP addresses, and people type names. It is like having a friend's name but no street address, so the parcel cannot leave the house. The C library function `getaddrinfo()` bridges the two by turning `example.com` into one or more addresses. On a typical Linux system the lookup runs in 7 stages, in this order. Picture a person looking someone up, starting with the cheapest places to look and only then walking to the library.
 
@@ -308,6 +292,10 @@ If your service opens thousands of short connections, watch the `TIME_WAIT` coun
 
 ## 11. Timing: reading `curl -w`
 
+![curl timing phases](./img/n01-curlw.svg)
+
+*Figure 2.1.4. Each curl -w value counts from zero, so each phase is the difference between two values.*
+
 A single total time hides where the wait happened. Imagine telling a doctor only "I felt unwell for a while". A slow request is only useful to you once you know which phase was slow, and `curl -w` splits the request into phases.
 
 ```bash
@@ -332,6 +320,10 @@ Then read each phase against its likely cause. A large DNS phase points to the r
 Start with the largest phase, since that is where the time went.
 
 ## 12. A map from symptom to layer
+
+![Curl error symptoms mapped to layers](./img/n01-symptommap.svg)
+
+*Figure 2.1.5. A curl error message and exit code point to the layer where you should start looking.*
 
 When `curl` fails, the message and the exit code point to a layer. You now know every layer in the trip, so you can use the table below as a lookup. Match your symptom to a row and start with the layer that row names.
 

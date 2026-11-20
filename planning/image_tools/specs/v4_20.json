@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "20",
+  "name": "a20-validation-flow",
+  "title": "A validation rule stops a bad GPU count before planning",
+  "spec": "A left-to-right flow of numbered steps (number circles 1 to 5, green). Step 1: a box with a person or form icon titled 'Caller sets gpu_count', text 'Caller sets gpu_count to 3'. Arrow to step 2: a box with a shield or check icon titled 'Condition checks the list', text 'Is 3 in [0, 1, 2, 4, 8]?' with the answer 'No' on the arrow. Step 3, orange outline (the most important step): a box with an alert icon titled 'Validation fails', showing the monospace error line 'gpu_count must be 0, 1, 2, 4 or 8.' Arrow from step 3 back down to step 4: a box with a pencil icon titled 'Caller changes the value', text 'Set gpu_count to 4 or 8'. Arrow to step 5: a box with a clock or gear icon titled 'The plan goes on', text 'Plan continues'. Beside the list box, a short green note: 'The list stands in for the node shapes your platform team supports.' Green takeaway bar at the bottom: 'Validation runs during planning, so the caller fixes the value before anything is created.' No arrow crosses another arrow.",
+  "anchor": "### Interface design",
+  "alt": "A gpu_count of 3 fails the validation list check during planning, so the caller changes it to 4 or 8.",
+  "cap": "A validation block rejects an unsupported GPU count during planning, before any infrastructure is created."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "20",
+  "name": "a20-promote-pin",
+  "title": "Promote a module pin one environment at a time",
+  "spec": "Top row of two numbered steps (number circles 1 and 2). Step 1 box with a document icon titled 'Read the changelog', text 'Then run terraform init -upgrade in a branch', with the monospace text terraform init -upgrade. Step 2 box with a magnifier icon titled 'Plan the lower environments first', text 'Confirm there are no unexpected replacements', with the monospace text must be replaced. Below, a horizontal row of three environment boxes connected left to right by arrows: 'dev', then 'staging', then 'prod'. Each environment box has a small pin icon and the text 'Promote the version pin'. Between each pair of environment boxes, a small diamond decision labelled 'Unexpected replacement?'. The No path continues to the next environment. The Yes path, drawn in orange as the single most important path, leads down to a stop box with a hand or stop icon titled 'Stop', with the note 'Stopping is a success, not a failure.' Under the environment row, a box numbered 3 titled 'Promote the version pin through dev, staging and prod'. Box numbered 4 at the far right, titled 'For breaking changes', text 'Ship a migration guide, moved blocks and deprecation periods'. Green takeaway bar at the bottom: 'The plan has just saved you from rebuilding a stateful resource.' No other arrows.",
+  "anchor": "### Upgrading modules safely",
+  "alt": "Upgrade a module by reading the changelog, planning lower environments, promoting the pin in order, and stopping at any unexpected replacement.",
+  "cap": "A module upgrade moves from dev to staging to prod, and the rollout stops the moment a plan shows an unexpected replacement."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "20",
+  "name": "a20-provider-alias",
+  "title": "Pass a regional provider into each module call",
+  "spec": "Top panel titled 'Root module' containing two provider blocks side by side as cards with a cloud icon each. Left card: monospace 'provider google', 'alias = us', 'region = us-central1'. Right card: monospace 'provider google', 'alias = eu', 'region = europe-west4'. Below the panel, two module call boxes side by side. Left: 'module pool_us' with monospace 'providers = { google = google.us }'. Right: 'module pool_eu' with monospace 'providers = { google = google.eu }'. Arrows drawn from the 'alias = us' card down to the pool_us box, and from the 'alias = eu' card down to the pool_eu box, so the two arrows do not cross. Both module boxes point into one shared box at the bottom titled 'gke-gpu-pool', with the note 'Same module code builds both pools'. Orange outline on the note 'You cannot choose a provider per instance inside for_each, because provider mappings are static.' placed at the bottom right. Under it, two options in green cards: 'Repeat the module call for each region' and 'Use a separate stack per region'. Green takeaway bar at the bottom: 'Decide which of the two you want before the platform grows.' No number circles, since these are not in time order.",
+  "anchor": "### Passing providers and multi-region",
+  "alt": "Two google providers, one per region, are passed into two calls of the same gke-gpu-pool module.",
+  "cap": "Each module call receives one regional provider, so the same module code can build pools in two regions."
+ }
+]

@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>How a network device moves a packet</title>
+  <desc>Flowchart diagram showing how a network device moves a packet across four stages: Media to memory, Process, Switch across the fabric, and Memory to media.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">How a network device moves a packet</text>
+
+  
+  <g id="node-1">
+    
+    <rect x="50" y="140" width="332" height="710" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    
+    <circle cx="106" cy="196" r="24" fill="#207448"/>
+    <text x="106" y="205" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g id="icon-media-ingress">
+      <rect x="296" y="173" width="52" height="46" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 310 219 L 310 203 L 334 203 L 334 219" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="316" y1="184" x2="316" y2="194" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="322" y1="184" x2="322" y2="194" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="328" y1="184" x2="328" y2="194" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <line x1="75" y1="246" x2="357" y2="246" stroke="#cfe0d4" stroke-width="2"/>
+
+    
+    <text x="216" y="292" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">
+      <tspan x="216" dy="0">1. Media →</tspan>
+      <tspan x="216" dy="40">memory</tspan>
+    </text>
+
+    
+    <rect x="70" y="396" width="292" height="424" rx="12" fill="#e8f1ea" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="216" y="574" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="216" dy="0">PHY clocks bits into</tspan>
+      <tspan x="216" dy="44">the receive ring;</tspan>
+      <tspan x="216" dy="44">CPU/ASIC interrupted</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="382" y1="495" x2="438" y2="495" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-2">
+    
+    <rect x="438" y="140" width="332" height="710" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    
+    <circle cx="494" cy="196" r="24" fill="#207448"/>
+    <text x="494" y="205" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g id="icon-cpu-asic">
+      <rect x="691" y="177" width="38" height="38" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="702" y="188" width="16" height="16" rx="2" fill="#207448"/>
+      <line x1="700" y1="169" x2="700" y2="177" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="710" y1="169" x2="710" y2="177" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="720" y1="169" x2="720" y2="177" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="700" y1="215" x2="700" y2="223" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="710" y1="215" x2="710" y2="223" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="720" y1="215" x2="720" y2="223" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="683" y1="186" x2="691" y2="186" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="683" y1="196" x2="691" y2="196" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="683" y1="206" x2="691" y2="206" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="729" y1="186" x2="737" y2="186" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="729" y1="196" x2="737" y2="196" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="729" y1="206" x2="737" y2="206" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <line x1="463" y1="246" x2="745" y2="246" stroke="#cfe0d4" stroke-width="2"/>
+
+    
+    <text x="604" y="312" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">
+      <tspan x="604">2. Process</tspan>
+    </text>
+
+    
+    <rect x="458" y="396" width="292" height="424" rx="12" fill="#e8f1ea" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="604" y="574" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="604" dy="0">lookup, filter, NAT,</tspan>
+      <tspan x="604" dy="44">rewrite headers,</tspan>
+      <tspan x="604" dy="44">classify</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="770" y1="495" x2="826" y2="495" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-3">
+    
+    <rect x="826" y="140" width="332" height="710" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+
+    
+    <circle cx="882" cy="196" r="24" fill="#db8129"/>
+    <text x="882" y="205" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g id="icon-switch-fabric">
+      <rect x="1074" y="172" width="48" height="48" rx="8" fill="none" stroke="#db8129" stroke-width="4"/>
+      <line x1="1074" y1="188" x2="1122" y2="188" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="1074" y1="204" x2="1122" y2="204" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="1090" y1="172" x2="1090" y2="220" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="1106" y1="172" x2="1106" y2="220" stroke="#db8129" stroke-width="2.5"/>
+      <circle cx="1090" cy="188" r="4.5" fill="#db8129"/>
+      <circle cx="1106" cy="204" r="4.5" fill="#db8129"/>
+      <circle cx="1090" cy="204" r="3.5" fill="none" stroke="#db8129" stroke-width="2"/>
+      <circle cx="1106" cy="188" r="3.5" fill="none" stroke="#db8129" stroke-width="2"/>
+    </g>
+
+    
+    <line x1="851" y1="246" x2="1133" y2="246" stroke="#f0d5be" stroke-width="2"/>
+
+    
+    <text x="992" y="292" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">
+      <tspan x="992" dy="0">3. Switch across</tspan>
+      <tspan x="992" dy="40">the fabric</tspan>
+    </text>
+
+    
+    <rect x="846" y="396" width="292" height="424" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="2"/>
+    <text x="992" y="596" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="992" dy="0">bus, crossbar, or</tspan>
+      <tspan x="992" dy="44">shared memory</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1158" y1="495" x2="1214" y2="495" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-4">
+    
+    <rect x="1214" y="140" width="332" height="710" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    
+    <circle cx="1270" cy="196" r="24" fill="#207448"/>
+    <text x="1270" y="205" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+
+    
+    <g id="icon-media-egress">
+      <rect x="1460" y="177" width="36" height="38" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 1470 215 L 1470 201 L 1486 201 L 1486 215" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 1504 184 C 1511 190 1511 202 1504 208" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 1511 178 C 1522 188 1522 208 1511 218" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+
+    
+    <line x1="1239" y1="246" x2="1521" y2="246" stroke="#cfe0d4" stroke-width="2"/>
+
+    
+    <text x="1380" y="292" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">
+      <tspan x="1380" dy="0">4. Memory →</tspan>
+      <tspan x="1380" dy="40">media</tspan>
+    </text>
+
+    
+    <rect x="1234" y="396" width="292" height="424" rx="12" fill="#e8f1ea" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="1380" y="530" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1380" dy="0">transmit ring;</tspan>
+      <tspan x="1380" dy="44">output queue +</tspan>
+      <tspan x="1380" dy="44">QoS scheduler;</tspan>
+      <tspan x="1380" dy="44">PHY clocks onto</tspan>
+      <tspan x="1380" dy="44">the wire</tspan>
+    </text>
+  </g>
+</svg>

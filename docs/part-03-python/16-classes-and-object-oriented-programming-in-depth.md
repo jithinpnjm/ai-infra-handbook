@@ -3605,6 +3605,10 @@ This is only a prototype. We could extend the shop to track inventory and revenu
 
 ### Delegation: the like-a relationship
 
+![Inheritance versus delegation](./img/s16-delegation.svg)
+
+*Figure 3.16.1. Inheritance specialises a class, while delegation wraps another object and forwards calls to it.*
+
 There is a third way to combine classes, and it looks like a manager with a team. Inheritance and composition are not the only tools. Object-oriented programmers also talk about delegation. Delegation usually means a controller object embeds another object. The controller passes operation requests to that object. Controllers can handle administrative work, such as logging or validating access. They can also add steps to interface components or monitor active instances.
 
 Delegation is a special form of composition. A single embedded object is managed by a proxy class, also called a wrapper. A proxy is a stand-in that answers on another object's behalf. The proxy keeps most or all of the embedded object's interface.
@@ -3771,7 +3775,7 @@ This feature is mostly useful in larger projects with several programmers, and o
 
 ![Bound methods](./img/s16-bound.svg)
 
-*Figure 3.16.1. A bound method pairs the function with its instance, so obj.method() passes self automatically.*
+*Figure 3.16.2. A bound method pairs the function with its instance, so obj.method() passes self automatically.*
 
 A method is an object in its own right, and that fact unlocks several designs. Methods, and bound methods in particular, make many design goals easy in Python. We met bound methods briefly when we studied `__call__` in Chapter 30. The full story is more general and flexible than it first seems.
 
@@ -5126,6 +5130,10 @@ None of these tools are required. You may still meet them in code you read. Chap
 
 ### Slots: attribute declarations
 
+![Instance dictionary versus __slots__](./img/s16-slots.svg)
+
+*Figure 3.16.3. __slots__ replaces the per-instance dictionary with fixed slots, trading flexibility for memory.*
+
 You have seen the effects of slots several times in this part of the book. In short, you assign a list of attribute names to the special `__slots__` class attribute. This limits which attributes instances can have. It can also save memory and sometimes speed up code.
 
 Slots add complexity, though. They can break code that you did not write. They also work only when every class in the tree uses them. Use them only when the application clearly needs them.
@@ -5666,7 +5674,7 @@ Calls through the class succeed. Calls through an instance fail, because Python 
 
 ![Instance, class and static methods](./img/s16-methodkinds.svg)
 
-*Figure 3.16.2. A method receives the instance, the class or nothing, depending on how it is declared.*
+*Figure 3.16.4. A method receives the instance, the class or nothing, depending on how it is declared.*
 
 You can sometimes avoid marking the method at all. If you only need functions that read class data, use ordinary functions outside the class. Then no instance is expected. The next example shows this.
 

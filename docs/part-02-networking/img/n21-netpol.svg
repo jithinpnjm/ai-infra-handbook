@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Default deny, then allow the gateway</title>
+  <desc>Visual explanation of Kubernetes network policy showing default-deny ingress and egress with an explicit allow rule from gateway to Triton model server on TCP 8001, while other traffic is blocked.</desc>
+
+  <defs>
+    <marker id="green-arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="80" y="72" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Default deny, then allow the gateway</text>
+
+  
+  <g id="namespace-inference">
+    <rect x="60" y="115" width="1480" height="715" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <path d="M 98 143 L 114 134 L 130 143 L 130 161 L 114 170 L 98 161 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 114 134 L 114 170 M 98 143 L 130 161 M 98 161 L 130 143" fill="none" stroke="#207448" stroke-width="2" />
+    
+    
+    <text x="144" y="159" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">inference</text>
+  </g>
+
+  
+  <g id="policy-default-deny">
+    <rect x="90" y="195" width="1420" height="605" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+
+    
+    <path d="M 125 220 L 145 212 L 165 220 C 165 240 145 252 145 252 C 145 252 125 240 125 220 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="145" cy="230" r="4" fill="#207448" />
+    <path d="M 145 234 L 145 242" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    
+    <text x="180" y="240" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">default-deny: podSelector {} , policyTypes Ingress, Egress</text>
+  </g>
+
+  
+  <g id="node-gateway">
+    <rect x="130" y="290" width="370" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(160, 318)">
+      <rect x="0" y="0" width="56" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="3" />
+      <circle cx="10" cy="7" r="2.5" fill="#207448" />
+      <circle cx="18" cy="7" r="2.5" fill="#207448" />
+      <line x1="12" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    <text x="160" y="440" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">app: gateway</text>
+  </g>
+
+  
+  <g id="node-another-pod">
+    <rect x="130" y="550" width="370" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(160, 578)">
+      <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="28" r="10" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="28" y1="4" x2="28" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="44" x2="28" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="4" y1="28" x2="12" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="44" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    <text x="160" y="700" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">another pod</text>
+  </g>
+
+  
+  <g id="node-triton">
+    <rect x="1060" y="310" width="410" height="420" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(1100, 345)">
+      <rect x="8" y="8" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="18" y="18" width="20" height="20" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      
+      <line x1="16" y1="0" x2="16" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="0" x2="28" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="0" x2="40" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="16" y1="48" x2="16" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="48" x2="28" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="48" x2="40" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      
+      <line x1="0" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="0" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="0" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="48" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="48" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="48" y1="40" x2="56" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    <text x="1100" y="460" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">app: triton</text>
+  </g>
+
+  
+  <g id="allow-connection">
+    
+    <line x1="500" y1="395" x2="1046" y2="395" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+    
+    
+    <rect x="630" y="325" width="310" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="785" y="352" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">allow-gateway-to-triton</text>
+    <text x="785" y="377" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">TCP 8001</text>
+  </g>
+
+  
+  <g id="blocked-connection">
+    
+    <line x1="500" y1="655" x2="745" y2="655" stroke="#db8129" stroke-width="4" stroke-dasharray="10,8" />
+    
+    
+    <circle cx="770" cy="655" r="26" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <line x1="755" y1="640" x2="785" y2="670" stroke="#db8129" stroke-width="5" stroke-linecap="round" />
+    <line x1="755" y1="670" x2="785" y2="640" stroke="#db8129" stroke-width="5" stroke-linecap="round" />
+  </g>
+
+  
+  <g id="footer-bar">
+    <rect x="60" y="865" width="1480" height="95" rx="10" fill="#207448" />
+    <text x="800" y="907" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">Allow DNS egress and metrics scraping when you enforce default-deny egress;</tspan>
+      <tspan x="800" dy="34">a policy does nothing unless the CNI enforces it</tspan>
+    </text>
+  </g>
+</svg>

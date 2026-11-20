@@ -97,6 +97,10 @@ Finally, validate each tool before the crisis arrives. Run it on a healthy node,
 
 ## 2. Tool types
 
+![Tools sorted by system-wide versus per-process scope and by counting, sampling or tracing.](./img/l24-tool-matrix.svg)
+
+*Figure 1.24.2. Two questions sort the tools: whole system or one process, and counting, sampling or tracing.*
+
 A node is slow, and a dozen tool names are competing for your attention. Two questions sort them faster than any list of names. The first asks whether a tool looks at the whole system or at one process. The second asks whether it counts things or reacts to events. The table places common tools on that grid.
 
 | | System-wide | Per-process |
@@ -129,7 +133,7 @@ You have three tools that disagree about the same metric. Before you blame the t
 
 ![Observability sources](./img/ch24-d2-luna.svg)
 
-*Figure 1.24.2. Observability sources.*
+*Figure 1.24.3. Observability sources.*
 
 ### /proc
 
@@ -291,6 +295,10 @@ Two kernel limits apply. `kernel.perf_event_max_sample_rate` throttles sampling,
 
 ### perf stat: counting
 
+![Counting with perf stat comes first, then sampling with perf record, then reporting.](./img/l24-perf-workflow.svg)
+
+*Figure 1.24.4. Run perf stat first because counting is cheap, then record and report only where it matters.*
+
 Run `perf stat` first to check an event's rate before you trace or record it. Counting is cheap, so this is always the first step, and it gives you an overhead estimate. It also gives you IPC. An *insn per cycle* below about 0.5 suggests memory stalls. Above about 1.5 to 2, the CPU is executing efficiently, as chapter 1.18 explains. Filters such as `--filter 'prev_pid == 25467'` apply to tracepoints.
 
 ```bash
@@ -335,7 +343,7 @@ Two engineers are arguing about where the time goes. A flame graph ends that arg
 
 ![How to read a flame graph](./img/ch24-fig1-flame.jpg)
 
-*Figure 1.24.3. In a flame graph, width is the share of samples and height is call depth.*
+*Figure 1.24.5. In a flame graph, width is the share of samples and height is call depth.*
 
 ```bash
 sudo perf record -F 99 -a -g -- sleep 30
@@ -543,7 +551,7 @@ Unlike older tracers, BPF is programmable. A program can filter events and store
 
 ![BPF, BCC and bpftrace](./img/ch24-d3-luna.svg)
 
-*Figure 1.24.4. BPF, BCC and bpftrace.*
+*Figure 1.24.6. BPF, BCC and bpftrace.*
 
 BPF needs Linux 4.9 or later for most tools, and 4.4 or later for basic BCC. The kernel options `CONFIG_BPF`, `CONFIG_BPF_SYSCALL` and `CONFIG_BPF_EVENTS` must be present. Modern **CO-RE** ("compile once, run everywhere") tools also need BTF, which lives at `/sys/kernel/btf/vmlinux`. Running a tool requires root, or `CAP_BPF` with `CAP_PERFMON`, and `CAP_SYS_ADMIN` on older kernels. Container security profiles typically block BPF, as chapter 1.21 explains. Your kernel upgrade policy matters here. kprobe-based tools can break when internal functions change, while tracepoint-based tools are more stable.
 
@@ -584,6 +592,10 @@ sudo hardirqs -d ; sudo softirqs -d                    # IRQ time distributions 
 Newer distributions package the CO-RE versions as `*-bpfcc`. On Debian and Ubuntu, for example, that is `runqlat-bpfcc`. They also ship libbpf-tools, such as `runqlat`. Those need no Python or LLVM dependency, and they start up at lower cost. You can use `-h` and the examples file to learn the options. BCC resembles C programming. It is powerful but complex, and a typical tool runs 200+ lines. bpftrace resembles shell scripting.
 
 ### bpftrace: a high-level tracing language
+
+![An entry probe stores a timestamp by thread ID and a return probe turns it into a histogram.](./img/l24-bpftrace-timing.svg)
+
+*Figure 1.24.7. The filter on the return probe protects against calls that began before tracing started.*
 
 bpftrace is "awk for tracing". If you know awk, you already know the shape: a pattern, and an action that runs when the pattern matches. A program is a set of probes. Each probe has an optional filter and one or more actions.
 
@@ -643,6 +655,10 @@ Large companies install both on every host. For example, BCC tools are the first
 
 ### Overhead and safety rules
 
+![Event-rate thresholds and probe-type preferences that keep tracing overhead safe.](./img/l24-overhead-rules.svg)
+
+*Figure 1.24.8. Count the event rate first and prefer tracepoints over kprobes over uprobes.*
+
 1. Count first. Measure the event rate with `perf stat -e event -a sleep 1`, `funccount`, or `bpftrace -e 'k:func { @=count(); } interval:s:1 {exit();}'`.
 2. As a rough guide, under about 10k events per second is negligible, and above about 100k per second needs care. Scheduler, memory allocation, network packet and syscall-per-sample events can exceed 1M per second on busy GPU hosts.
 3. Prefer tracepoints over kprobes, for stability and lower cost. Prefer kprobes over uprobes, because every uprobe hit traps into the kernel. Avoid uprobes on hot functions, such as `malloc`, `memcpy` and CUDA launch paths at high rates.
@@ -690,7 +706,7 @@ You have collected three screens of numbers and still have to decide what to run
 
 ![Choosing a tool](./img/ch24-d4-luna.svg)
 
-*Figure 1.24.5. Choosing a tool.*
+*Figure 1.24.9. Choosing a tool.*
 
 Four rules of thumb cover most choices. Rule 1 is to start with counters, then profiling, then tracing. Rule 2 is to use the cheapest tool that can answer the question, and the highest-level tool that can still see the thing you are measuring. Rule 3 is to confirm important conclusions with a second tool. Rule 4 is to keep a library of your own one-liners and of saved "normal" outputs.
 

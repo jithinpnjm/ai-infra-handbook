@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "19",
+  "name": "h19-stripe-roundrobin",
+  "title": "Round-robin striping: chunks alternate across OSTs",
+  "spec": "A title line at the top: 1 GiB file, stripe_size 1 MiB, stripe_count 4. Across the top, a long horizontal bar labelled 1 GiB file, cut into eight equal small blocks in a row, each block labelled with its chunk number in time order: chunk 0 through chunk 7, read left to right. A short label at the right end of the row: more chunks continue to the right. Each block is colored by its OST slot, with a small label inside each block: slot 0, slot 1, slot 2, slot 3, slot 0, slot 1, slot 2, slot 3. Below the row, four wide OST boxes side by side labelled OST slot 0, OST slot 1, OST slot 2 and OST slot 3. Each OST box has a label: one object holds 256 MiB, which is the bytes per OST object. Do not draw arrows from chunks to boxes; use the color and the slot labels instead, so no arrows cross. Under the row, two bracket annotations. First bracket spans from the middle of chunk 2 to the middle of chunk 5 and is labelled 3 MiB read at offset 2.5 MiB touches slots 0, 1, 2, 3. Second bracket covers only the left part of chunk 0 and is labelled 512 KiB read at offset 0 touches slot 0 only. Orange note near the top-right of the row, the single most important item: not two contiguous halves. Green takeaway bar: a file with stripe_count 1 is limited to a single OST. No other text.",
+  "anchor": "### The raid0 layout",
+  "alt": "A 1 GiB file with four stripes sends 1 MiB chunks round-robin to four OST slots, so each slot holds 256 MiB.",
+  "cap": "With raid0 striping, consecutive 1 MiB chunks alternate across the OST objects, so the file is not split into two halves."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "19",
+  "name": "h19-pfl-bands",
+  "title": "A progressive file layout: three components by file offset",
+  "spec": "A title line at the top: Progressive File Layout for a 1 GiB file. One long horizontal axis labelled file offset, from 0 at the left to the end of the file at the right. The axis has tick marks labelled 0, 4 MiB, 64 MiB and 1024 MiB. Above the axis, three adjacent segments, each a different shade of green, drawn in proportion to their byte span. Segment one spans 0 to 4 MiB and is labelled component 1 with the text stripe_count=1 stripe_size=1 MiB. The segment is very narrow, so put its label above the segment with a short leader line. Segment two spans 4 MiB to 64 MiB and is labelled component 2 with the text stripe_count=4 stripe_size=1 MiB. Segment three spans 64 MiB to 1024 MiB, the wide one at the right, labelled component 3 with the text stripe_count=16 stripe_size=4 MiB. Under each segment, a small row of OST boxes showing how many OSTs the component uses: one box for component 1, four boxes for component 2, and sixteen small boxes for component 3 drawn as a compact grid that fits the width. Orange highlight on the stripe size change at the start of component 3, labelled the stripe size becomes 4 MiB only in the last component. Plain note under the axis: small components keep the smaller chunk size so small reads do not pull in more data than they need. No takeaway bar.",
+  "anchor": "### Progressive File Layouts (PFL) and other layouts",
+  "alt": "A 1 GiB progressive file layout with three components: 1 stripe, then 4 stripes, then 16 stripes with 4 MiB chunks.",
+  "cap": "A progressive file layout splits a file into components by offset, so small reads and large reads each get a suitable stripe setting."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "19",
+  "name": "h19-failover-sequence",
+  "title": "A server failover from the first missed response to the evicted client",
+  "spec": "A left-to-right row of six numbered step cards connected by arrows, number circles 1 to 6 in time order. Step 1, title: Primary server stops responding. Step 2, title: Cluster manager confirms the server is gone. Its label: tells the partner to take over the target. Step 3, title: Partner mounts the target. Its label: mounts the MDT or OST from the shared storage. Step 4, title: Recovery starts. Its label: clients still connected begin to reconnect. Step 5, title: Clients in time replay. Its label: clients that reconnect in time replay their uncommitted requests, and the job sees a pause. Step 6, title: Late clients are evicted. Its label: a client that arrives after the window closes is evicted, and its applications see errors until it remounts. Card icons: step 1 a server with a warning mark, step 2 a gear, step 3 a disk cylinder, step 4 a clock, step 5 a checkmark, step 6 a lock or a closed door. Step 5 and step 6 are two branches of the same recovery window: draw them as one stacked pair under step 4, joined by arrows from step 4, so the row stays at five columns. Orange tag under step 6: the logs are the first place to look after a failover. No takeaway bar. Keep the flow top to bottom or left to right with no crossing arrows.",
+  "anchor": "## 5. Failure and recovery model",
+  "alt": "Failover steps: primary stops, partner takes over the target, clients reconnect and replay in time or are evicted.",
+  "cap": "After a server failover, clients that reconnect within the recovery window see only a pause, while late clients are evicted."
+ }
+]

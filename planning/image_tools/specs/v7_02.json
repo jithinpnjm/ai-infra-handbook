@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "02",
+  "name": "r02-collection-paging",
+  "title": "Following Members@odata.nextLink until the last page",
+  "spec": "A vertical loop drawn as numbered step boxes in a single column, with arrows running down and one return arrow looping back up the right side. Left side, a tall grey container labelled Collection page, holding two small rows: Members (2 of 4 shown in the sample) and Members@odata.count. Step 1 box: GET the collection page at its URI. Step 2 box: compare Members@odata.count with len(Members); a note under it says the count is the whole collection, not the rows in this response, with the example 450 in total and 75 per page. Decision diamond: Members@odata.nextLink present? Arrow labelled yes goes right to step 3 box: GET the exact Members@odata.nextLink URI, do not parse or build the opaque token; a return arrow runs from step 3 back up to step 2. Arrow labelled no goes down to a green end box labelled all members collected. Number circles r=24 on steps 1, 2 and 3. Orange note beside step 2: a script that reports the count as the rows it printed will always undercount. No takeaway bar.",
+  "anchor": "## 5. Resource collections and pagination",
+  "alt": "A collection is read page by page, following the next link until it is absent, while comparing the total count with the rows received.",
+  "cap": "A collection can span many pages, so a client follows the next link on each page until none remains, and it checks the total count against the rows it received."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "02",
+  "name": "r02-settings-stage",
+  "title": "Staging a BIOS change in the Settings resource",
+  "spec": "Two boxes side by side with a horizontal arrow between them. Left box, grey panel titled Active resource: /Bios. Inside it, lines: current running state; attributes that wait for a reboot are read-only here; @Redfish.Settings SettingsObject points to /Bios/Settings. Right box, green panel titled Settings resource: /Bios/Settings. Inside: intended future state; same schema as /Bios; holds the pending change. Below the two boxes, a three-step numbered row left to right. Step 1 box: PATCH your change to /Bios/Settings. Step 2 box: host reset, for example GracefulRestart or ForceRestart. Step 3 box: the BIOS consumes /Bios/Settings, updates /Bios, and records validation messages under @Redfish.Settings.Messages. An arrow from step 3 points up to the Active resource box, labelled updates. Number circles r=24 with 1, 2, 3. Orange note under step 2: if you skip the reset, the change sits in the draft and the running system never sees it. No takeaway bar.",
+  "anchor": "### 4.1 Active resources vs `/Settings` resources (DSP0266 §9.10)",
+  "alt": "A BIOS change is staged with a PATCH to the Settings resource, applied on the next host reset, and then shown in the active resource.",
+  "cap": "A BIOS change is a two-step process: you stage it in the Settings resource, then reset the host so the firmware applies it."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "02",
+  "name": "r02-crawl-loop",
+  "title": "The crawler's to-do and visited loop",
+  "spec": "A top-down flowchart with decision diamonds and process boxes, arranged in one vertical column with a loop return on the right. Start terminal at top, labelled start todo with /redfish/v1/. Process box: pop the next URI from todo. Decision diamond: key already in seen? Yes arrow goes to a small box labelled skip and loops back to the todo check. No arrow goes down to process box: GET the URI and record seen[key] with its status. Decision diamond: status is 200 and a JSON object? No arrow loops back to the todo check. Yes arrow goes down to process box: record the @odata.type under types. Then process box: collect links, leaving out @odata.id and Actions. Process box: add each link that starts with /redfish/ and is not seen and is not the resource itself to todo. Arrow from that box loops back up to the todo check. Decision diamond at the top: todo empty? Yes arrow exits to a green end box labelled return seen and types. Orange highlight on the seen check diamond with a note: without this guard, two linked resources send the crawler back and forth forever. Number the first three process steps 1 to 3 only where order matters, using small number circles r=24. Keep Actions as a plain label, no arrow to it. No takeaway bar.",
+  "anchor": "### 6.1 How the hypermedia crawler works (`code/part07/redfish_crawl.py`)",
+  "alt": "The crawler starts at the Service Root, skips visited URIs, records each response, and adds newly found links to its to-do list until none remain.",
+  "cap": "The crawler keeps a to-do list and a visited set, so it reaches every resource from the Service Root without hard-coded paths and without looping forever."
+ }
+]

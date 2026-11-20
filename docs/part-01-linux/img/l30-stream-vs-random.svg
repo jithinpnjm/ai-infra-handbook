@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Streamed file versus random access</title>
+  <desc>Visual comparison showing why sequential streamed file access over a network link is fast while repeated random small file access incurs repeated latency.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.04" />
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Streamed file versus random access</text>
+
+  <text x="800" y="116" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Two lanes over a network link between client and server</text>
+
+  <g id="top-lane">
+    <rect x="60" y="145" width="1480" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+
+    <rect x="90" y="175" width="580" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(352, 202)">
+      <rect x="0" y="0" width="56" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="28" y1="42" x2="28" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="14" y1="52" x2="42" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <polygon points="23,13 37,21 23,29" fill="#207448" />
+    </g>
+    <text x="380" y="325" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="380" dy="0">a video player reads</tspan>
+      <tspan x="380" dy="44">one large file in order</tspan>
+    </text>
+
+    <path d="M 670 265 H 890" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <path d="M 890 385 H 670" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    <rect x="710" y="295" width="140" height="60" rx="30" fill="#207448" />
+    <text x="780" y="337" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">fast</text>
+
+    <rect x="890" y="175" width="620" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(1172, 202)">
+      <ellipse cx="28" cy="12" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 0 12 V 30 C 0 36 56 36 56 30 V 12" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 0 30 V 48 C 0 54 56 54 56 48 V 30" fill="none" stroke="#207448" stroke-width="4" />
+    </g>
+    <text x="1200" y="325" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1200" dy="0">the server can read</tspan>
+      <tspan x="1200" dy="44">ahead and buffer</tspan>
+    </text>
+  </g>
+
+  <g id="bottom-lane">
+    <rect x="60" y="505" width="1480" height="345" rx="16" fill="#fff9f2" stroke="#db8129" stroke-width="2" filter="url(#shadow)" />
+
+    <rect x="90" y="535" width="580" height="285" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <g transform="translate(352, 555)">
+      <path d="M 10 0 H 38 L 48 10 V 42 H 10 Z" fill="none" stroke="#db8129" stroke-width="3" opacity="0.5" />
+      <path d="M 0 12 H 30 L 42 24 V 54 H 0 Z" fill="none" stroke="#db8129" stroke-width="4" />
+      <path d="M 30 12 V 24 H 42" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+      <line x1="8" y1="32" x2="26" y2="32" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="8" y1="40" x2="32" y2="40" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="380" y="670" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="380" dy="0">a build opens thousands of</tspan>
+      <tspan x="380" dy="40">small source files</tspan>
+      <tspan x="380" dy="40">one after another</tspan>
+    </text>
+
+    <path d="M 670 595 H 890" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="8,6" marker-end="url(#arrow-orange)" />
+    <path d="M 890 635 H 670" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="8,6" marker-end="url(#arrow-orange)" />
+    <path d="M 670 745 H 890" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="8,6" marker-end="url(#arrow-orange)" />
+    <path d="M 890 785 H 670" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="8,6" marker-end="url(#arrow-orange)" />
+
+    <rect x="710" y="660" width="140" height="60" rx="30" fill="#db8129" />
+    <text x="780" y="702" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">slow</text>
+
+    <rect x="890" y="535" width="620" height="285" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <g transform="translate(1172, 555)">
+      <circle cx="28" cy="27" r="23" fill="none" stroke="#db8129" stroke-width="4" />
+      <polyline points="28,13 28,27 40,27" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="28" y1="0" x2="28" y2="4" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="50" x2="28" y2="54" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="1" y1="27" x2="5" y2="27" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="51" y1="27" x2="55" y2="27" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="1200" y="650" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1200" dy="0">every open is a separate request</tspan>
+      <tspan x="1200" dy="38">that the server must accept,</tspan>
+      <tspan x="1200" dy="38">decode, find and load,</tspan>
+      <tspan x="1200" dy="38">so latency repeats</tspan>
+    </text>
+  </g>
+
+  <g id="rule-bar">
+    <rect x="60" y="880" width="1480" height="115" rx="16" fill="#207448" />
+    <text x="800" y="930" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">large data without frequent random access can stay on the share;</tspan>
+      <tspan x="800" dy="40">reading millions of small files, keep a local copy or stage the data.</tspan>
+    </text>
+  </g>
+</svg>

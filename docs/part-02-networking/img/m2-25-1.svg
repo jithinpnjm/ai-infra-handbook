@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>DNS inside: per-namespace resolv.conf under /etc/netns/&lt;ns&gt;/resolv.con</title>
+  <desc>Visual explanation of container network namespaces c1 and c2 connecting via veth pairs into host netns bridge br0, routing and netfilter stack, host eth0, and outward to Network.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="112%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#303a36" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">DNS inside: per-namespace resolv.conf under /etc/netns/&lt;ns&gt;/resolv.con</text>
+
+  
+
+  
+  <rect x="50" y="130" width="270" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="185" y="172" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="185" dy="0">netns c1</tspan>
+    <tspan x="185" dy="30">(10.10.0.11)</tspan>
+  </text>
+
+  
+  <rect x="50" y="440" width="270" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="185" y="482" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="185" dy="0">netns c2</tspan>
+    <tspan x="185" dy="30">(10.10.0.12)</tspan>
+  </text>
+
+  
+  <rect x="355" y="130" width="1005" height="570" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="390" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">host netns</text>
+
+  
+
+  
+  <g transform="translate(95, 220)" filter="url(#shadow)">
+    <rect width="180" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 72 26 L 108 26 L 108 48 L 102 48 L 102 54 L 78 54 L 78 48 L 72 48 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="83" y1="32" x2="83" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="90" y1="32" x2="90" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="97" y1="32" x2="97" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="90" y="98" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">eth0</text>
+  </g>
+
+  
+  <g transform="translate(95, 530)" filter="url(#shadow)">
+    <rect width="180" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 72 26 L 108 26 L 108 48 L 102 48 L 102 54 L 78 54 L 78 48 L 72 48 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="83" y1="32" x2="83" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="90" y1="32" x2="90" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="97" y1="32" x2="97" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="90" y="98" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">eth0</text>
+  </g>
+
+  
+  <g transform="translate(395, 220)" filter="url(#shadow)">
+    <rect width="170" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 68 44 C 68 34, 76 26, 86 26 C 96 26, 102 34, 102 44" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <rect x="63" y="44" width="10" height="12" rx="2" fill="#207448"/>
+    <rect x="97" y="44" width="10" height="12" rx="2" fill="#207448"/>
+    <text x="85" y="98" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">veth-c1</text>
+  </g>
+
+  
+  <g transform="translate(395, 530)" filter="url(#shadow)">
+    <rect width="170" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 68 44 C 68 34, 76 26, 86 26 C 96 26, 102 34, 102 44" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <rect x="63" y="44" width="10" height="12" rx="2" fill="#207448"/>
+    <rect x="97" y="44" width="10" height="12" rx="2" fill="#207448"/>
+    <text x="85" y="98" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">veth-c2</text>
+  </g>
+
+  
+  <g transform="translate(625, 300)" filter="url(#shadow)">
+    <rect width="290" height="200" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <path d="M 120 48 L 170 48 M 125 48 C 125 32, 145 32, 145 48 C 145 32, 165 32, 165 48" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="120" y1="48" x2="120" y2="56" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="145" y1="48" x2="145" y2="56" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="170" y1="48" x2="170" y2="56" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="145" y="96" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">br0 10.10.0.1</text>
+    <text x="145" y="136" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">(L2 bridge +</tspan>
+      <tspan x="145" dy="30">L3 gateway)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(975, 210)" filter="url(#shadow)">
+    <rect width="360" height="210" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 180 24 L 204 34 C 204 50, 194 62, 180 68 C 166 62, 156 50, 156 34 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M 172 44 L 188 44 M 184 40 L 188 44 L 184 48" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="180" y="106" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="180" dy="0">IP stack: routing,</tspan>
+      <tspan x="180" dy="34">netfilter</tspan>
+    </text>
+    <text x="180" y="176" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">(FORWARD, MASQUERADE)</text>
+  </g>
+
+  
+  <g transform="translate(1015, 490)" filter="url(#shadow)">
+    <rect width="280" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="115" y="24" width="50" height="32" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="123" y1="56" x2="123" y2="62" stroke="#207448" stroke-width="3"/>
+    <line x1="131" y1="56" x2="131" y2="62" stroke="#207448" stroke-width="3"/>
+    <line x1="149" y1="56" x2="149" y2="62" stroke="#207448" stroke-width="3"/>
+    <line x1="157" y1="56" x2="157" y2="62" stroke="#207448" stroke-width="3"/>
+    <line x1="108" y1="20" x2="108" y2="64" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="140" y="104" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">eth0 (host IP)</text>
+  </g>
+
+  
+  <g transform="translate(1405, 490)" filter="url(#shadow)">
+    <rect width="165" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 64 54 C 54 54, 48 46, 52 38 C 54 30, 64 28, 68 32 C 72 24, 86 22, 94 28 C 102 24, 114 30, 112 38 C 118 42, 116 54, 104 54 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <text x="82" y="104" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Network</text>
+  </g>
+
+  
+
+  
+  <line x1="275" y1="290" x2="395" y2="290" stroke="#207448" stroke-width="3.5"/>
+
+  
+  <line x1="275" y1="600" x2="395" y2="600" stroke="#207448" stroke-width="3.5"/>
+
+  
+  <path d="M 565 290 L 595 290 L 595 365 L 625 365" fill="none" stroke="#207448" stroke-width="3.5"/>
+
+  
+  <path d="M 565 600 L 595 600 L 595 435 L 625 435" fill="none" stroke="#207448" stroke-width="3.5"/>
+
+   RT (Directed horizontal) -->
+  <line x1="915" y1="350" x2="975" y2="350" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+   NIC (Directed vertical) -->
+  <line x1="1155" y1="420" x2="1155" y2="490" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+   W (Directed horizontal) -->
+  <line x1="1295" y1="565" x2="1405" y2="565" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+</svg>

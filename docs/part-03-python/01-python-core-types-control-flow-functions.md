@@ -243,17 +243,9 @@ x = x + 1                     # creates a new int object 11 and rebinds x; y sti
 print(x, y)                   # 11 10
 ```
 
-```mermaid
-flowchart LR
-  subgraph names
-    x1["x"]; y1["y"]
-  end
-  subgraph objects
-    o10["int 10"]; o11["int 11"]
-  end
-  y1 --> o10
-  x1 -- "after x = x + 1" --> o11
-```
+![Everything is an object](./img/m3-01-1.svg)
+
+*Figure 3.1.10. Everything is an object, as a diagram.*
 
 Assignment never copies objects: it **binds names to objects**. Keep that sentence in mind, because it explains most "mysterious" Python behaviour.
 
@@ -263,7 +255,7 @@ Assignment never copies objects: it **binds names to objects**. Keep that senten
 
 ![Mutable and immutable objects](./img/p01-mutable.jpg)
 
-*Figure 3.1.10. Mutable objects change in place; immutable ones are replaced.*
+*Figure 3.1.11. Mutable objects change in place; immutable ones are replaced.*
 
 - **Immutable** objects cannot change after creation: `int`, `float`, `complex`, `bool`, `str`, `bytes`, `tuple` (of immutables), `frozenset`, `None`, `range`. Operations produce new objects.
 - **Mutable** objects can change in place: `list`, `dict`, `set`, `bytearray`, most user-defined class instances.
@@ -290,7 +282,7 @@ d = copy.deepcopy(a)   # recursively copies nested mutable structures
 
 ![Reference counting](./img/p01-refcount.jpg)
 
-*Figure 3.1.11. An object is freed when its last reference goes away.*
+*Figure 3.1.12. An object is freed when its last reference goes away.*
 
 The practical consequences are worth listing. Files and sockets should be closed explicitly, and `with` does that for you. `__del__` is a poor cleanup mechanism. Memory growth in long-running services often comes from references you still hold: caches, globals, closures, and exception tracebacks stored somewhere. Weak references, from `weakref`, are available for caches. To diagnose leaks, use `sys.getrefcount`, `tracemalloc` and `objgraph`.
 
@@ -300,7 +292,7 @@ The practical consequences are worth listing. Files and sockets should be closed
 
 ![Duck typing](./img/p01-duck.jpg)
 
-*Figure 3.1.12. Code calls the method it needs; the object's class does not matter.*
+*Figure 3.1.13. Code calls the method it needs; the object's class does not matter.*
 
 Dynamically typed does not mean loosely typed. Python is **strongly typed**: `"1" + 1` raises `TypeError`, and there is no silent coercion. If you need a number and you have a string, you convert it explicitly. Optional **type hints** (chapter 3.4) document and statically check intent without changing runtime behaviour.
 
@@ -329,7 +321,7 @@ Operators: `+ - * / // % **`; `/` is always true division (float); `//` floors t
 
 ![Operator precedence](./img/p01-precedence.jpg)
 
-*Figure 3.1.13. Higher rows bind first.*
+*Figure 3.1.14. Higher rows bind first.*
 
 | Precedence (highest to lowest) | Operators | Description |
 |---|---|---|
@@ -359,7 +351,7 @@ The `//` operator is often loosely called truncating division, but it actually p
 
 ![Floor versus truncation](./img/p01-floor-v3.jpg)
 
-*Figure 3.1.14. Floor rounds down; truncation drops the fraction.*
+*Figure 3.1.15. Floor rounds down; truncation drops the fraction.*
 
 ```python
 import math
@@ -394,7 +386,7 @@ A `str` is an **immutable sequence of Unicode code points**, where each code poi
 
 ![str and bytes](./img/p01-strbytes.jpg)
 
-*Figure 3.1.15. Text is encoded to bytes on the way out and decoded on the way in.*
+*Figure 3.1.16. Text is encoded to bytes on the way out and decoded on the way in.*
 
 ```python
 s = "GPU-0 temp=71C"
@@ -457,7 +449,7 @@ Picture a script that checks whether each of a large set of hostnames is in a li
 
 ![The four core collections](./img/p01-collections.jpg)
 
-*Figure 3.1.16. List, tuple, dict and set, with a literal and a typical use each.*
+*Figure 3.1.17. List, tuple, dict and set, with a literal and a typical use each.*
 
 | Type | Literal | Properties | Typical use | Costs |
 |---|---|---|---|---|
@@ -504,7 +496,7 @@ Important behaviours:
 
 ![Falsy values versus truthy values in Python](./img/p01-truthy.jpg)
 
-*Figure 3.1.17. Falsy and truthy values: empty things and zero are false.*
+*Figure 3.1.18. Falsy and truthy values: empty things and zero are false.*
 
 The trap fires when `0` or empty are valid values. Use `is None` and `is not None` for that case: `if timeout is None: timeout = 30`, not `if not timeout`, because a timeout of `0` would be treated as missing and replaced. `None` is the single null object, and it is the default return value of functions without `return`.
 
@@ -514,7 +506,7 @@ Files are opened with `open()` and should always be managed by `with`, so they c
 
 ![Opening a file with with and an explicit encoding](./img/p01-files.jpg)
 
-*Figure 3.1.18. Use with so the file closes on errors, and always set the encoding.*
+*Figure 3.1.19. Use with so the file closes on errors, and always set the encoding.*
 
 ```python
 from pathlib import Path
@@ -541,7 +533,7 @@ If you learned to code in C, Java or JavaScript, your fingers already know how t
 
 ![The same if statement in a C-like language and in Python](./img/p01-clike.jpg)
 
-*Figure 3.1.19. Python drops the parentheses, braces and semicolons.*
+*Figure 3.1.20. Python drops the parentheses, braces and semicolons.*
 
 ```
 if (x > y) {
@@ -564,7 +556,7 @@ Python adds one new piece to the C-like pattern: the colon. A compound statement
 
 ![A Python block: header with a colon, indented body](./img/p01-colon.jpg)
 
-*Figure 3.1.20. A compound statement has a header that ends in a colon and an indented body.*
+*Figure 3.1.21. A compound statement has a header that ends in a colon and an indented body.*
 
 The colon is required. Forgetting it is probably the most common mistake new Python programmers make, and you will likely forget it at least once. Python stops with an error message, and most Python-friendly editors make the mistake easy to spot.
 
@@ -583,7 +575,7 @@ C-like languages make you write three things that Python does not need. The firs
 
 ![Parentheses, semicolons and braces that Python removes](./img/p01-removes.jpg)
 
-*Figure 3.1.21. The three pieces of C-like syntax that Python does not need.*
+*Figure 3.1.22. The three pieces of C-like syntax that Python does not need.*
 
 The second is the semicolon. In Python, the end of a line ends the statement on that line, so `x = 1` needs no terminator. You may keep semicolons if you want, because they also separate statements on one line. The Pythonic habit is to drop them. In this role they are useless noise.
 
@@ -612,7 +604,7 @@ Many programmers from C-like languages find the indentation rule strange at firs
 
 ![Indentation levels define blocks](./img/p01-indent.jpg)
 
-*Figure 3.1.22. Lines at the same indentation belong to the same block.*
+*Figure 3.1.23. Lines at the same indentation belong to the same block.*
 
 Old C++ programs show the problem without this rule. Imagine a `while` loop that the first programmer indented four spaces. The next programmer indented it further right, and the one after that indented it less. Over the years the visual shape of the code stopped matching its logic, and the braces at the end hid the mismatch.
 
@@ -648,7 +640,7 @@ Two rules cover most Python code. The end of a line ends its statement. Nested s
 
 ![Three optional rules for lines and bodies](./img/p01-linerules.jpg)
 
-*Figure 3.1.23. Optional rules that let statements share a line or span several lines.*
+*Figure 3.1.24. Optional rules that let statements share a line or span several lines.*
 
 You can put several statements on one line by separating them with semicolons. This is the only place in Python where semicolons are required.
 
@@ -817,7 +809,7 @@ The code below collects the assignment forms in one place:
 
 ![Assignment forms in Python](./img/p01-assign.jpg)
 
-*Figure 3.1.24. The assignment forms side by side.*
+*Figure 3.1.25. The assignment forms side by side.*
 
 ```python
 x = 1                       # basic
@@ -837,7 +829,7 @@ In Python 3, `print` is a built-in function (normally called as an expression st
 
 ![print joins objects with sep, adds end and writes to a stream](./img/p01-print.jpg)
 
-*Figure 3.1.25. How print builds its output.*
+*Figure 3.1.26. How print builds its output.*
 
 ```python
 print([object, ...][, sep=' '][, end='\n'][, file=sys.stdout][, flush=False])
@@ -875,7 +867,7 @@ The block below shows the conditional forms in one place:
 
 ![if, elif, else: the first true branch runs and the rest are skipped](./img/p01-ifelif.jpg)
 
-*Figure 3.1.26. Conditions are tested in order; only the first matching branch runs.*
+*Figure 3.1.27. Conditions are tested in order; only the first matching branch runs.*
 
 ```python
 if state == "ready":
@@ -897,7 +889,7 @@ Structural pattern matching destructures values, which means it takes a value ap
 
 ![The match statement](./img/p01-match.jpg)
 
-*Figure 3.1.27. The first case whose pattern fits the value runs and binds its names.*
+*Figure 3.1.28. The first case whose pattern fits the value runs and binds its names.*
 
 ```python
 def handle(event: dict) -> str:
@@ -926,7 +918,7 @@ The block below shows the loop patterns in one place, including the retry loop w
 
 ![for walks items, while repeats on a condition, break and continue steer the loop](./img/p01-loops.jpg)
 
-*Figure 3.1.28. The two loop kinds and the two keywords that steer them.*
+*Figure 3.1.29. The two loop kinds and the two keywords that steer them.*
 
 ```python
 while not ready():                    # condition loop
@@ -954,7 +946,7 @@ Here is the preview of what `for` actually does. It calls `iter(obj)` to get an 
 
 ![The iteration protocol](./img/p01-iterproto.jpg)
 
-*Figure 3.1.29. A for loop gets an iterator and calls next() until StopIteration.*
+*Figure 3.1.30. A for loop gets an iterator and calls next() until StopIteration.*
 
 ### Comprehensions (preview)
 
@@ -962,7 +954,7 @@ The block below shows the four comprehension forms:
 
 ![Anatomy of a comprehension](./img/p01-compr.jpg)
 
-*Figure 3.1.30. Expression, source and filter in one line.*
+*Figure 3.1.31. Expression, source and filter in one line.*
 
 ```python
 squares = [n * n for n in range(10) if n % 2 == 0]
@@ -977,7 +969,7 @@ Here is a realistic problem. A user types lines into a console window, and your 
 
 ![The interactive loop: read, test for stop, print or break](./img/p01-inter.jpg)
 
-*Figure 3.1.31. The loop prints each reply in upper case until the user types stop.*
+*Figure 3.1.32. The loop prints each reply in upper case until the user types stop.*
 
 ```python
 while True:
@@ -1197,7 +1189,7 @@ Suppose the same ten lines of code are pasted into five places in a script. Then
 
 ![Five pasted copies versus one function](./img/p01-whyfunc.jpg)
 
-*Figure 3.1.32. One function means one place to fix a bug.*
+*Figure 3.1.33. One function means one place to fix a bug.*
 
 Functions are the simplest way to package logic you want to use more than once. Most of the code we have written so far runs right away, from top to bottom. A function lets us defer that code and run it as many times as we need. Because the operation lives in one copy, a later change means updating one copy, not many scattered ones.
 
@@ -1211,7 +1203,7 @@ Python gives you a small set of statements and expressions for writing functions
 
 ![Basic and advanced function tools](./img/p01-toolbox.jpg)
 
-*Figure 3.1.33. Basic tools first; the advanced tools change how names and results behave.*
+*Figure 3.1.34. Basic tools first; the advanced tools change how names and results behave.*
 
 | Statement or expression | Example |
 |---|---|
@@ -1247,7 +1239,7 @@ A function is an **object**, and a first-class one: it can be assigned, stored i
 
 ![The parts of a function signature and two calls](./img/p01-gib.jpg)
 
-*Figure 3.1.34. A signature with a positional parameter, a keyword-only parameter with a default and a result type.*
+*Figure 3.1.35. A signature with a positional parameter, a keyword-only parameter with a default and a result type.*
 
 ### def runs at runtime
 
@@ -1255,7 +1247,7 @@ In many compiled languages, a function exists before the program starts. Python 
 
 ![def builds a function object at import time; the call comes later](./img/p01-defruntime.jpg)
 
-*Figure 3.1.35. def runs at import time to build the function; calling it runs later.*
+*Figure 3.1.36. def runs at import time to build the function; calling it runs later.*
 
 Because `def` is a real statement, you can place it inside an `if`. This lets a program choose which version of a function to build:
 
@@ -1294,7 +1286,7 @@ Some functions are only one expression long. A full `def` feels heavy for them. 
 
 ![lambda and def building the same function](./img/p01-lambda.jpg)
 
-*Figure 3.1.36. A lambda is a one-expression form of def.*
+*Figure 3.1.37. A lambda is a one-expression form of def.*
 
 ```python
 name = lambda arg1, arg2,… argN: expression
@@ -1315,7 +1307,7 @@ Writing a small function shows the basics from both sides. The definition create
 
 ![The times function: definition and two calls](./img/p01-times.jpg)
 
-*Figure 3.1.37. The definition creates the function; each call runs its body.*
+*Figure 3.1.38. The definition creates the function; each call runs its body.*
 
 ```
 >>> def times(x, y):      # Create and assign function
@@ -1358,7 +1350,7 @@ The meaning of `x * y` in `times` depends on what `x` and `y` are. The same func
 
 ![One times function, three kinds of arguments](./img/p01-poly.jpg)
 
-*Figure 3.1.38. The same function multiplies numbers, repeats a string or raises TypeError, depending on the objects.*
+*Figure 3.1.39. The same function multiplies numbers, repeats a string or raises TypeError, depending on the objects.*
 
 Python uses this idea everywhere. Printing, indexing and `*` all change behavior with the object. As long as an object supports the expected interface, which is also called a protocol, a function can process it. Any two objects that support `*` will work with `times`. That includes classes you have not written yet.
 
@@ -1379,7 +1371,7 @@ An earlier loop collected the items that two strings had in common. It worked on
 
 ![intersect keeps the letters found in both strings](./img/p01-intersect.jpg)
 
-*Figure 3.1.39. intersect returns the items of the first sequence that also appear in the second.*
+*Figure 3.1.40. intersect returns the items of the first sequence that also appear in the second.*
 
 The better fix is to put the loop inside a function. That gives four benefits:
 
@@ -1472,7 +1464,7 @@ In a function definition (`def` or `lambda`), the parameter list consists of fou
 
 ![How call arguments map to host, port, *args and **opts](./img/p01-params.jpg)
 
-*Figure 3.1.40. How call arguments reach the parameters of one function.*
+*Figure 3.1.41. How call arguments reach the parameters of one function.*
 
 ```python
 def func(pos_only, /, normal, *args, kw_only, **kwargs): ...
@@ -1499,7 +1491,7 @@ In a function call, arguments must follow three ordering rules:
 
 ![Call-site order: positional and unpacked iterables first, then keywords and mappings](./img/p01-callsite.jpg)
 
-*Figure 3.1.41. How the pieces of a call are ordered.*
+*Figure 3.1.42. How the pieces of a call are ordered.*
 
 1. All plain positional arguments (`value`) must appear before any plain keyword arguments (`name=value`).
 2. Multiple `*iterable` positional unpackings and multiple `**mapping` keyword unpackings are allowed in a single call (Python 3.5+).
@@ -1519,7 +1511,7 @@ Here is the bug that has bitten almost everyone at least once. A colleague write
 
 ![Mutable default argument](./img/p01-defaulttrap.jpg)
 
-*Figure 3.1.42. The default list is created once and shared across calls.*
+*Figure 3.1.43. The default list is created once and shared across calls.*
 
 The mechanism is small. Default values are evaluated **once**, when `def` runs. A mutable default is shared by every call:
 
@@ -1542,7 +1534,7 @@ Look at the names inside `intersect`. The variable `res` is a local variable. It
 
 ![Local names exist only while the call runs](./img/p01-locals.jpg)
 
-*Figure 3.1.43. Local names appear at the start of a call and disappear at its end; the returned object lives on.*
+*Figure 3.1.44. Local names appear at the start of a call and disappear at its end; the returned object lives on.*
 
 Python treats every name assigned inside a function as local by default. In `intersect`, that covers all the names in the `def`:
 
@@ -1560,7 +1552,7 @@ Because of this, a function's variables do not clash with names elsewhere in the
 
 ![LEGB lookup](./img/p01-legb.jpg)
 
-*Figure 3.1.44. Python searches Local, Enclosing, Global and Built-in scopes in that order.*
+*Figure 3.1.45. Python searches Local, Enclosing, Global and Built-in scopes in that order.*
 
 ```python
 counter = 0
@@ -1587,7 +1579,7 @@ The block below collects the everyday uses:
 
 ![Higher-order functions: key, map and partial](./img/p01-hof.jpg)
 
-*Figure 3.1.45. Three everyday uses of functions that take or return functions.*
+*Figure 3.1.46. Three everyday uses of functions that take or return functions.*
 
 ```python
 nodes.sort(key=lambda n: (n["rack"], n["name"]))
@@ -1606,7 +1598,7 @@ Functions can call themselves, which is **recursion**. CPython has no tail-call 
 
 ![Nested recursive calls and the recursion limit](./img/p01-recur.jpg)
 
-*Figure 3.1.46. Each recursive call waits for the next; CPython stops at the recursion limit.*
+*Figure 3.1.47. Each recursive call waits for the next; CPython stops at the recursion limit.*
 
 ### Docstrings, annotations, introspection
 
@@ -1614,7 +1606,7 @@ A string literal as the first statement is the **docstring**, stored in `func.__
 
 ![A docstring and annotations on a function](./img/p01-docstr.jpg)
 
-*Figure 3.1.47. The first string is the docstring; annotations sit in the signature.*
+*Figure 3.1.48. The first string is the docstring; annotations sit in the signature.*
 
 ### Generators (preview)
 
@@ -1622,7 +1614,7 @@ A function containing `yield` returns a lazy iterator, suspending its state betw
 
 ![A generator produces one line at a time on request](./img/p01-gen.jpg)
 
-*Figure 3.1.48. A generator yields one value each time the consumer asks.*
+*Figure 3.1.49. A generator yields one value each time the consumer asks.*
 
 ```python
 def read_lines(path):
@@ -1655,7 +1647,7 @@ Official docs are the authorities: the tutorial, library reference, language ref
 
 ![Where to find help: REPL, terminal, packages and official docs](./img/p01-help.jpg)
 
-*Figure 3.1.49. Four places to look things up.*
+*Figure 3.1.50. Four places to look things up.*
 
 ### Benchmarking
 
@@ -1663,7 +1655,7 @@ Measure before optimising: that one habit separates a tuned service from a guess
 
 ![Benchmark with timeit, profile programs, then optimise the hot path](./img/p01-bench.jpg)
 
-*Figure 3.1.50. Measure first: timeit for micro-benchmarks, cProfile and py-spy for programs.*
+*Figure 3.1.51. Measure first: timeit for micro-benchmarks, cProfile and py-spy for programs.*
 
 ```bash
 python3 -m timeit -s 'xs = list(range(10_000))' 'sum(xs)'
@@ -1688,7 +1680,7 @@ A small helper turns environment strings into integers with a default, and requi
 
 ![Optional settings get defaults; required secrets fail fast](./img/p01-envcfg2.jpg)
 
-*Figure 3.1.51. Read optional settings with a default, and read secrets by direct key so a missing one fails immediately.*
+*Figure 3.1.52. Read optional settings with a default, and read secrets by direct key so a missing one fails immediately.*
 
 ```python
 import os, sys
@@ -1713,7 +1705,7 @@ The wrapper multiplies a base delay by 2 for each attempt, caps the delay, and j
 
 ![Retry attempts with growing, jittered delays](./img/p01-retry.jpg)
 
-*Figure 3.1.52. Each wait grows from the base delay up to the cap, with random jitter.*
+*Figure 3.1.53. Each wait grows from the base delay up to the cap, with random jitter.*
 
 ```python
 import random, time
@@ -1736,7 +1728,7 @@ A `Counter` aggregates the lines of a log while the file streams line by line, s
 
 ![Streaming a log into a Counter](./img/p01-logagg.jpg)
 
-*Figure 3.1.53. The log streams one line at a time into a Counter, so it is never loaded whole.*
+*Figure 3.1.54. The log streams one line at a time into a Counter, so it is never loaded whole.*
 
 ```python
 from collections import Counter
@@ -1755,7 +1747,7 @@ Set subtraction compares desired and actual state: `desired - actual` lists what
 
 ![Set subtraction of desired and actual state](./img/p01-setalg.jpg)
 
-*Figure 3.1.54. desired minus actual lists what is missing; actual minus desired lists what is unexpected.*
+*Figure 3.1.55. desired minus actual lists what is missing; actual minus desired lists what is unexpected.*
 
 ```python
 desired = {"gpu01", "gpu02", "gpu03", "gpu04"}
@@ -1769,7 +1761,7 @@ A `setdefault` grouping appends each node name under its rack, and a comprehensi
 
 ![Grouping nodes by rack and summing GPUs](./img/p01-datashape.jpg)
 
-*Figure 3.1.55. setdefault groups node names by rack and a comprehension sums the GPUs per rack.*
+*Figure 3.1.56. setdefault groups node names by rack and a comprehension sums the GPUs per rack.*
 
 ```python
 nodes = [{"name": "gpu01", "rack": "r1", "gpus": 8}, {"name": "gpu02", "rack": "r1", "gpus": 8}, {"name": "gpu03", "rack": "r2", "gpus": 4}]

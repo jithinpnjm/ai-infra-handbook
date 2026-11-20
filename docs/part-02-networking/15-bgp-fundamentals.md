@@ -51,26 +51,9 @@ Private 32-bit ASNs run from 4200000000 to 4294967294. Private 16-bit ASNs run f
 
 An EGP has a different job from an IGP. ASes are businesses, such as service providers, content providers and enterprises, with commercial and political relationships. So the goal is not the shortest path. The goal is policy: whom you accept routes from, whom you announce routes to, and which path you prefer for business reasons. BGP trades optimality for control. A route through a partner you pay may beat a shorter route through a competitor, and BGP lets you say so.
 
-```mermaid
-flowchart LR
-  subgraph AS65000["AS 65000 (enterprise / AI cluster)"]
-    A[Border router]
-  end
-  subgraph AS65001["AS 65001 (transit provider)"]
-    B[Edge]
-  end
-  subgraph AS65003["AS 65003 (transit provider 2)"]
-    C[Edge]
-  end
-  subgraph AS65002["AS 65002 (content / cloud)"]
-    D[Edge]
-  end
-  A -- "eBGP" --- B
-  A -- "eBGP" --- C
-  B -- "eBGP" --- D
-  C -- "eBGP" --- D
-  B -- "eBGP" --- C
-```
+![Autonomous systems and why BGP exists](./img/m2-15-1.svg)
+
+*Figure 2.15.1. Autonomous systems and why BGP exists, as a diagram.*
 
 BGP is a path-vector protocol. Each advertisement for a prefix carries the list of ASes it has crossed, called the `AS_PATH`. BGP is proactive, so it advertises routes without waiting for traffic. It learns destinations from configuration (`network` statements), from redistribution and from other protocols. It sends only best paths to neighbours, and it relies on TCP instead of a reliability layer of its own.
 
@@ -78,22 +61,17 @@ Decide your policy before you tune any path, because BGP follows the policy you 
 
 ## 2. Sessions (peering)
 
+![eBGP versus iBGP](./img/n15-ebgpibgp.svg)
+
+*Figure 2.15.2. The session type decides the next hop, the AS_PATH and the TTL you must plan for.*
+
 BGP never finds a neighbour on its own, in contrast to OSPF with its hellos. You configure each peer on both ends, with its IP address or interface and its remote ASN. It is like a business relationship that two companies agree to in writing. BGP runs over TCP port 179, so TCP does the transport work. TCP gives reliable, ordered delivery, flow control and MTU handling (path MTU discovery and MSS). The three-way handshake also proves two-way connectivity. BGP therefore needs no hello discovery, retransmission or flooding logic of its own. Peers can sit several hops apart (multihop, with `ebgp-multihop`) or be directly connected.
 
 ### Session establishment
 
-```mermaid
-stateDiagram-v2
-  [*] --> Idle
-  Idle --> Connect: start event, TCP SYN to peer:179
-  Connect --> Active: TCP failed, retry
-  Active --> Connect: retry timer
-  Connect --> OpenSent: TCP up, send OPEN
-  Active --> OpenSent: TCP up, send OPEN
-  OpenSent --> OpenConfirm: OPEN received, send KEEPALIVE
-  OpenConfirm --> Established: KEEPALIVE received
-  Established --> Idle: NOTIFICATION / hold timer expiry / TCP reset
-```
+![Session establishment](./img/m2-15-2.svg)
+
+*Figure 2.15.3. Session establishment, as a diagram.*
 
 A session walks through six states, as the diagram shows, and it helps to read them as a short courtship. `Idle` means nothing is happening yet. BGP waits for a start event. Then one side opens a TCP connection, which moves the session to `Connect`. If both sides connect at once, a collision rule picks the survivor: the connection started by the higher BGP identifier wins. If a firewall sits between the peers, the TCP open must come from the side the firewall permits. `Active` means the TCP connect failed and BGP is trying again. It does not mean the session is established.
 
@@ -113,6 +91,10 @@ Two kinds of session exist.
 Choose the session type first, because it decides the next hop, the AS_PATH and the TTL you need to plan for. A mistake here is hard to find later, since the session itself comes up fine.
 
 ## 3. Messages, NLRI and path attributes
+
+![BGP attribute categories](./img/n15-attrs.svg)
+
+*Figure 2.15.4. Attribute categories decide what each router must understand and what it passes on.*
 
 An UPDATE advertises a set of prefixes, the NLRI, and every prefix in the set shares the same path attributes. Think of the attributes as the labels on a shipment, which describe where it has been and how the sender wants it handled. Attributes fall into four categories. The category tells a router whether it must understand an attribute and whether it passes that attribute on. The table below lists each category with examples.
 
@@ -136,6 +118,10 @@ The attributes you will meet most often are the following.
 
 ### Loop prevention without split horizon
 
+![AS_PATH loop prevention](./img/n15-aspath.svg)
+
+*Figure 2.15.5. Each AS prepends its number, and any router rejects a route that already carries its own.*
+
 BGP has no split horizon, so a router may advertise a route back toward the AS it came from. That sounds dangerous, but loops are still prevented. Each AS prepends its ASN when it advertises over eBGP, and every router rejects a route whose AS_PATH already contains its own ASN. Seeing your own name on the list is proof the route has already been through you.
 
 Consider a small triangle, and follow the route as it travels. A (AS65000) advertises 2001:db8:100::/64 to B and C. B (AS65001) re-advertises it to D with the path [65001, 65000]. D (AS65003) therefore holds [65003, 65001, 65000]. If that route comes back to A, A sees its own ASN in the path and drops it. The loop never enters A's table. Loop-freedom is a property of the path attribute, not part of the decision process.
@@ -148,7 +134,7 @@ A router often hears several paths to the same prefix, and each one can carry di
 
 ![BGP best-path order](./img/n15-fig1-bestpath.jpg)
 
-*Figure 2.15.1. The first test that finds a difference decides.*
+*Figure 2.15.6. The first test that finds a difference decides.*
 
 1. Highest WEIGHT (local to the router; Cisco/FRR).
 2. Highest `LOCAL_PREF` (exit policy of this AS).
@@ -179,6 +165,10 @@ vtysh -c 'show ip bgp neighbors 10.0.0.1 routes' -c 'show bgp ipv4 unicast summa
 Look for the `*>` and `=` markers in the output. Predict the winner with the list above first, then confirm it with `show bgp ipv4 unicast <prefix>`. Making the prediction first is what turns reading output into learning.
 
 ## 5. Advertisement rules, iBGP scaling and route reflectors
+
+![Full mesh versus route reflectors](./img/n15-rr.svg)
+
+*Figure 2.15.7. A route reflector replaces thousands of iBGP sessions with a handful.*
 
 A router must decide what it may pass on to each neighbour, and BGP's advertisement rules settle that in two sentences. First, advertise the best path to every eBGP peer. Second, advertise the best path learned from an eBGP peer to every iBGP peer. The consequence is that a route learned from an iBGP peer is not advertised to another iBGP peer. That blocks loops inside an AS, where AS_PATH stays the same and cannot reveal them. The side effect is that iBGP needs a full mesh of sessions, n(n-1)/2, which does not scale.
 

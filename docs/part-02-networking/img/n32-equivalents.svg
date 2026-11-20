@@ -1,0 +1,243 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>AWS, Azure and GCP building blocks</title>
+  <desc>Visual comparison mapping core infrastructure building blocks across AWS, Azure, and GCP.</desc>
+
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">AWS, Azure and GCP building blocks</text>
+
+  
+  <g id="table-headers">
+    <rect x="40" y="105" width="340" height="60" rx="8" fill="#207448"/>
+    <text x="60" y="146" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Building block</text>
+
+    <rect x="400" y="105" width="370" height="60" rx="8" fill="#207448"/>
+    <text x="420" y="146" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">AWS</text>
+
+    <rect x="790" y="105" width="370" height="60" rx="8" fill="#207448"/>
+    <text x="810" y="146" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Azure</text>
+
+    <rect x="1180" y="105" width="380" height="60" rx="8" fill="#207448"/>
+    <text x="1200" y="146" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">GCP</text>
+  </g>
+
+  
+  <g id="row-1">
+    
+    <rect x="40" y="180" width="340" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(56, 207)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="10" cy="15" r="7"/>
+      <circle cx="42" cy="15" r="7"/>
+      <circle cx="26" cy="40" r="7"/>
+      <line x1="16" y1="19" x2="22" y2="34"/>
+      <line x1="36" y1="19" x2="30" y2="34"/>
+      <line x1="17" y1="15" x2="35" y2="15"/>
+    </g>
+    <text x="120" y="244" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Virtual network</text>
+
+    
+    <rect x="400" y="180" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="420" y="243" font-family="sans-serif" font-size="24" fill="#303a36">VPC regional</text>
+
+    
+    <rect x="790" y="180" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="810" y="243" font-family="sans-serif" font-size="24" fill="#303a36">VNet regional</text>
+
+    
+    <rect x="1180" y="180" width="380" height="106" rx="8" fill="#fff9f3" stroke="#db8129" stroke-width="3"/>
+    <text x="1200" y="226" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1200" dy="0">VPC global with</tspan>
+      <tspan x="1200" dy="34">regional subnets</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-2">
+    
+    <rect x="40" y="300" width="340" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(56, 322)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M26 6 L44 14 V26 C44 38 26 46 26 46 C26 46 8 38 8 26 V14 Z"/>
+    </g>
+    <text x="120" y="359" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Instance firewall</text>
+
+    
+    <rect x="400" y="300" width="370" height="96" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="420" y="358" font-family="sans-serif" font-size="24" fill="#303a36">security group</text>
+
+    
+    <rect x="790" y="300" width="370" height="96" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="810" y="358" font-family="sans-serif" font-size="24" fill="#303a36">network security group</text>
+
+    
+    <rect x="1180" y="300" width="380" height="96" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="1200" y="358" font-family="sans-serif" font-size="24" fill="#303a36">VPC firewall rule</text>
+  </g>
+
+  
+  <g id="row-3">
+    
+    <rect x="40" y="410" width="340" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(56, 437)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="12" width="36" height="28" rx="5"/>
+      <line x1="8" y1="26" x2="44" y2="26"/>
+      <circle cx="16" cy="33" r="2" fill="#207448"/>
+      <circle cx="24" cy="33" r="2" fill="#207448"/>
+    </g>
+    <text x="120" y="474" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Outbound NAT</text>
+
+    
+    <rect x="400" y="410" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="420" y="473" font-family="sans-serif" font-size="24" fill="#303a36">NAT gateway</text>
+
+    
+    <rect x="790" y="410" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="810" y="456" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">NAT Gateway or</tspan>
+      <tspan x="810" dy="34">Azure Firewall</tspan>
+    </text>
+
+    
+    <rect x="1180" y="410" width="380" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="1200" y="456" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1200" dy="0">Cloud NAT on a</tspan>
+      <tspan x="1200" dy="34">Cloud Router</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-4">
+    
+    <rect x="40" y="530" width="340" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(56, 557)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="20" width="32" height="24" rx="4"/>
+      <path d="M16 20 V14 C16 8 36 8 36 14 V20"/>
+      <circle cx="26" cy="30" r="3" fill="#207448"/>
+    </g>
+    <text x="120" y="594" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Private access</text>
+
+    
+    <rect x="400" y="530" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="420" y="593" font-family="sans-serif" font-size="24" fill="#303a36">PrivateLink</text>
+
+    
+    <rect x="790" y="530" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="810" y="593" font-family="sans-serif" font-size="24" fill="#303a36">Private Link</text>
+
+    
+    <rect x="1180" y="530" width="380" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="1200" y="576" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1200" dy="0">Private Google Access,</tspan>
+      <tspan x="1200" dy="34">Private Service Connect</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-5">
+    
+    <rect x="40" y="650" width="340" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(56, 677)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="14" cy="26" r="8"/>
+      <circle cx="38" cy="26" r="8"/>
+      <line x1="22" y1="26" x2="30" y2="26"/>
+      <path d="M14 18 C20 10 32 10 38 18"/>
+      <path d="M14 34 C20 42 32 42 38 34"/>
+    </g>
+    <text x="120" y="714" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">VPC to VPC</text>
+
+    
+    <rect x="400" y="650" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="420" y="696" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="420" dy="0">Peering,</tspan>
+      <tspan x="420" dy="34">Transit Gateway</tspan>
+    </text>
+
+    
+    <rect x="790" y="650" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="810" y="696" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">VNet peering,</tspan>
+      <tspan x="810" dy="34">Virtual WAN</tspan>
+    </text>
+
+    
+    <rect x="1180" y="650" width="380" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="1200" y="696" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1200" dy="0">VPC Network Peering,</tspan>
+      <tspan x="1200" dy="34">Network Connectivity Center</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-6">
+    
+    <rect x="40" y="770" width="340" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(56, 797)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="16" height="32" rx="3"/>
+      <path d="M30 18 C36 18 42 22 42 26 C42 30 36 34 30 34"/>
+      <line x1="24" y1="26" x2="32" y2="26"/>
+    </g>
+    <text x="120" y="834" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Hybrid</text>
+
+    
+    <rect x="400" y="770" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="420" y="816" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="420" dy="0">Site-to-Site VPN,</tspan>
+      <tspan x="420" dy="34">Direct Connect</tspan>
+    </text>
+
+    
+    <rect x="790" y="770" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="810" y="816" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">VPN Gateway,</tspan>
+      <tspan x="810" dy="34">ExpressRoute</tspan>
+    </text>
+
+    
+    <rect x="1180" y="770" width="380" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="1200" y="816" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1200" dy="0">HA VPN,</tspan>
+      <tspan x="1200" dy="34">Cloud Interconnect</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-7">
+    
+    <rect x="40" y="890" width="340" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(56, 917)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="28" height="28" rx="4"/>
+      <line x1="18" y1="6" x2="18" y2="12"/>
+      <line x1="26" y1="6" x2="26" y2="12"/>
+      <line x1="34" y1="6" x2="34" y2="12"/>
+      <line x1="18" y1="40" x2="18" y2="46"/>
+      <line x1="26" y1="40" x2="26" y2="46"/>
+      <line x1="34" y1="40" x2="34" y2="46"/>
+      <circle cx="26" cy="26" r="5"/>
+    </g>
+    <text x="120" y="954" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">GPU fabric</text>
+
+    
+    <rect x="400" y="890" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="420" y="953" font-family="sans-serif" font-size="24" fill="#303a36">EFA</text>
+
+    
+    <rect x="790" y="890" width="370" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="810" y="936" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">ND-series with</tspan>
+      <tspan x="810" dy="34">InfiniBand</tspan>
+    </text>
+
+    
+    <rect x="1180" y="890" width="380" height="106" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+    <text x="1200" y="936" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1200" dy="0">GPUDirect-TCPX and</tspan>
+      <tspan x="1200" dy="34">TCPXO then RoCE</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1030" width="1520" height="70" rx="10" fill="#207448"/>
+    <text x="800" y="1074" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Map each building block to its equivalent first</text>
+  </g>
+</svg>

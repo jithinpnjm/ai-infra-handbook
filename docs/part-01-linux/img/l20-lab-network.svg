@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Lab network: bridge, veth and NAT</title>
+  <desc>Host box containing bridge br-lab connected via a veth pair to the container network namespace and routed to the Internet via iptables NAT MASQUERADE.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <polygon points="0,3 16,9 0,15" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <polygon points="0,3 16,9 0,15" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Lab network: bridge, veth and NAT</text>
+
+  
+  <rect x="50" y="110" width="420" height="650" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="75" y="135" width="370" height="285" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(232, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="4" width="56" height="48" rx="8"/>
+    <line x1="0" y1="18" x2="56" y2="18"/>
+    <circle cx="10" cy="11" r="2.5" fill="#207448"/>
+    <circle cx="18" cy="11" r="2.5" fill="#207448"/>
+    <circle cx="26" cy="11" r="2.5" fill="#207448"/>
+    <path d="M12 30 L20 36 L12 42"/>
+    <line x1="26" y1="42" x2="42" y2="42"/>
+  </g>
+
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="260" y="245">vethc0 moved into the</tspan>
+    <tspan x="260" y="280">container network</tspan>
+    <tspan x="260" y="315">namespace and renamed</tspan>
+    <tspan x="260" y="350">eth0 with 10.77.0.2/24</tspan>
+  </text>
+
+  
+  <line x1="260" y1="420" x2="260" y2="475" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="75" y="475" width="370" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(232, 505)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="16" r="10"/>
+    <path d="M28 26 V44 M28 44 H46 M40 38 L48 44 L40 50"/>
+    <circle cx="14" cy="44" r="4" fill="#207448"/>
+  </g>
+
+  <text text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="260" y="605">default route</tspan>
+    <tspan x="260" y="645">via 10.77.0.1</tspan>
+  </text>
+
+  
+  <rect x="475" y="200" width="170" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="560" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">A veth pair</text>
+  <line x1="445" y1="275" x2="675" y2="275" stroke="#207448" stroke-width="6"/>
+
+  
+  <line x1="445" y1="605" x2="675" y2="605" stroke="#207448" stroke-width="3.5" stroke-dasharray="8 6" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="650" y="110" width="720" height="650" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(930, 132)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="18" rx="4"/>
+    <rect x="4" y="32" width="48" height="18" rx="4"/>
+    <circle cx="14" cy="15" r="2.5" fill="#207448"/>
+    <circle cx="14" cy="41" r="2.5" fill="#207448"/>
+    <line x1="26" y1="15" x2="44" y2="15"/>
+    <line x1="26" y1="41" x2="44" y2="41"/>
+  </g>
+  <text x="1005" y="172" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Host</text>
+
+  
+  <rect x="675" y="210" width="320" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(807, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="12" width="40" height="32" rx="6"/>
+    <path d="M18 28 h20 M28 12 v-8"/>
+    <circle cx="28" cy="4" r="2" fill="#207448"/>
+  </g>
+
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="835" y="325">vethh0 on the host</tspan>
+    <tspan x="835" y="365">attached to br-lab</tspan>
+  </text>
+
+  
+  <line x1="835" y1="440" x2="835" y2="485" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="675" y="485" width="320" height="250" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(807, 505)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="16" width="48" height="26" rx="6"/>
+    <circle cx="14" cy="29" r="3.5" fill="#207448"/>
+    <circle cx="28" cy="29" r="3.5" fill="#207448"/>
+    <circle cx="42" cy="29" r="3.5" fill="#207448"/>
+    <path d="M14 16 V8 M28 16 V8 M42 16 V8"/>
+  </g>
+
+  <text text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="835" y="605">bridge br-lab</tspan>
+    <tspan x="835" y="645">with IP 10.77.0.1/24</tspan>
+  </text>
+
+  
+  <line x1="995" y1="605" x2="1025" y2="605" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1025" y="210" width="320" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(1157, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="10" width="40" height="36" rx="6"/>
+    <path d="M20 28 L28 20 L36 28 M28 20 V38"/>
+    <line x1="16" y1="10" x2="16" y2="4"/>
+    <line x1="24" y1="10" x2="24" y2="4"/>
+    <line x1="32" y1="10" x2="32" y2="4"/>
+    <line x1="40" y1="10" x2="40" y2="4"/>
+  </g>
+
+  <text text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1185" y="345">Host uplink</tspan>
+  </text>
+
+  
+  <rect x="1025" y="485" width="320" height="250" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="3"/>
+
+  
+  <g transform="translate(1157, 505)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 4 L48 14 V28 C48 42 28 52 28 52 C28 52 8 42 8 28 V14 Z"/>
+    <path d="M18 28 H38 M30 22 L38 28 L30 34"/>
+  </g>
+
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="1185" y="595">iptables NAT rule</tspan>
+    <tspan x="1185" y="633">MASQUERADE</tspan>
+    <tspan x="1185" y="671">for 10.77.0.0/24</tspan>
+  </text>
+
+  
+  <line x1="1185" y1="485" x2="1185" y2="440" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="1385" y="210" width="175" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(1445, 240)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 40 A12 12 0 0 1 14 18 A16 16 0 0 1 42 16 A12 12 0 0 1 48 40 Z"/>
+  </g>
+
+  <text text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="1473" y="345">Internet</tspan>
+  </text>
+
+  
+  <line x1="1345" y1="325" x2="1385" y2="325" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+
+  
+  <rect x="50" y="790" width="880" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(80, 815)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="8"/>
+    <path d="M14 20 L24 28 L14 36 M28 36 H42"/>
+  </g>
+  <text x="155" y="853" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Commands</text>
+
+  
+  <rect x="80" y="890" width="820" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="105" y="942">ip link add vethh0 type veth peer name vethc0 ;</tspan>
+    <tspan x="105" y="984">sysctl -w net.ipv4.ip_forward=1</tspan>
+  </text>
+
+  
+  <rect x="970" y="790" width="590" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(1000, 815)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <path d="M12 28 H20 L24 16 L32 40 L36 28 H44"/>
+  </g>
+  <text x="1075" y="853" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Test</text>
+
+  
+  <rect x="1000" y="890" width="530" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1025" y="942">ping -c2 10.77.0.1 and</tspan>
+    <tspan x="1025" y="984">ping -c2 8.8.8.8</tspan>
+  </text>
+</svg>

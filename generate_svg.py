@@ -1,171 +1,198 @@
+import xml.etree.ElementTree as ET
 import re
 
-svg_content = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
-  <title>Lookup order</title>
-  <desc>Flowchart illustrating Python attribute lookup order from obj.name to descriptor, instance dictionary, class attribute, __getattr__, or AttributeError.</desc>
+svg_code = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Where roles, import_role and include_role run in a play</title>
+  <desc>Visual infographic explaining the execution lifecycle and placement of roles, import_role, and include_role across play sections.</desc>
+
   <defs>
-    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
-      <polygon points="0,3 16,9 0,15" fill="#207448"/>
-    </marker>
-    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto">
-      <polygon points="0,3 16,9 0,15" fill="#db8129"/>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
     </marker>
   </defs>
 
   <!-- Background -->
-  <rect width="1600" height="1160" fill="#f5f8f5"/>
+  <rect x="0" y="0" width="1600" height="1120" fill="#f5f8f5" />
 
-  <!-- Title -->
-  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Lookup order</text>
+  <!-- Title: 48px bold, wrapped onto two lines so it fits conservatively inside 1600px with generous margins -->
+  <text x="800" y="72" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Where roles, import_role and include_role</tspan>
+    <tspan x="800" dy="58">run in a play</tspan>
+  </text>
 
-  <!-- ==================== ARROWS ==================== -->
-  <!-- A -> B -->
-  <line x1="365" y1="170" x2="365" y2="230" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <!-- Timeline Bar with Markers above the sequence -->
+  <line x1="120" y1="205" x2="1480" y2="205" stroke="#a3c9b3" stroke-width="4" stroke-linecap="round" />
+  
+  <!-- Marker 3 (milestone indicator) -->
+  <circle cx="170" cy="205" r="9" fill="#207448" stroke="#ffffff" stroke-width="2.5" />
 
-  <!-- B -> C (orange priority arrow) -->
-  <line x1="680" y1="285" x2="950" y2="285" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
-  <text x="815" y="271" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">data descriptor</text>
+  <!-- Marker 1: Parse time for import_role -->
+  <circle cx="575" cy="205" r="9" fill="#207448" stroke="#ffffff" stroke-width="2.5" />
+  <line x1="575" y1="214" x2="575" y2="248" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" />
+  <text x="575" y="185" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Parse time for import_role</text>
 
-  <!-- B -> D -->
-  <line x1="365" y1="340" x2="365" y2="430" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <text x="385" y="388" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">otherwise</text>
+  <!-- Marker 2: Runtime for include_role -->
+  <circle cx="1025" cy="205" r="9" fill="#207448" stroke="#ffffff" stroke-width="2.5" />
+  <line x1="1025" y1="214" x2="1025" y2="248" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" />
+  <text x="1025" y="185" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Runtime for include_role</text>
 
-  <!-- D -> E -->
-  <line x1="680" y1="480" x2="950" y2="480" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <text x="815" y="466" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">yes</text>
+  <!-- ================= SECTION 1: pre_tasks ================= -->
+  <g id="section-pre-tasks">
+    <rect x="50" y="250" width="240" height="640" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <!-- Step number circle 1 -->
+    <circle cx="170" cy="300" r="24" fill="#207448" />
+    <text x="170" y="300" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
 
-  <!-- D -> F -->
-  <line x1="365" y1="530" x2="365" y2="620" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <text x="385" y="578" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+    <!-- Outline icon: checklist (56px) -->
+    <g transform="translate(142, 345)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="48" rx="6" />
+      <path d="M18 6 V2 a2 2 0 0 1 2 -2 h16 a2 2 0 0 1 2 2 V6" />
+      <path d="M15 28 L23 36 L41 18" />
+      <line x1="16" y1="44" x2="40" y2="44" />
+    </g>
 
-  <!-- F -> G -->
-  <line x1="680" y1="675" x2="950" y2="675" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <text x="815" y="661" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">yes</text>
-
-  <!-- F -> H -->
-  <line x1="365" y1="730" x2="365" y2="820" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <text x="385" y="778" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
-
-  <!-- H -> I -->
-  <line x1="680" y1="870" x2="950" y2="870" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <text x="815" y="856" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">yes</text>
-
-  <!-- H -> J -->
-  <line x1="365" y1="920" x2="365" y2="1010" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <text x="385" y="968" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
-
-
-  <!-- ==================== NODES ==================== -->
-
-  <!-- Node A: obj.name -->
-  <g id="node-A">
-    <rect x="155" y="90" width="420" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Object container with inner property dot -->
-    <rect x="175" y="102" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
-    <circle cx="203" cy="130" r="10" fill="none" stroke="#207448" stroke-width="4"/>
-    <!-- Text -->
-    <text x="251" y="140" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">obj.name</text>
+    <!-- Title: pre_tasks -->
+    <text x="170" y="445" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">pre_tasks</text>
   </g>
 
-  <!-- Node B: name found on type MRO? -->
-  <g id="node-B">
-    <rect x="50" y="230" width="630" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Magnifying glass for MRO lookup -->
-    <circle cx="95" cy="280" r="16" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="107" y1="292" x2="123" y2="308" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    <!-- Text -->
-    <text x="146" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">name found on type MRO?</text>
+  <!-- Orthogonal Arrow 1: pre_tasks -> roles and tasks -->
+  <line x1="290" y1="570" x2="340" y2="570" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  <!-- ================= SECTION 2: roles and tasks ================= -->
+  <g id="section-roles-and-tasks">
+    <rect x="340" y="250" width="920" height="640" rx="16" fill="#f2f7f3" stroke="#207448" stroke-width="3" />
+
+    <!-- Step number circle 2 -->
+    <circle cx="385" cy="292" r="24" fill="#207448" />
+    <text x="385" y="292" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    <!-- Header Icon: layers (56px) -->
+    <g transform="translate(425, 268)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="44" height="10" rx="3" />
+      <rect x="2" y="19" width="44" height="10" rx="3" />
+      <rect x="2" y="34" width="44" height="10" rx="3" />
+    </g>
+
+    <!-- Title: roles and tasks -->
+    <text x="490" y="302" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">roles and tasks</text>
+
+    <!-- SUB-ROW 1: roles: list (classic, runs before tasks) -->
+    <g id="subrow-roles-list">
+      <rect x="365" y="335" width="870" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <!-- Outline icon: role cube (48px) -->
+      <g transform="translate(390, 366)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round">
+        <path d="M24 4 L44 14 V34 L24 44 L4 34 V14 Z" />
+        <path d="M24 4 V44 M4 14 L24 24 L44 14" />
+      </g>
+
+      <!-- Label: roles: -->
+      <text x="460" y="401" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">roles:</text>
+
+      <!-- Label: classic, runs before tasks -->
+      <text x="600" y="401" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">classic, runs before tasks</text>
+    </g>
+
+    <!-- SUB-ROW 2: task flow -->
+    <g id="subrow-task-flow">
+      <rect x="365" y="465" width="870" height="405" rx="12" fill="#ffffff" stroke="#a3c9b3" stroke-width="2" />
+
+      <!-- Card A: ansible.builtin.import_role -->
+      <g id="card-import-role">
+        <rect x="385" y="485" width="380" height="365" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" />
+        
+        <!-- Outline icon: static padlock (48px) -->
+        <g transform="translate(410, 505)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="8" y="18" width="32" height="26" rx="4" />
+          <path d="M14 18 V10 a10 10 0 0 1 20 0 V18" />
+          <circle cx="24" cy="30" r="3" fill="#207448" stroke="none" />
+        </g>
+
+        <!-- Label: ansible.builtin.import_role -->
+        <text x="410" y="585" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+          <tspan x="410" dy="0">ansible.builtin.</tspan>
+          <tspan x="410" dy="32">import_role</tspan>
+        </text>
+
+        <!-- Label: static, fixed at parse time -->
+        <text x="410" y="685" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+          <tspan x="410" dy="0">static,</tspan>
+          <tspan x="410" dy="32">fixed at parse time</tspan>
+        </text>
+      </g>
+
+      <!-- Task flow arrow between import_role and include_role -->
+      <line x1="765" y1="667" x2="815" y2="667" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+      <!-- Card B: ansible.builtin.include_role (Orange highlight) -->
+      <g id="card-include-role">
+        <rect x="815" y="485" width="400" height="365" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3.5" />
+
+        <!-- Outline icon: loop icon (48px) in orange -->
+        <g transform="translate(840, 505)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M38 16 A 18 18 0 1 1 12 34" />
+          <polyline points="38,8 42,18 32,20" />
+        </g>
+
+        <!-- Label: ansible.builtin.include_role -->
+        <text x="840" y="585" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+          <tspan x="840" dy="0">ansible.builtin.</tspan>
+          <tspan x="840" dy="32">include_role</tspan>
+        </text>
+
+        <!-- Label: dynamic, decided at runtime -->
+        <text x="840" y="675" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+          <tspan x="840" dy="0">dynamic,</tspan>
+          <tspan x="840" dy="30">decided at runtime</tspan>
+        </text>
+
+        <!-- Note: supports loop and tasks_from -->
+        <text x="840" y="755" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+          <tspan x="840" dy="0">supports loop and</tspan>
+          <tspan x="840" dy="30" font-family="monospace">tasks_from</tspan>
+        </text>
+      </g>
+    </g>
   </g>
 
-  <!-- Node C: descriptor.__get__ (wins over instance dict) -->
-  <g id="node-C">
-    <rect x="950" y="230" width="600" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Shield for priority / winning -->
-    <path d="M998 257 L1022 268 V288 C1022 302 998 311 998 311 C998 311 974 302 974 288 V268 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
-    <!-- Text -->
-    <text x="1046" y="275" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">descriptor.__get__<tspan x="1046" dy="37" font-family="sans-serif" font-size="24" font-weight="normal">(wins over instance dict)</tspan></text>
+  <!-- Orthogonal Arrow 2: roles and tasks -> post_tasks -->
+  <line x1="1260" y1="570" x2="1310" y2="570" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  <!-- ================= SECTION 3: post_tasks ================= -->
+  <g id="section-post-tasks">
+    <rect x="1310" y="250" width="240" height="640" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    <!-- Step number circle 3 -->
+    <circle cx="1430" cy="300" r="24" fill="#207448" />
+    <text x="1430" y="300" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    <!-- Outline icon: flag (56px) -->
+    <g transform="translate(1402, 345)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="4" x2="12" y2="52" />
+      <path d="M12 8 C24 0 32 16 44 8 V32 C32 40 24 24 12 32 Z" />
+    </g>
+
+    <!-- Title: post_tasks -->
+    <text x="1430" y="445" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">post_tasks</text>
   </g>
 
-  <!-- Node D: in instance __dict__? -->
-  <g id="node-D">
-    <rect x="50" y="430" width="630" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Table / key-value dict grid -->
-    <rect x="70" y="452" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="70" y1="471" x2="126" y2="471" stroke="#207448" stroke-width="4"/>
-    <line x1="70" y1="490" x2="126" y2="490" stroke="#207448" stroke-width="4"/>
-    <line x1="90" y1="452" x2="90" y2="508" stroke="#207448" stroke-width="4"/>
-    <!-- Text -->
-    <text x="146" y="491" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">in instance __dict__?</text>
+  <!-- ================= NOTE-CHIP: Handlers flush between sections ================= -->
+  <g id="note-handlers">
+    <rect x="520" y="905" width="560" height="56" rx="28" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="800" y="941" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Handlers flush between sections.</text>
   </g>
 
-  <!-- Node E: return instance value -->
-  <g id="node-E">
-    <rect x="950" y="430" width="600" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Checkmark in circle -->
-    <circle cx="998" cy="480" r="24" fill="none" stroke="#207448" stroke-width="4"/>
-    <polyline points="986,480 995,489 1012,470" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <!-- Text -->
-    <text x="1046" y="491" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">return instance value</text>
-  </g>
-
-  <!-- Node F: non-data descriptor or plain class attr? -->
-  <g id="node-F">
-    <rect x="50" y="620" width="630" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Application window template -->
-    <rect x="70" y="647" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
-    <line x1="70" y1="665" x2="126" y2="665" stroke="#207448" stroke-width="4"/>
-    <circle cx="84" cy="656" r="3" fill="#207448"/>
-    <circle cx="96" cy="656" r="3" fill="#207448"/>
-    <!-- Text -->
-    <text x="146" y="665" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">non-data descriptor or<tspan x="146" dy="37">plain class attr?</tspan></text>
-  </g>
-
-  <!-- Node G: descriptor.__get__ / class attr -->
-  <g id="node-G">
-    <rect x="950" y="620" width="600" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Gear for method/attr execution -->
-    <circle cx="998" cy="675" r="14" fill="none" stroke="#207448" stroke-width="4"/>
-    <path d="M998 651 V657 M998 693 V699 M974 675 H980 M1016 675 H1022 M981 658 L985 662 M1011 688 L1015 692 M981 692 L985 688 M1011 662 L1015 658" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    <!-- Text -->
-    <text x="1046" y="665" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">descriptor.__get__ /<tspan x="1046" dy="37" font-family="sans-serif">class attr</tspan></text>
-  </g>
-
-  <!-- Node H: __getattr__ defined? -->
-  <g id="node-H">
-    <rect x="50" y="820" width="630" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Branching switch / fork -->
-    <circle cx="84" cy="870" r="7" fill="none" stroke="#207448" stroke-width="4"/>
-    <circle cx="112" cy="854" r="7" fill="none" stroke="#207448" stroke-width="4"/>
-    <circle cx="112" cy="886" r="7" fill="none" stroke="#207448" stroke-width="4"/>
-    <path d="M91 870 H98 L105 857 M98 870 L105 883" fill="none" stroke="#207448" stroke-width="4"/>
-    <!-- Text -->
-    <text x="146" y="881" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">__getattr__ defined?</text>
-  </g>
-
-  <!-- Node I: __getattr__(name) -->
-  <g id="node-I">
-    <rect x="950" y="820" width="600" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Terminal prompt >_ -->
-    <rect x="970" y="842" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
-    <polyline points="982,862 992,870 982,878" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="996" y1="878" x2="1012" y2="878" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    <!-- Text -->
-    <text x="1046" y="881" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">__getattr__(name)</text>
-  </g>
-
-  <!-- Node J: AttributeError -->
-  <g id="node-J">
-    <rect x="155" y="1010" width="420" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-    <!-- Icon: Alert warning triangle -->
-    <polygon points="203,1031 227,1075 179,1075" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
-    <line x1="203" y1="1046" x2="203" y2="1058" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="203" cy="1067" r="2" fill="#207448"/>
-    <!-- Text -->
-    <text x="251" y="1066" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">AttributeError</text>
+  <!-- ================= TAKEAWAY BAR ================= -->
+  <g id="takeaway-bar">
+    <rect x="50" y="990" width="1500" height="85" rx="16" fill="#207448" />
+    <text x="800" y="1043" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      <tspan>Use </tspan>
+      <tspan font-family="monospace">roles:</tspan>
+      <tspan> for simple cases, and the other two for mid-task roles.</tspan>
+    </text>
   </g>
 </svg>'''
 
-with open("lookup_order.svg", "w") as f:
-    f.write(svg_content)
-
-print("SVG written successfully.")
+tree = ET.fromstring(svg_code)
+print("SVG parsed successfully!")

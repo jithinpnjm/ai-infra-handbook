@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "14",
+  "name": "a14-linear-vs-free",
+  "title": "linear waits at each task for the slowest host, free lets healthy hosts run on",
+  "spec": "Two side-by-side panels. Left panel titled strategy: linear with a chain icon. Inside it two horizontal lanes, one labelled healthy host and one labelled slow host. The healthy lane finishes its first task block early and then sits idle. The slow lane's first task block is longer. A vertical barrier line sits at the end of the first task block in both lanes, labelled wait for slowest host. Only after the barrier does the second task block start in both lanes. Under the panel, a label: each task runs on all hosts in the batch before the next task starts. Right panel titled strategy: free with a runner icon. Two lanes with the same blocks, but there is no barrier: the healthy lane runs straight on into its second task block and finishes early, and the slow lane finishes later. Under the panel, a label: each host runs through the play at its own pace. Orange note on the linear panel: every task waits for the slowest host. Number circles 1 and 2 on the task blocks of the linear panel to show time order. No takeaway bar.",
+  "anchor": "## 3. Strategies and batching",
+  "alt": "Under linear every task waits for the slowest host, while under free healthy hosts run on at their own pace.",
+  "cap": "With linear every task waits for the slowest host, while free lets healthy hosts finish early."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "14",
+  "name": "a14-async-background-job",
+  "title": "async with poll 0: the job runs in the background while the controller checks later",
+  "spec": "A sequence diagram with three vertical swimlanes side by side, each with a header: Controller (Ansible), Rack host, Background job. Number circles 1 to 5 mark messages in top-to-bottom time order. Message 1, horizontal arrow from Controller to Rack host, labelled command with async: 3600 and poll: 0. Message 2, a short arrow from Rack host to Background job labelled starts in the background. Message 3, arrow from Rack host back to Controller labelled returns a job ID and moves on at once. A shaded vertical span between messages 3 and 4 in the Controller lane is labelled no SSH session needs to stay open, drawn in orange as the key point. Message 4, arrow from Controller to Rack host labelled async_status with until: fw_result.finished, delay: 30 and retries: 120. Message 5, arrow from Rack host back to Controller labelled finished. Use the monospace font for the code-like labels. Under the Background job lane a small label: allowed runtime 3600 seconds. No takeaway bar.",
+  "anchor": "### Long-running tasks",
+  "alt": "A background job runs on the host while the controller returns at once, then polls with async_status until it finishes.",
+  "cap": "With async and poll set to 0 the controller does not hold an SSH session open, and it checks the job later with async_status."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "14",
+  "name": "a14-ring-promotion",
+  "title": "Rings: a change is promoted from the canary branch to stable",
+  "spec": "Three ring boxes in a left-to-right row with equal spacing and an arrow between each neighbour. Each box has a simple outline icon above its title, a stack of nodes for the ring and a git branch icon for the branch. Box 1 titled Ring 0 with a branch label canary. Box 2 titled ring 1 with branch label stable-1. Box 3 titled ring 2 with branch label stable. Number circles 1, 2 and 3 on the boxes for the order of promotion. Arrow from box 1 to box 2 labelled fast-forward after validation passes. Arrow from box 2 to box 3 with the same label. Ring 0 box drawn with an orange outline because the change lands there first. Above Ring 0, a small label: a change lands on canary. Below the three boxes, a short text line: promote by fast-forwarding the branches, or by moving signed tags. Monospace text for the branch names. No takeaway bar.",
+  "anchor": "## 6. Pull mode in detail",
+  "alt": "A change lands on the canary branch for ring 0, then moves to stable-1 and stable after each ring validates it.",
+  "cap": "Rings promote a change one stage at a time, so each ring validates it before the next ring receives it."
+ }
+]

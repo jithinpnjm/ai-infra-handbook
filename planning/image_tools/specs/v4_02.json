@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "02",
+  "name": "a02-wisb-replace",
+  "title": "A merge keeps the stale neighbor, a replace matches the file",
+  "spec": "Two side-by-side panels with a green heading each. Left panel, heading 'merge': a box labelled 'What It Should Be (WISB)' listing two neighbor stanzas, 'neighbor A' and 'neighbor B' (the neighbor C was deleted from Git). Below it, a box labelled 'What It Really Is (WIRI) on the router' listing A, B and a grey leftover 'neighbor C'. Note under the left panel: 'A merge only adds and updates lines, so the deleted neighbor stays on the router.' Right panel, heading 'replace': the same WISB box with A and B, with the monospace line '<bgp operation=\"replace\">' above the arrow. Below it, the WIRI box lists only A and B, and neighbor C is gone. Note under the right panel: 'A replace makes the section match the file exactly.' An orange arrow from the grey leftover C on the left panel to the replace operation on the right panel, labelled 'removed'. Bottom line in a green bar, plain text: 'WISB equals WIRI'.",
+  "anchor": "### Foundations from *Network Programmability and Automation* (Ch. 13) and *Ansible: Up and Running* (Ch. 22)",
+  "alt": "A merge leaves a deleted BGP neighbor on the router, while a replace operation removes it so the device matches the file.",
+  "cap": "A merge leaves a deleted BGP neighbor on the router, but a replace operation makes the device match the file."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "02",
+  "name": "a02-oidc-exchange",
+  "title": "A CI job swaps a short-lived token for cloud credentials",
+  "spec": "Left to right, a chain of four boxes with arrows. Box 1 'CI runner', window icon, text 'One plan job starts'. Box 2 'CI provider', badge icon, text 'Mints a short-lived signed token with claims: repository and branch'. Box 3 'Cloud', shield icon, text 'Checks the signature and the claims against the rule'. Box 4 'Temporary credentials', key icon, text 'Expire when the job ends'. Arrow 1 to 2 labelled 'request token (id-token: write)'. Arrow 2 to 3 labelled 'send token'. Arrow 3 to 4 labelled 'if the claims match'. Below the chain, two small role cards side by side: 'tf-plan role (read-only)' with note 'pull request, never a fork', and 'tf-apply role (write)' with note 'protected branch and environment only'. Orange highlight on the 'tf-apply role' card with note 'A feature branch can never reach this role'. A grey note: 'No cloud key is stored in the repository.'",
+  "anchor": "## 5. Authentication: OIDC instead of stored keys",
+  "alt": "A CI job exchanges a short-lived OIDC token for temporary cloud credentials, with separate plan and apply roles.",
+  "cap": "A CI job trades a short-lived OIDC token for temporary cloud credentials, and only protected branches reach the apply role."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "02",
+  "name": "a02-drift-classes",
+  "title": "Auto-heal stateless resources, alert on stateful ones",
+  "spec": "Top, a single box 'Nightly drift check' with a clock icon, text 'terraform plan -detailed-exitcode'. Three exit-code boxes beneath it in a row with a number on each: '0' labelled 'no drift', '1' labelled 'error', '2' labelled 'drift detected'. From box '2' an arrow goes down into two columns. Left column, green panel, heading 'Auto-heal', gear icon, examples 'Kubernetes Deployments', 'ConfigMaps', 'host config files', note 'Reverting holds no data'. Right column, grey-green panel with orange outline, heading 'Alert only', lock icon, examples 'databases', 'storage buckets', 'VPCs', 'stateful GPU instances', note 'A revert could delete data, so never auto-apply'. Below the right column, a note: 'Post the plan diff to chat or a ticket.' Caption row at the bottom: 'Ask what the revert would do on its worst day.'",
+  "anchor": "## 11. Drift detection and self-healing",
+  "alt": "A nightly drift check exits with code 2 on drift, then stateless resources auto-heal while stateful resources only raise an alert.",
+  "cap": "A nightly drift check auto-heals stateless resources and only alerts on stateful ones, because a revert there could destroy data."
+ }
+]

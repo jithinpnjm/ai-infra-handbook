@@ -1,0 +1,432 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "01",
+  "name": "r01-bmc-recovery",
+  "title": "Recovering a hung BMC while the host OS is still up",
+  "spec": "A vertical stack of three numbered step boxes, top to bottom, joined by down arrows, with a left-side column labelled Hung BMC, host OS still up. Above the stack, a small grey box labelled BMC hangs (fans may sit at 100 percent) and a dashed link to the host OS box labelled Host OS (SSH works). Step 1 box, orange border (the single key item): title In-band KCS cold reset. Body lines: SSH into the host OS over the in-band network; run sudo ipmitool mc reset cold; resets the BMC SoC over the motherboard KCS bus at /dev/ipmi0. Arrow from step 1 to step 2 labelled if the host OS is also unreachable or KCS fails. Step 2 box, green: title Out-of-band AC power drain through a smart PDU. Body lines: switch off PDU outlets C19 and C20 for 60 seconds; the BMC standby rail fully discharges; the BMC cold-boots. Arrow from step 2 to step 3 labelled if the BMC SPI flash image is corrupt. Step 3 box, green: title Smart hands. Body lines: use the chassis BMC reset pinhole or the USB recovery port. Number circles r=24 with numbers 1, 2, 3 on the step boxes. Orange note beside step 1: this is the one case where the in-band door is the way back to the out-of-band door. No takeaway bar.",
+  "anchor": "### 1.1 Modeling failure boundaries (`code/part07/oob_sim.py`)",
+  "alt": "A hung BMC is recovered first from the host OS with a KCS cold reset, then by draining AC power through the PDU, then by smart hands.",
+  "cap": "When the BMC hangs but the host OS still answers, you reset the BMC from inside the host first, and escalate to power drain and smart hands only if that fails."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "01",
+  "name": "r01-power-cycle",
+  "title": "Explicit power cycle: off, poll, wait, on",
+  "spec": "A horizontal row of four boxes left to right with arrows between them, labelled with step numbers 1 to 4 in number circles r=24. Box 1: power off, sub-line hard power cut, drains main host power rails; note under it: only after power soft and SSH have failed and the node is drained in Slurm. Box 2: poll power status, sub-line repeat until the output reads Chassis Power is off. Box 3: wait 10 to 15 seconds, sub-line pause before powering back on. Box 4: power on, sub-line turns the main host power rails back on. Above the row, a grey box labelled ipmitool power cycle, with a dashed arrow that is crossed out (no arrowhead into the row) and an orange note: power cycle is not always reliable across all BMC firmwares, so write the three steps out explicitly in scripts. Use the four labels exactly as shown; the step 3 wait is written as a separate box, not a combined step. No takeaway bar.",
+  "anchor": "### 4.2 Core `ipmitool` command groups and power operations",
+  "alt": "A scripted power cycle runs power off, polls status until off, waits 10 to 15 seconds, then runs power on.",
+  "cap": "Some BMC firmware handles power cycle unreliably, so scripts should run power off, poll until it is off, wait, and then run power on."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "02",
+  "name": "r02-collection-paging",
+  "title": "Following Members@odata.nextLink until the last page",
+  "spec": "A vertical loop drawn as numbered step boxes in a single column, with arrows running down and one return arrow looping back up the right side. Left side, a tall grey container labelled Collection page, holding two small rows: Members (2 of 4 shown in the sample) and Members@odata.count. Step 1 box: GET the collection page at its URI. Step 2 box: compare Members@odata.count with len(Members); a note under it says the count is the whole collection, not the rows in this response, with the example 450 in total and 75 per page. Decision diamond: Members@odata.nextLink present? Arrow labelled yes goes right to step 3 box: GET the exact Members@odata.nextLink URI, do not parse or build the opaque token; a return arrow runs from step 3 back up to step 2. Arrow labelled no goes down to a green end box labelled all members collected. Number circles r=24 on steps 1, 2 and 3. Orange note beside step 2: a script that reports the count as the rows it printed will always undercount. No takeaway bar.",
+  "anchor": "## 5. Resource collections and pagination",
+  "alt": "A collection is read page by page, following the next link until it is absent, while comparing the total count with the rows received.",
+  "cap": "A collection can span many pages, so a client follows the next link on each page until none remains, and it checks the total count against the rows it received."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "02",
+  "name": "r02-settings-stage",
+  "title": "Staging a BIOS change in the Settings resource",
+  "spec": "Two boxes side by side with a horizontal arrow between them. Left box, grey panel titled Active resource: /Bios. Inside it, lines: current running state; attributes that wait for a reboot are read-only here; @Redfish.Settings SettingsObject points to /Bios/Settings. Right box, green panel titled Settings resource: /Bios/Settings. Inside: intended future state; same schema as /Bios; holds the pending change. Below the two boxes, a three-step numbered row left to right. Step 1 box: PATCH your change to /Bios/Settings. Step 2 box: host reset, for example GracefulRestart or ForceRestart. Step 3 box: the BIOS consumes /Bios/Settings, updates /Bios, and records validation messages under @Redfish.Settings.Messages. An arrow from step 3 points up to the Active resource box, labelled updates. Number circles r=24 with 1, 2, 3. Orange note under step 2: if you skip the reset, the change sits in the draft and the running system never sees it. No takeaway bar.",
+  "anchor": "### 4.1 Active resources vs `/Settings` resources (DSP0266 \u00a79.10)",
+  "alt": "A BIOS change is staged with a PATCH to the Settings resource, applied on the next host reset, and then shown in the active resource.",
+  "cap": "A BIOS change is a two-step process: you stage it in the Settings resource, then reset the host so the firmware applies it."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "02",
+  "name": "r02-crawl-loop",
+  "title": "The crawler's to-do and visited loop",
+  "spec": "A top-down flowchart with decision diamonds and process boxes, arranged in one vertical column with a loop return on the right. Start terminal at top, labelled start todo with /redfish/v1/. Process box: pop the next URI from todo. Decision diamond: key already in seen? Yes arrow goes to a small box labelled skip and loops back to the todo check. No arrow goes down to process box: GET the URI and record seen[key] with its status. Decision diamond: status is 200 and a JSON object? No arrow loops back to the todo check. Yes arrow goes down to process box: record the @odata.type under types. Then process box: collect links, leaving out @odata.id and Actions. Process box: add each link that starts with /redfish/ and is not seen and is not the resource itself to todo. Arrow from that box loops back up to the todo check. Decision diamond at the top: todo empty? Yes arrow exits to a green end box labelled return seen and types. Orange highlight on the seen check diamond with a note: without this guard, two linked resources send the crawler back and forth forever. Number the first three process steps 1 to 3 only where order matters, using small number circles r=24. Keep Actions as a plain label, no arrow to it. No takeaway bar.",
+  "anchor": "### 6.1 How the hypermedia crawler works (`code/part07/redfish_crawl.py`)",
+  "alt": "The crawler starts at the Service Root, skips visited URIs, records each response, and adds newly found links to its to-do list until none remain.",
+  "cap": "The crawler keeps a to-do list and a visited set, so it reaches every resource from the Service Root without hard-coded paths and without looping forever."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "03",
+  "name": "r03-patch-outcomes",
+  "title": "Three possible outcomes of one PATCH with mixed properties",
+  "spec": "A top-down decision tree. At the top, a wide box labelled PATCH with three properties, with the body shown in monospace below its title: AssetTag set to A2 (writable), SerialNumber set to X (read-only), Bogus set to 1 (not a property). Two arrows fan out from it, labelled with the two outcomes. Left branch, green: a box labelled at least one property succeeds, with the sub-line AssetTag becomes A2; below it a box with status 200 OK and the sub-line updated resource plus an @Message.ExtendedInfo array listing PropertyNotWritable for SerialNumber and PropertyUnknown for Bogus. Orange note on this box: the status says success, but two properties were ignored. Right branch, grey: a box labelled every property is read-only, unknown or invalid, or the body is an empty object, with a box below it showing status 400 Bad Request, sub-line error body with PropertyNotWritable or NoOperation, and a final small label nothing on the BMC changed. A third small box at the bottom of the tree, separated and grey, labelled other failures, with two short labels: 412 Precondition Failed (If-Match stale, re-read and retry) and 428 Precondition Required (If-Match missing). No number circles needed, and no takeaway bar.",
+  "anchor": "### 4.2 The `PATCH` partial-success rule (DSP0266 \u00a77.6)",
+  "alt": "A PATCH with one valid property returns 200 with ignored properties listed, while a PATCH with no valid property returns 400 and changes nothing.",
+  "cap": "A PATCH can return 200 OK even when some of its properties were ignored, so the body must be read along with the status code."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "03",
+  "name": "r03-patch-vs-post",
+  "title": "PATCH changes a value, POST makes something or does something",
+  "spec": "A side-by-side comparison with two tall columns and a shared top row of two example request boxes. Left column, green panel titled PATCH: change a value that already exists. Under it, three example lines as small boxes: AssetTag or HostName; BootSourceOverrideTarget (one-time boot override); /Bios/Settings (stage BIOS attributes). A note: only the properties you name change, and anything left out stays untouched. Right column, grey panel titled POST: make something new or make something happen. Under it, two sub-boxes. Sub-box one: Create a member, example new subscription under /redfish/v1/EventService/Subscriptions. Sub-box two: Run an action, example POST to /redfish/v1/Systems/System_0/Actions/ComputerSystem.Reset with body ResetType GracefulRestart. A note under sub-box two: POST is not idempotent, so sending a reset twice may reboot the server twice. Above the two columns, a row of two example request labels: PATCH example, a property change written as a value; POST example, a verb written as an action. Orange highlight on the note under the POST action sub-box. A thin wording at the very bottom, with no arrowhead, reads Never PATCH PowerState Off to shut a server down. Number circles are not needed. Green takeaway bar at the bottom: Use POST when you want an operation to happen, and PATCH when you want a value to change.",
+  "anchor": "### 1.1 `PATCH` (properties) versus `POST` (actions and creation)",
+  "alt": "PATCH changes an existing property, while POST creates a member or invokes an action such as a reset.",
+  "cap": "Use PATCH to change a property value and POST to create a member or to run an action such as a reset."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "03",
+  "name": "r03-array-patch",
+  "title": "Positional PATCH on an array: keep, remove, replace",
+  "spec": "A horizontal worked example in three rows. Top row, grey: the starting array shown as three boxes in a row with index labels 0, 1, 2 above them, containing 10.0.0.1, 10.0.0.2, 10.0.0.3. Middle row, a request box in monospace reading PATCH NTPServers with the body [ {}, null, 10.0.0.9 ], with three thin arrows dropping from its three entries to the three position boxes above, labelled with step numbers 1, 2 and 3 in number circles r=24. Under the position boxes, three annotation boxes, one per position, each with its rule: position 0, empty object, keep the element unchanged (10.0.0.1 kept); position 1, null, remove the element and shift the rest left (10.0.0.2 removed); position 2, new value, replace the element at that position (10.0.0.3 becomes 10.0.0.9). Bottom row, green panel: the result array of two boxes, 10.0.0.1 and 10.0.0.9, with an arrow from the annotation row into it. Orange note on the bottom panel: the order matters, so a mistake in one position changes the whole list. A thin label beside the request box: a new value at a position beyond the end appends it. No takeaway bar.",
+  "anchor": "### 1.2 `PATCH` on array properties and `@Redfish.OperationApplyTime` (DSP0266 \u00a77.7 & \u00a77.12)",
+  "alt": "A PATCH to an array keeps the first entry, removes the second with null, and replaces the third with a new address.",
+  "cap": "A PATCH to a list works by position, so an empty object keeps an entry, null removes it, and a value replaces it."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "04",
+  "name": "r04-day0-rotation",
+  "title": "Day 0 bootstrap: rotate the factory password before discovery",
+  "spec": "A vertical flowchart with five numbered process boxes in one column, joined by down arrows, with one decision diamond and one branch. Start terminal at top, labelled first session is up (201 Created). Step 1 box: read the login body for @Message.ExtendedInfo. Decision diamond beneath it: PasswordChangeRequired in the message? A No arrow goes straight to a grey box labelled continue to hardware discovery. A Yes arrow goes down to a green box labelled bootstrap rotation branch, before any hardware discovery. Step 2 box: check whether RequireChangePasswordAction is true in AccountService, by following the account link or querying /redfish/v1/AccountService. Decision diamond: RequireChangePasswordAction true? Yes arrow goes left to step 3a box: call the ManagerAccount.ChangePassword action with NewPassword and SessionAccountPassword. No arrow goes right to step 3b box: send a PATCH with the new password to the user's own ManagerAccount URI. Both step 3a and step 3b arrows merge into step 4 box: read ManagerAccount back to confirm PasswordChangeRequired is false, then verify GET /redfish/v1/Systems returns 200 OK. Step 5 box: create the dedicated ReadOnly and Operator service accounts, then disable HTTPBasicAuth on AccountService. Number circles r=24 on steps 1 to 5. Orange note beside the step 1 decision: a successful 201 Created does not mean the node is ready; the next GET returns 403 Forbidden with PasswordChangeRequired. No takeaway bar.",
+  "anchor": "### 6.3 Designing zero-touch factory password rotation on Day 0",
+  "alt": "A Day 0 script checks the login for PasswordChangeRequired, rotates the password, verifies access, then creates service accounts.",
+  "cap": "A new BMC can log in yet refuse every other request until its factory password is rotated, so the onboarding script must handle that state before any discovery."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "04",
+  "name": "r04-override-precedence",
+  "title": "Privilege Registry overrides: which rule wins",
+  "spec": "A vertical three-tier precedence stack, drawn as three stacked boxes with down arrows labelled checked first, then, and last, reading top to bottom. Top box, green, numbered 1: PropertyOverrides, applies to one property. Sub-lines: ManagerAccount Password can be changed with ConfigureSelf or ConfigureUsers; every other ManagerAccount property still needs ConfigureUsers. Middle box, numbered 2: ResourceURIOverrides, applies to specific URI instances. Sub-line: for example /redfish/v1/Systems/VM6. Bottom box, numbered 3: SubordinateOverrides, applies by place in the tree, lowest precedence. Sub-lines split into two small boxes side by side under it: left box, EthernetInterface under ComputerSystem needs ConfigureComponents to PATCH, so an Operator can configure a host NIC; right box, EthernetInterface under Manager needs ConfigureManager, so only an Administrator can reconfigure the BMC out-of-band NIC. Orange highlight on the right box with the note: the position of a resource in the tree matters as much as its name. Number circles r=24 with 1, 2, 3 on the three tier boxes. No takeaway bar.",
+  "anchor": "### 3.1 Privilege Registry overrides, logical AND/OR, and Restricted Roles (DSP0266 \u00a713.4.2\u201313.4.3)",
+  "alt": "Privilege Registry overrides apply in order: property first, then URI, then position in the tree.",
+  "cap": "The Privilege Registry checks property overrides first, then URI overrides, then subordinate overrides, which is why the same NIC can need different privileges on the host and on the BMC."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "04",
+  "name": "r04-session-leak",
+  "title": "A scraper that never logs out versus one that uses try and finally",
+  "spec": "Two side-by-side lanes, each drawn as a short row of boxes left to right with arrows. Left lane, grey panel titled Naive scraper (cron every 30 seconds): box 1 Log in and open a session; box 2 Read chassis sensors and print temperatures; box 3 Exit the Python process, with an orange highlight and a note that the DELETE on the session URI is never sent. Below the left lane, an arithmetic strip with three small boxes joined by multiplication and equals signs: 2 logins a minute, times 30 minutes SessionTimeout, equals 60 session slots used per BMC. Below that, a red-free outlined box labelled session table fills, new logins are refused, including provisioning and power fencing. Right lane, green panel titled Safe client: box 1 try, log in and open a session; box 2 read the sensors; box 3 finally, send DELETE to the session URI. Under the right lane, three short bullets as separate boxes: wrap every login in try and finally; reuse one long-lived session for several reads to the same BMC; give the scraper its own ReadOnly account so an admin can end orphaned sessions one at a time. Number circles r=24 on the three steps of each lane. No takeaway bar.",
+  "anchor": "### 6.1 Anatomy of a session-table exhaustion outage",
+  "alt": "A scraper that logs in every thirty seconds without deleting its session fills the BMC session table, while a try and finally block always logs out.",
+  "cap": "A script that logs in on a schedule without deleting its session fills the BMC session table within the idle timeout, so every client needs a logout in a finally block."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "05",
+  "name": "r05-reset-ladder",
+  "title": "ResetType as a ladder from gentle to forceful",
+  "spec": "A vertical ladder drawn as four horizontal rungs stacked top to bottom, joined on the left by a thin vertical rail with a downward arrow labelled gentler at top, more forceful at bottom. Rung 1, green, at the top, labelled Graceful: two value boxes GracefulShutdown (ask the OS to shut down cleanly, then power off) and GracefulRestart (ask the OS to shut down cleanly, then start again). A note on the right: start here, so disks flush and services stop. Rung 2, labelled Force: two value boxes ForceOff (turn off immediately, with no clean shutdown) and ForceRestart (shut down immediately and non-gracefully, then start again). A note: use only when the OS is frozen, since files can corrupt and jobs can be killed. Rung 3, labelled Power cycle: two value boxes PowerCycle (behaves like removing power and then restoring it) and FullPowerCycle (behaves like removing the utility power lines and restoring them). A note: use when a restart does not clear a hardware fault. Rung 4, orange, labelled Diagnostic: one value box Nmi (send a diagnostic interrupt, non-maskable interrupt, that normally halts the system for diagnostics). A note: for debugging a hang. A separate grey column at the far right, titled Turn on and other values, lists On (turn the system on), ForceOn (turn on immediately), PushPowerButton (act as if someone pressed the physical power button), and Pause, Resume and Suspend (mostly for virtual machines). No number circles, because rungs are not a time order. No takeaway bar.",
+  "anchor": "### What each `ResetType` means",
+  "alt": "ResetType values are ordered from graceful restarts to forced restarts, power cycles and a diagnostic interrupt.",
+  "cap": "Choose the gentlest ResetType that works, because graceful options let the operating system save work, while forced and power options can lose it."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "05",
+  "name": "r05-power-escalation",
+  "title": "Graceful first, escalate only if LastResetTime does not advance",
+  "spec": "A top-down flowchart with numbered process boxes and decision diamonds, in one main column with one side branch on the right. Top process box, numbered 1: read the ComputerSystem resource for PowerState, Status and the Reset action with its ResetType@Redfish.AllowableValues. A short side note under it: if PowerState is Off, use On, because GracefulRestart or ForceRestart return 409 Conflict. Process box, numbered 2: issue GracefulRestart, or GracefulShutdown for maintenance, then start a bounded polling loop on PowerState and LastResetTime. Decision diamond, numbered 3: graceful timer expired and LastResetTime not advanced? Yes arrow goes down to an orange process box: escalate to ForceRestart or ForceOff. No arrow goes to a green end box: node has restarted cleanly. Side branch from step 2 on the right: a grey box labelled POST times out, a socket timeout or 504 Gateway Timeout from a management proxy; an arrow from it leads to a box labelled do NOT send a second ForceRestart straight away; then a box labelled re-read PowerState, LastResetTime and the SEL entries first. Arrow from that box returns to the decision diamond. Number circles r=24 on steps 1, 2 and 3 only. No takeaway bar.",
+  "anchor": "### 5.1 Designing idempotent node power-control workflows",
+  "alt": "A power controller reads state, tries a graceful restart, escalates to a forced action only when LastResetTime has not advanced, and re-reads state after a timeout.",
+  "cap": "A safe power controller reads state first, tries a graceful restart, and escalates to a forced reset only when the reset timer expires without a new LastResetTime."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "05",
+  "name": "r05-event-sweep",
+  "title": "Push events as a wake-up call, backed by a five-minute sweep",
+  "spec": "A left-to-right layout in three zones. Left zone, grey container labelled BMC fleet, showing a stack of three small BMC boxes labelled BMC, with a note: each BMC has an EventDestination subscription with a Context naming the rack and node role. Middle zone, green container labelled Redundant pair of HTTPS webhook receivers on the management network, containing two receiver boxes stacked. Arrow from the BMC fleet to the receivers labelled Event push (POST). Right zone: two stacked boxes. Top box labelled Read the resource and its parent LogService over verified TLS, connected by an arrow from the receivers labelled OriginOfCondition as a wake-up signal. Bottom box labelled Low-frequency sweep every 5 minutes, connected by a loop arrow from the receivers back to the BMC fleet labelled conditional GET with If-None-Match, with a return arrow labelled not modified costs almost nothing. Orange note near the push arrow: event streams keep no history, so events lost during an outage are gone, and the sweep catches the state. Under the middle zone, a small settings row of four labels joined by a thin bar: RegistryPrefixes ResourceEvent, Alert, TaskEvent, Environmental; DeliveryRetryPolicy RetryForeverWithBackoff; SendHeartbeat and HeartbeatIntervalMinutes. No number circles needed. Green takeaway bar at the bottom: push gives fast response, and the sweep guarantees that no state change was missed.",
+  "anchor": "### 5.3 Scaling event-driven monitoring across a thousand BMCs",
+  "alt": "BMCs push events to a redundant pair of receivers, which read the current state, while a five-minute conditional sweep checks for missed changes.",
+  "cap": "Push events give fast notice of faults, and a five-minute conditional sweep catches any change that a lost event would have hidden."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "06",
+  "name": "r06-type-to-schema",
+  "title": "Reading an @odata.type string and finding its schema files",
+  "spec": "A left-to-right layout in three zones. Left zone: a wide monospace box holding the string #ComputerSystem.v1_17_0.ComputerSystem, with three bracket-style labels beneath its three parts, joined by thin lines: first part ComputerSystem labelled the resource type (namespace); middle part v1_17_0 labelled the version, major 1, minor 17, errata 0; last part ComputerSystem labelled the type name inside that version. Middle zone: an arrow from the string to two stacked file boxes. Top file box, grey, monospace name ComputerSystem.json, titled unversioned file (front door): lines allowed URIs such as /redfish/v1/Systems/{ComputerSystemId}, and capabilities: insertable, updatable, deletable; no property details. Bottom file box, green, monospace name ComputerSystem.v1_17_0.json, titled versioned file (floor plan): lines properties, types, readonly flags, required fields and actions for that version. Right zone: a small box labelled references from other resources, with an arrow pointing to the unversioned file and the note always points to the unversioned definition so nothing depends on one version. Orange highlight on the versioned file box with the note: the version in the type string is a promise that the validator checks the payload against. Number circles not needed. No takeaway bar.",
+  "anchor": "## 2. From `@odata.type` to the schema file",
+  "alt": "An @odata.type string splits into namespace, version and type name, which select an unversioned file and a versioned file.",
+  "cap": "The @odata.type string names the schema version, and that version selects the versioned file that holds the real properties."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "06",
+  "name": "r06-step-back",
+  "title": "Stepping back through minor versions to find where a property is defined",
+  "spec": "A vertical flow of numbered boxes, top to bottom, joined by down arrows, with a decision diamond after each step. Start box, numbered 1: a structured property in the payload is not in the versioned file for the current version. Step 2 box: step the version back to 1.4.0 and look there. Decision diamond: defined here? No arrow goes down to step 3 box: step back to 1.3.0 and look there; a decision diamond after it; No arrow goes down to step 4 box: step back to 1.2.0, and so on; the diamond then leads on. Yes arrow from any decision goes right to a green end box labelled found: the file that defines the property, which tells you when it was first introduced. Number circles r=24 on steps 1 to 4 and the ellipsis step written as a box labelled and so on. Orange note beside step 2: each step back is a fact about history. No takeaway bar.",
+  "anchor": "## 3. Versioning: what a client must do",
+  "alt": "A client that cannot find a structured property in the current version steps back through earlier minor versions until it finds the definition.",
+  "cap": "When a structured property is missing from the current version's schema, a client steps back through earlier minor versions until it finds where the property was defined."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "06",
+  "name": "r06-message-decision",
+  "title": "A MessageId as the key: registry lookup drives the decision",
+  "spec": "A left-to-right alert pipeline of five boxes joined by right-pointing arrows, with a branch at the end. Box 1: a BMC error reply, showing the MessageId Base.1.17.PropertyNotWritable in monospace. Box 2: lookup in the message registry (Base registry), with three small output tags beneath it: Message template with %1 placeholder, Severity, Resolution. Box 3: read the Severity and decide. A branch from box 3 splits into two arrows: upper arrow to a box labelled page a person, lower arrow to a box labelled open a low-priority ticket. Box 4, on the lower path, is a green box labelled copy the English text and Resolution into the ticket for the human. An orange note under box 3 with the text the decision never depends on the English text, it depends on the MessageId. Two small grey callout boxes beside box 1: match the ID, not the sentence, and the same MessageId appears in logs, events and errors. Number circles r=24 on boxes 1 to 3 only, since they are in time order. No takeaway bar.",
+  "anchor": "## 6. Message registries: how errors and events get their text",
+  "alt": "A monitoring job reads the MessageId, looks up the severity in the registry, and decides whether to page a person or open a ticket.",
+  "cap": "An alert pipeline should decide from the MessageId and its registry severity, not from the English sentence, which a vendor may reword."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "07",
+  "name": "r07-find-gpu",
+  "title": "Walking from the service root to a GPU temperature",
+  "spec": "A top-down flowchart in one main column with numbered process boxes, one decision diamond, and one fallback branch on the right. Start terminal at top, labelled what is the temperature of GPU 3. Step 1 box: GET /redfish/v1/ and read the Systems link. Step 2 box: GET that collection and read every Members link; open each system. Step 3 box: look at Processors in each system and filter by ProcessorType equals GPU. Step 4 box: open the GPU and follow its EnvironmentMetrics link if it is present. Decision diamond beneath step 4: EnvironmentMetrics link present? Yes arrow goes down to a green end box labelled read the GPU temperature. No arrow goes right to step 5 box: search the chassis Sensors by PhysicalContext, for example GPU, and an arrow from step 5 down to the same green end box. Step 5 is the fallback, drawn with a dashed border and a note: like a spare key, kept on the ring because the first key sometimes breaks. Number circles r=24 on steps 1 to 5. Orange highlight on the decision diamond, with a short note: layouts differ between makers, so try the standard route first. No takeaway bar.",
+  "anchor": "## 8. Steps for finding a value",
+  "alt": "A tool walks from the service root through Systems, Processors and EnvironmentMetrics to a GPU temperature, falling back to chassis Sensors when the metrics link is missing.",
+  "cap": "To find a GPU temperature on an unknown server, you follow links from the service root, and fall back to the chassis sensors when the GPU has no metrics link."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "07",
+  "name": "r07-absent-states",
+  "title": "Absent, replaced and standby resources in the tree",
+  "spec": "Three equal columns side by side, each a card with a title, a state label, and two or three short lines, joined by a bottom bar. Column 1, grey card, title: Empty slot. State label in monospace: Status.State Absent. Lines: a resource can stay in the tree to show a capability, such as an empty DIMM socket or drive bay; required properties with no known value are null; the tree describes what the machine could hold, not only what it holds today. Column 2, orange-bordered card, title: Part put in the slot. State label: the same URI, now a different physical thing. Lines: do not keep old read-only data such as the serial number; a fresh DIMM would otherwise carry the old stick's identity. Column 3, green card, title: Temporarily unreachable. State label in monospace: Status.State StandbyOffline. Lines: keep the URI, because the URI is the device's address in the tree; the device stays findable when it wakes up; example, a network card in low power. Below the three cards, a wide bottom bar in light green with the text: count DIMMs or drives by Status.State not Absent, not by counting resources. Use the bar as the takeaway; no separate takeaway bar. Number circles are not needed. Keep all three card titles exact.",
+  "anchor": "## 7. Present, absent and temporarily unavailable",
+  "alt": "An empty slot is kept with Status.State Absent, a replaced part gets fresh identity data, and a sleeping device keeps its URI with StandbyOffline.",
+  "cap": "Empty slots stay in the tree with a state of Absent, so inventory counts must skip them rather than count every resource."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "07",
+  "name": "r07-link-states",
+  "title": "Reciprocal, one-way and dangling links",
+  "spec": "Three horizontal panels stacked top to bottom, each with a small left-side label and a short diagram on the right. Top panel, green, labelled Reciprocal: a box ComputerSystem System_0 on the left and a box Chassis Chassis_0 on the right; a solid arrow from left to right labelled Links.Chassis and a solid arrow from right to left labelled Links.ComputerSystems. A note: both sides are written, so a client can start at either end. Middle panel, orange-bordered, labelled ONE-WAY: the same two boxes, with a single arrow from System_0 to Chassis_0 labelled Links.Chassis, and a dashed gap with a small cross where the return arrow should be. A note: one direction works, the reverse walk finds nothing and raises no error. Bottom panel, grey, labelled DANGLING: a Chassis_0 box with an arrow labelled Links.Contains pointing to a small box labelled 404 Not Found, and the note: the link points at a URI that does not exist. A thin footer strip at the bottom of the figure, titled pairs to check, lists three pairs in monospace, one per line: Links.Chassis and Links.ComputerSystems; Links.ManagedBy and Links.ManagerForServers or Links.ManagerForChassis; Links.Contains and Links.ContainedBy. No arrowheads on the footer. Number circles are not needed. No takeaway bar.",
+  "anchor": "### 9.4 Auditing graph integrity across vendors with `rf_model.py`",
+  "alt": "A reciprocal link has a partner that points back, a one-way link lacks the return arrow, and a dangling link points to a missing resource.",
+  "cap": "A link checker looks for a matching return link for every link, and it flags one-way links and dangling links that point to missing resources."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "08",
+  "name": "r08-threshold-steps",
+  "title": "Caution, critical and fatal as steps on a staircase",
+  "spec": "A vertical staircase drawn as four horizontal bands stacked from bottom to top, with a value marker (small circle labelled Reading) sitting in the lower band. Bands from bottom to top: band 1, light green, labelled normal operating range; band 2, labelled UpperCaution, with the note above normal; band 3, labelled UpperCritical, with the note above normal and not yet fatal; band 4, orange, labelled UpperFatal, with the note the level the equipment treats as dangerous. A right-side column of three boxes: first box, Thresholds object: each limit holds a Reading and an Activation of Increasing, Decreasing, Either or Disabled. Second box, DwellTime: how long the value must break the limit before it counts; a short spike is filtered out. Third box, hysteresis: how far the value must fall back before the alarm clears, so a fan right at the line does not flip the alarm on and off. A note at the top of the right column: the BMC sets Status.Health to Warning or Critical and may act on its own, for example by raising fan speed or shutting down. A thin grey footer under the staircase: the lower limits mirror this with LowerCaution, LowerCritical and LowerFatal. Number circles are not needed. Orange is used only on the UpperFatal band. No takeaway bar.",
+  "anchor": "### Thresholds",
+  "alt": "A sensor reading moves through caution, critical and fatal limits, and DwellTime and hysteresis control when an alarm starts and clears.",
+  "cap": "A sensor has caution, critical and fatal limits, and DwellTime and hysteresis decide when an alarm starts and clears."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "08",
+  "name": "r08-fan-redundancy",
+  "title": "One failed fan versus losing the whole group",
+  "spec": "A top-down decision flow in one column with numbered process boxes and one decision diamond, plus a small side illustration. Top of the figure, a grey panel titled Fan group: two fan icons side by side (outline fan symbols), with the note MinNeededInGroup 1 out of two fans. Step 1 box, numbered: one fan fails. Step 2 box: the remaining fan spins faster to move the same air; SpeedPercent climbs; sensors near the failed fan start to warm slowly. Decision diamond: does the group still meet its minimum? Yes arrow goes down to a green box: a repair ticket to schedule, not an emergency at midnight; a note: a good monitor catches the slow warming trend while the group still has its minimum. No arrow goes right to an orange box: losing both fans falls below the minimum, so the node must be drained. Number circles r=24 on steps 1 and 2. A thin footer under the decision: redundancy tells you how serious a failed fan is. No takeaway bar.",
+  "anchor": "## 3. Thermal: fans, heat and cooling",
+  "alt": "When one fan of a two-fan group fails, the group still meets its minimum, so the failure becomes a repair ticket, but losing both fans means draining the node.",
+  "cap": "A failed fan is a repair ticket while its redundancy group still meets the minimum, and it becomes an emergency only when the group falls below that minimum."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "08",
+  "name": "r08-straggler-triage",
+  "title": "Triage of a throttled GPU: which plane to check next",
+  "spec": "A top-down decision tree. Top box, grey, labelled DCGM reports a slow GPU, with a sub-line: the driver sees what (the throttle reason), the BMC sees why. Two branches. Left branch, labelled hw_thermal_slowdown: first decision diamond, BMC Intake sensor reading normal and all fans at full RPM? Yes branch goes to a green box: the fault is local to that GPU, its heatsink or the TIM (thermal interface material between chip and cooler). No branch goes to an orange box: Intake air above the ASHRAE limit, so the problem lies in facility airflow or aisle containment. Right branch, labelled hw_power_brake_slowdown: a box leading to a grey box: check PowerSubsystem and PowerSupplies on the BMC; a note: shows at once whether a PSU lost AC input (LineInputStatus) or asserted a predictive failure condition, which triggers the hardware power brake. Bottom footer strip, one line: when the two views disagree, treat it as a clue about where to look next, not a reason to trust one source. Number circles are not needed. No takeaway bar.",
+  "anchor": "### 8.1 Correlating out-of-band BMC sensors with in-band DCGM throttling",
+  "alt": "A throttled GPU is traced to a local heatsink fault, facility airflow, or a power supply, depending on the throttle reason and the BMC sensors.",
+  "cap": "When DCGM reports a throttled GPU, the throttle reason and the BMC intake and power sensors together point to a local, facility, or power fault."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "09",
+  "name": "r09-pcie-link",
+  "title": "A PCIe link trained down from Gen5 x16 to Gen3 x8 keeps about one-eighth of its bandwidth",
+  "spec": "Two horizontal bars drawn on the same scale, stacked one above the other, each starting from the same left edge. Top bar, full green, labelled Gen5 x16, sub-line 32 GT/s on each of 16 lanes, about 64 GB/s. Bottom bar, short, labelled Gen3 x8, sub-line 8 GT/s on each of 8 lanes, about 8 GB/s; the bottom bar is about one-eighth the length of the top bar and is the single orange item. Small label beside the bottom bar: about one-eighth of the original bandwidth. Above the bars, a formula line: Bandwidth is roughly generation rate times lanes. Under the bars, a small grey note: a lane is one pair of wires that carries data in each direction. Orange note on the bottom bar: no error message is produced, the link is simply slower and the device keeps working. No arrows, no number circles, no takeaway bar.",
+  "anchor": "## 4. PCIe: the hidden speed limit",
+  "alt": "A Gen5 x16 PCIe link carries about 64 GB/s, while a link trained down to Gen3 x8 carries about 8 GB/s.",
+  "cap": "A PCIe link that trains down from Gen5 x16 to Gen3 x8 keeps only about one-eighth of its bandwidth, with no error message."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "09",
+  "name": "r09-port-triage",
+  "title": "Four Redfish port fields to read in order when a fast port runs slow",
+  "spec": "A vertical checklist of four numbered step boxes, top to bottom, joined by down arrows, each with a green number circle. Step 1 box title LinkState and LinkStatus, sub-line Enabled with LinkDown or NoLink means check SignalDetected next. Two arrows branch right from step 1 into two small grey boxes. Upper branch: SignalDetected false, sub-line no light reaches the receive fibers; check an unplugged cable, swapped TX and RX polarity, or a powered-off leaf switch port. Lower branch: SignalDetected true with LinkStatus Training or LinkDown, sub-line transceivers see light but cannot lock FEC or auto-negotiation; check a mismatched port protocol or an incompatible FEC setting. Arrow down to step 2 box title CurrentSpeedGbps versus MaxSpeedGbps, sub-line a 400G port at LinkUp with 200 Gbps means the link negotiated down to half speed. Arrow down to step 3 box title ActiveWidth versus Width, sub-line 2 of 4 lanes active means dead or dirty optical lanes; clean the connector first. Step 3 box has the orange border as the single most important item. Arrow down to step 4 box title PortMetrics through the Metrics link, sub-line RX and TX bytes, frame and symbol errors, and optical power per lane; watch for a slow decline in optical power. Monospace labels for LinkState, LinkStatus, SignalDetected, CurrentSpeedGbps, MaxSpeedGbps, ActiveWidth, Width, PortMetrics. No takeaway bar.",
+  "anchor": "### 6.2 Diagnosing optical and copper `Port` speed mismatches",
+  "alt": "A four-step order for reading Redfish Port fields: link state, speed, lane width, then port metrics.",
+  "cap": "Read the four Port fields in order, because each step narrows the question for the next one."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "09",
+  "name": "r09-gates",
+  "title": "Three gates that run rf_hardware.py across a node's life",
+  "spec": "Three large boxes in a left-to-right row, each with a green number circle (1, 2, 3) and joined by right-pointing arrows in time order, with a left-side label Node lifecycle over time. Gate 1 box title Pre-OS Day-0 racking gate, sub-line run rf_hardware.py against all BMC IPs from the head node before DHCP or PXE, giving a punch list of unseated PCIe risers, dark 400G ports and missing NVMe drives. Gate 2 box, orange border as the single most important gate, title Post-maintenance return-to-service gate, sub-line do not run scontrol update NodeName=node State=RESUME or kubectl uncordon until rf_hardware.py exits 0 and reports 0 flagged. Gate 3 box title Weekly fleet baseline diff, sub-line run rf_hardware.py across all nodes with fleet_run.py and compare the counts of PCIeDevices, Ports and Drives with the saved Day-1 JSON inventory. Monospace for rf_hardware.py, fleet_run.py, scontrol update NodeName=node State=RESUME, kubectl uncordon, PCIeDevices, Ports, Drives. Below gate 2, a small grey box labelled 0 flagged with an arrow pointing up into gate 2 to show the exit condition. No takeaway bar.",
+  "anchor": "### 6.4 Integrating `rf_hardware.py` into Day-0 and Day-2 automation",
+  "alt": "Three checkpoints run rf_hardware.py at racking, after maintenance, and in a weekly fleet diff.",
+  "cap": "The script runs at three points in a node's life, and the return-to-service gate blocks a node until it reports 0 flagged."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "10",
+  "name": "r10-staged-active",
+  "title": "A staged update sits in a spare flash area until a reset makes it active",
+  "spec": "Two large panels side by side with an arrow from the left panel to the right panel. Left panel titled Before the reset, right panel titled After the reset. Each panel shows one component box labelled Component (for example HostBIOS_0 or a GPU) containing two stacked flash slots. Left panel: top slot, green, labelled Active slot, sub-line Old version, still running; bottom slot, light grey, labelled Spare area, sub-line New version, written and waiting; a small status tag AwaitToActivate on the component box. Arrow between the panels, labelled with the reset, with monospace text Manager.Reset or ComputerSystem.Reset or AC power cycle. Right panel: top slot, green, labelled Active slot, sub-line New version, now running; the status tag reads Active. Orange note under the left panel, the single key item: the inventory keeps showing the old version until the right reset runs. Small grey note under the arrow: a wrong reset leaves the new version inactive. No number circles and no takeaway bar.",
+  "anchor": "## 5. Staged is not active: activation",
+  "alt": "A staged firmware image waits in a spare area and only runs after the matching reset.",
+  "cap": "A staged firmware image waits in a spare area, and the old version keeps running until the matching reset makes the new one active."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "10",
+  "name": "r10-waves",
+  "title": "A fleet rollout moves in waves, and each wave has its own stop check",
+  "spec": "A left-to-right row of four wave blocks, each taller and wider than the one before, joined by right-pointing arrows in time order, each block with a green number circle (1, 2, 3, 4). Wave 1 small block, title Canary node, sub-line one machine updated first to see what the update does on your hardware. Wave 2 block, title Small group, sub-line 1 rack of 8 nodes. Wave 3 block, title SU, sub-line 1 SU of 32 nodes, with SU spelled out as scalable unit. Wave 4 widest block, title Remaining SUs, sub-line everything left. Under each arrow between two waves, a small label Stop and look. Below the whole row, one wide box with an orange border, the single key item, titled Stop conditions, with three short lines: a failed stage; a version that did not change; a node that does not return to the scheduler. Connect the stop conditions box to the arrows with thin grey lines (no arrowheads). Monospace only for the node count tokens if needed. No takeaway bar.",
+  "anchor": "## 8. A safe fleet procedure",
+  "alt": "A rollout goes from one canary node to a rack, then an SU, then the rest, pausing to check at each step.",
+  "cap": "A fleet rollout moves in waves from one canary node to the rest of the cluster, and each wave stops when a check fails."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "11",
+  "name": "r11-overwrite-policy",
+  "title": "A full log either drops the oldest entry or drops the newest one",
+  "spec": "Two horizontal rows, one above the other, each showing a log as a row of five equal slots drawn full, with a label Full at capacity at the left end of each row. Top row titled WrapsWhenFull. A new-entry arrow enters from the right and points at the oldest slot on the left, which is labelled Oldest entry overwritten; the new entry is shown in a slot at the right end labelled Newest entry kept. Grey note under the top row: the first sign of trouble can disappear under later noise. Bottom row titled NeverOverWrites. A new-entry arrow enters from the right, but it stops at a blocked end with a small bar, and the arrow is labelled New entry discarded; the slots stay unchanged. Orange note under the bottom row, the single key item: the log silently stops recording just when something bad is happening. Small tags at the right side of each row: WrapsWhenFull warns at 95 percent full; NeverOverWrites warns at 80 percent full. Monospace for the policy names WrapsWhenFull and NeverOverWrites. No number circles and no takeaway bar.",
+  "anchor": "## 4. What the log tells you about itself",
+  "alt": "A wrapping log overwrites its oldest entry when full, while a never-overwrite log discards new entries.",
+  "cap": "A wrapping log overwrites its oldest entries when full, while a never-overwrite log silently discards new ones."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "11",
+  "name": "r11-crash-timeline",
+  "title": "Three log layers on one UTC timeline isolate a crash",
+  "spec": "Three horizontal swimlanes stacked top to bottom, each lane headed by its name on the left: Application and scheduler, Host Linux kernel, BMC hardware log. A shared UTC time axis runs along the bottom, with a vertical band across all three lanes labelled review window, from T minus 5 minutes to T plus 5 minutes, with T marked at the centre. Lane 1 box with sub-line sacct job record and stderr log. A marker at T equals 0 in lane 1, orange as the single key item, labelled first error, the rank process dies or times out. Lane 2 dashed-outline box labelled dmesg and journald, sub-line may never reach disk when the host kernel freezes. Lane 3 box labelled SEL and EventLog, sub-line keeps writing on independent standby power. Numbered green circles: 1 at the T marker (anchor the window from the scheduler and application logs), 2 inside lane 3 (rf_logs.py show with --since set to T minus 5 minutes), 3 at a small cluster of three markers in lane 3 labelled one EventGroupId group, with an arrow from that cluster to a box labelled the faulted resource, reached through Links.OriginOfCondition. Monospace for sacct, dmesg, rf_logs.py, EventGroupId, Links.OriginOfCondition. No takeaway bar.",
+  "anchor": "### 8.1 Reconstructing a cross-layer hardware crash timeline",
+  "alt": "A crash review puts scheduler, host kernel and BMC log entries on one UTC window around the first error.",
+  "cap": "A crash review lines up scheduler, host kernel and BMC entries on one UTC window around the first error."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "11",
+  "name": "r11-rma-order",
+  "title": "Collect evidence in four steps, and clear the BMC log last",
+  "spec": "A vertical stack of four numbered step boxes, top to bottom, joined by down arrows, each with a green number circle. A left label reads Before any reset or repair, with a thin arrow running down the left edge to show that the order matters. Step 1 box title Capture the readable BMC event logs, sub-line rf_logs.py show, then save the raw JSON from SEL/Entries and EventLog/Entries. Step 2 box title Trigger the out-of-band bundle, sub-line rf_logs.py collect with --out, which runs LogService.CollectDiagnosticData, then checks the byte count and exits 7 on a mismatch. Step 3 box title Capture the in-band host bundle, sub-line sudo nvsm dump health on DGX, or sudo nvidia-bug-report.sh, only if SSH to the host OS still works. Step 4 box, orange border as the single key item, title Clear the BMC log last, sub-line only after the repair and both bundles are archived in the ticket; pass LogEntriesETag, and a stale ETag gets 412 Precondition Failed. A small grey gate box between step 3 and step 4 labelled both bundles in the ticket. Monospace for rf_logs.py show, rf_logs.py collect, sudo nvsm dump health, sudo nvidia-bug-report.sh, LogEntriesETag, 412 Precondition Failed. No takeaway bar.",
+  "anchor": "### 8.4 End-to-end RMA evidence collection workflow (`CollectDiagnosticData` + `nvsm`)",
+  "alt": "Before an RMA repair, capture the BMC logs, the BMC bundle and the host bundle, and clear the BMC log last.",
+  "cap": "Before any RMA repair, collect the BMC logs and both diagnostic bundles, and clear the BMC log only at the end."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "12",
+  "name": "r12-tls-trust",
+  "title": "A client trusts a BMC only when a known CA signed its certificate",
+  "spec": "A top-to-bottom layout. At the top centre, a box labelled Lab CA, sub-line from tls_setup.py, with an arrow down to a box at the bottom centre labelled BMC server, sub-line server certificate for 127.0.0.1, with the arrow labelled signs. Three client boxes stacked on the left, each with one arrow to the BMC server box, each box with a monospace command line and a result tag. Client 1 (green): curl --cacert ca.pem, result 200, sub-line the named CA signed the server certificate. Client 2 (grey): curl with no CA option, result exit 60, sub-line certificate not trusted, the safe default that fails on purpose. Client 3 (orange, the single key item): curl -k, result 200, sub-line no checking at all, so a fake BMC would also work. A small grey note under the BMC box: a working request is not the same as a verified one. No number circles and no takeaway bar.",
+  "anchor": "## 1. First, TLS: stop using `-k`",
+  "alt": "A curl request with the lab CA is verified, the default request is refused, and curl -k works but checks nothing.",
+  "cap": "A client trusts a BMC only when a CA it knows signed the certificate, and curl -k skips that check entirely."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "12",
+  "name": "r12-session-lifecycle",
+  "title": "The Python client logs in, retries once after a 401, and always logs out",
+  "spec": "A vertical flow of numbered step boxes, top to bottom, each with a green number circle. Step 1 box title Log in with a session, with a side box to its right joined by a dashed arrow labelled LoginError with the status code, sub-line 401 means wrong password and 503 means busy BMC. Arrow down to step 2 box title Make the request, sub-line timeout set on every request. From step 2, a loop arrow curving out to the right and back into step 2, labelled 401 while holding a token, renew the session once and repeat the request. Arrow down from step 2 to step 3 box title Work done, sub-line the caller reads its values. Arrow down from step 3 to step 4 box, orange border as the single key item, title Finally block: log out, sub-line runs even when the code in the middle raises an error. Monospace for LoginError, 401, 503 and the step titles that name code. No takeaway bar.",
+  "anchor": "### 2.1 The client I used in all labs",
+  "alt": "The Python Redfish client logs in, sets timeouts, renews the session once after a 401, and logs out in a finally block.",
+  "cap": "The Python Redfish client always logs out in a finally block, and it renews the session once when a 401 arrives mid-run."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "12",
+  "name": "r12-serial-batches",
+  "title": "Ansible serial runs a risky change in batches that a failure can stop",
+  "spec": "A left-to-right sequence of three batch blocks in time order, each block drawn as a row of small grey squares, one square per host, with a green number circle above each block (1, 2, 3). Batch 1 has one square, labelled a small first batch, 1 host. Batch 2 has eight squares, labelled 8 hosts. Batch 3 is the widest block, labelled 25 percent of hosts. Between each pair of batches, a check gate box labelled Check results before the next batch. An orange border on the gate box after batch 2 as the single key item, with a red-free stop mark, labelled Stop when failures pass the limit, using max_fail_percentage or any_errors_fatal. Above the batches, a left-side label forks, with a short line saying how many hosts run at once inside a batch. Monospace for forks, serial, max_fail_percentage and any_errors_fatal. No takeaway bar.",
+  "anchor": "### 3.3 Scale in Ansible",
+  "alt": "Ansible serial runs a risky change in small then larger batches, with a failure check between batches.",
+  "cap": "Ansible serial runs a risky change in small batches first, and a failure limit stops the run before the next batch."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "13",
+  "name": "r13-nvl72-rack",
+  "title": "One GB300 NVL72 rack holds dozens of BMCs on one out-of-band network",
+  "spec": "A tall rack outline on the left, labelled NVL72 rack (GB300 reference), with three stacked bands inside it, top to bottom. Band 1 labelled Compute trays, sub-line 18 trays, each with its own BMC and a BlueField-3 DPU BMC. Band 2 labelled NVLink switch trays, sub-line 9 trays, each with one BMC RJ45 port and two COMe RJ45 ports for NVOS. Band 3 labelled Power shelves, sub-line 8 shelves, each with six 5.5 kW supplies in N redundancy, up to 33 kW, and one BMC port. A tall vertical bar on the right side, labelled Out-of-band management network, sub-line SN2201 switches, with thin connector lines from each band to the bar (no arrowheads, meaning connected). Below the bar, a box labelled Rack PDUs also connected to the bar with a thin line. Above the bar's top end, a box labelled Dedicated VXLAN at the spine layer, joined by an arrow from the bar. Orange note on the bar: no unprivileged user needs these ports, so the network is kept apart by logical separation. Monospace for SN2201, NVOS, RJ45, BlueField-3. No number circles and no takeaway bar.",
+  "anchor": "## 3. Rack-scale: GB200 and GB300",
+  "alt": "An NVL72 rack holds compute trays, NVLink switch trays and power shelves, all wired to one out-of-band SN2201 management network.",
+  "cap": "Every BMC port in an NVL72 rack, from compute trays to power shelves, joins one separate out-of-band management network."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "13",
+  "name": "r13-two-views",
+  "title": "Redfish and NVSM see different failures, so line both up on one timeline",
+  "spec": "Two large panels side by side. Left panel titled Redfish, out-of-band (BMC), sub-line works on its own power and network. Inside it, three small boxes: fans, power supplies, a host that is down. Right panel titled NVSM and DCGM, in-band (host), sub-line runs on the host itself. Inside it, three small boxes: GPU errors, NVLink counters, clocks. Under the right panel, a grey note: a host that is hung can still answer the BMC, but it cannot run NVSM. Between the two panels, a narrow vertical divider with a label Different failures. Below both panels, a horizontal time arrow labelled timeline running left to right, with two event markers placed on it, one labelled fan alarm and one labelled GPU error. Orange note at the end of the time arrow, the single key item: the first event on the timeline is often the real cause. Monospace for nvsm dump health, DCGM and NVLink labels where they appear. No number circles and no takeaway bar.",
+  "anchor": "## 4. NVSM and BCM next to Redfish",
+  "alt": "Redfish sees fans and power and a down host, NVSM and DCGM see GPU errors and NVLink counters, and both go on one timeline.",
+  "cap": "Redfish and NVSM cover different failure cases, so put both views on one timeline and read which event came first."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "13",
+  "name": "r13-bringup",
+  "title": "Eight bring-up steps, each leaving evidence, before a node joins the scheduler",
+  "spec": "Eight step boxes arranged in two rows of four, read left to right on the top row, then a down arrow from step 4 to step 5 at the start of the bottom row, then left to right again. Arrows between consecutive steps. Each box has a green number circle (1 to 8), a short title and a sub-line. Step 1, title Identify the owner of the BMC and the firmware bundle, sub-line DGX, OEM HGX or rack-scale. Step 2, title Connect the BMC to the OOB network, sub-line change factory credentials, set NTP, install your CA certificate. Step 3, title Record the Redfish tree, sub-line rf_record.py, an offline copy of this firmware state. Step 4, title Run the service validator and acceptance profile, sub-line keep the reports. Step 5, title Run inventory, hardware, sensors and drift checks, sub-line rf_inventory.py, rf_hardware.py, rf_sensors.py. Step 6, title Compare with the vendor bundle and update, sub-line vendor documented procedure, never mix bundles. Step 7, title Run vendor diagnostics and burn-in, sub-line dcgmi diag -r 3, then -r 4; nvbandwidth for NVLink; ib_write_bw for the network; keep the output. Step 8, orange border as the single key item, title Admit the node to the scheduler, sub-line the node stays out of the job queue until this step. A green takeaway bar across the bottom reads: Do not admit a node to the scheduler until every step above has left its evidence behind. Monospace for rf_record.py, rf_inventory.py, rf_hardware.py, rf_sensors.py, dcgmi diag -r 3, dcgmi diag -r 4, nvbandwidth, ib_write_bw.",
+  "anchor": "## 7. A bring-up checklist for a new GPU server model",
+  "alt": "Eight bring-up steps run in order, from identifying the BMC owner to admitting the node to the scheduler.",
+  "cap": "A new GPU server works through eight ordered bring-up steps, and each step must leave evidence before the node joins the scheduler."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "14",
+  "name": "r14-settings-staging",
+  "title": "A BIOS change waits on a staging tray until the reset moves it to live",
+  "spec": "Three columns left to right, each titled by its moment in time, joined by two arrows. Column 1 titled Before the PATCH. Column 2 titled After the PATCH. Column 3 titled After the reset. Each column holds two stacked boxes: a box labelled Live, sub-line the /Bios resource, and a box labelled Pending, sub-line the /Bios/Settings object. Column 1: Live shows PowerProfile Balanced; Pending shows an empty object. Column 2: Live still shows PowerProfile Balanced, and Pending shows PowerProfile MaxPerf. Column 3: Live shows PowerProfile MaxPerf, and Pending is cleared back to an empty object. Arrow from column 1 to column 2, labelled PATCH to /Bios/Settings, with a note 200 and a ResetRequired message. Arrow from column 2 to column 3, labelled POST ComputerSystem.Reset GracefulRestart. Orange note under column 2, the single key item: the live value still shows the old number, so the change is correct and the reset is still needed. Monospace for /Bios, /Bios/Settings, PowerProfile, Balanced, MaxPerf, ComputerSystem.Reset. No number circles and no takeaway bar.",
+  "anchor": "### 2.1 The Settings resource pattern",
+  "alt": "A BIOS PATCH stays pending while the live value keeps the old setting until a reset moves it live.",
+  "cap": "A BIOS change sits in the pending Settings object until a reset moves it into the live value."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "14",
+  "name": "r14-boot-override",
+  "title": "A Once network boot switches itself off, but a Continuous one reinstalls the node every restart",
+  "spec": "Two horizontal timelines stacked one above the other, time running left to right, each with three restart markers labelled restart 1, restart 2, restart 3, shown as small vertical ticks with a circle at each. Top timeline, green, titled Once. Restart 1 box: network boot, Pxe or UefiHttp. Between restart 1 and restart 2, a small note: the override switches itself off, BootSourceOverrideEnabled goes back to Disabled. Restart 2 box: normal boot from local disk. Restart 3 box: normal boot from local disk. Bottom timeline, orange as the single key item, titled Continuous. Restart 1 box: network boot. Restart 2 box: network boot again. Restart 3 box: network boot again. Under the bottom timeline, a loop arrow labelled installer runs, disk rebuilt, node reboots, installer runs again. A small grey legend at the right: BootSourceOverrideEnabled values Once, Continuous, Disabled, and BootSourceOverrideTarget values Pxe and UefiHttp. Monospace for BootSourceOverrideEnabled, BootSourceOverrideTarget, Once, Continuous, Disabled, Pxe, UefiHttp. No number circles and no takeaway bar.",
+  "anchor": "## 3. Boot override: one time or forever",
+  "alt": "A Once boot override uses the network once and then boots from disk, while a Continuous override reinstalls on every restart.",
+  "cap": "A Once boot override uses the network one time and then boots from disk, while a Continuous override reinstalls the node on every restart."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "14",
+  "name": "r14-bmc-escalation",
+  "title": "Recovering a bricked BMC escalates from an in-band reset to a full AC power drain",
+  "spec": "A top-to-bottom ladder of three numbered step boxes joined by down arrows, each with a green number circle (1, 2, 3), with a symptom box at the top: BMC does not answer ping, SSH or Redfish; host is up; fans at 100 percent. Step 1 box, title In-band reset from the host, sub-line the reset travels from the host OS to the BMC, written in the notes as ipmitool bmc reset cold. Step 2 box, title Chassis BMC reset or recovery image, sub-line when the flash is corrupted, field staff use it. Step 3 box, title Full AC power drain at the PDU, sub-line cuts the power so the BMC standby power also goes off, then restore it. A grey side note beside step 1: Manager.Reset needs a working BMC, so it cannot help here. An orange-bordered box at the bottom, the single key item, titled Prevention: update the BMC in a first small wave, keep the recovery procedure written down, and never update BMC firmware on a whole rack at once. Monospace for ping, SSH, Redfish, ipmitool bmc reset cold, Manager.Reset, PDU. No takeaway bar.",
+  "anchor": "### Scenario 3: A \"bricked\" BMC after a bad firmware push",
+  "alt": "A bricked BMC recovers by an in-band reset first, then a chassis reset or recovery image, then an AC power drain.",
+  "cap": "A bricked BMC recovers in three steps, starting with an in-band reset from the host and ending with a full AC power drain."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "15",
+  "name": "r15-trust-chain",
+  "title": "A boot trust chain where each link checks the next before handing over control",
+  "spec": "A horizontal chain of four boxes left to right, joined by right-pointing arrows, each arrow labelled checks the next. Box 1 titled Hardware root of trust, sub-line a chip whose own code is trusted by design; this is the first box and the single orange-bordered key item. Box 2 titled BIOS. Box 3 titled Bootloader. Box 4 titled Kernel. A thin bracket spanning all four boxes below the chain, labelled each link checks the next before handing over control. A small grey note under box 2 and box 3: wiping the disk and installing again does nothing to a bad BIOS, because the BIOS runs first. Each box has a simple outline icon: a chip for the root of trust, a memory board for BIOS, a gear for bootloader, a gear with a shield for kernel, all in green stroke. No number circles and no takeaway bar.",
+  "anchor": "## 5. Firmware trust",
+  "alt": "A trust chain runs from a hardware root of trust through the BIOS and bootloader to the kernel, each link checking the next.",
+  "cap": "A boot trust chain starts at a hardware root of trust, and each link checks the next before it runs."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "15",
+  "name": "r15-secureboot-steps",
+  "title": "Secure Boot is enforced only after a platform key is enrolled and a restart has run",
+  "spec": "Four numbered step boxes in a left-to-right row, each with a green number circle (1 to 4), joined by right-pointing arrows, each arrow labelled with the action that moves to the next box. Box 1 titled Enable Secure Boot, sub-line PATCH SecureBootEnable set to true; the setting changes, but SecureBootCurrentBoot stays Disabled. Arrow labelled restart. Box 2 titled Still not enforced, sub-line no platform key enrolled, SecureBootMode is SetupMode. Arrow labelled SecureBoot.ResetKeys with ResetAllKeysToDefault. Box 3 titled UserMode, sub-line a platform key is enrolled and the rules are enforced. Arrow labelled restart. Box 4, orange border as the single key item, titled Secure Boot enforced, sub-line SecureBootCurrentBoot reads Enabled. Under box 4, a grey note: read SecureBootCurrentBoot after a reboot, not SecureBootEnable. Monospace for SecureBootEnable, SecureBootCurrentBoot, SecureBootMode, SetupMode, UserMode, SecureBoot.ResetKeys, ResetAllKeysToDefault, Disabled, Enabled. No takeaway bar.",
+  "anchor": "## 6. UEFI Secure Boot through Redfish",
+  "alt": "Secure Boot changes take effect only after keys are enrolled into UserMode and the host restarts.",
+  "cap": "Secure Boot is enforced only after a platform key is enrolled and the host restarts, so SecureBootEnable alone is not enough."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "15",
+  "name": "r15-attest-steps",
+  "title": "A listing shows what a device could report, and four steps make it real attestation",
+  "spec": "A top box on the left, grey, titled rf_attest.py listing, sub-line tells you what the device could report and proves nothing yet, with an arrow pointing right to a row of four numbered boxes, each with a green number circle (1 to 4), joined by right-pointing arrows in order. Box 1 titled Fresh nonce from you, sub-line so an old answer cannot be replayed. Box 2 titled Signed answer from the device, sub-line the device signs its measurements. Box 3 titled Signature checked through a certificate chain you trust. Box 4 titled Compared with known-good values, sub-line vendor values kept where an attacker cannot change them. Each of boxes 2, 3 and 4 carries a small grey tag reading not done by the lab. Above boxes 2 to 4, one orange-bordered note, the single key item: the lab does not do steps 2 to 4, and no known-good values for any NVIDIA part are included. Monospace for rf_attest.py. No takeaway bar.",
+  "anchor": "## 7. Attestation: what it is, and what I did not do",
+  "alt": "A ComponentIntegrity listing is only inventory, and real attestation needs a fresh nonce, a signed answer, a trusted chain and known-good values.",
+  "cap": "A ComponentIntegrity listing is only an inventory, and real attestation needs four steps that the lab does not perform."
+ }
+]

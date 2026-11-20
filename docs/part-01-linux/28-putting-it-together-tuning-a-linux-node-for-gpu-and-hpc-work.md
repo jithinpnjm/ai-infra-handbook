@@ -80,6 +80,10 @@ The goal is for every layer to work in harmony, from the OS and CPU up to the GP
 
 ## 2. Know the machine: topology first
 
+![The connection codes in nvidia-smi topo -m ordered by distance.](./img/l28-topo-codes.svg)
+
+*Figure 1.28.2. Each topology code is a statement about distance, and SYS between a worker's CPU, GPU and NIC should be avoided.*
+
 Here is a question worth thirty seconds of looking: which CPU cores can reach GPU 3's memory directly? The answer is not written on the GPU. It belongs to the layout of the machine, and guessing it wrong costs you performance for the life of the node. That layout is the topology, meaning the map of where the CPU cores, memory, PCIe switches, GPUs, NICs and NVMe drives sit, and which of them are close to each other. Record that map before you tune anything, because a wrong assumption at this step invalidates everything that follows.
 
 ```bash
@@ -242,7 +246,7 @@ Here is the failure this section prevents. A data loader runs on a CPU socket th
 
 ![Keep the GPU, NIC and CPU on one NUMA node](./img/ch28-fig1-numa.jpg)
 
-*Figure 1.28.2. Work placed on the GPU's own NUMA node avoids the slower trip across the interconnect.*
+*Figure 1.28.3. Work placed on the GPU's own NUMA node avoids the slower trip across the interconnect.*
 
 ```bash
 #!/usr/bin/env bash
@@ -495,6 +499,10 @@ You can tune a node perfectly and then lose all of it one layer higher up. A con
 
 ### Kubernetes
 
+![A map from each tuning concern to the Kubernetes setting that implements it.](./img/l28-k8s-mechanisms.svg)
+
+*Figure 1.28.4. Kubernetes expresses the same tuning ideas through its own knobs, and dedicating whole nodes removes jitter.*
+
 Kubernetes expresses the same ideas through its own knobs, and the names are different. The table below lists each concern and its mechanism.
 
 | Concern | Mechanism |
@@ -525,7 +533,7 @@ A fleet stays uniform only when every node is built the same way, and that is a 
 
 ![Configuration as code and fleet operations](./img/ch28-d2-luna.svg)
 
-*Figure 1.28.3. Configuration as code and fleet operations.*
+*Figure 1.28.5. Configuration as code and fleet operations.*
 
 Notice that a failed canary rejects the image, while drift or a fault sends the node back for diagnosis.
 
@@ -538,6 +546,10 @@ Notice that a failed canary rejects the image, while drift or a fault sends the 
 - Then handle updates. The kernel, driver, MOFED and firmware move together. Hold their packages with `apt-mark hold` or `dnf versionlock`. Roll out the canary first, then the waves, and keep the previous image bootable for rollback.
 
 ### Fleet health checks (what to automate)
+
+![Four automated checks from boot audit to statistical outlier detection.](./img/l28-fleet-checks.svg)
+
+*Figure 1.28.6. Stragglers are the expensive failure, so compare each node against the fleet median.*
 
 1. Boot-time audit (section 11). It checks topology, links, settings and versions. It fails closed, so a failing node stays drained.
 2. Prolog and epilog. The prolog verifies that GPUs are visible and healthy, ECC is clean, there has been no Xid since the last job, clocks are nominal, no leftover processes exist, memory is free and scratch space is available. The epilog resets that state.
@@ -617,6 +629,10 @@ The conclusion has three parts. First, there were no neighbours on the container
 The lessons carry over to GPU nodes. State the problem first. Compare two systems at the same time. Use the checklist and the USE method to find the resource. Check the static configuration, such as the CPU model, cache sizes and SMT. Use PMCs for efficiency, looking at IPC and cache misses. Use software events for rates, and tracing for distributions such as on-CPU time and run-queue latency. Finally, state what will not persist, such as the advantage of running without neighbours. The result of this method is several quantified contributing factors, not a single cause.
 
 ## 13. Troubleshooting map
+
+![A short troubleshooting map from symptoms to likely causes and first checks.](./img/l28-troubleshoot.svg)
+
+*Figure 1.28.7. Match the symptom to the row and run its first checks before exploring other causes.*
 
 When a node misbehaves, you rarely get to choose the question. The symptom chooses it for you. Match the symptom to the likely causes in the table, then run the first checks in the same row.
 

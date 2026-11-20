@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "19",
+  "name": "a19-move-resource-states",
+  "title": "Move a resource between states without destroying it",
+  "spec": "Two tall panels side by side, left panel titled State A (the old owner), right panel titled State B (the new owner). A bucket-shaped storage icon sits in each panel's centre area, labelled aws_s3_bucket.checkpoints, drawn once in State A and once in State B. Four numbered circles (1 to 4) run top to bottom down the middle. Step 1, inside State B: a box reading 'Add the resource configuration and an import block', with the monospace text import { to = aws_s3_bucket.checkpoints }. Step 2, an arrow from step 1 into a box reading 'Apply B, so it tracks the resource', with the bucket arrow pointing from State B into the bucket. Step 3, inside State A: a box reading 'Add a removed block with destroy = false and apply A', with the monospace text removed { lifecycle { destroy = false } }, and an arrow reading 'Tells A to let go without touching the bucket'. Step 4, inside State A: a box reading 'Delete the code from A'. Orange outline on the step 3 box, as the single most important step. Under the panels, a green note: 'Check that both plans are clean at each step, because a dirty plan at any step means two states are now fighting over one object.' Green takeaway bar at the bottom: 'Think of it as adding the new owner before removing the old one.' No arrowheads between the two panels other than the bucket arrows.",
+  "anchor": "### Split or merge states, rename resources",
+  "alt": "Four steps move an S3 bucket from state A to state B: import into B, apply B, removed with destroy false in A, then delete the code from A.",
+  "cap": "Moving a resource between states takes four steps, and the bucket is never destroyed."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "19",
+  "name": "a19-drift-decision",
+  "title": "Decide what to do with each drift item",
+  "spec": "Top: a box with a clock or alert icon titled 'Drift found', text 'terraform plan shows a difference between the config and the real world'. An arrow down to a decision box titled 'Decide case by case', with a gear or branch icon, outlined in orange as the single most important item. Three arrows leave the decision box to the right, one per card, arranged as three columns. Card 1, title 'Revert the drift', icon: a rewind arrow, text 'Apply the intended config, when the hotfix was temporary'. Card 2, title 'Adopt the drift', icon: a pencil or document icon, text 'Edit the config to match, so the plan comes back clean, when the hotfix is the new truth'. Card 3, title 'Tolerate the drift', icon: a shield icon, text 'Use lifecycle { ignore_changes = [...] } for fields managed elsewhere', with the example 'such as an autoscaler-managed desired_size or labels added by controllers'. Under the cards, a green note: 'Decide, for each drift item, whether to revert, adopt or tolerate it before the next apply.' No number circles, since the three options are not in time order.",
+  "anchor": "## 9. Drift",
+  "alt": "Drift can be reverted by applying the config, adopted by editing the config, or tolerated with ignore_changes.",
+  "cap": "For each drift item you either revert it, adopt it into the config, or tolerate it with ignore_changes."
+ }
+]

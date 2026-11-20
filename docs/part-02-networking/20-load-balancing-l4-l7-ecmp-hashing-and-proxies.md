@@ -58,6 +58,10 @@ The rest of the chapter keeps coming back to these five. When a design feels con
 
 ### Layers and families
 
+![Load balancer families](./img/n20-families.svg)
+
+*Figure 2.20.2. Lower-layer balancers decide faster but see less of each request.*
+
 The table groups the common families by the decision each one makes, with examples and the trade-offs to know.
 
 | Family | Decision on | Examples | Notes |
@@ -75,17 +79,9 @@ Lower layers decide faster but see less. An L4 balancer sees connections, so it 
 
 The two diagrams show where the reply goes. That path decides throughput and what the backend can see.
 
-```mermaid
-flowchart LR
-  subgraph PROXY["Proxy / NAT mode (reply returns via LB)"]
-    C1[Client] --> L1["LB (VIP)\nterminates or DNATs"] --> B1[Backend]
-    B1 --> L1 --> C1
-  end
-  subgraph DSR["Direct Server Return (reply bypasses LB)"]
-    C2[Client] --> L2["LB (VIP)\nrewrites L2 dst / tunnels"] --> B2["Backend\n(VIP on loopback)"]
-    B2 -. "reply with src=VIP" .-> C2
-  end
-```
+![Packet paths](./img/m2-20-1.svg)
+
+*Figure 2.20.3. Packet paths, as a diagram.*
 
 In proxy mode, at L4 or L7, the balancer terminates the client connection and opens a separate one to the backend. That lets it modify, buffer, retry and inspect traffic. The backend sees the address of the balancer, so you must preserve the client IP with `X-Forwarded-For`, the `Forwarded` header or PROXY protocol. Proxy mode is stateful, costs CPU and memory, and is bounded by the capacity of the balancer.
 
@@ -153,6 +149,10 @@ Proxies such as nginx and HAProxy keep old workers alive until their connections
 Set the drain deadline with your longest stream in mind, because a deadline shorter than a generation cuts that generation off.
 
 ## 4. ECMP, anycast and scaling out the L4 tier
+
+![ECMP and anycast L4 tier](./img/n20-anycast.svg)
+
+*Figure 2.20.4. Many L4 nodes announce the same VIP and the router spreads flows across them, with consistent hashing keeping connections intact.*
 
 Suppose a single L4 node serves a VIP. You get a throughput limit and a single point of failure. The standard fix is to put the L4 tier behind ECMP, which works in four steps. We follow one VIP through them.
 
@@ -314,6 +314,10 @@ Pick the proxy whose xDS and drain behaviour matches your streams, because a rel
 
 ## 7. TLS, client identity and L4/L7 interplay
 
+![TLS termination versus passthrough](./img/n20-tlsplace.svg)
+
+*Figure 2.20.5. Where TLS ends decides what the balancer can read and route on.*
+
 Picture a request that arrives over TLS. It is a sealed envelope, and where the balancer opens it decides what the balancer can read, which shapes routing, WAF rules and mTLS. Three placements are available.
 
 With TLS termination at the LB, the balancer decrypts traffic, can inspect and route it at L7, and then re-encrypts it or sends plaintext to the backends. That enables routing on headers and a WAF. With passthrough, an L4 balancer routes on SNI and keeps encryption end to end, including mTLS, but it loses L7 features. With re-encryption, traffic stays encrypted inside the data centre. Certificate management is covered in chapter 2.10.
@@ -347,6 +351,10 @@ Picture kube-proxy in its iptables mode for a Service with N pods. Each new conn
 One warning applies to the Kubernetes side. The iptables mode of kube-proxy balances connections randomly and is not load-aware. Long-lived gRPC connections therefore need L7 or client-side balancing to spread load evenly.
 
 ## 9. Load balancing for AI inference
+
+![gRPC connection pinning](./img/n20-pinning.svg)
+
+*Figure 2.20.6. An L4 balancer pins each long gRPC connection to one backend, so per-request balancing is needed.*
 
 Picture an inference service that answers every health check, while one replica is buried under long generations and the others sit nearly idle. The dashboard shows an average latency that looks acceptable, and the users of that one replica are very unhappy. The section below explains why the usual web assumptions fail for this kind of work, and what signal the balancer should use instead.
 

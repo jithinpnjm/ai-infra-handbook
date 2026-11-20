@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "11",
+  "name": "a11-file-search",
+  "title": "Where copy looks for a relative file inside a role",
+  "spec": "A vertical stack of six numbered rows, each row a box with a green number circle on the left (1 to 6), arranged top to bottom with small downward arrows between them. Each box holds one monospace path: 1 ./roles/<role_name>/files/, 2 ./roles/<role_name>/, 3 ./roles/<role_name>/tasks/files/, 4 ./roles/<role_name>/tasks/, 5 ./files/ with the note adjacent to the top-level playbook, 6 ./ with the note the top-level playbook directory. On the far left, a task card in monospace: copy: src=pg_hba.conf. An arrow from the task card to row 1, labelled look here first. On the right side of the stack, a branch labelled file found, stop, with the note the first match wins, drawn from row 1 as an orange arrow. A second labelled note reads file not found, move on, drawn from rows 1 to 5 as a short arrow to the next row. The orange highlight is on row 1, the role's own files/ folder, which wins over the playbook's folder. Green takeaway bar at the bottom: The order matters when two folders hold a file with the same name, and the role's own files/ folder wins.",
+  "anchor": "## 1. Anatomy of a role",
+  "alt": "A copy task searches six paths in order inside and around the role and stops at the first file it finds.",
+  "cap": "A relative file name in a role is searched in six locations, and the first match wins."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "11",
+  "name": "a11-role-run-order",
+  "title": "Where roles, import_role and include_role run in a play",
+  "spec": "A horizontal sequence of four section boxes across the top, left to right, with orthogonal arrows: pre_tasks, then a middle box titled roles and tasks, then post_tasks. The middle box is split into two sub-rows: the top sub-row is the roles: list, labelled classic, runs before tasks; below it a task flow with a small card labelled ansible.builtin.import_role marked static, fixed at parse time, and a card labelled ansible.builtin.include_role marked dynamic, decided at runtime, with a loop icon and the note supports loop and tasks_from. Above the sequence, a thin bar with three labelled markers: Parse time for import_role, Runtime for include_role. Below the sequence, green note-chips listing the common handler behaviour: Handlers flush between sections. Orange highlight on include_role, the one that can run a role after a reboot or a drain step. Green takeaway bar at the bottom: Use roles: for simple cases, and the other two for mid-task roles.",
+  "anchor": "## 2. Using roles",
+  "alt": "A play runs pre_tasks, then roles and tasks in order, then post_tasks, and import_role is fixed at parse time while include_role decides at runtime.",
+  "cap": "A play runs its pre_tasks first, then roles and tasks, then post_tasks, and only include_role can sit in the middle of the task flow and decide at runtime."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "11",
+  "name": "a11-gpu-order",
+  "title": "Role order on a bare-metal GPU node",
+  "spec": "A vertical or left-to-right stack of six stage boxes, each with a green number circle (1 to 6) and an arrow to the next stage. Stage 1 box, titled base OS and kernel: role common_base for repos, time sync with chrony, SSH and sudo hardening, users and storage mounts; and role kernel_tuning for the pinned kernel, sysctls, hugepages, kernel modules and the nouveau blacklist. Stage 2 box, titled drivers: gpu_facts and gpu_driver for the NVIDIA driver, nvidia-persistenced, Fabric Manager on NVSwitch nodes, MIG configuration and nvidia-smi validation. Stage 3 box, titled container runtime: container_runtime and nvidia_container_toolkit for containerd or Docker, and the nvidia-ctk CDI or runtime hook. Stage 4 box, titled monitoring: monitoring_agents for node_exporter and dcgm-exporter. Stage 5 box, titled scheduler or Kubernetes agents: slurm_client or kubelet, with the note joins the cluster. Stage 6 at the end: a gate box labelled only after every GPU and runtime validation has passed. Orange highlight on Stage 5 and its gate, the step that joins the node to the cluster. Green takeaway bar at the bottom: Document this order in the playbook, not in hidden role dependencies.",
+  "anchor": "## 7. Role patterns specific to GPU infrastructure",
+  "alt": "A GPU node gets its base OS and kernel first, then drivers, the container runtime, monitoring, and finally the scheduler agent after validation.",
+  "cap": "On a GPU node the base OS and kernel come first, the scheduler agent joins last, and only after every GPU and runtime check has passed."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "11",
+  "name": "a11-collection-path",
+  "title": "From collection skeleton to published package",
+  "spec": "A left-to-right flow of five boxes joined by orthogonal arrows, each with a green number circle (1 to 5). Box 1: init, with the monospace command ansible-galaxy collection init acme.gpu and the note creates the skeleton. Box 2: build, with the monospace command ansible-galaxy collection build and the note creates acme-gpu-1.4.0.tar.gz. Box 3: install locally, with the monospace command ansible-galaxy collection install ./acme-gpu-1.4.0.tar.gz -p collections/ and the note catches a missing file before anyone else sees it. Box 4: test, shown as three stacked small boxes labelled sanity, units and integration, with the notes style, docs and imports; small units of Python functions; runs against a real target. Box 5: publish, with the monospace command ansible-galaxy collection publish acme-gpu-1.4.0.tar.gz --server automation_hub. Below Box 3 a small orange note: this step is the one people skip. Below the whole flow, a single note in monospace: galaxy.yml holds namespace, name, version and dependencies. Green takeaway bar at the bottom: Installing the tarball locally before publishing is the step people skip, and it is the one that catches a missing file.",
+  "anchor": "## 5. Collections",
+  "alt": "A collection is initialised, built into a tarball, installed locally, tested with three ansible-test suites, and then published.",
+  "cap": "A collection goes from skeleton to published tarball in five steps, and the local install step catches a missing file before anyone else sees it."
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "22",
+  "name": "h22-ipxe-handshake",
+  "title": "iPXE chain-load: the second DHCP request carries option 175",
+  "spec": "A sequence diagram drawn as four vertical swimlanes side by side, each lane headed by its participant name: Node firmware (PXE ROM), iPXE program, DHCP and TFTP server, HTTP server. Messages are horizontal arrows from the sender's lane to the receiver's lane, in top-to-bottom time order, each arrow labelled with its text and numbered with a small step number. Message 1, from Node firmware to DHCP and TFTP server, labelled first DHCP request, no option 175. Message 2, from DHCP and TFTP server back to Node firmware, labelled reply with boot file ipxe.efi (UEFI) or undionly.kpxe (BIOS). Message 3, from Node firmware to DHCP and TFTP server, labelled fetch the boot file over TFTP. Message 4, from DHCP and TFTP server back to Node firmware, labelled iPXE program arrives. Message 5, from iPXE program to DHCP and TFTP server, labelled second DHCP request, option 175 set, tag ipxe. Message 6, from DHCP and TFTP server back to iPXE program, labelled reply with an HTTP URL to boot.ipxe, not another binary. Orange highlight on message 6, the single most important item, with the small note this breaks the loop. Message 7, from iPXE program to HTTP server, labelled fetch boot.ipxe script over HTTP. Keep the lanes in this order so no arrow crosses another arrow. No takeaway bar.",
+  "anchor": "### iPXE",
+  "alt": "The node boots iPXE over TFTP, then iPXE sends a second DHCP request with option 175 and receives an HTTP script URL.",
+  "cap": "iPXE sends a second DHCP request with option 175, so the server answers with a script URL instead of loading iPXE again."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "22",
+  "name": "h22-stateless-layers",
+  "title": "A stateless node: a read-only image in RAM, writes go to a layer above it",
+  "spec": "A vertical stack of three wide layer boxes in the centre, read from bottom to top. Bottom layer, labelled Read-only image: rootfs.squashfs, downloaded into RAM at every boot, with a lock icon and the note never changes. Middle layer, labelled Writable layer: tmpfs or overlayfs, with a window or layers icon and the note every write lands here. Top layer, labelled Running node: systemd and the jobs, with a gear icon. Arrows: a single upward arrow between the layers, labelled reboot returns the node to the clean image, drawn on the right side as a return path from the top layer down to the bottom layer, not crossing the boxes. To the right of the stack, a separate column, titled Per-node identity, injected at first boot: a grey box listing SSH host keys, machine-id, hostname, Munge key, credentials, with a shield icon, and one arrow into the running node labelled injected from the provisioning server or a secret store. The identity box must not sit inside the shared image; draw it outside the stack with a dashed outline and the note not in the shared image. Below the stack, a dashed box titled Hybrid option: local NVMe for scratch, logs and container layers, with a disk cylinder icon and one arrow into the running node. Orange highlight on the reboot return path, labelled the single most important item: a reboot is a clean state. No takeaway bar.",
+  "anchor": "## 4. Stateless, stateful and hybrid nodes",
+  "alt": "A stateless node runs a read-only squashfs image with a writable tmpfs or overlayfs layer, while identity is injected per node at first boot.",
+  "cap": "A stateless node runs from a read-only image in RAM, so a reboot returns it to a clean state, and per-node identity is injected at boot."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "22",
+  "name": "h22-dtb-triage",
+  "title": "Boot triage: check D, T, B and I in order and stop at the first failure",
+  "spec": "A title line at the top. A left-to-right row of four stage cards connected by arrows, number circles 1 to 4 in time order. Card 1, large letter D, title DHCP, question: Did the node get an address and the right boot information? Icon: a network port. Card 2, large letter T, title Transfer, question: Did the bootloader download? Icon: a download arrow into a box. Card 3, large letter B, title Boot-mode, question: Does the binary match the firmware? Icon: a chip with a UEFI or BIOS label. Card 4, large letter I, title Image, question: Did kernel, initramfs and root load and start the OS? Icon: a window or a terminal. Under each card, one short grey check line: card 1, tcpdump port 67 or port 68 and the DHCP server logs; card 2, tcpdump port 69, the server log and the HTTP status codes; card 3, ipxe.efi versus undionly.kpxe, x86_64 versus ARM64 and Secure Boot shim; card 4, serial console output, the rd.break initramfs shell and a missing NIC driver. Under the row, a decision band with a red-free stop rule drawn as an orange bar: stop at the first failing stage. Below that, a small grey note: if the node never got its boot file name, the image stage is irrelevant. Keep card text sized so each line wraps inside its card with padding. No takeaway bar.",
+  "anchor": "## 8. Boot triage",
+  "alt": "Boot triage walks four stages in order, DHCP, Transfer, Boot-mode and Image, and stops at the first one that fails.",
+  "cap": "Boot triage checks DHCP, transfer, boot mode and image in that order, and the first failing stage is where you start the fix."
+ }
+]

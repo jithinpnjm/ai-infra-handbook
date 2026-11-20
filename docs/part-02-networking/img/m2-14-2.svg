@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Neighbour state machine</title>
+  <desc>OSPF neighbour state machine diagram showing transitions between Down, Init, TwoWay, ExStart, Exchange, Loading, and Full states.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="16" markerHeight="16" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="sans-serif">Neighbour state machine</text>
+
+  
+  <circle cx="35" cy="205" r="14" fill="#207448"/>
+  <line x1="49" y1="205" x2="70" y2="205" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <line x1="1190" y1="205" x2="410" y2="205" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="800" y="175" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">dead timer / BFD down</text>
+
+  
+  <line x1="240" y1="260" x2="240" y2="405" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="280" y="325" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="280" dy="0">hello received</tspan>
+    <tspan x="280" dy="30">(no 2-way)</tspan>
+  </text>
+
+  
+  <line x1="240" y1="515" x2="240" y2="660" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="280" y="580" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="280" dy="0">my router ID seen in</tspan>
+    <tspan x="280" dy="30">neighbour's hello</tspan>
+  </text>
+
+  
+  <line x1="240" y1="770" x2="240" y2="920" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="280" y="835" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="280" dy="0">(DR/BDR elected)</tspan>
+    <tspan x="280" dy="30">decide to form adjacency</tspan>
+  </text>
+
+  
+  <line x1="410" y1="975" x2="1190" y2="975" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="800" y="920" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="800" dy="0">master/slave chosen,</tspan>
+    <tspan x="800" dy="30">DBD sequence agreed</tspan>
+  </text>
+
+  
+  <line x1="1360" y1="920" x2="1360" y2="645" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1320" y="775" text-anchor="end" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="1320" dy="0">DBDs exchanged,</tspan>
+    <tspan x="1320" dy="30">LSRs sent for missing LSAs</tspan>
+  </text>
+
+  
+  <line x1="1360" y1="535" x2="1360" y2="260" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1320" y="405" text-anchor="end" font-size="24" fill="#303a36" font-family="sans-serif">databases synchronised</text>
+
+  
+  <rect x="70" y="150" width="340" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="118" cy="205" r="22" fill="#207448"/>
+  <text x="118" y="213" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="sans-serif">1</text>
+  
+  <path d="M 166 195 A 16 16 0 1 0 186 195" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="176" y1="184" x2="176" y2="202" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="226" y="215" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Down</text>
+
+  
+  <rect x="70" y="405" width="340" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="118" cy="460" r="22" fill="#207448"/>
+  <text x="118" y="468" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="sans-serif">2</text>
+  
+  <path d="M 167 482 L 176 448 L 185 482 M 170 472 L 182 472" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="176" cy="444" r="3" fill="#207448"/>
+  <path d="M 165 440 A 14 14 0 0 0 165 452" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M 187 440 A 14 14 0 0 1 187 452" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="226" y="470" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Init</text>
+
+  
+  <rect x="70" y="660" width="340" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="118" cy="715" r="22" fill="#207448"/>
+  <text x="118" y="723" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="sans-serif">3</text>
+  
+  <path d="M 162 706 L 190 706 M 183 699 L 190 706 L 183 713" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 190 724 L 162 724 M 169 717 L 162 724 L 169 731" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="226" y="725" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">TwoWay</text>
+
+  
+  <rect x="70" y="920" width="340" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="118" cy="975" r="22" fill="#207448"/>
+  <text x="118" y="983" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="sans-serif">4</text>
+  
+  <path d="M 161 990 L 164 964 L 171 976 L 176 960 L 181 976 L 188 964 L 191 990 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="161" y1="990" x2="191" y2="990" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="226" y="985" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">ExStart</text>
+
+  
+  <rect x="1190" y="920" width="340" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="1238" cy="975" r="22" fill="#207448"/>
+  <text x="1238" y="983" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="sans-serif">5</text>
+  
+  <rect x="1282" y="955" width="22" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <rect x="1290" y="965" width="22" height="28" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <line x1="1296" y1="973" x2="1306" y2="973" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="1296" y1="981" x2="1306" y2="981" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="1346" y="985" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Exchange</text>
+
+  
+  <rect x="1190" y="535" width="340" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="1238" cy="590" r="22" fill="#207448"/>
+  <text x="1238" y="598" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="sans-serif">6</text>
+  
+  <ellipse cx="1296" cy="576" rx="16" ry="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <path d="M 1280 576 v 26 c 0 3.5 7 6 16 6 s 16 -2.5 16 -6 v -26" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <path d="M 1296 584 v 16 m -4 -4 l 4 4 l 4 -4" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1346" y="600" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Loading</text>
+
+  
+  <rect x="1190" y="150" width="340" height="110" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+  <circle cx="1238" cy="205" r="22" fill="#db8129"/>
+  <text x="1238" y="213" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="sans-serif">7</text>
+  
+  <path d="M 1282 192 c 0 0 0 16 14 26 c 14 -10 14 -26 14 -26 v -6 h -28 z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 1289 203 l 5 5 l 10 -10" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1346" y="215" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Full</text>
+</svg>

@@ -230,11 +230,15 @@ Machines should use **keys, not passwords**. Use SSH keys or certificates (secti
 
 ## 4. Capabilities: splitting root into pieces
 
+![The five capability sets of a thread and what each one does.](./img/l21-cap-sets.svg)
+
+*Figure 1.21.3. The effective set is what the kernel checks, and dropping from the bounding set cannot be undone.*
+
 Suppose a server must bind a port below 1024, but it should never be able to load a kernel module. Traditional Unix offers only two kinds of process: root, which is all-powerful, and everyone else.
 
 ![Capabilities split root into pieces](./img/ch21-fig1-caps.jpg)
 
-*Figure 1.21.3. Capabilities divide root's power into separate pieces that you grant one at a time.*
+*Figure 1.21.4. Capabilities divide root's power into separate pieces that you grant one at a time.*
 
 Linux breaks root's powers into about 40 **capabilities**. Each capability is a distinct privilege, one key rather than the whole ring, and each can be granted, dropped or inherited separately. A process with euid 0 *normally* holds all of them. A process with a few capabilities and a non-zero UID can still do just those operations.
 
@@ -297,6 +301,10 @@ Before you grant a capability, ask which single operation the process needs. The
 
 ## 5. seccomp: filtering system calls
 
+![A seccomp filter decides call by call which system calls reach the kernel.](./img/l21-seccomp.svg)
+
+*Figure 1.21.5. seccomp refuses system calls the service never needed, and filters cannot be removed once installed.*
+
 In a container-escape demo, the attacker's next move is a system call the service never needed, such as `mount` or `ptrace`. seccomp is the layer that refuses that call.
 
 A program asks the kernel for something through a system call every time it does real work. seccomp lets you decide, call by call, which of those requests get through. **seccomp** stands for secure computing mode. A process installs a filter, and for each system call the filter decides what happens. The options are to allow the call, return an error, kill the process or thread, send a signal, log it, or notify a supervisor. **seccomp-bpf** writes the filter as a classic BPF program. The program inspects the system call number and its arguments, but not the contents of pointers.
@@ -331,7 +339,7 @@ DAC and MAC are *both* checked. MAC can only deny more. Run `cat /sys/kernel/sec
 
 ![Three security gates: seccomp, DAC, and MAC](./img/ch21-d3-luna.svg)
 
-*Figure 1.21.4. Syscall security gates: seccomp-bpf filtering, DAC with capabilities, and MAC (SELinux/AppArmor).*
+*Figure 1.21.6. Syscall security gates: seccomp-bpf filtering, DAC with capabilities, and MAC (SELinux/AppArmor).*
 
 ### SELinux (RHEL, Rocky, Fedora, Amazon Linux; also used by Android)
 
@@ -384,6 +392,10 @@ Use whatever your distribution ships and supports. That means SELinux on the RHE
 In an AI cluster, keep MAC **on**. Handle GPU, InfiniBand, NFS, Lustre and scratch paths with labels or profiles. Fleets that disable MAC "for performance" are usually disabling it for convenience, since the overhead is small. Keep MAC on, and fix the labels or profiles instead.
 
 ## 7. SSH hardening
+
+![Key sshd settings, a per-group Match exception and the safe way to test them.](./img/l21-ssh-hardening.svg)
+
+*Figure 1.21.7. Disable passwords and root login, allow specific groups, validate with sshd -t and keep a session open.*
 
 SSH is the front door to every node, and it is also the path an attacker uses to move sideways once inside. Harden it with care.
 

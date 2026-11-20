@@ -141,6 +141,10 @@ Today RIP is obsolete, but it remains a clear teaching case, because its weaknes
 
 ### Link state (Dijkstra)
 
+![Dijkstra on a diamond topology](./img/n13-dijkstra.svg)
+
+*Figure 2.13.2. Each router runs Dijkstra on the same database and keeps every equal-cost next hop.*
+
 In a link-state protocol, each router describes its own links in a link-state advertisement (LSA). That advertisement lists its neighbours and their costs. The router floods it to every router in the area. Every router then holds the same link-state database (LSDB), which describes the whole topology. In effect, everyone ends up holding the same map of the network. Each router runs Dijkstra's shortest path first (SPF) algorithm on its own copy, with itself as the root. The steps are these.
 
 1. The root starts in the tree at cost 0, and every other node starts at infinity.
@@ -160,6 +164,10 @@ A path-vector protocol advertises, for each destination, the sequence of domains
 This family is BGP, covered in chapters 2.15 and 2.16. In data-centre eBGP, the same ASN-per-tier plans appear, with `allowas-in` or per-rack ASNs. The loop-prevention logic still shapes the design.
 
 ### Comparing families
+
+![Distance vector, link state and path vector](./img/n13-families.svg)
+
+*Figure 2.13.3. Each routing family trades state, convergence speed and policy richness differently.*
 
 The table puts the three families side by side. Read down each column to see what a family trades away to gain its strength.
 
@@ -241,13 +249,9 @@ A routing system is a distributed database, so it faces a CAP-like trade-off. Th
 
 The diagram shows the five stages a failure passes through before traffic moves to a new path. Each stage adds delay, so the total is the sum of all five.
 
-```mermaid
-flowchart LR
-  D["1. Detect failure\n(carrier ~10ms / BFD 150-300ms)"] --> O["2. Originate update\n(LSA/update throttle 50-500ms)"]
-  O --> P["3. Propagate / flood\n(area flooding / hop-by-hop)"]
-  P --> C["4. Compute paths\n(Dijkstra SPF / BGP best-path)"]
-  C --> F["5. Program FIB\n(kernel / ASIC TCAM, PIC)"]
-```
+![Convergence timeline](./img/m2-13-1.svg)
+
+*Figure 2.13.4. Convergence timeline, as a diagram.*
 
 Restoring forwarding after a link failure adds up the stages. It is detection, plus origination (hold-down or throttle), plus propagation or flooding, plus computation, plus FIB installation. For BGP, add advertisement timers (MRAI) and best-path recomputation. FIB installation can be the largest term at scale. The typical ranges are in this table.
 
@@ -276,6 +280,10 @@ Each protocol defines its own metric, and the numbers do not mean the same thing
 3. Carry the external metric in a separate field. OSPF external type 2 (E2) or type 1 (E1), EIGRP external routes, and BGP MED or local-pref all do this. Each router can then weigh both the internal cost to the exit point and the external cost. The price is more state, but the payoff is better steering. The router must still choose an exit. Nearest exit, called hot-potato routing, minimises use of your own network. The exit with the lowest external metric, called cold-potato routing, minimises use of the external network.
 
 ### Loops
+
+![Redistribution loop](./img/n13-redistloop.svg)
+
+*Figure 2.13.5. A route injected from one protocol into another can come back, and a route tag marks it so it is blocked on the way back.*
 
 Loops appear when routes flow back and forth between protocols. Suppose router A injects a prefix N from X into Y. Router B then hears N from Y and injects it back into X. Now N looks like a new route, with a different metric. If administrative distance or metric makes that copy look better than the original, A prefers it. The result is a routing loop or a poor path. The route has gone round in a circle and come back looking like a stranger.
 

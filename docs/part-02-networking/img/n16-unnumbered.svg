@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>BGP unnumbered step by step</title>
+  <desc>Visual infographic explaining BGP unnumbered setup, configuration, and protocol handshake steps without assigning IP addresses to interfaces.</desc>
+
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="60" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">BGP unnumbered step by step</text>
+
+  
+
+  
+  <g transform="translate(60, 110)">
+    <rect width="960" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(30, 26)">
+      
+      <rect x="0" y="10" width="68" height="52" rx="6" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <rect x="10" y="24" width="8" height="8" rx="2" fill="#207448" />
+      <rect x="24" y="24" width="8" height="8" rx="2" fill="#207448" />
+      <rect x="38" y="24" width="8" height="8" rx="2" fill="#207448" />
+      <rect x="52" y="24" width="8" height="8" rx="2" fill="#207448" />
+      <path d="M 14 46 L 54 46" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+      
+      <path d="M 68 36 L 132 36" stroke="#207448" stroke-width="6" stroke-linecap="round" />
+      <circle cx="100" cy="36" r="5" fill="#207448" />
+
+      
+      <rect x="132" y="10" width="68" height="52" rx="6" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <rect x="142" y="24" width="8" height="8" rx="2" fill="#207448" />
+      <rect x="156" y="24" width="8" height="8" rx="2" fill="#207448" />
+      <rect x="170" y="24" width="8" height="8" rx="2" fill="#207448" />
+      <rect x="184" y="24" width="8" height="8" rx="2" fill="#207448" />
+      <path d="M 146 46 L 186 46" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="256" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="27" font-weight="bold" fill="#303a36">
+      <tspan x="256" dy="0">Two switches cabled together,</tspan>
+      <tspan x="256" dy="34">no IP typed on either end</tspan>
+    </text>
+
+    
+    <g transform="translate(30, 126)">
+      <rect width="900" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <rect x="18" y="16" width="46" height="36" rx="5" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 28 28 L 36 34 L 28 40" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="40" y1="40" x2="52" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+      
+      <text x="82" y="42" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="600" fill="#207448">neighbor swp1 interface remote-as external</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(1050, 110)">
+    <rect width="490" height="220" rx="16" fill="#fdf8f3" stroke="#db8129" stroke-width="3" />
+
+    
+    <g transform="translate(217, 24)">
+      
+      <rect x="4" y="0" width="18" height="14" rx="3" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      <rect x="34" y="0" width="18" height="14" rx="3" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      
+      <line x1="13" y1="14" x2="3" y2="40" stroke="#db8129" stroke-width="2" />
+      <line x1="13" y1="14" x2="28" y2="40" stroke="#db8129" stroke-width="2" />
+      <line x1="13" y1="14" x2="53" y2="40" stroke="#db8129" stroke-width="2" />
+      <line x1="43" y1="14" x2="3" y2="40" stroke="#db8129" stroke-width="2" />
+      <line x1="43" y1="14" x2="28" y2="40" stroke="#db8129" stroke-width="2" />
+      <line x1="43" y1="14" x2="53" y2="40" stroke="#db8129" stroke-width="2" />
+      
+      <rect x="-6" y="40" width="18" height="14" rx="3" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      <rect x="19" y="40" width="18" height="14" rx="3" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      <rect x="44" y="40" width="18" height="14" rx="3" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    </g>
+
+    
+    <text x="245" y="128" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="245" dy="0">32 leaves x 16 spines =</tspan>
+      <tspan x="245" dy="42">512 links to address by hand</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="540" y1="330" x2="540" y2="368" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+
+  
+  <g transform="translate(60, 370)">
+    <rect width="1480" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="55" cy="75" r="24" fill="#207448" />
+    <text x="55" y="75" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(105, 47)">
+      <rect x="4" y="8" width="48" height="40" rx="6" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <path d="M 14 48 L 14 54 M 22 48 L 22 54 M 30 48 L 30 54 M 38 48 L 38 54" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="20" cy="28" r="5" fill="#207448" />
+      <line x1="30" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="185" y="84" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">each interface gets an automatic link-local address fe80::/64</text>
+  </g>
+
+  
+  <line x1="800" y1="520" x2="800" y2="553" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(60, 555)">
+    <rect width="1480" height="165" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="55" cy="82" r="24" fill="#207448" />
+    <text x="55" y="82" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(105, 54)">
+      
+      <circle cx="28" cy="28" r="6" fill="#207448" />
+      <path d="M 16 16 A 17 17 0 0 0 16 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M 40 16 A 17 17 0 0 1 40 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M 8 8 A 28 28 0 0 0 8 48" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <path d="M 48 8 A 28 28 0 0 1 48 48" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="185" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="185" dy="0">each side sends IPv6 Router Advertisements and Neighbour Discovery;</tspan>
+      <tspan x="185" dy="40">FRR learns the neighbour link-local address and MAC</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="720" x2="800" y2="753" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(60, 755)">
+    <rect width="1480" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="55" cy="75" r="24" fill="#207448" />
+    <text x="55" y="75" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(105, 47)">
+      
+      <rect x="4" y="14" width="20" height="28" rx="4" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <rect x="32" y="14" width="20" height="28" rx="4" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <line x1="24" y1="22" x2="32" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="24" y1="34" x2="32" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      
+      <circle cx="14" cy="28" r="3" fill="#207448" />
+      <circle cx="42" cy="28" r="3" fill="#207448" />
+    </g>
+
+    
+    <text x="185" y="84" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">TCP session starts to port 179</text>
+  </g>
+
+  
+  <line x1="800" y1="905" x2="800" y2="938" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(60, 940)">
+    <rect width="1480" height="165" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="55" cy="82" r="24" fill="#207448" />
+    <text x="55" y="82" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+
+    
+    <g transform="translate(105, 54)">
+      
+      <rect x="4" y="8" width="48" height="40" rx="5" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      
+      <path d="M 6 12 L 28 28 L 50 12" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      
+      <path d="M 18 36 L 38 36 M 32 30 L 38 36 L 32 42" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="185" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="185" dy="0">OPEN carries Extended Next Hop Encoding capability (RFC 8950),</tspan>
+      <tspan x="185" dy="40">so IPv4 routes work on a link with no IPv4 address</tspan>
+    </text>
+  </g>
+</svg>

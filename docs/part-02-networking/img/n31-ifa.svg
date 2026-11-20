@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="940" viewBox="0 0 1600 940" style="background-color: #f5f8f5; font-family: sans-serif;">
+  <title>In-band telemetry with IFA</title>
+  <desc>Infographic illustrating in-band telemetry with IFA across a network fabric, including node roles, packet layout, and operational considerations.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="14" markerHeight="10" refX="12" refY="5" orient="auto">
+      <path d="M 0 1 L 12 5 L 0 9 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <text x="40" y="68" font-size="48" font-weight="bold" fill="#303a36">In-band telemetry with IFA</text>
+
+  
+  <rect x="40" y="105" width="1520" height="545" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="65" y="145" font-size="30" font-weight="bold" fill="#207448">A path across a fabric</text>
+
+  
+  <rect x="65" y="170" width="330" height="455" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="107" cy="210" r="24" fill="#207448" />
+  <text x="107" y="218" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="214" y="188" width="48" height="42" rx="6" />
+    <path d="M 222 214 L 254 214" />
+    <path d="M 238 214 L 250 200" />
+  </g>
+
+  
+  <text x="85" y="278" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="85" dy="0">ingress leaf</tspan>
+    <tspan x="85" dy="36">(Initiator)</tspan>
+  </text>
+  <line x1="85" y1="332" x2="375" y2="332" stroke="#c0d8c7" stroke-width="1.5" />
+
+  
+  <text x="85" y="368" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">Initiator samples</tspan>
+    <tspan x="85" dy="32">traffic and clones</tspan>
+    <tspan x="85" dy="32">it into probe</tspan>
+    <tspan x="85" dy="32">packets carrying</tspan>
+    <tspan x="85" dy="32">an IFA header,</tspan>
+    <tspan x="85" dy="32">initiator tag,</tspan>
+    <tspan x="85" dy="32">timestamps.</tspan>
+  </text>
+
+  
+  <line x1="395" y1="210" x2="445" y2="210" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="445" y="170" width="390" height="455" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="487" cy="210" r="24" fill="#207448" />
+  <text x="487" y="218" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="614" y="188" width="48" height="42" rx="6" />
+    <path d="M 622 204 L 654 204" />
+    <path d="M 622 218 L 654 218" />
+    <path d="M 638 194 L 638 226" />
+  </g>
+
+  
+  <text x="465" y="278" font-size="30" font-weight="bold" fill="#303a36">spine (Transit)</text>
+  <line x1="465" y1="305" x2="815" y2="305" stroke="#c0d8c7" stroke-width="1.5" />
+
+  
+  <text x="465" y="342" font-size="24" fill="#303a36">
+    <tspan x="465" dy="0">Transit nodes append</tspan>
+    <tspan x="465" dy="32">device ID, ingress and</tspan>
+    <tspan x="465" dy="32">egress ports, queue ID,</tspan>
+    <tspan x="465" dy="32">ingress timestamp,</tspan>
+    <tspan x="465" dy="32">residence time in</tspan>
+    <tspan x="465" dy="32">nanoseconds,</tspan>
+    <tspan x="465" dy="32">congestion bit when</tspan>
+    <tspan x="465" dy="32">ECN marking applies.</tspan>
+  </text>
+
+  
+  <line x1="835" y1="210" x2="885" y2="210" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="885" y="170" width="340" height="455" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="927" cy="210" r="24" fill="#207448" />
+  <text x="927" y="218" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="1054" y="188" width="48" height="42" rx="6" />
+    <path d="M 1062 209 L 1084 209" />
+    <path d="M 1084 209 L 1084 222" />
+    <path d="M 1092 195 L 1092 223" />
+  </g>
+
+  
+  <text x="905" y="265" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="905" dy="0">egress leaf</tspan>
+    <tspan x="905" dy="34">or border</tspan>
+    <tspan x="905" dy="34">(Terminator)</tspan>
+  </text>
+  <line x1="905" y1="352" x2="1205" y2="352" stroke="#c0d8c7" stroke-width="1.5" />
+
+  
+  <text x="905" y="392" font-size="24" fill="#303a36">
+    <tspan x="905" dy="0">Terminator strips</tspan>
+    <tspan x="905" dy="34">the metadata,</tspan>
+    <tspan x="905" dy="34">exports it, drops</tspan>
+    <tspan x="905" dy="34">the cloned probe.</tspan>
+  </text>
+
+  
+  <line x1="1225" y1="210" x2="1275" y2="210" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1275" y="170" width="260" height="455" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1317" cy="210" r="24" fill="#207448" />
+  <text x="1317" y="218" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 1400 196 C 1400 190, 1438 190, 1438 196 C 1438 202, 1400 202, 1400 196 Z" />
+    <path d="M 1400 196 L 1400 224 C 1400 230, 1438 230, 1438 224 L 1438 196" />
+    <path d="M 1400 210 C 1400 216, 1438 216, 1438 210" />
+  </g>
+
+  
+  <text x="1295" y="278" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1295" dy="0">collector</tspan>
+    <tspan x="1295" dy="36">(IPFIX)</tspan>
+  </text>
+  <line x1="1295" y1="332" x2="1515" y2="332" stroke="#c0d8c7" stroke-width="1.5" />
+
+  
+  
+  <rect x="40" y="675" width="280" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="180" y="714" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="180" dy="0">L2 and L3</tspan>
+    <tspan x="180" dy="30">headers</tspan>
+  </text>
+
+  
+  <rect x="340" y="675" width="240" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="460" y="728" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">IFA header</text>
+
+  
+  <rect x="600" y="675" width="300" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="750" y="714" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="750" dy="0">original</tspan>
+    <tspan x="750" dy="30">L4 header</tspan>
+  </text>
+
+  
+  <rect x="920" y="675" width="320" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1080" y="714" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1080" dy="0">IFA metadata</tspan>
+    <tspan x="1080" dy="30">header</tspan>
+  </text>
+
+  
+  <rect x="1260" y="675" width="300" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1410" y="728" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">metadata stack</text>
+
+  
+  <rect x="40" y="795" width="745" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="40" y="795" width="10" height="85" rx="4" fill="#207448" />
+  <text x="75" y="847" font-size="24" font-weight="bold" fill="#303a36">Probes follow the same path as the real flow</text>
+
+  
+  <rect x="815" y="795" width="745" height="85" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="2" />
+  <rect x="815" y="795" width="10" height="85" rx="4" fill="#db8129" />
+  <text x="850" y="847" font-size="24" font-weight="bold" fill="#303a36">Decide which flows justify the IFA overhead</text>
+</svg>

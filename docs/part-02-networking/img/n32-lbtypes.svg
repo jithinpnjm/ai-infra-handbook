@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>GCP load balancer types</title>
+  <desc>A visual comparison table of Google Cloud Platform load balancer types showing Layer, Scope, and Typical use.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="68" font-size="48" font-weight="bold" fill="#303a36" font-family="sans-serif">GCP load balancer types</text>
+
+  
+  <rect x="50" y="105" width="1500" height="52" rx="8" fill="#207448"/>
+  <text x="70" y="141" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif">Type</text>
+  <text x="610" y="141" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif">Layer</text>
+  <text x="880" y="141" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif">Scope</text>
+  <text x="1160" y="141" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif">Typical use</text>
+
+  
+  <g id="row-1">
+    <rect x="50" y="170" width="1500" height="130" rx="10" fill="#ffffff" stroke="#d5e5d8" stroke-width="2"/>
+    <line x1="590" y1="170" x2="590" y2="300" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="860" y1="170" x2="860" y2="300" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1140" y1="170" x2="1140" y2="300" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <circle cx="98" cy="235" r="24" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="74" y1="235" x2="122" y2="235" stroke="#207448" stroke-width="2.5"/>
+    <line x1="98" y1="211" x2="98" y2="259" stroke="#207448" stroke-width="2.5"/>
+    <ellipse cx="98" cy="235" rx="13" ry="24" fill="none" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <text x="145" y="222" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Global external</text>
+    <text x="145" y="258" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Application LB</text>
+    <text x="610" y="223" font-size="24" fill="#303a36" font-family="sans-serif">L7 HTTP(S),</text>
+    <text x="610" y="257" font-size="24" fill="#303a36" font-family="sans-serif">Envoy-based</text>
+    <text x="880" y="240" font-size="24" fill="#303a36" font-family="sans-serif">global anycast IP</text>
+    <text x="1160" y="212" font-size="24" fill="#303a36" font-family="sans-serif">public web/API/</text>
+    <text x="1160" y="244" font-size="24" fill="#303a36" font-family="sans-serif">inference endpoints,</text>
+    <text x="1160" y="276" font-size="24" fill="#303a36" font-family="sans-serif">Cloud CDN, Cloud Armor</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="50" y="315" width="1500" height="130" rx="10" fill="#ffffff" stroke="#d5e5d8" stroke-width="2"/>
+    <line x1="590" y1="315" x2="590" y2="445" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="860" y1="315" x2="860" y2="445" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1140" y1="315" x2="1140" y2="445" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <rect x="74" y="356" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="74" y1="368" x2="122" y2="368" stroke="#207448" stroke-width="2"/>
+    <circle cx="82" cy="362" r="2" fill="#207448"/>
+    <circle cx="88" cy="362" r="2" fill="#207448"/>
+    <circle cx="94" cy="362" r="2" fill="#207448"/>
+    <rect x="81" y="375" width="14" height="21" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+    <rect x="101" y="375" width="14" height="21" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+
+    
+    <text x="145" y="362" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Regional</text>
+    <text x="145" y="396" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">external/internal</text>
+    <text x="145" y="430" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Application LB</text>
+    <text x="610" y="386" font-size="24" fill="#303a36" font-family="sans-serif">L7</text>
+    <text x="880" y="386" font-size="24" fill="#303a36" font-family="sans-serif">regional</text>
+    <text x="1160" y="386" font-size="24" fill="#303a36" font-family="sans-serif">internal microservices</text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="50" y="460" width="1500" height="130" rx="10" fill="#ffffff" stroke="#d5e5d8" stroke-width="2"/>
+    <line x1="590" y1="460" x2="590" y2="590" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="860" y1="460" x2="860" y2="590" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1140" y1="460" x2="1140" y2="590" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <path d="M 98 501 L 120 511 C 120 531 98 547 98 547 C 98 547 76 531 76 511 Z" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="86" y1="523" x2="110" y2="523" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="86" cy="523" r="2.5" fill="#207448"/>
+    <circle cx="110" cy="523" r="2.5" fill="#207448"/>
+
+    
+    <text x="145" y="512" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">External proxy</text>
+    <text x="145" y="552" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Network LB</text>
+    <text x="610" y="531" font-size="24" fill="#303a36" font-family="sans-serif">L4 proxy</text>
+    <text x="880" y="531" font-size="24" fill="#303a36" font-family="sans-serif">global or regional</text>
+    <text x="1160" y="531" font-size="24" fill="#303a36" font-family="sans-serif">TCP/SSL</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="50" y="605" width="1500" height="130" rx="10" fill="#ffffff" stroke="#d5e5d8" stroke-width="2"/>
+    <line x1="590" y1="605" x2="590" y2="735" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="860" y1="605" x2="860" y2="735" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1140" y1="605" x2="1140" y2="735" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <circle cx="80" cy="670" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="116" cy="670" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="85" y1="670" x2="111" y2="670" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 80 662 C 80 648 116 648 116 662" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="3,3"/>
+    <path d="M 80 678 C 80 692 116 692 116 678" fill="none" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <text x="145" y="657" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">External passthrough</text>
+    <text x="145" y="697" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Network LB</text>
+    <text x="610" y="658" font-size="24" fill="#303a36" font-family="sans-serif">L4 pass-through</text>
+    <text x="610" y="692" font-size="24" fill="#303a36" font-family="sans-serif">(Maglev-based, DSR)</text>
+    <text x="880" y="676" font-size="24" fill="#303a36" font-family="sans-serif">regional</text>
+    <text x="1160" y="658" font-size="24" fill="#303a36" font-family="sans-serif">UDP and preserve</text>
+    <text x="1160" y="692" font-size="24" fill="#303a36" font-family="sans-serif">source IP</text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="50" y="750" width="1500" height="130" rx="10" fill="#ffffff" stroke="#d5e5d8" stroke-width="2"/>
+    <line x1="590" y1="750" x2="590" y2="880" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="860" y1="750" x2="860" y2="880" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1140" y1="750" x2="1140" y2="880" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <circle cx="98" cy="815" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="98" cy="793" r="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="79" cy="831" r="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="117" cy="831" r="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="98" y1="797" x2="98" y2="810" stroke="#207448" stroke-width="2"/>
+    <line x1="94" y1="819" x2="83" y2="828" stroke="#207448" stroke-width="2"/>
+    <line x1="102" y1="819" x2="113" y2="828" stroke="#207448" stroke-width="2"/>
+
+    
+    <text x="145" y="802" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Internal passthrough</text>
+    <text x="145" y="842" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Network LB</text>
+    <text x="610" y="821" font-size="24" fill="#303a36" font-family="sans-serif">L4</text>
+    <text x="880" y="821" font-size="24" fill="#303a36" font-family="sans-serif">regional</text>
+    <text x="1160" y="821" font-size="24" fill="#303a36" font-family="sans-serif">internal TCP/UDP</text>
+  </g>
+
+  
+  <g id="row-6">
+    <rect x="50" y="895" width="1500" height="130" rx="10" fill="#ffffff" stroke="#d5e5d8" stroke-width="2"/>
+    <line x1="590" y1="895" x2="590" y2="1025" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="860" y1="895" x2="860" y2="1025" stroke="#e8f1ea" stroke-width="2"/>
+    <line x1="1140" y1="895" x2="1140" y2="1025" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <circle cx="86" cy="960" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="110" cy="960" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="86" y1="960" x2="110" y2="960" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="86" cy="960" r="3" fill="#207448"/>
+    <circle cx="110" cy="960" r="3" fill="#207448"/>
+
+    
+    <text x="145" y="947" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Cross-region internal</text>
+    <text x="145" y="987" font-size="30" font-weight="bold" fill="#207448" font-family="sans-serif">Application LB</text>
+    <text x="610" y="966" font-size="24" fill="#303a36" font-family="sans-serif">L7</text>
+    <text x="880" y="966" font-size="24" fill="#303a36" font-family="sans-serif">multi-region internal</text>
+  </g>
+
+  
+  <g id="note">
+    <rect x="50" y="1050" width="1500" height="96" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="2.5"/>
+
+    
+    <circle cx="98" cy="1098" r="24" fill="none" stroke="#db8129" stroke-width="3.5"/>
+    <circle cx="98" cy="1098" r="3" fill="#db8129"/>
+    <line x1="98" y1="1098" x2="98" y2="1082" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <line x1="98" y1="1098" x2="98" y2="1114" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text x="150" y="1106" font-size="25" font-weight="bold" fill="#303a36" font-family="sans-serif">For streaming inference raise the backend service timeout; the default is 30 s</text>
+  </g>
+</svg>

@@ -68,15 +68,9 @@ Decide which assets matter most before you draw the data-flow diagram, because t
 
 Picture a network protected by one firewall and nothing else. If that single control fails, nothing else stands in the way. A medieval castle is a better model: a moat, a wall, a gate, an inner keep, and guards who watch all of them. Defense in depth avoids the single-firewall trap by stacking overlapping controls. No single control stops a determined attacker, but layered controls give you several chances to detect and contain an intrusion, and they make every attack more costly.
 
-```mermaid
-flowchart TB
-  I["Internet / untrusted"] --> E["Edge: packet filters, rate limits, route validation (BCP38/RPKI), DDoS protection"]
-  E --> F["Stateful firewall / NGFW / WAF: only established or permitted flows"]
-  F --> S["Segmentation: VLAN/VRF/VXLAN zones, microsegmentation, NetworkPolicy"]
-  S --> A["Per-service access control: authN/authZ, mTLS, RBAC"]
-  A --> D["Data protection: encryption at rest and in transit, key management"]
-  T["Telemetry across all layers: flows, logs, IDS/IPS, exfiltration monitoring"] -. "observes" .-> E & F & S & A & D
-```
+![Defense in depth](./img/m2-21-1.svg)
+
+*Figure 2.21.1. Defense in depth, as a diagram.*
 
 Each layer does a different job. At the edge, packet filters and rate limits control what arrives, and route validation guards against hijacked address space. Behind the edge, a stateful packet filter lets in only responses to connections that started inside. Each service adds access control of its own. Telemetry watches all of these layers together, looking for top talkers, anomalies and large, unusual transfers out of sensitive databases.
 
@@ -108,7 +102,7 @@ Not every firewall works the same way. A firewall is a checkpoint that decides w
 
 ![Firewall rule order](./img/n21-fig1-fwrules.jpg)
 
-*Figure 2.21.1. A packet is checked against rules from the top; the first match decides.*
+*Figure 2.21.2. A packet is checked against rules from the top; the first match decides.*
 
 | Type | What it does | Notes |
 |---|---|---|
@@ -139,6 +133,10 @@ Picture a backup disk that goes missing from a courier van. The disk holds a cop
 Make the encryption decision for each fabric explicitly, based on whether tenants share it.
 
 ## 6. Availability: denial of service
+
+![Types of denial of service](./img/n21-dos.svg)
+
+*Figure 2.21.3. Each kind of denial of service exhausts a different resource and needs a different defence.*
 
 Picture a service that is healthy in every way except one: nobody can reach it. That is what a denial-of-service (DoS) attack does. It does not steal anything. It simply fills the shop with so many fake customers that real ones cannot get in. A distributed attack (DDoS) does the same thing with many sources at once. The table lists four classes, and each one needs a different defense.
 
@@ -325,6 +323,10 @@ Decide which of these controls you will enforce before you add a new BGP peer.
 
 ## 11. Layer-2 security
 
+![Layer 2 attacks and controls](./img/n21-l2sec.svg)
+
+*Figure 2.21.4. Each layer 2 attack has a matching switch control.*
+
 Some attacks target the local network itself, below anything a perimeter firewall sees. A device plugged into the wrong port, or a laptop that starts handing out addresses, can disturb a whole VLAN. The table pairs every attack with its control.
 
 | Attack | Control |
@@ -344,6 +346,10 @@ Use the table as a checklist for each switch you manage. 802.1X decides which de
 Check each row against the switches on your own network first.
 
 ## 12. Zero trust and segmentation
+
+![Default-deny NetworkPolicy](./img/n21-netpol.svg)
+
+*Figure 2.21.5. A default-deny policy plus one allow rule lets only the gateway reach the Triton pod on TCP 8001.*
 
 Zero trust replaces the old rule that anything inside the perimeter is trusted. The old rule resembled an office where the receptionist checks you at the front door and, after that, you can walk into any room. Instead, you authenticate and authorise every request based on identity, device posture and context. You assume a breach has already happened. You apply least privilege, encrypt everywhere, and verify continuously while you log. Four building blocks make that practical.
 

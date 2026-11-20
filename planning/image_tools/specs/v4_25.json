@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "25",
+  "name": "a25-two-stack-layering",
+  "title": "Create the cluster in one state, configure providers in another",
+  "spec": "Two horizontal rows, no time order, so no number circles. Top row, labelled Avoid, with a red-free layout in grey: a box with the text one state creates the cluster and configures the providers. An orange arrow from it labelled host unknown at plan time points to a box with the text provider falls back to the local kubeconfig and deploys into the wrong cluster. Bottom row, labelled Do, in green: a box labelled create the cluster in one state, then a green arrow labelled data sources read the cluster, pointing to a box labelled configure the kubernetes and helm providers in another state. The two boxes of the bottom row sit side by side inside a light green panel. Monospace labels for kubernetes and helm. No takeaway bar.",
+  "anchor": "### Layering rule (repeat from 4.22)",
+  "alt": "Creating the cluster and configuring the providers in one state can deploy to the wrong cluster, so use two states with data sources.",
+  "cap": "Put cluster creation and provider configuration in separate states, so the providers read the cluster through data sources."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "25",
+  "name": "a25-team-fanout",
+  "title": "One team entry fans out into one copy of each resource per namespace",
+  "spec": "Left: a box labelled team ml holding the namespaces dev and prod. An arrow labelled locals flatten points right to a light green container labelled local.ns (monospace) holding two keyed entries in monospace: ml-dev and ml-prod. A single arrow labelled one copy per entry leaves that container and points right to a larger container labelled for_each over each entry, holding four resource boxes stacked in monospace: kubernetes_namespace, kubernetes_resource_quota, kubernetes_role_binding, kubernetes_network_policy. Under the four boxes, a small note: add a third namespace and each resource gets one more copy. No takeaway bar.",
+  "anchor": "## 5. Tenancy and policy as code",
+  "alt": "A team with dev and prod namespaces is flattened into two keys, and each resource is created once per key.",
+  "cap": "One team with two namespaces flattens into two keys, and each tenancy resource is then created once per key."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "25",
+  "name": "a25-gitops-handoff",
+  "title": "Terraform bootstraps Argo CD, then Git takes over",
+  "spec": "Five boxes left to right with number circles 1 to 4 on the arrows or box corners, green. Box 1 labelled helm_release argocd (monospace), with a sub-label Terraform installs Argo CD. Arrow 2 to box labelled kubectl_manifest root_app (monospace), sub-label one Application called root. Arrow 3 to a box labelled Git folder clusters/cluster_name (monospace), sub-label the folder lists the rest of the cluster. Arrow 4 to a box labelled automated sync with prune and selfHeal (monospace), sub-label Git is the authority. Put the Terraform boxes 1 and 2 on a light green panel labelled Terraform bootstrap and the Git and sync boxes on a second panel labelled GitOps. Orange note under the GitOps panel: do not change anything Argo manages from Terraform. No takeaway bar.",
+  "anchor": "## 6. GitOps bootstrap",
+  "alt": "Terraform installs Argo CD and a root Application that points at a Git folder, then Argo CD keeps the cluster in sync.",
+  "cap": "Terraform installs Argo CD and one root Application, and after that Git and Argo CD keep the cluster in sync."
+ }
+]

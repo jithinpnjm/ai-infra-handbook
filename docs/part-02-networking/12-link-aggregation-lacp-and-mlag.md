@@ -49,14 +49,9 @@ TCP treats that reordering as loss, because from its point of view a packet that
 
 Flow hashing computes a hash over fields that stay constant for a flow, takes it modulo the number of members, and sends every packet of that flow down the same member. In plain words, all the packets of one conversation take the same cable, so they stay in order. Ordering is preserved. Utilisation, however, becomes statistical.
 
-```mermaid
-flowchart LR
-  F["Frame / packet\nsrc MAC, dst MAC, src IP, dst IP, proto, src port, dst port"] --> H["Hash(selected fields)"]
-  H --> M["hash mod N (or consistent/resilient table)"]
-  M --> L1["Member link 1"]
-  M --> L2["Member link 2"]
-  M --> L3["Member link N"]
-```
+![The problem: many parallel links, one conversation](./img/m2-12-1.svg)
+
+*Figure 2.12.1. The problem: many parallel links, one conversation, as a diagram.*
 
 ### Hash functions and why balance is imperfect
 
@@ -64,7 +59,7 @@ A hash maps a large input to a small fixed output, and it spreads inputs roughly
 
 ![A hash picks one link per flow](./img/n12-fig1-hash.jpg)
 
-*Figure 2.12.1. Each flow is pinned to one link, so balance is imperfect.*
+*Figure 2.12.2. Each flow is pinned to one link, so balance is imperfect.*
 
 Real switches and the kernel use CRC variants, XOR folds, or Jenkins and Toeplitz style hashes. Many of them add a per-device seed.
 
@@ -81,6 +76,10 @@ The network engineer's job is to understand the traffic mix and pick the hash fi
 Encapsulated traffic, such as VXLAN, GRE or IPsec, needs inner-header hashing or varied outer UDP source ports to create entropy. Chapter 2.17 covers that. RDMA with RoCE v2 deliberately varies the UDP source port per queue pair. NCCL uses multiple QPs per connection, which gives ECMP hashing something to spread. So match the hash fields to the traffic you actually run, and check every tier for polarization.
 
 ## 2. Link aggregation and LACP
+
+![LACP modes and timers](./img/n12-lacp.svg)
+
+*Figure 2.12.3. At least one end must be active for LACP to form a bundle, and fast timers detect failures in 3 seconds.*
 
 Link aggregation is standardised as IEEE 802.1AX, which was formerly 802.3ad. It bundles several physical links between two devices into one logical link. Spanning tree and routing see the bundle as a single link, so STP does not block the members. The bundle carries more aggregate bandwidth than one member, and it survives member failures because traffic rehashes onto the remaining members. If one cable fails, the bundle shrinks but does not break.
 
@@ -101,6 +100,10 @@ Frames only flow on members that have reached the "collecting/distributing" stat
 The hash applies separately in each direction, which surprises many people. The switch chooses the member for server-bound traffic with its own hash. The host chooses the member for switch-bound traffic with its own policy. A flow can leave on member 1 and return on member 2. That is normal, and it works as long as both members are in the bundle. Use fast timers for servers, and keep static `on` mode out of any bundle you rely on.
 
 ## 3. Linux bonding
+
+![Linux bonding modes](./img/n12-bondmodes.svg)
+
+*Figure 2.12.4. Mode 1 active-backup and mode 4 LACP are the two practical choices for servers.*
 
 The kernel `bonding` driver creates a bond device, such as `bond0`, and enslaves physical NICs to it. From then on the applications talk to `bond0`, and the driver decides which physical cable carries each frame. Before you pick a mode, look at the table below. The mode decides what the switch must support.
 
@@ -169,7 +172,7 @@ Picture a server whose two links both land on one switch. When that switch is up
 
 ![MLAG](./img/n12-fig2-mlag-v2.jpg)
 
-*Figure 2.12.2. Two switches act as one logical switch for the server's bond.*
+*Figure 2.12.5. Two switches act as one logical switch for the server's bond.*
 
 MLAG goes by different names on each vendor's platform. You will see Cisco vPC, Arista MLAG, Juniper MC-LAG or ESI-LAG, Cumulus or NVIDIA MLAG (CLAG), and Dell VLT.
 
@@ -198,6 +201,10 @@ Most GPU servers mix several attachment types, one for each network. The table s
 Notice that the compute fabric row is the only one with no bonding. It trades bonding for deterministic collectives, so that every GPU knows exactly which path its traffic takes. Decide each network's attachment from this table before you cable the server.
 
 ## 5. Routed parallel links: ECMP
+
+![Plain versus resilient ECMP hashing](./img/n12-resilient.svg)
+
+*Figure 2.12.6. Resilient hashing moves only the flows from the failed path instead of reshuffling almost all flows.*
 
 Suppose a router must reach a destination over several equally good paths. Instead of picking one and leaving the others idle, it can use them all. When parallel paths are **routed**, the routing protocol installs them all as equal-cost next hops for the same prefix, as described in chapter 2.13. Take A, which can reach D through three paths of cost 10: A-B-D, A-D and A-C-D. All three go into the forwarding table, and a hash chooses one path per flow.
 

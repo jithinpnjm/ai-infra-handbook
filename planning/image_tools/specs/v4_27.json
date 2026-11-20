@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "27",
+  "name": "a27-play-order",
+  "title": "Four site.yml plays run in order, each one a stage with a gate",
+  "spec": "Four boxes in a row from left to right, joined by three arrows, with green number circles 1, 2, 3, 4 at the top of the boxes (time order). Box 1 titled Base for every node, sub-label hosts: all, role base_os in monospace. Box 2 titled GPU nodes, sub-label hosts: gpu, and inside it three monospace lines: serial: 34% then 100%, max_fail_percentage: 0, roles gpu_stub or nvidia_driver then node_validate. Inside box 2, a small first-batch sub-box labelled gpu01 (canary) and a second sub-box labelled gpu02 and gpu03. Orange outline on the max_fail_percentage: 0 line as the gate: one failure stops everything else. Box 3 titled Controller services, sub-label hosts: controller, roles monitoring and munge_slurm. Box 4 titled Workers join the scheduler, sub-label hosts: gpu, role munge_slurm, then a post task node_validate. Each box has a simple icon: a server rack for base, a chip for GPU nodes, a gear for controller services, a window or plug for the workers. Light green panel behind the four boxes. No takeaway bar.",
+  "anchor": "### 2.3 Site playbook with ordering and safety",
+  "alt": "The site playbook configures base nodes, then GPU workers in a canary batch, then the controller, then joins the workers to the scheduler.",
+  "cap": "The site playbook runs four plays in order, and the GPU play starts with one canary node that can stop the rollout."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "27",
+  "name": "a27-path-contract",
+  "title": "Path A and Path B sit behind one module contract",
+  "spec": "Top: a box labelled var.nodes (monospace) with a sub-label role and gpus per host. Two arrows leave it, one to the left module and one to the right module. Middle row, two side-by-side boxes. Left box titled Path A: nodes_docker, sub-label systemd and sshd containers on 172.28.0.0/24, ports 2200 plus i. Right box titled Path B: nodes_gcp, sub-label VPC, Cloud NAT, IAP firewall, service account and VMs. Both boxes have one arrow pointing down into one shared box below them titled output nodes (monospace), with the fields role, gpus, address, ssh_host, ssh_port listed as lines inside it. Then one arrow from that box down to a box titled generated hosts.yml (monospace), then one arrow right to a box titled ansible site.yml, sub-label unchanged on both paths. A small orange tag on the Ansible box reading gpu_tools_stub: true on Path A and false on Path B, marked as the only switch. Light green panel behind the shared output and Ansible part. No takeaway bar.",
+  "anchor": "### Path B: cloud variant (summary)",
+  "alt": "Two backends take the same node map and return the same output, so the Ansible playbook runs unchanged.",
+  "cap": "Path A and Path B return the same node output, so the Ansible playbook runs unchanged and only the GPU tools switch changes."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "27",
+  "name": "a27-pipeline-stages",
+  "title": "The pipeline: a cheap static job, then plan-and-test, then destroy always",
+  "spec": "Left to right, three job columns, with a green arrow between each pair. Above the left column, a small label line: pull_request and nightly schedule 30 3 * * * (monospace), with no arrow. Column 1, titled static (monospace) with sub-label cheap, fails fast: four stacked step boxes in monospace or plain text: terraform fmt check, terraform validate, yamllint and ansible-lint, gitleaks. Arrow labelled needs: static (monospace) to Column 2, titled plan-and-test with sub-label expensive: step boxes in order: Apply ephemeral lab, Configure and verify with site.yml run, a second site.yml run with changed=0 gate (orange outline on this box as the idempotency gate), then verify.yml. Arrow labelled if: always() (monospace) to Column 3, a single box titled Destroy (always) with sub-label terraform destroy runs no matter what happened above it. Light green panel behind each column. No takeaway bar.",
+  "anchor": "## Part 4: Pipeline",
+  "alt": "The static job checks format, lint and secrets, plan-and-test applies and verifies the lab, and destroy always runs at the end.",
+  "cap": "The pipeline runs cheap static checks first, then the apply and verify job, and always destroys the lab at the end."
+ }
+]

@@ -54,6 +54,10 @@ Rules are checked in order until one yields a route. Each rule has match fields:
 
 ### Fixing multi-homed asymmetric routing
 
+![Policy routing fix](./img/n24-pbrfix.svg)
+
+*Figure 2.24.1. A rule that selects a per-NIC table by source address makes replies leave through the NIC they arrived on.*
+
 Walk through the failure the way the packets do. A request comes in on the storage card. The server answers using the default route, which points out of the management card. The reply leaves with the storage address as its source, but from the wrong door. The router upstream sees an address on a port where it does not belong, and it drops the reply. The client waits, retries, and gets nothing. The steps below undo that chain, one link at a time, so each command can be checked against the packet it is meant to change.
 
 Consider a server with `eth0` at 10.0.0.5/24, whose default gateway is 10.0.0.1. Its second NIC, `eth1`, is 192.168.1.5/24 for storage, with gateway 192.168.1.1. A client on a remote storage subnet connects to 192.168.1.5. The request arrives on `eth1`, but the reply is routed by destination. The default route of the main table points out `eth0`, and the reply keeps source 192.168.1.5. The upstream router at 10.0.0.1 sees a packet from 192.168.1.5 on the wrong VLAN and drops it, because of unicast reverse path forwarding. Or the client drops a reply that arrives from an unexpected path. The symptom is maddening: the connection starts, the first packet is seen, and everything after it times out.
@@ -139,6 +143,10 @@ For each NIC, decide which source addresses must leave through it, and write one
 
 ## 2. VRF on Linux
 
+![VRF on Linux](./img/n24-vrf.svg)
+
+*Figure 2.24.2. A VRF gives a group of interfaces its own routing table so identical address ranges do not collide.*
+
 Picture a shared office building where two companies rent floors. Each company has its own telephone switchboard and its own extension numbers, so company A can dial extension seven without reaching company B's extension seven. A VRF is the switchboard for one tenant. Two tenants can use the same address on their own switchboards without any clash. The steps below create two switchboards on one server and show how a process is placed on one of them.
 
 Imagine two groups of interfaces that both use 10.9.0.0/24. Two customers, say, have each been told to use the same private range, and the machine must serve both without mixing them up. A VRF gives each group its own routing table, so the two networks stay apart. A **VRF** (virtual routing and forwarding) device is that kind of group. It is lighter than a network namespace, because processes still share sockets, files and other stack state. VRFs are central to multi-tenant leaf switches, the kind that run Cumulus or SONiC, and they are useful on hosts too.
@@ -192,7 +200,7 @@ Imagine a team whose small requests work perfectly, while every large download h
 
 ![One small MTU on the path](./img/n24-fig1-mtu.jpg)
 
-*Figure 2.24.1. A single small-MTU link stops large packets while small ones pass.*
+*Figure 2.24.3. A single small-MTU link stops large packets while small ones pass.*
 
 How large can a packet be on this network, and does every device agree? The MTU is a deliberate property of each network. Every device on a layer-2 segment has to agree on it, including hosts, switch ports, VLAN interfaces, bonds, bridges, virtual switches and overlays. One device with a smaller value is enough to cause trouble, because the large packet either gets dropped or has to be split.
 
@@ -229,18 +237,9 @@ Picture a 100G link that moves only 25G for one transfer, while other transfers 
 
 A packet crosses many stages between the wire and your application, and a bottleneck can sit in any of them. The diagram shows the path in order. The sections below tune each stage, so that you can place each knob on the picture as you meet it.
 
-```mermaid
-flowchart TD
-  W["Wire → NIC PHY/MAC (FCS check, RSS hash, flow steering)"] --> D["DMA into RX ring (host RAM)"]
-  D --> H["Hard IRQ (per queue, MSI-X) → NAPI scheduled"]
-  H --> S["NET_RX softirq: driver poll() up to netdev_budget packets"]
-  S --> X["XDP program (optional, before skb)"]
-  X --> B["Build sk_buff, GRO merge, RPS (optional steering to other CPUs)"]
-  B --> T["tc ingress → netfilter prerouting → routing"]
-  T --> L["Local: netfilter input → TCP/UDP → socket receive buffer"]
-  L --> A["Application wakeup (epoll) → copy_to_user"]
-  A -. "TX path" .-> Q["send() → socket send buffer → TCP segmentation (TSO/GSO) → qdisc (fq/pacing) → driver TX ring → DMA → wire (XPS selects queue)"]
-```
+![The packet path and where to tune it](./img/m2-24-1.svg)
+
+*Figure 2.24.4. The packet path and where to tune it, as a diagram.*
 
 Read the receive path from the top. If you want the transmit path, follow the dotted arrow at the bottom.
 
@@ -266,6 +265,10 @@ Bigger rings reduce `rx_missed` and `rx_out_of_buffer` drops when the CPU cannot
 
 ### 5.3 Queues, RSS, RPS, RFS, XPS
 
+![RSS RPS and XPS](./img/n24-rss.svg)
+
+*Figure 2.24.5. Hardware queues and software steering spread traffic across cores while each flow stays on one core.*
+
 Walk through one flow from the wire to the application to see why the spreading matters. The card hashes the flow's addresses and ports and places it in one queue. That queue raises an interrupt on one core. The core handles the packets of that flow in order, and the application reads them from memory that the core has just touched, which keeps the cache warm. If the same flow were spread across several cores, packets could arrive out of order and the cache would be thrashed. The steps below show how the four mechanisms in this heading decide where each step of that walk happens.
 
 One core cannot process 100 Gb/s on its own. Traffic has to spread across many queues and cores, while each flow stays on one core, so packets keep their order and stay in cache. If two cores worked on the same flow, packets could be handled out of order and the cache lines would bounce between them.
@@ -281,6 +284,10 @@ XPS, transmit packet steering, maps CPUs to TX queues through `/sys/class/net/et
 Check the result with `mpstat -P ALL 1`. Are `%soft` and `%irq` spread across cores, or is one core at 100%? Also look at `perf top`, the NET_RX column per CPU in `/proc/softirqs`, per-queue balance from `ethtool -S eth0 | grep -E 'rx_queue_.*_packets'`, and `cat /proc/net/softnet_stat` for drops and squeezes. On modern NICs, let RSS do the spreading, and reach for RPS only when a device has too few queues.
 
 ### 5.4 Offloads
+
+![NIC offloads](./img/n24-offloads.svg)
+
+*Figure 2.24.6. TSO and GSO save CPU, but GRO and LRO can break routers and bridges.*
 
 Picture a clerk who checks every envelope for a correct postcode before it goes out. Offloads hand that clerk's job to the card. The card checks the checksum, or cuts large data into packets, or joins small packets back into larger ones, so the processor does not have to. The saving is real, but a clerk who changes the envelopes can break the mail for everyone downstream. The paragraphs below describe each offload, and the situations in which switching it off is the right move.
 

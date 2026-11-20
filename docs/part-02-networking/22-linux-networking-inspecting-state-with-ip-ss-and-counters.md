@@ -42,14 +42,9 @@ Interface names tell you where a device came from. `lo` is the loopback interfac
 
 Many interfaces are virtual. The list includes `bridge`, `bond`, `vlan` (`eth0.100`), `veth`, `vxlan`, `tun/tap`, `wireguard`, `dummy`, `macvlan`, `ipvlan`, `gre`, `ib0` for IPoIB, `docker0`, `cni0`, `flannel.1`, `cali*`, `lxc*` and `br-*`. Virtual interfaces behave like physical ones to the IP layer. That is why overlays, containers and VPNs can work at all.
 
-```mermaid
-flowchart TB
-  APP["Applications (sockets)"] --> L4["Transport: TCP / UDP / SCTP / QUIC-in-userspace"]
-  L4 --> L3["Internet layer: IPv4 / IPv6, routing, netfilter, conntrack"]
-  L3 --> NDO["Network interface (netdev): addresses, MTU, qdisc, features"]
-  NDO --> DRV["Driver + NIC: rings, queues, offloads, IRQs, DMA"]
-  DRV --> PHY["PHY / link: negotiation, speed, FEC, optics"]
-```
+![The kernel's view: network interfaces](./img/m2-22-1.svg)
+
+*Figure 2.22.1. The kernel's view: network interfaces, as a diagram.*
 
 Keep this stack in mind when you read the rest of the chapter. Each tool you use looks at one of these layers, and knowing the layer tells you which tool to reach for first.
 
@@ -132,6 +127,10 @@ Walk through a common ethtool case. A server is moved to a new rack, and its tra
 A cable that has been pulled, or a switch port that is down, shows `Link detected: no`. A 100 GbE NIC that negotiates 25 GbE shows the lower figure in `Speed:`. A half-duplex link or a wrong-speed link is a classic cause of mystery throughput loss. `ethtool -m` reveals dirty optics, such as low RX power, before they cause CRC errors. Check `ethtool` first whenever a link is slower than you expect.
 
 ## 3. Persistent configuration: managers and files
+
+![Network configuration managers](./img/n22-netmanagers.svg)
+
+*Figure 2.22.2. Netplan and cloud-init are front ends that render configuration for NetworkManager or systemd-networkd.*
 
 Why not just run a boot script? Because networks change all the time. A laptop moves between wired, Wi-Fi and VPN. Servers get their addresses from DHCP. Clouds assign addresses and routes through metadata. Interfaces also appear and disappear through hotplug, containers and SR-IOV VFs. A configuration manager has to decide which interface to use. It brings up the physical layer and configures the IP layer, either static or DHCP/SLAAC. It lets users change connectivity without being root, and it decides what to do when connectivity is lost.
 
@@ -225,6 +224,10 @@ unmanaged-devices=mac:10:78:d2:eb:76:97;mac:1c:65:9d:cc:ff:b9
 When an interface goes up or down, NetworkManager runs the scripts in `/etc/NetworkManager/dispatcher.d`, passing an argument such as `up` or `down`. Some daemons need this signal. An SSH server, for example, must start or stop listening when an interface changes. Many distributions keep their own control scripts instead. Ubuntu uses one script, `01ifupdown`, that runs the scripts in `/etc/network/if-up.d`. If you use Netplan, let it find the right location for you.
 
 ## 4. Sockets: how processes use the network
+
+![TCP server socket life cycle](./img/n22-socketlife.svg)
+
+*Figure 2.22.3. A server calls socket, bind and listen, then accept returns a new connected socket for each client.*
 
 Picture a web server handling thousands of clients at the same time, each with its own conversation. The server cannot hold every conversation in its head at once, and it cannot start a new server for every client. Sockets are the handles that let one process keep many conversations open together. The section explains how a server uses them, and what the kernel keeps for it.
 
@@ -322,16 +325,9 @@ By default, `lsof` tries to turn every IP address into a hostname, and that slow
 
 Many network problems are packets that never arrived, or that arrived late. Nobody sees the packet vanish, so you need the evidence it leaves behind. Counters tell you which layer lost it. The diagram follows a received packet from the wire up to the application, and it marks where each layer records its drops.
 
-```mermaid
-flowchart LR
-  W["Wire / PHY\nCRC, symbol, FEC errors"] --> N["NIC hardware\nrx_missed, rx_no_buffer, rx_fifo/over, pause frames"]
-  N --> R["RX ring / driver\nrx_dropped, rx_alloc_fail"]
-  R --> S["softirq / NAPI\n/proc/net/softnet_stat: dropped, time_squeeze"]
-  S --> IP["IP layer\nInHdrErrors, InAddrErrors, rp_filter, InNoRoutes"]
-  IP --> NF["netfilter / conntrack\ndrops, nf_conntrack insert_failed"]
-  NF --> T["TCP / UDP\nretransmits, listen overflows, UDP rcvbuf errors, checksum errors"]
-  T --> A["Socket buffer\nrecv queue overflow ; application reads slowly"]
-```
+![Counters: where packets disappear](./img/m2-22-2.svg)
+
+*Figure 2.22.4. Counters: where packets disappear, as a diagram.*
 
 The table lists the tools that read those counters. Start with the tool closest to the symptom you see.
 
@@ -424,6 +420,10 @@ Pin the CPUs to the same NUMA node as the NIC, and run long enough to smooth out
 ## 7. Observability tools in practice
 
 ### `ss -ti` fields
+
+![Fields of ss -ti](./img/n22-ssti.svg)
+
+*Figure 2.22.5. Each ss -ti field describes one aspect of how a single connection is performing.*
 
 The output below comes from one established connection to `10.0.0.5:443`. Each field tells you something about how that connection is doing.
 

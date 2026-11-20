@@ -113,6 +113,10 @@ The number of stages decides how far the fabric can grow. Counted unfolded, a le
 
 ### Sizing a 3-stage fabric
 
+![Fabric sizing arithmetic](./img/n18-sizing.svg)
+
+*Figure 2.18.2. With R-port switches a 1:1 three-stage fabric reaches R squared over two endpoints.*
+
 Let us count it out loud, one line at a time, the way you would on a whiteboard in a design review. Start with the switch and ask how many ports it has in total. Half of them face servers, so the other half must face the spines. That fixes the number of spines, because each leaf needs one uplink to each spine. Next, ask how many leaves one spine can serve, since each spine port faces one leaf. That fixes the number of leaves. Multiply the leaves by the servers per leaf and you have the answer to the room question. Each line depends on the one before it, so when someone changes the switch model, you can rerun the whole sum in a minute.
 
 Start with switches that have R ports, all at the same speed. Suppose you are asked how many servers you can attach, and you want to be able to work it out on paper. In a non-oversubscribed (1:1) leaf, half the ports face servers and half face spines. The arithmetic follows from that split.
@@ -126,6 +130,10 @@ Take 64-port, 400G switches as a worked example. Each leaf uses 32 downlinks and
 Oversubscription changes that split. A leaf with d downlinks and u uplinks runs at a ratio of d:u. For example, 48 downlinks and 16 uplinks give 3:1. That means that if every server on the leaf transmitted at full speed together, they would need three times what the uplinks can carry. Hyperscale general compute often runs at 3:1, because web servers rarely all transmit at once. AI back-end networks target 1:1 at the leaf-spine tier, meaning no oversubscription, because collectives saturate every NIC at the same time.
 
 ### Five-stage fabrics
+
+![Fabric size scaling table](./img/n18-fivestage.svg)
+
+*Figure 2.18.3. Growing beyond one three-stage build needs super-spines or oversubscription of the upper tier.*
 
 Imagine a room that is too large for one leaf-spine block, no matter how the switches are chosen. Building one bigger block would run out of spine ports, so the designer builds several blocks, which the text calls pods, and then connects the pods through a layer of super-spines. The reason is the same as for a city that grows past one town centre: each district keeps its own roads, and a ring road joins the districts. A packet that stays inside one pod behaves as it did in the smaller design. A packet that crosses pods takes one extra step up and down, which costs a little latency. The walkthrough below follows one such packet.
 
@@ -144,6 +152,10 @@ Three lessons follow from the table. First, once a fabric grows beyond one 3-sta
 
 ### Oversubscription and contention
 
+![Oversubscription ratios](./img/n18-oversub.svg)
+
+*Figure 2.18.4. Oversubscription is the ratio of server bandwidth to uplink bandwidth at a tier.*
+
 Oversubscription is the ratio of the bandwidth offered to endpoints over the bandwidth into the fabric. Put another way, it is the worst-case contention when every endpoint sends at line rate across the tier. Take a ToR with 320 Gb/s of server ports and 180 Gb/s of uplinks. The ratio is 1.78:1, or about 2:1 oversubscribed. A road with more lanes feeding the junction than leaving it behaves the same way: it is fine when traffic is light and jams the moment everyone drives at once.
 
 Non-blocking and non-contending are different properties, and people mix them up. A non-blocking fabric has enough internal capacity that no connection pattern is blocked by the internals of the fabric. Packet-switched networks cannot be truly non-blocking, though. Several sources can send to one destination, and the link of that destination becomes the bottleneck, even when the fabric itself is rich. A non-contending fabric is a stronger scheduling property. It avoids any two flows competing for a link at the same time, much as circuit-switched networks do when scheduling on the inbound side prevents conflicts.
@@ -151,6 +163,10 @@ Non-blocking and non-contending are different properties, and people mix them up
 Packet-switched fabrics handle incast in one of two ways. Incast is the many-to-one burst, where many senders answer one receiver in the same instant. One way is scheduling, through source-side admission or credit-based or request-grant flow control. The other is adequate buffers, congestion signalling with ECN, DCQCN or PFC, and load balancing. Collectives create deterministic, synchronous, many-to-one patterns, so AI fabrics combine a 1:1 topology with congestion control and load balancing. They also rely on all-reduce algorithms, such as ring and tree, which are designed to use bandwidth-optimal patterns.
 
 ### Capacity under failure
+
+![Capacity under spine failure](./img/n18-failure.svg)
+
+*Figure 2.18.5. The fewer spines a fabric has, the bigger the capacity loss when one spine fails.*
 
 Picture the morning after a spine fails in the night. The dashboards show that jobs are still running, but one uplink from every leaf has gone quiet, and the training step times are a little longer than yesterday. Nobody is hurt, yet the fabric is no longer the design it was on paper. The arithmetic in this section is what you would have needed to predict that morning. It tells you how much bandwidth remains, which failure to plan for, and which parts of the design have no slack at all.
 
@@ -166,24 +182,9 @@ A server such as a DGX or HGX H100 holds 8 GPUs. An internal NVSwitch fabric mov
 
 Picture eight GPUs in one server, each with its own network card. Now picture eight leaf switches in one row. In the rail-optimised design, card one of every server plugs into leaf one, card two into leaf two, and so on. Follow a single collective step. The first GPU of server A wants to send to the first GPU of server B. Both sit on leaf one, so the traffic crosses one switch and nothing else. Now the first GPU of server A wants to reach the second GPU of server B. That is a different rail, so the packet climbs to a spine and comes back down to leaf two. The design works because the collective library mostly sends along the matching rail, and it keeps the expensive climb rare.
 
-```mermaid
-flowchart TB
-  subgraph SpineTier["Spine tier (connects across rails)"]
-    SP1["Spine 1"]
-    SP2["Spine 2"]
-  end
-  subgraph RailLeaves["Rail-optimised leaf stripe (1 leaf per GPU index)"]
-    LR0["Leaf Rail 0\n(all GPU 0s: 1 hop)"]
-    LR1["Leaf Rail 1\n(all GPU 1s: 1 hop)"]
-  end
-  subgraph Servers["8-GPU servers (internal NVSwitch)"]
-    S1["Server 1\nGPU0 | GPU1 ..."]
-    S2["Server 2\nGPU0 | GPU1 ..."]
-  end
-  S1 & S2 -- "NIC0" --- LR0
-  S1 & S2 -- "NIC1" --- LR1
-  LR0 & LR1 --- SP1 & SP2
-```
+![Rail-optimised design (ROD)](./img/m2-18-1.svg)
+
+*Figure 2.18.6. Rail-optimised design (ROD), as a diagram.*
 
 In this design, GPU i of every server connects to leaf i of a group of 8 leaves. That group is called a stripe or a row. All GPUs with the same index, across different servers, sit one hop apart through their shared leaf, and each such set is a rail. Picture eight parallel train lines, one per GPU number. Every server has a station on every line, and trains on one line never need to change lines to reach another station on the same line. Collective algorithms in NCCL are written to use this. They reduce inside the server over NVLink first, then communicate across servers along the rails, which keeps traffic between rails to a minimum.
 

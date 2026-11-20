@@ -61,6 +61,10 @@ mkdir -p /lab && cd /lab
 
 ## Step 1. Root filesystem
 
+![The lab builds a container by adding a filesystem, namespaces, layers, limits, networking and reduced privilege.](./img/l20-build-ladder.svg)
+
+*Figure 1.20.2. Each step adds one kernel feature until the result matches a real container.*
+
 Every container needs a filesystem to live in, the way a house needs a floor. The smallest useful one is only a few megabytes, and almost any minimal tree will do. Pick whichever of the two options suits you.
 
 ```bash
@@ -103,6 +107,10 @@ exit
 Now the container starts to feel real. The shell has its own process space, its own hostname and its own interfaces. Before you leave this step, write down answers to four questions. What PID does the shell have? Which network interfaces exist? Can the host see the hostname change? And why did `--mount-proc` need a path under the new root?
 
 ## Step 4. Layers with OverlayFS and a proper root switch
+
+![The overlay mount and the enter.sh steps that switch the container's root with pivot_root.](./img/l20-enter-sh.svg)
+
+*Figure 1.20.3. The script makes mounts private, builds the root, pivots into it and detaches the old root.*
 
 Two problems remain after Step 3. First, every container would write into the same base directory, so one container's changes would show up in the next. Second, `chroot` can be escaped. OverlayFS solves the first problem. It gives you a read-only base with a private writable layer on top, so the base stays clean. `pivot_root` solves the second problem, because it swaps the root and lets you detach the old one completely.
 
@@ -161,6 +169,10 @@ head -c 300M /dev/zero | tail -c 1   # memory pressure: watch OOM kill
 Back on the host, you can read `cat /sys/fs/cgroup/lab-ctr/{cpu.stat,memory.events,pids.current}` and check `dmesg | tail`. Then add `--cgroup` to `unshare` and watch how `/proc/self/cgroup` changes. The first run shows the full host path, and the second shows a short one.
 
 ## Step 6. Networking
+
+![A bridge, a veth pair and a NAT rule connect the container namespace to the host and the Internet.](./img/l20-lab-network.svg)
+
+*Figure 1.20.4. One end of the veth pair stays on the host bridge and the other becomes eth0 inside the container.*
 
 A container with no network is a sealed box. It can compute, and that is all. Set up the host side once, with a bridge and NAT. Then give each container one end of a veth pair. A veth pair is two virtual cable ends: one stays on the host, and the other appears inside the container. Because `unshare --net` creates the container's network namespace, you reach that namespace through the child's PID.
 

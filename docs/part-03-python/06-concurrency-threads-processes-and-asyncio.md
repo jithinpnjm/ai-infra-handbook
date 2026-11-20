@@ -54,21 +54,15 @@ Two measures come up constantly, and they answer different questions. Latency is
 
 One habit will save you more debugging time than any API detail. Shared state is the enemy of concurrent code. The more tasks share mutable data, the more locks, races and bugs you get. Prefer **message passing** through queues, immutable data and per-task state.
 
-```mermaid
-flowchart TD
-    Work{"What dominates runtime?"} -->|I/O-Bound: Waiting on network, BMCs, APIs, disk| Scale{"Concurrency scale & library support?"}
-    Scale -->|"10 to 200 concurrent calls<br/>(blocking libs: requests, paramiko, boto3)"| TPE["ThreadPoolExecutor<br/>(GIL released during OS I/O)"]
-    Scale -->|"1,000 to 10,000+ connections<br/>(async libs: httpx.AsyncClient, aiohttp, asyncpg)"| AsyncIO["asyncio Event Loop + Semaphore<br/>(offload disk/sync calls via asyncio.to_thread)"]
-    Work -->|CPU-Bound: Parsing, hashing, math, compression| Kind{"Pure Python or Native C/Rust/CUDA?"}
-    Kind -->|"Pure Python (is_prime, AST/JSON transforms)"| PPE["ProcessPoolExecutor / multiprocessing<br/>(1 process per physical core, separate GILs)"]
-    Kind -->|"Native C/CUDA (NumPy, PyTorch, hashlib, zlib)"| Native["Vectorized / Native Calls<br/>(release GIL in C or use process-per-GPU torchrun)"]
-```
+![Concepts](./img/m3-06-1.svg)
+
+*Figure 3.6.1. Concepts, as a diagram.*
 
 ### The Global Interpreter Lock
 
 ![The Global Interpreter Lock](./img/s06-gil.svg)
 
-*Figure 3.6.1. The GIL: one thread runs Python bytecode at a time, but threads overlap while they wait on I/O.*
+*Figure 3.6.2. The GIL: one thread runs Python bytecode at a time, but threads overlap while they wait on I/O.*
 
 Here is the mistake to clear up first, because almost everyone makes it once. A colleague wraps a slow number-crunching script in four threads and watches it get slower, not faster. The explanation is a lock inside the interpreter.
 
@@ -126,7 +120,7 @@ Other options exist too, and they are worth knowing about. Processes have separa
 
 ![Choosing threads, processes or asyncio](./img/s06-choosemodel.svg)
 
-*Figure 3.6.2. Choosing a model: processes for CPU-bound work, asyncio for many async connections, threads for blocking I/O.*
+*Figure 3.6.3. Choosing a model: processes for CPU-bound work, asyncio for many async connections, threads for blocking I/O.*
 
 The table is a lookup, not a sermon. Find your workload in the first column and read across to the model that fits it. Notice that blocking libraries point you toward threads, while async libraries point you toward asyncio.
 
@@ -210,7 +204,7 @@ Whatever the trap, the habits are the same. Keep critical sections tiny and free
 
 ![Producer consumer with a bounded queue](./img/s06-queue.svg)
 
-*Figure 3.6.3. A bounded queue: when it fills, put() blocks the producers, so memory stays bounded.*
+*Figure 3.6.4. A bounded queue: when it fills, put() blocks the producers, so memory stays bounded.*
 
 Two roles appear in nearly every pipeline: a producer that creates work, and consumers that handle it. A bounded queue sits between them and stops a fast producer from flooding memory. When the queue is full, `put()` waits until the consumers catch up, and that waiting is the backpressure the code comment mentions. The sentinel object tells each consumer that no work is left.
 
@@ -238,7 +232,7 @@ def consumer():
 
 ![Executors and futures](./img/s06-futures.svg)
 
-*Figure 3.6.4. concurrent.futures: submit returns a Future at once, and result() waits for the value or raises the error.*
+*Figure 3.6.5. concurrent.futures: submit returns a Future at once, and result() waits for the value or raises the error.*
 
 Managing raw `Thread` objects gets tiring fast. `concurrent.futures` is the high-level API for pools: you submit callables and get `Future` objects back. A future is a stand-in for a result that is not ready yet.
 
@@ -360,7 +354,7 @@ Now scale the fan-out up to the 5,000-BMC poll from the exercises. Threads are h
 
 ![The asyncio event loop](./img/s06-asyncio.svg)
 
-*Figure 3.6.5. asyncio: tasks share one thread, and each await hands control back to the event loop.*
+*Figure 3.6.6. asyncio: tasks share one thread, and each await hands control back to the event loop.*
 
 Here is the shape of a real async fan-out. The example below fetches many health endpoints through a semaphore, so no more than 100 requests run at once.
 
@@ -501,7 +495,7 @@ Libraries such as `tenacity` and `backoff` implement this for you. HTTP clients 
 
 ![Circuit breaker states](./img/s06-breaker.svg)
 
-*Figure 3.6.6. A circuit breaker stops calling a failing service, then probes it before trusting it again.*
+*Figure 3.6.7. A circuit breaker stops calling a failing service, then probes it before trusting it again.*
 
 Protect the targets, and protect yourself. A token bucket, from `aiolimiter` or from an asyncio semaphore plus a sleep, limits the rate. Per-host concurrency limits, with one semaphore per host, rack or BMC network, keep any single target from being overloaded. A circuit breaker stops calling a failing dependency for a cool-down period, which gives it time to recover. Handle `Retry-After` too, and consider adaptive concurrency, such as AIMD, the approach TCP uses. For BMC and Redfish fleets, limit concurrency per rack, so the management switches are not overwhelmed.
 

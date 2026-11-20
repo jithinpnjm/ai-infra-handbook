@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "21",
+  "name": "h21-collective-buffer",
+  "title": "Collective buffering: many small writes become a few large aligned ones",
+  "spec": "Two side-by-side panels, each with a title. Left panel title: Independent writes. Draw four small boxes labelled rank stacked on the left, each with a few short arrows fanning out to a long bar labelled shared file. The arrows are many, short and scattered across the bar, drawn as small jagged marks, so the picture looks busy. Under the left panel, a grey label: many small noncontiguous requests. Right panel title: Collective buffering, two-phase I/O. Same four small boxes labelled rank on the left. Step 1 arrows, labelled exchange over the fabric, run from each rank box to two aggregator boxes in the middle, each labelled aggregator rank with the small text cb_nodes. Step 2 arrows, labelled large contiguous, stripe-aligned writes, run from each aggregator box to the long bar labelled shared file, which is drawn split into a few wide blocks with stripe boundary marks between them. Number circles 1 and 2 mark the two phases in time order. Arrows must not cross: place the ranks in one column, the aggregators in the middle column, and the file bar at the right. Orange highlight on the wide stripe-aligned blocks in the right panel, labelled the single most important item: few large writes. Under the right panel, a grey label: many small noncontiguous requests become a few large ones. No takeaway bar.",
+  "anchor": "## 1. Parallel I/O in HPC: MPI-IO and HDF5",
+  "alt": "Independent writes scatter many small requests, while collective buffering gathers data on aggregators that write large aligned blocks.",
+  "cap": "Collective buffering gathers data onto a few aggregator ranks, which then write large stripe-aligned blocks instead of many small scattered writes."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "21",
+  "name": "h21-dcp-reshard",
+  "title": "Save on four ranks, load on two and one without rewriting the shards",
+  "spec": "A title line at the top. Left column titled Save with 4 ranks. Four stacked file boxes labelled __0_0.distcp, __1_0.distcp, __2_0.distcp and __3_0.distcp, each with a small note shard (2, 3) per rank, drawn as a stack that reads as one group. Below them a separate box labelled .metadata, with the note records which slice of which tensor lives where. Draw the four shard files as one group container, labelled shard files. Right column, upper panel titled load with 2 ranks: two boxes, each labelled loaded shard (4, 3), each with the text reassembled_equal=True. Right column, lower panel titled load with 1 rank: one wide box labelled loaded shard (8, 3) with the text reassembled_equal=True. Arrows: from the group container of shard files, one arrow to the upper panel and one arrow to the lower panel, each labelled reads only the slices each rank needs. From the .metadata box, one arrow to the right column, labelled tells each rank where its slices are. The two right-column arrows must not cross the left column. Orange note on the shard files group, the single most important item: the shard files are never rewritten. Under the whole figure, a plain note: the number of ranks can change between save and load. No takeaway bar.",
+  "anchor": "### Tested: sharded checkpoint and resharding",
+  "alt": "A checkpoint saved as four shard files and a metadata file is loaded back onto two ranks and onto one rank.",
+  "cap": "A distributed checkpoint saved from four ranks can be loaded onto two or one rank because the metadata records where each slice lives."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "21",
+  "name": "h21-commit-protocol",
+  "title": "The crash-safe commit: five steps, then a restart that scans and verifies",
+  "spec": "A left-to-right row of five numbered step cards connected by arrows, number circles 1 to 5 in time order. Step 1, title: Write shards to a temporary directory. Label: each rank writes its shards into step-N.tmp and calls fsync on them. Icon: a disk cylinder. Step 2, title: Record the manifest. Label: the coordinator writes a SHA-256 digest for each shard into MANIFEST.json, then calls fsync on it. Icon: a fingerprint or a document. Step 3, title: Rename atomically. Label: step-N.tmp becomes step-N, then the parent directory is fsynced. Icon: a tag or an arrow. Step 4, title: Move the latest pointer. Label: write a temp file, then rename it over latest. Icon: a pointer or flag. Step 5, title: Restart and verify. Label: scan for the newest step directory whose manifest and shard hashes verify. Icon: a magnifier or a shield. Below the row, a second band titled What a crash leaves behind, with three small cards in a row, each linked by a thin line back to the step where it happens. Card A, crash before rename: only a step-N.tmp directory is left, and readers ignore it, so latest stays on the last good step. Card B, crash before latest: latest is stale, and the scan finds the newer step-300 directory. Card C, corrupted shard after a commit: the hash check fails, so the loader falls back to the previous valid step. Orange highlight on step 5, labelled the single most important item: latest is a hint, the manifest and hashes are the truth. No takeaway bar.",
+  "anchor": "## 3. Crash-safe commits (tested)",
+  "alt": "Five-step crash-safe commit: temporary write, manifest, atomic rename, latest pointer, and a verified restart scan.",
+  "cap": "The commit writes to a temporary directory, renames it atomically, and on restart trusts only directories whose hashes verify."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "21",
+  "name": "h21-loader-overlap",
+  "title": "Overlap: copy batch N+1 to the GPU while the GPU computes batch N",
+  "spec": "A title line at the top. Three horizontal swimlanes stacked one above another, each with a lane title on its left: Loader workers, Copy stream, Compute stream. Time runs left to right with a time arrow along the bottom. In the Loader workers lane, two green blocks in sequence: prepare batch N+1, then prepare batch N+2, each block drawn above the compute block it overlaps. In the Copy stream lane, two green blocks: copy batch N+1 to GPU, labelled non_blocking, then copy batch N+2 to GPU, drawn under the compute blocks they overlap. In the Compute stream lane, two green blocks: compute batch N, then compute batch N+1. The blocks in the three lanes must line up so that the loader and copy blocks sit under the compute block of the previous batch: prepare batch N+1 and copy batch N+1 both sit under compute batch N. A small handshake marker, a grey vertical tick labelled wait_stream, sits at the start of each compute block, linked to its copy block. Orange highlight on the wait_stream handshake, labelled the single most important item: compute waits only for its own copy. Under the lanes, a grey note: if the overlap is missing, the GPU goes idle at the start of every iteration, shown as a short hatched gap at the start of a compute block. No takeaway bar.",
+  "anchor": "### Workers, pinned memory, and overlap",
+  "alt": "Loader and copy stream prepare the next batch while the GPU computes the current one, with a wait_stream handshake.",
+  "cap": "Prefetching and a separate copy stream let the next batch move to the GPU while the current batch computes."
+ }
+]

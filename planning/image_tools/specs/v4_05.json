@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-vagrant-collapse",
+  "title": "Three hosts on one address collapse into one entry",
+  "spec": "Two panels side by side with green headings. Left panel, heading 'Without aliases': three stacked input lines in monospace, '127.0.0.1:2222', '127.0.0.1:2200', '127.0.0.1:2201', each with an arrow pointing down into a single box labelled '127.0.0.1' (the inventory key). Below that box, one result box labelled 'one entry left' with an orange outline. A small note: 'Each line overwrites the same entry.' Right panel, heading 'With aliases': three boxes stacked, labelled 'vagrant1 ansible_port=2222', 'vagrant2 ansible_port=2200', 'vagrant3 ansible_port=2201', each with its own arrow to the same address label 'ansible_host=127.0.0.1' shown once in a group bracket labelled '[vagrant:vars]'. Result: three separate host boxes, labelled 'three hosts'. Green check mark on the result. Bottom caption: 'Give each machine its own logical name.'",
+  "anchor": "### Special groups, names and connection variables",
+  "alt": "Three Vagrant entries that share 127.0.0.1 collapse into one host, and aliases with their own ports keep all three.",
+  "cap": "Listing three Vagrant VMs by address alone collapses them into one host, so each machine needs its own alias."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-pattern-venn",
+  "title": "Host patterns: union, intersection and exclusion",
+  "spec": "Three overlapping circles drawn as a Venn diagram, labelled 'gpu' (large circle, left), 'login' (circle, right) and 'rack_r01' (circle, bottom). Use three light green fills with transparency. Below the diagram, a row of three example boxes, each with a monospace pattern and a one-line meaning: 'gpu:login' with the note 'Union: either group'; 'gpu:&rack_r01' with the note 'Intersection: both groups'; 'gpu:!gpu_a100' with the note 'Exclusion: the group without that one'. Highlight the overlap region of gpu and rack_r01 in orange with the label 'gpu:&rack_r01'. Icons: a small outline server icon beside 'gpu', a login-screen icon beside 'login', a rack icon beside 'rack_r01'. Caption: 'A host pattern is a filter on the inventory.'",
+  "anchor": "## 2. Host patterns",
+  "alt": "Venn diagram showing union, intersection and exclusion for host patterns over gpu, login and rack groups.",
+  "cap": "Host patterns combine groups with union, intersection and exclusion, so you can pick an exact slice of the fleet."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-dynamic-flow",
+  "title": "A plugin asks the cloud for the current hosts at run time",
+  "spec": "Left to right, a chain of four boxes with arrows, each with a numbered circle. Box 1, document icon, title 'Plugin config file', monospace text 'plugin: google.cloud.gcp_compute' with a note 'File name ends with the required suffix'. Box 2, cloud icon, title 'Cloud API', text 'filters: labels.env = prod and status = RUNNING, so only matching instances come back'. Box 3, gear icon, title 'Build the groups and variables', two sub-lines: 'keyed_groups: role_gpu, role_login' and 'compose: ansible_host from networkInterfaces'. Box 4, list icon, title 'Inventory', text 'Current hosts, every time the command runs'. Arrow 1 to 2 labelled 'query at run time'. Arrow 2 to 3 labelled 'returned attributes'. Arrow 3 to 4 labelled 'groups and hosts'. Under box 4, a small orange note: 'Static files go stale. This list is read fresh on each run.' Under box 2, a grey note: 'cache: true keeps responses on disk.'",
+  "anchor": "## 5. Dynamic inventory",
+  "alt": "A dynamic inventory plugin reads its config, queries the cloud API with filters, builds groups, and returns the current host list.",
+  "cap": "A dynamic inventory plugin asks the cloud for the current hosts on each run, so the list never goes stale."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-hash-replace",
+  "title": "A host dictionary replaces the group dictionary, combine keeps both",
+  "spec": "Three columns, each with a heading. Column 1, 'Group dictionary (group_vars)': a box listing three keys 'key 1', 'key 2', 'key 3'. Column 2, 'Host override (host_vars)': a shorter box with only 'key 1' (note 'one key'). Column 3 splits into two rows. Top row, heading 'Default: replace', an arrow from the override box, result box showing only 'key 1', with keys 2 and 3 greyed out and crossed through, labelled 'keys 2 and 3 disappear'. Bottom row, heading 'combine(recursive=True)', result box showing 'key 1', 'key 2', 'key 3', with a green check, labelled 'keys are kept'. Orange outline on the 'replace' result. Monospace line under the bottom row: '{{ base_cfg | combine(env_cfg, recursive=True) }}'. Caption: 'Dictionaries replace across layers, so merge them on purpose.'",
+  "anchor": "### Variable precedence (summary)",
+  "alt": "A host dictionary replaces the whole group dictionary and drops its other keys, while the combine filter keeps all keys.",
+  "cap": "A host dictionary replaces the group dictionary by default, so the combine filter is needed to keep the other keys."
+ }
+]

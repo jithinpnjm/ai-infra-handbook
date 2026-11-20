@@ -1,0 +1,227 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>site.yml imports the tiers in dependency order</title>
+  <desc>Ansible site playbook imports baseline, database, app, web, and verify plays in strict dependency order.</desc>
+
+  <defs>
+    <!-- Green Arrowhead (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#207448"/>
+    </marker>
+    <!-- Orange Arrowhead (18px) -->
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="46" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">site.yml imports the tiers in dependency order</text>
+
+  <!-- File Card: playbooks/site.yml -->
+  <g id="file-card-site">
+    <!-- Card Frame -->
+    <rect x="450" y="74" width="700" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <!-- Card Header Tab -->
+    <path d="M 450 84 Q 450 74 460 74 L 1140 74 Q 1150 74 1150 84 L 1150 110 L 450 110 Z" fill="#e8f1ea"/>
+    <line x1="450" y1="110" x2="1150" y2="110" stroke="#207448" stroke-width="1.5"/>
+    <!-- File icon -->
+    <path d="M 470 82 h 15 l 5 5 v 13 h -20 z" fill="none" stroke="#207448" stroke-width="2" stroke-linejoin="round"/>
+    <polyline points="485,82 485,87 490,87" fill="none" stroke="#207448" stroke-width="2"/>
+    <!-- Header Title -->
+    <text x="500" y="99" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">playbooks/site.yml</text>
+    <!-- Code lines -->
+    <text font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="475" y="137">- import_playbook: baseline.yml</tspan>
+      <tspan x="475" y="163">- import_playbook: database.yml</tspan>
+      <tspan x="475" y="189">- import_playbook: app.yml</tspan>
+      <tspan x="475" y="215">- import_playbook: web.yml</tspan>
+      <tspan x="475" y="241">- import_playbook: verify.yml</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== LEFT COLUMN NOTES ==================== -->
+  <!-- Note beside Box 2: tags db runs only the tagged tier -->
+  <g id="note-tags">
+    <rect x="65" y="447" width="350" height="108" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="85" y="483" font-weight="bold" fill="#207448">--tags db</tspan>
+      <tspan x="85" y="513">runs only the</tspan>
+      <tspan x="85" y="541">tagged tier</tspan>
+    </text>
+    <!-- Connector line to tier 2 -->
+    <line x1="415" y1="501" x2="450" y2="501" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+  </g>
+
+  <!-- Note beside Box 3: limit app limits the run to one host group -->
+  <g id="note-limit">
+    <rect x="65" y="645" width="350" height="108" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="85" y="681" font-weight="bold" fill="#207448">-l app</tspan>
+      <tspan x="85" y="711">limits the run to</tspan>
+      <tspan x="85" y="739">one host group</tspan>
+    </text>
+    <!-- Connector line to tier 3 -->
+    <line x1="415" y1="699" x2="450" y2="699" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+  </g>
+
+  <!-- ==================== RIGHT COLUMN NOTES ==================== -->
+  <!-- Arrow 2 to 3 Label (Orange): the database must exist before the app tries to connect -->
+  <g id="label-db-app">
+    <rect x="1185" y="544" width="350" height="112" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="2.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1205" y="580">the database must exist</tspan>
+      <tspan x="1205" y="610">before the app</tspan>
+      <tspan x="1205" y="640">tries to connect</tspan>
+    </text>
+    <!-- Connector line to orange arrow -->
+    <line x1="800" y1="600" x2="1185" y2="600" stroke="#db8129" stroke-width="2" stroke-dasharray="6,4"/>
+  </g>
+
+  <!-- Note linking Box 3 and Box 4: the app must answer before the proxy sends it traffic -->
+  <g id="label-app-web">
+    <rect x="1185" y="742" width="350" height="112" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1205" y="778">the app must answer</tspan>
+      <tspan x="1205" y="808">before the proxy</tspan>
+      <tspan x="1205" y="838">sends it traffic</tspan>
+    </text>
+    <!-- Connector line to arrow 3->4 -->
+    <line x1="800" y1="798" x2="1185" y2="798" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+  </g>
+
+  <!-- ==================== ARROWS BETWEEN BOXES ==================== -->
+  <!-- Arrow 1 -> 2 -->
+  <line x1="800" y1="380" x2="800" y2="458" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- Arrow 2 -> 3 (ORANGE HIGHLIGHT) -->
+  <line x1="800" y1="544" x2="800" y2="656" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)"/>
+
+  <!-- Arrow 3 -> 4 -->
+  <line x1="800" y1="742" x2="800" y2="854" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- Arrow 4 -> 5 -->
+  <line x1="800" y1="940" x2="800" y2="1018" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- ==================== CHAIN OF FIVE BOXES ==================== -->
+  <!-- BOX 1: baseline.yml -->
+  <g id="box-1">
+    <rect x="450" y="294" width="700" height="86" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <!-- Number circle 1 -->
+    <circle cx="492" cy="337" r="24" fill="#207448"/>
+    <text x="492" y="337" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <!-- Server / OS Icon (56px) -->
+    <g transform="translate(530, 309)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="4"/>
+      <line x1="4" y1="20" x2="52" y2="20"/>
+      <circle cx="14" cy="13" r="2" fill="#207448"/>
+      <circle cx="22" cy="13" r="2" fill="#207448"/>
+      <polyline points="14,32 20,37 14,42"/>
+      <line x1="26" y1="42" x2="38" y2="42"/>
+    </g>
+    <!-- Title -->
+    <text x="605" y="332" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">baseline.yml</text>
+    <!-- Tag badge: baseline -->
+    <rect x="850" y="310" width="135" height="30" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="917" y="331" text-anchor="middle" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">baseline</text>
+    <!-- Note -->
+    <text x="605" y="364" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">OS baseline on every host</text>
+  </g>
+
+  <!-- BOX 2: database.yml -->
+  <g id="box-2">
+    <rect x="450" y="458" width="700" height="86" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <!-- Number circle 2 -->
+    <circle cx="492" cy="501" r="24" fill="#207448"/>
+    <text x="492" y="501" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <!-- Database Cylinder Icon (56px) -->
+    <g transform="translate(530, 473)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8"/>
+      <path d="M 6 14 v 24 c 0 6 10 9 22 9 s 22 -3 22 -9 v -24"/>
+      <path d="M 6 26 c 0 6 10 9 22 9 s 22 -3 22 -9"/>
+    </g>
+    <!-- Title -->
+    <text x="605" y="496" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">database.yml</text>
+    <!-- Tag badge: db -->
+    <rect x="850" y="474" width="55" height="30" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="877" y="495" text-anchor="middle" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">db</text>
+    <!-- Note -->
+    <text x="605" y="528" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">PostgreSQL on the db group</text>
+  </g>
+
+  <!-- BOX 3: app.yml -->
+  <g id="box-3">
+    <rect x="450" y="656" width="700" height="86" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <!-- Number circle 3 -->
+    <circle cx="492" cy="699" r="24" fill="#207448"/>
+    <text x="492" y="699" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <!-- Application Window Icon (56px) -->
+    <g transform="translate(530, 671)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6"/>
+      <line x1="4" y1="18" x2="52" y2="18" stroke-width="3"/>
+      <circle cx="12" cy="12" r="2" fill="#207448"/>
+      <circle cx="18" cy="12" r="2" fill="#207448"/>
+      <circle cx="24" cy="12" r="2" fill="#207448"/>
+      <rect x="12" y="26" width="14" height="16" rx="2" stroke-width="2.5"/>
+      <line x1="32" y1="28" x2="44" y2="28" stroke-width="2.5"/>
+      <line x1="32" y1="36" x2="44" y2="36" stroke-width="2.5"/>
+    </g>
+    <!-- Title -->
+    <text x="605" y="694" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">app.yml</text>
+    <!-- Tag badge: app -->
+    <rect x="760" y="672" width="70" height="30" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="795" y="693" text-anchor="middle" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">app</text>
+    <!-- Note -->
+    <text x="605" y="726" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">application on the app group</text>
+  </g>
+
+  <!-- BOX 4: web.yml -->
+  <g id="box-4">
+    <rect x="450" y="854" width="700" height="86" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <!-- Number circle 4 -->
+    <circle cx="492" cy="897" r="24" fill="#207448"/>
+    <text x="492" y="897" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    <!-- Reverse Proxy / Network Globe Icon (56px) -->
+    <g transform="translate(530, 869)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <ellipse cx="28" cy="28" rx="10" ry="22" stroke-width="3"/>
+      <line x1="6" y1="28" x2="50" y2="28" stroke-width="3"/>
+      <line x1="12" y1="16" x2="44" y2="16" stroke-width="2.5"/>
+      <line x1="12" y1="40" x2="44" y2="40" stroke-width="2.5"/>
+    </g>
+    <!-- Title -->
+    <text x="605" y="892" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">web.yml</text>
+    <!-- Tag badge: web -->
+    <rect x="760" y="870" width="70" height="30" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="795" y="891" text-anchor="middle" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">web</text>
+    <!-- Note -->
+    <text x="605" y="924" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">nginx reverse proxy</text>
+  </g>
+
+  <!-- BOX 5: verify.yml -->
+  <g id="box-5">
+    <rect x="450" y="1018" width="700" height="86" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <!-- Number circle 5 -->
+    <circle cx="492" cy="1061" r="24" fill="#207448"/>
+    <text x="492" y="1061" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    <!-- Verification Shield Icon (56px) -->
+    <g transform="translate(530, 1033)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 V 28 C 48 40 28 50 28 50 C 28 50 8 40 8 28 V 14 Z"/>
+      <polyline points="18,28 25,35 38,20"/>
+    </g>
+    <!-- Title -->
+    <text x="605" y="1056" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">verify.yml</text>
+    <!-- Tag badge: verify -->
+    <rect x="805" y="1034" width="105" height="30" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="857" y="1055" text-anchor="middle" font-family="'SF Mono', 'Courier New', Courier, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">verify</text>
+    <!-- Note -->
+    <text x="605" y="1088" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">end-to-end verification</text>
+  </g>
+
+  <!-- ==================== TAKEAWAY BAR ==================== -->
+  <g id="takeaway-bar">
+    <rect x="40" y="1134" width="1520" height="52" rx="10" fill="#207448"/>
+    <text x="800" y="1168" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">The database must exist before the app tries to connect, and the app must answer before the proxy sends it traffic.</text>
+  </g>
+</svg>

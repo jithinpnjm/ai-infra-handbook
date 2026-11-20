@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "29",
+  "name": "h29-mpi-models",
+  "title": "Hybrid MPI carries its own MPI, bind MPI borrows the host's",
+  "spec": "Two side-by-side panels separated by a vertical divider. Left panel titled Hybrid model. Top row: a box labelled Host launcher (srun or mpirun, with the sub-label host MPI). Below it, a box labelled Container, holding a box labelled container MPI, with the note PMIx compatible with the host. An arrow from the host launcher down to the container, labelled starts apptainer exec per rank. A monospace note under the panel: srun --mpi=pmix apptainer exec --nv --cleanenv -B /scratch:/scratch myenv.sif python train.py. Right panel titled Bind model. Top row: the same Host launcher box with host MPI. Below it, a container box with no MPI inside, and an arrow from a box labelled Host MPI libraries into the container, labelled bind-mounted with -B. A note: admins must allow user bind mounts. Under both panels, a two-row comparison strip with labels: Self-contained, portable (hybrid) versus exact host MPI match, tied to that cluster paths (bind). Orange highlight on the bind model's Host MPI libraries arrow. No numbered steps. No green takeaway bar.",
+  "anchor": "### MPI",
+  "alt": "In the hybrid model the container carries its own MPI, while in the bind model the host MPI libraries are mounted into a container that has none.",
+  "cap": "The hybrid model ships MPI inside the container, while the bind model mounts the host's MPI libraries into a container that has none."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "29",
+  "name": "h29-glibc-mismatch",
+  "title": "Why --nv fails when the container's glibc is too old",
+  "spec": "Left-to-right flow with three boxes and arrows. Box 1 on the left: Host OS, Ubuntu 24.04 with glibc 2.39 (chip icon), with the note GPU node. Box 2 in the middle: Host NVIDIA driver libraries, libcuda.so and libnvidia-ml.so, labelled bind-mounted by --nv. An arrow from Box 1 to Box 2 labelled compiled against the host glibc. Box 3 on the right: Container, Ubuntu 18.04 with glibc 2.27 (box icon). An arrow from Box 2 to Box 3 labelled injected into the container. Below the arrow into Box 3, a red-free warning in orange: GLIBC_2.34 not found (required by libcuda.so.1). Under Box 3 a note: rebase onto a base whose glibc is at least as new as the host. Monospace command above Box 2: apptainer exec --nv old.sif nvidia-smi. Orange highlight on the error message. No numbered steps. No green takeaway bar.",
+  "anchor": "### GPUs",
+  "alt": "The --nv flag injects host libcuda built against a newer glibc, so an older container image fails with a GLIBC_2.34 not found error.",
+  "cap": "The --nv flag injects host driver libraries built against a newer glibc, so an older container image fails with a GLIBC_2.34 not found error."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "29",
+  "name": "h29-repro-levels",
+  "title": "Four levels of reproducibility, each asking more of the process",
+  "spec": "A four-step staircase rising from bottom-left to top-right, with step number circles 1 to 4 on the treads. Step 1 at the bottom: Rerun, sub-label the same image, depends on immutability. Step 2: Rebuild, sub-label the same image from the same recipe, depends on a deterministic build. Step 3: Reuse, sub-label the environment on another system, depends on portability. Step 4 at the top: Understand, sub-label what is inside and where it came from, depends on provenance and metadata. Each step has a small icon: a lock for rerun, a hammer for rebuild, a plug for reuse, a magnifying glass for understand. Arrows run up the staircase from step 1 to step 4. Side note on the right: most teams aim for the first two levels and make the last two possible. Orange highlight on step 4, the level that needs provenance. No green takeaway bar.",
+  "anchor": "## 4. Reproducibility discipline",
+  "alt": "Reproducibility has four levels, rerun, rebuild, reuse and understand, and each level depends on a different property.",
+  "cap": "Reproducibility has four levels, from rerunning the same image to understanding what is inside it, and each one needs more of the process."
+ }
+]

@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "01",
+  "name": "r01-bmc-recovery",
+  "title": "Recovering a hung BMC while the host OS is still up",
+  "spec": "A vertical stack of three numbered step boxes, top to bottom, joined by down arrows, with a left-side column labelled Hung BMC, host OS still up. Above the stack, a small grey box labelled BMC hangs (fans may sit at 100 percent) and a dashed link to the host OS box labelled Host OS (SSH works). Step 1 box, orange border (the single key item): title In-band KCS cold reset. Body lines: SSH into the host OS over the in-band network; run sudo ipmitool mc reset cold; resets the BMC SoC over the motherboard KCS bus at /dev/ipmi0. Arrow from step 1 to step 2 labelled if the host OS is also unreachable or KCS fails. Step 2 box, green: title Out-of-band AC power drain through a smart PDU. Body lines: switch off PDU outlets C19 and C20 for 60 seconds; the BMC standby rail fully discharges; the BMC cold-boots. Arrow from step 2 to step 3 labelled if the BMC SPI flash image is corrupt. Step 3 box, green: title Smart hands. Body lines: use the chassis BMC reset pinhole or the USB recovery port. Number circles r=24 with numbers 1, 2, 3 on the step boxes. Orange note beside step 1: this is the one case where the in-band door is the way back to the out-of-band door. No takeaway bar.",
+  "anchor": "### 1.1 Modeling failure boundaries (`code/part07/oob_sim.py`)",
+  "alt": "A hung BMC is recovered first from the host OS with a KCS cold reset, then by draining AC power through the PDU, then by smart hands.",
+  "cap": "When the BMC hangs but the host OS still answers, you reset the BMC from inside the host first, and escalate to power drain and smart hands only if that fails."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "01",
+  "name": "r01-power-cycle",
+  "title": "Explicit power cycle: off, poll, wait, on",
+  "spec": "A horizontal row of four boxes left to right with arrows between them, labelled with step numbers 1 to 4 in number circles r=24. Box 1: power off, sub-line hard power cut, drains main host power rails; note under it: only after power soft and SSH have failed and the node is drained in Slurm. Box 2: poll power status, sub-line repeat until the output reads Chassis Power is off. Box 3: wait 10 to 15 seconds, sub-line pause before powering back on. Box 4: power on, sub-line turns the main host power rails back on. Above the row, a grey box labelled ipmitool power cycle, with a dashed arrow that is crossed out (no arrowhead into the row) and an orange note: power cycle is not always reliable across all BMC firmwares, so write the three steps out explicitly in scripts. Use the four labels exactly as shown; the step 3 wait is written as a separate box, not a combined step. No takeaway bar.",
+  "anchor": "### 4.2 Core `ipmitool` command groups and power operations",
+  "alt": "A scripted power cycle runs power off, polls status until off, waits 10 to 15 seconds, then runs power on.",
+  "cap": "Some BMC firmware handles power cycle unreliably, so scripts should run power off, poll until it is off, wait, and then run power on."
+ }
+]

@@ -34,6 +34,10 @@ Network teams use these same techniques to test a change before they touch real 
 
 ## Lab environment
 
+![Lab roadmap](./img/n27-roadmap.svg)
+
+*Figure 2.27.1. The labs grow from one router in namespaces to a full fabric with overlays and tests.*
+
 ### VM and tooling
 
 Start with a GCP VM running Ubuntu 22.04 or 24.04. An e2-standard-8 or similar machine with a 50 GB disk is enough. Any Linux machine with root access also works. Install the tools below before you run any lab, because every later section assumes they are present.
@@ -70,6 +74,10 @@ Here is what the convention does for you. Suppose a leaf is the third one in the
 ---
 
 ## Lab 1: three namespaces and a router (routing, forwarding, MTU, ICMP)
+
+![Lab 1 topology](./img/n27-lab1.svg)
+
+*Figure 2.27.2. Two hosts in separate namespaces reach each other only through a router namespace in the middle.*
 
 Picture two hosts that cannot talk to each other, and one machine in the middle that seems connected to both. Why would a router refuse to pass packets, even when its interfaces look correct? This first lab answers that with the smallest network that can show it. You build three namespaces, watch a ping fail, change a single setting, and watch it succeed. Each experiment after that changes one thing and measures what moves.
 
@@ -204,30 +212,9 @@ Why not test on a few real switches? A fabric carries live traffic, and a bad ro
 
 Suppose you need to test a change to a data-centre fabric before it reaches production. This lab builds the standard fabric from chapter 2.16 as code. The fabric has 2 spines, 4 leaves and 2 hosts per leaf, which makes 8 hosts in total. Every link is point-to-point and unnumbered.
 
-```mermaid
-flowchart TB
-  subgraph Spines["Spines (AS 65000)"]
-    S1["spine1\n10.255.0.1/32"]
-    S2["spine2\n10.255.0.2/32"]
-  end
-  subgraph Leaves["Leaves (AS 65101..65104, eBGP unnumbered)"]
-    L1["leaf1 (AS 65101)\n10.10.1.1/24"]
-    L2["leaf2 (AS 65102)\n10.10.2.1/24"]
-    L3["leaf3 (AS 65103)\n10.10.3.1/24"]
-    L4["leaf4 (AS 65104)\n10.10.4.1/24"]
-  end
-  subgraph Hosts["Host containers (2 per leaf)"]
-    H1["h11, h12"]
-    H2["h21, h22"]
-    H3["h31, h32"]
-    H4["h41, h42"]
-  end
-  S1 & S2 --- L1 & L2 & L3 & L4
-  L1 --- H1
-  L2 --- H2
-  L3 --- H3
-  L4 --- H4
-```
+![Lab 3: leaf-spine fabric with containerlab, eBGP unnumbered, ECMP](./img/m2-27-1.svg)
+
+*Figure 2.27.3. Lab 3: leaf-spine fabric with containerlab, eBGP unnumbered, ECMP, as a diagram.*
 
 Before you read the topology file, count its links, because the count is a quick check that you understood the design. For example, each of the 2 spines connects to each of the 4 leaves. That gives 8 uplinks. Each leaf also has 2 host links, which adds 8 more. The file therefore declares 16 links.
 

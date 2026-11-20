@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>bpftrace entry and return timing</title>
+  <desc>Visual infographic explaining bpftrace entry and return timing with kprobe and kretprobe using a thread-ID keyed map to produce a latency histogram.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">bpftrace entry and return timing</text>
+
+  <g>
+    <rect x="60" y="105" width="1480" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(85, 130)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="2" y="4" width="52" height="44" rx="6" />
+      <path d="M 14 19 L 23 26 L 14 33" />
+      <line x1="27" y1="33" x2="40" y2="33" />
+    </g>
+    <text x="165" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">probe shape</text>
+    <rect x="375" y="120" width="1135" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="942" y="167" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">probe[,probe...] /filter/ { action; }</text>
+  </g>
+
+  <g>
+    <rect x="60" y="240" width="1480" height="165" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="115" cy="322" r="24" fill="#207448" />
+    <text x="115" y="331" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(165, 294)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="28,14 28,28 38,28" />
+    </g>
+    <text x="245" y="310" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">kprobe:vfs_read</text>
+    <rect x="245" y="330" width="1265" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="275" y="370" font-family="sans-serif" font-size="26" fill="#303a36">stores <tspan font-family="monospace" font-weight="bold" fill="#207448">@start[tid] = nsecs;</tspan></text>
+  </g>
+
+  <line x1="450" y1="405" x2="450" y2="495" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <rect x="480" y="428" width="360" height="50" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="660" y="462" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">map keyed by thread ID</text>
+
+  <g>
+    <rect x="60" y="505" width="1480" height="305" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="115" cy="575" r="24" fill="#207448" />
+    <text x="115" y="584" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(165, 547)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="30" r="20" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="22" y1="4" x2="34" y2="4" />
+      <line x1="42" y1="16" x2="46" y2="12" />
+      <polyline points="28,20 28,30 35,35" />
+    </g>
+    <text x="245" y="562" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">kretprobe:vfs_read</text>
+    <text x="640" y="562" font-family="sans-serif" font-size="26" fill="#303a36">with filter <tspan font-family="monospace" font-weight="bold" fill="#207448">/@start[tid]/</tspan></text>
+    <rect x="245" y="590" width="1265" height="195" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="275" y="638" font-family="sans-serif" font-size="24" fill="#303a36">computes <tspan font-family="monospace" font-weight="bold" fill="#207448">$duration_us = (nsecs - @start[tid]) / 1000</tspan></text>
+    <text x="275" y="692" font-family="sans-serif" font-size="24" fill="#303a36">adds to <tspan font-family="monospace" font-weight="bold" fill="#207448">@us = hist($duration_us)</tspan></text>
+    <text x="275" y="746" font-family="sans-serif" font-size="24" fill="#303a36">then <tspan font-family="monospace" font-weight="bold" fill="#207448">delete(@start[tid])</tspan></text>
+  </g>
+
+  <g>
+    <rect x="60" y="835" width="1480" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(85, 857)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="6" y1="50" x2="52" y2="50" />
+      <line x1="6" y1="6" x2="6" y2="50" />
+      <rect x="12" y="32" width="7" height="18" rx="1" fill="#207448" />
+      <rect x="22" y="20" width="7" height="30" rx="1" fill="#207448" />
+      <rect x="32" y="10" width="7" height="40" rx="1" fill="#207448" />
+      <rect x="42" y="26" width="7" height="24" rx="1" fill="#207448" />
+    </g>
+    <text x="165" y="896" font-family="sans-serif" font-size="30" font-weight="bold"><tspan fill="#207448">Output: </tspan><tspan fill="#303a36" font-weight="normal">a latency histogram in microseconds</tspan></text>
+    <g transform="translate(1220, 857)" stroke="#207448" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="0" y1="56" x2="270" y2="56" stroke-width="3" />
+      <rect x="20" y="38" width="28" height="18" rx="2" fill="#207448" stroke-width="2" />
+      <rect x="65" y="22" width="28" height="34" rx="2" fill="#207448" stroke-width="2" />
+      <rect x="110" y="8" width="28" height="48" rx="2" fill="#207448" stroke-width="2" />
+      <rect x="155" y="18" width="28" height="38" rx="2" fill="#207448" stroke-width="2" />
+      <rect x="200" y="34" width="28" height="22" rx="2" fill="#207448" stroke-width="2" />
+    </g>
+  </g>
+
+  <g>
+    <rect x="60" y="960" width="1480" height="80" rx="14" fill="#207448" />
+    <text x="800" y="1010" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">entry probe stores a timestamp, return probe computes the delta and aggregates in a histogram.</text>
+  </g>
+</svg>

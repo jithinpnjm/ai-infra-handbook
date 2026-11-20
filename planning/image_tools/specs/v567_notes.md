@@ -326,3 +326,243 @@ SVG specs (v6_10.json): h10-task-remap (anchor "### What the job sees"), h10-num
 Notes for author: h10-sharing-spectrum orders Whole GPU at the far left as a layout choice; the source says only that whole-GPU is the right default for training. The "Choosing" table already maps needs to mechanisms, so drop the spectrum figure if it reads as a repeat.
 Skipped on purpose: request-options table, gres.conf field table, troubleshooting symptom table, Links vector (text), GPU monitoring anomaly thresholds (text and code), isolation check commands (code).
 Raster candidates: none.
+
+## ch11 (part-06 11-submitting-and-launching-jobs-sbatch-srun-salloc-arrays-dependencies.md, 661 lines, read in full)
+Topic: allocation vs batch step vs job step, the 6-stage life cycle, batch script anatomy, output and export pitfalls, srun and overlap/exact, salloc and interactive steps, job arrays and throttles, 2D grid mapping, dependencies, signals/checkpoint/requeue, squeue/sacct/scancel, linter output, submission patterns, common mistakes, lab, interview angles, 20 checkpoints.
+Mermaid: 1 block (L39 flowchart LR, five boxes: submit, job start prolog, batch step, job steps, termination and epilog). Keep; do NOT redraw. Heading says 6-stage life cycle but the mermaid has 5 nodes (the text has 6 stages; the mermaid merges the preemption stage). Flag for author; not redrawn.
+Source-consistency flag (author): section 7 prose says the handler "sends USR1 to the training program", but the bash code uses scancel --signal=USR1 --batch-only (targets the batch shell) then kill -TERM on the training PID. The h11-signal-requeue figure follows the code (TERM to training) and labels the USR1 as the batch-shell signal only. Fix the prose or the code before publishing.
+SVG specs (v6_11.json): h11-batch-vs-steps (anchor "## 1. Allocations, batch jobs and steps"), h11-array-grid (anchor "### 2D hyperparameter grid search with job arrays (*Distributed AI Systems* Chapter 8)"), h11-dependency-chain (anchor "## 6. Dependencies and pipelines"), h11-signal-requeue (anchor "## 7. Time limits, signals, checkpoints, requeue"). Anchors to be verified unique.
+Skipped on purpose: sbatch directive block (code), keys table, env-var table, squeue format table, dependency-type table, linter output (code), submission-pattern table, common-mistakes list, rendezvous code, rank-logging layers (text).
+Raster candidates: none.
+
+## ch12 (part-06 12-multi-node-training-on-slurm-pmix-torchrun-nccl-environment-binding-to.md, 464 lines, read in full)
+Topic: layers (Slurm, launcher, rendezvous, framework, NCCL, fabric), two launch styles (srun per GPU vs torchrun per node), the dist_env glue and its tested output, rendezvous gotchas, NCCL variable table, binding, framework patterns (DDP, FSDP, DeepSpeed, Megatron), failure triage, diagnose_nccl ladder, lab, interview angles, 20 checkpoints.
+Mermaid: 1 block (L39 flowchart TB, Slurm to launcher to rendezvous to framework to NCCL to NVLink and IB). Keep; do NOT redraw. It is the layer stack, and h12-launch-styles and h12-glue-translation show two different things (launch shape and variable mapping), so they do not repeat it.
+Source-consistency flag (author): section 3 says "the output looked like this" with a second run start_step=1; the checkpoint answer 2 says PyTorch uses c10d TCP rendezvous, consistent. No conflict found. Section 8.2 item 1 quotes gloo 200 ms vs nccl 4 ms; the 1.75x ring factor is noted in review notes only, so the figures here avoid timing numbers.
+SVG specs (v6_12.json): h12-launch-styles (anchor "## 2. Two launch styles"), h12-glue-translation (anchor "## 3. The glue, tested"), h12-master-addr-trap (anchor "## 7. Framework patterns"), h12-diagnose-ladder (anchor "## 8. Failure and diagnosis"). Anchors to be verified unique.
+Skipped on purpose: NCCL variable table (table), rendezvous gotcha list (list), binding paragraph (text, covered by ch10 numa figure), framework table (table), failure symptom table (table), pitfalls lists (lists), Megatron checkpoint size math (text and code).
+Raster candidates: none.
+
+Anchor check (ch07-12): all 20 anchors match exactly one line in their chapter (python exact-line count).
+
+## ch19 (part-06 19-lustre-architecture-and-operation.md, 625 lines, read in full)
+Topic: Lustre roles (MGS, MDS/MDT, OSS/OST, clients, LNet), creating targets with mkfs.lustre, raid0 striping, defaults and lfs setstripe, PFL and DoM, pools, DNE, quotas, migration and OST retirement, failure and recovery, monitoring, AI guidance, lab, checkpoint.
+Mermaid: 1 block (L48 flowchart TB, clients to MDS/MDT and OSS/OST with MGS). Keep; do NOT redraw. It is the metadata-versus-data split, and the new figures do not repeat it.
+SVG specs (v6_19.json): h19-stripe-roundrobin (anchor "### The raid0 layout"), h19-pfl-bands (anchor "### Progressive File Layouts (PFL) and other layouts"), h19-failover-sequence (anchor "## 5. Failure and recovery model"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: mkfs/mount command blocks (code), role table (table), striping defaults table, quota commands, OST retirement list (covered by text and commands), diagnosis ladder (text list), OSS RAM formula block (code), AI guidance table.
+Raster candidates: none.
+
+## part-06-hpc-slurm, chapters 13-18 (figure pass, specs in v6_13.json to v6_18.json)
+
+| Chapter file | Topic | Mermaid blocks | Mermaid do-not-redraw | Raster candidates |
+|---|---|---|---|---|
+| 13-containers-on-slurm-enroot-and-pyxis.md | enroot/pyxis, why not Docker, image caching, pyxis options, hooks | 1 (L40 image path flowchart: registry to sqsh to pyxis to unpack to hooks) | Keep as is. Enroot import/create steps are the same concept, so no enroot command-workflow figure was drawn | None; SVG suffices |
+| 14-slurm-operations-prolog-epilog-health-checks-drain-reason-codes-troubl.md | Prolog/epilog, health checks, node lifecycle, unkillable steps, logs, reservations | 1 (L129 node state diagram: IDLE/ALLOCATED/DRAINING/DRAINED/DOWN) | Keep as is. Node-state transitions are not redrawn | None; SVG suffices |
+| 15-slurm-high-availability-upgrades-and-scaling.md | Controller HA, backups, upgrade windows and order, scaling, sdiag saturation | 1 (L55 controller HA pair and accounting HA pair) | Keep as is. The upgrade order in the mermaid arrow is the same concept as the upgrade procedure, so no order figure was drawn | None; SVG suffices |
+| 16-slurm-on-kubernetes-slinky-and-soperator.md | Slinky vs Soperator architecture, NodeSet scale-in, drain ownership, pod tuning | 1 (L51 Slinky and Soperator architecture flowchart, includes the shared jail) | Keep as is. The shared jail and CRD boxes are already drawn there | None; SVG suffices |
+| 17-other-schedulers-pbs-torque-lsf-and-flux.md | PBS select/place, Torque, LSF, Flux subinstances, command map, migration | 1 (L41 shared scheduler architecture: PBS, LSF, Flux) | Keep as is. The top and worker split is already drawn there | None; SVG suffices |
+| 18-parallel-storage-concepts-and-the-limits-of-nfs.md | NFS limits, close-to-open consistency, parallel FS striping, I/O patterns, checkpoint arithmetic | 1 (L207 metadata and data server flowchart) | Keep as is. Metadata and data split is already drawn there; the striping and alignment figure is a separate idea | None; SVG suffices |
+
+SVG specs written (anchors verified unique with grep -cxF):
+- v6_13.json: h13-herd-pull (### Why caching matters at job start), h13-named-unnamed (## 3. pyxis). Enroot workflow figure dropped as a duplicate of the mermaid import/create concept.
+- v6_14.json: h14-prolog-epilog-timeline (## 1. Prolog and epilog), h14-health-check-flow (## 2. Health checks), h14-unkillable-escalation (## 4. Unkillable steps and stuck jobs).
+- v6_15.json: h15-upgrade-hops (### A path planner), h15-sdiag-order (### 7.1 Deep dive, sdiag).
+- v6_16.json: h16-scale-in-drain (### How the operator talks to Slurm). Drain-ownership rule not drawn, since the mermaid already shows the cordon/drain link.
+- v6_17.json: h17-select-place (### Request model: select and place), h17-flux-subinstance (## 4. Flux), h17-migration-steps (## 7. Migration plan (any scheduler to Slurm)).
+- v6_18.json: h18-close-to-open (## 2. NFS: what it is and where it ends), h18-stripe-alignment (## 5. I/O patterns and what breaks), h18-bytes-per-param (## 6. Arithmetic you should be able to do).
+
+Notes: chapter 15 and 16 checkpoint sections were skimmed, not read line by line. The lab, exercise and checkpoint sections were skimmed for figure ideas only. Ch16 section 6.2 comparison is a table and was left as a table.
+
+## ch20 (part-06 20-beegfs-gpfs-wekafs-and-vast.md, 430 lines, read in full)
+Topic: common frame of eight design questions, BeeGFS services and write path, GPFS shared-disk and tokens, PanFS appliance, WEKA user-space and erasure coding, VAST DASE, six-system comparison table, selection and validation, GPUDirect Storage data path, lab, interview angles, checkpoint.
+Mermaid: 1 block (L38 flowchart TB, one box per system's parts: BeeGFS, GPFS, WEKA, VAST). Keep; do NOT redraw. It is the per-system component summary, and the figures show the BeeGFS write flow and the GDS path, not the four-system split.
+SVG specs (v6_20.json): h20-beegfs-write-path (anchor "## 2. BeeGFS"), h20-gds-bounce-vs-direct (anchor "### 8.1 The AI data path: GPUDirect Storage (`GDS`) and NVMe staging (Volume 15)"), h20-ec-efficiency-bars (anchor "## 5. WEKA (WekaFS) and other distributed filesystems (*Supercomputers for Linux Sysadmins* Chapter 9)"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: design-question table, service table, comparison table (section 7, six columns: table), selection steps (list), benchmark commands (code), GPFS and PanFS prose, lab steps, checkpoint answers.
+Raster candidates: none.
+
+## ch25 (part-06 25-remote-access-bastions-open-ondemand-and-user-environments.md, 508 lines, read in full)
+Topic: access architecture (bastion, login, DTNs, OOD portal, compute), SSH auth methods and hardening audit, ProxyJump client config, X11 and graphical access, OOD architecture and batch connect, user environment, support and communication, security, lab, checkpoint.
+Mermaid: 1 block (L43 flowchart LR, laptop to bastion/portal to login to Slurm to compute, DTN and storage). Keep; do NOT redraw. It is the whole access architecture, and the new figures zoom into one hop each.
+SVG specs (v6_25.json): h25-proxyjump-hop (anchor "### Client-side practices (document these for users)"), h25-x11-role-swap (anchor "### X11 and graphical tools (*Supercomputers for Linux Sysadmins* Chapter 18)"), h25-ood-request-chain (anchor "### Architecture (from the OOD documentation)"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: auth method table, sshd_audit output (code), ssh config block (code), X server log and xorg paths (text), Xming start command (code), user environment and etiquette lists, support/ticketing text (no visual flow), checkpoint answers (repeat text).
+Raster candidates: none.
+
+## ch21 (part-06 21-parallel-i-o-and-checkpoint-patterns.md, 613 lines, read in full)
+Topic: MPI-IO and HDF5 stack, collective buffering and hints, alignment rules, checkpoint layouts, tested DCP resharding, async and tiered checkpointing, driver-level cuda-checkpoint and CRIU, crash-safe commit protocol, restart validation, data loading (NVMe tuning, DataLoader, GDS, 3FS, DALI, NeMo Curator), storage sizing, lab, checkpoint.
+Mermaid: 1 block (L36 flowchart TB, layered stack: application, HDF5, MPI-IO, file system client). Keep; do NOT redraw. The collective-buffer figure shows the aggregator flow inside the MPI-IO layer, which the stack does not show.
+SVG specs (v6_21.json): h21-collective-buffer (anchor "## 1. Parallel I/O in HPC: MPI-IO and HDF5"), h21-dcp-reshard (anchor "### Tested: sharded checkpoint and resharding"), h21-commit-protocol (anchor "## 3. Crash-safe commits (tested)"), h21-loader-overlap (anchor "### Workers, pinned memory, and overlap"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: layout comparison table (table), MPI calls and hint lists (text/code), HDF5 call groups (list), alignment rules (list), async-stall arithmetic and Young/Daly formula (formula, covered by text), GDS and 3FS prose, sizing arithmetic, cuda-checkpoint call sequence (list), DataLoader code block.
+Raster candidates: none.
+
+## ch26 (part-06 26-cluster-monitoring-and-health-at-scale.md, 607 lines, read in full)
+Topic: monitoring tool landscape (SNMP, Ganglia, Nagios, Zabbix, XDMoD, Prometheus/DCGM), SNMP traps, lm_sensors, NUT/apcupsd UPS shutdown order, what to monitor by layer, DCGM fields, Slurm exporter (tested), alert design, health checks and scans, usage analytics, scaling the stack, lab, checkpoint.
+Mermaid: 1 block (L43 flowchart LR, collectors to Prometheus/VictoriaMetrics to Grafana/Alertmanager and XDMoD). Keep; do NOT redraw. It is the collector-to-store-to-consumer shape, and the new figures do not repeat it.
+SVG specs (v6_26.json): h26-trap-pipeline (anchor "### SNMP, `snmpconf`, and `snmptrapd` handlers"), h26-ups-shutdown-order (anchor "### UPS monitoring with Network UPS Tools (`NUT`) and `apcupsd`"), h26-alert-decision (anchor "## 5. Alerting"), h26-util-vs-tensor (anchor "## 3. GPU metrics with DCGM"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: tool landscape table, SNMP command blocks (code), snmpd/trap config (code), Ganglia and Zabbix bullets (text), sensors and apcaccess output (code), NUT config files (code), layer table (table), DCGM field table (table), exporter sample output (code), scaling and security lists (text), checkpoint answers.
+Flag for author: section 5 "Golden Rule" text and the exercise-13 numbers are the source of the alert and util examples; the spec uses those numbers only. No source conflict found.
+Raster candidates: none.
+
+## ch22 (part-06 22-provisioning-with-pxe-ipxe-dhcp-tftp-and-image-management.md, 540 lines, read in full)
+Topic: boot chain, DHCP options 60/67/93, PXE and TFTP limits, iPXE chain-loading and option 175, UEFI HTTP Boot and Kea client classes, tested dnsmasq/iPXE generator and inventory validation, stateless/stateful/hybrid designs, image management habits, node identity lifecycle, cluster managers (ROCKS, PelicanHPC, xCAT, Warewulf, MAAS, Foreman, BCM), D-T-B-I boot triage, lab, checkpoint.
+Mermaid: 1 block (L36 flowchart LR, five boot stages: firmware, DHCP+TFTP, iPXE, HTTP image fetch, rootfs and init). Keep; do NOT redraw. It shows stage order only. The h22-ipxe-handshake figure shows the message exchange and loop prevention, which the mermaid does not show.
+SVG specs (v6_22.json): h22-ipxe-handshake (anchor "### iPXE"), h22-stateless-layers (anchor "## 4. Stateless, stateful and hybrid nodes"), h22-dtb-triage (anchor "## 8. Boot triage"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: option 93 table (table), TFTP and PXE prose, Kea JSON and dnsmasq config blocks (code), generator error block (code output), image habits list (list), identity lifecycle states (text), cluster manager walkthrough steps (lists), D-T-B-I check table (table, its checks are condensed into the triage figure).
+Raster candidates: none.
+
+## ch27 (part-06 27-backup-and-data-protection.md, 661 lines, read in full)
+Topic: what to protect by class, RPO/RTO, 3-2-1-1-0, snapshots vs replication vs backup, tar, rsync and --link-dest, Bacula, restic/borg/kopia, parallel FS and object stores, control-plane backup table, ransomware and restore order, restore testing tiers, lab, checkpoint.
+Mermaid: 1 block (L61 flowchart LR, primary data to on-site dedup to offsite WORM to quarterly DR drill). Keep; do NOT redraw. It is the 3-2-1-1-0 copy chain, and h27-snapshot-vs-backup covers a different point (failure domain), not the copy chain.
+SVG specs (v6_27.json): h27-snapshot-vs-backup (anchor "## 2. Principles"), h27-link-dest-snapshots (anchor "### rsync, batch updates, and hard-link snapshots"), h27-dr-restore-order (anchor "## 7. Ransomware and insider risk"), h27-restore-test-tiers (anchor "## 8. Restore testing and metrics"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: class table (table), tar operation-mode table, rsync flag table, tar and restic command blocks (code), Bacula config blocks (code), bconsole table (table), control-plane table (table), RPO/RTO prose (text). Bacula ports and daemon layout were considered for a figure but dropped: the source gives roles and ports but few explicit connections, so a figure would be mostly a labelled list with no arrows.
+Flag for author: section 7 gives the restore order as identity, DNS, provisioning, storage, scheduler, users. The checkpoint 17 answer lists more detail (network, secrets/PKI, Slurm DB before slurmctld). Spec uses the body list only. No conflict.
+Raster candidates: none.
+
+## ch23 (part-06 23-xcat-warewulf-and-cluster-managers-compared-with-bcm.md, 583 lines, read in full)
+Topic: common model across managers, xCAT architecture and object model, xCAT tables and statelite recipe, xCAT status (Confluent successor), Warewulf 4 architecture and overlays, Confluent/MAAS/Foreman, BCM architecture and trade-offs, selection matrix, operating practices, lab, interview angles, checkpoint.
+Mermaid: 1 block (L40 flowchart TB, one box per manager: xCAT, Warewulf 4, BCM). Keep; do NOT redraw. It is the one-line architecture summary per tool, and the three figures show the statelite workflow, the BCM image path and the Warewulf overlay rendering in more depth.
+SVG specs (v6_23.json): h23-statelite-flow (anchor "#### Loading and Controlling: Step-by-step `statelite` provisioning workflow (Chapters 26 and 28)"), h23-bcm-image-flow (anchor "## 5. NVIDIA Base Command Manager (BCM)"), h23-warewulf-overlays (anchor "### Architecture"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: abstraction table and selection matrix (tables), xCAT object and table lists (lists), policy CSV and regex code blocks (code), rpower and psh command list (text), MAAS lifecycle (short list, covered in text), operating-practice bullets, lab table, checkpoint answers (node replacement steps appear only in checkpoint, so no figure for them here).
+Raster candidates: none.
+
+## ch28 (part-06 28-hpc-benchmarking-hpl-hpcg-ior-osu-and-nccl-tests.md, 530 lines, read in full)
+Topic: benchmarking methodology (active benchmarking, 16 failure modes, four benchmark types), statistics harness with thread-count surprise, STREAM/HPL/HPCG/IOR/mdtest/gdsio/OSU/NCCL tests, busbw formulas, acceptance and burn-in, reporting, lab, interview angles.
+Mermaid: 1 block (L37 flowchart LR, five methodology steps: characterize, execute, active benchmarking, sanity check and stats, acceptance and regression). Keep; do NOT redraw. It is the five-step method, and h28-acceptance-order is the eight-stage cluster plan, a different sequence.
+SVG specs (v6_28.json): h28-bonnie-layers (anchor "## 1. Methodology (Systems Performance, chapter 12)"), h28-acceptance-order (anchor "## 4. Acceptance testing and burn-in"), h28-batch-halving (anchor "### NCCL tests"). Anchors verified with grep -cxF (count 1 each).
+Considered and dropped: busbw worked example (14.3 to 28.2 GB/s vs 50 GB/s NIC). It is a calculation, which the text already shows step by step, and it would need a second figure under the same "### NCCL tests" heading. Also dropped: the 3.2 Gbps sanity-check bar (calculation only).
+Skipped on purpose: thread-count table (table), statistics output, benchmark-type list, HPL.dat settings (text), gdsio command blocks (code), nccl-tests command and flag lists, busbw factor table (table), checklist lists (lists), lab and interview lists.
+Raster candidates: none.
+
+## ch24 (part-06 24-users-ldap-sssd-quotas-and-accounting-at-scale.md, 571 lines, read in full)
+Topic: account sync options (static pull with timeout wrapper, NIS, LDAP, FreeIPA, AD), UID/GID ranges, LDAP layout and generator outputs, standing up a directory, SSSD and nsswitch/PAM, compute-node lookups and enable_nss_slurm, blocking users, homes and quotas, Slurm accounting alignment, onboarding and offboarding, scale and security, containers note, lab, checkpoint.
+Mermaid: 1 block (L40 flowchart LR, validated CSV feeding LDAP, SlurmDBD and shared storage, then nodes). Keep; do NOT redraw. It shows the one-source fan-out, which the figures do not repeat. The generator's validation and the three outputs are not drawn again.
+SVG specs (v6_24.json): h24-lookup-path (anchor "## 4. SSSD, nsswitch and PAM on the nodes"), h24-launch-lookups (anchor "### Compute nodes"), h24-offboard-order (anchor "## 6. Slurm accounting alignment"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: sync script and wrapper (code), NIS paragraph (text), method table (table), LDIF and sacctmgr excerpts (code), sssd.conf and nsswitch blocks (code), blocking methods (list), quota and limits prose, onboarding and offboarding table (table), symptom table (table), checkpoint answers.
+Raster candidates: none.
+
+## Summary across ch19-24
+Figures planned: 3 per chapter (18 total) in v6_19.json to v6_24.json. Each spec uses an anchor that appears exactly once. Mermaid blocks in all six chapters (one each) are kept.
+
+## ch29 (part-06 29-containers-and-reproducibility-in-hpc-apptainer-and-enroot.md, 481 lines, read in full)
+Topic: what a container is (cgroups, namespaces, chroot), HPC vs Docker model, Apptainer (SIF, def files, cache, --nv, MPI hybrid/bind models, security), runtime comparison table, reproducibility discipline (12 practices, linter), distribution at scale, lab, troubleshooting (glibc, CUDA compat, HOME leak, fabric providers).
+Mermaid: 1 block (L41 flowchart LR, recipe to CI build and sign to shared store to Slurm launch). Keep; do NOT redraw. It is the lifecycle pipeline, and the new figures cover MPI models, the glibc failure and the reproducibility levels.
+SVG specs (v6_29.json): h29-mpi-models (anchor "### MPI"), h29-glibc-mismatch (anchor "### GPUs"), h29-repro-levels (anchor "## 4. Reproducibility discipline"). Anchors verified with grep -cxF (count 1 each).
+Source issues flagged for author:
+- The "## Exercises" heading appears TWICE (around L327 and L338), with identical text. One copy should be removed. Not a figure issue; do not anchor on it.
+- The troubleshooting section (6.1, "### 6.1 Troubleshooting guide...") says "Work through these five checks", but only four are described (glibc, CUDA forward compatibility, HOME leakage, fabric providers). No figure drawn for it, to avoid a five-step figure with a missing step.
+Considered and dropped: 12-practice list (list), HPC-vs-Docker table and runtime comparison table (tables), container-start staging at scale (text, no numbers), security-model text, linter output (code).
+Raster candidates: none.
+
+## ch30 (part-06 30-facility-basics-power-cooling-racks-and-liquid-cooling.md, 481 lines, read in full)
+Topic: units (W, kW, MW, kWh), equipment power, three-phase circuit capacity and stranded power, PSU redundancy designs, rack PDUs, UPS and staged haltall shutdown, air cooling (CFM, room conditions, airflow direction), liquid cooling types, PUE and energy cost, racks and cabling, ownership, physical monitoring, lab, checkpoint.
+Mermaid: 1 block (L41 flowchart LR, utility/UPS to PDU to GPU server to heat rejection). Keep; do NOT redraw. It is the one-path power and heat chain, and the new figures cover shutdown order, PSU wiring and the liquid loop.
+SVG specs (v6_30.json): h30-staged-shutdown (anchor "### 3.4 UPS and staged shutdown"), h30-psu-feed-designs (anchor "### 3.2 Redundancy: why servers with internal power supplies need care"), h30-cold-plate-loop (anchor "## 5. Liquid cooling"). Anchors verified with grep -cxF (count 1 each).
+Considered and dropped: airflow direction (text with a rule, low value over the existing table), power unit table (table), circuit table (table), redundancy design table (table, the psu figure covers two of its rows), PUE worked example (arithmetic in text), cabling rules (text), ownership list (list).
+Source notes flagged for author:
+- Section 3.4 says the staged script "haltall" and the sim output show 40 idle nodes and "75 min left" at 30 minutes. The figure uses only the stage order and the 30-minute and 5-minute thresholds from the text, not the sim numbers.
+- Section 3.2 table says the 6-to-make-5 design is "usually limited to 2 servers per rack". Not drawn (the PSU figure covers two designs only).
+- Checkpoint 13 says fans cool DIMMs and NICs (cold-plate chapter detail), which section 5 does not state. The cold-plate figure uses that label because it is in the same chapter.
+Raster candidates: none.
+
+## part-07-redfish-bmc (Vol 7)
+
+| 01-bmcs-ipmi-and-out-of-band-management.md | BMC role, in-band vs OOB doors, failure table, dual-tray DGX/HGX anatomy, OOB network design, ipmitool groups and power ops, SOL/conman/powerman/iKVM, credential audit, IPMI vs Redfish | 3 (L55 two-doors flow, L127 dual-tray map, L179 rack OOB network). All three keep; none flagged for redraw. | Do NOT redraw the three mermaid blocks. The failure table (1.1) and power table (4.2) are tables and skipped. | None |
+SVG specs (v7_01.json): r01-bmc-recovery (anchor "### 1.1 Modeling failure boundaries (`code/part07/oob_sim.py`)", KCS reset, PDU drain, smart hands), r01-power-cycle (anchor "### 4.2 Core `ipmitool` command groups and power operations", off/poll/wait/on). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: ipmitool -I lan vs lanplus (two bullets), SOL ~. escape trap (text), credential fingerprint flow (code output), IPMI vs Redfish comparison (table).
+
+| 02-redfish-concepts-service-root-resources-collections-odata.md | Service Root and graph, collection tables, resource anatomy, annotations, active vs Settings, OEM, pagination loop, crawler code, SSDP, BCM redfish commands | 1 (L56 Service Root tree with containment and Links cross-links). Keep; do NOT redraw. | Do NOT redraw the L56 tree. Tables, annotation table, and the resource JSON are skipped. | None |
+SVG specs (v7_02.json): r02-collection-paging (anchor "## 5. Resource collections and pagination"), r02-settings-stage (anchor "### 4.1 Active resources vs `/Settings` resources (DSP0266 §9.10)"), r02-crawl-loop (anchor "### 6.1 How the hypermedia crawler works (`code/part07/redfish_crawl.py`)"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: well-known URI table, ServiceRoot ProtocolFeaturesSupported list, value rules (empty vs null), SSDP and cmsh tables (text/tables).
+
+## ch31 (part-06 31-capstone-build-and-operate-a-small-slurm-gpu-cluster.md, 564 lines, read in full)
+Topic: whole-cluster bottom-up build (plan, build, prove, run), eight-layer build order, single-source-of-truth pipeline (inputs, ten stages, RealMemory 97% rule), ten-gate acceptance protocol, Day-2 drills, three whiteboard scenarios (128-node design, 64-node hang triage, Slurm vs Kubernetes), interview myths, exercises, checkpoint.
+Mermaid: 3 blocks. Keep ALL THREE; do NOT redraw.
+- L44 flowchart TB, four-phase Plan/Build/Prove/Run loop with RMA feedback. Keep.
+- L78 flowchart TD, six runtime planes (physical, provisioning, OS, fabrics and storage, orchestration, collectives). Keep. The build-order figure is a numbered sequence of eight layers, not the plane stack.
+- L325 flowchart TD, 64-node frozen-job triage decision tree (Scenario B). Keep. It is a decision tree; the drill figure is a recovery path for a single fault, not a triage tree.
+SVG specs (v6_31.json): h31-build-order (anchor "## 2. Build order and dependency chains"), h31-single-source-pipeline (anchor "## 3. Single-source-of-truth pipeline lab"), h31-acceptance-gates (anchor "## 4. Ten-gate acceptance testing and burn-in protocol"), h31-drill-recovery-loop (anchor "## 5. Day-2 operations drills: practicing the bad day"). Anchors verified with grep -cxF (count 1 each).
+Skipped on purpose: Scenario A, B, C tables and lists (text and table), Drill table (table, the drill-1 figure covers one row), stage table (table), inventory schemas (table), generated slurm.conf and PASS output (code), RealMemory and DefMemPerGPU details (text), Slurm vs K8s table (table), interview myths list, checkpoint answers.
+Source notes flagged for author:
+- Exercise 9 asks how many DGX nodes fit a 25 kW rack; the chapter's worked answers use a 30 kW cap. The 25 kW case has no in-chapter answer key.
+- Checkpoint 4 gives the RealMemory reserve as about 2 to 3 percent of RAM, while section 3.3 uses a 0.97 multiplier (3 percent). Consistent in intent, not a conflict to fix in figures.
+Raster candidates: none. The gates and build order fit SVG.
+
+| 03-the-redfish-protocol-http-methods-headers-status-codes-query-parameter.md | HTTP methods table, PATCH vs POST, array PATCH and OperationApplyTime, headers tables, ETag and If-Match, 50+ status code table, @Message.ExtendedInfo, PATCH partial success, query parameter order and reference, 36-check lab | 2 (L143 ETag collision sequenceDiagram with 4 playbook messages; L260 seven-step query-order flowchart LR). Both keep; do NOT redraw. | Do NOT redraw the L143 sequence or the L260 query-order chain. The status code table is a table. | None |
+SVG specs (v7_03.json): r03-patch-outcomes (anchor "### 4.2 The `PATCH` partial-success rule (DSP0266 §7.6)"), r03-patch-vs-post (anchor "### 1.1 `PATCH` (properties) versus `POST` (actions and creation)"), r03-array-patch (anchor "### 1.2 `PATCH` on array properties and `@Redfish.OperationApplyTime` (DSP0266 §7.7 & §7.12)"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: method table, header tables, status code table (tables); the $expand specifier list (text); the 36-check lab output.
+
+## ch09 (part-07 09-storage-network-adapters-and-pcie-devices.md, 440 lines, read in full)
+Topic: where drives, volumes, NICs, ports and PCIe devices live in the Redfish tree; Drive/Volume/Port fields; PCIe Gen and width arithmetic; rf_hardware.py rules table; lab output; Day-0/Day-2 gates; Redfish blind spots; checkpoint questions.
+Mermaid: 1 block (L54 flowchart LR, Storage to StorageController, Drive, Volume). Keep; do NOT redraw (it is the storage map and the chapter's only mermaid).
+SVG specs (v7_09.json): r09-pcie-link (anchor "## 4. PCIe: the hidden speed limit"), r09-port-triage (anchor "### 6.2 Diagnosing optical and copper `Port` speed mismatches"), r09-gates (anchor "### 6.4 Integrating `rf_hardware.py` into Day-0 and Day-2 automation"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: where-hardware-lives table, Drive and Port property tables, NIC building analogy (text), rf_hardware rules table, lab PASS list and tool output (code and tables), 6.1 degraded-link narrative (text; r09-pcie-link covers its arithmetic), 6.3 drive signals (bullets), 6.5 lspci mapping table, 6.6 OEM quirks (text), exercises and checkpoints.
+Raster candidates: none.
+
+| 04-redfish-authentication-sessions-and-security.md | TLS and certificates, Basic vs session, session lifecycle, roles and Privilege Registry, mTLS and OAuth, lockout and password rules, lab, safe script habits, session exhaustion, Day 0 rotation, directory integration | 1 (L75 session steps sequenceDiagram: POST Sessions, token, Location, DELETE). Keep; do NOT redraw. | Do NOT redraw the L75 session sequence. The role and lockout tables are tables. | None |
+SVG specs (v7_04.json): r04-day0-rotation (anchor "### 6.3 Designing zero-touch factory password rotation on Day 0"), r04-override-precedence (anchor "### 3.1 Privilege Registry overrides, logical AND/OR, and Restricted Roles (DSP0266 §13.4.2–13.4.3)"), r04-session-leak (anchor "### 6.1 Anatomy of a session-table exhaustion outage"). Anchors verified with grep -cxF (1 each).
+CONTENT FLAG (r04-day0-rotation): chapter 6.3 step 3 says both NewPassword and SessionAccountPassword are the factory password. That looks wrong (step 5 says the bootstrap account then moves to the vault secret). The spec draws NewPassword as the vault-managed secret and SessionAccountPassword as the factory password. Fix the chapter text or confirm before the figure ships.
+Skipped on purpose: role and privilege tables, lockout settings table, Basic vs session table, OAuth/mTLS prose, checkpoint answers.
+
+## ch10 (part-07 10-firmware-inventory-and-the-updateservice.md, 486 lines, read in full)
+Topic: firmware groups and the 30-component GPU tray, UpdateService and FirmwareInventory fields, drift against a baseline, SimpleUpdate pull vs multipart push, Targets and OperationApplyTime, task messages, activation by reset type, BCM firmware commands, nvfwupd, safe fleet procedure, lab.
+Mermaid: 1 block (L82 flowchart TD, admin to UpdateService inventory, pull and push, task stages, activation resets, back to inventory). Keep; do NOT redraw (it is the whole update flow, and the stage and activation figures below are not repeated from it as flow; r10-staged-active is a flash-slot mechanism, r10-waves is a rollout order).
+SVG specs (v7_10.json): r10-staged-active (anchor "## 5. Staged is not active: activation"), r10-waves (anchor "## 8. A safe fleet procedure"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: pull vs push table (table; mermaid already shows both paths), stage message and failure message tables (tables), drift result list (text), HTTP 202/413/411 notes (text), BCM 5-step list (text), nvfwupd commands (code), lab PASS list and plan output (code/tables), 11-step procedure (list; r10-waves covers its wave order only), exercises, checkpoints.
+Source note: the 11-step list in section 8 says "11-step" in exercise 5, and the wave sizes (1 node, rack of 8, SU of 32) come from exercise 5, used in r10-waves.
+Raster candidates: none.
+
+| 05-redfish-actions-tasks-events-and-subscriptions.md | Actions and POST target, ResetType meanings, 202 and task monitor, push subscriptions and event body, SSE, BCM commands, actions lab, power-control workflow, async poller, event scaling | 1 (L114 task-monitor sequenceDiagram: POST, 202, loop of GET monitor, final 200, Task Completed). Keep; do NOT redraw. | Do NOT redraw the L114 sequence; the 202 polling loop is pseudo-code, already covered. Subscription property table and push/SSE/polling comparison table are tables. | None |
+SVG specs (v7_05.json): r05-reset-ladder (anchor "### What each `ResetType` means"), r05-power-escalation (anchor "### 5.1 Designing idempotent node power-control workflows"), r05-event-sweep (anchor "### 5.3 Scaling event-driven monitoring across a thousand BMCs"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: 202 pseudo-code loop (code block), subscription property table, push vs SSE vs polling table, TaskState list, action status code list.
+
+| 06-the-redfish-schema-reading-csdl-json-schema-and-the-resource-guide.md | Three schema formats, @odata.type to file names, versioning rules, Resource Guide columns, annotations, message registries, OEM, schema_lab validation, $ref and allOf, CI contract test | 1 (L49 flowchart TD: payload to unversioned/versioned schema, version chain, Message/Attribute/Privilege registries). Keep; do NOT redraw; it is the registry map. | Do NOT redraw the L49 map. The version-chain arrow inside it is already there, so the step-back figure below covers the procedure, not the map. Property table and annotation table are tables. | None |
+SVG specs (v7_06.json): r06-type-to-schema (anchor "## 2. From `@odata.type` to the schema file"), r06-step-back (anchor "## 3. Versioning: what a client must do"), r06-message-decision (anchor "## 6. Message registries: how errors and events get their text"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: CSDL/JSON Schema/OpenAPI format table, Resource Guide column table, annotation table, schema_lab check list, mockup crawl table, 8.2 $ref prose (prose only).
+Source note (not for figure): section 7 says the NVIDIA OEM claim is from user notes and unchecked; figure avoids it.
+
+## ch11 (part-07 11-log-services-event-logs-and-diagnostics.md, 522 lines, read in full)
+Topic: where LogServices live, Event vs SEL entries and fields, rf_logs.py show/filter, overwrite policy and capacity warnings, BMC clock skew, ClearLog with ETag guard, CollectDiagnosticData three-step bundle, cross-layer crash timeline, RMA evidence order, IPMI SEL to Redfish mapping table, lab, checkpoints.
+Mermaid: 1 block (L78 flowchart LR, owners to LogService policy, entries, actions). Keep; do NOT redraw. Its ACT node already draws the CollectDiagnosticData 202 to LogEntry to AdditionalDataURI chain, so a separate bundle-steps figure was deliberately NOT made (duplicate concept).
+SVG specs (v7_11.json): r11-overwrite-policy (anchor "## 4. What the log tells you about itself"), r11-crash-timeline (anchor "### 8.1 Reconstructing a cross-layer hardware crash timeline"), r11-rma-order (anchor "### 8.4 End-to-end RMA evidence collection workflow (`CollectDiagnosticData` + `nvsm`)"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: LogService property and LogEntry field tables, services output and show output (code), DMTF example output, investigation method list (text), 8.2 NTP clock drift (text, procedural), 8.3 capacity hazards (covered by r11-overwrite-policy), 8.5 legacy SEL to Event mapping (table), lab PASS list, exercises, checkpoints.
+Raster candidates: none.
+
+## ch12 (part-07 12-automating-redfish-with-python-ansible-and-go.md, 484 lines, read in full)
+Topic: TLS and certificate trust (no -k), Python client and session rules, DMTF redfish library, Ansible uri block/always and community.general modules, serial/forks scale, Go gofish, fleet runner rules and lab, tool choice table, retry engine, chaos tests, secret management, exercises, checkpoints.
+Mermaid: 1 block (L209 flowchart LR, fleet runner: CSV to bounded pool to login to task or no-retry or retry to logout to summary). Keep; do NOT redraw. Its retry and no-retry branches are the same concept as the fleet rules table, so no retry-policy figure was made.
+SVG specs (v7_12.json): r12-tls-trust (anchor "## 1. First, TLS: stop using `-k`"), r12-session-lifecycle (anchor "### 2.1 The client I used in all labs"), r12-serial-batches (anchor "### 3.3 Scale in Ansible"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: rules list 2.3 (list), Ansible uri block/always YAML (code; r12-session-lifecycle covers the Python equivalent, so no duplicate session figure), community.general module table (table), fleet lab results table (table; mermaid covers the flow), tool choice table (table), chaos and secrets sections (text), Go snippet (code), exercises, checkpoints.
+Raster candidates: none.
+
+| 07-systems-chassis-and-managers-the-core-resource-model.md | System, Chassis and Manager families, property tables, DPU and blade cases, rf_model link check, inventory tool, absent and standby states, find-a-GPU steps, DGX names, checkpoint questions | 2 (L47 flowchart LR: System/Chassis/Manager with Links pairs; L158 flowchart TB: blade enclosure example graph with 5 managers and 4 systems). Both keep; do NOT redraw. | Do NOT redraw L47 (it is the core relationship map, and r07-link-states covers the consistency rule without repeating it) or L158 (a specific DMTF example graph). The property tables and manager type table are tables. The 9.1 topology list is text. | None |
+SVG specs (v7_07.json): r07-find-gpu (anchor "## 8. Steps for finding a value"), r07-absent-states (anchor "## 7. Present, absent and temporarily unavailable"), r07-link-states (anchor "### 9.4 Auditing graph integrity across vendors with `rf_model.py`"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: ChassisType and ManagerType lists (text), DGX name bullets (text), 9.2 BootProgress and watchdog prose, rf_inventory output (code).
+
+| 08-power-thermal-sensors-and-environment.md | Modern vs legacy telemetry designs, Sensor properties, thresholds, Status vs Reading, fans and redundancy, PSUs and power caps, rf_sensors tool, Prometheus export, TelemetryService, DCGM vs BMC, unknown-machine lookup, liquid cooling, cap controller, cardinality | 1 (L46 flowchart TD: modern Sensors/Subsystem/EnvironmentMetrics vs legacy Thermal/Power). Keep; do NOT redraw. | Do NOT redraw L46; it is the design comparison and the chapter's core map. The sensor property table, Status/Health table, and checkpoint answers are tables or text. Section 8.3 and 8.4 are prose lists. | None |
+SVG specs (v7_08.json): r08-threshold-steps (anchor "### Thresholds"), r08-fan-redundancy (anchor "## 3. Thermal: fans, heat and cooling"), r08-straggler-triage (anchor "### 8.1 Correlating out-of-band BMC sensors with in-band DCGM throttling"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: Sensor property table, Status vs Reading table, power-cap JSON (code), tool output blocks (code), Prometheus output (code), 8.2 liquid-cooling and 8.3 guardrails (prose lists), 8.4 cardinality (prose).
+Note: the section 4 power cap is illustrated only as JSON, so no figure. Chapter 8 section 8.3 guardrail list would make a fine figure later if asked.
+
+## ch13 (part-07 13-redfish-on-nvidia-dgx-and-hgx-bmc-gpu-baseboard-and-management.md, 396 lines, read in full)
+Topic: DGX vs OEM HGX vs rack-scale ownership table, HGX baseboard FRU and RMA boundaries, GPU tray controllers (HMC, ERoT, FPGA/CPLD, retimers), GB300 NVL72 rack contents and OOB network, NVSM vs Redfish, acceptance profiles and DMTF validators, rec/replay with rf_record.py, 8-step bring-up checklist, architecture comparison, exercises, checkpoints.
+Mermaid: 1 block (L70 flowchart TB, host tray with main BMC, GPU tray with HMC/ERoT/NVSwitch/retimers, OOB switch). Keep; do NOT redraw. Its controller layout overlaps the controller table and r13 specs deliberately avoid repeating it.
+SVG specs (v7_13.json): r13-nvl72-rack (anchor "## 3. Rack-scale: GB200 and GB300"), r13-two-views (anchor "## 4. NVSM and BCM next to Redfish"), r13-bringup (anchor "## 7. A bring-up checklist for a new GPU server model"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: ownership comparison table (table; a figure would repeat it), HGX FRU vs soldered NVSwitch and power-delivery arithmetic (text), controller role table (table; the mermaid covers the layout), redfish endpoint table (table), nvsm command table (table), acceptance profile details and validator run output (text and code), rf_record round trip (text), exercises, checkpoints, 7.1 architecture comparison (text, long).
+Raster candidates: none.
+- v7 ch04 line 253: chapter text says NewPassword AND SessionAccountPassword both = factory password (likely wrong; NewPassword should be the new secret). Fix chapter text.
+
+## ch14 (part-07 14-fleet-scale-hardware-management-and-node-lifecycle-automation.md, 444 lines, read in full)
+Topic: fleet mindset, BIOS Settings pattern (live vs pending), attribute registry validation, BIOS matrix cautions, rf_bios plan/apply, one-time vs continuous boot override, node_lifecycle six-gate state machine with dry-run and resume, keeping a fleet in line (waves, exceptions, RMA re-baselining), five NVIDIA-notes scenarios, BIOS deep dive, idempotent state machine, exercises, checkpoints.
+Mermaid: 1 block (L145 flowchart LR, six-gate node lifecycle with STOP branches). Keep; do NOT redraw. Its gates are the chapter's core state machine.
+SVG specs (v7_14.json): r14-settings-staging (anchor "### 2.1 The Settings resource pattern"), r14-boot-override (anchor "## 3. Boot override: one time or forever"), r14-bmc-escalation (anchor "### Scenario 3: A \"bricked\" BMC after a bad firmware push"). Anchors verified with grep -cxF (1 each). The heading contains straight double quotes, copied exactly.
+Overlap note: r14-settings-staging is the same staged-vs-active idea as r10-staged-active (ch10), but for BIOS Settings objects rather than firmware flash slots. Both are kept because they are different resources and different chapters.
+Skipped on purpose: BIOS matrix table (table, and its cautions are text), registry error table (table), BCM biossettings description (text), plan/apply command output (code), node_lifecycle lab PASS list (code), the six-gate table (table; mermaid covers it), Scenarios 1, 2, 4 and 5 (text and tool pointers), BIOS deep dive section 6.1 (long text, mechanism per row, no single clean drawing), exercises, checkpoints.
+Source note: the Scenario 3 sub-line gives the notes' "ipmitool bmc reset cold" form. Chapter 7.1 and 7.10 use "ipmitool mc reset cold"; the chapter itself says it did not verify that these are aliases. The figure keeps the notes' form and does not claim equivalence.
+Raster candidates: none.
+
+## ch15 (part-07 15-bmc-security-hardening-and-attestation.md, 444 lines, read in full)
+Topic: threat model, seven defence layers, protocol and account hardening, certificate replacement through GenerateCSR/ReplaceCertificate, rf_harden audit and apply, firmware trust, UEFI Secure Boot through Redfish, attestation (SPDM, TPM, nonce, RIM), BMC checklist, incident response, exercises, checkpoints.
+Mermaid: 2 blocks. L56 flowchart TB, seven defence layers (keep, do NOT redraw; it is the chapter's layer map and the Secure Boot and attestation figures below are the mechanisms it only names). L102 sequenceDiagram, GenerateCSR and ReplaceCertificate exchange (keep, do NOT redraw; it is the certificate workflow, so no certificate figure was made).
+SVG specs (v7_15.json): r15-trust-chain (anchor "## 5. Firmware trust"), r15-secureboot-steps (anchor "## 6. UEFI Secure Boot through Redfish"), r15-attest-steps (anchor "## 7. Attestation: what it is, and what I did not do"). Anchors verified with grep -cxF (1 each).
+Skipped on purpose: threat table (table), rf_harden FIX/MANUAL output (code), protocol JSON snippet (code), certificate verification table (table), firmware trust point 2 and 3 details (text), database PK/KEK/db/dbx list (text and checkpoint), section 8.1 SPDM/TPM 4-step deep dive (long text; r15-attest-steps covers the four steps at beginner level), section 8.2 incident-response order (text), checklist (list), exercises, checkpoints.
+Source notes: the chapter flags one correction (notes say Secure Boot db is on the BMC; chapter says the databases belong to the host UEFI). r15-secureboot-steps does not depend on that point.
+Raster candidates: none.

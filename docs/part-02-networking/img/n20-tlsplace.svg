@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Where TLS ends</title>
+  <desc>Visual explanation of TLS termination at the load balancer versus L4 passthrough, client IP preservation methods, and architectural routing tradeoffs.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="60" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Where TLS ends</text>
+
+  
+  <g font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+    <text x="210" y="118">Client</text>
+    <text x="800" y="118">Load Balancer</text>
+    <text x="1390" y="118">Backends</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="60" y="140" width="1480" height="295" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="90" y="180" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">TLS termination at the LB</text>
+
+    
+    <rect x="100" y="205" width="220" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="182" y="270" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="170" y1="318" x2="250" y2="318" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="194" y1="289" x2="226" y2="289" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    
+    <line x1="320" y1="307" x2="398" y2="307" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <rect x="400" y="205" width="800" height="205" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    
+    <path d="M 776 225 L 824 225 C 824 252 800 268 800 268 C 800 268 776 252 776 225 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 793 243 A 7 7 0 0 1 807 243" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="794" y="243" width="12" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="800" y="308" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">LB decrypts, can inspect and route at L7</tspan>
+      <tspan x="800" dy="36">(headers, WAF), then re-encrypts or sends</tspan>
+      <tspan x="800" dy="36">plaintext to the backends</tspan>
+    </text>
+
+    
+    <line x1="1200" y1="307" x2="1278" y2="307" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <rect x="1280" y="205" width="220" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="1362" y="265" width="56" height="22" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="1375" cy="276" r="3" fill="#207448" />
+    <circle cx="1387" cy="276" r="3" fill="#207448" />
+    <rect x="1362" y="297" width="56" height="22" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="1375" cy="308" r="3" fill="#207448" />
+    <circle cx="1387" cy="308" r="3" fill="#207448" />
+  </g>
+
+  
+  <g>
+    
+    <rect x="60" y="460" width="1480" height="275" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="90" y="500" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Passthrough</text>
+
+    
+    <rect x="100" y="520" width="220" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="182" y="575" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="170" y1="623" x2="250" y2="623" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="194" y1="594" x2="226" y2="594" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    
+    <line x1="320" y1="615" x2="398" y2="615" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <rect x="400" y="520" width="800" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 788 554 A 12 12 0 0 1 812 554 L 812 564 L 788 564 Z" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="782" y="564" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="800" cy="575" r="3" fill="#207448" />
+    <line x1="800" y1="578" x2="800" y2="584" stroke="#207448" stroke-width="3" />
+    
+    <text x="800" y="635" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">an L4 balancer routes on SNI and</tspan>
+      <tspan x="800" dy="38">keeps the traffic encrypted</tspan>
+    </text>
+
+    
+    <line x1="1200" y1="615" x2="1278" y2="615" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <rect x="1280" y="520" width="220" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="1362" y="572" width="56" height="22" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="1375" cy="583" r="3" fill="#207448" />
+    <circle cx="1387" cy="583" r="3" fill="#207448" />
+    <rect x="1362" y="604" width="56" height="22" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="1375" cy="615" r="3" fill="#207448" />
+    <circle cx="1387" cy="615" r="3" fill="#207448" />
+  </g>
+
+  
+  <g>
+    <rect x="60" y="760" width="1480" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="90" y="802" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Client IP preservation</text>
+
+    
+    <rect x="90" y="825" width="1420" height="64" rx="32" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="865" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36" text-anchor="middle">L7: X-Forwarded-For or Forwarded (trust only from known proxies)</text>
+
+    
+    <rect x="90" y="905" width="1420" height="64" rx="32" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="945" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36" text-anchor="middle">L4: PROXY protocol v1 or v2</text>
+
+    
+    <rect x="90" y="985" width="1420" height="64" rx="32" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="1025" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36" text-anchor="middle">DSR and externalTrafficPolicy: Local avoid SNAT</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="1100" width="1480" height="70" rx="12" fill="#207448" />
+    <text x="800" y="1144" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Decide where TLS ends before anything else: it sets what the balancer can route on</text>
+  </g>
+</svg>

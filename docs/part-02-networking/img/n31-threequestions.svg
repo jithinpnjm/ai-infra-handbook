@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>The three questions of monitoring</title>
+  <desc>Infographic illustrating the three questions of monitoring: availability, health, and purpose metrics, along with USE and RED methods.</desc>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="88" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The three questions of monitoring</text>
+
+  
+
+  
+  <g id="question-1">
+    <rect x="60" y="140" width="890" height="210" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="114" cy="195" r="24" fill="#207448"/>
+    <text x="114" y="204" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 180 183 A 20 20 0 1 0 204 183"/>
+      <line x1="192" y1="172" x2="192" y2="194"/>
+    </g>
+    
+    
+    <text x="240" y="205" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Is it up?</text>
+    
+    
+    <text x="114" y="280" font-family="sans-serif" font-size="25" fill="#303a36">availability of devices, links, sessions and services</text>
+  </g>
+
+  
+  <g id="question-2">
+    <rect x="60" y="380" width="890" height="210" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="114" cy="435" r="24" fill="#207448"/>
+    <text x="114" y="444" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="192" cy="435" r="24"/>
+      <path d="M 174 435 L 182 435 L 188 423 L 194 447 L 199 429 L 203 435 L 210 435"/>
+    </g>
+    
+    
+    <text x="240" y="445" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Is it healthy?</text>
+    
+    
+    <text x="114" y="504" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="114" dy="0">errors, drops, saturation, latency,</tspan>
+      <tspan x="114" dy="36">temperature and power</tspan>
+    </text>
+  </g>
+
+  
+  <g id="question-3">
+    <rect x="60" y="620" width="890" height="230" rx="16" ry="16" fill="#fcf4eb" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <circle cx="114" cy="675" r="24" fill="#db8129"/>
+    <text x="114" y="684" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="192" cy="675" r="24"/>
+      <circle cx="192" cy="675" r="13"/>
+      <circle cx="192" cy="675" r="3" fill="#db8129"/>
+      <line x1="192" y1="645" x2="192" y2="655"/>
+      <line x1="192" y1="695" x2="192" y2="705"/>
+      <line x1="162" y1="675" x2="172" y2="675"/>
+      <line x1="212" y1="675" x2="222" y2="675"/>
+    </g>
+    
+    
+    <text x="240" y="685" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Is it doing its job?</text>
+    
+    
+    <text x="114" y="744" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="114" dy="0">the purpose metric: collective bandwidth and</tspan>
+      <tspan x="114" dy="36">job completion time, or inference latency and error rate</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="chip-use">
+    <rect x="1000" y="140" width="540" height="330" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1045" y="174" width="56" height="14" rx="4"/>
+      <rect x="1045" y="195" width="56" height="14" rx="4"/>
+      <rect x="1045" y="216" width="56" height="14" rx="4"/>
+      <line x1="1064" y1="174" x2="1064" y2="188"/>
+      <line x1="1083" y1="174" x2="1083" y2="188"/>
+      <line x1="1064" y1="195" x2="1064" y2="209"/>
+      <line x1="1083" y1="195" x2="1083" y2="209"/>
+      <line x1="1064" y1="216" x2="1064" y2="230"/>
+      <line x1="1083" y1="216" x2="1083" y2="230"/>
+    </g>
+    
+    
+    <text x="1045" y="285" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="1045" dy="0">USE: utilisation, saturation,</tspan>
+      <tspan x="1045" dy="38">errors, for each interface</tspan>
+      <tspan x="1045" dy="38">and queue</tspan>
+    </text>
+  </g>
+
+  
+  <g id="chip-red">
+    <rect x="1000" y="520" width="540" height="330" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="1073" cy="565" r="14"/>
+      <path d="M 1073 543 L 1073 549 M 1073 581 L 1073 587 M 1051 565 L 1057 565 M 1089 565 L 1095 565 M 1057 549 L 1062 554 M 1084 576 L 1089 581 M 1057 581 L 1062 576 M 1084 554 L 1089 549"/>
+    </g>
+    
+    
+    <text x="1045" y="650" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="1045" dy="0">RED: for services such as</tspan>
+      <tspan x="1045" dy="38">DNS, DHCP, load balancers</tspan>
+      <tspan x="1045" dy="38">and the monitoring pipeline</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="885" width="1480" height="70" rx="12" ry="12" fill="#207448"/>
+    <text x="800" y="930" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Start with the purpose metric</text>
+  </g>
+</svg>

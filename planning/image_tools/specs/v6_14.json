@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "14",
+  "name": "h14-prolog-epilog-timeline",
+  "title": "Where prolog and epilog run in one job",
+  "spec": "A horizontal timeline from left to right, drawn as one compute node lane headed Compute node (every node in the allocation). Boxes in order left to right with arrows between them: 1 Allocation of the job (box), 2 Prolog (box, subtitle runs as root on the node before the job step), 3 Job steps run (box), 4 Epilog (box, subtitle runs as root on every node when the allocation is released), 5 Node released (box). Number circles 1 to 5 above the boxes for the time order. A separate box above the timeline at the left, headed Controller host, labelled PrologSlurmctld and EpilogSlurmctld, with the note once per job, with a dotted line down to the allocation and release points. Below the Prolog box, an orange branch arrow labelled Prolog exits non-zero leads to a box labelled Node set to DRAIN, which leads to a box labelled Job requeued, with the note held unless nohold_on_prolog_fail is set. Below the Epilog box, a branch arrow labelled Epilog fails leads to a box labelled Node set to DRAIN. Grey note on the far right: PrologEpilogTimeout limits how long each script may run. No green takeaway bar.",
+  "anchor": "## 1. Prolog and epilog",
+  "alt": "A prolog runs before a job's steps and an epilog after the allocation is released, and a failing prolog drains the node.",
+  "cap": "The prolog runs before the job's steps on each node, and a failing prolog drains that node and requeues the job."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "14",
+  "name": "h14-health-check-flow",
+  "title": "How a health check drains a bad node",
+  "spec": "A top-to-bottom flow with a left-to-right row of checks. Top box labelled Slurm runs HealthCheckProgram every HealthCheckInterval, with a small note as root on compute nodes, chosen by HealthCheckNodeState, and CYCLE spreads the runs across the interval. An arrow down to a wide green container labelled Health check script, which holds six small check boxes in a row or two rows: GPU count (nvidia-smi -L), GPU Xid errors (dmesg), Free space in /tmp, Required mounts, Clock sync (chronyc), InfiniBand port state (ibstat). Each check box has a tick or cross marker. An arrow from the container to a diamond labelled Any check failed? Left branch labelled No leads to a box labelled Silent, log per node. Right branch labelled Yes leads to an orange-outlined box labelled scontrol update NodeName=... State=drain Reason=..., with the note the script runs this itself, with one combined reason. Under the drain box a small note: Operators read the reason with sinfo -R. Green takeaway bar at the bottom: Any action to be taken must be explicitly performed by the program.",
+  "anchor": "## 2. Health checks",
+  "alt": "A health-check script runs six checks, and when one fails it drains the node itself with a combined reason.",
+  "cap": "The health-check script runs its checks and drains the node itself, because Slurm does not drain a node just because a check failed."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "14",
+  "name": "h14-unkillable-escalation",
+  "title": "How Slurm escalates a stuck process",
+  "spec": "A horizontal row of four boxes, each with a green number circle (1 to 4) above it, joined by arrows left to right. Box 1: Process stuck in state D, ignores SIGKILL, waiting on uninterruptible I/O. Box 2: Wait UnkillableStepTimeout, default 60 seconds or five times MessageTimeout, whichever is larger. Box 3: Run UnkillableStepProgram, if set, as root on the node, collecting stack traces, lsof output, nvidia-smi output and hung mount information, and sending an alert. Box 4 (orange outline, the most important step): Drain the node to prevent future jobs from being scheduled on the node. Under the row, a box with a left-pointing arrow labelled stuck causes: a hung network file system, a dead NIC with outstanding RDMA operations, or a GPU Xid error. Green takeaway bar at the bottom: Fix the underlying cause, and plan on rebooting the node.",
+  "anchor": "## 4. Unkillable steps and stuck jobs",
+  "alt": "A stuck process that ignores SIGKILL leads Slurm to wait, run a diagnostic program and drain the node.",
+  "cap": "When a process ignores SIGKILL, Slurm waits, runs a diagnostic program, and drains the node so no new jobs land on it."
+ }
+]

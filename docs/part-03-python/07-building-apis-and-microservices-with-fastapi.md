@@ -68,17 +68,9 @@ An event loop is worth a plain definition, because the rest of the chapter depen
 
 FastAPI is built on Starlette, an ASGI toolkit, and on pydantic for validation. On top of those two, it adds route declarations, dependency injection and automatic OpenAPI.
 
-```mermaid
-flowchart LR
-  C["Client / Ingress / API gateway"] --> S["ASGI server\nuvicorn (uvloop, httptools)"]
-  S --> M["Middleware stack\n(CORS, auth, logging, metrics, gzip)"]
-  M --> R["Router: match path + method"]
-  R --> D["Dependencies (Depends)\nauth, settings, DB session"]
-  D --> V["Validate request\n(pydantic)"]
-  V --> H["Endpoint function\nasync def or def"]
-  H --> O["Validate/serialize response\n(response_model)"]
-  O --> C
-```
+![Architecture: from WSGI to ASGI](./img/m3-07-1.svg)
+
+*Figure 3.7.2. Architecture: from WSGI to ASGI, as a diagram.*
 
 An `async def` endpoint runs directly on the event loop. That suits code that awaits non-blocking I/O, such as an `httpx.AsyncClient` or an async database driver. The cost is that one blocking call or heavy CPU job stalls every other request, because there is only ever one thread to stall. A call is blocking when it holds the thread until it finishes, and `time.sleep` is the simplest example.
 
@@ -164,7 +156,7 @@ That is routing in one incident. A route is a rule that says which function answ
 
 ![Path, query, header, cookie and body](./img/s07-params.svg)
 
-*Figure 3.7.2. Request parameters: the same request carries data in the path, query string, headers, cookies and body.*
+*Figure 3.7.3. Request parameters: the same request carries data in the path, query string, headers, cookies and body.*
 
 A request can carry its input in several places: the URL path, the query string, headers, cookies, a form or a JSON body. You declare each input as a function parameter, and FastAPI finds the right source for it. That is the whole trick, and it is worth reading the code below slowly once.
 
@@ -207,7 +199,7 @@ Decide which of your routes create resources, because those are the ones that ne
 
 ![Request and response models](./img/s07-models.svg)
 
-*Figure 3.7.3. Pydantic models validate incoming data and filter outgoing data.*
+*Figure 3.7.4. Pydantic models validate incoming data and filter outgoing data.*
 
 Pydantic models define the schema of your API, and a schema is simply a description of what the data must look like. Keep three kinds of model apart: input, stored and output. In this chapter, `NodeIn`, `NodeDB` and `NodeOut` play those three roles. The book uses the same idea in chapter 3 with `Todo`, `TodoItem` and `class TodoItems(BaseModel): todos: List[TodoItem]`. Its route is declared as `@todo_router.get("/todo", response_model=TodoItems)`, so `retrieve_todo()` returns only the `TodoItem` descriptions and hides the internal `id` fields.
 
@@ -244,7 +236,7 @@ You can annotate a return type directly, as in `-> JobOut`, and FastAPI uses it 
 
 ![How Depends works](./img/s07-depends.svg)
 
-*Figure 3.7.4. Dependency injection: FastAPI calls the dependency and passes the result to your handler.*
+*Figure 3.7.5. Dependency injection: FastAPI calls the dependency and passes the result to your handler.*
 
 By the third resource you add, the same four lines sit at the top of every handler: read the settings, open a database session, check the API key, find the current user. The code works, and it is one careless copy away from a handler that forgets the key check.
 
@@ -290,7 +282,7 @@ A dependency added through `dependencies=[...]` runs without injecting a value. 
 
 ![Application lifespan](./img/s07-lifespan.svg)
 
-*Figure 3.7.5. Lifespan: code before the yield runs at startup and code after it runs at shutdown.*
+*Figure 3.7.6. Lifespan: code before the yield runs at startup and code after it runs at shutdown.*
 
 Load your model and open your HTTP client before the first request. Close them cleanly on shutdown. Doing this at startup means the first real user does not pay for the work, and doing it at shutdown means no connection is left half open.
 
@@ -320,7 +312,7 @@ Move expensive setup into lifespan, so it runs once per process rather than once
 
 ![Middleware, validation and the handler](./img/s07-middleware.svg)
 
-*Figure 3.7.6. A request passes through middleware and validation before the handler, and errors become clean responses.*
+*Figure 3.7.7. A request passes through middleware and validation before the handler, and errors become clean responses.*
 
 A client asks for a node that was decommissioned last month. The response is a 500 with a Python traceback, the dashboard shows a blank panel, and the only way to find that request in the logs is to guess the timestamp. Nobody learns anything, and the operator has to reproduce the problem from scratch.
 
@@ -502,7 +494,7 @@ That is the general problem. A client submits a training job, and the API has to
 
 ![Background tasks versus queues](./img/s07-background.svg)
 
-*Figure 3.7.7. Background tasks suit small jobs, and a queue with a worker suits heavy or durable work.*
+*Figure 3.7.8. Background tasks suit small jobs, and a queue with a worker suits heavy or durable work.*
 
 `BackgroundTasks` runs a function after the response is sent, in the same process. It suits quick, fire-and-forget work, such as sending a notification. Its work is lost on a restart, so it is unsuitable for long or critical jobs. The distinction is not about size. It is about what you are willing to lose.
 

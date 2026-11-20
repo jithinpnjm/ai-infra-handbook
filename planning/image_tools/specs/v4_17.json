@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "17",
+  "name": "a17-reload-or-reboot",
+  "title": "Reload the GPU modules when you can, and fall back to a reboot when a holder blocks the unload",
+  "spec": "A top-down flow drawn left to right with numbered steps, joined by solid arrows. Start box at the left titled Driver upgrade, icon gear, with the note: decide reload or reboot before the upgrade starts. Step 1 box: Stop the dependent services, icon window, a sub-line listing DCGM, persistenced, exporters and containers. Step 2 box: Unload the modules, icon chip, monospace text: nvidia_uvm, nvidia_drm, nvidia_modeset, nvidia, with the note in order from the top of the stack down. A decision diamond after step 2 labelled Unload succeeds? Yes arrow goes right to Step 3 box: Load the new modules with modprobe, icon shield, then to an end box titled Node stays up. No arrow goes down from the diamond to a box titled Find the holders, icon magnifier, with monospace text: lsof /dev/nvidia* or fuser -v /dev/nvidia*. From Find the holders, an arrow goes right to a decision diamond labelled Still fails? Yes arrow goes right to a box titled Reboot, icon power button, drawn with the orange outline, with the note: slower, but leaves no half-unloaded state. The No arrow from Still fails? goes back up to Step 3 box. Number circles 1, 2, 3 on steps 1 to 3. Monospace text for the module names and commands. No takeaway bar.",
+  "anchor": "## 4. Reboots, long tasks and idempotent upgrades",
+  "alt": "Modules are unloaded top down and reloaded, and when a process holds a device open the node falls back to a reboot.",
+  "cap": "A module reload avoids a reboot when nothing holds the device, and a reboot is the safe fallback when the unload still fails."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "17",
+  "name": "a17-drain-patch-resume",
+  "title": "Drain, patch, validate and resume one node at a time",
+  "spec": "A left-to-right workflow with numbered steps in time order, joined by solid arrows. A band above the flow, labelled serial, shows the batch sizes in three small boxes: 1 node first as the canary, then 5%, then 10%. Step 1 box, icon gate or stop sign: Drain from Slurm, with monospace text scontrol update NodeName=... State=DRAIN. Step 2 box, icon clock: Wait for jobs to finish, with monospace text squeue -h -w ... repeated until empty. Step 3 box, icon gear: Apply updates, with two stacked sub-boxes labelled import_role nvidia_driver and gpu_validate quick. A decision diamond after step 3 labelled Validation passes? Yes arrow goes right to step 4 box, icon checkmark: Return to service, with monospace text scontrol update NodeName=... State=RESUME. No arrow goes down from the diamond to a red-outlined box, drawn in the orange outline, titled rescue: leave node DRAINED, with the sub-line: then fail, requires investigation. Under the rescue box, a small note: a drained node keeps its running jobs but takes no new ones. Under the whole flow, a note: max_fail_percentage 3 stops the rollout past 3 percent failures. No takeaway bar.",
+  "anchor": "## 6. Day-2: drain, patch, validate, resume",
+  "alt": "Each node is drained, waits for its jobs, is patched and validated, then returns to service, and stays drained if validation fails.",
+  "cap": "A node returns to Slurm only after its jobs finish and validation passes, and a failed node stays drained for investigation."
+ }
+]

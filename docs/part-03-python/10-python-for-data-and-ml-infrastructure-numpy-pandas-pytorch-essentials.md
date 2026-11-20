@@ -40,6 +40,10 @@ This chapter builds on 3.1 to 3.6, which cover the Python core, generators and c
 
 ## 1. NumPy: the array model
 
+![A NumPy array is memory plus metadata](./img/s10-ndarray.svg)
+
+*Figure 3.10.1. A NumPy array is a block of typed memory plus dtype, shape and strides that say how to read it.*
+
 Why does transposing a huge array cost almost nothing, while a small change to its layout forces a full copy? Picture a machine with plenty of RAM. A transpose returns instantly. Then you change the same array's element type, and the machine grinds while it copies gigabytes. None of the numbers changed, so what made the difference? The answer sits in how a NumPy array is stored in memory.
 
 A NumPy `ndarray` is two things wearing one name. The first is a block of typed memory, usually contiguous, holding the actual bits. The second is a small bundle of metadata that says how to read that block. The metadata has three parts. `dtype` is the element type, so it says how many bytes each number takes. `shape` says how many elements lie along each axis. `strides` says how many bytes to step to move one place along each axis.
@@ -117,6 +121,10 @@ pandas runs on a single thread by default, and that one thread sets the ceiling 
 
 ### Columnar formats: Parquet and Arrow
 
+![Row versus columnar storage](./img/s10-columnar.svg)
+
+*Figure 3.10.2. Columnar formats let a query read only the columns it needs.*
+
 Here is a picture that makes the difference obvious. Imagine a report printed with one page per row, every column of that row sitting together. To answer a question about a single column, you would flip through every page. That is a CSV. A columnar file prints one page per column instead, so you pick up the column you need and ignore the rest.
 
 Parquet is that second kind of file, compressed, columnar, and stored on disk. It stores data in row groups with per-column statistics, and it supports predicate pushdown. So reading three columns out of fifty reads only those bytes. Prefer Parquet with zstd or snappy over CSV or JSON for any dataset beyond toy size. Choose row-group sizes of roughly 128 MB to 1 GB per file, because many tiny files hurt object stores and metadata services. Partition directories by low-cardinality keys such as date, but do it with care.
@@ -148,12 +156,9 @@ if torch.cuda.is_available():
 
 The print line shows what this tensor costs: 67.1 MB for a 4096 by 4096 `float32` matrix on the CPU. The diagram below traces one batch from storage to the optimiser step. Each arrow is a hand-off, and each hand-off is somewhere the pipeline can stall.
 
-```mermaid
-flowchart LR
-    Storage["Storage: Parquet / WebDataset / np.memmap"] -->|"DataLoader num_workers=8<br/>(OMP_NUM_THREADS=1)"| HostRAM["Host DRAM: Pinned Memory<br/>(pin_memory=True, /dev/shm)"]
-    HostRAM -->|"PCIe / NVLink-C2C DMA<br/>to(dev, non_blocking=True)"| HBM["GPU HBM: Weights (2B) + Grads (2B)<br/>+ FP32 Adam (12B) = 16B/param + Activations"]
-    HBM -->|"Async CUDA Kernels<br/>(torch.autocast bf16, torch.compile)"| Step["Forward -> Backward -> clip_grad_norm_ -> opt.step()"]
-```
+![Tensors and devices](./img/m3-10-1.svg)
+
+*Figure 3.10.3. Tensors and devices, as a diagram.*
 
 Three behaviours of tensors cause most of the surprises in infrastructure work. Take them one at a time.
 
@@ -170,6 +175,10 @@ Interop is straightforward once you know the rule. `torch.from_numpy(arr)` share
 Decide where each tensor lives before you write the loop. Then keep the GPU busy with large, infrequent transfers.
 
 ### 3.2 Autograd and modules
+
+![The PyTorch training step](./img/s10-trainloop.svg)
+
+*Figure 3.10.4. Autograd: the forward pass records a graph, backward fills gradients, and the optimizer updates the weights.*
 
 Autograd is the part of PyTorch that remembers what you did. It records the operations on tensors that have `requires_grad=True`, in a dynamic graph built as the code runs. `loss.backward()` then computes gradients by reverse-mode differentiation, and it accumulates them into `.grad`. `nn.Module` composes layers and tracks their parameters. Optimisers such as SGD, Adam and AdamW update the parameters from those gradients.
 
@@ -201,6 +210,10 @@ Two mode switches change how the model behaves, and forgetting either one is a c
 
 ### 3.3 Where the memory goes
 
+![Training memory per parameter](./img/s10-memory.svg)
+
+*Figure 3.10.5. Training memory: about 16 bytes per parameter before activations, which is why large models need sharding.*
+
 Training with Adam in mixed precision needs memory for four things per parameter, and it helps to count them like a shopping list. Weights take 2 bytes in bf16, plus a 4-byte fp32 master copy. Gradients take 2 to 4 bytes. The optimiser states hold two fp32 moments, which is 8 bytes. Together that is about 16 bytes per parameter before activations.
 
 That number explains a familiar launch-day surprise. Suppose your model fits on paper, but the first real step runs out of memory. Take a 7-billion-parameter model as a worked example. At 16 bytes per parameter, the static state comes to 7 * 10^9 * 16 B = 112 GB. That is more than one 80 GB GPU can hold, before any activations are added. This is why sharding exists, through FSDP or ZeRO (Part 14).
@@ -230,6 +243,10 @@ The `GradScaler` is needed for fp16 and is unnecessary for bf16. The accumulatio
 `torch.compile(model)` uses TorchInductor and Triton to fuse operations. That reduces launch overhead and memory traffic. It costs compile time, it can hit graph breaks, and it recompiles when shapes change. `torch.backends.cudnn.benchmark = True` autotunes convolution algorithms for fixed shapes. Fused optimisers, set with `fused=True`, and flash attention through `F.scaled_dot_product_attention` are standard speed-ups.
 
 ### 3.5 Data loading: usually the real bottleneck
+
+![Overlapping data loading with GPU work](./img/s10-dataload.svg)
+
+*Figure 3.10.6. Data loading: worker processes and prefetching overlap input work with GPU compute so the GPU does not idle.*
 
 This is the bottleneck the heading names, and it is worth learning properly. Watch a training run for a minute, and the GPUs sit near idle while the CPU workers are busy. When you see that, the data loader is usually the cause. `torch.utils.data.Dataset` defines `__len__` and `__getitem__`, so it is the object that knows how to fetch one sample. `DataLoader` batches the samples, using worker processes to do the work.
 

@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "10",
+  "name": "r10-staged-active",
+  "title": "A staged update sits in a spare flash area until a reset makes it active",
+  "spec": "Two large panels side by side with an arrow from the left panel to the right panel. Left panel titled Before the reset, right panel titled After the reset. Each panel shows one component box labelled Component (for example HostBIOS_0 or a GPU) containing two stacked flash slots. Left panel: top slot, green, labelled Active slot, sub-line Old version, still running; bottom slot, light grey, labelled Spare area, sub-line New version, written and waiting; a small status tag AwaitToActivate on the component box. Arrow between the panels, labelled with the reset, with monospace text Manager.Reset or ComputerSystem.Reset or AC power cycle. Right panel: top slot, green, labelled Active slot, sub-line New version, now running; the status tag reads Active. Orange note under the left panel, the single key item: the inventory keeps showing the old version until the right reset runs. Small grey note under the arrow: a wrong reset leaves the new version inactive. No number circles and no takeaway bar.",
+  "anchor": "## 5. Staged is not active: activation",
+  "alt": "A staged firmware image waits in a spare area and only runs after the matching reset.",
+  "cap": "A staged firmware image waits in a spare area, and the old version keeps running until the matching reset makes the new one active."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "10",
+  "name": "r10-waves",
+  "title": "A fleet rollout moves in waves, and each wave has its own stop check",
+  "spec": "A left-to-right row of four wave blocks, each taller and wider than the one before, joined by right-pointing arrows in time order, each block with a green number circle (1, 2, 3, 4). Wave 1 small block, title Canary node, sub-line one machine updated first to see what the update does on your hardware. Wave 2 block, title Small group, sub-line 1 rack of 8 nodes. Wave 3 block, title SU, sub-line 1 SU of 32 nodes, with SU spelled out as scalable unit. Wave 4 widest block, title Remaining SUs, sub-line everything left. Under each arrow between two waves, a small label Stop and look. Below the whole row, one wide box with an orange border, the single key item, titled Stop conditions, with three short lines: a failed stage; a version that did not change; a node that does not return to the scheduler. Connect the stop conditions box to the arrows with thin grey lines (no arrowheads). Monospace only for the node count tokens if needed. No takeaway bar.",
+  "anchor": "## 8. A safe fleet procedure",
+  "alt": "A rollout goes from one canary node to a rack, then an SU, then the rest, pausing to check at each step.",
+  "cap": "A fleet rollout moves in waves from one canary node to the rest of the cluster, and each wave stops when a check fails."
+ }
+]

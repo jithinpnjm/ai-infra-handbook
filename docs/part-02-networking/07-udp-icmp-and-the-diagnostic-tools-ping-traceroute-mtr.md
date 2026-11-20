@@ -43,6 +43,10 @@ Treat that list as the test you should be able to pass once you have read the ch
 
 ## 1. UDP: the minimal transport
 
+![UDP header](./img/n07-udp.svg)
+
+*Figure 2.7.1. UDP is an 8-byte header with no connection, ordering or retransmission.*
+
 Imagine sending a short metrics datagram, the kind StatsD uses, to a collector on another host. You want the packet to leave now, and you do not want a handshake in front of it. A handshake would take longer than the message is worth. UDP, defined in RFC 768, was built for that kind of message. It adds only two things to IP: ports and an optional checksum. A **datagram** is simply one self-contained message that travels alone, like a postcard.
 
 ```text
@@ -80,6 +84,10 @@ iperf3 -s ; iperf3 -c 10.0.0.5 -u -b 1G -l 1400 -t 10     # UDP throughput, loss
 `iperf3 -u` reports loss and jitter at the receiver, so it shows you the rate at which a path starts to drop. Jitter is the variation in delay between packets. Run the test at the rate your application really uses, or the loss you measure will not mean much. A full-rate UDP test that shows 0% loss in a lab but more than 1% in production usually points at a policer, a shallow buffer or an unexpected bottleneck link on the path.
 
 ## 2. ICMP: the network layer's error and diagnostic channel
+
+![Common ICMP types](./img/n07-icmptypes.svg)
+
+*Figure 2.7.2. Some ICMP messages such as fragmentation needed and Packet Too Big are required for the network to work.*
 
 Suppose a firewall team wants to block "all ICMP" to tighten things up. It sounds sensible, because ping is the thing people associate with ICMP. Before you agree, you need to know what ICMP is for. ICMP (RFC 792; ICMPv6 RFC 4443) rides directly on IP as protocol 1, and ICMPv6 uses next-header 58. It reports errors about *other* packets, and it carries diagnostic queries. Each message has a type and a code. For errors, it quotes the start of the offending packet, so the sender can match the error to a flow. Think of it as the network's way of returning a letter marked "undeliverable, and here is why".
 
@@ -162,23 +170,13 @@ A user says the service is slow, and you suspect a router somewhere along the pa
 
 ![How traceroute finds each hop](./img/n07-fig1-traceroute.jpg)
 
-*Figure 2.7.1. Each probe has a larger TTL; the router where it expires replies with Time exceeded.*
+*Figure 2.7.3. Each probe has a larger TTL; the router where it expires replies with Time exceeded.*
 
 The diagram below shows three probes, one TTL at a time.
 
-```mermaid
-sequenceDiagram
-  participant H as Host
-  participant R1 as Router 1
-  participant R2 as Router 2
-  participant D as Destination
-  H->>R1: probe TTL=1
-  R1-->>H: ICMP time exceeded (from R1)
-  H->>R2: probe TTL=2 (R1 forwards, TTL→1)
-  R2-->>H: ICMP time exceeded (from R2)
-  H->>D: probe TTL=3
-  D-->>H: port unreachable / echo reply / SYN-ACK (end)
-```
+![traceroute, tracepath and mtr](./img/m2-07-1.svg)
+
+*Figure 2.7.4. traceroute, tracepath and mtr, as a diagram.*
 
 These are the variants you will use most. Each one sends a different kind of probe, and that matters when a firewall treats the probes differently.
 
@@ -224,19 +222,15 @@ The diagram below shows the exchange when a router has a 1400-byte egress link.
 
 Follow the story in the diagram step by step. The sender builds a 1500-byte packet with DF set and sends it. The router sees that its next link carries only 1400 bytes, so it cannot forward the packet and must not split it. It discards the packet and sends back a small ICMP message that says "too big, the limit here is 1400". The sender reads that message, remembers 1400 for this destination, and sends the data again in smaller pieces. The whole exchange costs one lost packet and one round trip, after which the transfer runs normally.
 
-```mermaid
-sequenceDiagram
-  participant A as Sender (MTU 1500)
-  participant R as Router (egress MTU 1400)
-  participant B as Receiver
-  A->>R: 1500-byte packet, DF=1
-  R-->>A: ICMP type 3 code 4 "need frag", next-hop MTU 1400
-  Note over A: cache path MTU 1400 for B, retransmit smaller segments
-  A->>R: 1400-byte packets
-  R->>B: forwarded
-```
+![MTU, MSS, fragmentation and Path MTU Discovery](./img/m2-07-2.svg)
+
+*Figure 2.7.5. MTU, MSS, fragmentation and Path MTU Discovery, as a diagram.*
 
 ### The PMTU black hole
+
+![PMTU black hole symptoms](./img/n07-blackhole.svg)
+
+*Figure 2.7.6. With the ICMP error blocked, the handshake and small requests work but large transfers hang.*
 
 Now suppose the ICMP error is blocked. The sender never learns the limit, like a driver who is never told the bridge ahead is too low. The TCP handshake still succeeds, because its packets are tiny, and small requests pass as well. But any packet above the path MTU is dropped silently and retransmitted forever. So large transfers hang. TLS handshakes with big certificates (the ServerHello flight), SSH key exchange and `scp` of big files hang the same way. Watch for these symptoms: `ssh` connects but hangs after `SSH2_MSG_KEXINIT`, `curl https://...` hangs after `Connected`, a website loads only partly, `git clone` stalls, or a small `ping` works while `ping -s 1472 -M do` fails.
 
@@ -302,6 +296,10 @@ ip -s -s neigh ; nstat -az | grep -i icmp         # ICMP counters: InDestUnreach
 Pick the tool that matches the question you need answered, and keep probing to networks you control.
 
 ## 7. A layered reachability checklist
+
+![Reachability checklist](./img/n07-checklist.svg)
+
+*Figure 2.7.7. Test one layer at a time from the interface up to the application, then look at the far end.*
 
 Picture a node that cannot reach a service on another subnet. The temptation is to jump straight to the application logs. Work through the layers in order instead. Each step isolates one layer, and skipping ahead wastes your time. The list is the whole chapter in the order you would use it on a bad day.
 

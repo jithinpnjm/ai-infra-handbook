@@ -46,14 +46,9 @@ Why accept the extra complexity? The aim is to separate multiple traffic flows, 
 
 The easiest way to understand a tunnel is to follow one packet through it. Read the diagram first, then the numbered steps that describe what each router actually does.
 
-```mermaid
-flowchart LR
-  A["Host A"] --> C["Router C\n(tunnel headend)"]
-  C --> E["Router E\n(underlay transit)"]
-  E --> H["Router H\n(tunnel tailend)"]
-  H --> M["Host M"]
-  C -. "virtual link [C,H] (tunnel)" .-> H
-```
+![A packet through a tunnel](./img/m2-17-1.svg)
+
+*Figure 2.17.1. A packet through a tunnel, as a diagram.*
 
 Follow one packet from Host A to Host M. The routing table of Router C says the best path to M goes through a tunnel, a virtual interface, toward H. To Router C, the tunnel looks like any other interface, with a single router on the far end.
 
@@ -93,6 +88,10 @@ Before you pick an encapsulation, check whether the underlay hardware can parse 
 
 ## 2. Encapsulation options
 
+![Encapsulation overhead](./img/n17-encapoverhead.svg)
+
+*Figure 2.17.2. Each tunnel type adds a different number of header bytes, and only UDP-based ones give ECMP something to hash.*
+
 Picture two parcel services that both promise delivery across the same country. One sticks a long tracking label on each parcel, and the sorting centre reads that label at every hub to choose a lane. The other seals everything inside an unlabelled envelope, so every parcel looks identical from outside. The first service spreads its parcels across many lanes. The second sends them all down one lane, however many lanes exist. That comparison is the whole story of encapsulation and hashing. Keep it in mind as the table below lists the options one by one.
 
 Imagine buying a plain envelope and discovering that the label you wanted to stick on it no longer fits. Each encapsulation adds a different amount of overhead, and each hides different headers from the network. When the header grows, the payload you can carry shrinks. Compare the options in the table before you choose one.
@@ -120,7 +119,7 @@ Picture hypervisors spread across a routed network. Each virtual machine must si
 
 ![VXLAN encapsulation](./img/n17-fig1-vxlan.jpg)
 
-*Figure 2.17.1. VXLAN carries the original Ethernet frame inside UDP, labelled by a VNI.*
+*Figure 2.17.3. VXLAN carries the original Ethernet frame inside UDP, labelled by a VNI.*
 
 ```text
 | Outer Eth | Outer IP (VTEP src → VTEP dst) | UDP (src=hash, dst 4789) | VXLAN hdr (flags, VNI 24b) | Inner Ethernet frame | payload |
@@ -167,6 +166,10 @@ To debug, run `tcpdump -ni eth0 -vv udp port 4789`. Wireshark decodes the VXLAN 
 
 ## 4. EVPN: a control plane for Ethernet and IP overlays
 
+![EVPN underlay and overlay](./img/n17-evpnlayers.svg)
+
+*Figure 2.17.4. The underlay gives VTEPs IP reachability, and EVPN over BGP tells each VTEP where hosts live.*
+
 Suppose a virtual machine is live-migrated from one rack to another during a busy afternoon. Its users notice a pause of a few seconds, and the network team wants to know why. Without a control plane, the new leaf has to wait for traffic to flood, or for an ARP timeout, before the rest of the fabric learns where the machine now sits. With EVPN, the new leaf announces the machine's MAC and IP to every other leaf as soon as the machine appears. Read the rest of this section as the answer to that afternoon: what the announcement looks like, which route types carry it, and how the other leaves act on it.
 
 A large VXLAN fabric cannot afford to flood every address it has not yet learned. With thousands of hosts, the shouting in the office never stops. EVPN fixes this by letting BGP tell every VTEP where each MAC and IP address lives, so a switch can look up the answer instead of asking everybody. EVPN, BGP Ethernet VPN, is defined in RFC 7432, and RFC 8365 applies it to VXLAN. It uses MP-BGP with the address family `l2vpn evpn`, and it is the standard overlay control plane in data centres.
@@ -178,6 +181,10 @@ The overlay BGP sessions usually run as eBGP between leaves and spines, over the
 Two names come up constantly. An EVI, or EVPN instance, is the MAC-VRF for an L2 segment, and the IP-VRF handles L3 routing. Two values make the routes work. The route distinguisher, RD, makes routes unique across VRFs, so two tenants with the same prefix do not collide. The route target, RT, is an extended community that selects which VRFs import a route. If the RD is the name on the envelope, the RT is the mailing list it is sent to.
 
 ### Route types
+
+![EVPN route types](./img/n17-evpnroutes.svg)
+
+*Figure 2.17.5. Type 2 carries host reachability, while types 1 and 4 handle multihoming, 3 builds the BUM list and 5 carries prefixes.*
 
 EVPN uses five route types. The table lists them. Type 2 is the heart of host reachability for both L2 and L3.
 
@@ -239,6 +246,10 @@ As you verify the fabric, work in this order, from the bottom layer up. Confirm 
 
 ### Common EVPN/VXLAN pitfalls
 
+![EVPN pitfalls checklist](./img/n17-evpnpitfalls.svg)
+
+*Figure 2.17.6. Most EVPN faults come from a short list of MTU, advertisement, route target and hashing mistakes.*
+
 Picture a fabric that passes every ping test and still drops large transfers between two racks. The small pings fit inside the underlay, and the large transfers do not. The list below is the set of usual suspects. The first two checks, the MTU and the VTEP loopbacks, catch the most cases, so start there.
 
 Most EVPN faults come from a short list:
@@ -286,13 +297,9 @@ The path is a list of segments, and each segment has a SID. A node SID is a glob
 
 The diagram shows a diamond of four routers. The ingress router A wants to reach D through C, not through B. It pushes the node SIDs for C and D, and the transit router C removes its own SID.
 
-```mermaid
-flowchart LR
-  A["A: ingress, pushes SIDs 103 then 104"] --> B[B]
-  A --> C["C: node SID 103"]
-  B --> D["D: node SID 104"]
-  C --> D
-```
+![Segment routing and SD-WAN in brief](./img/m2-17-2.svg)
+
+*Figure 2.17.7. Segment routing and SD-WAN in brief, as a diagram.*
 
 Follow the packet through the diamond. Router A pushes two labels, 103 on top and 104 underneath, because it wants the packet to pass through C on the way to D. Router B is not on the chosen path, so the packet never goes near it. Router C looks at the top label, sees 103, which is its own node SID, and removes it. What remains on top is 104, which tells the next router to head for D. Router D sees its own label on top, removes it, and the packet is a normal IP packet by the time it reaches the destination. Each router reads only the top of the stack, which is why the transit routers need no memory of the flow.
 

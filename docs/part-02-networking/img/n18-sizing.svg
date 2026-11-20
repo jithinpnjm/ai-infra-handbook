@@ -1,0 +1,251 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Sizing a 3-stage fabric</title>
+  <desc>Visual infographic sizing a 3-stage Clos network fabric showing mathematical formulas, a leaf-spine split drawing, and a worked 64-port switch example.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Sizing a 3-stage fabric</text>
+
+  
+
+  
+  <rect x="50" y="115" width="720" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 135)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 14 20 L 42 20 M 14 36 L 42 36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M 28 12 L 28 44" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="148" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">formulas for R-port switches at 1:1</text>
+
+  
+  
+  <g transform="translate(75, 210)">
+    <rect x="0" y="0" width="670" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="18" y="17" width="48" height="36" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="30" cy="35" r="4" fill="#207448" />
+    <circle cx="42" cy="35" r="4" fill="#207448" />
+    <circle cx="54" cy="35" r="4" fill="#207448" />
+    <text x="88" y="45" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">spines = R/2</text>
+  </g>
+
+  
+  <g transform="translate(75, 295)">
+    <rect x="0" y="0" width="670" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="18" y="17" width="48" height="36" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="30" cy="35" r="4" fill="#207448" />
+    <circle cx="42" cy="35" r="4" fill="#207448" />
+    <circle cx="54" cy="35" r="4" fill="#207448" />
+    <text x="88" y="45" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">max leaves = R</text>
+  </g>
+
+  
+  <g transform="translate(75, 380)">
+    <rect x="0" y="0" width="670" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="18" y="15" width="48" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="18" y="40" width="48" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="26" y1="25" x2="32" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="26" y1="50" x2="32" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="88" y="48" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">max servers = R x R/2 = R^2/2</text>
+  </g>
+
+  
+  <rect x="50" y="495" width="720" height="405" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(130, 520)">
+    <rect x="0" y="0" width="160" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="25" cy="23" r="4" fill="#207448" />
+    <circle cx="45" cy="23" r="4" fill="#207448" />
+    <circle cx="65" cy="23" r="4" fill="#207448" />
+    <circle cx="85" cy="23" r="4" fill="#207448" />
+    <circle cx="105" cy="23" r="4" fill="#207448" />
+    <circle cx="125" cy="23" r="4" fill="#207448" />
+  </g>
+
+  <g transform="translate(370, 520)">
+    <rect x="0" y="0" width="160" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="25" cy="23" r="4" fill="#207448" />
+    <circle cx="45" cy="23" r="4" fill="#207448" />
+    <circle cx="65" cy="23" r="4" fill="#207448" />
+    <circle cx="85" cy="23" r="4" fill="#207448" />
+    <circle cx="105" cy="23" r="4" fill="#207448" />
+    <circle cx="125" cy="23" r="4" fill="#207448" />
+  </g>
+
+  
+  <path d="M 270 655 L 210 568" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 390 655 L 450 568" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(85, 655)">
+    
+    <rect x="0" y="0" width="650" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+    
+    <line x1="20" y1="55" x2="630" y2="55" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" />
+
+    
+    <g fill="#207448">
+      <circle cx="40" cy="28" r="4" />
+      <circle cx="56" cy="28" r="4" />
+      <circle cx="72" cy="28" r="4" />
+      <circle cx="88" cy="28" r="4" />
+      <circle cx="562" cy="28" r="4" />
+      <circle cx="578" cy="28" r="4" />
+      <circle cx="594" cy="28" r="4" />
+      <circle cx="610" cy="28" r="4" />
+
+      <circle cx="40" cy="82" r="4" />
+      <circle cx="56" cy="82" r="4" />
+      <circle cx="72" cy="82" r="4" />
+      <circle cx="88" cy="82" r="4" />
+      <circle cx="562" cy="82" r="4" />
+      <circle cx="578" cy="82" r="4" />
+      <circle cx="594" cy="82" r="4" />
+      <circle cx="610" cy="82" r="4" />
+    </g>
+
+    
+    <text x="325" y="42" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">half down to servers / half up to spines</text>
+    <text x="325" y="90" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">50% uplinks to spines  |  50% downlinks to servers</text>
+  </g>
+
+  
+  <path d="M 210 765 L 210 820" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 320 765 L 320 820" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 450 765 L 450 820" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(130, 825)">
+    <rect x="0" y="0" width="115" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="20" cy="25" r="5" fill="#207448" />
+    <line x1="38" y1="25" x2="95" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <g transform="translate(295, 825)">
+    <rect x="0" y="0" width="115" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="20" cy="25" r="5" fill="#207448" />
+    <line x1="38" y1="25" x2="95" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <g transform="translate(460, 825)">
+    <rect x="0" y="0" width="115" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="20" cy="25" r="5" fill="#207448" />
+    <line x1="38" y1="25" x2="95" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+
+  
+
+  <rect x="810" y="115" width="740" height="785" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(835, 135)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="16" cy="18" r="6" fill="#207448" />
+    <circle cx="40" cy="18" r="6" fill="#207448" />
+    <circle cx="16" cy="38" r="6" fill="#207448" />
+    <circle cx="40" cy="38" r="6" fill="#207448" />
+    <line x1="16" y1="18" x2="40" y2="38" stroke="#207448" stroke-width="2" />
+    <line x1="40" y1="18" x2="16" y2="38" stroke="#207448" stroke-width="2" />
+  </g>
+
+  
+  <text x="905" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">worked example with 64-port 400G switches</text>
+
+  
+  <g transform="translate(835, 215)">
+    <rect x="0" y="0" width="690" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="25" y="32" width="60" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="25" y1="60" x2="85" y2="60" stroke="#207448" stroke-width="3" />
+    <circle cx="43" cy="46" r="4" fill="#207448" />
+    <circle cx="67" cy="46" r="4" fill="#207448" />
+    <circle cx="43" cy="74" r="4" fill="#207448" />
+    <circle cx="67" cy="74" r="4" fill="#207448" />
+
+    <text x="110" y="58" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">32 spines</text>
+    <text x="110" y="95" font-family="sans-serif" font-size="24" fill="#303a36">Formula: R / 2 = 64 / 2</text>
+  </g>
+
+  
+  <g transform="translate(835, 360)">
+    <rect x="0" y="0" width="690" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="25" y="32" width="60" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="45" y1="32" x2="45" y2="88" stroke="#207448" stroke-width="3" />
+    <line x1="65" y1="32" x2="65" y2="88" stroke="#207448" stroke-width="3" />
+
+    <text x="110" y="58" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">up to 64 leaves</text>
+    <text x="110" y="95" font-family="sans-serif" font-size="24" fill="#303a36">Formula: R = 64 maximum leaf switches</text>
+  </g>
+
+  
+  <g transform="translate(835, 505)">
+    <rect x="0" y="0" width="690" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(25, 45)">
+      <rect x="0" y="0" width="60" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 30 45 L 30 11" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M 20 21 L 30 11 L 40 21" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    <text x="110" y="65" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">each leaf 32 downlinks + 32 uplinks</text>
+    <text x="110" y="105" font-family="sans-serif" font-size="24" fill="#303a36">1:1 non-blocking subscription ratio per leaf switch</text>
+  </g>
+
+  
+  <g transform="translate(835, 675)">
+    <rect x="0" y="0" width="690" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(25, 70)">
+      <rect x="0" y="0" width="60" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="8" y="10" width="8" height="36" fill="#207448" rx="2" />
+      <rect x="20" y="10" width="8" height="36" fill="#207448" rx="2" />
+      <rect x="32" y="10" width="8" height="36" fill="#207448" rx="2" />
+      <rect x="44" y="10" width="8" height="36" fill="#207448" rx="2" />
+    </g>
+
+    <text x="110" y="60" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="110" dy="0">up to 2,048 endpoint ports =</tspan>
+      <tspan x="110" dy="40">256 servers with eight GPUs each</tspan>
+    </text>
+    <text x="110" y="150" font-family="sans-serif" font-size="24" fill="#303a36">64 leaves x 32 ports = 2,048 ports | 2,048 / 8 = 256</text>
+  </g>
+
+
+  
+
+  <g transform="translate(50, 925)">
+    <rect x="0" y="0" width="1500" height="115" rx="16" fill="#fff8f2" stroke="#db8129" stroke-width="3" />
+
+    
+    <g transform="translate(25, 29)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#db8129" stroke-width="4" />
+      <path d="M 16 28 L 40 28 M 28 16 L 28 40" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="95" y="68" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">beyond R^2/2 endpoints, build pods: 5-stage reaches R^3/4 (65,536 for R = 64)</text>
+  </g>
+
+</svg>

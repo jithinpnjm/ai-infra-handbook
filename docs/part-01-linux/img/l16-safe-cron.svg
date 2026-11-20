@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040">
+  <title>A safe cron job</title>
+  <desc>A safe cron job</desc>
+  <defs>
+    <marker id="arrow" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,1 L16,8 L0,15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A safe cron job</text>
+
+  <rect x="40" y="120" width="460" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="75" y="182" width="46" height="56" rx="4"/>
+    <path d="M75 198 h46 M87 212 h22 M87 224 h16"/>
+  </g>
+  <text x="150" y="180" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">SHELL=/bin/bash</text>
+  <text x="150" y="222" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">PATH=...</text>
+  <text x="150" y="264" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">MAILTO=""</text>
+
+  <rect x="540" y="120" width="1020" height="180" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="3.5"/>
+  <g fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M595 182 l24 44 h-48 z"/>
+    <path d="M595 198 v14 M595 218 v2"/>
+  </g>
+  <text x="645" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">cron sets only HOME, LOGNAME, SHELL=/bin/sh and PATH=/usr/bin:/bin</text>
+
+  <rect x="40" y="350" width="1520" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="68" y="385" width="50" height="50" rx="6"/>
+    <path d="M78 402 l10 8 -10 8 M94 418 h14"/>
+  </g>
+  <text x="145" y="420" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448" textLength="1370" lengthAdjust="spacingAndGlyphs">*/5 * * * * root flock -n /run/lock/gpu-health.lock timeout 120 /usr/local/bin/gpu-health.sh 2&gt;&amp;1 | logger -t gpu-health</text>
+
+  <path d="M203 470 V540" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <path d="M587 470 V540" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <path d="M972 470 V540" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <path d="M1367 470 V540" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="540" width="325" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="202" cy="615" r="28"/>
+    <path d="M202 597 v18 l14 8"/>
+  </g>
+  <text x="202" y="700" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">*/5 * * * * <tspan x="202" dy="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">every five minutes</tspan></text>
+
+  <rect x="405" y="540" width="365" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="566" y="605" width="44" height="36" rx="4"/>
+    <path d="M573 605 v-15 a15 15 0 0 1 30 0 v15 M588 619 v8"/>
+  </g>
+  <text x="587" y="700" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">flock -n <tspan x="587" dy="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">prevents overlapping runs</tspan></text>
+
+  <rect x="810" y="540" width="325" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="972" cy="615" r="28"/>
+    <path d="M972 587 v-6 M964 581 h16 M972 601 v14 l10 -10"/>
+  </g>
+  <text x="972" y="700" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">timeout 120 <tspan x="972" dy="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">kills a hang</tspan></text>
+
+  <rect x="1175" y="540" width="385" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1344" y="587" width="46" height="56" rx="4"/>
+    <path d="M1354 603 h26 M1354 615 h26 M1354 627 h16"/>
+  </g>
+  <text x="1367" y="700" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">logger -t gpu-health <tspan x="1367" dy="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">sends output to the journal</tspan></text>
+
+  <rect x="40" y="920" width="1520" height="80" rx="14" fill="#207448"/>
+  <text x="800" y="970" text-anchor="middle" fill="#f5f8f5" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold">before you schedule a job, make sure it is safe to run twice</text>
+</svg>

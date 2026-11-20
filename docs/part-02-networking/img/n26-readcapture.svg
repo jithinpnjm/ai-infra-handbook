@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a tcpdump trace</title>
+  <desc>Visual infographic explaining how to read a tcpdump trace with packet lines grouped by protocol phase.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading a tcpdump trace</text>
+
+  
+  <g id="host-client">
+    <rect x="60" y="105" width="710" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(85, 117)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="34" rx="4"/>
+      <line x1="18" y1="46" x2="38" y2="46"/>
+      <line x1="28" y1="38" x2="28" y2="46"/>
+      <polyline points="14,16 22,21 14,26"/>
+      <line x1="26" y1="26" x2="38" y2="26"/>
+    </g>
+    <text x="160" y="154" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="28" font-weight="bold" fill="#303a36">duplex.example.com.48455</text>
+  </g>
+
+  <g id="host-server">
+    <rect x="830" y="105" width="710" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(855, 117)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="48" rx="4"/>
+      <line x1="4" y1="20" x2="52" y2="20"/>
+      <line x1="4" y1="36" x2="52" y2="36"/>
+      <circle cx="14" cy="12" r="2" fill="#207448"/>
+      <circle cx="22" cy="12" r="2" fill="#207448"/>
+      <circle cx="14" cy="28" r="2" fill="#207448"/>
+      <circle cx="22" cy="28" r="2" fill="#207448"/>
+      <circle cx="14" cy="44" r="2" fill="#207448"/>
+      <circle cx="22" cy="44" r="2" fill="#207448"/>
+      <line x1="34" y1="12" x2="44" y2="12"/>
+      <line x1="34" y1="28" x2="44" y2="28"/>
+      <line x1="34" y1="44" x2="44" y2="44"/>
+    </g>
+    <text x="930" y="154" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="28" font-weight="bold" fill="#303a36">mikado.example.com.www</text>
+  </g>
+
+  
+  <g id="section-arp">
+    <rect x="60" y="225" width="1480" height="190" rx="16" fill="#ffffff" stroke="#cfded2" stroke-width="2"/>
+    <rect x="85" y="245" width="875" height="150" rx="10" fill="#f8faf8" stroke="#207448" stroke-width="1.5"/>
+    <text x="110" y="295" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="24" fill="#303a36">arp who-has mikado.example.com tell duplex.example.com</text>
+    <text x="110" y="355" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="24" fill="#303a36">arp reply mikado.example.com is-at 0:2:2d:b:ee:4e</text>
+
+    
+    <path d="M 975 295 h 15 v 30 h 16 h -16 v 30 h -15" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    
+    <rect x="1020" y="245" width="495" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="1065" cy="285" r="24" fill="#207448"/>
+    <text x="1065" y="294" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(1105, 257)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="28" r="8"/>
+      <circle cx="44" cy="28" r="8"/>
+      <line x1="20" y1="28" x2="36" y2="28"/>
+      <path d="M 28 14 v 28"/>
+      <circle cx="28" cy="10" r="4"/>
+    </g>
+    <text x="1045" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1045" dy="0">hosts finding each</tspan>
+      <tspan x="1045" dy="36">other&apos;s link address</tspan>
+    </text>
+  </g>
+
+  
+  <g id="section-handshake">
+    <rect x="60" y="455" width="1480" height="220" rx="16" fill="#ffffff" stroke="#cfded2" stroke-width="2"/>
+    <rect x="85" y="475" width="875" height="180" rx="10" fill="#f8faf8" stroke="#207448" stroke-width="1.5"/>
+    <text x="110" y="520" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="26" fill="#303a36">S</text>
+    <text x="110" y="575" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="26" fill="#303a36">S ... ack 3200063166</text>
+    <text x="110" y="630" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="26" fill="#303a36">. ack 1</text>
+
+    
+    <path d="M 975 520 h 15 v 55 h 16 h -16 v 55 h -15" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    
+    <rect x="1020" y="475" width="495" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="1065" cy="518" r="24" fill="#207448"/>
+    <text x="1065" y="527" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(1105, 490)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 20 C 14 10, 24 6, 36 8"/>
+      <path d="M 48 36 C 42 46, 32 50, 20 48"/>
+      <polyline points="38,4 38,12 30,12"/>
+      <polyline points="18,52 18,44 26,44"/>
+      <circle cx="28" cy="28" r="8"/>
+    </g>
+    <text x="1045" y="582" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1045" dy="0">TCP three-way handshake</tspan>
+      <tspan x="1045" dy="38">(SYN, SYN-ACK, ACK)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="section-data">
+    <rect x="60" y="715" width="1480" height="220" rx="16" fill="#ffffff" stroke="#cfded2" stroke-width="2"/>
+    <rect x="85" y="735" width="875" height="180" rx="10" fill="#f8faf8" stroke="#207448" stroke-width="1.5"/>
+    <text x="110" y="775" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="26" fill="#303a36">P 1:427(426)</text>
+    <text x="110" y="830" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="26" fill="#303a36">. ack</text>
+    <text x="110" y="885" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="26" fill="#303a36">P 1:773(772)</text>
+
+    
+    <path d="M 975 775 h 15 v 55 h 16 h -16 v 55 h -15" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    
+    <rect x="1020" y="735" width="495" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="1065" cy="825" r="24" fill="#207448"/>
+    <text x="1065" y="834" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(1105, 797)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="40" rx="4"/>
+      <line x1="4" y1="16" x2="52" y2="16"/>
+      <circle cx="12" cy="10" r="2" fill="#207448"/>
+      <circle cx="20" cy="10" r="2" fill="#207448"/>
+      <line x1="16" y1="28" x2="40" y2="28"/>
+      <line x1="16" y1="36" x2="32" y2="36"/>
+    </g>
+
+    
+    <rect x="1185" y="750" width="310" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1340" y="792" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">request</text>
+
+    <rect x="1185" y="845" width="310" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1340" y="887" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">response</text>
+  </g>
+
+  
+  <g id="section-summary">
+    <rect x="60" y="975" width="1480" height="180" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <rect x="85" y="995" width="875" height="140" rx="10" fill="#fdfaf7" stroke="#db8129" stroke-width="1.5"/>
+    <text x="110" y="1045" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="24" fill="#303a36">9 packets received by filter</text>
+    <text x="110" y="1105" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="24" fill="#303a36">0 packets dropped by kernel</text>
+
+    
+    <path d="M 975 1045 h 15 v 30 h 16 h -16 v 30 h -15" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    
+    <rect x="1020" y="995" width="495" height="140" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="2.5"/>
+    <circle cx="1065" cy="1065" r="24" fill="#db8129"/>
+    <text x="1065" y="1074" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(1110, 1037)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="44" height="44" rx="6"/>
+      <polyline points="16,28 24,36 40,20"/>
+    </g>
+    <text x="1190" y="1075" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">summary</text>
+  </g>
+</svg>

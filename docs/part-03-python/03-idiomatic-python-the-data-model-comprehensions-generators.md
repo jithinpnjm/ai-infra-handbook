@@ -449,11 +449,9 @@ A script that reads a large log file cannot afford to load it all at once. Itera
 
 ### The iterator protocol: multiple-pass iterables vs single-pass iterators
 
-```mermaid
-flowchart LR
-    Iterable["Iterable (list, Sentence, Countdown)<br/>__iter__() returns fresh Iterator"] -->|"iter(obj)"| Iterator["Iterator / Generator (gen, zip, file)<br/>__next__() -> item or StopIteration<br/>__iter__() -> self (single-pass)"]
-    Iterator -->|"next(it)"| Consumer["for loop / unpacking / sum / list / any / all"]
-```
+![The iterator protocol: multiple-pass iterables vs single-pass iterators](./img/m3-03-1.svg)
+
+*Figure 3.3.4. The iterator protocol: multiple-pass iterables vs single-pass iterators, as a diagram.*
 
 An iterable is any object you can loop over. It has an `__iter__()` method that returns a fresh iterator each time you call it. If a class has no `__iter__()`, Python can fall back to `__getitem__(0, 1, ...)`, which starts at `0` and continues until it raises `IndexError`. Built-in sequences such as `L = [1, 2, 3, 4]` and `R = range(5)` are multiple-pass iterables. Each call to `iter(R)` gives you a new object, since `iter(R) is R` is `False`. `I1, I2 = iter(L), iter(L)` gives you two iterators with independent positions.
 
@@ -532,7 +530,7 @@ A generator expression, such as `(f(x) for x in xs)`, is an anonymous one-shot g
 
 ![A lazy generator pipeline](./img/s03-pipeline.svg)
 
-*Figure 3.3.4. A generator pipeline: each stage pulls one item at a time from the stage before it, so memory stays flat.*
+*Figure 3.3.5. A generator pipeline: each stage pulls one item at a time from the stage before it, so memory stays flat.*
 
 A pipeline chains generators together so that each stage handles one item at a time. The whole chain runs in constant memory, and you can test each stage on its own. The example below counts the top IP addresses behind 5xx errors in a set of compressed nginx logs.
 

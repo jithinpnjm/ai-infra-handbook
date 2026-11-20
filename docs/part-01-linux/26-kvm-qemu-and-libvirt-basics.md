@@ -114,6 +114,10 @@ Run these checks on the host first. `lscpu | grep -i virtualization` and `grep -
 
 ### Memory virtualisation
 
+![A guest address is translated twice, by shadow page tables or by hardware nested paging.](./img/l26-memory-translation.svg)
+
+*Figure 1.26.3. Nested paging cuts exits but makes each TLB miss more expensive, which is why huge pages help.*
+
 A guest has three kinds of address: guest virtual, guest physical and host physical. Picture a letter with two forwarding addresses written on the envelope. A memory access needs two translation stages in the same way. The guest page tables map guest virtual addresses to guest physical ones, and the hypervisor maps guest physical addresses to host physical ones.
 
 - **Shadow page tables** are the older approach. The hypervisor intercepts every change the guest makes to its page tables, and it keeps combined guest-virtual to host-physical tables, which load into CR3. That approach produces many exits.
@@ -142,7 +146,7 @@ Devices that cannot be isolated from each other are grouped into **IOMMU groups*
 
 ![GPU passthrough with VFIO](./img/ch26-fig1-vfio.jpg)
 
-*Figure 1.26.3. VFIO hands a whole IOMMU group, including the GPU, to a guest VM.*
+*Figure 1.26.4. VFIO hands a whole IOMMU group, including the GPU, to a guest VM.*
 
 When you read VM configurations, you will see names such as `virtio-blk`, `virtio-scsi`, `virtio-net`, `virtio-balloon`, `virtio-fs`, `virtio-vsock`, `vhost-net`, `vfio-pci` and `qemu-guest-agent`. Some are plain English once you know the shape. OVMF is the UEFI firmware for guests. `q35` is the modern chipset with PCIe, and `i440fx` is the legacy one. `QMP` is the QEMU Machine Protocol. You will also see `qcow2` and `cloud-init` in almost every VM setup.
 
@@ -156,7 +160,7 @@ Read the diagram from the top down. Admins and orchestrators sit at the top. lib
 
 ![The stack: KVM, QEMU, libvirt](./img/ch26-d3-luna.svg)
 
-*Figure 1.26.4. The stack: KVM, QEMU, libvirt.*
+*Figure 1.26.5. The stack: KVM, QEMU, libvirt.*
 
 The three names are easy to tangle, so keep one picture. KVM is the kernel side. QEMU is the process that builds and runs a machine. libvirt is the manager you talk to.
 
@@ -198,6 +202,10 @@ virsh uri ; virsh -c qemu:///system list --all   # system instance (root-owned V
 Log out and back in after the group change, or the new group will not apply. The `virsh uri` line tells you which instance you are talking to. `qemu:///system` holds the root-owned VMs, and `qemu:///session` holds the per-user ones. Check that line whenever a VM you expect to see seems to have vanished.
 
 ### Creating a VM with a cloud image and cloud-init
+
+![A thin overlay on a cloud image plus a cloud-init seed lets a new VM boot configured in seconds.](./img/l26-cloud-init.svg)
+
+*Figure 1.26.6. A cloud image needs no installer because cloud-init configures it at first boot.*
 
 Cloud images are small, preinstalled disk images, and they change how you think about installation. You do not run an installer with them. Instead, cloud-init configures the instance at first boot, using user data and meta data from a seed ISO or another datasource. The commands below build a VM this way.
 
@@ -304,6 +312,10 @@ Measure passthrough NVMe against a raw LVM volume before you commit to either on
 
 ## 5. Networking
 
+![The common VM networking modes and when to use each.](./img/l26-vm-net-modes.svg)
+
+*Figure 1.26.7. Choose the network mode by asking who needs to reach the guest.*
+
 Networking decides who can reach a VM, and how fast its packets move. Get the mode wrong and the guest is perfectly healthy but unreachable. The table lists the common modes.
 
 | Mode | How | Use |
@@ -325,6 +337,10 @@ The MTU must match across the guest, the tap device, the bridge and the physical
 You should decide the network mode first, because it determines whether anyone outside the host can reach the guest.
 
 ## 6. Performance: what costs what, and how to tune
+
+![Six layers of VM tuning, from the host up to the guest.](./img/l26-tuning-order.svg)
+
+*Figure 1.26.8. Tune the host first, then libvirt, then the guest.*
 
 Here is the question every VM tuning session starts with: where does the time go? Overhead comes from three areas. CPU overhead comes from guest exits, both how often they happen and how long they take, and from interrupt and timer virtualisation. Memory overhead comes from two-level page walks, from the extra kernel and QEMU memory each VM needs, and from double caching.
 

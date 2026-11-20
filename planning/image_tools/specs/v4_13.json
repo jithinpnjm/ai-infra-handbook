@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "13",
+  "name": "a13-molecule-sequence",
+  "title": "The Molecule test sequence and where a failure points",
+  "spec": "A horizontal row of step boxes from left to right, joined by arrows in time order and numbered with number circles 1 to 6. Each box has a simple outline icon above its title. Box 1 create, icon disk cylinder. Box 2 converge, icon gear. Box 3 idempotence, icon clock, drawn with an orange outline because it finds the majority of subtle bugs. Box 4 verify, icon shield. Box 5 destroy, icon window. Two optional steps are drawn as dashed boxes: prepare, placed between create and converge, and side_effect, placed between idempotence and verify. Under each box a short note line in secondary text. Under create: failure is about the image or Docker itself, the role has not run yet. Under converge: failure is about the role's first run. Under idempotence: the role ran once, then changed something on the second run. Under verify: the role ran, but the result is not what the check expected. Above the row, a label line: molecule test runs the whole sequence in one go. No takeaway bar.",
+  "anchor": "### The test sequence",
+  "alt": "Molecule runs create, converge, idempotence and verify in order, and a failure at each step points to a different cause.",
+  "cap": "Each Molecule stage has its own failure meaning, so the failing step name tells you which part of the role to inspect."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "13",
+  "name": "a13-ci-job-graph",
+  "title": "The Ansible CI workflow: lint gates the Molecule matrix",
+  "spec": "One large container labelled ansible-ci workflow. Inside it three job boxes in a row, with equal spacing. Left box lint with a shield icon, runs-on ubuntu-latest, step line: yamllint . && ansible-lint. Middle box molecule with a gear icon, a matrix line showing role: kernel_tuning, chrony_client, dcgm_exporter and distro: ubuntu2204, rockylinux9, step line: molecule test. Right box gpu-hw with a chip icon, runs-on self-hosted, gpu, step line: molecule test -s gpu_hw. Draw ONE solid arrow from lint to molecule, labelled needs: lint. No arrow goes to gpu-hw. Under the gpu-hw box a note in secondary text: runs on schedule (nightly cron 0 4 * * *) or when a pull request has the test-gpu label. Under the molecule box a note: a broken file never starts a container. No takeaway bar.",
+  "anchor": "## 6. CI integration",
+  "alt": "In the CI workflow the lint job runs first, the Molecule matrix waits for it, and the GPU job runs on a schedule or label.",
+  "cap": "The Molecule jobs wait for lint, so a broken file never starts a container, and the GPU tier runs on its own schedule."
+ }
+]

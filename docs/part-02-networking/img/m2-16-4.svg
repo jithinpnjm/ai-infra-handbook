@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 820" width="1600" height="820">
+  <title>Segment routing terms, the SR domain and the SRv6 header</title>
+  <desc>Diagram showing segment routing packet forwarding from server through ingress leaf, spine, egress leaf to destination server.</desc>
+
+  <defs>
+    <marker id="arrowhead-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="16" markerHeight="16" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    <marker id="arrowhead-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="16" markerHeight="16" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="820" fill="#f5f8f5" />
+
+  
+  <text x="800" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Segment routing terms, the SR domain and the SRv6 header</text>
+
+  
+  <path d="M 190 600 L 235 600" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrowhead-green)" />
+
+  
+  <path d="M 260 490 V 285 A 12 12 0 0 1 272 273 H 630" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowhead-orange)" />
+
+  
+  <rect x="295" y="196" width="300" height="60" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="445" y="222" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="445" dy="0">SIDs:</tspan>
+    <tspan x="445" dy="26">spine, egress leaf</tspan>
+  </text>
+
+  
+  <path d="M 970 273 H 1308 A 12 12 0 0 1 1320 285 V 490" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowhead-green)" />
+
+  
+  <rect x="1005" y="212" width="270" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1140" y="242" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">SID: egress leaf</text>
+
+  
+  <path d="M 1365 600 L 1410 600" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrowhead-green)" />
+
+  
+  <rect x="40" y="490" width="150" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(87, 525)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="52" height="48" rx="6" />
+    <line x1="2" y1="20" x2="54" y2="20" />
+    <line x1="2" y1="36" x2="54" y2="36" />
+    <circle cx="12" cy="12" r="2.5" fill="#207448" />
+    <circle cx="12" cy="28" r="2.5" fill="#207448" />
+    <circle cx="12" cy="44" r="2.5" fill="#207448" />
+    <line x1="22" y1="12" x2="44" y2="12" />
+    <line x1="22" y1="28" x2="44" y2="28" />
+    <line x1="22" y1="44" x2="44" y2="44" />
+  </g>
+  <text x="115" y="635" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">server</text>
+
+  
+  <rect x="235" y="490" width="340" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(377, 515)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="8" width="52" height="40" rx="6" />
+    <path d="M 12 22 L 44 22 M 36 16 L 44 22 L 36 28" />
+    <path d="M 44 34 L 12 34 M 20 28 L 12 34 L 20 40" />
+  </g>
+  <text x="405" y="605" font-family="sans-serif" fill="#303a36" text-anchor="middle">
+    <tspan x="405" dy="0" font-size="30" font-weight="bold">ingress leaf:</tspan>
+    <tspan x="405" dy="38" font-size="24">adds SID list</tspan>
+    <tspan x="405" dy="32" font-size="24">spine, egress leaf</tspan>
+  </text>
+
+  
+  <rect x="630" y="170" width="340" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(772, 195)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="8" width="52" height="40" rx="6" />
+    <path d="M 14 28 L 42 28 M 34 22 L 42 28 L 34 34" />
+    <path d="M 28 14 L 28 42 M 22 20 L 28 14 L 34 20" />
+  </g>
+  <text x="800" y="285" font-family="sans-serif" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0" font-size="30" font-weight="bold">spine:</tspan>
+    <tspan x="800" dy="42" font-size="24">removes its own SID</tspan>
+  </text>
+
+  
+  <rect x="1025" y="490" width="340" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(1167, 515)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="8" width="52" height="40" rx="6" />
+    <path d="M 12 22 L 44 22 M 36 16 L 44 22 L 36 28" />
+    <path d="M 44 34 L 12 34 M 20 28 L 12 34 L 20 40" />
+  </g>
+  <text x="1195" y="605" font-family="sans-serif" fill="#303a36" text-anchor="middle">
+    <tspan x="1195" dy="0" font-size="30" font-weight="bold">egress leaf:</tspan>
+    <tspan x="1195" dy="42" font-size="24">removes last SID</tspan>
+  </text>
+
+  
+  <rect x="1410" y="490" width="150" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(1457, 525)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="52" height="48" rx="6" />
+    <line x1="2" y1="20" x2="54" y2="20" />
+    <line x1="2" y1="36" x2="54" y2="36" />
+    <circle cx="12" cy="12" r="2.5" fill="#207448" />
+    <circle cx="12" cy="28" r="2.5" fill="#207448" />
+    <circle cx="12" cy="44" r="2.5" fill="#207448" />
+    <line x1="22" y1="12" x2="44" y2="12" />
+    <line x1="22" y1="28" x2="44" y2="28" />
+    <line x1="22" y1="44" x2="44" y2="44" />
+  </g>
+  <text x="1485" y="635" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">server</text>
+</svg>

@@ -1,0 +1,832 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "01",
+  "name": "a01-secret-order",
+  "title": "Remediate a committed secret in four steps",
+  "spec": "Four boxes in a row from left to right, each with a numbered circle (1 to 4) and one outline icon. Box 1, orange outline (the most important step), key icon, title 'Revoke and rotate', text 'Revoke and rotate the credential right away, because a copy may already exist'. Box 2, lock icon, title 'Remove the secret from the current tree', text 'Replace it with a reference to a secret manager'. Box 3, clock-with-history or branch icon, title 'Purge history (optional)', text 'git filter-repo --path secrets.yml --invert-paths', then 'Force-push, and ask collaborators to re-clone'. Box 4, shield icon, title 'Prevent the next leak', text 'Add gitleaks or push protection, and .gitignore entries'. Arrows point from box 1 to 2, 2 to 3, and 3 to 4. Under box 1, a short note: 'Rotation comes first. You cannot take back a copy that someone already made.' Under box 3, a note: 'Rewriting history is slow and never complete.'",
+  "anchor": "## 11. Secrets and sensitive history",
+  "alt": "Four ordered steps for a leaked secret: rotate it first, remove it from the tree, optionally purge history, then prevent a repeat.",
+  "cap": "When a secret is committed, rotate it first, then remove it, purge history if needed, and prevent the next leak."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "01",
+  "name": "a01-onto",
+  "title": "rebase --onto moves only the feature-B commits",
+  "spec": "Top to bottom, two parts. Top row, a horizontal line labelled 'main' with a single box labelled 'squash commit' on it (the one new commit that the squash merge of feature-A created). Below it, a second horizontal line labelled 'feature-A' with two grey boxes 'A1' and 'A2' (the old commits, which no longer match anything on main). Branching off A2 is a third line labelled 'feature-B' with two green boxes 'B1' and 'B2'. Step 1 (number circle), an arrow labelled 'git rebase --onto main feature-A feature-B' pointing down to the final state. Final state row, a line labelled 'main' with the squash commit followed by two green boxes 'B1' and 'B2' now sitting on top of it. The grey A1 and A2 boxes are not copied across. Orange note on the grey boxes: 'Without --onto, the old feature-A commits would be replayed too.'",
+  "anchor": "## 7. Merge, rebase and history shape",
+  "alt": "The rebase --onto command replays only the feature-B commits onto main after feature-A was squash-merged.",
+  "cap": "The rebase onto command moves only the feature-B commits onto main after feature-A was squash-merged."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "01",
+  "name": "a01-reflog-rescue",
+  "title": "The reflog rescues a commit lost by reset --hard",
+  "spec": "Three steps left to right, each with a numbered circle. Step 1, icon of a warning triangle or reset arrow, box text 'git reset --hard' with note 'The commit is still in the object store until cleanup'. Step 2, clock or ship's-log icon, box text 'git reflog' showing one line 'HEAD@{1}: commit: ...' with the line before the mistake highlighted. Step 3, branch icon, box text 'git branch rescue HEAD@{1}' with note 'The lost commit is back on a new branch'. Arrows connect 1 to 2 to 3. Orange highlight on the HEAD@{1} line. Under the row, a small note panel: 'The reflog is local only, so it does not survive a fresh clone.'",
+  "anchor": "## 8. Undoing things safely",
+  "alt": "A commit lost by reset --hard is found in the reflog as HEAD@{1} and restored onto a new branch.",
+  "cap": "After a reset --hard, git reflog shows the lost commit, and a new branch can point back to it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "02",
+  "name": "a02-wisb-replace",
+  "title": "A merge keeps the stale neighbor, a replace matches the file",
+  "spec": "Two side-by-side panels with a green heading each. Left panel, heading 'merge': a box labelled 'What It Should Be (WISB)' listing two neighbor stanzas, 'neighbor A' and 'neighbor B' (the neighbor C was deleted from Git). Below it, a box labelled 'What It Really Is (WIRI) on the router' listing A, B and a grey leftover 'neighbor C'. Note under the left panel: 'A merge only adds and updates lines, so the deleted neighbor stays on the router.' Right panel, heading 'replace': the same WISB box with A and B, with the monospace line '<bgp operation=\"replace\">' above the arrow. Below it, the WIRI box lists only A and B, and neighbor C is gone. Note under the right panel: 'A replace makes the section match the file exactly.' An orange arrow from the grey leftover C on the left panel to the replace operation on the right panel, labelled 'removed'. Bottom line in a green bar, plain text: 'WISB equals WIRI'.",
+  "anchor": "### Foundations from *Network Programmability and Automation* (Ch. 13) and *Ansible: Up and Running* (Ch. 22)",
+  "alt": "A merge leaves a deleted BGP neighbor on the router, while a replace operation removes it so the device matches the file.",
+  "cap": "A merge leaves a deleted BGP neighbor on the router, but a replace operation makes the device match the file."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "02",
+  "name": "a02-oidc-exchange",
+  "title": "A CI job swaps a short-lived token for cloud credentials",
+  "spec": "Left to right, a chain of four boxes with arrows. Box 1 'CI runner', window icon, text 'One plan job starts'. Box 2 'CI provider', badge icon, text 'Mints a short-lived signed token with claims: repository and branch'. Box 3 'Cloud', shield icon, text 'Checks the signature and the claims against the rule'. Box 4 'Temporary credentials', key icon, text 'Expire when the job ends'. Arrow 1 to 2 labelled 'request token (id-token: write)'. Arrow 2 to 3 labelled 'send token'. Arrow 3 to 4 labelled 'if the claims match'. Below the chain, two small role cards side by side: 'tf-plan role (read-only)' with note 'pull request, never a fork', and 'tf-apply role (write)' with note 'protected branch and environment only'. Orange highlight on the 'tf-apply role' card with note 'A feature branch can never reach this role'. A grey note: 'No cloud key is stored in the repository.'",
+  "anchor": "## 5. Authentication: OIDC instead of stored keys",
+  "alt": "A CI job exchanges a short-lived OIDC token for temporary cloud credentials, with separate plan and apply roles.",
+  "cap": "A CI job trades a short-lived OIDC token for temporary cloud credentials, and only protected branches reach the apply role."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "02",
+  "name": "a02-drift-classes",
+  "title": "Auto-heal stateless resources, alert on stateful ones",
+  "spec": "Top, a single box 'Nightly drift check' with a clock icon, text 'terraform plan -detailed-exitcode'. Three exit-code boxes beneath it in a row with a number on each: '0' labelled 'no drift', '1' labelled 'error', '2' labelled 'drift detected'. From box '2' an arrow goes down into two columns. Left column, green panel, heading 'Auto-heal', gear icon, examples 'Kubernetes Deployments', 'ConfigMaps', 'host config files', note 'Reverting holds no data'. Right column, grey-green panel with orange outline, heading 'Alert only', lock icon, examples 'databases', 'storage buckets', 'VPCs', 'stateful GPU instances', note 'A revert could delete data, so never auto-apply'. Below the right column, a note: 'Post the plan diff to chat or a ticket.' Caption row at the bottom: 'Ask what the revert would do on its worst day.'",
+  "anchor": "## 11. Drift detection and self-healing",
+  "alt": "A nightly drift check exits with code 2 on drift, then stateless resources auto-heal while stateful resources only raise an alert.",
+  "cap": "A nightly drift check auto-heals stateless resources and only alerts on stateful ones, because a revert there could destroy data."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "a03-push-pull",
+  "title": "Push sends work out, pull lets each machine ask for it",
+  "spec": "Two side-by-side panels, each with a green heading. Left panel, heading 'Push (Ansible)': one box 'Control node' at the top with a gear icon, and a row of three target boxes 'web1', 'web2', 'web3' beneath it (or GPU nodes). Solid arrows from the control node down to each target, labelled 'SSH: sends the task'. Note under the panel: 'No agent is installed on the targets. The control node decides when work happens.' Right panel, heading 'Pull (agent-based)': a server box 'Central server' at the top, and the same three target boxes beneath, each with a small 'agent' badge. Arrows point UP from each target to the server, labelled 'asks for work'. Note under the panel: 'Each machine decides when to ask. An agent runs on every machine.' Orange outline on the Push panel's control node, as the Ansible approach used in this chapter. Small caption at the bottom: 'Puppet, Chef and Salt pull. Ansible pushes.'",
+  "anchor": "## 1. What Ansible is",
+  "alt": "Ansible pushes tasks from the control node over SSH with no agent, while pull tools have each machine ask a server for work.",
+  "cap": "Ansible pushes tasks from a control node over SSH without an agent, while pull tools have each machine ask a server for work."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "a03-split-tools",
+  "title": "Terraform builds the machines, Ansible configures them",
+  "spec": "A left-to-right chain of three boxes with arrows between them, each with a numbered circle. Box 1, cloud icon, title 'Terraform', text 'Builds a new pool of GPU VMs with the right network and disks'. Box 2, power-button icon, title 'cloud-init', text 'Handles the first boot, with a user and an SSH key'. Box 3, gear icon, title 'Ansible', text 'Installs the driver, sets the kernel parameters and starts the monitoring agent'. Arrow 1 to 2 labelled 'machines exist'. Arrow 2 to 3 labelled 'machines can be reached over SSH'. Above the chain, a grey banner: 'Each tool does one part of the job.' Under box 3, an orange note: 'Ansible decides what runs on the machines.' No other items.",
+  "anchor": "### Where it fits",
+  "alt": "Terraform creates the GPU VMs, cloud-init handles the first boot, and Ansible configures the driver, kernel and monitoring agent.",
+  "cap": "Terraform creates the machines, cloud-init handles the first boot, and Ansible decides what runs on them."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "a03-linear-wait",
+  "title": "The linear strategy makes every host wait at each task",
+  "spec": "A timeline with three horizontal lanes labelled 'gpu01', 'gpu02' and 'gpu03', and time running left to right. Each lane has task boxes in order. Task 1 box in all three lanes, green, labelled 'ok'. Task 2 box: in gpu01 and gpu03 green 'ok'; in gpu02 a red-outline box 'failed'. A dashed vertical barrier after task 2 across all lanes, labelled 'linear: wait until every host finishes this task'. After the barrier, gpu02's lane shows a grey box 'dropped from later tasks' with a number '1'-step number circle on the barrier. Task 3 boxes appear only in gpu01 and gpu03, green, labelled 'ok'. The recap label at the far right of gpu02 lane: 'failed in the recap'. Orange highlight on the 'failed' box in gpu02. Caption under the timeline: 'One slow or failing host can hold up the whole run.'",
+  "anchor": "## 2. How Ansible executes a task",
+  "alt": "Under the linear strategy, a host that fails one task is dropped from later tasks while the other hosts wait at the next barrier.",
+  "cap": "Under the linear strategy, a host that fails is dropped from later tasks while the other hosts wait at each barrier."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "a04-yaml-coercion",
+  "title": "Unquoted values change type, quoted values stay text",
+  "spec": "A two-column table-style figure. Left column, heading 'You write (unquoted)', with monospace entries stacked vertically, each in a small box: 'NO', '1.10', '010', '22:30', '0644', '~'. Middle column, arrows labelled 'parser reads', each pointing right. Right column, heading 'The parser stores', with the matching results in boxes: 'NO' becomes 'false' (orange, the most important item, with the note 'the Norway problem'), '1.10' becomes '1.1', '010' becomes '8', '22:30' becomes a number, '0644' becomes '420', '~' becomes 'null'. Bottom band, green panel, heading 'Fix: quote it', with monospace examples 'country: \"NO\"' and 'mode: \"0644\"', and the note 'A quoted value is never reinterpreted.' Use a small outline icon of a magnifier or tag beside the heading. Keep text in the boxes short.",
+  "anchor": "### Rules that bite",
+  "alt": "Unquoted YAML values such as NO, 1.10, 010 and 0644 are converted to other types by the parser, while quoted values stay text.",
+  "cap": "Unquoted YAML values such as NO and 0644 are converted to other types, so quoting them keeps them as text."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "a04-anchor-merge",
+  "title": "A merge key copies defaults, and a local key overrides them",
+  "spec": "Top, a box labelled 'defaults (anchor: node_defaults)' listing three entries: 'gpus: 8', 'os: ubuntu-22.04', 'tags: [h100]'. A dashed arrow from the box to two node boxes below it, arrows labelled '<<: *node_defaults' (merge key). Left node box 'gpu01' shows the copied values 'gpus: 8', 'os', 'tags' with a green check. Right node box 'gpu02' shows the copied 'os' and 'tags', and a local line 'gpus: 4' in orange highlight, labelled 'override wins, local key comes after the merge'. Small note under gpu02: 'The other keys still come from the defaults.' Number circles 1 and 2 on the two arrows to show the order the parser reads them: defaults first, then each node.",
+  "anchor": "### Anchors, aliases and merge keys",
+  "alt": "A YAML anchor holds shared defaults, a merge key copies them into each node, and a local key such as gpus 4 overrides the copied value.",
+  "cap": "A YAML merge key copies shared defaults into each node, and a local key overrides the copied value."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "a04-validate-install",
+  "title": "Render on the control node, validate, then install",
+  "spec": "A left-to-right flow of four boxes with arrows, each with a numbered circle. Box 1, window icon, title 'Control node', text 'Renders the .j2 template with the variables'. Box 2, gear icon, title 'Validate', text 'visudo -cf %s runs against the rendered temporary file'. Box 3, shield or lock icon, title 'Install', text 'Copies the finished file to the target'. Arrow 1 to 2 labelled 'rendered copy'. Arrow 2 to 3 labelled 'check passes'. From box 2 a second arrow goes down to a grey box 'Fails: the task aborts and the old file stays in place', labelled 'check fails'. Orange outline on the Validate box. Under the chain, a green panel with the note 'Jinja2 runs on the control node, so the target only receives plain text.' Monospace label for the command 'visudo -cf %s'.",
+  "anchor": "## 3. Jinja2 in Ansible",
+  "alt": "Ansible renders a template on the control node, runs the validate command on the rendered copy, and installs it only if the check passes.",
+  "cap": "Ansible renders a template on the control node, validates the copy, and installs it only if the check passes."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-vagrant-collapse",
+  "title": "Three hosts on one address collapse into one entry",
+  "spec": "Two panels side by side with green headings. Left panel, heading 'Without aliases': three stacked input lines in monospace, '127.0.0.1:2222', '127.0.0.1:2200', '127.0.0.1:2201', each with an arrow pointing down into a single box labelled '127.0.0.1' (the inventory key). Below that box, one result box labelled 'one entry left' with an orange outline. A small note: 'Each line overwrites the same entry.' Right panel, heading 'With aliases': three boxes stacked, labelled 'vagrant1 ansible_port=2222', 'vagrant2 ansible_port=2200', 'vagrant3 ansible_port=2201', each with its own arrow to the same address label 'ansible_host=127.0.0.1' shown once in a group bracket labelled '[vagrant:vars]'. Result: three separate host boxes, labelled 'three hosts'. Green check mark on the result. Bottom caption: 'Give each machine its own logical name.'",
+  "anchor": "### Special groups, names and connection variables",
+  "alt": "Three Vagrant entries that share 127.0.0.1 collapse into one host, and aliases with their own ports keep all three.",
+  "cap": "Listing three Vagrant VMs by address alone collapses them into one host, so each machine needs its own alias."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-pattern-venn",
+  "title": "Host patterns: union, intersection and exclusion",
+  "spec": "Three overlapping circles drawn as a Venn diagram, labelled 'gpu' (large circle, left), 'login' (circle, right) and 'rack_r01' (circle, bottom). Use three light green fills with transparency. Below the diagram, a row of three example boxes, each with a monospace pattern and a one-line meaning: 'gpu:login' with the note 'Union: either group'; 'gpu:&rack_r01' with the note 'Intersection: both groups'; 'gpu:!gpu_a100' with the note 'Exclusion: the group without that one'. Highlight the overlap region of gpu and rack_r01 in orange with the label 'gpu:&rack_r01'. Icons: a small outline server icon beside 'gpu', a login-screen icon beside 'login', a rack icon beside 'rack_r01'. Caption: 'A host pattern is a filter on the inventory.'",
+  "anchor": "## 2. Host patterns",
+  "alt": "Venn diagram showing union, intersection and exclusion for host patterns over gpu, login and rack groups.",
+  "cap": "Host patterns combine groups with union, intersection and exclusion, so you can pick an exact slice of the fleet."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-dynamic-flow",
+  "title": "A plugin asks the cloud for the current hosts at run time",
+  "spec": "Left to right, a chain of four boxes with arrows, each with a numbered circle. Box 1, document icon, title 'Plugin config file', monospace text 'plugin: google.cloud.gcp_compute' with a note 'File name ends with the required suffix'. Box 2, cloud icon, title 'Cloud API', text 'filters: labels.env = prod and status = RUNNING, so only matching instances come back'. Box 3, gear icon, title 'Build the groups and variables', two sub-lines: 'keyed_groups: role_gpu, role_login' and 'compose: ansible_host from networkInterfaces'. Box 4, list icon, title 'Inventory', text 'Current hosts, every time the command runs'. Arrow 1 to 2 labelled 'query at run time'. Arrow 2 to 3 labelled 'returned attributes'. Arrow 3 to 4 labelled 'groups and hosts'. Under box 4, a small orange note: 'Static files go stale. This list is read fresh on each run.' Under box 2, a grey note: 'cache: true keeps responses on disk.'",
+  "anchor": "## 5. Dynamic inventory",
+  "alt": "A dynamic inventory plugin reads its config, queries the cloud API with filters, builds groups, and returns the current host list.",
+  "cap": "A dynamic inventory plugin asks the cloud for the current hosts on each run, so the list never goes stale."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-hash-replace",
+  "title": "A host dictionary replaces the group dictionary, combine keeps both",
+  "spec": "Three columns, each with a heading. Column 1, 'Group dictionary (group_vars)': a box listing three keys 'key 1', 'key 2', 'key 3'. Column 2, 'Host override (host_vars)': a shorter box with only 'key 1' (note 'one key'). Column 3 splits into two rows. Top row, heading 'Default: replace', an arrow from the override box, result box showing only 'key 1', with keys 2 and 3 greyed out and crossed through, labelled 'keys 2 and 3 disappear'. Bottom row, heading 'combine(recursive=True)', result box showing 'key 1', 'key 2', 'key 3', with a green check, labelled 'keys are kept'. Orange outline on the 'replace' result. Monospace line under the bottom row: '{{ base_cfg | combine(env_cfg, recursive=True) }}'. Caption: 'Dictionaries replace across layers, so merge them on purpose.'",
+  "anchor": "### Variable precedence (summary)",
+  "alt": "A host dictionary replaces the whole group dictionary and drops its other keys, while the combine filter keeps all keys.",
+  "cap": "A host dictionary replaces the group dictionary by default, so the combine filter is needed to keep the other keys."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "a06-serial-gate",
+  "title": "Serial batches grow, and a failure gate stops the rollout",
+  "spec": "A left-to-right chain of three batch boxes with arrows between them, each with a numbered circle. Batch 1, title 'Canary', text 'serial: 1, one host runs the whole play'. Batch 2, title 'Next batch', text '10% of the group'. Batch 3, title 'The rest', text '25% for the remaining hosts'. Between each pair of batches, a diamond decision shape with the label 'Failures within max_fail_percentage: 5?'. A 'yes' arrow continues to the next batch. A 'no' arrow drops down to an orange box 'Play aborted; no later batch starts'. Icons: a single-host icon for the canary, a stack icon for the 10% batch, a server rack icon for the rest. Small note under the chain: 'serial: [1, \"10%\", \"25%\"]'. Caption under the orange box: 'A bad canary stops the rollout before it reaches the fleet.'",
+  "anchor": "### Batching, strategies and failure semantics",
+  "alt": "Serial batches run a one-host canary, then 10 percent, then 25 percent, and a failure above the threshold aborts the play.",
+  "cap": "Serial batches start with one canary host, grow in steps, and stop the play when failures pass the threshold."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "a06-idempotent-runs",
+  "title": "A second run must report changed=0",
+  "spec": "Two horizontal rows, each showing two run boxes side by side with arrows. Row 1, heading 'Idempotent task', icon of a light switch: Run 1 box, green, text 'changed=2 (the work is done)'. Arrow labelled 'run again'. Run 2 box, green, text 'changed=0 (already correct)'. Green check mark at the end. Row 2, heading 'Timestamp in the template', clock icon: Run 1 box, amber-grey, text 'changed=1 (new timestamp written)'. Arrow labelled 'run again'. Run 2 box, orange outline, text 'changed=1 again, and the handler restarts the service'. Under row 2, a note: 'The rendered file differs on every run.' Under row 1, a note: 'A second run that changes things again means something is not idempotent.' Caption at the bottom: 'Run the playbook twice and read the second recap.'",
+  "anchor": "## 2. Idempotency, the heart of playbooks",
+  "alt": "An idempotent task reports changed=0 on the second run, while a rendered timestamp makes every run report a change.",
+  "cap": "An idempotent playbook reports changed=0 on its second run, while a timestamp in a template changes every run."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "a06-check-scope",
+  "title": "What --check previews and what it skips",
+  "spec": "Two large panels side by side. Left panel, green heading 'Simulated by declarative modules': a list of five module boxes in monospace, 'package', 'file', 'template', 'service', 'sysctl', each with a small check-mark icon. Note under the list: '--check reports what would change, and --diff shows the content change.' Right panel, grey heading 'Skipped under --check': three module boxes in monospace, 'command', 'shell', 'raw', each with a dashed outline and a skip icon. Note under the list: 'Runs only with creates or removes, or with check_mode: false.' Below both panels, a full-width orange note: 'A later task that needs an earlier change judges a change that never happened.' A small green bar at the bottom: 'A clean check run is not proof that the change is safe.' Use an outline icon of a clipboard or magnifier beside the title.",
+  "anchor": "## 5. Check mode and diff",
+  "alt": "Check mode simulates declarative modules and skips command, shell and raw tasks unless they have a guard or check_mode false.",
+  "cap": "Check mode simulates declarative modules, but it skips command, shell and raw tasks unless they have a guard."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-register-set-fact",
+  "title": "register keeps the raw output, set_fact keeps the clean value",
+  "spec": "A left-to-right row of four boxes, each with a green number circle (1 to 4) above it, joined by orthogonal arrows. Box 1, titled Run the command, shows the monospace text nvidia-smi --query-gpu=driver_version --format=csv,noheader and the note Ansible runs it on the host. Arrow 1 is labelled register: drv. Box 2, titled Raw result in drv, lists the fields rc, stdout, stdout_lines, stderr, changed, failed, start, end, delta and cmd inside a light green panel, with the note the whole dictionary. Arrow 2 is labelled set_fact. Box 3, titled Clean value in current_driver, shows the monospace text drv.stdout_lines[0] | trim. Arrow 3 leads to Box 4, titled debug var: drv, which prints the whole structure so you can check each piece. Orange highlight on Box 3, the cleaned value that later tasks read. Green takeaway bar at the bottom: Keep the raw output in register and the cleaned value in set_fact, so each variable does one job.",
+  "anchor": "## 2. Registered results and set_fact",
+  "alt": "A command's output is registered as a raw dictionary, set_fact trims the first line into a clean value, and debug shows the whole structure.",
+  "cap": "The register step keeps the whole raw result, and set_fact turns one field of it into the clean value later tasks read."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-limit-hostvars",
+  "title": "Why --limit breaks cross-host templates",
+  "spec": "Two side-by-side panels with the same three-row picture each: a playbook box at the top, and below it a row of host boxes. Left panel titled Full run, with the note the play covers the whole cluster. Its host boxes are lb01, web1..3 and gpu001..032, all marked with a green tick labelled facts gathered. Below them a box labelled hostvars is complete, then an arrow down to a box labelled template writes every backend address. Right panel titled Run with --limit lb01, showing the command ansible-playbook site.yml --limit lb01 in monospace. Only the lb01 box is marked facts gathered; web1..3 and gpu001..032 are grey and marked not gathered. An arrow goes down to a box labelled hostvars for web1..3 or gpu001..032 is empty or undefined. From there an orange arrow leads to an outcome box labelled the template fails, or writes blank addresses. Below both panels, a green fix bar lists two boxes: first, a monospace play block with the lines - hosts: cluster, gather_facts: true, tasks: [], tags: [always]; second, the word cache, as in fact caching. Green takeaway bar at the bottom: Before a limited run that templates across hosts, gather facts for the whole group.",
+  "anchor": "### Magic variables",
+  "alt": "A limited run gathers facts only for one host, so hostvars for the other hosts is empty and the template fails or writes blank addresses.",
+  "cap": "Running with --limit gathers facts for only one host, so a template that reads other hosts gets empty values."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-lookup-control-node",
+  "title": "Lookups run on the control node, module results come from the target",
+  "spec": "Three vertical zones side by side with a central task box. Left zone, a container titled Control node, with the note where you type ansible-playbook. Inside it, four small stacked boxes in monospace labelled lookup('file'), lookup('url'), lookup('env') and community.hashi_vault.hashi_vault, with the note lookups run here, when the template is rendered. A lane arrow from the Control node container points right into the centre box labelled Task uses the value. Right zone, a container titled Target host, with the note the machine being configured. Inside it a box labelled Module such as ansible.builtin.setup, drawn with a gear icon. An arrow from the Target host to the centre box is labelled register. Orange highlight on the Control node container and its arrow, with the note lookups never run on the targets. Green takeaway bar at the bottom: For data from a target, use a module and register instead, because a module runs on the host it describes.",
+  "anchor": "## 4. Lookups",
+  "alt": "Lookups read data on the control node, while a module reads data on the target and returns it with register.",
+  "cap": "Lookups fetch values on the control node when a template is rendered, while data from a target comes back through a module and register."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-extract-pipeline",
+  "title": "map extract turns a group of hosts into a list of addresses",
+  "spec": "A left-to-right assembly line of boxes with orthogonal arrows. Box 1 at the far left is a list titled gpu_nodes, drawn as stacked rows showing gpu001, gpu002 and an ellipsis. A hostvars cylinder sits above the first station, labelled hostvars, with a small note per row reading ansible_host. Station 1 is a box labelled map('extract', hostvars, 'ansible_host') with a green number circle 1 above it, with the note for each name, look up that host's ansible_host inside hostvars. Arrow to Station 2, a box labelled list with a green number circle 2 above it. Arrow to the final box at the far right titled Result, a plain list of addresses, drawn as stacked rows labelled 10.1.10.1 and 10.1.10.2 with an ellipsis. The Result box is highlighted in orange as the value ready for the next filter. Green takeaway bar at the bottom: The extract filter does the most work here, because it pulls one hostvar from many hosts at once.",
+  "anchor": "## 6. Filters for configuration generation",
+  "alt": "The map extract filter looks up ansible_host for each host name in hostvars, and the list filter returns a plain list of addresses.",
+  "cap": "The map extract filter pulls one host variable for each name in a group, and the list filter turns the result into a plain list of addresses."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "a08-handler-lost",
+  "title": "A handler lost after a failure, and why Run 2 does not restart",
+  "spec": "Two horizontal lanes stacked vertically, each with a bold lane title on the left. Top lane titled Run 1. Along it, three boxes left to right with green number circles 1, 2 and 3. Box 1: monospace template: dest=/etc/default/dcgm-exporter, with the note the file changes and the task reports changed. Arrow labelled notify to Box 2: queued handler Restart dcgm-exporter, with the note not yet run. Arrow labelled Task 2 to Box 3: a box labelled Task 2 fails on gpu01 with the note the handler is skipped and dcgm-exporter keeps the old config in memory. Box 3 is highlighted in orange. Bottom lane titled Run 2. Two boxes: Box A monospace template: dest=/etc/default/dcgm-exporter, with the note the file on disk already matches, so the task reports ok. Arrow labelled no notify to Box B, a box labelled no restart. Below both lanes, a light green panel titled Three fixes, with three stacked items: force_handlers: true on the play; meta: flush_handlers right after the critical config tasks; an idempotent task that checks the service uptime against the config file mtime. No takeaway bar.",
+  "anchor": "## 1. Handlers",
+  "alt": "A changed config task queues a restart, a later task fails and the handler is skipped, and the second run reports ok so no restart happens.",
+  "cap": "A handler can be lost when a later task fails in the same run, because the next run sees an unchanged file and never notifies it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "a08-import-include",
+  "title": "import_tasks is read at parse time, include_tasks at run time",
+  "spec": "A horizontal timeline across the top with two marked points: left point labelled Parse time, the playbook is read; right point labelled Run time, each task is reached in order. Below the timeline two side-by-side panels. Left panel titled import_tasks / import_role / import_playbook, marked with a lock or fixed-structure icon, with a note Static, at parse time. Inside it three bullet rows: visible to --list-tasks, --tags and --start-at-task; when is applied to every imported task; loop is not supported. Right panel titled include_tasks / include_role, marked with a gear or dynamic icon, with a note Dynamic, at runtime when reached. Inside it three rows: included tasks are not listed by --list-tasks; loop is supported, one include per item; the filename can use facts, shown in monospace as ansible_facts['os_family'] .yml. Under the panels, a decision box with the question: Can the file name or its existence change based on something the run discovers? Arrow labelled yes to a box labelled include. Arrow labelled no to a box labelled import, drawn in orange as the default choice. Green takeaway bar at the bottom: Choose an import by default, and switch to an include only when runtime data forces your hand.",
+  "anchor": "## 5. Imports versus includes",
+  "alt": "Imports are read when the playbook is parsed and includes are read when the run reaches them, so a file name that depends on runtime facts needs an include.",
+  "cap": "An import is fixed when the playbook is read, while an include is decided when the run reaches it, so the choice depends on whether the file name can change at runtime."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "a08-serial-batches",
+  "title": "serial batches grow from one canary node",
+  "spec": "A horizontal row of three batch columns, left to right, each with a bold title and a green number circle: Batch 1, Batch 2 and Batch 3. Above the columns a monospace line: serial: [1, \"10%\", \"25%\"]. Each batch column holds a grid of small square icons, one square per host, drawn as server or chip icons in green outline. Batch 1 holds one square labelled as the canary, a single node, with the note first node is a test. Batch 2 holds squares covering a slice labelled 10%. Batch 3 holds a larger slice labelled 25%. Arrows between the columns are orthogonal and labelled in order. Below the columns, a light green panel with two rows: max_fail_percentage: 5 with the note stops the line when failures pass the limit; any_errors_fatal: false with the note a failure stays with its own host. Orange highlight on Batch 1, the one-node canary. A small note: the serial list grows in steps. Green takeaway bar at the bottom: The first node is a test, and only after that does the play work through larger slices of the fleet.",
+  "anchor": "### Drain \u2192 change \u2192 validate \u2192 return",
+  "alt": "The serial list runs a one-node canary first, then 10 percent and 25 percent slices, with a failure limit of 5 percent.",
+  "cap": "The serial list starts with a single-node canary and then works through larger slices of the fleet, with a failure limit that stops the run."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "a09-site-order",
+  "title": "site.yml imports the tiers in dependency order",
+  "spec": "A top-to-bottom or left-to-right chain of five boxes, joined by orthogonal arrows, each box with a green number circle (1 to 5) for the import order. Box 1: baseline.yml with a small tag label baseline and the note OS baseline on every host. Box 2: database.yml with tag label db and the note PostgreSQL on the db group. Box 3: app.yml with tag label app and the note application on the app group. Box 4: web.yml with tag label web and the note nginx reverse proxy. Box 5: verify.yml with tag label verify and the note end-to-end verification. Above the chain, a monospace file card titled playbooks/site.yml listing the five import_playbook lines in order. Beside the arrows, two small notes: --tags db runs only the tagged tier, and -l app limits the run to one host group, both in monospace. Box 3 and Box 4 are linked by a note the app must answer before the proxy sends it traffic. Orange highlight on the arrow from Box 2 to Box 3, labelled the database must exist before the app tries to connect. Green takeaway bar at the bottom: The database must exist before the app tries to connect, and the app must answer before the proxy sends it traffic.",
+  "anchor": "## 2. Project layout",
+  "alt": "The site playbook imports baseline, database, app, web and verify in that order so each tier is ready before the next one depends on it.",
+  "cap": "The site playbook imports five tier playbooks in dependency order, so each tier is ready before the next one depends on it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "a09-release-switch",
+  "title": "Release directories and the atomic current symlink switch",
+  "spec": "Left panel: a folder tree drawn with folder icons, titled /opt/fleetapp/. Inside it: releases/ containing two sub-folders, v1.4.1 with the note previous, which holds src/ and venv/, and v1.4.2 with the note new; shared/ with the note persistent data and config shared across releases; and a link icon labelled current pointing to releases/v1.4.2. Middle: a large orthogonal arrow from the new release folder to the current link, labelled switch current in one step. Right panel: a rollback box with the monospace command ansible-playbook playbooks/app.yml -e app_version=v1.4.1, and an arrow from it back to current labelled point it back to releases/v1.4.1, then restart the service. Orange highlight on the current link, the one pointer the service reads. A small note: app_keep_releases: 5 keeps the newest five releases; the release pruning command is shown in monospace. Green takeaway bar at the bottom: Rolling back is the same flip in reverse, and the old folder is still there to go back to.",
+  "anchor": "## 5. The application play: release directories and an atomic switch",
+  "alt": "Each release lives in its own folder, a current symlink points at the live one, and rollback repoints it to the previous folder.",
+  "cap": "Each release gets its own folder and a current symlink points at the live one, so switching or rolling back is a single pointer change."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "a09-verify-paths",
+  "title": "Verification checks the path a user takes, then each app node",
+  "spec": "A left-to-right flow of three numbered steps with green number circles 1, 2 and 3. A left column box titled verify.yml, drawn with a shield or check icon. Step 1 box: HTTPS endpoint answers, with the monospace line https://{{ nginx_server_name }}/readyz and the note the path a user takes, delegated to localhost. An arrow from Step 1 leads into a small nginx box, drawn with a router icon, labelled nginx, which leads to a Step 2 box. Step 2 box: Version served matches what we deployed, with the monospace check app_version and the note the assert compares the served version with the pinned one. Arrow from Step 2 to a Step 3 box: Every app node reports ready (direct), with the monospace line http://{{ hostvars[item]['ansible_host'] }}:{{ app_port }}/readyz, drawn as a fan-out to two app node boxes labelled app01 and app02, each with the note asked directly. Orange highlight on the Step 3 fan-out, labelled a single broken host is found even when nginx would have routed around it. Green takeaway bar at the bottom: Modules verify state, while uri and assert verify behaviour, and you need both.",
+  "anchor": "## 7. Verification play",
+  "alt": "The verification play calls the HTTPS readiness URL through nginx, checks the served version, then asks each app node directly.",
+  "cap": "The verification play tests the public HTTPS path first, checks the served version, and then asks each app node directly."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-module-by-hand",
+  "title": "Running a module by hand on the target",
+  "spec": "A left-to-right sequence of five boxes joined by orthogonal arrows, each with a green number circle (1 to 5). Box 1 on the left, drawn with a laptop icon and titled Control node: the monospace command ANSIBLE_KEEP_REMOTE_FILES=1 ansible gpu001 -m ansible.builtin.copy -vvv. Arrow to Box 2, drawn with a server icon and titled gpu001 target: a box holding AnsiballZ_copy.py, with the note the wrapper stays on disk, and the monospace remote path /home/automation/.ansible/tmp/ansible-tmp-.../AnsiballZ_copy.py shown in the output. Arrow labelled ssh gpu001 to Box 3: monospace cd /home/automation/.ansible/tmp/ansible-tmp-*/. Arrow to Box 4: monospace python3 AnsiballZ_copy.py explode, with the note unpacks the module and its arguments into ./debug_dir. Arrow to Box 5: monospace python3 AnsiballZ_copy.py execute, with the note runs the module, where you can add a print or start pdb. Orange highlight on Box 5, the moment to add a print or pdb. A small note near Box 5: the module sees the real files, PATH and permissions. Bottom warning note in plain text: the kept folder holds the arguments you passed, so delete it when you finish. Green takeaway bar at the bottom: Because you are on the target, the module sees the real files, the real PATH and the real permissions.",
+  "anchor": "## 6. Reproducing a module run by hand",
+  "alt": "A module wrapper is kept on the target, unpacked with explode, and run with execute so its failure can be inspected on the host.",
+  "cap": "Keeping the module wrapper on the target lets you unpack it and run it by hand, where you can see what the module actually saw."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-agent-forwarding",
+  "title": "Why become breaks SSH agent forwarding for git",
+  "spec": "A left-to-right chain with two lanes drawn as two rows. Top row, a path that works: a laptop box titled Your login session with a key icon labelled ssh-add -L, with the agent socket SSH_AUTH_SOCK inside it; an arrow labelled ForwardAgent=yes to a target box titled Target, running the git task with become: false; a tick and the note the clone works. Bottom row, the failing path: the same laptop box and the same forwarded agent arrow to a target box where the git task has become: true; an intermediate box titled sudo starts a clean environment with the note SSH_AUTH_SOCK is dropped unless env_keep keeps it; then a box with the note git has no agent to ask, leading to a result box labelled Permission denied (publickey). Orange highlight on the sudo box, the step that drops the variable. A small label at the bottom of the lower row: the key was fine, the environment was not. Monospace labels: SSH_AUTH_SOCK, ForwardAgent=yes, become: true, become: false, env_keep. Green takeaway bar at the bottom: Check 3 is about privilege, and it is the one that catches most people, so make sure the git task does not set become: true.",
+  "anchor": "### Connection layer (UNREACHABLE)",
+  "alt": "Agent forwarding works for a git task without become, but sudo drops the SSH_AUTH_SOCK variable when the task runs with become, so the clone fails.",
+  "cap": "The forwarded SSH agent works only without become, because sudo starts a clean environment that drops the SSH_AUTH_SOCK variable."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-debugger-paths",
+  "title": "Two ways to change a failed task in the debugger",
+  "spec": "A top-to-bottom flow. Start box at the top: A task fails, and the (debug) prompt opens, with the note the task stays in memory. Below it, a split into two branches side by side. Left branch titled Change the argument: monospace command task.args['name'] = 'fixed', then an arrow to a box labelled r (redo), with the note re-runs the task with the change. Right branch titled Change the variable: monospace command task_vars['x'] = 1, then an arrow to a box labelled u (update_task), with the note re-templates task.args from the original expression, then an arrow down to a box labelled r (redo). Both branches meet at a bottom box labelled Task runs again. Side notes: p task.args, p task_vars and p result._result are shown as print commands above the split. Orange highlight on the update_task step, the one the right branch needs before redo takes effect. Below the diagram, a small table-like list of exit commands: c (continue) keeps the task failed; q (quit) aborts. Green takeaway bar at the bottom: Use the debugger to experiment on one failing host, then write the fix into the playbook.",
+  "anchor": "### The interactive debugger",
+  "alt": "In the task debugger you either edit the rendered arguments and redo, or edit a variable, run update_task and then redo.",
+  "cap": "In the task debugger you can edit the rendered arguments and redo, or edit a variable, update the task, and then redo."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-group-failures",
+  "title": "Grouping 200 failures into a short list of causes",
+  "spec": "A left-to-right pipeline of five stations, each a box with a green number circle (1 to 5) above it, joined by orthogonal arrows. At the far left, a stack of log lines titled ansible-playbook output, drawn as many thin rows with FAILED and UNREACHABLE labels among them. Station 1: box labelled grep -E fatal:|FAILED with the note keeps only the failure lines. Station 2: box labelled sed s/.*=> // with the note strips the front of each line, leaving the message. Station 3: box labelled sort with the note puts identical messages next to each other. Station 4: box labelled uniq -c with the note counts each message. Station 5: box labelled sort -rn with the note lists the most common message first. At the far right, a ranked list of count and message rows, with the top row highlighted in orange. Monospace labels for each command. Below the pipeline, a note: examine one representative from each group, then sort the failing hosts by group, rack or OS. Green takeaway bar at the bottom: Group the errors first, then examine a few representatives from each group.",
+  "anchor": "## 9. Debugging at scale and in CI",
+  "alt": "A grep, sed, sort, uniq and sort pipeline turns a long list of failure lines into a ranked count of distinct error messages.",
+  "cap": "A short shell pipeline groups many failure lines by message and ranks the most common message first."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "11",
+  "name": "a11-file-search",
+  "title": "Where copy looks for a relative file inside a role",
+  "spec": "A vertical stack of six numbered rows, each row a box with a green number circle on the left (1 to 6), arranged top to bottom with small downward arrows between them. Each box holds one monospace path: 1 ./roles/<role_name>/files/, 2 ./roles/<role_name>/, 3 ./roles/<role_name>/tasks/files/, 4 ./roles/<role_name>/tasks/, 5 ./files/ with the note adjacent to the top-level playbook, 6 ./ with the note the top-level playbook directory. On the far left, a task card in monospace: copy: src=pg_hba.conf. An arrow from the task card to row 1, labelled look here first. On the right side of the stack, a branch labelled file found, stop, with the note the first match wins, drawn from row 1 as an orange arrow. A second labelled note reads file not found, move on, drawn from rows 1 to 5 as a short arrow to the next row. The orange highlight is on row 1, the role's own files/ folder, which wins over the playbook's folder. Green takeaway bar at the bottom: The order matters when two folders hold a file with the same name, and the role's own files/ folder wins.",
+  "anchor": "## 1. Anatomy of a role",
+  "alt": "A copy task searches six paths in order inside and around the role and stops at the first file it finds.",
+  "cap": "A relative file name in a role is searched in six locations, and the first match wins."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "11",
+  "name": "a11-role-run-order",
+  "title": "Where roles, import_role and include_role run in a play",
+  "spec": "A horizontal sequence of four section boxes across the top, left to right, with orthogonal arrows: pre_tasks, then a middle box titled roles and tasks, then post_tasks. The middle box is split into two sub-rows: the top sub-row is the roles: list, labelled classic, runs before tasks; below it a task flow with a small card labelled ansible.builtin.import_role marked static, fixed at parse time, and a card labelled ansible.builtin.include_role marked dynamic, decided at runtime, with a loop icon and the note supports loop and tasks_from. Above the sequence, a thin bar with three labelled markers: Parse time for import_role, Runtime for include_role. Below the sequence, green note-chips listing the common handler behaviour: Handlers flush between sections. Orange highlight on include_role, the one that can run a role after a reboot or a drain step. Green takeaway bar at the bottom: Use roles: for simple cases, and the other two for mid-task roles.",
+  "anchor": "## 2. Using roles",
+  "alt": "A play runs pre_tasks, then roles and tasks in order, then post_tasks, and import_role is fixed at parse time while include_role decides at runtime.",
+  "cap": "A play runs its pre_tasks first, then roles and tasks, then post_tasks, and only include_role can sit in the middle of the task flow and decide at runtime."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "11",
+  "name": "a11-gpu-order",
+  "title": "Role order on a bare-metal GPU node",
+  "spec": "A vertical or left-to-right stack of six stage boxes, each with a green number circle (1 to 6) and an arrow to the next stage. Stage 1 box, titled base OS and kernel: role common_base for repos, time sync with chrony, SSH and sudo hardening, users and storage mounts; and role kernel_tuning for the pinned kernel, sysctls, hugepages, kernel modules and the nouveau blacklist. Stage 2 box, titled drivers: gpu_facts and gpu_driver for the NVIDIA driver, nvidia-persistenced, Fabric Manager on NVSwitch nodes, MIG configuration and nvidia-smi validation. Stage 3 box, titled container runtime: container_runtime and nvidia_container_toolkit for containerd or Docker, and the nvidia-ctk CDI or runtime hook. Stage 4 box, titled monitoring: monitoring_agents for node_exporter and dcgm-exporter. Stage 5 box, titled scheduler or Kubernetes agents: slurm_client or kubelet, with the note joins the cluster. Stage 6 at the end: a gate box labelled only after every GPU and runtime validation has passed. Orange highlight on Stage 5 and its gate, the step that joins the node to the cluster. Green takeaway bar at the bottom: Document this order in the playbook, not in hidden role dependencies.",
+  "anchor": "## 7. Role patterns specific to GPU infrastructure",
+  "alt": "A GPU node gets its base OS and kernel first, then drivers, the container runtime, monitoring, and finally the scheduler agent after validation.",
+  "cap": "On a GPU node the base OS and kernel come first, the scheduler agent joins last, and only after every GPU and runtime check has passed."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "11",
+  "name": "a11-collection-path",
+  "title": "From collection skeleton to published package",
+  "spec": "A left-to-right flow of five boxes joined by orthogonal arrows, each with a green number circle (1 to 5). Box 1: init, with the monospace command ansible-galaxy collection init acme.gpu and the note creates the skeleton. Box 2: build, with the monospace command ansible-galaxy collection build and the note creates acme-gpu-1.4.0.tar.gz. Box 3: install locally, with the monospace command ansible-galaxy collection install ./acme-gpu-1.4.0.tar.gz -p collections/ and the note catches a missing file before anyone else sees it. Box 4: test, shown as three stacked small boxes labelled sanity, units and integration, with the notes style, docs and imports; small units of Python functions; runs against a real target. Box 5: publish, with the monospace command ansible-galaxy collection publish acme-gpu-1.4.0.tar.gz --server automation_hub. Below Box 3 a small orange note: this step is the one people skip. Below the whole flow, a single note in monospace: galaxy.yml holds namespace, name, version and dependencies. Green takeaway bar at the bottom: Installing the tarball locally before publishing is the step people skip, and it is the one that catches a missing file.",
+  "anchor": "## 5. Collections",
+  "alt": "A collection is initialised, built into a tarball, installed locally, tested with three ansible-test suites, and then published.",
+  "cap": "A collection goes from skeleton to published tarball in five steps, and the local install step catches a missing file before anyone else sees it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "12",
+  "name": "a12-vault-indirection",
+  "title": "Plaintext pointers in one file, encrypted values in another",
+  "spec": "Two file cards side by side with a bold connector between them. Left card, a plaintext file with a green check icon, titled group_vars/all/vars.yml, marked reviewed in PRs. Inside it three monospace rows: db_password: \"{{ vault_db_password }}\", registry_token: \"{{ vault_registry_token }}\", slurm_munge_key_b64: \"{{ vault_munge_key_b64 }}\". Right card, a locked box icon, titled group_vars/all/vault.yml, marked encrypted. Inside it three monospace rows, each with the value shown as a sealed block: vault_db_password, vault_registry_token, vault_munge_key_b64, with the values drawn as hidden ciphertext bars. Between the two cards, orthogonal arrows from each left row to the matching right row, each arrow labelled points to. Above the connector, a small note in plain text: a reviewer reads the names in a pull request and never sees the values. Below both cards, two small monospace notes: grep -r db_password shows where the secret is used, and ansible-vault view shows the vault names. Orange highlight on the arrow from db_password to vault_db_password. Green takeaway bar at the bottom: The label is public, and the drawer is not.",
+  "anchor": "### The `vault_` indirection pattern",
+  "alt": "A plaintext vars file points each variable at a vault_ name in an encrypted vault file, so reviewers can read the names without seeing the values.",
+  "cap": "The plaintext vars file points each variable at a vault_ name, while the values stay encrypted in a separate vault file."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "12",
+  "name": "a12-vault-ids",
+  "title": "Vault IDs keep dev and prod passwords apart",
+  "spec": "Two vertical lanes side by side, each with a lane title: dev on the left and prod on the right. Left lane: a key card labelled dev@~/.vault_pass_dev in monospace, an arrow down to a box titled group_vars/dev/vault.yml with the header note $ANSIBLE_VAULT;1.2;AES256;dev, and a tick with the label opens. Right lane: a key card labelled prod@prompt in monospace, an arrow down to a box titled group_vars/prod/vault.yml with the header note $ANSIBLE_VAULT;1.2;AES256;prod, and a tick with the label opens. A dashed orange X between the lanes, labelled dev password cannot open prod, drawn as the single important item. Above both lanes, a single box with the monospace line vault_identity_list = dev@~/.vault_pass_dev, prod@~/.vault_pass_prod, with a note the playbook run loads both keys without flags. At the bottom of the prod lane, a small note: the prod password stays with fewer people, or only with the CI or AAP credential store. Green takeaway bar at the bottom: Separate passwords per environment mean a developer with dev access cannot decrypt prod.",
+  "anchor": "### Vault IDs: multiple passwords",
+  "alt": "Each environment's vault file names its own vault ID in its header, so the dev password cannot open the prod file.",
+  "cap": "Each vault file records its own label, so a developer holding only the dev password cannot open the prod file."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "12",
+  "name": "a12-leak-paths",
+  "title": "Where a secret can leak and the control that closes each path",
+  "spec": "A two-column map. Left column titled Leak path, with six stacked boxes, each with a small warning icon: --diff and -v output; a register followed by a later debug of that result; command or shell arguments, visible in ps and shell history; an Environment= line in a world-readable unit file; fact caching that keeps a secret saved as a fact; module errors that echo arguments. Right column titled Control, with six matching boxes connected to each leak by orthogonal arrows: diff: false and no_log: true; no_log: true on the sensitive task; pass the value through a file with mode 0600, through stdin, or through environment:; EnvironmentFile= with mode 0600 or 0640 and the right owner; cacheable: false and a protected cache directory; prefer no_log over trusting the module. Monospace labels for each setting name. Orange highlight on the command or shell arrow, the path that shows the secret in ps. Green takeaway bar at the bottom: Treat no_log: true and diff: false as the default for any task that handles a secret.",
+  "anchor": "## 3. Keeping secrets out of output",
+  "alt": "Each leak path for a secret, such as diff output, registered results, command arguments or unit files, has a matching control.",
+  "cap": "Each place a secret can leak, from diff output to unit files, has a specific setting that closes it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "12",
+  "name": "a12-two-phase-rotation",
+  "title": "Two-phase overlap rotation with no downtime",
+  "spec": "A horizontal timeline with three phase columns left to right, each with a green number circle and a bold title. Phase 1 titled Expand: a provider box with two key tokens, v1 and v2, both drawn valid at the same time; the note create a second valid credential, such as user_v2 or a secondary API key or cert. Phase 2 titled Roll consumers: a row of consumer boxes labelled app nodes, drawn as server icons, each switching to v2, with a monospace note ansible rolling update with serial, and a verify health tick. Phase 3 titled Contract: the provider box with v1 struck through and v2 kept, with the note once every consumer is verified on v2 and connection logs show zero v1 use, revoke or drop v1 on the provider. Orange highlight on Phase 3, the step that removes the old credential. Above the timeline, a thin bar labelled both valid, no downtime spanning Phase 1 and Phase 2. Green takeaway bar at the bottom: Add the new credential, deploy the consumers, then remove the old one.",
+  "anchor": "## 7. Rotation and incident response",
+  "alt": "Two-phase rotation first adds a second valid credential, then rolls every consumer to it, and only then revokes the old one.",
+  "cap": "Two-phase rotation adds a second valid credential, moves every consumer over, and only then revokes the old one."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "13",
+  "name": "a13-molecule-sequence",
+  "title": "The Molecule test sequence and where a failure points",
+  "spec": "A horizontal row of step boxes from left to right, joined by arrows in time order and numbered with number circles 1 to 6. Each box has a simple outline icon above its title. Box 1 create, icon disk cylinder. Box 2 converge, icon gear. Box 3 idempotence, icon clock, drawn with an orange outline because it finds the majority of subtle bugs. Box 4 verify, icon shield. Box 5 destroy, icon window. Two optional steps are drawn as dashed boxes: prepare, placed between create and converge, and side_effect, placed between idempotence and verify. Under each box a short note line in secondary text. Under create: failure is about the image or Docker itself, the role has not run yet. Under converge: failure is about the role's first run. Under idempotence: the role ran once, then changed something on the second run. Under verify: the role ran, but the result is not what the check expected. Above the row, a label line: molecule test runs the whole sequence in one go. No takeaway bar.",
+  "anchor": "### The test sequence",
+  "alt": "Molecule runs create, converge, idempotence and verify in order, and a failure at each step points to a different cause.",
+  "cap": "Each Molecule stage has its own failure meaning, so the failing step name tells you which part of the role to inspect."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "13",
+  "name": "a13-ci-job-graph",
+  "title": "The Ansible CI workflow: lint gates the Molecule matrix",
+  "spec": "One large container labelled ansible-ci workflow. Inside it three job boxes in a row, with equal spacing. Left box lint with a shield icon, runs-on ubuntu-latest, step line: yamllint . && ansible-lint. Middle box molecule with a gear icon, a matrix line showing role: kernel_tuning, chrony_client, dcgm_exporter and distro: ubuntu2204, rockylinux9, step line: molecule test. Right box gpu-hw with a chip icon, runs-on self-hosted, gpu, step line: molecule test -s gpu_hw. Draw ONE solid arrow from lint to molecule, labelled needs: lint. No arrow goes to gpu-hw. Under the gpu-hw box a note in secondary text: runs on schedule (nightly cron 0 4 * * *) or when a pull request has the test-gpu label. Under the molecule box a note: a broken file never starts a container. No takeaway bar.",
+  "anchor": "## 6. CI integration",
+  "alt": "In the CI workflow the lint job runs first, the Molecule matrix waits for it, and the GPU job runs on a schedule or label.",
+  "cap": "The Molecule jobs wait for lint, so a broken file never starts a container, and the GPU tier runs on its own schedule."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "14",
+  "name": "a14-linear-vs-free",
+  "title": "linear waits at each task for the slowest host, free lets healthy hosts run on",
+  "spec": "Two side-by-side panels. Left panel titled strategy: linear with a chain icon. Inside it two horizontal lanes, one labelled healthy host and one labelled slow host. The healthy lane finishes its first task block early and then sits idle. The slow lane's first task block is longer. A vertical barrier line sits at the end of the first task block in both lanes, labelled wait for slowest host. Only after the barrier does the second task block start in both lanes. Under the panel, a label: each task runs on all hosts in the batch before the next task starts. Right panel titled strategy: free with a runner icon. Two lanes with the same blocks, but there is no barrier: the healthy lane runs straight on into its second task block and finishes early, and the slow lane finishes later. Under the panel, a label: each host runs through the play at its own pace. Orange note on the linear panel: every task waits for the slowest host. Number circles 1 and 2 on the task blocks of the linear panel to show time order. No takeaway bar.",
+  "anchor": "## 3. Strategies and batching",
+  "alt": "Under linear every task waits for the slowest host, while under free healthy hosts run on at their own pace.",
+  "cap": "With linear every task waits for the slowest host, while free lets healthy hosts finish early."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "14",
+  "name": "a14-async-background-job",
+  "title": "async with poll 0: the job runs in the background while the controller checks later",
+  "spec": "A sequence diagram with three vertical swimlanes side by side, each with a header: Controller (Ansible), Rack host, Background job. Number circles 1 to 5 mark messages in top-to-bottom time order. Message 1, horizontal arrow from Controller to Rack host, labelled command with async: 3600 and poll: 0. Message 2, a short arrow from Rack host to Background job labelled starts in the background. Message 3, arrow from Rack host back to Controller labelled returns a job ID and moves on at once. A shaded vertical span between messages 3 and 4 in the Controller lane is labelled no SSH session needs to stay open, drawn in orange as the key point. Message 4, arrow from Controller to Rack host labelled async_status with until: fw_result.finished, delay: 30 and retries: 120. Message 5, arrow from Rack host back to Controller labelled finished. Use the monospace font for the code-like labels. Under the Background job lane a small label: allowed runtime 3600 seconds. No takeaway bar.",
+  "anchor": "### Long-running tasks",
+  "alt": "A background job runs on the host while the controller returns at once, then polls with async_status until it finishes.",
+  "cap": "With async and poll set to 0 the controller does not hold an SSH session open, and it checks the job later with async_status."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "14",
+  "name": "a14-ring-promotion",
+  "title": "Rings: a change is promoted from the canary branch to stable",
+  "spec": "Three ring boxes in a left-to-right row with equal spacing and an arrow between each neighbour. Each box has a simple outline icon above its title, a stack of nodes for the ring and a git branch icon for the branch. Box 1 titled Ring 0 with a branch label canary. Box 2 titled ring 1 with branch label stable-1. Box 3 titled ring 2 with branch label stable. Number circles 1, 2 and 3 on the boxes for the order of promotion. Arrow from box 1 to box 2 labelled fast-forward after validation passes. Arrow from box 2 to box 3 with the same label. Ring 0 box drawn with an orange outline because the change lands there first. Above Ring 0, a small label: a change lands on canary. Below the three boxes, a short text line: promote by fast-forwarding the branches, or by moving signed tags. Monospace text for the branch names. No takeaway bar.",
+  "anchor": "## 6. Pull mode in detail",
+  "alt": "A change lands on the canary branch for ring 0, then moves to stable-1 and stable after each ring validates it.",
+  "cap": "Rings promote a change one stage at a time, so each ring validates it before the next ring receives it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "15",
+  "name": "a15-module-idempotency-loop",
+  "title": "A module reads, compares, changes only if needed, and reports changed",
+  "spec": "A horizontal row of four step boxes left to right, joined by arrows in time order, with number circles 1 to 4. Each box has a simple outline icon above its title. Box 1, title Read the current state, icon gauge. Box 2, title compute the difference, icon balance scale or two overlapping squares. Box 3, title change only if needed, icon gear, drawn with the orange outline because it is the step that must not run when nothing differs. Box 4, title report changed accurately, icon clock or checkmark in a window. Under box 3 a short note line: runs only when the state differs. Below the row, a green panel titled Thermostat with a thermostat icon and three short lines of secondary text: reads the room temperature; compares it with the setting; turns the heater on only when the room is too cold. Draw a thin dotted line from each thermostat line up to the matching step box, so the analogy maps onto the four steps. No takeaway bar.",
+  "anchor": "## 2. Writing a module",
+  "alt": "A module reads the current state, computes the difference, changes only if needed, and reports changed accurately.",
+  "cap": "An idempotent module reads the current state first and changes the system only when the state differs from the request."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "15",
+  "name": "a15-module-test-ladder",
+  "title": "Five steps to test a module, from simplest to most complete",
+  "spec": "A staircase of five steps rising from bottom left to top right, with equal step width. Each step is a box with a number circle (1 to 5) at its left, a simple outline icon and a title, plus one line of secondary text for what that step catches. Step 1, title Run the module directly, icon terminal window, text: catches crashes in the logic before Ansible is involved. Step 2, title Run it ad hoc, icon gear, text: checks that Ansible passes the arguments and reads the result. Step 3, title Write unit tests with pytest, icon checklist, text: runs without a GPU, using a mock. Step 4, title Run ansible-test sanity, icon shield, text: checks documentation and style. Step 5, title Run the module twice, icon two looping arrows, drawn with the orange outline, text: the second run reports changed as false. Arrows: a single thin arrow runs up the staircase from step 1 to step 5, labelled simplest to most complete. Monospace text for the commands in the titles where they appear. No takeaway bar.",
+  "anchor": "### Testing a module",
+  "alt": "Five testing steps climb from running the module directly to running it twice and confirming changed is false.",
+  "cap": "Each of the five test steps catches a different kind of mistake, so you should not skip ahead."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "15",
+  "name": "a15-eda-remediation-flow",
+  "title": "An EDA rule hands remediation to a job template",
+  "spec": "A left-to-right flow of four boxes joined by three solid arrows, numbered 1 to 4 in time order. Box 1, icon bell, title Alertmanager source on port 5000, sub-label alert GPUXid79 firing. Box 2, icon rulebook or scroll, title rule Cordon on Xid 79, sub-label condition matches. Box 3, icon window, title run_job_template drain-and-diagnose-node, monospace sub-label target_node from the alert. Box 4, icon server, title managed node. Arrow 1 to 2 labelled condition matches. Arrow 2 to 3 labelled run_job_template. Arrow 3 to 4 labelled runs the job on the node. Box 3 is drawn with the orange outline. Under box 3, a dashed callout box containing three short lines: credentials, Execution Environment, approval rules, with a note that the rule itself does not do the work. Keep the callout outside the arrow path so no arrow crosses it. No takeaway bar.",
+  "anchor": "### Event-Driven Ansible (EDA)",
+  "alt": "An EDA rule matches a firing GPUXid79 alert and launches the drain-and-diagnose-node job template on the node.",
+  "cap": "An EDA rule hands the remediation to a job template, which holds the credentials and approval rules rather than the rule itself."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "16",
+  "name": "a16-network-connection",
+  "title": "Network modules run on the controller and reach the device through a connection",
+  "spec": "Two large boxes side by side with a wide gap between them. The left box, titled Controller, has a laptop or window icon and a secondary line: the playbook runs here. Inside it a sub-box with a gear icon and the text: turns the desired state into commands or RPCs. The right box, titled Network device, has a switch icon and a secondary line: no Python needed on the device. Numbered circles 1 and 2 mark the order: 1 on the controller box, 2 on the arrow. One solid arrow runs from the controller box to the device box across the gap, labelled with three lines of monospace text: ansible.netcommon.network_cli, ansible.netcommon.netconf, ansible.netcommon.httpapi, and with the small caption: connection options. Draw the arrow once only. Above the arrow, a small label: ansible_network_os names the platform. Under the two boxes, a green note panel with a translator icon and one line: a translator outside a locked office, which cannot go inside but speaks the receptionist's language. Orange outline on the arrow because the connection is the key link. No takeaway bar.",
+  "anchor": "### How network automation differs",
+  "alt": "Network modules run on the controller, turn the desired state into commands, and reach the device through a network connection plugin.",
+  "cap": "Network modules run on the control node and reach the device through a connection plugin, because the device usually cannot run Python."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "16",
+  "name": "a16-cluster-boundary",
+  "title": "The cluster boundary decides which tool owns each layer",
+  "spec": "A vertical stack of two large panels separated by one horizontal dashed line in orange, labelled cluster boundary, drawn across the full width. Upper panel, titled Kubernetes workloads, with a cluster or container icon, and a secondary line: GitOps keeps this layer reconciled. Inside the upper panel a small box with a sync-arrows icon labelled Argo CD or Flux. Lower panel, titled Ansible owns the layer beneath the cluster, with a gear icon. Inside the lower panel five equal rows, each with a small icon and a label: node preparation; cluster bootstrap with Kubespray or kubeadm; initial platform installs such as the CNI, the GPU Operator and Argo CD itself; certificate and kubeconfig distribution; day-2 node operations such as cordon, drain and upgrade. Right of the lower panel, a short label box: Ansible owns the layer beneath the cluster. Left of the upper panel, a short label box: GitOps owns what runs inside it. Green takeaway bar at the bottom with the text: Ansible owns the layer beneath the cluster, and GitOps owns what runs inside it.",
+  "anchor": "### Kubernetes",
+  "alt": "Above the cluster boundary GitOps reconciles workloads, while Ansible handles the node, bootstrap, platform installs and day-2 operations below it.",
+  "cap": "Ansible handles the layer beneath the cluster and GitOps handles what runs inside it, and the cluster boundary decides which tool to use."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "17",
+  "name": "a17-reload-or-reboot",
+  "title": "Reload the GPU modules when you can, and fall back to a reboot when a holder blocks the unload",
+  "spec": "A top-down flow drawn left to right with numbered steps, joined by solid arrows. Start box at the left titled Driver upgrade, icon gear, with the note: decide reload or reboot before the upgrade starts. Step 1 box: Stop the dependent services, icon window, a sub-line listing DCGM, persistenced, exporters and containers. Step 2 box: Unload the modules, icon chip, monospace text: nvidia_uvm, nvidia_drm, nvidia_modeset, nvidia, with the note in order from the top of the stack down. A decision diamond after step 2 labelled Unload succeeds? Yes arrow goes right to Step 3 box: Load the new modules with modprobe, icon shield, then to an end box titled Node stays up. No arrow goes down from the diamond to a box titled Find the holders, icon magnifier, with monospace text: lsof /dev/nvidia* or fuser -v /dev/nvidia*. From Find the holders, an arrow goes right to a decision diamond labelled Still fails? Yes arrow goes right to a box titled Reboot, icon power button, drawn with the orange outline, with the note: slower, but leaves no half-unloaded state. The No arrow from Still fails? goes back up to Step 3 box. Number circles 1, 2, 3 on steps 1 to 3. Monospace text for the module names and commands. No takeaway bar.",
+  "anchor": "## 4. Reboots, long tasks and idempotent upgrades",
+  "alt": "Modules are unloaded top down and reloaded, and when a process holds a device open the node falls back to a reboot.",
+  "cap": "A module reload avoids a reboot when nothing holds the device, and a reboot is the safe fallback when the unload still fails."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "17",
+  "name": "a17-drain-patch-resume",
+  "title": "Drain, patch, validate and resume one node at a time",
+  "spec": "A left-to-right workflow with numbered steps in time order, joined by solid arrows. A band above the flow, labelled serial, shows the batch sizes in three small boxes: 1 node first as the canary, then 5%, then 10%. Step 1 box, icon gate or stop sign: Drain from Slurm, with monospace text scontrol update NodeName=... State=DRAIN. Step 2 box, icon clock: Wait for jobs to finish, with monospace text squeue -h -w ... repeated until empty. Step 3 box, icon gear: Apply updates, with two stacked sub-boxes labelled import_role nvidia_driver and gpu_validate quick. A decision diamond after step 3 labelled Validation passes? Yes arrow goes right to step 4 box, icon checkmark: Return to service, with monospace text scontrol update NodeName=... State=RESUME. No arrow goes down from the diamond to a red-outlined box, drawn in the orange outline, titled rescue: leave node DRAINED, with the sub-line: then fail, requires investigation. Under the rescue box, a small note: a drained node keeps its running jobs but takes no new ones. Under the whole flow, a note: max_fail_percentage 3 stops the rollout past 3 percent failures. No takeaway bar.",
+  "anchor": "## 6. Day-2: drain, patch, validate, resume",
+  "alt": "Each node is drained, waits for its jobs, is patched and validated, then returns to service, and stays drained if validation fails.",
+  "cap": "A node returns to Slurm only after its jobs finish and validation passes, and a failed node stays drained for investigation."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "18",
+  "name": "a18-plan-symbols",
+  "title": "Reading the symbols in a Terraform plan",
+  "spec": "A legend laid out as six equal rows stacked top to bottom, each row a horizontal strip with a large monospace symbol chip on the left, a bold title in the middle and one line of secondary text on the right. Row 1: chip + , title create, text: the resource will be created. Row 2: chip ~, title update in place, text: the change is made without destroying the object. Row 3: chip -, title destroy, text: the object is deleted. Row 4: chip -/+, title destroy and then create, text: forces replacement. Row 5: chip +/-, title create and then destroy, text: appears with create_before_destroy. Row 6: chip <=, title read, text: a data source is read. Draw the row 4 strip with the orange outline, because replacement of a stateful object is the change to question. Below the six rows, a green panel with the summary line in monospace: Plan: X to add, Y to change, Z to destroy. Under the panel, a short line: look for unexpected destroys and replacements first. No arrows. No takeaway bar.",
+  "anchor": "## 4. The workflow and CLI reference",
+  "alt": "A Terraform plan marks create with plus, update in place with tilde, destroy with minus, and replacement with minus-plus or plus-minus.",
+  "cap": "The plan symbols tell you whether Terraform creates, updates, destroys or replaces each object, and replacements deserve the closest reading."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "18",
+  "name": "a18-moved-block",
+  "title": "A moved block turns a rename into a move instead of a destroy and create",
+  "spec": "Two horizontal paths stacked in two bands, with a label on the left of each band. Top band labelled without a moved block. From the left, a state box with a disk cylinder icon holding the entry google_compute_network.fabric, then a box labelled config address module.network.google_compute_network.this. Two arrows leave the state box and the config box toward a destroy box and a create box on the right. The arrow from state to the destroy box is labelled no matching config. The arrow from config to the create box is labelled no state entry. The destroy box is drawn with the orange outline and carries the note: an outage for a network or a database. Bottom band labelled with a moved block. The same state box and the same config box, joined by one arrow labelled moved from ... to ... in monospace, ending at a result box with a checkmark icon labelled has moved, with the note nothing is destroyed. Show the moved block code under the bottom band in monospace: moved { from = google_compute_network.fabric, to = module.network.google_compute_network.this }. No takeaway bar.",
+  "anchor": "### Refactoring safely",
+  "alt": "Without a moved block a rename destroys and recreates the network, while a moved block keeps the same object under its new name.",
+  "cap": "A moved block tells Terraform that a renamed resource is the same object, so the plan shows a move rather than a destroy and create."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "18",
+  "name": "a18-terraform-ansible-handoff",
+  "title": "Terraform renders the inventory file that Ansible reads",
+  "spec": "A left-to-right flow in two labelled zones. A large container on the left titled Terraform decides which machines exist and what they are called, holding three boxes stacked and connected to a fourth box on the right. Box A: random_pet.cluster, icon dice, sub-label length = 2. Box B: var.nodes, icon list, sub-label gpu01 gpus=8, gpu02 gpus=8, gpu03 gpus=4. Box C: local_file.inventory, icon document, sub-label templatefile() renders inventory.tftpl. Arrow from box A to box C labelled cluster name, arrow from box B to box C labelled nodes. Box D on the far right: inventory.ini, icon file with a handoff arrow, drawn with the orange outline and the note the rendered file is the handoff. An arrow from box C to box D labelled rendered. A separate zone on the far right, beside box D, titled Ansible decides what runs on them, with a gear icon, connected to box D by a dotted arrow. Number circles 1 to 3 on boxes A, B and C to show the order of evaluation. Monospace text for the resource and file names. No takeaway bar.",
+  "anchor": "## 9. A small end-to-end example",
+  "alt": "Terraform renders a local file from a random cluster name and a node list, and the inventory file becomes the handoff to Ansible.",
+  "cap": "Terraform renders the inventory file from its own state and inputs, and Ansible reads that file to decide what runs on each machine."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "19",
+  "name": "a19-move-resource-states",
+  "title": "Move a resource between states without destroying it",
+  "spec": "Two tall panels side by side, left panel titled State A (the old owner), right panel titled State B (the new owner). A bucket-shaped storage icon sits in each panel's centre area, labelled aws_s3_bucket.checkpoints, drawn once in State A and once in State B. Four numbered circles (1 to 4) run top to bottom down the middle. Step 1, inside State B: a box reading 'Add the resource configuration and an import block', with the monospace text import { to = aws_s3_bucket.checkpoints }. Step 2, an arrow from step 1 into a box reading 'Apply B, so it tracks the resource', with the bucket arrow pointing from State B into the bucket. Step 3, inside State A: a box reading 'Add a removed block with destroy = false and apply A', with the monospace text removed { lifecycle { destroy = false } }, and an arrow reading 'Tells A to let go without touching the bucket'. Step 4, inside State A: a box reading 'Delete the code from A'. Orange outline on the step 3 box, as the single most important step. Under the panels, a green note: 'Check that both plans are clean at each step, because a dirty plan at any step means two states are now fighting over one object.' Green takeaway bar at the bottom: 'Think of it as adding the new owner before removing the old one.' No arrowheads between the two panels other than the bucket arrows.",
+  "anchor": "### Split or merge states, rename resources",
+  "alt": "Four steps move an S3 bucket from state A to state B: import into B, apply B, removed with destroy false in A, then delete the code from A.",
+  "cap": "Moving a resource between states takes four steps, and the bucket is never destroyed."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "19",
+  "name": "a19-drift-decision",
+  "title": "Decide what to do with each drift item",
+  "spec": "Top: a box with a clock or alert icon titled 'Drift found', text 'terraform plan shows a difference between the config and the real world'. An arrow down to a decision box titled 'Decide case by case', with a gear or branch icon, outlined in orange as the single most important item. Three arrows leave the decision box to the right, one per card, arranged as three columns. Card 1, title 'Revert the drift', icon: a rewind arrow, text 'Apply the intended config, when the hotfix was temporary'. Card 2, title 'Adopt the drift', icon: a pencil or document icon, text 'Edit the config to match, so the plan comes back clean, when the hotfix is the new truth'. Card 3, title 'Tolerate the drift', icon: a shield icon, text 'Use lifecycle { ignore_changes = [...] } for fields managed elsewhere', with the example 'such as an autoscaler-managed desired_size or labels added by controllers'. Under the cards, a green note: 'Decide, for each drift item, whether to revert, adopt or tolerate it before the next apply.' No number circles, since the three options are not in time order.",
+  "anchor": "## 9. Drift",
+  "alt": "Drift can be reverted by applying the config, adopted by editing the config, or tolerated with ignore_changes.",
+  "cap": "For each drift item you either revert it, adopt it into the config, or tolerate it with ignore_changes."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "20",
+  "name": "a20-validation-flow",
+  "title": "A validation rule stops a bad GPU count before planning",
+  "spec": "A left-to-right flow of numbered steps (number circles 1 to 5, green). Step 1: a box with a person or form icon titled 'Caller sets gpu_count', text 'Caller sets gpu_count to 3'. Arrow to step 2: a box with a shield or check icon titled 'Condition checks the list', text 'Is 3 in [0, 1, 2, 4, 8]?' with the answer 'No' on the arrow. Step 3, orange outline (the most important step): a box with an alert icon titled 'Validation fails', showing the monospace error line 'gpu_count must be 0, 1, 2, 4 or 8.' Arrow from step 3 back down to step 4: a box with a pencil icon titled 'Caller changes the value', text 'Set gpu_count to 4 or 8'. Arrow to step 5: a box with a clock or gear icon titled 'The plan goes on', text 'Plan continues'. Beside the list box, a short green note: 'The list stands in for the node shapes your platform team supports.' Green takeaway bar at the bottom: 'Validation runs during planning, so the caller fixes the value before anything is created.' No arrow crosses another arrow.",
+  "anchor": "### Interface design",
+  "alt": "A gpu_count of 3 fails the validation list check during planning, so the caller changes it to 4 or 8.",
+  "cap": "A validation block rejects an unsupported GPU count during planning, before any infrastructure is created."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "20",
+  "name": "a20-promote-pin",
+  "title": "Promote a module pin one environment at a time",
+  "spec": "Top row of two numbered steps (number circles 1 and 2). Step 1 box with a document icon titled 'Read the changelog', text 'Then run terraform init -upgrade in a branch', with the monospace text terraform init -upgrade. Step 2 box with a magnifier icon titled 'Plan the lower environments first', text 'Confirm there are no unexpected replacements', with the monospace text must be replaced. Below, a horizontal row of three environment boxes connected left to right by arrows: 'dev', then 'staging', then 'prod'. Each environment box has a small pin icon and the text 'Promote the version pin'. Between each pair of environment boxes, a small diamond decision labelled 'Unexpected replacement?'. The No path continues to the next environment. The Yes path, drawn in orange as the single most important path, leads down to a stop box with a hand or stop icon titled 'Stop', with the note 'Stopping is a success, not a failure.' Under the environment row, a box numbered 3 titled 'Promote the version pin through dev, staging and prod'. Box numbered 4 at the far right, titled 'For breaking changes', text 'Ship a migration guide, moved blocks and deprecation periods'. Green takeaway bar at the bottom: 'The plan has just saved you from rebuilding a stateful resource.' No other arrows.",
+  "anchor": "### Upgrading modules safely",
+  "alt": "Upgrade a module by reading the changelog, planning lower environments, promoting the pin in order, and stopping at any unexpected replacement.",
+  "cap": "A module upgrade moves from dev to staging to prod, and the rollout stops the moment a plan shows an unexpected replacement."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "20",
+  "name": "a20-provider-alias",
+  "title": "Pass a regional provider into each module call",
+  "spec": "Top panel titled 'Root module' containing two provider blocks side by side as cards with a cloud icon each. Left card: monospace 'provider google', 'alias = us', 'region = us-central1'. Right card: monospace 'provider google', 'alias = eu', 'region = europe-west4'. Below the panel, two module call boxes side by side. Left: 'module pool_us' with monospace 'providers = { google = google.us }'. Right: 'module pool_eu' with monospace 'providers = { google = google.eu }'. Arrows drawn from the 'alias = us' card down to the pool_us box, and from the 'alias = eu' card down to the pool_eu box, so the two arrows do not cross. Both module boxes point into one shared box at the bottom titled 'gke-gpu-pool', with the note 'Same module code builds both pools'. Orange outline on the note 'You cannot choose a provider per instance inside for_each, because provider mappings are static.' placed at the bottom right. Under it, two options in green cards: 'Repeat the module call for each region' and 'Use a separate stack per region'. Green takeaway bar at the bottom: 'Decide which of the two you want before the platform grows.' No number circles, since these are not in time order.",
+  "anchor": "### Passing providers and multi-region",
+  "alt": "Two google providers, one per region, are passed into two calls of the same gke-gpu-pool module.",
+  "cap": "Each module call receives one regional provider, so the same module code can build pools in two regions."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "21",
+  "name": "a21-count-vs-foreach",
+  "title": "Removing one item from the middle: count versus for_each",
+  "spec": "Two side-by-side panels with a green heading each. Left panel titled 'count (index is identity)'. Top row shows a list of three boxes indexed [0], [1], [2] with the names a100-train, h100-train, a100-infer. The middle box h100-train is struck through and removed with a dashed outline. Below, a row of arrows showing a100-infer sliding from index [2] down to index [1]. Outcome boxes: one orange-outlined box (the most important item) reading 'a100-infer is replaced' and a grey box reading 'the index [1] now names a different pool'. Right panel titled 'for_each (key is identity)'. Top row shows three boxes labelled with keys a100-train, h100-train, a100-infer (the keys shown as names in quotes, no indexes). The h100-train box is removed with a dashed outline. Nothing else moves. Outcome box in green reading 'Only h100-train is destroyed' and a second green box reading 'a100-infer is untouched'. Use a disk-stack or gear icon on each box. No number circles, since the boxes are not steps in time order. Under both panels, a green note: 'Use count only when you would never tell two instances apart.' Green takeaway bar at the bottom: 'If each instance has a name you care about, use for_each with stable keys.' Arrows: only the slide arrow in the left panel, no crossing arrows.",
+  "anchor": "## 2. for_each",
+  "alt": "Removing a middle item shifts indexes under count and replaces a later pool, while for_each destroys only the removed key.",
+  "cap": "Removing a middle item under count shifts later indexes and replaces a pool nobody touched, while for_each destroys only the removed key."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "21",
+  "name": "a21-lifecycle-order",
+  "title": "Order of checks and replacement under lifecycle",
+  "spec": "A left-to-right sequence of four numbered steps (green number circles 1 to 4). Step 1: a box with a clipboard icon titled 'precondition', showing the condition data.aws_ec2_instance_type.selected.default_vcpus >= 16 in monospace and the message 'Login nodes need at least 16 vCPUs.' A small note under step 1: 'The check runs before creation.' Arrow to step 2: a box with a plus or new-node icon titled 'Create the replacement first', with the label 'create_before_destroy = true'. Arrow to step 3: a box with a trash or minus icon titled 'Destroy the old one', text 'Creates its replacement before destroying the old one'. Arrow to step 4: a box with a magnifier icon titled 'postcondition', showing the condition self.public_ip == \"\" in monospace and the message 'Login nodes must not have public IPs.' Orange outline on step 4 as the single most important check. A small green note under step 4: 'A node that comes up with a public address fails the run.' Green takeaway bar at the bottom: 'Preconditions guard the input, postconditions guard the result.'",
+  "anchor": "## 6. The lifecycle block",
+  "alt": "A login node runs its precondition, creates a replacement before destroying the old node, then checks its postcondition.",
+  "cap": "Under the lifecycle block, the precondition runs before creation, the replacement is created before the old node is destroyed, and the postcondition checks the result."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "21",
+  "name": "a21-if-else-index-trap",
+  "title": "The if/else [0] index trap and the one(concat()) fix",
+  "spec": "Top section: two resource boxes stacked vertically, each with a cloud or user icon. Upper box: monospace 'neo_cloudwatch_full_access', with the label 'count = var.give_neo_cloudwatch_full_access ? 1 : 0'. Lower box: monospace 'neo_cloudwatch_read_only', with the label 'count = var.give_neo_cloudwatch_full_access ? 0 : 1'. Note inside each box: for any input exactly one of the two lists is empty. Arrows from both boxes into one box titled 'Output reads [0] from each list', with the monospace text full_access[0].policy_arn in one branch and read_only[0].policy_arn in the other. An alert icon beside this box in orange (the single most important item) with the error text 'index 0 out of range for list of length 0'. Bottom section, titled 'Fix', one green box with the monospace text one(concat(full_access[*].policy_arn, read_only[*].policy_arn)) and the note 'The concat joins the two splat lists, and one() returns the single element or null'. No number circles, since these are not in time order. Green takeaway bar at the bottom: 'Splat both lists and let one() pick, so no branch reads index zero from an empty list.'",
+  "anchor": "## 5. Conditionals",
+  "alt": "Two opposite count toggles leave one list empty, so reading index zero fails; one of concat with one fixes it.",
+  "cap": "Two opposite count toggles leave one list empty, so the output should combine the splat lists with concat and one instead of reading index zero."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "22",
+  "name": "a22-strategy-ladder",
+  "title": "Pick the first secret strategy your provider supports",
+  "spec": "A descending staircase or ladder of seven numbered steps (green number circles 1 to 7), with step 1 at the top left and step 7 at the bottom right, each step a wide box with one outline icon. Step 1, key-off or identity badge icon, title 'Avoid secrets altogether', text 'Prefer identity-based access over passwords and keys'. Step 2, cloud with lock icon, title 'Let the target service generate and store the secret', text 'Terraform stores only the secret reference'. Step 3, empty box with lock icon, title 'Create the secret container, not the value', text 'A CI step, an operator or a rotation job sets the value out of band'. Step 4, clock or sparkle icon, title 'Ephemeral and write-only features', text 'Values exist only during the run'. Step 5, secret manager or cloud icon, title 'Read the value at apply time', text 'A data source reads it from a secret manager'. Step 6, shield icon, title 'Encrypt state', text 'Backend encryption, and client-side encryption in OpenTofu'. Step 7, orange outline (the last resort, drawn as the single most important warning), terminal or environment variable icon, title 'Environment variables', text 'Pass TF_VAR_db_password from the CI secret store and accept that it ends up in state'. Above the staircase, a green note: 'Work down the list until one fits your case.' Green takeaway bar at the bottom: 'The first strategy that your provider and version support is usually the right one.'",
+  "anchor": "## 2. Strategies, from best to worst",
+  "alt": "Seven secret strategies ordered from best to worst, ending with environment variables as the last resort.",
+  "cap": "Seven secret strategies run from best to worst, and the first one your provider and version supports is usually the right choice."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "22",
+  "name": "a22-federated-auth",
+  "title": "Short-lived federated credentials instead of stored keys",
+  "spec": "Left to right flow with four numbered steps (number circles 1 to 4, green). Step 1: a box with a CI pipeline or runner icon titled 'CI job', text 'Runs terraform plan'. Arrow to step 2: a box with an id-card or badge icon titled 'Signed token from its own identity provider', text 'The CI system proves who it is'. Arrow to step 3: a box with a shield or policy icon titled 'The cloud checks the trust', text 'Trust policy conditions on repo, branch and environment'. Arrow to step 4: a box with a clock icon titled 'Temporary credential for one role', text 'Short-lived, valid only for one role, expires before anyone can misuse it'. The arrow into step 3 is orange, as the single most important check. Above the flow, a note: 'No key is stored in the repo or in CI variables.' Below the flow, two small boxes side by side: 'AWS: assume_role in provider' and 'GCP: impersonate_service_account' showing where the role is named. Green takeaway bar at the bottom: 'The caller stays the same, and the permission comes from the role.' Monospace label in step 3: AssumeRoleWithWebIdentity.",
+  "anchor": "## 3. Authenticating providers",
+  "alt": "A CI job presents a signed identity token, the cloud checks the trust conditions, and returns a short-lived role credential.",
+  "cap": "A CI job trades its own signed identity token for a short-lived credential for one role, so no static key is stored."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "22",
+  "name": "a22-layered-k8s",
+  "title": "Create the cluster in one stack, configure Kubernetes in the next",
+  "spec": "Two stacked panels, top and bottom, with a downward arrow between them. Top panel, green outline, numbered circle 1, titled 'Stack 1: create the cluster', containing one cluster icon box labelled google_container_cluster in monospace with the text 'Cluster provisioning'. The arrow between the panels carries the note 'The cluster must exist before this stack runs'. Bottom panel, numbered circle 2, titled 'Stack 2: configure the providers and add-ons', containing three boxes left to right connected by arrows: first a box with an arrow-in icon titled 'Data sources', text 'data google_container_cluster and data google_client_config'; second a box with a gear icon titled 'kubernetes and helm providers', text 'Configured from the data sources'; third a box with a puzzle icon titled 'Add-ons', text 'For example a GPU operator or an ingress controller'. Orange outline on the bottom panel title as the single most important rule: 'Build the cluster first, configure the providers in a later stack'. A green note to the left of the top panel: 'Provider endpoints are unknown at plan time when the cluster is created in the same apply.' Green takeaway bar at the bottom: 'Two stacks stop the cluster and its add-ons from failing together.'",
+  "anchor": "### Provider dependency ordering and the \"provider depends on resource\" problem",
+  "alt": "Stack one creates the GKE cluster and stack two reads it with data sources to configure the kubernetes and helm providers.",
+  "cap": "The cluster is created in one stack, and a second stack configures the Kubernetes and Helm providers from data sources."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "23",
+  "name": "a23-live-vs-modules",
+  "title": "Reusable modules and deployable live stacks",
+  "spec": "Two large side-by-side panels with a green heading each. Left panel titled 'modules/' with the note 'Reusable, versioned building blocks, nothing deploys by itself'. Inside it, four small blocks in a row labelled network, checkpoint-bucket, gke-cluster and gpu-pool, each with a box icon, and a fifth block iam-workload. Right panel titled 'live/' with the note 'Deployable stacks, one state each'. Inside it, a stack of three example boxes labelled prod, staging and lab (environment folders). Inside the prod box, a small grid of five stack boxes labelled network, storage, cluster, gpu-pools and observability, each with its own state icon (disk cylinder). A dashed arrow from the modules panel to the live panel, labelled 'Pinned version' in green, with the note 'Higher environments consume modules through pinned versions'. Orange outline on the stack box gpu-pools in prod, with the note 'A change here touches one pool in one region in production' as the single most important example. Numbered circles are not needed. Green takeaway bar at the bottom: 'A stack's path expresses its blast radius, so check the path first in a review.' Keep the dashed arrow as the only connector between panels.",
+  "anchor": "### Live vs modules",
+  "alt": "Reusable modules sit apart from live stacks, which are split by environment and region, each with its own state.",
+  "cap": "Reusable modules live apart from the live stacks that deploy them, and each live stack path shows how far a change can reach."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "23",
+  "name": "a23-terragrunt-dry",
+  "title": "One root file defines the backend for every stack below it",
+  "spec": "Top: one wide box titled 'live/stage/terragrunt.hcl (root)', with the text 'remote_state defined once, with the key built from path_relative_to_include()' and a small key icon. Below it, a row of stack boxes connected from the root by downward arrows, each arrow labelled with the monospace text include { path = find_in_parent_folders() }. Child stack boxes: 'services/hello-world-app/terragrunt.hcl' (the state key shown as services/hello-world-app/terraform.tfstate) and 'data-stores/mysql/terragrunt.hcl'. Each child box shows its own state icon (disk cylinder) with its own key path, so each stack has its own state. A dependency arrow goes from the hello-world-app box to the mysql box, labelled with the monospace text dependency mysql { config_path = \"../../data-stores/mysql\" }, pointing at the mysql box. Number circles 1 to 3 beside the sequence of run: 1 'Run terragrunt run-all apply', 2 'Apply data-stores/mysql first', 3 'Then apply services/hello-world-app'. Orange outline on the root box as the single most important item: the backend is written only once. Green takeaway bar at the bottom: 'Every stack gets its own state without anyone typing a key by hand.'",
+  "anchor": "### Keeping `live/` DRY with Terragrunt (*Terraform: Up and Running* Chapter 10)",
+  "alt": "A root Terragrunt file defines the S3 backend once, child stacks include it, and run-all applies the mysql stack before the app stack.",
+  "cap": "One root Terragrunt file defines the backend once, and each child stack gets its own state key from its folder path."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "23",
+  "name": "a23-test-stages",
+  "title": "Skip the slow stages while you iterate",
+  "spec": "A horizontal row of five stage boxes, left to right, each with a numbered circle (1 to 5, green) and a gear or test-tube icon, connected by arrows left to right. Stage 1 titled 'deploy_db' (monospace), with the note 'Slow, about 13 minutes'. Stage 2 titled 'deploy_app' (monospace). Stage 3 titled 'validate_app' (monospace). Stage 4 titled 'teardown_app' (monospace). Stage 5 titled 'teardown_db' (monospace). Below the row, a bracket spanning stage 1 and stage 5 labelled 'Skipped on later runs with SKIP_<stage>=true'. Under the bracket, a second line of monospace text: SKIP_deploy_db=true SKIP_teardown_db=true SKIP_teardown_app=true go test -timeout 30m. Above the stages, a green note: 'test_structure.RunTestStage wraps each stage, and the options are saved to disk'. Highlight stage 2 'deploy_app' and stage 3 'validate_app' in an orange outline as the stages that run on every iteration, the single most important part. Green takeaway bar at the bottom: 'Keep the oven on between batches of cookies, rather than heating it from cold every time.'",
+  "anchor": "## 3. Testing strategy",
+  "alt": "Test stages deploy_db through teardown_db, where skipping the database stages lets you iterate on the app stages alone.",
+  "cap": "Splitting an integration test into named stages lets you skip the slow database stages and re-run only the application stages."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "24",
+  "name": "a24-private-egress",
+  "title": "Private nodes reach Google and the internet without public IPs",
+  "spec": "Centre: one large box titled 'GPU node' with a chip or server icon and the note 'No public IP', drawn with an orange outline as the single most important item. Left of the node: a box titled 'Private Google Access' with a cloud icon and the label 'Google APIs', connected to the node by an arrow pointing from the node to the box, labelled 'Outbound to Google APIs'. Below the node: a box titled 'Cloud NAT' with a router icon, connected by an arrow pointing from the node to the box, then a second arrow from Cloud NAT to a box titled 'Internet', labelled 'Outbound only'. Right of the node: a box titled 'Identity-Aware Proxy (IAP)' with a lock icon and the small text '35.235.240.0/20', connected by an arrow pointing into the node, labelled 'gcloud compute ssh --tunnel-through-iap'. A blocked arrow from the Internet box pointing toward the node with a cross mark, labelled 'Nothing reaches the node inbound'. Above the node, a green note: 'Private Google Access lets a private VM call Google APIs, while Cloud NAT gives outbound-only internet access.' Green takeaway bar at the bottom: 'Outbound works through NAT, inbound SSH works through IAP, and no node needs a public address.' Use four arrows only, none crossing.",
+  "anchor": "## 2. Network",
+  "alt": "A GPU node without a public IP reaches Google APIs through Private Google Access and the internet through Cloud NAT, and engineers SSH in through IAP.",
+  "cap": "A GPU node with no public IP reaches Google APIs and the internet through private access and Cloud NAT, and engineers reach it through IAP."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "24",
+  "name": "a24-multi-nic",
+  "title": "Multi-node GPU training with one VPC per GPU NIC",
+  "spec": "Left: a tall box titled 'A3 GPU node' with a server icon, showing a row of GPU chips labelled GPU, with the text 'a3-highgpu-8g' underneath. From the right edge of this box, five network port icons. The top port is labelled 'Primary NIC' and connects by an arrow to a box at the upper right titled 'Management VPC', with the text 'General traffic' inside. The four lower ports, each labelled 'GPU NIC', each connect by an arrow to one of four stacked boxes at the lower right, each titled 'Extra VPC network' with the text 'mtu = 8896' and 'Own subnet'. Arrows from the four GPU NIC ports are labelled 'GPU-to-GPU traffic'. A bracket beside the four lower boxes is labelled 'Four or eight, one per GPU NIC', with an orange outline as the single most important item. A green note under the node: 'GPUDirect-TCPX, or GPUDirect-RDMA on A3 Ultra and A4'. Green takeaway bar at the bottom: 'The main NIC carries general traffic, while the extra NICs carry GPU-to-GPU traffic.' No arrows cross.",
+  "anchor": "## 2. Network",
+  "alt": "One management VPC carries general traffic, and four or eight extra VPCs with mtu 8896 each carry GPU-to-GPU traffic from one GPU NIC.",
+  "cap": "Multi-node GPU training adds one extra VPC per GPU NIC with jumbo MTU, while the primary NIC keeps general traffic."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "24",
+  "name": "a24-surge-upgrade",
+  "title": "Why max_surge = 0 keeps a reserved pool upgradable",
+  "spec": "Two side-by-side panels with a green heading each. Left panel titled 'Default surge: max_surge = 1, max_unavailable = 0'. Inside, a row of 16 small green GPU node boxes labelled as 'a3-highgpu-8g' nodes in a box titled 'Reservation: 16 nodes', all running. Beside them, one dashed extra node box in orange labelled 'Extra GPU VM' with an arrow pointing into the reservation box and a stop mark. Below, an outcome box with the text 'QUOTA_EXCEEDED or RESERVATION_EXHAUSTED' and the note 'The upgrade stalls'. Right panel titled 'max_surge = 0, max_unavailable = 1'. Inside, the same 16 nodes in the same reservation box, with one node highlighted and an arrow labelled 'Cordon, drain, upgrade one existing node at a time'. No extra node box. Outcome box in green with the text 'Stays inside the 16-node reservation'. Under both panels, a green note: 'A fixed reservation has no spare room for an extra node.' Number circles are not needed. Green takeaway bar at the bottom: 'Upgrade one existing node at a time, so a reserved pool never needs capacity it does not have.'",
+  "anchor": "## 4. GKE clusters and GPU node pools",
+  "alt": "A default surge upgrade needs a 17th GPU node that a 16-node reservation cannot hold, so max_surge 0 with max_unavailable 1 upgrades nodes in place.",
+  "cap": "A surge upgrade needs an extra GPU node that a full reservation cannot hold, so max_surge 0 with max_unavailable 1 upgrades one existing node at a time."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "24",
+  "name": "a24-nebius-fabric",
+  "title": "Create the fabric first, then attach every node to it",
+  "spec": "Top: one wide box titled 'nebius_compute_v1_gpu_cluster' with a network or fabric icon, text 'InfiniBand fabric for multi-node NCCL', and the monospace label infiniband_fabric = \"fabric-3\". Number circle 1 beside it: 'Create the fabric first'. Below, a row of three instance boxes titled 'nebius_compute_v1_instance', each with a GPU chip icon and the monospace label gpu_cluster = { id = ... }, and the text 'one per node name'. Each instance box has an arrow pointing up to the fabric box, labelled 'refers to the fabric ID'. Three dots between the second and third instance boxes to show more nodes. Number circle 2 beside the instance row: 'Instances join the same fabric'. Orange outline on the arrows' label 'Every node in the same GPU cluster' as the single most important rule. A green note on the right: 'A node on the wrong fabric still runs, but it does not share fast links with its peers.' Green takeaway bar at the bottom: 'Place all the nodes of a training pool in one fabric, sized for the largest job you will run.'",
+  "anchor": "## 7. Nebius: the GPU-cloud model",
+  "alt": "A Nebius GPU cluster creates the InfiniBand fabric first, and each instance refers to its ID so every node joins the same fabric.",
+  "cap": "In Nebius, the GPU cluster fabric is created first, and every instance refers to its ID so all nodes share one InfiniBand fabric."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "25",
+  "name": "a25-two-stack-layering",
+  "title": "Create the cluster in one state, configure providers in another",
+  "spec": "Two horizontal rows, no time order, so no number circles. Top row, labelled Avoid, with a red-free layout in grey: a box with the text one state creates the cluster and configures the providers. An orange arrow from it labelled host unknown at plan time points to a box with the text provider falls back to the local kubeconfig and deploys into the wrong cluster. Bottom row, labelled Do, in green: a box labelled create the cluster in one state, then a green arrow labelled data sources read the cluster, pointing to a box labelled configure the kubernetes and helm providers in another state. The two boxes of the bottom row sit side by side inside a light green panel. Monospace labels for kubernetes and helm. No takeaway bar.",
+  "anchor": "### Layering rule (repeat from 4.22)",
+  "alt": "Creating the cluster and configuring the providers in one state can deploy to the wrong cluster, so use two states with data sources.",
+  "cap": "Put cluster creation and provider configuration in separate states, so the providers read the cluster through data sources."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "25",
+  "name": "a25-team-fanout",
+  "title": "One team entry fans out into one copy of each resource per namespace",
+  "spec": "Left: a box labelled team ml holding the namespaces dev and prod. An arrow labelled locals flatten points right to a light green container labelled local.ns (monospace) holding two keyed entries in monospace: ml-dev and ml-prod. A single arrow labelled one copy per entry leaves that container and points right to a larger container labelled for_each over each entry, holding four resource boxes stacked in monospace: kubernetes_namespace, kubernetes_resource_quota, kubernetes_role_binding, kubernetes_network_policy. Under the four boxes, a small note: add a third namespace and each resource gets one more copy. No takeaway bar.",
+  "anchor": "## 5. Tenancy and policy as code",
+  "alt": "A team with dev and prod namespaces is flattened into two keys, and each resource is created once per key.",
+  "cap": "One team with two namespaces flattens into two keys, and each tenancy resource is then created once per key."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "25",
+  "name": "a25-gitops-handoff",
+  "title": "Terraform bootstraps Argo CD, then Git takes over",
+  "spec": "Five boxes left to right with number circles 1 to 4 on the arrows or box corners, green. Box 1 labelled helm_release argocd (monospace), with a sub-label Terraform installs Argo CD. Arrow 2 to box labelled kubectl_manifest root_app (monospace), sub-label one Application called root. Arrow 3 to a box labelled Git folder clusters/cluster_name (monospace), sub-label the folder lists the rest of the cluster. Arrow 4 to a box labelled automated sync with prune and selfHeal (monospace), sub-label Git is the authority. Put the Terraform boxes 1 and 2 on a light green panel labelled Terraform bootstrap and the Git and sync boxes on a second panel labelled GitOps. Orange note under the GitOps panel: do not change anything Argo manages from Terraform. No takeaway bar.",
+  "anchor": "## 6. GitOps bootstrap",
+  "alt": "Terraform installs Argo CD and a root Application that points at a Git folder, then Argo CD keeps the cluster in sync.",
+  "cap": "Terraform installs Argo CD and one root Application, and after that Git and Argo CD keep the cluster in sync."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "26",
+  "name": "a26-argo-status",
+  "title": "Sync status and health status answer different questions",
+  "spec": "Two cards side by side on a light green panel, no time order so no number circles. Each card has two status badges at the top: a badge labelled Sync status and a badge labelled Health status. Card 1 (left) shows badges Synced and Degraded (Synced in green, Degraded in grey). Under the badges, a short text: Git and the cluster agree, but the thing Git describes is broken, such as a GPU pod that cannot be scheduled. A footer line in the card: the fix is in the workload or its node pool. Card 2 (right) shows badges OutOfSync and Healthy. Text: something works, but it no longer matches Git, so a change was made somewhere it should not have been. Footer line: the fix is in whoever changed the object by hand. Above both cards, a single line showing the four health values in monospace: Healthy, Progressing, Degraded, Missing. Orange outline on card 2 only, as the most important warning. No takeaway bar.",
+  "anchor": "### Architecture and objects",
+  "alt": "Synced with Degraded means Git and the cluster agree but the workload is broken; OutOfSync with Healthy means something was changed by hand.",
+  "cap": "Sync status says whether the cluster matches Git, and health status says whether the workload actually works."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "26",
+  "name": "a26-flux-chain",
+  "title": "Three Flux objects, each one feeding the next",
+  "spec": "Three boxes in a row from left to right, with number circles 1, 2, 3 above them in green (time order: fetch, apply, install). Box 1 labelled GitRepository (monospace), with a sub-label fetches the files, and a small note inside it: polls Git every minute (interval 1m). Arrow from box 1 to box 2 labelled with the text files. Box 2 labelled Kustomization (monospace), sub-label applies some of them, with a note dependsOn crds keeps the CRDs ahead of the things that use them. Box 2 is the orange item, with an orange outline, because the dependsOn ordering is the key point. Arrow from box 2 to box 3 labelled with the text applies. Box 3 labelled HelmRelease (monospace), sub-label installs a chart, with a note: checks every half hour (interval 30m). Each box has a simple icon: a folder for GitRepository, a gear for Kustomization, a package for HelmRelease. Light green panel behind the three boxes. No takeaway bar.",
+  "anchor": "### Argo CD vs Flux",
+  "alt": "A Flux GitRepository fetches files, a Kustomization applies them after its dependsOn, and a HelmRelease installs a chart.",
+  "cap": "In Flux, a GitRepository fetches the files, a Kustomization applies them, and a HelmRelease installs the chart."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "26",
+  "name": "a26-repo-layout",
+  "title": "One cluster directory points at shared infrastructure and app overlays",
+  "spec": "Left column: a large light green container labelled clusters/ (monospace) with a sub-label one directory per cluster: what runs there. Inside it, a box labelled prod-us (monospace) holding two file boxes stacked: infrastructure.yaml (sub-label Kustomization or Application) and apps.yaml. Also inside the container, a smaller box labelled staging-eu (monospace) with no arrows. Right column, top: a container labelled infrastructure/ (monospace) with sub-label platform components shared by clusters, holding a box base/ listing gpu-operator, network-operator, cert-manager, ingress, monitoring, kueue, policies (monospace, wrapped on several lines) and a box overlays/ listing staging and prod (monospace). Right column, bottom: a container labelled apps/ (monospace) with sub-label tenant and team applications, holding base/ listing inference-gateway and training-pipelines, and overlays/ listing staging and prod. Arrow 1 from infrastructure.yaml to the infrastructure/ container, labelled overlays/prod (monospace) at the arrow. Arrow 2 from apps.yaml to the apps/ container, labelled overlays/prod. The two arrows do not cross. A third box at the far bottom right labelled tenants/ (monospace), sub-label namespaces, quotas, RBAC, queues per team (generated from YAML), with no arrows. Orange outline on the clusters/ container as the root of reconciliation. No takeaway bar.",
+  "anchor": "## 4. Repository design",
+  "alt": "A cluster directory holds an infrastructure and an apps file, each pointing at the prod overlay of its shared folder.",
+  "cap": "Each cluster directory says what runs there, and it points at the prod overlays in the shared infrastructure and apps folders."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "27",
+  "name": "a27-play-order",
+  "title": "Four site.yml plays run in order, each one a stage with a gate",
+  "spec": "Four boxes in a row from left to right, joined by three arrows, with green number circles 1, 2, 3, 4 at the top of the boxes (time order). Box 1 titled Base for every node, sub-label hosts: all, role base_os in monospace. Box 2 titled GPU nodes, sub-label hosts: gpu, and inside it three monospace lines: serial: 34% then 100%, max_fail_percentage: 0, roles gpu_stub or nvidia_driver then node_validate. Inside box 2, a small first-batch sub-box labelled gpu01 (canary) and a second sub-box labelled gpu02 and gpu03. Orange outline on the max_fail_percentage: 0 line as the gate: one failure stops everything else. Box 3 titled Controller services, sub-label hosts: controller, roles monitoring and munge_slurm. Box 4 titled Workers join the scheduler, sub-label hosts: gpu, role munge_slurm, then a post task node_validate. Each box has a simple icon: a server rack for base, a chip for GPU nodes, a gear for controller services, a window or plug for the workers. Light green panel behind the four boxes. No takeaway bar.",
+  "anchor": "### 2.3 Site playbook with ordering and safety",
+  "alt": "The site playbook configures base nodes, then GPU workers in a canary batch, then the controller, then joins the workers to the scheduler.",
+  "cap": "The site playbook runs four plays in order, and the GPU play starts with one canary node that can stop the rollout."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "27",
+  "name": "a27-path-contract",
+  "title": "Path A and Path B sit behind one module contract",
+  "spec": "Top: a box labelled var.nodes (monospace) with a sub-label role and gpus per host. Two arrows leave it, one to the left module and one to the right module. Middle row, two side-by-side boxes. Left box titled Path A: nodes_docker, sub-label systemd and sshd containers on 172.28.0.0/24, ports 2200 plus i. Right box titled Path B: nodes_gcp, sub-label VPC, Cloud NAT, IAP firewall, service account and VMs. Both boxes have one arrow pointing down into one shared box below them titled output nodes (monospace), with the fields role, gpus, address, ssh_host, ssh_port listed as lines inside it. Then one arrow from that box down to a box titled generated hosts.yml (monospace), then one arrow right to a box titled ansible site.yml, sub-label unchanged on both paths. A small orange tag on the Ansible box reading gpu_tools_stub: true on Path A and false on Path B, marked as the only switch. Light green panel behind the shared output and Ansible part. No takeaway bar.",
+  "anchor": "### Path B: cloud variant (summary)",
+  "alt": "Two backends take the same node map and return the same output, so the Ansible playbook runs unchanged.",
+  "cap": "Path A and Path B return the same node output, so the Ansible playbook runs unchanged and only the GPU tools switch changes."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "27",
+  "name": "a27-pipeline-stages",
+  "title": "The pipeline: a cheap static job, then plan-and-test, then destroy always",
+  "spec": "Left to right, three job columns, with a green arrow between each pair. Above the left column, a small label line: pull_request and nightly schedule 30 3 * * * (monospace), with no arrow. Column 1, titled static (monospace) with sub-label cheap, fails fast: four stacked step boxes in monospace or plain text: terraform fmt check, terraform validate, yamllint and ansible-lint, gitleaks. Arrow labelled needs: static (monospace) to Column 2, titled plan-and-test with sub-label expensive: step boxes in order: Apply ephemeral lab, Configure and verify with site.yml run, a second site.yml run with changed=0 gate (orange outline on this box as the idempotency gate), then verify.yml. Arrow labelled if: always() (monospace) to Column 3, a single box titled Destroy (always) with sub-label terraform destroy runs no matter what happened above it. Light green panel behind each column. No takeaway bar.",
+  "anchor": "## Part 4: Pipeline",
+  "alt": "The static job checks format, lint and secrets, plan-and-test applies and verifies the lab, and destroy always runs at the end.",
+  "cap": "The pipeline runs cheap static checks first, then the apply and verify job, and always destroys the lab at the end."
+ }
+]

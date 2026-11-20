@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "a04-yaml-coercion",
+  "title": "Unquoted values change type, quoted values stay text",
+  "spec": "A two-column table-style figure. Left column, heading 'You write (unquoted)', with monospace entries stacked vertically, each in a small box: 'NO', '1.10', '010', '22:30', '0644', '~'. Middle column, arrows labelled 'parser reads', each pointing right. Right column, heading 'The parser stores', with the matching results in boxes: 'NO' becomes 'false' (orange, the most important item, with the note 'the Norway problem'), '1.10' becomes '1.1', '010' becomes '8', '22:30' becomes a number, '0644' becomes '420', '~' becomes 'null'. Bottom band, green panel, heading 'Fix: quote it', with monospace examples 'country: \"NO\"' and 'mode: \"0644\"', and the note 'A quoted value is never reinterpreted.' Use a small outline icon of a magnifier or tag beside the heading. Keep text in the boxes short.",
+  "anchor": "### Rules that bite",
+  "alt": "Unquoted YAML values such as NO, 1.10, 010 and 0644 are converted to other types by the parser, while quoted values stay text.",
+  "cap": "Unquoted YAML values such as NO and 0644 are converted to other types, so quoting them keeps them as text."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "a04-anchor-merge",
+  "title": "A merge key copies defaults, and a local key overrides them",
+  "spec": "Top, a box labelled 'defaults (anchor: node_defaults)' listing three entries: 'gpus: 8', 'os: ubuntu-22.04', 'tags: [h100]'. A dashed arrow from the box to two node boxes below it, arrows labelled '<<: *node_defaults' (merge key). Left node box 'gpu01' shows the copied values 'gpus: 8', 'os', 'tags' with a green check. Right node box 'gpu02' shows the copied 'os' and 'tags', and a local line 'gpus: 4' in orange highlight, labelled 'override wins, local key comes after the merge'. Small note under gpu02: 'The other keys still come from the defaults.' Number circles 1 and 2 on the two arrows to show the order the parser reads them: defaults first, then each node.",
+  "anchor": "### Anchors, aliases and merge keys",
+  "alt": "A YAML anchor holds shared defaults, a merge key copies them into each node, and a local key such as gpus 4 overrides the copied value.",
+  "cap": "A YAML merge key copies shared defaults into each node, and a local key overrides the copied value."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "a04-validate-install",
+  "title": "Render on the control node, validate, then install",
+  "spec": "A left-to-right flow of four boxes with arrows, each with a numbered circle. Box 1, window icon, title 'Control node', text 'Renders the .j2 template with the variables'. Box 2, gear icon, title 'Validate', text 'visudo -cf %s runs against the rendered temporary file'. Box 3, shield or lock icon, title 'Install', text 'Copies the finished file to the target'. Arrow 1 to 2 labelled 'rendered copy'. Arrow 2 to 3 labelled 'check passes'. From box 2 a second arrow goes down to a grey box 'Fails: the task aborts and the old file stays in place', labelled 'check fails'. Orange outline on the Validate box. Under the chain, a green panel with the note 'Jinja2 runs on the control node, so the target only receives plain text.' Monospace label for the command 'visudo -cf %s'.",
+  "anchor": "## 3. Jinja2 in Ansible",
+  "alt": "Ansible renders a template on the control node, runs the validate command on the rendered copy, and installs it only if the check passes.",
+  "cap": "Ansible renders a template on the control node, validates the copy, and installs it only if the check passes."
+ }
+]

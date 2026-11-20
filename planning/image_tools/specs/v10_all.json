@@ -1,0 +1,492 @@
+[
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "01",
+  "name": "g01-goodput",
+  "title": "Achieved useful work versus the speed-of-light ceiling",
+  "spec": "Two horizontal bars side by side for two cases, each on a shared scale. Case 1, labelled 8-GPU node: a full-length grey bar labelled speed of light, 12,000 tokens per second (8 GPUs at 1,500 each), and a shorter green bar inside it labelled achieved useful work, 10,000 tokens per second, with the caption 83.3 percent goodput. Case 2, labelled cluster at scale: a full-length grey bar labelled ideal, 1,000 samples per second, and a short green bar labelled achieved, 300 samples per second, with the caption 30 percent goodput, and a hatched orange segment in the unused part labelled 70 percent wasted capacity. Orange highlight on the wasted segment. Monospace for 12,000, 10,000, 1,000 and 300.",
+  "anchor": "### 5.1 Measuring Goodput versus Speed of Light",
+  "alt": "Goodput as achieved work over the speed-of-light ceiling",
+  "cap": "Goodput: divide the useful rate by the hardware ceiling, so a node can show full utilization and still deliver only 30 percent of its capacity."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "01",
+  "name": "g01-warp-lanes",
+  "title": "Why batch size 31 and 33 waste SIMT lanes",
+  "spec": "Three rows of 32-lane warp blocks drawn as small squares, one row per case. Row 1, labelled batch 32: one full warp of 32 green squares, with the caption 32 active, 0 idle, 100 percent lane efficiency. Row 2, labelled batch 31: one warp of 32 squares, 31 green and 1 grey, with the caption 1 idle, 96.88 percent. Row 3, labelled batch 33: two warps of 32 squares each, 33 green in total and 31 grey, with a bracket over the second warp labelled a second warp is allocated for one extra item. Orange highlight on the grey squares in row 3 with the note: pad batch sizes to a multiple of 8 or 32. Monospace for batch 31, batch 33, 32 lanes and 96.88 percent.",
+  "anchor": "### 2.3 SIMT warps, zero-cost context switching, and batch-size alignment",
+  "alt": "Warp lane use for batch sizes 32, 31 and 33",
+  "cap": "Warp alignment: a batch of 33 needs a second 32-lane warp, leaving 31 lanes idle, so pad sizes to a multiple of 32."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "01",
+  "name": "g01-pinned-staging",
+  "title": "Pageable copies take an extra staging hop before the DMA",
+  "spec": "Two stacked flow paths from host memory to GPU memory. Top path, labelled pageable malloc memory: an array in pageable host RAM, arrow to a CPU copy into a temporary pinned staging buffer labelled extra copy, then arrow across PCIe by DMA to GPU memory, with an orange highlight on the extra copy box. Bottom path, labelled pinned memory cudaMallocHost or pin_memory=True: the array sits directly in pinned host memory and goes straight across PCIe by DMA to GPU memory, no extra copy. A note at the far right: PCIe Gen3 x16 pinned reaches about 11.6 GB/s, about 72 percent of the 15.75 GB/s ceiling. Monospace for malloc, cudaMallocHost, pin_memory=True and DMA.",
+  "anchor": "### 2.4 Calculating theoretical peak FLOPs, memory bandwidth, and PCIe overhead",
+  "alt": "Pageable and pinned host-to-GPU copy paths",
+  "cap": "Pinned memory: a pageable buffer needs an extra CPU copy before the DMA, while pinned memory transfers directly."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "02",
+  "name": "g02-register-cliff",
+  "title": "How a small register increase removes whole blocks from an SM",
+  "spec": "Three horizontal rows, each showing the slots of one SM as blocks of 256 threads, with the register file as the limit. Row 1, labelled 40 registers per thread: six block slots filled green, with the caption 6 blocks, 48 warps, 75 percent occupancy. Row 2, labelled 56 registers per thread: four block slots filled green and a dashed remainder labelled 0.57 of a block dropped, with the caption 4 blocks, 32 warps, 50 percent occupancy. Row 3, labelled 1,024-thread block at 48 registers per thread: one large block filling the whole row, with the caption 1 block, 32 warps, 50 percent occupancy, and the note: no second block to switch to during a barrier. Orange highlight on row 2 with the note: 16 more registers cut residency in one step. Monospace for 40, 56, 48, 256 and 1,024.",
+  "anchor": "### 4.1 The block admission gate and worked register and shared-memory occupancy math",
+  "alt": "Resident blocks at 40 and 56 registers per thread",
+  "cap": "Register cliff: a few more registers per thread can drop an SM from six resident blocks to four, because only whole blocks fit."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "02",
+  "name": "g02-launch-geometry",
+  "title": "Rounding the grid up to cover an array, and guarding the tail",
+  "spec": "A horizontal strip representing a one-million-element array drawn as a long bar of small cells, with the blocks laid over it as equal segments of 256 threads each. The bar is labelled N equals 1,000,000 elements. Above the bar a bracket labelled blocksPerGrid equals ceiling of N over 256, giving 3,907 blocks. At the right end, the final block is drawn partly outside the array edge: its first cells are green and labelled idx less than N, computed; its last 192 cells are hatched grey and labelled idx at or above N, masked by if idx less than N. A dashed vertical line marks the array end. Orange highlight on the hatched tail with the note: without the guard these threads write past the buffer. Monospace for 1,000,000, 256, 3,907 and idx less than N.",
+  "anchor": "### 3.1 1D, 2D, and 3D indexing and the `if (idx < N)` bounds check",
+  "alt": "Ceiling-rounded grid with a guarded tail block",
+  "cap": "Launch geometry: the grid is rounded up to whole blocks, so the trailing threads must be masked by the bounds check."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "02",
+  "name": "g02-sass-ptx",
+  "title": "What a fatbinary carries, and how a newer GPU finishes the job",
+  "spec": "A left-to-right flow in three stages. Stage 1, labelled compile with nvcc: a source file on the left, arrow to a fatbinary box containing two packages stacked: SASS cubins for sm_90 native machine code, and virtual PTX for compute_90. Stage 2, labelled run on a GPU: two arrows out of the fatbinary. The upper arrow, labelled same architecture, runs the embedded SASS directly on the matching GPU. The lower arrow, labelled newer GPU or CUDA_FORCE_PTX_JIT=1, goes to a box labelled driver JIT-compiles PTX into native code at startup. Orange highlight on the PTX package with the note: keep PTX in the build so newer GPUs still load the binary. A grey side note: test with CUDA_FORCE_PTX_JIT=1 in CI. Monospace for nvcc, sm_90, compute_90, SASS, PTX and CUDA_FORCE_PTX_JIT=1.",
+  "anchor": "### 3.3 Forward and backward binary compatibility (SASS, PTX, and `CUDA_FORCE_PTX_JIT=1`)",
+  "alt": "Fatbinary with SASS and PTX packages",
+  "cap": "Binary compatibility: SASS runs on the GPU it was built for, while embedded PTX lets the driver compile for a newer GPU at startup."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "03",
+  "name": "g03-latency-ladder",
+  "title": "Each step out the memory hierarchy holds more and answers more slowly",
+  "spec": "A vertical staircase of seven horizontal bands, widest and fastest at the top and narrowest and slowest at the bottom, with the bands stacked from registers at the top down to HBM global memory and the host link at the bottom. Each band is labelled with its tier name and a monospace cycle figure: Registers about 1 cycle; Shared memory and L1 about 20 to 30 cycles; TMEM about 10 cycles; Constant cache about 1 cycle on broadcast; L2 cache about 200 cycles; Local memory, which goes through L1, L2 and HBM; HBM global memory about 800 cycles. A thin arrow along the left edge labelled faster at the top and more capacity at the bottom. A second thin arrow along the right edge labelled bigger at the bottom. Each band carries a short capacity tag: 256 KB per SM for registers, 256 KB per SM for shared and L1, 50 MB for L2 on H100, 80 to 288 GB for HBM. Orange highlight on the HBM band with the note: about 800 cycles, so a warp that waits here needs other warps to hide the stall. Monospace for cycle counts and capacity values.",
+  "anchor": "### 1.1 Architectural map from Registers and TMEM to L2, HBM3e, and Host RAM",
+  "alt": "Latency and capacity of each GPU memory tier",
+  "cap": "Memory ladder: each tier down holds far more data but answers far more slowly, so the GPU hides the slowest stalls by switching warps."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "03",
+  "name": "g03-coalesce-sectors",
+  "title": "How 32 threads reading neighboring floats share a few cache sectors",
+  "spec": "Two stacked rows, each showing one warp of 32 thread squares above a strip of 32-byte memory sectors. Row 1, labelled aligned contiguous, stride 1: the 32 thread squares map in order onto four sectors that sit on one 128-byte cache line, with each sector filled green, and the caption 4 sectors, 100 percent load efficiency. Row 2, labelled stride 2 or scattered: the same 32 thread squares each point to a different sector, spread across eight or more sector boxes, most of which are mostly grey because only a few bytes in each are used, with the caption 8 sectors at stride 2, 50 percent efficiency. Orange highlight on the grey unused bytes in row 2 with the note: the extra bytes cross the HBM bus and are thrown away. Monospace for 128 B, 32 B, stride 2 and 4 sectors.",
+  "anchor": "### 3.1 128-byte cache-line coalescing and AoS versus SoA",
+  "alt": "Sectors fetched for contiguous and strided warp loads",
+  "cap": "Coalescing: neighboring threads that read neighboring floats share a few sectors, while strided reads waste most of the bytes they fetch."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "03",
+  "name": "g03-tma-pipeline",
+  "title": "Two shared-memory buffers let the copy of the next tile overlap the math on this one",
+  "spec": "A timeline with two horizontal lanes and time running left to right across five steps. Lane 1 labelled TMA copy engine: a block labelled load tile 1 into buffer A, then a block labelled load tile 2 into buffer B, then a block labelled load tile 3 into buffer A. Lane 2 labelled SM warps compute: a block labelled wait, then a block labelled compute on buffer A while B loads, then a block labelled compute on buffer B while A loads. The compute blocks overlap the copy blocks in time, shown by vertical dashed guide lines. A small legend below: two shared-memory buffers, ping and pong. Orange highlight on the first wait block with the note: only the first tile is exposed; later copies hide behind compute. Monospace for buffer A, buffer B, tile 1, tile 2 and tile 3.",
+  "anchor": "### 3.3 Read-Only Data Cache and Tensor Memory Accelerator",
+  "alt": "Ping-pong TMA copies overlapping warp compute",
+  "cap": "Double buffering: while the warps compute on one tile, the TMA engine fills the other buffer, so most of the HBM wait is hidden."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "04",
+  "name": "g04-bit-fields",
+  "title": "How sign, exponent and mantissa bits split each number format",
+  "spec": "Six horizontal bars stacked vertically, one per format, each drawn to the same width so the bit counts can be compared. Rows from top to bottom: FP32 with 1 sign, 8 exponent and 23 mantissa bits; TF32 with 1 sign, 8 exponent and 10 mantissa bits, marked 19 active bits inside a 32-bit word; FP16 with 1 sign, 5 exponent and 10 mantissa bits; BF16 with 1 sign, 8 exponent and 7 mantissa bits; FP8 E4M3 with 1 sign, 4 exponent and 3 mantissa bits; NVFP4 with 1 sign, 2 exponent and 1 mantissa bit. Each segment is labelled with its field name in a small caption and its bit count in monospace. Exponent segments are one colour and mantissa segments a lighter shade, with the sign bit as a thin marker. A bracket on the right of the FP16 and BF16 rows labelled same 16 bits, different split. Orange highlight on the BF16 exponent segment with the note: 8 exponent bits match FP32, so no GradScaler is needed. Monospace for 1, 8, 23, 10, 5, 7, 4, 3, 2 and 1 bit counts.",
+  "anchor": "### 2.1 Bit layouts: Sign, Exponent, and Mantissa",
+  "alt": "Sign, exponent and mantissa bits for common formats",
+  "cap": "Bit layouts: the exponent sets how large a number can be, the mantissa sets how finely it is resolved, and BF16 keeps FP32's exponent."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "04",
+  "name": "g04-footprint",
+  "title": "The same 4096 by 4096 matrix shrinks by half at each precision step",
+  "spec": "A column chart with four bars of decreasing height, left to right: FP32 at 67.1 MB, labelled 524,288 cache lines; FP16 and BF16 at 33.6 MB, labelled 262,144 cache lines; FP8 and INT8 at 16.8 MB, labelled 131,072 cache lines; NVFP4 at 8.4 MB, labelled 65,536 cache lines. Each bar has a short note beneath it giving values per 128-byte line: 32, 64, 128 and 256. Arrows between bars show each step halves the bytes and the line count. The baseline bar is grey and the NVFP4 bar is green. Orange highlight on the FP8 to NVFP4 step arrow with the note: each halving also halves the traffic to HBM for the same weights. Monospace for 67.1 MB, 33.6 MB, 16.8 MB, 8.4 MB and the cache line counts.",
+  "anchor": "### 2.2 Why lowering precision wins twice: compute TFLOPS and 128-byte cache-line density",
+  "alt": "Matrix footprint and cache lines at four precisions",
+  "cap": "Footprint: each halving of the bits per number halves the bytes moved for the same [4096, 4096] matrix."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "05",
+  "name": "g05-roofline-plot",
+  "title": "The roofline: a slanted memory limit meeting a flat compute limit",
+  "spec": "A log-log chart with the horizontal axis labelled arithmetic intensity in FLOPs per byte and the vertical axis labelled attainable TFLOPS. A slanted grey line rises from the lower left, labelled slanted roof, memory bandwidth bound, P equals I times B. A flat dark line runs across the top, labelled flat roof, peak compute. The two lines meet at a vertical dashed line labelled ridge point, I ridge equals peak compute over bandwidth. Three marked points sit on the chart: a small dot far left on the slanted roof labelled vector add, 0.083 FLOPs per byte, with a leader line; a dot on the slanted roof labelled batch 1 decode, 1.0 FLOPs per byte; a dot on the flat roof right of the ridge labelled batch 512 prefill, 409.6 FLOPs per byte. Small arrows from the left dots point up toward the slanted roof and from the right dot along the flat roof. Orange highlight on the batch 1 decode dot with the note: adding compute raises the flat roof, which this point never reaches. Monospace for 0.083, 1.0 and 409.6 and for the ridge value 295.2.",
+  "anchor": "### 1.1 Arithmetic Intensity, Machine Balance, and the Ridge Point",
+  "alt": "Roofline chart with memory and compute limits",
+  "cap": "Roofline: kernels left of the ridge are limited by memory bandwidth, and kernels right of it are limited by peak compute."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "05",
+  "name": "g05-strided-roof",
+  "title": "Using one value per cache line lowers the slanted roof",
+  "spec": "A log-log style chart with the same two axes as a roofline, arithmetic intensity on the horizontal axis and attainable TFLOPS on the vertical axis. Two slanted lines start from the same origin. The upper grey line is labelled coalesced, full 8.0 TB/s, U cache equals 1. The lower green line is labelled strided, 1 of 8 values used, U cache equals 0.125, effective 1.0 TB/s, and it is one eighth the slope of the upper line. A flat line at the top labelled peak compute, 80 TFLOPS for scalar FP32. The two slanted lines hit the flat line at different points: the upper at a ridge of 10 FLOPs per byte and the lower at a ridge of 80 FLOPs per byte, marked with two short vertical dashed lines and labels. A horizontal arrow between the two ridges labelled ridge moves 8 times right. Orange highlight on the lower green line with the note: same kernel math, fewer useful bytes per trip. Monospace for 8.0 TB/s, 1.0 TB/s, 0.125, 10 and 80.",
+  "anchor": "### 1.3 How uncoalesced or strided cache usage lowers the slanted roof",
+  "alt": "Slanted roof lowered when only one value per cache line is used",
+  "cap": "Strided access: using one value in eight lowers the memory slope eightfold, so the ridge point moves eight times further right."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "06",
+  "name": "g06-nvlink-ladder",
+  "title": "Per-GPU NVLink bandwidth across five generations against one PCIe slot",
+  "spec": "A vertical bar chart with five bars left to right, labelled NVLink 1.0 Pascal P100, NVLink 2.0 Volta V100, NVLink 3.0 Ampere A100, NVLink 4.0 Hopper H100 and H200, and NVLink 5.0 Blackwell B200 and B300. Bar heights show total bidirectional bandwidth per GPU: 160, 300, 600, 900 and 1,800 GB/s, with each value in monospace above its bar. A dashed horizontal line across the chart labelled PCIe Gen5 x16, 128 GB/s bidirectional, sits low, so the first bar barely clears it and the last bar is many times taller. Under each bar a small caption with the sub-link count and per-link speed: 4 links at 40 GB/s; 6 at 50; 12 at 50; 18 at 50; 18 at 100. Orange highlight on the NVLink 5.0 bar with the note: 11.25 times the first generation. Monospace for 160, 300, 600, 900, 1,800 and 128 GB/s.",
+  "anchor": "### 2.1 NVLink memory semantics and the five NVLink generations",
+  "alt": "Per-GPU NVLink bandwidth by generation against PCIe Gen5",
+  "cap": "NVLink ladder: each generation adds bandwidth per GPU, and NVLink 5 delivers about fourteen times one PCIe Gen5 x16 slot."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "06",
+  "name": "g06-coherence-boundary",
+  "title": "Which links keep caches coherent and which need a software fence",
+  "spec": "A diagram with three zones left to right. Zone 1 labelled inside one Blackwell package: two GPU die boxes joined by a wide link labelled NV-HBI, 10 TB/s, marked with a green tick and the word coherent. Zone 2 labelled CPU to GPU, Superchip: a Grace CPU box linked to a GPU box by a link labelled NVLink-C2C, 900 GB/s bidirectional, marked with a green tick and the word coherent. Zone 3 labelled GPU to GPU across the node or rack: several GPU boxes joined by a switch shape labelled NVLink and NVSwitch, marked with a grey dashed outline and the word not coherent across GPUs, with a small padlock-style label that reads needs barrier or fence from NCCL or NVSHMEM. Under zone 3 a path arrow crossing into PCIe and NIC, labelled explicit copy or GPUDirect RDMA. Orange highlight on zone 3 with the note: a write from GPU 0 does not invalidate GPU 1 L1 lines; add a fence. Monospace for NV-HBI, NVLink-C2C, NVLink, NVSwitch and PCIe.",
+  "anchor": "### 3.1 The four hardware interconnect scales: NV-HBI, NVLink-C2C, NVLink, and PCIe",
+  "alt": "Cache coherence across NV-HBI, NVLink-C2C and GPU-to-GPU NVLink",
+  "cap": "Coherence boundary: NV-HBI and NVLink-C2C keep caches consistent in hardware, but GPU-to-GPU NVLink needs a software barrier or fence."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "06",
+  "name": "g06-500mb-transfer",
+  "title": "The same 500 MB gradient buffer over NVLink versus a SYS PCIe path",
+  "spec": "Two horizontal bars on one time axis from 0 to 20 milliseconds. Top bar labelled NVLink 900 GB/s, short, about 0.56 ms, green, with the value in monospace at its end. Bottom bar labelled SYS path PCIe, 28 GB/s, long, about 17.86 ms, grey, with the value in monospace at its end and the note about 32 times longer. A small label between the two bar ends reads same 500 MB payload. A tiny inset above the bars shows the two routes as paths: the NVLink route is one short arrow between GPU 0 and GPU 1; the SYS route climbs to a CPU root complex, crosses a UPI or xGMI link, and descends to the other GPU. Orange highlight on the SYS bar with the note: the slowdown comes from the wire, not from the GPU kernel. Monospace for 500 MB, 900 GB/s, 28 GB/s, 0.56 ms and 17.86 ms.",
+  "anchor": "### 1.3 Reading the `nvidia-smi topo -m` path hierarchy and the 500 MB worked comparison",
+  "alt": "500 MB transfer time on NVLink versus SYS PCIe",
+  "cap": "Path cost: the same 500 MB buffer takes about 0.56 ms over NVLink but about 18 ms over a cross-socket SYS path."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "07",
+  "name": "g07-vram-gate",
+  "title": "Required VRAM for a 70B FP16 service against three candidate configurations",
+  "spec": "A horizontal bar chart on one shared scale of GB from 0 to 320. A dashed vertical line at 271 GB labelled required, weights plus KV cache times 1.2. Three bars, top to bottom: 1 times L40S PCIe at 48 GB, drawn short and grey, ending well left of the line and marked with a cross and fails G2; 4 times H100 SXM5 at 320 GB, drawn green and ending just right of the line, marked passes G1 to G5 and viable; 2 times H200 SXM at 282 GB, drawn green and ending just right of the line, marked winner with half the cards. A stacked bar sits above the three bars and is labelled requirement breakdown: weights 140 GB, KV cache for 64 users 85.9 GB, then the overhead to reach 271 GB. Orange highlight on the H200 bar with the note: same users, half the GPUs. Monospace for 140, 85.9, 271, 48, 320 and 282.",
+  "anchor": "### 5.3 Worked example: Sizing an inference cluster for Llama-3 70B",
+  "alt": "Required VRAM against three candidate GPU configurations",
+  "cap": "Memory gate: a 70B FP16 service needs about 271 GB, so one 48 GB card fails and two H200s beat four H100s."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "07",
+  "name": "g07-superchip-tiers",
+  "title": "A Grace Hopper superchip has two memory pools with very different speeds",
+  "spec": "A side-by-side layout with two large blocks connected by a link. Left block, labelled Grace CPU LPDDR5X: a wide block labelled up to 480 GB, with a thin arrow labelled about 500 GB/s, shaded grey and labelled holds embedding tables and cold data. Right block, labelled Hopper GPU HBM3: a smaller block labelled 96 GB, with a thick arrow labelled about 4 TB/s, shaded green and labelled holds hot weights and active KV cache. The two blocks are joined by a band labelled NVLink-C2C, 900 GB/s bidirectional, 450 GB/s per direction, marked hardware cache coherent. A bracket above both blocks reads one coherent address space, 576 GB total. Orange highlight on the thin grey arrow with the note: about ten times slower than on-package HBM, so keep hot data in HBM and prefetch cold layers. Monospace for 480 GB, 500 GB/s, 96 GB, 900 GB/s and 576 GB.",
+  "anchor": "### 4.2 Grace Superchips: GH200 and GB200",
+  "alt": "Grace LPDDR5X and Hopper HBM tiers on one coherent address space",
+  "cap": "Superchip tiers: the big CPU memory pool is coherent and reachable over C2C, but it is far slower than the GPU's own HBM."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "08",
+  "name": "g08-memory-stack",
+  "title": "One reserved number split into live tensors, cache and true headroom",
+  "spec": "A single tall vertical stacked bar representing the 40.0 GB GPU, with the top of the bar labelled total 40.0 GB. The bar is divided from the bottom up into four segments: allocated, 28.4 GB, live tensors, drawn solid dark; reusable PyTorch cache, 1.8 GB, drawn light hatched, labelled reserved but free inside the pool; driver free space, 9.8 GB, drawn light grey and labelled never touched by PyTorch. A bracket spans the top two segments, the lower hatched and the upper grey, labelled headroom 11.6 GB, and a second bracket spans the bottom two, labelled reserved 30.2 GB, the number nvidia-smi shows. A small note on the side reads a 75.5 percent figure on nvidia-smi is normal for a healthy job. Orange highlight on the reserved bracket with the note: do not alert on this number alone. Monospace for 40.0, 28.4, 1.8, 9.8, 30.2 and 11.6.",
+  "anchor": "### 2.3 The memory lie",
+  "alt": "Allocated, reserved and free GPU memory as stacked segments",
+  "cap": "Memory lie: nvidia-smi reports the reserved pool, but only the allocated part is in use and the free part is real headroom."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "08",
+  "name": "g08-clock-lie",
+  "title": "Utilization stays at 100 percent while the SM clock falls underneath it",
+  "spec": "A time-series chart with time in minutes on the horizontal axis, from 0 to 30. Two lines share the axis with two vertical scales. A flat dark line near the top labelled GPU-Util, held at 100 percent for the whole window. A descending green line labelled SM clock in MHz, starting near 1410 MHz at minute 0, stepping down to about 1200 MHz around minute 12 and to about 1100 MHz by minute 25, with a shaded band beneath marked throttle reason active. A dashed horizontal line at 1410 MHz labelled peak SM clock. A small annotation near minute 12 where the clock crosses below the peak line reads thermal slowdown: 0x20, with a leader line. Orange highlight on the gap between the flat utilization line and the falling clock line with the note: the utilization number does not move while step time grows. Monospace for 100 percent, 1410 MHz, 1200 MHz and 0x20.",
+  "anchor": "### 2.4 The clock speed lie",
+  "alt": "Flat GPU utilization beside a falling SM clock",
+  "cap": "Clock lie: utilization can stay at 100 percent while thermal limits pull the SM clock down, so step times grow with no change in the headline number."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "09",
+  "name": "g09-forward-compat",
+  "title": "How the compat driver directory wins the library search over the host driver",
+  "spec": "A left-to-right flow in two columns. Left column labelled inside the container image: a box for the application and CUDA runtime libcudart pointing to a search list box labelled LD_LIBRARY_PATH with two entries in order, first usr local cuda compat and second the host mount. Right column labelled on the host: a box labelled host driver libcuda.so.1, version 450 family, and a box labelled host kernel module nvidia.ko, version 450. The compat entry in the search list is highlighted and has an arrow to a box labelled compat libcuda.so.535, newer user-mode driver, which in turn has an arrow to the host kernel module nvidia.ko through the ioctl boundary. A dashed grey arrow from the host libcuda.so.1 box is labelled loaded second, skipped. Orange highlight on the compat entry in the search list with the note: the first match wins, so put the compat directory first. Monospace for LD_LIBRARY_PATH, libcuda.so.1, libcudart, nvidia.ko and usr/local/cuda/compat.",
+  "anchor": "### 2.3 The three driver and CUDA compatibility rules (`evaluate_driver_cuda_compatibility`)",
+  "alt": "Dynamic linker picks compat libcuda before the host copy",
+  "cap": "Forward compatibility: the dynamic linker loads the first libcuda it finds, so the compat directory must come before the host mount."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "09",
+  "name": "g09-pid-trap",
+  "title": "The same GPU process has two different process IDs, one per namespace",
+  "spec": "A split diagram with two panels sharing one GPU drawn at the bottom. Top-left panel labelled host PID namespace: a process box labelled python3 with PID 2051234, and an arrow to the host proc directory showing a valid entry. Top-right panel labelled container PID namespace: the same process drawn as a box labelled python3 with PID 1 inside the container, and a dashed box labelled proc 2051234 not present in this container. Both panels have arrows down to a shared GPU box labelled 40 GB in use, same memory. Below the GPU box, a result line in two parts: on the host, nvidia-smi lists PID 2051234; in the container, nvidia-smi prints no running processes found, while the memory row still shows 40000 MiB. Orange highlight on the empty process list in the container panel with the note: the memory is used, only the name lookup fails. Monospace for PID 2051234, PID 1, /proc, 40000 MiB and no running processes found.",
+  "anchor": "### 3.2 Why `nvidia-smi` inside a container shows an empty process list (the PID namespace trap)",
+  "alt": "Host and container views of one GPU process",
+  "cap": "PID namespace trap: the memory line is accurate inside the pod, but the process name cannot be resolved there."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "10",
+  "name": "g10-nvlink-domains",
+  "title": "Three NVLink domain shapes: a private pair, an 8-GPU switch mesh, and a rack crossbar",
+  "spec": "Three panels side by side, left to right, each with a title. Left panel, labelled 2-GPU PCIe bridge pair: two GPU boxes joined directly by one bridge line, with no switch between them, and a small note labelled no fabric manager needed, the GPU driver trains the link. Middle panel, labelled 8-GPU HGX baseboard: eight GPU boxes in a row along the bottom, four switch boxes labelled NVSwitch across the top, and lines from every GPU to every switch, with a small note labelled needs host nvidia-fabricmanager.service. Right panel, labelled 72-GPU NVL72 rack: a grid of GPU boxes shown as a compact block, a row of nine switch trays labelled eighteen NVSwitch ASICs, and a note labelled NVOS and NMX-M manage the trays. Orange highlight on the middle panel's switch row with the note: empty switch tables route nothing until the fabric manager programs them. Monospace for NVSwitch, 18, 4, 72 and nvidia-fabricmanager.service.",
+  "anchor": "### 1.1 What is an NVLink domain, and why does NVSwitch require a Fabric Manager?",
+  "alt": "Three NVLink domain layouts from bridge pair to rack",
+  "cap": "NVLink domains: a bridge pair needs no control daemon, but an NVSwitch mesh stays dark until the fabric manager programs its routes."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "10",
+  "name": "g10-numa-strand",
+  "title": "Why the eighth pod cannot fit on NUMA node 1",
+  "spec": "Two horizontal bars, one per NUMA node, drawn on a shared scale of 64 CPU cores each. Top bar labelled NUMA 0, 64 cores and 4 GPUs: fully filled with four blocks of 16 cores, each block paired with one GPU icon, with the caption 4 pods, 64 of 64 cores used. Bottom bar labelled NUMA 1, 64 cores and 4 GPUs: two small grey blocks at the left labelled OS and DaemonSet, 2 cores reserved, then three blocks of 16 cores each with one GPU, then a remaining free segment of 14 cores drawn with a dashed outline and a fourth GPU icon with no pod beside it. A bracket labelled 14 free cores is less than 16 requested sits over the free segment. Orange highlight on the 14-core dashed segment with the note: the one GPU is stranded, so the eighth pod gets a TopologyAffinityError. Monospace for 64, 16, 14, 2 and 4.",
+  "anchor": "### 4.1 Kubernetes Topology Manager (`single-numa-node`) and the `16-Core \u2192 12-Core` fix",
+  "alt": "NUMA 1 cores and GPU stranded after three pods",
+  "cap": "NUMA strand: reserved OS cores leave 14 free cores on NUMA 1, one short of the 16 a pod asks for, so one GPU sits idle."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "11",
+  "name": "g11-index-map",
+  "title": "How a thread finds its element from its block and its seat",
+  "spec": "A grid of small squares drawn as rows, each row labelled as one thread block, with block numbers 0 to 3 on the left and the seat numbers 0 to 7 across the top of the first row, drawn as a short illustration of a few threads, not all 256. The row for blockIdx.x equals 3 is highlighted. In that row, a single square at seat threadIdx.x equals 5 is outlined in orange. Above the row a bracket spans a block of 256 cells labelled blockDim.x equals 256 seats per row. Next to the highlighted cell, a formula callout reads idx equals 3 times 256 plus 5, equals 773. Lighter earlier rows are drawn with their cells labelled from 0 to 255, 256 to 511 and 512 to 767 to show the offset. Monospace for blockIdx.x, blockDim.x, threadIdx.x, 773 and 256.",
+  "anchor": "### 2.2 1D indexing, ceiling division, and the two boundary bugs",
+  "alt": "Global index from block number and seat number",
+  "cap": "Global index: each thread adds its block offset to its seat number, so every thread in the grid gets a unique element."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "11",
+  "name": "g11-um-cliff",
+  "title": "Unified Memory throughput falls off a cliff once the working set exceeds VRAM",
+  "spec": "A line chart with working set size as a percentage of a 40 GB GPU on the horizontal axis, from 0 to 120 percent, and effective throughput in GB per second on the vertical axis, from 0 to 130. The line stays high and nearly flat from 60 percent at about 118 GB per second, through 90 percent at about 104 GB per second. A vertical dashed line at 100 percent is labelled physical HBM capacity, 40 GB. The line then drops steeply just past 100 percent, reaching about 9 GB per second at 110 percent, marked with a point. Three labelled dots on the flat part: 24 GB at 60 percent, 36 GB at 90 percent. An orange highlight on the falling segment with the note: pages are evicted and faulted back over PCIe on every pass. Monospace for 40 GB, 118 GB/s, 104 GB/s, 9 GB/s and 110%.",
+  "anchor": "### 3.3 Unified Memory, prefetching, and the oversubscription cliff",
+  "alt": "Unified Memory throughput against working set size",
+  "cap": "Oversubscription cliff: throughput holds while the working set fits in VRAM, then collapses once pages must thrash across PCIe."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "12",
+  "name": "g12-engine-lanes",
+  "title": "Three hardware engines can work on three different batches at the same time",
+  "spec": "Two stacked timeline panels sharing one time axis running left to right with no numbers. Top panel labelled one batch at a time: three lanes, H2D copy engine, SM compute, D2H copy engine, with blocks for batch 0, batch 1 and batch 2 placed one after another so that only one lane is busy at a time and the other lanes sit empty. Bottom panel labelled overlapped with pinned memory and separate streams: the same three lanes, but blocks are staggered so that in one time window the H2D lane carries batch 2 input, the SM lane carries batch 1 compute, and the D2H lane carries batch 0 output, shown with a dashed vertical guide across all three lanes. Each block is labelled with its batch number. Orange highlight on the vertical guide in the bottom panel with the note: three engines busy at once is device concurrency. Monospace for H2D, D2H, SM and batch 0, 1 and 2.",
+  "anchor": "### 1.1 Host asynchrony vs device concurrency and 3-way hardware engine overlap",
+  "alt": "Sequential batches versus three overlapped hardware engines",
+  "cap": "Overlap: when batches sit on separate streams, the copy engines and the SMs can each work on a different batch at the same moment."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "12",
+  "name": "g12-slot-ring",
+  "title": "A two-slot ring where each slot must be waited on, collected and refilled in order",
+  "spec": "A circular diagram with two slot boxes, slot 0 and slot 1, placed opposite each other on a ring, with an arrow showing chunk numbers alternating between them, labelled chunk mod 2. Around slot 0 a numbered sequence of arrows reads: one wait on the slot completion event, two collect the finished output to the host array, three refill the new input, four copy host to device, five run the kernel, six copy device to host, seven record the completion event. The same sequence is shown with a smaller label around slot 1 pointing to the same loop. A small side note on the ring reads never reuse a slot until its event has fired. Orange highlight on the step one wait arrow with the note: skipping this wait gives a race, and output at index 4194305 can be corrupted. Monospace for slot 0, slot 1, chunk mod 2 and the step names.",
+  "anchor": "### 3.2 Double-buffered pipeline ownership in `overlap_pipeline.cu`",
+  "alt": "Two-slot ring with wait, collect and refill order",
+  "cap": "Slot ownership: wait for the completion event, collect the old output, then refill, so no slot is overwritten while it still holds data."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "13",
+  "name": "g13-tile-reuse",
+  "title": "One staged tile serves many threads, instead of every thread fetching its own copy",
+  "spec": "Two side-by-side panels. Left panel, labelled naive kernel: a grid of small square cells representing one row of matrix A, with a bundle of arrows from many threads each reaching back to the same HBM box at the bottom, drawn as many separate arrows, labelled every thread fetches from HBM, about 32 times per value. Right panel, labelled tiled kernel: the same group of threads drawn above a small shared memory box labelled one 32 by 32 tile in shared memory; a single arrow runs from HBM into the tile box, and short arrows fan out from the tile to the threads, labelled each value loaded once and reused. Orange highlight on the tile box in the right panel with the note: one global load now feeds 32 multiply-accumulates. Monospace for 32 by 32, HBM and shared memory.",
+  "anchor": "### 3.1 Tiling matrix multiplication in shared memory",
+  "alt": "Naive per-thread HBM fetches versus one shared tile",
+  "cap": "Tile reuse: staging a tile in shared memory means one slow fetch feeds many threads, which cuts HBM traffic by about eightfold."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "13",
+  "name": "g13-residency-budget",
+  "title": "Registers per thread decide how many 1,024-thread blocks fit on one SM",
+  "spec": "A horizontal stacked bar chart comparing three cases. Each bar is a full SM register file of 65,536 registers, drawn as a long bar split into equal blocks of 1,024 threads. Top bar labelled 12 registers per thread: 12,288 registers per block, two blocks fill 24,576 registers, the bar shows two filled blocks and empty space, with the thread ceiling of 2,048 threads marked as a second line that caps the residency at two blocks. Middle bar labelled 22 registers per thread: 22,528 registers per block, two blocks fill 45,056 registers, the bar shows two filled blocks with a grey remainder, the caption 2 blocks, 2,048 threads. Bottom bar labelled above 32 registers per thread: one block uses more than half of the register file and only one block fits, the bar shows one filled block and a large empty remainder, caption 1 block, 50 percent occupancy. Orange highlight on the bottom bar with the note: crossing 32 registers per thread halves residency. Monospace for 65,536, 12,288, 22,528, 2,048 and 32.",
+  "anchor": "### 3.2 Why you cannot blindly grow tiles forever: The `64 \u00d7 64` register budget",
+  "alt": "Register file split into resident blocks at three register counts",
+  "cap": "Register budget: a 1,024-thread block that needs more than 32 registers per thread cuts an SM from two resident blocks to one."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "13",
+  "name": "g13-butterfly",
+  "title": "Five halving steps fold 32 lane values into lane zero",
+  "spec": "A diagram with 32 lane columns drawn across the top, labelled lane 0 to lane 31, with starting values shown as the one-based lane numbers 1 to 32. Below, five rows, one per step, labelled offset 16, offset 8, offset 4, offset 2 and offset 1. Each row shows arrows from a higher lane down to a lower lane at the given offset, with the lower lane's cell updated by a plus sign. Row 1 shows lanes 0 to 15 each picking up the value from lane plus 16. Row 2 shows lanes 0 to 7 picking up from lane plus 8, and so on. A final box at the bottom left labelled lane 0 holds the sum, 528, with the caption no shared memory and no barrier. Orange highlight on the final lane 0 box with the note: 1 plus 2 plus up to 32 equals 528 in five register steps. Monospace for offset 16, 8, 4, 2, 1, lane 0 and 528.",
+  "anchor": "### 4.1 Intra-warp register reductions with `__shfl_down_sync`",
+  "alt": "Five butterfly steps summing 32 lanes into lane zero",
+  "cap": "Warp butterfly: each step halves the offset, so lane zero collects the sum of all 32 lanes in five register-to-register steps."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "14",
+  "name": "g14-ilp-warps",
+  "title": "More independent operations per thread means fewer resident warps are needed",
+  "spec": "A column chart with four columns left to right labelled ILP 1, ILP 2, ILP 3 and ILP 4, showing the number of resident warps needed to keep one SM busy. Column heights: 48 warps for ILP 1, 32 for ILP 2, 24 for ILP 3, and 16 for ILP 4. Each column has a caption beneath with the share of the 64-warp SM it fills: 75 percent, 50 percent, 37.5 percent and 25 percent. A dashed horizontal line across the chart at 64 labelled full SM, 2,048 threads. The first column is grey and the last column is green. Orange highlight on the ILP 4 column with the note: 3 times fewer warps for the same throughput. Monospace for 48, 32, 24, 16, 64 and 2,048.",
+  "anchor": "### 4.1 How ILP hides latency within a single warp and cuts required occupancy",
+  "alt": "Warps needed to saturate an SM at ILP levels one to four",
+  "cap": "ILP trade: a thread with four independent operations in flight needs 16 warps to keep an SM busy, against 48 with no ILP."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "14",
+  "name": "g14-divergence-split",
+  "title": "A 16 versus 16 branch split runs as two serial passes, while a select runs once",
+  "spec": "Two stacked panels, each showing one warp of 32 lane squares in a row. Top panel, labelled divergent if else: a first pass row where lanes 0 to 15 are coloured green and lanes 16 to 31 are grey with the label masked off, then a second pass row where the colours swap, lanes 16 to 31 green and lanes 0 to 15 grey, with a bracket labelled two serial passes, 50 percent warp efficiency. Bottom panel, labelled predicated ternary select: one row where all 32 lanes are green in a single pass, with the label one pass, 99 percent warp efficiency. A timing bar to the right of each panel: top bar twice as long as bottom bar. Orange highlight on the grey masked lanes in the top panel with the note: half the crew idles on each pass. Monospace for if, else, 50 percent and 99 percent.",
+  "anchor": "### 3.1 How SIMT branch divergence serializes warps",
+  "alt": "Divergent branch passes versus one predicated pass",
+  "cap": "Divergence: when a warp splits 16 and 16 across an if-else, it runs both paths in turn, so the warp takes twice as long."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "15",
+  "name": "g15-cluster-reuse",
+  "title": "One HBM tile fetch shared across a cluster of thread blocks",
+  "spec": "A column chart with four columns left to right labelled single block, 2 by 2 cluster of 4, portable maximum of 8, and non-portable cluster of 16. Column heights show the HBM traffic relative to one block: 1, 1 over 4, 1 over 8 and 1 over 16, with values in monospace above each column: 1x, 4x less, 8x less, 16x less. Under each column a short caption: standard launch; portable on Hopper and Blackwell; default CUDA cluster ceiling; needs the non-portable attribute on Blackwell. A small inset diagram over the 2 by 2 column shows four SM squares around one shared tile arrow from HBM with fan-out lines into each square labelled multicast into DSMEM. Orange highlight on the 16 column with the note: bigger is only faster if the grid fills the cluster, so time 8 and 16 before keeping 16. Monospace for 4x, 8x, 16x and cudaFuncAttributeNonPortableClusterSizeAllowed.",
+  "anchor": "### 1.2 Tiling across SMs with Thread Block Clusters and TMA multicast",
+  "alt": "HBM traffic reduction by thread block cluster size",
+  "cap": "Cluster multicast: one TMA fetch can feed every block in a cluster, so HBM traffic falls with cluster size."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "15",
+  "name": "g15-tmem-budget",
+  "title": "How much of one SM's 256 KB Tensor Memory each tile uses",
+  "spec": "A horizontal bar chart with a single full-width reference bar labelled per-SM TMEM, 256 KB, 100 percent. Below it four bars, each drawn to scale against that reference: 256 by 512 FP16 tile at 256 KiB, drawn full width, 100 percent, marked one max tile; 256 by 256 FP32 accumulator at 256 KiB, full width, 100 percent; 256 by 256 NVFP4 tile at 32 KiB, one eighth of the width, 12.5 percent, marked up to eight tiles fit; 512 by 512 FP16 at 512 KiB, drawn extending past the reference bar, marked 200 percent, does not fit, with a red cross. Orange highlight on the 512 by 512 bar with the note: it overflows one SM's budget. Monospace for 256 KB, 256 KiB, 32 KiB, 512 KiB and 12.5%.",
+  "anchor": "### 3.2 Staging tiles through SMEM and per-SM TMEM",
+  "alt": "Tile sizes measured against the 256 KB per-SM Tensor Memory",
+  "cap": "Tensor Memory budget: two 16-bit or 32-bit tiles fill one SM's 256 KB, while an NVFP4 tile uses an eighth of it."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "16",
+  "name": "g16-dsmem-cluster",
+  "title": "A cluster leader loads a tile once and its neighbours read it over the SM-to-SM network",
+  "spec": "A diagram of four square blocks arranged in a row inside one dashed outline labelled thread block cluster on one GPC. The leftmost block is labelled rank 0, leader, and holds a box labelled tile A and tile B in its shared memory. A thick arrow runs from HBM at the bottom into the leader box, labelled one load per cluster. Three thinner arrows run horizontally from the leader's box to the boxes of ranks 1, 2 and 3, labelled read over DSMEM, cluster map shared rank. A horizontal bar across the top of the outline labelled cluster sync with two small tick marks, one before the reads and one after. Orange highlight on the thick HBM arrow with the note: three neighbours skip three separate HBM loads. Monospace for rank 0, rank 1, cluster.sync() and DSMEM.",
+  "anchor": "### 4.2 Distributed Shared Memory versus hardware Scratch Memory",
+  "alt": "Cluster leader tile shared to neighbour blocks over DSMEM",
+  "cap": "Cluster sharing: one leader fetches the tile from HBM, and the other blocks in the cluster read it from distributed shared memory."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "16",
+  "name": "g16-coop-clamp",
+  "title": "A cooperative grid must fit on the GPU at once, so the launch size is clamped",
+  "spec": "A horizontal bar chart on one scale of blocks from 0 to 4,000. Top bar labelled unclamped grid for N equals 1,000,000 at 256 threads per block, length 3,907 blocks, drawn in grey, extending past a vertical dashed line. The dashed line is labelled maxCoopGrid equals 4 times 132 equals 528 blocks. Second bar labelled clamped grid, length 528 blocks, drawn in green and ending exactly at the dashed line. A bracket beyond the dashed line on the top bar labelled 3,379 blocks that cannot co-reside, so grid dot sync would never complete. A small note under the second bar reads a grid-stride loop covers the remaining elements. Orange highlight on the part of the top bar beyond the dashed line with the note: launch fails with cudaErrorCooperativeLaunchTooLarge. Monospace for 3,907, 528, 4, 132 and 256.",
+  "anchor": "### 3.3 Cooperative Groups and grid-wide synchronization",
+  "alt": "Unclamped cooperative grid compared with the co-resident limit",
+  "cap": "Cooperative clamp: a grid that synchronises with grid.sync() must fit on the GPU at once, so the block count is capped and a grid-stride loop covers the rest."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "17",
+  "name": "g17-pdl-timeline",
+  "title": "Programmatic dependent launch lets the second kernel start before the first finishes",
+  "spec": "Two horizontal timeline bars on one shared time axis from 0 to 4.0 ms, with tick marks at 0, 1.6, 2.0, 3.6 and 4.0 ms. Top bar labelled standard stream serialization: kernel A main work block from 0 to 1.6 ms, kernel A epilogue block from 1.6 to 2.0 ms, then kernel B block from 2.0 to 4.0 ms, ending at 4.0 ms. Bottom bar labelled programmatic dependent launch: kernel A main block from 0 to 1.6 ms, kernel A epilogue block from 1.6 to 2.0 ms drawn with a hatched fill, and kernel B block starting at 1.6 ms and ending at 3.6 ms, overlapping the epilogue. A vertical marker at 1.6 ms labelled trigger, cudaTriggerProgrammaticLaunchCompletion. Orange highlight on the overlap window from 1.6 to 2.0 ms with the note: the second kernel starts early, so the stream saves 0.4 ms. Monospace for 1.6, 2.0, 3.6, 4.0 and cudaTriggerProgrammaticLaunchCompletion.",
+  "anchor": "### 6.1 Overlapping Kernel B's prologue with Kernel A's epilogue in the same stream",
+  "alt": "Serialized and overlapped kernel timelines with programmatic dependent launch",
+  "cap": "Dependent launch: the trigger lets the second kernel start while the first is still in its epilogue, which cuts 4.0 ms to 3.6 ms."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "17",
+  "name": "g17-legacy-wall",
+  "title": "One call on the legacy default stream stops every other stream",
+  "spec": "Two panels, each showing three horizontal lanes labelled stream 1, stream 2 and stream 0 legacy, sharing one time axis. Left panel, labelled legacy default stream: lanes stream 1 and stream 2 carry kernel and copy blocks running in parallel, and the lane for stream 0 legacy carries one small helper block. Vertical walls drawn in orange appear just before and just after the helper block, and every stream lane shows a gap at that moment, with the caption every blocking stream waits. Right panel, labelled explicit non-blocking streams: the same three lanes, the helper block now sits on its own lane, and the stream 1 and stream 2 blocks run unbroken without walls, caption no implicit barrier. Monospace for stream 0, cudaStreamNonBlocking and cudaStreamLegacy.",
+  "anchor": "### 3.1 Comparing Legacy Default Stream (`stream 0`), `PTDS`, and Explicit Non-Blocking Streams",
+  "alt": "Legacy default stream barrier versus non-blocking streams",
+  "cap": "Legacy barrier: one helper call on the default stream freezes every blocking stream, so explicit non-blocking streams keep running."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "18",
+  "name": "g18-launch-gap",
+  "title": "Three tiny kernels spend most of their time waiting for the CPU to submit them",
+  "spec": "Two horizontal timeline lanes on one shared time axis from 0 to 54 microseconds. Top lane labelled CPU submits, one launch at a time: three blocks each 15 microseconds wide, labelled launch 1, launch 2 and launch 3, placed end to end and covering 45 microseconds. Bottom lane labelled GPU runs kernels: three short blocks each 3 microseconds wide, aligned under the launch blocks at the end of each, labelled kernel 1, kernel 2, kernel 3, covering 9 microseconds in total, with large empty gaps between them. A grey bracket over the empty GPU time labelled idle, waiting for the next launch. A second, smaller panel below labelled one graph replay: a single CPU block labelled cudaGraphLaunch, 15 microseconds, followed by the three GPU kernel blocks back to back with no gaps. Orange highlight on the idle GPU gaps in the top panel with the note: 83.3 percent of the time is CPU launch overhead. Monospace for 15 us, 3 us, 45 us, 9 us and cudaGraphLaunch.",
+  "anchor": "### 2.1 Why CPU launch overhead dominates LLM decode (`15 \u00b5s` launch vs `3 \u00b5s` kernel & `40,000` launches)",
+  "alt": "CPU launch gaps against tiny GPU kernels, and one graph replay",
+  "cap": "Launch gap: the GPU finishes each tiny kernel long before the CPU submits the next, so a single graph replay removes the gaps."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "18",
+  "name": "g18-atomic-batch",
+  "title": "Batching the queue counter cuts the number of atomic calls by the batch size",
+  "spec": "A column chart with four columns left to right labelled unbatched batch 1, batch 8, batch 16 and batch 32. Column heights are proportional to total L2 atomic calls for N equals 1,048,576 elements: 1,048,576, 131,072, 65,536 and 32,768. Each column has its value in monospace above it and its reduction factor below it: 1x, 8x, 16x and 32x fewer. The first column is grey and the last column is green. Under the columns a short caption: unbatched shows high L2 contention stalls, batch 8 and 16 remove most of the replays, batch 32 with a warp leader gives the fewest atomics. Orange highlight on the batch 32 column with the note: a batch too large can leave late warps with extra work, so measure. Monospace for 1,048,576, 131,072, 65,536 and 32,768.",
+  "anchor": "### 1.1 L2-cache atomics, `atomic_transactions_per_request`, and batching (`batchSize = 8, 16, 32`)",
+  "alt": "Atomic call counts at four batch sizes",
+  "cap": "Atomic batching: one atomic that reserves 32 items replaces 32 separate atomics, which cuts L2 contention 32-fold."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "19",
+  "name": "g19-graph-breaks",
+  "title": "A print and a tensor-valued if split one compiled function into three pieces",
+  "spec": "Two stacked panels showing the same toy function as a sequence of blocks. Top panel, labelled before, three subgraphs and two breaks: a green block labelled compiled subgraph 1 for the division, then an orange break marker labelled print, eager fallback, then a second green block labelled compiled subgraph 2, then a second orange break marker labelled if b.sum() less than 0, data-dependent branch, then a third green block labelled compiled subgraph 3 for the multiply. Bottom panel, labelled after, one graph with zero breaks: a single long green block labelled compiled graph, with the print guarded by is_compiling and the branch replaced by torch.where, drawn as one continuous bar. Orange highlight on the first break marker in the top panel with the note: the print silently splits the graph. Monospace for print, b.sum(), torch.where, is_compiling and 0 breaks.",
+  "anchor": "### 2.2 Diagnosing and eliminating graph breaks (`torch._dynamo.explain`, `torch.where`, `torch.cond`, and DDP/FSDP)",
+  "alt": "Graph breaks before and one graph after the fix",
+  "cap": "Graph breaks: a print and a tensor-valued if split the compiled function into fragments, while torch.where keeps it as one graph."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "19",
+  "name": "g19-bucket-padding",
+  "title": "Variable prompt lengths snap to a few fixed bucket sizes so the compiled graph is reused",
+  "spec": "A horizontal number line from 0 to 1,100 tokens with vertical tick marks for four bucket sizes: 256, 512, 768 and 1,024. Scattered dots above the line mark incoming prompt lengths, for example 230, 262, 300, 455, 520, 610, 780 and 1,000. Arrows drop each dot down to the nearest bucket tick above it, so the dots cluster onto four bucket points, each bucket labelled with its number of requests. Each bucket tick is drawn as a box labelled one compiled graph, reused. A caption line below reads padding adds dummy tokens to fill the bucket. Orange highlight on the bucket at 512 with the note: a length change inside a bucket reuses the same graph, while a length outside it recompiles. Monospace for 256, 512, 768, 1,024 and 1,100.",
+  "anchor": "### 2.1 Dynamic shapes: SymPy, `mark_dynamic`, and the bucket-padding rule",
+  "alt": "Prompt lengths padded onto fixed bucket sizes",
+  "cap": "Bucket padding: snapping variable lengths to a few fixed sizes reuses one compiled graph per bucket instead of recompiling for every length."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "20",
+  "name": "g20-async-projection",
+  "title": "A host range looks short because the GPU finishes its kernels later",
+  "spec": "Two horizontal lanes on one shared time axis. Top lane labelled CPU host thread: a short bracket labelled forward NVTX range, about 0.5 ms wide, with small launch ticks inside it, marking the host returning early. Bottom lane labelled GPU stream: a much longer run of kernel blocks starting at the same moment as the range and finishing well after the range closes, the kernels drawn in sequence with small gaps. A dashed vertical line at the end of the CPU range labelled range pop, host returns. Between the dashed line and the end of the GPU blocks a bracket labelled GPU still working, invisible to a host timer. A caption at the bottom reads Nsight Systems projects the GPU blocks back onto the range to show the true GPU time of the phase. Orange highlight on the bracket after the dashed line with the note: a plain CPU timer reads only the short launch window. Monospace for NVTX, forward and range_pop.",
+  "anchor": "### 2.2 Step 2 \u2014 System timeline and NVTX GPU projection with Nsight Systems",
+  "alt": "Short host NVTX range against a longer GPU kernel run",
+  "cap": "Async projection: a host range closes as soon as the launches are queued, so only the GPU projection shows the real time the phase spent on the device."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "20",
+  "name": "g20-step-breakdown",
+  "title": "Where the 24 ms training step goes: compute, gradient sync, and other work",
+  "spec": "A single horizontal stacked bar representing the 24.0 ms step drawn at full width, divided into four segments from left to right: forward 10.5 ms in dark green, backward 9.0 ms in lighter green, all-reduce 4.0 ms in orange, and other 0.5 ms in grey, with each segment labelled with its name, its time in monospace, and its share in percent: 43.8, 37.5, 16.7 and 2.1. A bracket over the first two segments labelled compute, 19.5 ms, 81.3 percent. A bracket over the orange segment labelled waiting on gradient sync, one sixth of the step. A tick mark at the far right labelled total 24.0 ms. Orange highlight on the all-reduce segment with the note: this is time the GPUs spend waiting for each other rather than doing math. Monospace for 24.0 ms, 10.5 ms, 9.0 ms, 4.0 ms and 0.5 ms.",
+  "anchor": "### 4.2 Continuous Benchmarking (TorchBench, PyTorch HUD `>= 5%` rule) and MLPerf Logging",
+  "alt": "Forward, backward, all-reduce and other shares of a 24 ms step",
+  "cap": "Step budget: compute is most of the 24 ms step, but the all-reduce segment is time the GPUs spend waiting on each other."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "21",
+  "name": "g21-xid-cascade",
+  "title": "A three-line Xid cascade read in order, from precursor to bus loss",
+  "spec": "A horizontal timeline with three event markers placed along a time axis labelled 14:21:52 to 14:22:03, spanning about 11 seconds. First marker at the left end, labelled Xid 92, high single-bit ECC error rate, tier 1 precursor, drawn in a light colour. Second marker about six seconds later, labelled Xid 45, preemptive cleanup due to previous errors, tier 1 symptom, drawn in a light colour with a leader line pointing back to the Xid 92 marker with the note: a symptom of the earlier fault. Third marker at the right end, five seconds after the second, labelled Xid 79, GPU has fallen off the bus, tier 3, drawn in a dark colour, followed by a small box labelled RmInitAdapter failed. Above the timeline a bracket labelled 6 seconds and a second bracket labelled 5 seconds. Orange highlight on the Xid 79 marker with the note: drain and cordon the node now. Monospace for Xid 92, Xid 45, Xid 79 and RmInitAdapter failed.",
+  "anchor": "### 3.2 Reading multi-Xid cascades and asymmetric Xid 74 NVLink counters",
+  "alt": "Xid 92 then 45 then 79 cascade on one GPU",
+  "cap": "Xid cascade: a tier 1 precursor and a cleanup event come before the tier 3 bus loss, so the first line is the one to chase."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "21",
+  "name": "g21-error-budget",
+  "title": "A 7.3-hour monthly error budget, spent down to 1.3 hours",
+  "spec": "A single horizontal bar representing the full monthly error budget of 7.3 hours drawn at full width, divided into segments from left to right in order of how they were spent: firmware upgrade 1.5 hours, unplanned GPU failure 2.0 hours, network maintenance 2.0 hours, thermal incident 0.5 hours, and a final remaining segment of 1.3 hours. Each spent segment is drawn in a different muted tone and labelled with its name and hours in monospace. The remaining 1.3 hours segment is drawn with a dashed outline and labelled remaining, triggers deployment freeze. A bracket above the first four segments labelled used, 6.0 hours. A marker at the boundary between used and remaining labelled 82 percent spent. Orange highlight on the remaining segment with the note: below this line, non-emergency rollouts pause until next month. Monospace for 7.3, 1.5, 2.0, 0.5, 6.0 and 1.3.",
+  "anchor": "### 4.2 Safe GPU node draining and Cluster Health SLIs, SLOs, and Error Budgets",
+  "alt": "Monthly error budget spent across four incidents",
+  "cap": "Error budget: the 99.0 percent target allows 7.3 hours a month, and 6.0 hours already spent leaves 1.3 hours before the freeze."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "22",
+  "name": "g22-straggler-timing",
+  "title": "One slow GPU makes every fast GPU wait at the collective",
+  "spec": "A column chart with four columns left to right labelled GPU 0, GPU 1, GPU 2 and GPU 3, showing the pre-collective iteration time in milliseconds: 125.3, 126.1, 1250.5 and 124.8. Columns 0, 1 and 3 are green and similar in height. Column 2 is tall, orange and labelled straggler. A dashed horizontal line at 125 ms labelled healthy ranks finish here. Above the three healthy columns a short bracket labelled waiting at the collective, with a dotted fill showing idle time up to the level of the straggler. Caption under the chart: measure before the all-reduce, because after it every rank looks equally slow. Monospace for 125.3, 126.1, 1250.5, 124.8 and 10.02x.",
+  "anchor": "### 3.2 Hunting the single straggler behind an NCCL timeout",
+  "alt": "Per-GPU pre-collective times with one straggler",
+  "cap": "Straggler timing: one GPU that arrives 10 times later makes the other three wait, so time each rank before the collective."
+ },
+ {
+  "part": "part-10-gpu-cuda",
+  "ch": "22",
+  "name": "g22-seven-stage",
+  "title": "Where a 750 ms training iteration actually goes",
+  "spec": "A single horizontal stacked bar representing the 750 ms iteration drawn at full width, divided into seven segments from left to right in order of size: data_load_cpu 450 ms in orange, allreduce_network 150 ms in grey-blue, backward_gpu 60 ms in green, forward_gpu 30 ms in green, data_transfer_pcie 10 ms, optimizer_gpu 10 ms and loss_gpu 8 ms in green-grey. Each segment labelled with its name, its milliseconds in monospace and its percent: 60.0, 20.0, 8.0, 4.0, 1.3, 1.3 and 1.1. A bracket across the four green segments labelled all GPU math, 14.4 percent. A thin unlabelled sliver at the far right labelled unaccounted, 32 ms. Orange highlight on the data_load_cpu segment with the note: optimizing kernels here saves under 8 percent of the step. Monospace for 750 ms, 450 ms, 150 ms and 718 ms.",
+  "anchor": "### 4.1 Multi-failure evidence priority and the 7-stage synchronous breakdown",
+  "alt": "Seven stage shares of a 750 ms training iteration",
+  "cap": "Stage budget: CPU data loading takes 60 percent of the step, so kernel tuning would save little on this workload."
+ }
+]

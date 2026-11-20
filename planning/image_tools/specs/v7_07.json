@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "07",
+  "name": "r07-find-gpu",
+  "title": "Walking from the service root to a GPU temperature",
+  "spec": "A top-down flowchart in one main column with numbered process boxes, one decision diamond, and one fallback branch on the right. Start terminal at top, labelled what is the temperature of GPU 3. Step 1 box: GET /redfish/v1/ and read the Systems link. Step 2 box: GET that collection and read every Members link; open each system. Step 3 box: look at Processors in each system and filter by ProcessorType equals GPU. Step 4 box: open the GPU and follow its EnvironmentMetrics link if it is present. Decision diamond beneath step 4: EnvironmentMetrics link present? Yes arrow goes down to a green end box labelled read the GPU temperature. No arrow goes right to step 5 box: search the chassis Sensors by PhysicalContext, for example GPU, and an arrow from step 5 down to the same green end box. Step 5 is the fallback, drawn with a dashed border and a note: like a spare key, kept on the ring because the first key sometimes breaks. Number circles r=24 on steps 1 to 5. Orange highlight on the decision diamond, with a short note: layouts differ between makers, so try the standard route first. No takeaway bar.",
+  "anchor": "## 8. Steps for finding a value",
+  "alt": "A tool walks from the service root through Systems, Processors and EnvironmentMetrics to a GPU temperature, falling back to chassis Sensors when the metrics link is missing.",
+  "cap": "To find a GPU temperature on an unknown server, you follow links from the service root, and fall back to the chassis sensors when the GPU has no metrics link."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "07",
+  "name": "r07-absent-states",
+  "title": "Absent, replaced and standby resources in the tree",
+  "spec": "Three equal columns side by side, each a card with a title, a state label, and two or three short lines, joined by a bottom bar. Column 1, grey card, title: Empty slot. State label in monospace: Status.State Absent. Lines: a resource can stay in the tree to show a capability, such as an empty DIMM socket or drive bay; required properties with no known value are null; the tree describes what the machine could hold, not only what it holds today. Column 2, orange-bordered card, title: Part put in the slot. State label: the same URI, now a different physical thing. Lines: do not keep old read-only data such as the serial number; a fresh DIMM would otherwise carry the old stick's identity. Column 3, green card, title: Temporarily unreachable. State label in monospace: Status.State StandbyOffline. Lines: keep the URI, because the URI is the device's address in the tree; the device stays findable when it wakes up; example, a network card in low power. Below the three cards, a wide bottom bar in light green with the text: count DIMMs or drives by Status.State not Absent, not by counting resources. Use the bar as the takeaway; no separate takeaway bar. Number circles are not needed. Keep all three card titles exact.",
+  "anchor": "## 7. Present, absent and temporarily unavailable",
+  "alt": "An empty slot is kept with Status.State Absent, a replaced part gets fresh identity data, and a sleeping device keeps its URI with StandbyOffline.",
+  "cap": "Empty slots stay in the tree with a state of Absent, so inventory counts must skip them rather than count every resource."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "07",
+  "name": "r07-link-states",
+  "title": "Reciprocal, one-way and dangling links",
+  "spec": "Three horizontal panels stacked top to bottom, each with a small left-side label and a short diagram on the right. Top panel, green, labelled Reciprocal: a box ComputerSystem System_0 on the left and a box Chassis Chassis_0 on the right; a solid arrow from left to right labelled Links.Chassis and a solid arrow from right to left labelled Links.ComputerSystems. A note: both sides are written, so a client can start at either end. Middle panel, orange-bordered, labelled ONE-WAY: the same two boxes, with a single arrow from System_0 to Chassis_0 labelled Links.Chassis, and a dashed gap with a small cross where the return arrow should be. A note: one direction works, the reverse walk finds nothing and raises no error. Bottom panel, grey, labelled DANGLING: a Chassis_0 box with an arrow labelled Links.Contains pointing to a small box labelled 404 Not Found, and the note: the link points at a URI that does not exist. A thin footer strip at the bottom of the figure, titled pairs to check, lists three pairs in monospace, one per line: Links.Chassis and Links.ComputerSystems; Links.ManagedBy and Links.ManagerForServers or Links.ManagerForChassis; Links.Contains and Links.ContainedBy. No arrowheads on the footer. Number circles are not needed. No takeaway bar.",
+  "anchor": "### 9.4 Auditing graph integrity across vendors with `rf_model.py`",
+  "alt": "A reciprocal link has a partner that points back, a one-way link lacks the return arrow, and a dangling link points to a missing resource.",
+  "cap": "A link checker looks for a matching return link for every link, and it flags one-way links and dangling links that point to missing resources."
+ }
+]

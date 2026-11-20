@@ -1664,6 +1664,10 @@ An encoding is named by a string, such as `'utf-8'` or `'latin-1'`. Python ships
 
 ### The three string types
 
+![str, bytes and bytearray](./img/s17-strtypes.svg)
+
+*Figure 3.17.1. Python 3 has text (str), immutable bytes and mutable bytearray, and encoding converts between text and bytes.*
+
 Python has three string-like types, and each has a clear job. `str` holds Unicode text as decoded code points. `bytes` holds binary data, including text that has already been encoded. `bytearray` is a mutable version of `bytes`.
 
 The `str` type is an immutable sequence of characters. Its content can be simple ASCII, where one character is one byte once encoded, or richer Unicode text, where one character may need several bytes. In memory, a `str` is just a list of code points, and it has no notion of an encoding. Only when it moves to a file or network does Python encode it, using the platform default or a name you give.
@@ -3768,6 +3772,10 @@ The two methods can catch different sets of fetches. In practice, though, they o
 
 ### Management techniques compared
 
+![Attribute management techniques](./img/s17-manage.svg)
+
+*Figure 3.17.2. Properties, descriptors, __getattr__ and __getattribute__ differ in which attribute accesses they intercept.*
+
 A computed attribute makes a useful comparison across all four techniques. Example 38-14 uses properties for `square` and `cube`. The base values begin with an underscore, so they do not clash with the property names:
 
 ```python
@@ -5222,6 +5230,10 @@ The `timeit` module and the timing helpers from the timing chapter do the same j
 A nondecorator approach lets the functions run with or without timing, but the call sites must change every time you want timing. There is also no direct way to make sure every call goes through the timer. Decorators are a good choice when functions are already deployed in a larger system and cannot easily be passed to an analysis function. A nondecorator approach may be better when you want to time only some calls.
 
 ### Adding decorator arguments
+
+![A decorator that takes arguments](./img/s17-decoargs.svg)
+
+*Figure 3.17.3. A decorator with arguments has one more level: deco(arg) returns the decorator, which returns the wrapper.*
 
 The timer works, but it would be more useful with settings. A label and an on-off switch for trace messages are the obvious ones, and decorator arguments provide them. Here is the general pattern:
 

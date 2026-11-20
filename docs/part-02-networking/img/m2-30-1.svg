@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Half split and move</title>
+  <desc>Visual explanation of half-split network troubleshooting starting at the spine switch.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="82" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Half split and move</text>
+
+  
+  <rect x="60" y="150" width="240" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(152, 175)">
+    <rect x="0" y="0" width="56" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="10" y1="16" x2="34" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="10" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="44" cy="16" r="3" fill="#207448"/>
+    <circle cx="44" cy="28" r="3" fill="#207448"/>
+  </g>
+  <text x="180" y="285" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="180" dy="0">Source</tspan>
+    <tspan x="180" dy="36">host</tspan>
+  </text>
+
+  
+  <line x1="300" y1="255" x2="370" y2="255" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="370" y="150" width="240" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(462, 175)">
+    <rect x="0" y="2" width="56" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="18" x2="44" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="38,12 44,18 38,24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="44" y1="30" x2="12" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="18,24 12,30 18,36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="490" y="302" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Leaf A</text>
+
+  
+  <line x1="610" y1="255" x2="680" y2="255" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="680" y="150" width="240" height="210" rx="14" fill="#fef3e7" stroke="#db8129" stroke-width="4"/>
+  
+  <g transform="translate(772, 175)">
+    <rect x="0" y="0" width="56" height="48" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="12" y1="16" x2="44" y2="16" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="38,10 44,16 38,22" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="44" y1="32" x2="12" y2="32" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="18,26 12,32 18,38" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="800" y="302" font-size="30" font-weight="bold" fill="#db8129" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Spine</text>
+
+  
+  <line x1="920" y1="255" x2="990" y2="255" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="990" y="150" width="240" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(1082, 175)">
+    <rect x="0" y="2" width="56" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="18" x2="44" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="38,12 44,18 38,24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="44" y1="30" x2="12" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="18,24 12,30 18,36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1110" y="302" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Leaf B</text>
+
+  
+  <line x1="1230" y1="255" x2="1300" y2="255" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1300" y="150" width="240" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(1392, 175)">
+    <rect x="0" y="0" width="56" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="10" y1="16" x2="34" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="10" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="44" cy="16" r="3" fill="#207448"/>
+    <circle cx="44" cy="28" r="3" fill="#207448"/>
+  </g>
+  <text x="1420" y="285" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="1420" dy="0">Destination</tspan>
+    <tspan x="1420" dy="36">host</tspan>
+  </text>
+
+  
+  <rect x="250" y="420" width="1100" height="400" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <text x="800" y="482" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Test at the spine first:</text>
+  <text x="800" y="534" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">packets present and correct?</text>
+
+  
+  <rect x="290" y="575" width="1020" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="635" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">yes → look downstream (Leaf B, dest)</text>
+
+  
+  <rect x="290" y="695" width="1020" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="755" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">no → look upstream (Leaf A, source)</text>
+</svg>

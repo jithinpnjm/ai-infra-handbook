@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "28",
+  "name": "h28-bonnie-layers",
+  "title": "Where bonnie++ really wrote: the page cache, not the disk",
+  "spec": "A vertical stack of three layer boxes connected by downward arrows, with numbered step circles 1 to 3 beside them. Top box 1: bonnie++ Per Chr test, with the sub-label one-byte writes and the reported figure 739 Kbytes/sec at 99% CPU. A monospace note under it: write(3, \"6\", 1) = 1 and no fsync(2). Arrow down labelled one-byte vfs_write() calls. Middle box 2: OS page cache, with the sub-label 1,176,936 one-byte vfs_write() calls, and a small note: cachestat 1 shows 100.00% page-cache hits and dirties. Arrow down, drawn dashed, to box 3. Bottom box 3: Disk, drawn grey and empty, with the label 0 disk IOPS from iostat -sxz 1 and the note no block_rq_issue events. Side tags on the right of each box name the tool that showed it: strace for box 1, bpftrace and cachestat for box 2, iostat and bpftrace for box 3. Orange highlight on box 3, the layer the test never reached. A green panel on the left is not needed. No green takeaway bar.",
+  "anchor": "## 1. Methodology (Systems Performance, chapter 12)",
+  "alt": "bonnie++ made a million one-byte writes into the page cache, and no disk I/O happened, so the test measured memory.",
+  "cap": "The bonnie++ test made about a million one-byte writes into the page cache and never reached the disk."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "28",
+  "name": "h28-acceptance-order",
+  "title": "Cluster acceptance runs in eight ordered stages",
+  "spec": "Eight numbered boxes arranged in a snake path, four per row, left to right on the top row and right to left on the bottom row, with arrows between consecutive boxes. Each box has a number circle (r=24, green, white number) and an icon beside its title. Box 1: Inventory and firmware audit (chip icon), sub-label BIOS, BMC, NIC and GPU firmware match the baseline. Box 2: Burn in the hardware (flame or thermometer icon), sub-label 24 to 72 hours, watch for errors and thermal throttling. Box 3: Per-node performance (gauge icon), sub-label compare each node with the peer median, flag any node below 95 percent of the median. Box 4: Validate the fabric (network icon), sub-label ib_write_bw and ib_send_lat, then nccl-tests at scale. Box 5: Validate storage (disk cylinder icon), sub-label IOR, mdtest and fio. Box 6: Run the system end to end (server rack icon), sub-label full-cluster HPL, then a multi-day training-like job. Box 7: Smoke-test the scheduler and software (gear icon), sub-label Slurm, containers, identity and monitoring. Box 8: Document the results (document icon), sub-label sign off before each payment milestone. Orange highlight on box 2, where infant mortality shows up. No green takeaway bar.",
+  "anchor": "## 4. Acceptance testing and burn-in",
+  "alt": "Acceptance testing runs eight stages in order, from inventory and burn-in through fabric, storage and end-to-end tests to signed-off documentation.",
+  "cap": "Acceptance testing runs in eight ordered stages, starting with inventory and burn-in and ending with signed documentation."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "28",
+  "name": "h28-batch-halving",
+  "title": "Halve the batch size to tell a network-bound job from a compute-bound one",
+  "spec": "Top-down decision flow. Start box at top: DDP gradient all_reduce at 60 GB/s on a 100 GB/s NIC, with a note the gradient payload stays fixed when the batch size changes. Step number circle 1 beside an arrow down labelled halve the batch size. Diamond or question box: does NIC throughput stay at 60 GB/s? Two exits. Left exit, labelled yes, leads to a green box: stays at 60 GB/s, so the network is the bottleneck, result communication-bound. Right exit, labelled no, leads to a second box: drops to 40 GB/s, so the GPUs are not finishing compute fast enough to keep the NIC busy, result compute-bound. Below both results, step number circle 2 with the box double the batch size as a reverse check, with two notes: a communication-bound job keeps the NIC pinned at 60 GB/s, and a compute-bound job spends a shrinking share of each iteration in all_reduce. Orange highlight on the communication-bound result box. No green takeaway bar.",
+  "anchor": "### NCCL tests",
+  "alt": "Halving the batch size shows whether the NIC stays pinned at 60 GB/s, which means communication-bound, or drops to 40 GB/s, which means compute-bound.",
+  "cap": "Halving the batch size tells you whether the NIC stays pinned, which means the job is communication-bound, or drops, which means it is compute-bound."
+ }
+]

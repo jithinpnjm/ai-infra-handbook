@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "13",
+  "name": "r13-nvl72-rack",
+  "title": "One GB300 NVL72 rack holds dozens of BMCs on one out-of-band network",
+  "spec": "A tall rack outline on the left, labelled NVL72 rack (GB300 reference), with three stacked bands inside it, top to bottom. Band 1 labelled Compute trays, sub-line 18 trays, each with its own BMC and a BlueField-3 DPU BMC. Band 2 labelled NVLink switch trays, sub-line 9 trays, each with one BMC RJ45 port and two COMe RJ45 ports for NVOS. Band 3 labelled Power shelves, sub-line 8 shelves, each with six 5.5 kW supplies in N redundancy, up to 33 kW, and one BMC port. A tall vertical bar on the right side, labelled Out-of-band management network, sub-line SN2201 switches, with thin connector lines from each band to the bar (no arrowheads, meaning connected). Below the bar, a box labelled Rack PDUs also connected to the bar with a thin line. Above the bar's top end, a box labelled Dedicated VXLAN at the spine layer, joined by an arrow from the bar. Orange note on the bar: no unprivileged user needs these ports, so the network is kept apart by logical separation. Monospace for SN2201, NVOS, RJ45, BlueField-3. No number circles and no takeaway bar.",
+  "anchor": "## 3. Rack-scale: GB200 and GB300",
+  "alt": "An NVL72 rack holds compute trays, NVLink switch trays and power shelves, all wired to one out-of-band SN2201 management network.",
+  "cap": "Every BMC port in an NVL72 rack, from compute trays to power shelves, joins one separate out-of-band management network."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "13",
+  "name": "r13-two-views",
+  "title": "Redfish and NVSM see different failures, so line both up on one timeline",
+  "spec": "Two large panels side by side. Left panel titled Redfish, out-of-band (BMC), sub-line works on its own power and network. Inside it, three small boxes: fans, power supplies, a host that is down. Right panel titled NVSM and DCGM, in-band (host), sub-line runs on the host itself. Inside it, three small boxes: GPU errors, NVLink counters, clocks. Under the right panel, a grey note: a host that is hung can still answer the BMC, but it cannot run NVSM. Between the two panels, a narrow vertical divider with a label Different failures. Below both panels, a horizontal time arrow labelled timeline running left to right, with two event markers placed on it, one labelled fan alarm and one labelled GPU error. Orange note at the end of the time arrow, the single key item: the first event on the timeline is often the real cause. Monospace for nvsm dump health, DCGM and NVLink labels where they appear. No number circles and no takeaway bar.",
+  "anchor": "## 4. NVSM and BCM next to Redfish",
+  "alt": "Redfish sees fans and power and a down host, NVSM and DCGM see GPU errors and NVLink counters, and both go on one timeline.",
+  "cap": "Redfish and NVSM cover different failure cases, so put both views on one timeline and read which event came first."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "13",
+  "name": "r13-bringup",
+  "title": "Eight bring-up steps, each leaving evidence, before a node joins the scheduler",
+  "spec": "Eight step boxes arranged in two rows of four, read left to right on the top row, then a down arrow from step 4 to step 5 at the start of the bottom row, then left to right again. Arrows between consecutive steps. Each box has a green number circle (1 to 8), a short title and a sub-line. Step 1, title Identify the owner of the BMC and the firmware bundle, sub-line DGX, OEM HGX or rack-scale. Step 2, title Connect the BMC to the OOB network, sub-line change factory credentials, set NTP, install your CA certificate. Step 3, title Record the Redfish tree, sub-line rf_record.py, an offline copy of this firmware state. Step 4, title Run the service validator and acceptance profile, sub-line keep the reports. Step 5, title Run inventory, hardware, sensors and drift checks, sub-line rf_inventory.py, rf_hardware.py, rf_sensors.py. Step 6, title Compare with the vendor bundle and update, sub-line vendor documented procedure, never mix bundles. Step 7, title Run vendor diagnostics and burn-in, sub-line dcgmi diag -r 3, then -r 4; nvbandwidth for NVLink; ib_write_bw for the network; keep the output. Step 8, orange border as the single key item, title Admit the node to the scheduler, sub-line the node stays out of the job queue until this step. A green takeaway bar across the bottom reads: Do not admit a node to the scheduler until every step above has left its evidence behind. Monospace for rf_record.py, rf_inventory.py, rf_hardware.py, rf_sensors.py, dcgmi diag -r 3, dcgmi diag -r 4, nvbandwidth, ib_write_bw.",
+  "anchor": "## 7. A bring-up checklist for a new GPU server model",
+  "alt": "Eight bring-up steps run in order, from identifying the BMC owner to admitting the node to the scheduler.",
+  "cap": "A new GPU server works through eight ordered bring-up steps, and each step must leave evidence before the node joins the scheduler."
+ }
+]

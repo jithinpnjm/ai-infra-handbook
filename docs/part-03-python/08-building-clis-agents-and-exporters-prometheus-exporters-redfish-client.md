@@ -140,14 +140,9 @@ if __name__ == "__main__":
 
 Read the code from the top. The group callback runs first: it sets up logging to stderr, loads the config and stores both on `ctx.obj`. Each subcommand then reads that shared state through `@click.pass_obj`. Keep the front-desk picture in mind: whatever the group sets up at the shared context object, every subcommand can ask for it. The diagram below shows the same path from the command line to the exit code.
 
-```mermaid
-flowchart LR
-  A["argv"] --> B["Group callback\n(logging, config, client)"]
-  B --> C["Subcommand\nparse + convert + validate"]
-  C --> D["Business function\n(pure, testable)"]
-  D --> E["Output formatter\n(table/json)"]
-  E --> F["Exit code"]
-```
+![Click](./img/m3-08-1.svg)
+
+*Figure 3.8.1. Click, as a diagram.*
 
 Click also covers the options you will reach for next: `envvar=`, `multiple=True`, `required`, `type=click.IntRange(1, 64)`, `click.Path(exists=True)`, `click.File`, `click.prompt` and `confirm`, `click.progressbar`, and `click.echo(..., err=True)` for stderr. Raise `click.ClickException` or `click.UsageError` for clean error messages and exit codes. Call `ctx.exit(code)` to stop with a specific code. To test a command, invoke it with `click.testing.CliRunner().invoke(cli, ["status", "h1"])`.
 
@@ -255,6 +250,10 @@ A bulkhead works differently. It limits how many calls can run at once against o
 
 ### 3.4 Pagination and completeness
 
+![Following pagination to completion](./img/s08-paginate.svg)
+
+*Figure 3.8.2. Pagination: follow the next link until none is left, so the result is complete.*
+
 Here is the fleet bug that drops data silently. You list the BMCs, and the API returns 100 items per page. Your script reads the first page, handles those 100 items, and exits 0. The other hosts were never read, and nobody notices. Silent truncation is one of the most common bugs in fleet scripts. Hide the paging inside a generator, and make the generator fail loudly when something looks wrong. A generator is a function that yields items one at a time instead of returning one big list.
 
 ```python
@@ -286,9 +285,13 @@ Suppose a BMC shows the temperature of a GPU server, but Prometheus cannot read 
 
 ### 4.1 Metric model essentials
 
+![Label cardinality](./img/s08-cardinality.svg)
+
+*Figure 3.8.3. Labels need a bounded set of values, because every unique combination becomes its own time series.*
+
 ![The Prometheus metric types](./img/s08-metrictypes.svg)
 
-*Figure 3.8.1. Metric types: counter, gauge, histogram and summary each answer a different question.*
+*Figure 3.8.4. Metric types: counter, gauge, histogram and summary each answer a different question.*
 
 Pick the metric type first, because each one answers a different question. A counter only goes up, so you query it with `rate()`. A gauge can move up and down, which suits temperature or queue depth. A histogram stores bucketed observations along with `_sum` and `_count`, and it is the right choice for latency distributions. A summary computes quantiles on the client side, so it cannot be aggregated across instances. Prefer a histogram when you need to combine data from several exporters. An info metric carries constant labels that describe an entity.
 
@@ -324,6 +327,10 @@ poll_forever(["gpu01", "gpu02"])
 This background-polling model separates collection from scraping, which is its appeal. Its weakness is staleness, and staleness is where an exporter lies. Picture the polling thread stalling in the night. Prometheus keeps scraping, and the dashboards stay calm on hours-old numbers. If polling stalls, the metrics keep showing the last values, and series for removed hosts linger until you call `.remove(...)` or switch to a collector.
 
 ### 4.3 The recommended way: a custom collector
+
+![A custom collector at scrape time](./img/s08-collector.svg)
+
+*Figure 3.8.5. A custom collector gathers values when Prometheus scrapes, so the numbers are always fresh.*
 
 A custom collector runs at scrape time. Each scrape produces a fresh, consistent snapshot, so no stale series survive. Most mature exporters work this way. The node_exporter pattern is the model: the scrape drives the collection.
 
@@ -391,7 +398,7 @@ A DGX or HGX host will not power on, and there is no shell to work from. The mac
 
 ![The Redfish resource tree](./img/s08-redfish.svg)
 
-*Figure 3.8.2. Redfish hangs everything off the service root, and resources link to each other with @odata.id.*
+*Figure 3.8.6. Redfish hangs everything off the service root, and resources link to each other with @odata.id.*
 
 Everything in Redfish hangs off a tree rooted at `/redfish/v1/`, called the service root. Read the tree like a filing cabinet: one drawer per collection. The `Systems` collection describes the host computer, including power state, boot settings, BIOS, processors and memory. `Chassis` describes the physical enclosure, with its thermal, power and sensor data and its GPU or PCIe devices. `Managers` describes the BMC itself, including its network settings, logs and virtual media. `UpdateService` holds the firmware inventory and handles updates. `AccountService`, `SessionService`, `EventService` and `TelemetryService` cover the rest.
 

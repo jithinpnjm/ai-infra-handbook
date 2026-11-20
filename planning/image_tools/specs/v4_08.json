@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "a08-handler-lost",
+  "title": "A handler lost after a failure, and why Run 2 does not restart",
+  "spec": "Two horizontal lanes stacked vertically, each with a bold lane title on the left. Top lane titled Run 1. Along it, three boxes left to right with green number circles 1, 2 and 3. Box 1: monospace template: dest=/etc/default/dcgm-exporter, with the note the file changes and the task reports changed. Arrow labelled notify to Box 2: queued handler Restart dcgm-exporter, with the note not yet run. Arrow labelled Task 2 to Box 3: a box labelled Task 2 fails on gpu01 with the note the handler is skipped and dcgm-exporter keeps the old config in memory. Box 3 is highlighted in orange. Bottom lane titled Run 2. Two boxes: Box A monospace template: dest=/etc/default/dcgm-exporter, with the note the file on disk already matches, so the task reports ok. Arrow labelled no notify to Box B, a box labelled no restart. Below both lanes, a light green panel titled Three fixes, with three stacked items: force_handlers: true on the play; meta: flush_handlers right after the critical config tasks; an idempotent task that checks the service uptime against the config file mtime. No takeaway bar.",
+  "anchor": "## 1. Handlers",
+  "alt": "A changed config task queues a restart, a later task fails and the handler is skipped, and the second run reports ok so no restart happens.",
+  "cap": "A handler can be lost when a later task fails in the same run, because the next run sees an unchanged file and never notifies it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "a08-import-include",
+  "title": "import_tasks is read at parse time, include_tasks at run time",
+  "spec": "A horizontal timeline across the top with two marked points: left point labelled Parse time, the playbook is read; right point labelled Run time, each task is reached in order. Below the timeline two side-by-side panels. Left panel titled import_tasks / import_role / import_playbook, marked with a lock or fixed-structure icon, with a note Static, at parse time. Inside it three bullet rows: visible to --list-tasks, --tags and --start-at-task; when is applied to every imported task; loop is not supported. Right panel titled include_tasks / include_role, marked with a gear or dynamic icon, with a note Dynamic, at runtime when reached. Inside it three rows: included tasks are not listed by --list-tasks; loop is supported, one include per item; the filename can use facts, shown in monospace as ansible_facts['os_family'] .yml. Under the panels, a decision box with the question: Can the file name or its existence change based on something the run discovers? Arrow labelled yes to a box labelled include. Arrow labelled no to a box labelled import, drawn in orange as the default choice. Green takeaway bar at the bottom: Choose an import by default, and switch to an include only when runtime data forces your hand.",
+  "anchor": "## 5. Imports versus includes",
+  "alt": "Imports are read when the playbook is parsed and includes are read when the run reaches them, so a file name that depends on runtime facts needs an include.",
+  "cap": "An import is fixed when the playbook is read, while an include is decided when the run reaches it, so the choice depends on whether the file name can change at runtime."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "a08-serial-batches",
+  "title": "serial batches grow from one canary node",
+  "spec": "A horizontal row of three batch columns, left to right, each with a bold title and a green number circle: Batch 1, Batch 2 and Batch 3. Above the columns a monospace line: serial: [1, \"10%\", \"25%\"]. Each batch column holds a grid of small square icons, one square per host, drawn as server or chip icons in green outline. Batch 1 holds one square labelled as the canary, a single node, with the note first node is a test. Batch 2 holds squares covering a slice labelled 10%. Batch 3 holds a larger slice labelled 25%. Arrows between the columns are orthogonal and labelled in order. Below the columns, a light green panel with two rows: max_fail_percentage: 5 with the note stops the line when failures pass the limit; any_errors_fatal: false with the note a failure stays with its own host. Orange highlight on Batch 1, the one-node canary. A small note: the serial list grows in steps. Green takeaway bar at the bottom: The first node is a test, and only after that does the play work through larger slices of the fleet.",
+  "anchor": "### Drain → change → validate → return",
+  "alt": "The serial list runs a one-node canary first, then 10 percent and 25 percent slices, with a failure limit of 5 percent.",
+  "cap": "The serial list starts with a single-node canary and then works through larger slices of the fleet, with a failure limit that stops the run."
+ }
+]

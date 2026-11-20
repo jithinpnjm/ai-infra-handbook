@@ -55,20 +55,9 @@ The exchange between client and server has four messages, remembered as DORA: Di
 
 *Figure 2.9.1. Discover, Offer, Request, Acknowledge: the four DORA messages.*
 
-```mermaid
-sequenceDiagram
-  participant C as Client (0.0.0.0, UDP 68)
-  participant S as DHCP server (UDP 67)
-  C->>S: DISCOVER (broadcast 255.255.255.255) "any DHCP server out there?"
-  S-->>C: OFFER  yiaddr=10.20.0.45, lease 12h, options
-  C->>S: REQUEST (broadcast) "I accept 10.20.0.45 from server X"
-  S-->>C: ACK  (lease confirmed)
-  Note over C: configures address, routes, DNS
-  C->>S: (at T1 = 50% of lease) REQUEST unicast: renew
-  S-->>C: ACK (new lease)
-  C->>S: (at T2 = 87.5%) REQUEST broadcast: rebind to any server
-  C->>S: (before leaving) RELEASE
-```
+![DORA](./img/m2-09-1.svg)
+
+*Figure 2.9.2. DORA, as a diagram.*
 
 The messages travel over UDP. If you capture this traffic, you will see these ports on every packet. The client uses port 68 and the server uses port 67. The client identifies itself by its MAC address (chaddr), and it can also send a client identifier (option 61). A server that sees the same client ID again can give it the same address, which is how a static reservation works.
 
@@ -81,6 +70,10 @@ When you troubleshoot a lease, start with the timers, because they control renew
 Two less common messages matter too. INFORM asks for options only, which suits a host that already has a static address and just wants the DNS settings. A NAK tells a client that the address it requested is not valid here, usually because it moved networks, so the client must restart.
 
 ### Relays, scopes and options
+
+![DHCP relay and giaddr](./img/n09-relay.svg)
+
+*Figure 2.9.3. A relay agent turns a local broadcast into a unicast to a central server and tags it with giaddr so the server picks the right scope.*
 
 A broadcast does not cross routers, since routers exist to keep broadcasts local. That is why a central DHCP server cannot hear a request from a rack VLAN by default. A DHCP relay agent fixes this. It runs on the switch or router, listens for the broadcast, and forwards it on. You will see it configured with `ip helper-address` on a switch SVI or router interface, with `dhcrelay`, or with `dnsmasq --dhcp-relay`.
 
@@ -105,6 +98,10 @@ The table below lists the options a DHCP server commonly sends. Look for options
 | 60 / 77 / 93 | Vendor class (e.g. `PXEClient`), user class, client architecture (BIOS vs UEFI) |
 
 ### PXE boot of bare-metal GPU nodes
+
+![PXE boot steps](./img/n09-pxe.svg)
+
+*Figure 2.9.4. A bare-metal node gets its address, bootloader, kernel and installer one step at a time over DHCP, TFTP and HTTP.*
 
 A bare-metal GPU node is provisioned by network boot, and the steps run in a fixed order. Each step hands the node a little more of what it needs. Think of a person waking up in an empty room: first they need light, then directions, then tools. The node needs an address, then the name of a boot file, then the operating system.
 
@@ -180,6 +177,10 @@ NAT also became an accidental security boundary, because inbound connections are
 
 ## 3. Types of NAT
 
+![SNAT and DNAT](./img/n09-snatdnat.svg)
+
+*Figure 2.9.5. SNAT rewrites the source on the way out and DNAT rewrites the destination on the way in.*
+
 NAT comes in several forms, and each one rewrites a different part of the packet. When you choose a type, ask which side of the connection needs the address, and whether many hosts must share it. The table lists each type with its typical use.
 
 | Type | What changes | Typical use |
@@ -204,20 +205,11 @@ Say it in words as well. The inside host `10.0.0.5` opens a connection from port
 
 ![How PAT shares one public address](./img/n09-fig2-pat.jpg)
 
-*Figure 2.9.2. PAT gives each inside host its own outside port on one public address.*
+*Figure 2.9.6. PAT gives each inside host its own outside port on one public address.*
 
-```mermaid
-sequenceDiagram
-  participant H as Inside host 10.0.0.5:51000
-  participant N as NAT gateway (inside 10.0.0.1, outside 203.0.113.9)
-  participant S as Server 198.51.100.7:443
-  H->>N: src 10.0.0.5:51000 → dst 198.51.100.7:443
-  Note over N: create mapping 10.0.0.5:51000 ⇄ 203.0.113.9:40001 (tracked flow)
-  N->>S: src 203.0.113.9:40001 → dst 198.51.100.7:443
-  S-->>N: src 198.51.100.7:443 → dst 203.0.113.9:40001
-  Note over N: lookup mapping in state table, translate back
-  N-->>H: src 198.51.100.7:443 → dst 10.0.0.5:51000
-```
+![How PAT works](./img/m2-09-2.svg)
+
+*Figure 2.9.7. How PAT works, as a diagram.*
 
 The gateway keeps a translation table, which is its memory of who started what. On Linux, this is the conntrack table, which chapter 2.23 covers in detail. The table is keyed by the flow's 5-tuple. The first outbound packet creates an entry, and replies match that entry and are rewritten back. Entries expire on timers. A TCP connection in the established state lasts hours, a TCP connection after FIN lasts seconds, UDP lasts 30 to 120 s, and ICMP lasts 30 s. NAT also fixes up the IP and TCP/UDP checksums and the payloads of ICMP errors.
 
@@ -319,19 +311,9 @@ Overlapping private ranges cause trouble later. If every cluster uses 10.0.0.0/8
 
 When an inside host cannot reach the Internet, work through the flowchart from the top. Each question rules out one layer, so you never have to guess which layer failed. The point is to replace theories with checks.
 
-```mermaid
-flowchart TD
-  X["Inside host cannot reach Internet"] --> A{"Has IP, gateway, DNS?\n(DHCP / static)"}
-  A -- "no" --> A1["DHCP: tcpdump 67/68, relay, pool, VLAN, rogue server"]
-  A -- "yes" --> B{"ping gateway ok?"}
-  B -- "no" --> B1["L2/ARP problems (chapter 2.3)"]
-  B -- "yes" --> C{"Gateway forwards?\nip_forward, FORWARD policy"}
-  C -- "no" --> C1["Enable forwarding; allow in FORWARD chain"]
-  C -- "yes" --> D{"tcpdump on outside iface:\nsource translated?"}
-  D -- "source still private" --> D1["Missing/incorrect SNAT/masquerade rule (wrong -o, -s); rule order"]
-  D -- "translated, no reply" --> D2["Upstream routing/filtering; asymmetric path; wrong outside IP"]
-  D -- "reply arrives, not delivered" --> D3["conntrack drop (table full, timeouts), rp_filter, FORWARD rules"]
-```
+![Troubleshooting](./img/m2-09-3.svg)
+
+*Figure 2.9.8. Troubleshooting, as a diagram.*
 
 Counters tell you what the gateway actually did, which is often different from what the rules say it should do. Run `conntrack -S` to see the insert_failed, drop and early_drop counters, and `dmesg | grep conntrack` for kernel messages. `ss -s` gives a summary of sockets. `iptables -t nat -L -v -n` shows packet counters on each rule, and `nft list ruleset` shows counters too. Run `tcpdump -ni any host X` on both interfaces to compare what goes in and what comes out.
 

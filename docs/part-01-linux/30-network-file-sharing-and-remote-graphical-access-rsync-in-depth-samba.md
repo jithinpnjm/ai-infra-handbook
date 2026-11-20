@@ -38,6 +38,10 @@ Before you start, read chapters 1.1 to 1.5 and chapter 1.29. Chapters 1.1 to 1.5
 
 ## 1. Which tool for which job
 
+![A table matching each sharing or copying job to the tool that fits it.](./img/l30-tool-choice.svg)
+
+*Figure 1.30.1. Start with the job, not the tool.*
+
 Suppose a colleague asks you to "just share this folder" and leaves every detail to you. Which folder, with whom, for how long, and on which network? Start with the job, not the tool. There are many ways to distribute and share files, and most arguments about tools are really arguments about jobs. Find your situation in the left column of the table below, and the right column names the tool that usually fits it.
 
 | You want to... | Use |
@@ -111,7 +115,7 @@ A trailing `/` on the source changes what arrives. The two lines below look almo
 
 ![The rsync trailing slash](./img/ch30-fig1-rsync.jpg)
 
-*Figure 1.30.1. A trailing slash on the source copies the contents; without it, the folder itself is copied.*
+*Figure 1.30.2. A trailing slash on the source copies the contents; without it, the folder itself is copied.*
 
 Combined with `--delete`, a stray slash can remove unrelated files at the destination. Watch out for **shell tab-completion**, which adds trailing slashes after directory names automatically, and does it without asking.
 
@@ -131,6 +135,10 @@ rsync -a --include='keep.log' --exclude='*.log' src host:   # include an excepti
 A pattern matches a whole file or directory name, and it may use simple globs. For example, `t*s` matches `this` but not `ethers`, because a pattern has to cover the whole name. Order matters, because the first match wins. Put an `--include` before the `--exclude` it carves an exception from, or the exception never gets a chance. Use `--include` when a pattern turns out to be too restrictive.
 
 ### How `rsync` decides, and safeguards
+
+![rsync skips files whose size and time match and offers options for stronger checks and safeguards.](./img/l30-rsync-decide.svg)
+
+*Figure 1.30.3. The quick check is cheap but trusts only size and time, so use checksums for data you cannot rebuild.*
 
 `rsync` needs a fast way to decide what changed, because reading every file on both sides would cost as much as copying them. So it uses a **quick check**: a file is skipped when its size and modification time match on both sides. The check is cheap, and it is right most of the time.
 
@@ -184,6 +192,10 @@ Centralized storage made sense for two traditional reasons. One user could log i
 They are overshadowed, though, by one disadvantage that has stayed the same for decades. Network storage performance is often poor compared with local storage.
 
 ### Why a streamed file is fast and random access is slow
+
+![Sequential reads of a large file are fast over a network, while many small random opens repeat the latency.](./img/l30-stream-vs-random.svg)
+
+*Figure 1.30.4. The latency of each new file access is what makes network storage slow for many small files.*
 
 The two access patterns look alike, but the network treats them very differently. Think of a video player that reads a movie from a server. The file is read from start to finish, in order. Modern hardware and networks handle that without trouble, because the server can prefetch the next blocks while the player shows the current ones. Nothing has to wait on a fresh request each time.
 
@@ -432,7 +444,7 @@ Desktop components also rely on D-Bus (How Linux Works, section 14.5), an interp
 
 ![The X Window System](./img/ch30-d1-luna.svg)
 
-*Figure 1.30.2. The X Window System.*
+*Figure 1.30.5. The X Window System.*
 
 X uses a client/server architecture, but the names run the opposite way from what you might expect, and this trips up almost everyone the first time. The X server is the program on your machine. It owns the screen, keyboard and mouse. The clients are the graphical applications. They may run on a different machine, and they talk to your server over the X protocol (version 11), through Unix sockets or network sockets. The server consists of drivers for input and output devices, plus the part that talks to applications.
 
@@ -544,6 +556,10 @@ Start a session like this. Start the X server locally, then connect with an SSH 
 Authorisation is the next concern. Without forwarding, you must tell the X server which machines may connect. On Unix, use `xhost +computer_name`. For the Windows servers, use an `X0.hosts` file that lists allowed names and addresses. `xhost` is weak and often disabled by default, so avoid it. Use `xauth` cookies instead, which SSH forwarding sets up for you. If you use `sudo` on the remote host, the `XAUTHORITY` variable must pass through.
 
 ### When X is too slow: alternatives
+
+![Remote display alternatives to X compared by their key limits.](./img/l30-remote-display.svg)
+
+*Figure 1.30.6. The alternatives send compressed screen images, and web UIs usually need only an SSH tunnel.*
 
 X's weakness is speed. With rich graphics over a narrow or high-latency link, it can become unusable. The alternatives send compressed images of the screen instead of drawing commands. The table below lists them, and its notes column matters as much as the names.
 

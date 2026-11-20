@@ -45,6 +45,10 @@ By the end of this chapter, you should be able to do the following.
 
 ### Three questions of monitoring
 
+![Three monitoring questions](./img/n31-threequestions.svg)
+
+*Figure 2.31.1. Every monitoring setup should answer whether it is up, whether it is healthy and whether it is doing its job.*
+
 Every monitoring setup should answer three questions.
 
 1. **Is it up?** Check the availability of devices, links, sessions and services.
@@ -71,7 +75,7 @@ Each mechanism trades speed, detail and effort in a different way. The table bel
 
 ![Polling versus streaming telemetry](./img/n31-fig1-telemetry.jpg)
 
-*Figure 2.31.1. Polling asks on an interval; streaming telemetry pushes continuously.*
+*Figure 2.31.2. Polling asks on an interval; streaming telemetry pushes continuously.*
 
 | Mechanism | How it works | Typical granularity | Strengths | Weaknesses |
 |---|---|---|---|---|
@@ -106,28 +110,9 @@ Decide which of these sources you will run on each class of device before you bu
 
 Read the diagram from left to right. Devices on the left send their data to collectors. The collectors feed a metrics store, and the store feeds Grafana and Alertmanager. Syslog takes its own path to the log store.
 
-```mermaid
-flowchart LR
-  subgraph Devices
-    SW["Switches (gNMI / SNMP / sFlow / syslog)"]
-    HOST["GPU servers: node_exporter, ethtool, IB/RDMA, DCGM"]
-    PROBE["Probes: blackbox, TWAMP, ping mesh"]
-  end
-  SW --> GNMIC["gNMIc / Telegraf (gnmi, snmp)"]
-  SW --> SNMPX["snmp_exporter"]
-  SW --> FLOW["goflow2 / pmacct / ElastiFlow (sFlow, IPFIX)"]
-  SW --> SYSL["Syslog (rsyslog/Vector) → Loki/Elastic"]
-  HOST --> PROM["Prometheus / VictoriaMetrics / Mimir"]
-  PROBE --> PROM
-  GNMIC --> PROM
-  SNMPX --> PROM
-  FLOW --> PROM
-  PROM --> GRAF["Grafana dashboards"]
-  PROM --> AM["Alertmanager"]
-  SYSL --> GRAF
-  AM --> TICKET["Pager / ticket / ChatOps"]
-  AM --> AUTO["Webhook → automation (chapter 2.29)"]
-```
+![An open-source network monitoring stack](./img/m2-31-1.svg)
+
+*Figure 2.31.3. An open-source network monitoring stack, as a diagram.*
 
 ### Prometheus model
 
@@ -231,6 +216,10 @@ Collect syslog from switches, and `journald` or dmesg from hosts, into Loki or E
 Decide which log events deserve a page before you write any log alert.
 
 ## 4. Signals that matter in an AI/ML fabric
+
+![AI fabric monitoring signals](./img/n31-signals.svg)
+
+*Figure 2.31.4. A few signals, each with a clear alert rule, tell you the most about an AI fabric.*
 
 Not every counter deserves an alert. The table below lists the signals that tell you the most about an AI or ML fabric. For each one, it shows why it matters, where the data comes from and a typical alert rule.
 
@@ -339,6 +328,10 @@ Pick the indicators for your own users before you set any SLO target.
 
 ## 5. In-band telemetry: IFA
 
+![In-band flow analyzer](./img/n31-ifa.svg)
+
+*Figure 2.31.5. Probe packets collect per-hop metadata as they cross the fabric and the terminator exports it.*
+
 Polling samples the counters on a timer. In-band telemetry records what a packet actually saw on its way through the fabric. **In-band Flow Analyzer (IFA)** and its relatives, INT, P4 INT and IOAM, do this by adding metadata to packets or clones as they cross the fabric. The result is per-hop latency and queue or congestion information at nanosecond-class resolution, which polling cannot reach. Each node in the path plays one of three roles.
 
 - **Initiator** (typically the ingress leaf) samples the traffic you care about. It either tags the original packets or, more commonly, **clones** them into probe packets. Those probes carry an IFA header, an initiator tag, timestamps and device information.
@@ -360,6 +353,10 @@ Decide which flows justify the IFA overhead before you enable it on every port.
 ## 6. Correlation and corrective actions
 
 ### Correlating switch and server telemetry
+
+![Straggler hunt](./img/n31-straggler.svg)
+
+*Figure 2.31.6. Follow a slow rank from job to node to NIC to leaf port to spine uplinks, comparing against peers at each step.*
 
 The biggest wins come from joining datasets by time and identity. Follow a job from rank to node, from node to NIC, from NIC to leaf port, and from leaf port to the spine uplinks. To make that possible, use consistent labels, a source-of-truth mapping of cable and port inventory from LLDP/NetBox, and unified timestamps. Four workflows show how this works in practice.
 

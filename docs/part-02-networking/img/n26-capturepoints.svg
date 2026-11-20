@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Where to capture</title>
+  <desc>Packet capture points along the network path from client to container namespace, highlighting wire mirrors, host interfaces, bridges, container namespaces, and kernel tracepoints.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <polygon points="0,2 14,8 0,14" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Where to capture</text>
+
+  
+  <line x1="200" y1="210" x2="244" y2="210" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <line x1="424" y1="210" x2="468" y2="210" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <line x1="778" y1="210" x2="822" y2="210" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <line x1="1002" y1="210" x2="1046" y2="210" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <line x1="1276" y1="210" x2="1320" y2="210" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <rect x="40" y="125" width="160" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(94, 146)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="52" height="36" rx="4"/>
+    <line x1="26" y1="36" x2="26" y2="46"/>
+    <line x1="14" y1="46" x2="38" y2="46"/>
+  </g>
+  <text x="120" y="248" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">client</text>
+
+  
+  <rect x="244" y="125" width="180" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(308, 146)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="52" height="36" rx="4"/>
+    <line x1="10" y1="36" x2="10" y2="46"/>
+    <line x1="18" y1="36" x2="18" y2="46"/>
+    <line x1="26" y1="36" x2="26" y2="46"/>
+    <line x1="34" y1="36" x2="34" y2="46"/>
+    <rect x="42" y="8" width="8" height="14" fill="#207448"/>
+  </g>
+  <text text-anchor="middle" font-family="sans-serif" fill="#303a36">
+    <tspan x="334" y="240" font-size="30" font-weight="bold">client</tspan>
+    <tspan x="334" y="274" font-size="30" font-weight="bold">NIC</tspan>
+  </text>
+
+  
+  <rect x="468" y="125" width="310" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(595, 146)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="2" width="56" height="34" rx="4"/>
+    <circle cx="12" cy="19" r="3.5" fill="#207448"/>
+    <circle cx="23" cy="19" r="3.5" fill="#207448"/>
+    <circle cx="34" cy="19" r="3.5" fill="#207448"/>
+    <circle cx="45" cy="19" r="3.5" fill="#207448"/>
+  </g>
+  <text text-anchor="middle" font-family="sans-serif" fill="#303a36">
+    <tspan x="623" y="238" font-size="30" font-weight="bold">switch</tspan>
+    <tspan x="623" y="272" font-size="24" font-weight="bold">(SPAN mirror/TAP)</tspan>
+  </text>
+
+  
+  <rect x="822" y="125" width="180" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(886, 146)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="52" height="36" rx="4"/>
+    <line x1="10" y1="36" x2="10" y2="46"/>
+    <line x1="18" y1="36" x2="18" y2="46"/>
+    <line x1="26" y1="36" x2="26" y2="46"/>
+    <line x1="34" y1="36" x2="34" y2="46"/>
+    <rect x="42" y="8" width="8" height="14" fill="#207448"/>
+  </g>
+  <text text-anchor="middle" font-family="sans-serif" fill="#303a36">
+    <tspan x="912" y="240" font-size="30" font-weight="bold">server</tspan>
+    <tspan x="912" y="274" font-size="30" font-weight="bold">NIC</tspan>
+  </text>
+
+  
+  <rect x="1046" y="125" width="230" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1133, 146)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="36" rx="6"/>
+    <path d="M10 24 C 18 10, 38 10, 46 24"/>
+    <line x1="10" y1="24" x2="46" y2="24"/>
+  </g>
+  <text text-anchor="middle" font-family="sans-serif" fill="#303a36">
+    <tspan x="1161" y="238" font-size="30" font-weight="bold">host</tspan>
+    <tspan x="1161" y="272" font-size="26" font-weight="bold">bridge/veth</tspan>
+  </text>
+
+  
+  <rect x="1320" y="125" width="240" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1412, 146)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="42" rx="4"/>
+    <line x1="0" y1="14" x2="56" y2="14"/>
+    <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+    <circle cx="18" cy="7" r="2.5" fill="#207448"/>
+    <rect x="10" y="22" width="14" height="12" rx="1"/>
+    <rect x="32" y="22" width="14" height="12" rx="1"/>
+  </g>
+  <text text-anchor="middle" font-family="sans-serif" fill="#303a36">
+    <tspan x="1440" y="238" font-size="30" font-weight="bold">container</tspan>
+    <tspan x="1440" y="272" font-size="28" font-weight="bold">namespace</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="345" width="740" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="76" cy="385" r="24" fill="#207448"/>
+  <text x="76" y="394" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+  <text x="120" y="394" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">on the host interface</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="76" y="455">(post-GRO RX, pre-offload TX;</tspan>
+    <tspan x="76" y="493">offload artefacts)</tspan>
+  </text>
+
+  
+  <rect x="820" y="345" width="740" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="856" cy="385" r="24" fill="#207448"/>
+  <text x="856" y="394" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+  <text x="900" y="394" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">tcpdump -i any</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="856" y="455">(cooked SLL headers, loses VLAN and</tspan>
+    <tspan x="856" y="493">ordering details; not for exact timing)</tspan>
+  </text>
+
+  
+  <rect x="40" y="595" width="740" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="76" cy="635" r="24" fill="#207448"/>
+  <text x="76" y="644" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+  <text x="120" y="644" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">inside a container namespace</text>
+  <text x="76" y="715" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">nsenter -t PID -n tcpdump</text>
+
+  
+  <rect x="820" y="595" width="740" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="856" cy="635" r="24" fill="#207448"/>
+  <text x="856" y="644" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+  <text x="900" y="644" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">host side of bridge or veth,</text>
+  <text x="856" y="715" font-family="sans-serif" font-size="26" fill="#303a36">compare both ends</text>
+
+  
+  <rect x="40" y="845" width="740" height="220" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+  <circle cx="76" cy="890" r="24" fill="#db8129"/>
+  <text x="76" y="899" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">5</text>
+  <text font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="120" y="886">switch port mirror (SPAN),</tspan>
+    <tspan x="120" y="920">ERSPAN or TAP:</tspan>
+  </text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="76" y="960">the truth source for the wire,</tspan>
+    <tspan x="76" y="994">mirrored traffic can be dropped</tspan>
+    <tspan x="76" y="1028">under congestion</tspan>
+  </text>
+
+  
+  <rect x="820" y="845" width="740" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="856" cy="890" r="24" fill="#207448"/>
+  <text x="856" y="899" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">6</text>
+  <text x="900" y="899" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">kernel tracepoints</text>
+  <text font-size="26">
+    <tspan x="856" y="960" font-family="monospace" font-weight="bold" fill="#207448">pwru</tspan>
+    <tspan font-family="sans-serif" fill="#303a36">, </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">kfree_skb</tspan>
+  </text>
+  <text x="856" y="1005" font-family="sans-serif" font-size="26" fill="#303a36">for drop locations</text>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1095" width="1520" height="60" rx="12" fill="#207448"/>
+    <text x="800" y="1135" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Ask which packets you must see, then pick the closest point that sees them</text>
+  </g>
+</svg>

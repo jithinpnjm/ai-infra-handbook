@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Per-NIC routing table fix</title>
+  <desc>Infographic explaining the per-NIC routing table fix for dual-homed Linux servers experiencing asymmetric routing issues.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 2 L 16 9 L 2 16 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 2 L 16 9 L 2 16 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Per-NIC routing table fix</text>
+
+  
+  <g id="node-server">
+    <rect x="50" y="95" width="1500" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(85, 132)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="52" height="52" rx="8" />
+      <line x1="2" y1="19" x2="54" y2="19" />
+      <line x1="2" y1="37" x2="54" y2="37" />
+      <circle cx="44" cy="10" r="3" fill="#207448" />
+      <circle cx="44" cy="28" r="3" fill="#207448" />
+      <circle cx="44" cy="46" r="3" fill="#207448" />
+      <line x1="12" y1="10" x2="28" y2="10" />
+      <line x1="12" y1="28" x2="28" y2="28" />
+      <line x1="12" y1="46" x2="28" y2="46" />
+    </g>
+
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="175" y="152">Server with eth0 10.0.0.5/24 (gateway 10.0.0.1, management)</tspan>
+      <tspan x="175" y="196">and eth1 192.168.1.5/24 (storage, gateway 192.168.1.1)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-problem">
+    <rect x="50" y="270" width="720" height="500" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    
+    <g transform="translate(85, 295)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,2 2,52 54,52" />
+      <line x1="28" y1="18" x2="28" y2="34" />
+      <circle cx="28" cy="43" r="2.5" fill="#207448" />
+    </g>
+
+    
+    <text x="165" y="338" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">Problem</text>
+
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+      <tspan x="90" y="415">request comes in on eth1,</tspan>
+      <tspan x="90" y="465">reply leaves via the default route out of eth0</tspan>
+      <tspan x="90" y="515">with the storage address as its source</tspan>
+    </text>
+
+    
+    <rect x="90" y="565" width="640" height="165" rx="12" fill="#fdf8f4" stroke="#db8129" stroke-width="2" stroke-dasharray="6 4" />
+    
+    
+    <line x1="130" y1="620" x2="290" y2="620" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    
+    
+    <path d="M 320 675 L 610 675" stroke="#db8129" stroke-width="5" fill="none" marker-end="url(#arrow-orange)" />
+  </g>
+
+  
+  <g id="node-fix">
+    <rect x="830" y="270" width="720" height="500" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(865, 295)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 2 10 L 28 2 L 54 10 C 54 36 28 54 28 54 C 28 54 2 36 2 10 Z" />
+      <polyline points="15,26 24,35 41,19" />
+    </g>
+
+    
+    <text x="945" y="338" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Fix</text>
+
+    
+    <rect x="865" y="380" width="650" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+
+    
+    <rect x="865" y="610" width="650" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="885" y="420" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold" fill="#207448">'ip rule add from 192.168.1.5/32</tspan>
+      <tspan x="885" y="455" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold" fill="#207448">lookup storage priority 1000'</tspan>
+      <tspan x="885" y="525">selects table <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold">'storage'</tspan></tspan>
+      <tspan x="885" y="565">(200 storage in <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">/etc/iproute2/rt_tables</tspan>)</tspan>
+      <tspan x="885" y="648">which holds <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold" fill="#207448">'default via 192.168.1.1 dev eth1'</tspan></tspan>
+      <tspan x="885" y="715">and the connected route</tspan>
+    </text>
+
+    
+    <line x1="1190" y1="480" x2="1190" y2="500" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <line x1="1190" y1="575" x2="1190" y2="605" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g id="node-verification">
+    <rect x="50" y="820" width="1500" height="130" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(85, 857)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" />
+      <line x1="20" y1="2" x2="20" y2="12" />
+      <line x1="28" y1="2" x2="28" y2="12" />
+      <line x1="36" y1="2" x2="36" y2="12" />
+      <line x1="20" y1="44" x2="20" y2="54" />
+      <line x1="28" y1="44" x2="28" y2="54" />
+      <line x1="36" y1="44" x2="36" y2="54" />
+      <line x1="2" y1="20" x2="12" y2="20" />
+      <line x1="2" y1="28" x2="12" y2="28" />
+      <line x1="2" y1="36" x2="12" y2="36" />
+      <line x1="44" y1="20" x2="54" y2="20" />
+      <line x1="44" y1="28" x2="54" y2="28" />
+      <line x1="44" y1="36" x2="54" y2="36" />
+    </g>
+
+    
+    <text x="165" y="895" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Verification</text>
+
+    
+    <rect x="360" y="855" width="1150" height="60" rx="30" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <text x="935" y="893" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">'ip route get 10.50.0.9 from 192.168.1.5 iif lo' shows via 192.168.1.1 dev eth1</text>
+  </g>
+
+  
+  <g id="node-footer">
+    <rect x="50" y="1000" width="1500" height="80" rx="14" fill="#207448" />
+    <text x="800" y="1050" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#ffffff">also rp_filter 2, arp_ignore=1, arp_announce=2</text>
+  </g>
+</svg>

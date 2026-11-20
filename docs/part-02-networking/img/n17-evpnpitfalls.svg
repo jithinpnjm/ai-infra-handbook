@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Common EVPN and VXLAN pitfalls</title>
+  <desc>Checklist of ten common EVPN and VXLAN pitfalls with a key takeaway on route targets and underlay MTU.</desc>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="82" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Common EVPN and VXLAN pitfalls</text>
+
+  
+  <rect x="60" y="130" width="1480" height="800" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(95, 160)">
+    <rect width="675" height="126" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#fdf0e2" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#db8129"/>
+    </g>
+    <text x="105" y="72" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">underlay MTU too small</text>
+  </g>
+
+  
+  <g transform="translate(95, 312)">
+    <rect width="675" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#207448"/>
+    </g>
+    <text x="105" y="72" font-family="sans-serif" font-size="26" fill="#303a36">VTEP loopbacks not advertised</text>
+  </g>
+
+  
+  <g transform="translate(95, 464)">
+    <rect width="675" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#207448"/>
+    </g>
+    <text x="105" y="53" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="105" dy="0">route targets mismatched</tspan>
+      <tspan x="105" dy="34">(routes arrive, never imported)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(95, 616)">
+    <rect width="675" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#207448"/>
+    </g>
+    <text x="105" y="53" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="105" dy="0">duplicate anycast gateway</tspan>
+      <tspan x="105" dy="34">MAC on two leaves</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(95, 768)">
+    <rect width="675" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#207448"/>
+    </g>
+    <text x="105" y="72" font-family="sans-serif" font-size="26" fill="#303a36">a spine rewrites next hops</text>
+  </g>
+
+  
+  <g transform="translate(830, 160)">
+    <rect width="675" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#207448"/>
+    </g>
+    <text x="105" y="53" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="105" dy="0">asymmetric IRB forces every</tspan>
+      <tspan x="105" dy="34">leaf to carry every VNI</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(830, 312)">
+    <rect width="675" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#207448"/>
+    </g>
+    <text x="105" y="53" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="105" dy="0">ARP suppression disabled</tspan>
+      <tspan x="105" dy="34">(BUM storms)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(830, 464)">
+    <rect width="675" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#207448"/>
+    </g>
+    <text x="105" y="53" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="105" dy="0">ECMP polarization when the hash</tspan>
+      <tspan x="105" dy="34">ignores the outer UDP source port</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(830, 616)">
+    <rect width="675" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#207448"/>
+    </g>
+    <text x="105" y="53" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="105" dy="0">missing resilient hashing or MLAG</tspan>
+      <tspan x="105" dy="34">mixed with EVPN multihoming</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(830, 768)">
+    <rect width="675" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(55, 63)">
+      <polygon points="0,-22 22,18 -22,18" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="11" r="2.2" fill="#207448"/>
+    </g>
+    <text x="105" y="53" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="105" dy="0">default import of any</tspan>
+      <tspan x="105" dy="34">lets tenant routes leak</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="60" y="965" width="1480" height="110" rx="16" fill="#207448"/>
+  <text x="800" y="1010" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">Before you turn on EVPN, check route targets match</tspan>
+    <tspan x="800" dy="38">and the underlay MTU is large enough</tspan>
+  </text>
+</svg>

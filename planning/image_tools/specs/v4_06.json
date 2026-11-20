@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "a06-serial-gate",
+  "title": "Serial batches grow, and a failure gate stops the rollout",
+  "spec": "A left-to-right chain of three batch boxes with arrows between them, each with a numbered circle. Batch 1, title 'Canary', text 'serial: 1, one host runs the whole play'. Batch 2, title 'Next batch', text '10% of the group'. Batch 3, title 'The rest', text '25% for the remaining hosts'. Between each pair of batches, a diamond decision shape with the label 'Failures within max_fail_percentage: 5?'. A 'yes' arrow continues to the next batch. A 'no' arrow drops down to an orange box 'Play aborted; no later batch starts'. Icons: a single-host icon for the canary, a stack icon for the 10% batch, a server rack icon for the rest. Small note under the chain: 'serial: [1, \"10%\", \"25%\"]'. Caption under the orange box: 'A bad canary stops the rollout before it reaches the fleet.'",
+  "anchor": "### Batching, strategies and failure semantics",
+  "alt": "Serial batches run a one-host canary, then 10 percent, then 25 percent, and a failure above the threshold aborts the play.",
+  "cap": "Serial batches start with one canary host, grow in steps, and stop the play when failures pass the threshold."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "a06-idempotent-runs",
+  "title": "A second run must report changed=0",
+  "spec": "Two horizontal rows, each showing two run boxes side by side with arrows. Row 1, heading 'Idempotent task', icon of a light switch: Run 1 box, green, text 'changed=2 (the work is done)'. Arrow labelled 'run again'. Run 2 box, green, text 'changed=0 (already correct)'. Green check mark at the end. Row 2, heading 'Timestamp in the template', clock icon: Run 1 box, amber-grey, text 'changed=1 (new timestamp written)'. Arrow labelled 'run again'. Run 2 box, orange outline, text 'changed=1 again, and the handler restarts the service'. Under row 2, a note: 'The rendered file differs on every run.' Under row 1, a note: 'A second run that changes things again means something is not idempotent.' Caption at the bottom: 'Run the playbook twice and read the second recap.'",
+  "anchor": "## 2. Idempotency, the heart of playbooks",
+  "alt": "An idempotent task reports changed=0 on the second run, while a rendered timestamp makes every run report a change.",
+  "cap": "An idempotent playbook reports changed=0 on its second run, while a timestamp in a template changes every run."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "a06-check-scope",
+  "title": "What --check previews and what it skips",
+  "spec": "Two large panels side by side. Left panel, green heading 'Simulated by declarative modules': a list of five module boxes in monospace, 'package', 'file', 'template', 'service', 'sysctl', each with a small check-mark icon. Note under the list: '--check reports what would change, and --diff shows the content change.' Right panel, grey heading 'Skipped under --check': three module boxes in monospace, 'command', 'shell', 'raw', each with a dashed outline and a skip icon. Note under the list: 'Runs only with creates or removes, or with check_mode: false.' Below both panels, a full-width orange note: 'A later task that needs an earlier change judges a change that never happened.' A small green bar at the bottom: 'A clean check run is not proof that the change is safe.' Use an outline icon of a clipboard or magnifier beside the title.",
+  "anchor": "## 5. Check mode and diff",
+  "alt": "Check mode simulates declarative modules and skips command, shell and raw tasks unless they have a guard or check_mode false.",
+  "cap": "Check mode simulates declarative modules, but it skips command, shell and raw tasks unless they have a guard."
+ }
+]

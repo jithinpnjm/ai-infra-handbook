@@ -45,6 +45,10 @@ If TCP or DNS is unfamiliar, read chapters 2.6 and 2.8 before you continue.
 
 ## 1. HTTP in practice
 
+![HTTP request and response](./img/n10-httpmsg.svg)
+
+*Figure 2.10.1. The first line of each message holds the method and target or the status, and the status class tells you where to look.*
+
 When your API call fails, the answer is often in the HTTP exchange itself. HTTP is the language that web clients and servers speak, and it is close to a polite letter exchange. HTTP is a request and response protocol that works at the application layer. The client sends a request with a method, a target, headers and an optional body. The server returns a response with a status, headers and an optional body. HTTP is stateless by design, so state has to travel in cookies, tokens or application sessions.
 
 ```text
@@ -71,6 +75,10 @@ The first line of each message matters most, so read it first when you debug. It
 Status codes also point to where a failure happened, which is why they are worth memorising. A 502, 503 or 504 from a load balancer or ingress points to the upstream, not to the client. A 504 is an upstream timeout. The model server may be slow, or the proxy timeout may be shorter than the inference time. A 499 from nginx means the client went away. A 429 means rate limiting. A 413 means the body is larger than a proxy limit, which is common with big prompts or uploads. A 401 means the caller is unauthenticated, while a 403 means the caller is unauthorised.
 
 ### Connections and versions
+
+![HTTP versions compared](./img/n10-httpver.svg)
+
+*Figure 2.10.2. HTTP/2 shares one TCP connection between streams, while HTTP/3 uses QUIC over UDP so streams are independent.*
 
 HTTP/1.0 opened one TCP connection per request, which meant a full handshake for every page element. HTTP/1.1 added persistent connections, called keep-alive, along with the `Host` header for virtual hosting, chunked encoding and caching controls. It still handles only one request in flight per connection, because pipelining is not used in practice. So browsers open several connections, and head-of-line blocking still happens at the HTTP layer.
 
@@ -146,6 +154,10 @@ This split tells you something important about the application layer. The operat
 
 ## 2. Security goals and cryptographic building blocks
 
+![TLS cryptographic building blocks](./img/n10-crypto.svg)
+
+*Figure 2.10.3. TLS combines symmetric encryption, key exchange, signatures, hashes, HMAC and key derivation, each covering a different job.*
+
 Suppose an attacker controls the Wi-Fi network your client uses. Everything you send passes through their hands. Transport security is the set of protections that keeps your traffic safe on a network like that. It addresses four problems. It proves that data was not altered in transit. It stops others from reading the data. It proves who you are talking to. It also protects users' privacy from traffic analysis, sometimes called data exhaust.
 
 The building blocks are in the table below. Each one covers a different part of the job, and TLS combines them. As you read it, notice that no single tool does everything. Encryption hides data but does not prove who sent it. A signature proves who sent it but does not hide anything. TLS needs both.
@@ -177,20 +189,15 @@ TLS, short for Transport Layer Security, sits between the application and TCP, o
 
 ### The handshake (TLS 1.3)
 
+![TLS 1.2 versus 1.3 round trips](./img/n10-rtt.svg)
+
+*Figure 2.10.4. TCP plus TLS 1.3 takes 2 round trips instead of 3 for TLS 1.2.*
+
 The diagram follows the TLS 1.3 handshake from the first client message to the first request. As you read it, ask at each arrow what the sender has just told the other side and what the other side can now do with that information.
 
-```mermaid
-sequenceDiagram
-  participant C as Client
-  participant S as Server
-  C->>S: ClientHello: versions, random, cipher suites, key_share (X25519 public), SNI, ALPN (h2, http/1.1), supported_groups, signature_algorithms
-  S->>C: ServerHello: chosen cipher suite + key_share (server public)
-  Note over C,S: both derive handshake keys via ECDHE → everything after this is encrypted
-  S->>C: EncryptedExtensions (ALPN result), Certificate (chain), CertificateVerify (signature over transcript), Finished
-  C->>S: (Certificate + CertificateVerify if mutual TLS) Finished
-  Note over C,S: application keys derived, app data flows (1-RTT total)
-  C->>S: HTTP request
-```
+![The handshake (TLS 1.3)](./img/m2-10-1.svg)
+
+*Figure 2.10.5. The handshake (TLS 1.3), as a diagram.*
 
 Notice where encryption starts. After the `ServerHello`, both sides hold handshake keys, so everything else is encrypted, including the certificate.
 
@@ -231,13 +238,9 @@ A client that refuses to connect is often reacting to a certificate. To read the
 
 The diagram shows how trust flows down from a root. The client does not know the server, but it knows the root, and the root vouches for an intermediate, which vouches for the server. Trust travels along that chain, one signature at a time.
 
-```mermaid
-flowchart TD
-  R["Root CA (self-signed, in the trust store; offline)"] -->|signs| I["Intermediate CA (online, issues leaf certs)"]
-  I -->|signs| L["Leaf certificate: CN/SAN api.example.com, public key, validity"]
-  L --- K["Server private key (never leaves the server/HSM)"]
-  T["Client trust store: OS / browser / /etc/ssl/certs / container image"] -. "contains" .-> R
-```
+![Certificates and public-key infrastructure](./img/m2-10-2.svg)
+
+*Figure 2.10.6. Certificates and public-key infrastructure, as a diagram.*
 
 A client validates a certificate in several steps, and each step can fail for a different reason. It builds a chain from the leaf to a trusted root, using the intermediates the server presents. It checks each signature, the validity dates against its own clock, the key usage and basic constraints, the name against the SAN, and the revocation status if revocation checking is enabled.
 
@@ -249,7 +252,7 @@ Public CAs, such as Let's Encrypt, DigiCert and Google Trust Services, issue cer
 
 ![A certificate chain of trust](./img/n10-fig1-certchain.jpg)
 
-*Figure 2.10.1. Root signs intermediate, intermediate signs the server certificate; clients trust the root.*
+*Figure 2.10.7. Root signs intermediate, intermediate signs the server certificate; clients trust the root.*
 
 Private or internal CAs cover internal names, mTLS and cluster components, where a public CA cannot or should not be used. Options include HashiCorp Vault PKI, step-ca from Smallstep, cfssl and EJBCA. Cloud services include GCP CA Service and AWS Private CA. Others include Active Directory Certificate Services, Kubernetes' built-in cluster CA from kubeadm, and the service-mesh CAs in Istio and Linkerd. Keep the root offline, and issue certificates from intermediates. Also use name constraints, short lifetimes and automated rotation. Distribute the root to all trust stores through configuration management.
 

@@ -46,15 +46,9 @@ When a name does not resolve, you first need a picture of what DNS stores. Think
 
 A **fully qualified domain name (FQDN)** ends with a dot, as in `gpu01.dc1.example.com.`. The trailing dot marks the name as absolute, which means "start from the root, do not guess". Without it, a resolver may append **search domains** to the name.
 
-```mermaid
-flowchart TD
-  ROOT[". (root: 13 server identities, hundreds of anycast instances)"] --> COM["com (TLD)"]
-  ROOT --> ORG["org"]
-  ROOT --> IO["io"]
-  COM --> EX["example.com zone\n(delegated to its own NS)"]
-  EX --> DC1["dc1.example.com\n(optionally delegated again)"]
-  DC1 --> H["gpu01.dc1.example.com\nA 10.20.0.45"]
-```
+![The structure of DNS](./img/m2-08-1.svg)
+
+*Figure 2.8.1. The structure of DNS, as a diagram.*
 
 The rest of the section explains the terms that describe this tree. A **zone** is an administrative portion of the tree, served by a set of authoritative servers. `example.com` can hold its subdomains inside the same zone, or delegate them to other zones with NS records. A **domain** is a position in the tree, while a zone is a unit of management. A useful way to keep them apart is that a domain is a place on the map and a zone is the area one office looks after.
 
@@ -72,7 +66,7 @@ Suppose a service calls a hostname and the answer is slow or wrong. To find the 
 
 ![How a DNS lookup is resolved](./img/n08-fig1-dns.jpg)
 
-*Figure 2.8.1. The resolver asks root, TLD and authoritative servers in turn and caches the answer.*
+*Figure 2.8.2. The resolver asks root, TLD and authoritative servers in turn and caches the answer.*
 
 ```mermaid
 sequenceDiagram
@@ -114,6 +108,10 @@ Walk through a cold-cache lookup of `www.example.com` to see the pieces move. Th
 Check the latency to your own resolver first, because it usually decides how fast DNS feels.
 
 ## 3. Resource records
+
+![DNS record types](./img/n08-records.svg)
+
+*Figure 2.8.3. Each record type answers a different question about a name.*
 
 Each record type answers a different question, so know which one you need before you edit a zone. If you think of the zone as a table of facts about names, each record type is one kind of fact. The table lists the types you will meet most often.
 
@@ -198,16 +196,9 @@ Run `getent hosts` on the failing machine before you blame the DNS server.
 
 When a name lookup hangs on one host and not another, the cause is often the local path rather than the server. Before a question ever leaves the machine, it passes through several local files and helpers. The diagram shows the path a `getaddrinfo()` call takes on a host.
 
-```mermaid
-flowchart TD
-  A["Application: getaddrinfo()"] --> N{"/etc/nsswitch.conf\nhosts: files mdns4_minimal [NOTFOUND=return] dns"}
-  N -- "files" --> F["/etc/hosts"]
-  N -- "dns" --> R{"/etc/resolv.conf"}
-  R -- "nameserver 127.0.0.53" --> SR["systemd-resolved stub\n(per-link DNS, caching, DNSSEC, split DNS)"]
-  R -- "nameserver 10.0.0.2 (direct)" --> RR["Recursive resolver"]
-  SR --> RR
-  RR --> I["Internet / authoritative"]
-```
+![How a Linux host resolves names](./img/m2-08-3.svg)
+
+*Figure 2.8.4. How a Linux host resolves names, as a diagram.*
 
 Each file in this path has its own job, and the order matters.
 
@@ -279,6 +270,10 @@ Zero-configuration name systems fill the local-name gap. Multicast DNS (mDNS) an
 Check the current settings with `resolvectl status`. It lists global settings, then one block per interface. Older systems call the tool `systemd-resolve`. To change settings, edit `/etc/systemd/resolved.conf`, and read the resolved.conf(5) manual page first. DNS is a large topic, so plan to study it further.
 
 ## 6. DNS in Kubernetes and containers
+
+![ndots search expansion in a pod](./img/n08-ndots.svg)
+
+*Figure 2.8.5. A name with fewer dots than ndots is tried through every search domain before the real name.*
 
 When a pod resolves names slowly, look at its resolver settings first. A pod is just a process in its own small network world, and its resolver settings are different from the node's. Inside a pod, the kubelet generates `/etc/resolv.conf`:
 
@@ -360,16 +355,9 @@ The file sets the domain, the local zone and an upstream server. It also gives t
 
 A name that will not resolve can fail at any layer, so the way to stay calm is to test one layer at a time. The flowchart sorts the symptoms, and the routine below tests each layer in turn.
 
-```mermaid
-flowchart TD
-  S["Name doesn't resolve / slow"] --> G{"getent hosts NAME works?"}
-  G -- "no" --> D{"dig NAME @resolver works?"}
-  G -- "yes but app fails" --> A["App-level: own resolver/cache (JVM, nginx), IPv6-first AAAA failing, proxy settings, search path"]
-  D -- "no: timeout" --> T["Resolver unreachable: routing, firewall UDP/TCP 53, wrong nameserver, MTU/fragmentation, overloaded resolver"]
-  D -- "no: NXDOMAIN" --> N["Record missing/typo/negative cache/wrong zone/split-horizon view; dig +trace"]
-  D -- "no: SERVFAIL" --> V["Upstream/auth server broken, lame delegation, DNSSEC failure (try +cd), forwarder down"]
-  D -- "yes" --> L["Local path issue: nsswitch.conf order, /etc/hosts override, search/ndots expansion, systemd-resolved link config"]
-```
+![Diagnosing DNS problems](./img/m2-08-4.svg)
+
+*Figure 2.8.6. Diagnosing DNS problems, as a diagram.*
 
 Work through the routine in order.
 
@@ -383,6 +371,10 @@ Work through the routine in order.
 Start with step 1 every time, because it tells you which layer to test next.
 
 ## 11. Case study: "random 5-second delays" in a GPU inference cluster
+
+![DNS 5-second stall](./img/n08-5sec.svg)
+
+*Figure 2.8.7. Two parallel UDP queries can race in conntrack, so one is lost and the resolver waits for its 5 second timeout.*
 
 An inference service in a GPU cluster calls `https://models.internal.example.com` from its pods. Now and then, a call stalls for exactly 5 s. Nothing is broken, and nothing logs an error, which is what makes it so annoying. A `tcpdump` on the node showed two UDP queries, `A` and `AAAA`, sent from the same source port within microseconds. The AAAA query was lost in the node's conntrack. The cause was a race on parallel same-5-tuple UDP flows through NAT, a known kernel behaviour that newer kernels fix. The stub then retried after its default 5 s timeout.
 

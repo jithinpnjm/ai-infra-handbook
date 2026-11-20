@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "24",
+  "name": "a24-private-egress",
+  "title": "Private nodes reach Google and the internet without public IPs",
+  "spec": "Centre: one large box titled 'GPU node' with a chip or server icon and the note 'No public IP', drawn with an orange outline as the single most important item. Left of the node: a box titled 'Private Google Access' with a cloud icon and the label 'Google APIs', connected to the node by an arrow pointing from the node to the box, labelled 'Outbound to Google APIs'. Below the node: a box titled 'Cloud NAT' with a router icon, connected by an arrow pointing from the node to the box, then a second arrow from Cloud NAT to a box titled 'Internet', labelled 'Outbound only'. Right of the node: a box titled 'Identity-Aware Proxy (IAP)' with a lock icon and the small text '35.235.240.0/20', connected by an arrow pointing into the node, labelled 'gcloud compute ssh --tunnel-through-iap'. A blocked arrow from the Internet box pointing toward the node with a cross mark, labelled 'Nothing reaches the node inbound'. Above the node, a green note: 'Private Google Access lets a private VM call Google APIs, while Cloud NAT gives outbound-only internet access.' Green takeaway bar at the bottom: 'Outbound works through NAT, inbound SSH works through IAP, and no node needs a public address.' Use four arrows only, none crossing.",
+  "anchor": "## 2. Network",
+  "alt": "A GPU node without a public IP reaches Google APIs through Private Google Access and the internet through Cloud NAT, and engineers SSH in through IAP.",
+  "cap": "A GPU node with no public IP reaches Google APIs and the internet through private access and Cloud NAT, and engineers reach it through IAP."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "24",
+  "name": "a24-multi-nic",
+  "title": "Multi-node GPU training with one VPC per GPU NIC",
+  "spec": "Left: a tall box titled 'A3 GPU node' with a server icon, showing a row of GPU chips labelled GPU, with the text 'a3-highgpu-8g' underneath. From the right edge of this box, five network port icons. The top port is labelled 'Primary NIC' and connects by an arrow to a box at the upper right titled 'Management VPC', with the text 'General traffic' inside. The four lower ports, each labelled 'GPU NIC', each connect by an arrow to one of four stacked boxes at the lower right, each titled 'Extra VPC network' with the text 'mtu = 8896' and 'Own subnet'. Arrows from the four GPU NIC ports are labelled 'GPU-to-GPU traffic'. A bracket beside the four lower boxes is labelled 'Four or eight, one per GPU NIC', with an orange outline as the single most important item. A green note under the node: 'GPUDirect-TCPX, or GPUDirect-RDMA on A3 Ultra and A4'. Green takeaway bar at the bottom: 'The main NIC carries general traffic, while the extra NICs carry GPU-to-GPU traffic.' No arrows cross.",
+  "anchor": "## 2. Network",
+  "alt": "One management VPC carries general traffic, and four or eight extra VPCs with mtu 8896 each carry GPU-to-GPU traffic from one GPU NIC.",
+  "cap": "Multi-node GPU training adds one extra VPC per GPU NIC with jumbo MTU, while the primary NIC keeps general traffic."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "24",
+  "name": "a24-surge-upgrade",
+  "title": "Why max_surge = 0 keeps a reserved pool upgradable",
+  "spec": "Two side-by-side panels with a green heading each. Left panel titled 'Default surge: max_surge = 1, max_unavailable = 0'. Inside, a row of 16 small green GPU node boxes labelled as 'a3-highgpu-8g' nodes in a box titled 'Reservation: 16 nodes', all running. Beside them, one dashed extra node box in orange labelled 'Extra GPU VM' with an arrow pointing into the reservation box and a stop mark. Below, an outcome box with the text 'QUOTA_EXCEEDED or RESERVATION_EXHAUSTED' and the note 'The upgrade stalls'. Right panel titled 'max_surge = 0, max_unavailable = 1'. Inside, the same 16 nodes in the same reservation box, with one node highlighted and an arrow labelled 'Cordon, drain, upgrade one existing node at a time'. No extra node box. Outcome box in green with the text 'Stays inside the 16-node reservation'. Under both panels, a green note: 'A fixed reservation has no spare room for an extra node.' Number circles are not needed. Green takeaway bar at the bottom: 'Upgrade one existing node at a time, so a reserved pool never needs capacity it does not have.'",
+  "anchor": "## 4. GKE clusters and GPU node pools",
+  "alt": "A default surge upgrade needs a 17th GPU node that a 16-node reservation cannot hold, so max_surge 0 with max_unavailable 1 upgrades nodes in place.",
+  "cap": "A surge upgrade needs an extra GPU node that a full reservation cannot hold, so max_surge 0 with max_unavailable 1 upgrades one existing node at a time."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "24",
+  "name": "a24-nebius-fabric",
+  "title": "Create the fabric first, then attach every node to it",
+  "spec": "Top: one wide box titled 'nebius_compute_v1_gpu_cluster' with a network or fabric icon, text 'InfiniBand fabric for multi-node NCCL', and the monospace label infiniband_fabric = \"fabric-3\". Number circle 1 beside it: 'Create the fabric first'. Below, a row of three instance boxes titled 'nebius_compute_v1_instance', each with a GPU chip icon and the monospace label gpu_cluster = { id = ... }, and the text 'one per node name'. Each instance box has an arrow pointing up to the fabric box, labelled 'refers to the fabric ID'. Three dots between the second and third instance boxes to show more nodes. Number circle 2 beside the instance row: 'Instances join the same fabric'. Orange outline on the arrows' label 'Every node in the same GPU cluster' as the single most important rule. A green note on the right: 'A node on the wrong fabric still runs, but it does not share fast links with its peers.' Green takeaway bar at the bottom: 'Place all the nodes of a training pool in one fabric, sized for the largest job you will run.'",
+  "anchor": "## 7. Nebius: the GPU-cloud model",
+  "alt": "A Nebius GPU cluster creates the InfiniBand fabric first, and each instance refers to its ID so every node joins the same fabric.",
+  "cap": "In Nebius, the GPU cluster fabric is created first, and every instance refers to its ID so all nodes share one InfiniBand fabric."
+ }
+]

@@ -117,6 +117,10 @@ Decide early which of these seven challenges your workload hits hardest, because
 
 ## 4. AWS and Azure in one table
 
+![Cloud building blocks compared](./img/n32-equivalents.svg)
+
+*Figure 2.32.1. Each cloud has an equivalent for every networking building block, with different names.*
+
 Even if your platform is GCP, interviews and multicloud work will ask about AWS and Azure. The table maps each building block to its equivalent, so you can read a design from any of the three clouds.
 
 | Building block | AWS | Azure | GCP |
@@ -142,20 +146,9 @@ When you move a design from one cloud to another, map each building block to its
 
 Google Cloud differs from other providers in one important way. Many of its networking resources are global, so one design can span several regions without extra plumbing. The diagram below shows the shape. One global VPC spans two regions, and the on-premises data centre connects to it.
 
-```mermaid
-flowchart TB
-  subgraph VPC["Global GCP VPC (custom mode, MTU 8896, global BGP)"]
-    subgraph RegA["Region: us-central1 (Subnet 10.100.0.0/20)"]
-      GKE["VPC-Native GKE Cluster\nPods: 10.104.0.0/14\nServices: 10.108.0.0/20"]
-      NAT["Cloud Router + Cloud NAT\n+ Private Google Access / PSC"]
-    end
-    subgraph RegB["Region: europe-west1 (Subnet 10.101.0.0/20)"]
-      VM2["Inference VMs / NEG"]
-    end
-  end
-  GLB["Global External Application LB\n(Anycast VIP + Cloud Armor)"] --> GKE & VM2
-  ONPREM["On-Premises Data Center"] -- "HA VPN / Dedicated Interconnect\n(eBGP + BFD)" --- NAT
-```
+![Global resources and the VPC model](./img/m2-32-1.svg)
+
+*Figure 2.32.2. Global resources and the VPC model, as a diagram.*
 
 A VPC network is a global resource. It is not tied to a region or a zone, and it lives in a project. The VPC contains regional subnets. Instances in different regions of the same VPC talk over Google's private backbone, using their internal IPs, with no peering needed. A project can hold several VPC networks, and Shared VPC and VPC Network Peering connect them.
 
@@ -189,6 +182,10 @@ The subnet command enables Private Google Access and flow logs in the same step,
 
 ### Outbound access: Cloud NAT and Private Google Access
 
+![Cloud NAT and Private Google Access](./img/n32-nat.svg)
+
+*Figure 2.32.3. Cloud NAT gives private VMs Internet egress, while Private Google Access reaches Google APIs over internal IPs.*
+
 A training VM with no external IP still sometimes needs the Internet, for example to pull a package. Cloud NAT and Private Google Access solve two different versions of that problem.
 
 Cloud NAT is a regional, software-defined service attached to a Cloud Router. It gives VMs without external IPs outbound Internet access. Each VM gets a minimum number of ports, through dynamic port allocation. You can use static or auto-allocated external IPs. Logging records translations and errors, and the mapping is endpoint-independent.
@@ -209,11 +206,15 @@ The `--enable-logging` flag is what gives you the NAT logs you will read in the 
 
 ### Connecting networks
 
+![GCP network connection options](./img/n32-connect.svg)
+
+*Figure 2.32.4. Each option trades bandwidth, isolation and transitivity, and NCC is the hub that provides transitive connectivity.*
+
 When one VPC is not enough, you connect networks. The right option depends on the bandwidth you need, how isolated the networks must be, and whether the traffic can cross the Internet.
 
 ![VPC peering is not transitive](./img/n32-fig1-peering.jpg)
 
-*Figure 2.32.1. A and C cannot reach each other through B.*
+*Figure 2.32.5. A and C cannot reach each other through B.*
 
 | Option | What it is | Notes |
 |---|---|---|
@@ -234,6 +235,10 @@ Hybrid routing is where most of the detail sits. On-prem routers peer with Cloud
 Hybrid DNS is usually the first cloud networking pain point you meet. Cloud DNS offers managed public and private zones, forwarding zones to on-prem resolvers, peering zones, response policies, DNSSEC and inbound forwarding endpoints. Compute Engine VMs use the metadata server resolver at `169.254.169.254`. Their internal names follow `VM.ZONE.c.PROJECT.internal` for zonal DNS, or they use global DNS. Define forwarding in both directions, and avoid loops (chapter 2.8).
 
 ### Load balancing
+
+![GCP load balancer types](./img/n32-lbtypes.svg)
+
+*Figure 2.32.6. GCP load balancers differ by layer and scope, from global L7 to regional L4 passthrough.*
 
 Users reach your service through one address, and the load balancer picks a healthy backend. GCP offers several types, and each fits a different layer and scope.
 
@@ -299,6 +304,10 @@ Namespaces are open by default, so close them with default-deny policies (chapte
 When the GPUs in a job run collectives, the network path decides how fast the job finishes. A single default NIC can leave expensive hardware idle. This section shows how each provider builds that path.
 
 ### GCP GPU VM generations
+
+![GCP GPU VM generations](./img/n32-gpuvm.svg)
+
+*Figure 2.32.7. Newer GCP GPU VM families move from TCP-based GPUDirect to RoCE with more NICs and bandwidth.*
 
 GCP offers A2 for the A100, A3 for the 8-GPU H100, and newer families such as A3 Mega, A3 Ultra and A4. Each has its own networking design.
 

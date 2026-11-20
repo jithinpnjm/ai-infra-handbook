@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "08",
+  "name": "r08-threshold-steps",
+  "title": "Caution, critical and fatal as steps on a staircase",
+  "spec": "A vertical staircase drawn as four horizontal bands stacked from bottom to top, with a value marker (small circle labelled Reading) sitting in the lower band. Bands from bottom to top: band 1, light green, labelled normal operating range; band 2, labelled UpperCaution, with the note above normal; band 3, labelled UpperCritical, with the note above normal and not yet fatal; band 4, orange, labelled UpperFatal, with the note the level the equipment treats as dangerous. A right-side column of three boxes: first box, Thresholds object: each limit holds a Reading and an Activation of Increasing, Decreasing, Either or Disabled. Second box, DwellTime: how long the value must break the limit before it counts; a short spike is filtered out. Third box, hysteresis: how far the value must fall back before the alarm clears, so a fan right at the line does not flip the alarm on and off. A note at the top of the right column: the BMC sets Status.Health to Warning or Critical and may act on its own, for example by raising fan speed or shutting down. A thin grey footer under the staircase: the lower limits mirror this with LowerCaution, LowerCritical and LowerFatal. Number circles are not needed. Orange is used only on the UpperFatal band. No takeaway bar.",
+  "anchor": "### Thresholds",
+  "alt": "A sensor reading moves through caution, critical and fatal limits, and DwellTime and hysteresis control when an alarm starts and clears.",
+  "cap": "A sensor has caution, critical and fatal limits, and DwellTime and hysteresis decide when an alarm starts and clears."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "08",
+  "name": "r08-fan-redundancy",
+  "title": "One failed fan versus losing the whole group",
+  "spec": "A top-down decision flow in one column with numbered process boxes and one decision diamond, plus a small side illustration. Top of the figure, a grey panel titled Fan group: two fan icons side by side (outline fan symbols), with the note MinNeededInGroup 1 out of two fans. Step 1 box, numbered: one fan fails. Step 2 box: the remaining fan spins faster to move the same air; SpeedPercent climbs; sensors near the failed fan start to warm slowly. Decision diamond: does the group still meet its minimum? Yes arrow goes down to a green box: a repair ticket to schedule, not an emergency at midnight; a note: a good monitor catches the slow warming trend while the group still has its minimum. No arrow goes right to an orange box: losing both fans falls below the minimum, so the node must be drained. Number circles r=24 on steps 1 and 2. A thin footer under the decision: redundancy tells you how serious a failed fan is. No takeaway bar.",
+  "anchor": "## 3. Thermal: fans, heat and cooling",
+  "alt": "When one fan of a two-fan group fails, the group still meets its minimum, so the failure becomes a repair ticket, but losing both fans means draining the node.",
+  "cap": "A failed fan is a repair ticket while its redundancy group still meets the minimum, and it becomes an emergency only when the group falls below that minimum."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "08",
+  "name": "r08-straggler-triage",
+  "title": "Triage of a throttled GPU: which plane to check next",
+  "spec": "A top-down decision tree. Top box, grey, labelled DCGM reports a slow GPU, with a sub-line: the driver sees what (the throttle reason), the BMC sees why. Two branches. Left branch, labelled hw_thermal_slowdown: first decision diamond, BMC Intake sensor reading normal and all fans at full RPM? Yes branch goes to a green box: the fault is local to that GPU, its heatsink or the TIM (thermal interface material between chip and cooler). No branch goes to an orange box: Intake air above the ASHRAE limit, so the problem lies in facility airflow or aisle containment. Right branch, labelled hw_power_brake_slowdown: a box leading to a grey box: check PowerSubsystem and PowerSupplies on the BMC; a note: shows at once whether a PSU lost AC input (LineInputStatus) or asserted a predictive failure condition, which triggers the hardware power brake. Bottom footer strip, one line: when the two views disagree, treat it as a clue about where to look next, not a reason to trust one source. Number circles are not needed. No takeaway bar.",
+  "anchor": "### 8.1 Correlating out-of-band BMC sensors with in-band DCGM throttling",
+  "alt": "A throttled GPU is traced to a local heatsink fault, facility airflow, or a power supply, depending on the throttle reason and the BMC sensors.",
+  "cap": "When DCGM reports a throttled GPU, the throttle reason and the BMC intake and power sensors together point to a local, facility, or power fault."
+ }
+]

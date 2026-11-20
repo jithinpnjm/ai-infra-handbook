@@ -155,6 +155,10 @@ A service does not get a copy of your shell environment, and that single fact ex
 
 ### Service types: how systemd knows a service is "started"
 
+![A table of Type= values and when systemd considers a service started.](./img/l15-service-types.svg)
+
+*Figure 1.15.2. Type= tells systemd what the main process does at start-up and when the service counts as ready.*
+
 When one unit depends on another, you need to know when the first one is really ready, not merely launched. `Type=` answers that question. It tells systemd what the main process does at start-up, and when to consider the unit started. Units ordered `After=` a service wait for exactly that moment.
 
 | `Type=` | Behaviour | Typical use |
@@ -278,7 +282,7 @@ Ordering is a separate setting from requirements, and it uses two modifiers. `Be
 
 ![Wants and After are separate](./img/ch15-fig1-ordering.jpg)
 
-*Figure 1.15.2. Wants= pulls a unit in; After= only sets the start order. Use both together.*
+*Figure 1.15.3. Wants= pulls a unit in; After= only sets the start order. Use both together.*
 
 The soft and hard forms matter for a practical reason, and one picture makes it obvious. Imagine a login prompt that hard-requires a database server. If that server fails, you cannot log in to fix the database. `Wants` keeps a failure local, much as a traditional boot tolerated failing scripts. A missing data disk may stop an application, but it should not stop `sshd`. Use `Requires` or `BindsTo` only when a unit is genuinely useless or dangerous without the other.
 
@@ -364,7 +368,7 @@ Dependencies form a **graph**, not a tree, and the diagram below shows why that 
 
 ![Targets](./img/ch15-d1-luna.svg)
 
-*Figure 1.15.3. Targets.*
+*Figure 1.15.4. Targets.*
 
 You can render the whole graph as an image with `systemd-analyze dot 'multi-user.target' | dot -Tsvg > g.svg`. Filter the patterns to keep the picture readable.
 
@@ -398,6 +402,10 @@ Enable and start instances with `systemctl enable --now gpu-job@0.service gpu-jo
 When you need one unit per device, write one template rather than many copies.
 
 ## 8. Socket, path and automount activation
+
+![systemd holds the listening socket and starts the service when a client connects.](./img/l15-socket-activation.svg)
+
+*Figure 1.15.5. A rarely used service uses no resources until a client needs it.*
 
 Some services sit idle most of the time, but they must answer at once when a client connects. If you have a daemon that only needs to respond when clients call, socket activation fits. systemd holds the resource the service needs and starts the service when someone uses it. It can also start the service immediately, in parallel with everything else. Either way, it then hands the resource over. Three pieces make this work:
 
@@ -436,6 +444,10 @@ There are pitfalls too, and you should know them before you rely on the pattern.
 Before you start a daemon at boot, ask whether socket activation would let it wait until a client arrives.
 
 ## 9. Timers: the cron replacement
+
+![A timer unit activates a oneshot service on a calendar schedule.](./img/l15-timer-pair.svg)
+
+*Figure 1.15.6. A timer fires a matching service, and Persistent=true catches up a run missed while the machine was off.*
 
 Suppose a weekly trim of a data disk is due on Sunday morning, but the machine was off at that time. A cron job would simply be missed. A timer handles that case, and it gives you more than cron does. Its logs go to the journal with the unit's context. The job runs in a controlled cgroup, with limits and sandboxing. You can order it after other units, such as `After=network-online.target`. With `Persistent=true`, it catches up on missed runs. A randomised delay avoids a thundering herd, and `systemctl list-timers` shows the next and last run.
 
@@ -481,7 +493,7 @@ systemd places every service, scope and session into a **cgroup**. Slices decide
 
 ![Resource control, slices and host protection](./img/ch15-d2-luna.svg)
 
-*Figure 1.15.4. Resource control, slices and host protection.*
+*Figure 1.15.7. Resource control, slices and host protection.*
 
 | Property | Meaning |
 |---|---|
@@ -568,6 +580,10 @@ If you run a GPU service, pay attention to the GPU row. A GPU service needs its 
 Start with the protections the service can survive, and add the rest only after you test them.
 
 ## 12. Journald and `journalctl`
+
+![The most common journalctl filters by boot, unit, kernel, priority and time.](./img/l15-journalctl.svg)
+
+*Figure 1.15.8. Each journalctl option filters the journal in a different way.*
 
 When a GPU node drops out during the night, the first clue is usually in its logs. `systemd-journald` keeps those logs, and you can search them by unit, by priority and by time. It collects the standard output and error of every service, `syslog()` messages, kernel messages and audit records. It stores them in a **structured, indexed binary journal**, which is a plain way of saying that every line keeps its labels and can be found again quickly. Each entry carries fields such as `_SYSTEMD_UNIT`, `_PID`, `_UID`, `_HOSTNAME`, `PRIORITY`, `SYSLOG_IDENTIFIER`, `_BOOT_ID` and `_TRANSPORT`. For containers, it also carries `CONTAINER_ID`. Because systemd captures service output, the old problem of start-up scripts writing to a console that has since disappeared goes away.
 

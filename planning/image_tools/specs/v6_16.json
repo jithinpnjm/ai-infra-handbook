@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "16",
+  "name": "h16-scale-in-drain",
+  "title": "Scaling in a Slurm worker pod without killing a job",
+  "spec": "A vertical flow of numbered steps, top to bottom, with green number circles at the left of each box and downward arrows between them. Two vertical lanes are optional but keep the flow simple: one column. Box 1: Kubernetes or the operator chooses a slurmd pod for scale-in. Box 2: The controller sets the pod-cordon annotation on the pod, which drains the Slurm node. Box 3: The controller waits for the Slurm node to reach DRAINED. Diamond: Is the node DRAINED, with no running jobs? If No, a loop arrow labelled Check again later goes back up to box 3. If Yes, an arrow leads to Box 4: Delete the pod. Box 4 has an orange outline, since it is the step that must never happen while a job still runs. Beside the flow, a side note box: Pod conditions mirror the Slurm node state, such as Idle, Allocated, Mixed, Down, Drain. Green takeaway bar at the bottom: A pod is never removed while a job is still using it.",
+  "anchor": "### How the operator talks to Slurm",
+  "alt": "The operator drains a Slurm worker, waits until it has no running jobs, and only then deletes the pod.",
+  "cap": "The operator drains a Slurm worker and deletes its pod only after the node has no running jobs."
+ }
+]

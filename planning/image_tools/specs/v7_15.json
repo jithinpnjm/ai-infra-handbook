@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "15",
+  "name": "r15-trust-chain",
+  "title": "A boot trust chain where each link checks the next before handing over control",
+  "spec": "A horizontal chain of four boxes left to right, joined by right-pointing arrows, each arrow labelled checks the next. Box 1 titled Hardware root of trust, sub-line a chip whose own code is trusted by design; this is the first box and the single orange-bordered key item. Box 2 titled BIOS. Box 3 titled Bootloader. Box 4 titled Kernel. A thin bracket spanning all four boxes below the chain, labelled each link checks the next before handing over control. A small grey note under box 2 and box 3: wiping the disk and installing again does nothing to a bad BIOS, because the BIOS runs first. Each box has a simple outline icon: a chip for the root of trust, a memory board for BIOS, a gear for bootloader, a gear with a shield for kernel, all in green stroke. No number circles and no takeaway bar.",
+  "anchor": "## 5. Firmware trust",
+  "alt": "A trust chain runs from a hardware root of trust through the BIOS and bootloader to the kernel, each link checking the next.",
+  "cap": "A boot trust chain starts at a hardware root of trust, and each link checks the next before it runs."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "15",
+  "name": "r15-secureboot-steps",
+  "title": "Secure Boot is enforced only after a platform key is enrolled and a restart has run",
+  "spec": "Four numbered step boxes in a left-to-right row, each with a green number circle (1 to 4), joined by right-pointing arrows, each arrow labelled with the action that moves to the next box. Box 1 titled Enable Secure Boot, sub-line PATCH SecureBootEnable set to true; the setting changes, but SecureBootCurrentBoot stays Disabled. Arrow labelled restart. Box 2 titled Still not enforced, sub-line no platform key enrolled, SecureBootMode is SetupMode. Arrow labelled SecureBoot.ResetKeys with ResetAllKeysToDefault. Box 3 titled UserMode, sub-line a platform key is enrolled and the rules are enforced. Arrow labelled restart. Box 4, orange border as the single key item, titled Secure Boot enforced, sub-line SecureBootCurrentBoot reads Enabled. Under box 4, a grey note: read SecureBootCurrentBoot after a reboot, not SecureBootEnable. Monospace for SecureBootEnable, SecureBootCurrentBoot, SecureBootMode, SetupMode, UserMode, SecureBoot.ResetKeys, ResetAllKeysToDefault, Disabled, Enabled. No takeaway bar.",
+  "anchor": "## 6. UEFI Secure Boot through Redfish",
+  "alt": "Secure Boot changes take effect only after keys are enrolled into UserMode and the host restarts.",
+  "cap": "Secure Boot is enforced only after a platform key is enrolled and the host restarts, so SecureBootEnable alone is not enough."
+ },
+ {
+  "part": "part-07-redfish-bmc",
+  "ch": "15",
+  "name": "r15-attest-steps",
+  "title": "A listing shows what a device could report, and four steps make it real attestation",
+  "spec": "A top box on the left, grey, titled rf_attest.py listing, sub-line tells you what the device could report and proves nothing yet, with an arrow pointing right to a row of four numbered boxes, each with a green number circle (1 to 4), joined by right-pointing arrows in order. Box 1 titled Fresh nonce from you, sub-line so an old answer cannot be replayed. Box 2 titled Signed answer from the device, sub-line the device signs its measurements. Box 3 titled Signature checked through a certificate chain you trust. Box 4 titled Compared with known-good values, sub-line vendor values kept where an attacker cannot change them. Each of boxes 2, 3 and 4 carries a small grey tag reading not done by the lab. Above boxes 2 to 4, one orange-bordered note, the single key item: the lab does not do steps 2 to 4, and no known-good values for any NVIDIA part are included. Monospace for rf_attest.py. No takeaway bar.",
+  "anchor": "## 7. Attestation: what it is, and what I did not do",
+  "alt": "A ComponentIntegrity listing is only inventory, and real attestation needs a fresh nonce, a signed answer, a trusted chain and known-good values.",
+  "cap": "A ComponentIntegrity listing is only an inventory, and real attestation needs four steps that the lab does not perform."
+ }
+]

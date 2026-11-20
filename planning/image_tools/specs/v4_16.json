@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "16",
+  "name": "a16-network-connection",
+  "title": "Network modules run on the controller and reach the device through a connection",
+  "spec": "Two large boxes side by side with a wide gap between them. The left box, titled Controller, has a laptop or window icon and a secondary line: the playbook runs here. Inside it a sub-box with a gear icon and the text: turns the desired state into commands or RPCs. The right box, titled Network device, has a switch icon and a secondary line: no Python needed on the device. Numbered circles 1 and 2 mark the order: 1 on the controller box, 2 on the arrow. One solid arrow runs from the controller box to the device box across the gap, labelled with three lines of monospace text: ansible.netcommon.network_cli, ansible.netcommon.netconf, ansible.netcommon.httpapi, and with the small caption: connection options. Draw the arrow once only. Above the arrow, a small label: ansible_network_os names the platform. Under the two boxes, a green note panel with a translator icon and one line: a translator outside a locked office, which cannot go inside but speaks the receptionist's language. Orange outline on the arrow because the connection is the key link. No takeaway bar.",
+  "anchor": "### How network automation differs",
+  "alt": "Network modules run on the controller, turn the desired state into commands, and reach the device through a network connection plugin.",
+  "cap": "Network modules run on the control node and reach the device through a connection plugin, because the device usually cannot run Python."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "16",
+  "name": "a16-cluster-boundary",
+  "title": "The cluster boundary decides which tool owns each layer",
+  "spec": "A vertical stack of two large panels separated by one horizontal dashed line in orange, labelled cluster boundary, drawn across the full width. Upper panel, titled Kubernetes workloads, with a cluster or container icon, and a secondary line: GitOps keeps this layer reconciled. Inside the upper panel a small box with a sync-arrows icon labelled Argo CD or Flux. Lower panel, titled Ansible owns the layer beneath the cluster, with a gear icon. Inside the lower panel five equal rows, each with a small icon and a label: node preparation; cluster bootstrap with Kubespray or kubeadm; initial platform installs such as the CNI, the GPU Operator and Argo CD itself; certificate and kubeconfig distribution; day-2 node operations such as cordon, drain and upgrade. Right of the lower panel, a short label box: Ansible owns the layer beneath the cluster. Left of the upper panel, a short label box: GitOps owns what runs inside it. Green takeaway bar at the bottom with the text: Ansible owns the layer beneath the cluster, and GitOps owns what runs inside it.",
+  "anchor": "### Kubernetes",
+  "alt": "Above the cluster boundary GitOps reconciles workloads, while Ansible handles the node, bootstrap, platform installs and day-2 operations below it.",
+  "cap": "Ansible handles the layer beneath the cluster and GitOps handles what runs inside it, and the cluster boundary decides which tool to use."
+ }
+]

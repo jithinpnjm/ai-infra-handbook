@@ -42,17 +42,9 @@ Suppose a packet leaves your server and never reaches the peer. Before you blame
 
 Here is what a capture actually does when it runs. Your tool asks the kernel for a copy of every packet that crosses one chosen point. The copy is taken from data the kernel is already moving, so the tool does not hold the packet back on its normal path. The packet keeps going to its destination. If a packet vanished before the tap point, the capture shows nothing for it, and that silence is itself a clue. It tells you the loss happened earlier on the path, not inside the application that is waiting for the reply.
 
-```mermaid
-flowchart LR
-  W["Wire"] --> N["NIC (promiscuous mode optional)"]
-  N --> D["Driver / NAPI → sk_buff"]
-  D --> T["AF_PACKET tap (before/after netfilter and tc depending on hook)"]
-  T --> F["Kernel BPF filter (classic/eBPF): drop non-matching early"]
-  F --> R["Ring buffer / socket buffer (PACKET_MMAP, TPACKET_V3)"]
-  R --> L["libpcap"]
-  L --> A["tcpdump / tshark / Wireshark / Zeek / Suricata"]
-  D --> S["Normal stack (routing, netfilter, sockets)"]
-```
+![How packet capture works](./img/m2-26-1.svg)
+
+*Figure 2.26.1. How packet capture works, as a diagram.*
 
 Capture is a chain of pieces, and the first piece is the libpcap library. It is the portable capture layer. On Linux it opens an `AF_PACKET` socket, though specialised tools may use `AF_XDP` or DPDK instead. libpcap compiles your capture filter into BPF bytecode and attaches it to that socket. The kernel then discards packets that do not match, which costs very little. The matching packets are read from a memory-mapped ring buffer. In effect, the kernel does the sorting at the door, and only the guests on your list are carried inside.
 
@@ -75,6 +67,10 @@ Drop counts tell you where packets were lost. "N packets dropped by kernel" mean
 A busy host is the usual place to see drops. Suppose you start a capture on a node that is already pushing its CPUs hard, and the summary reports drops by the kernel. The file you hold is missing packets, so any conclusion drawn from it is weak. Stop the capture, reduce the snaplen, narrow the filter, and capture again before you read anything into the first file. A capture that lost packets can look like a healthy network, and that is the most dangerous kind of wrong answer.
 
 ### Capture points
+
+![Packet capture points](./img/n26-capturepoints.svg)
+
+*Figure 2.26.2. Each capture point shows a different slice of the traffic, so choose the closest point that sees what you need.*
 
 Pick the capture point before you start, because each point shows a different slice of the traffic. The table lists the common choices and what each one sees.
 
@@ -118,6 +114,10 @@ The flags do most of the work. The `-n` and `-nn` flags stop name lookups, which
 Read the sample command from left to right. Take `sudo tcpdump -nni eth0 -s 96 -w /tmp/c.pcap 'host 10.0.0.5 and tcp'` one piece at a time. `sudo` gives the process the right to open a raw socket. `-nni eth0` says no name lookups and listen on the eth0 interface. `-s 96` keeps the first 96 bytes of each packet. `-w` sends the packets to a file rather than the screen. The quoted text is the filter, and the single quotes stop the shell from reading the spaces and the ampersand. Each piece has one job, and you can change one piece without touching the others.
 
 ### What tcpdump shows on the wire
+
+![Annotated tcpdump output](./img/n26-readcapture.svg)
+
+*Figure 2.26.3. The trace starts with ARP, then a TCP handshake, then the request and response, and ends with a filter summary.*
 
 Your system normally ignores traffic that is not addressed to one of its MAC addresses. To see everything that crosses the network, `tcpdump` puts the network interface card into promiscuous mode. It then reports every packet it sees. Running `tcpdump` with no arguments produces output like this, which includes an ARP request and a web connection:
 
@@ -178,6 +178,10 @@ Good habits make these captures easier to trust. Capture to a file, filter narro
 Consider why the advice about clocks matters. Two captures, one on each side of a connection, can seem to disagree about the order of events. A server's reply can appear to arrive before the request was sent, only because the two clocks differ. Before you conclude that a packet was reordered, check the clocks. Then match the packets by sequence number rather than by time, because sequence numbers do not depend on any clock.
 
 ### Primitives and operators
+
+![tcpdump filter primitives](./img/n26-filters.svg)
+
+*Figure 2.26.4. Filters are built from primitives such as tcp, host and port, joined with and, or and not.*
 
 A filter is built from primitives, which are its basic elements. The table lists the most important ones.
 
@@ -361,6 +365,10 @@ The table matches a question to the tool that answers it.
 BPF also powers several other network pieces. XDP programs filter and forward packets inside the driver. tc BPF classifiers run at ingress and egress. Socket filters, attached with `SO_ATTACH_BPF`, are how capture filters work. CNI datapaths such as Cilium use BPF too. Tools such as `pwru`, which traces an skb through the kernel functions for a given 5-tuple, `bpftool`, which inspects loaded programs and maps, and `xdpdump` belong in the same kit. Treat all of them as a complement to pcap, not a replacement.
 
 ## 7. A capture-driven troubleshooting workflow
+
+![Capture workflow](./img/n26-workflow.svg)
+
+*Figure 2.26.5. A fixed seven-step sequence turns a vague problem into a capture that answers one question.*
 
 Picture an intermittent reset that happens on a connection between two services. Nobody can reproduce it on demand, and the logs say only that the peer closed the connection. A capture is the right tool, but only if you set it up before the next reset and know what question it must answer. The workflow below is the order of work that turns a vague complaint into a question a capture can answer.
 

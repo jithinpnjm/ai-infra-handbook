@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "24",
+  "name": "h24-lookup-path",
+  "title": "A user lookup on a node: local files first, then the SSSD cache, and LDAP only on a miss",
+  "spec": "A left-to-right flow. Left box: Lookup, with the monospace text id alice or getent passwd alice, icon: a terminal window. Arrow to a box titled nsswitch.conf, with monospace text passwd: files sss, icon: a gear. From it, a first branch to a box titled files, the local /etc/passwd file, icon: a document. If the name is found there, a short arrow to a green answer box titled Answer. Second branch from nsswitch.conf to a box titled sss, SSSD, icon: a shield. From SSSD, a decision diamond titled cache hit? Yes branch goes to the Answer box, labelled from cache, entry_cache_timeout 5400 s. No branch goes down to a box titled LDAP over ldaps://, with the failover note ldap1 and ldap2, icon: a clock or a server. From LDAP, an arrow back up to SSSD labelled stored in cache, then to Answer. A small grey note beside SSSD: enumerate = false, so SSSD looks up one name and never lists the whole directory. Orange highlight on the nsswitch.conf order arrow, labelled the single most important item: if the order is reversed, the directory is asked first for every lookup. Keep all arrows orthogonal and no arrow crosses another. No takeaway bar.",
+  "anchor": "## 4. SSSD, nsswitch and PAM on the nodes",
+  "alt": "A node resolves a user through nsswitch: local files, then the SSSD cache, and only on a miss a query to LDAP.",
+  "cap": "A node checks local files, then the SSSD cache, and asks LDAP only when the cache has no answer."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "24",
+  "name": "h24-launch-lookups",
+  "title": "Job launch on many nodes: who answers the user lookup",
+  "spec": "Two side-by-side panels with titles. Left panel title: Each node asks the directory. A grid of many small node boxes, each labelled node, drawn compactly in three rows. One single arrow from the node grid container to a box at the right titled LDAP directory, labelled every node calls getpwnam() and initgroups() at task launch. Under the arrow, the note thousands of queries at the same moment. Orange highlight on this arrow and the note, labelled the single most important item: the lookup storm at job start. Right panel title: Slurm passes the answer down. A single box at the top labelled Slurm controller, with an arrow down to a grid of the same small node boxes, labelled passwd and group data sent with the job. Each node box inside has a small tag resolved locally. A note under the grid: verify support and semantics on your Slurm version. The right panel has no arrow to the LDAP directory, and a small grey note under the title: enable_nss_slurm in LaunchParameters. Keep the two panels separate with a vertical divider. No takeaway bar.",
+  "anchor": "### Compute nodes",
+  "alt": "Without enable_nss_slurm, every node queries LDAP at job start; with it, the controller passes the user data down.",
+  "cap": "Each compute node normally queries the directory at job start, but enable_nss_slurm lets the controller pass the user data down instead."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "24",
+  "name": "h24-offboard-order",
+  "title": "Offboarding in order: close the front door first",
+  "spec": "A top-to-bottom sequence of five numbered step cards, number circles 1 to 5 in time order, each card a wide horizontal box with a title and a one-line label, and a thin arrow linking each card to the next. Step 1, title: Disable LDAP login. Label: lock the account first, so nothing new can start. Icon: a lock. Step 2, title: Zero or remove Slurm associations. Label: set the sacctmgr limits to zero or remove the associations, and keep the accounting history. Icon: a ledger or a book. Step 3, title: Reassign or archive files. Label: move or archive the user's files, as the policy says. Icon: a folder with an arrow. Step 4, title: Remove SSH keys and revoke tokens. Label: remove the SSH keys, then revoke tokens such as API keys, registry tokens, object store keys and Slurm REST JWTs. Icon: a key with a cross. Step 5, title: Disable cloud and Kubernetes access. Label: the last door to close. Icon: a cloud. A grey side note beside step 2: never delete historical job records. A grey side note beside step 4: the last step is usually the one that leaves a token alive. Orange highlight on step 1, labelled the single most important item: lock the front door first, so every later step starts from a known state. No takeaway bar.",
+  "anchor": "## 6. Slurm accounting alignment",
+  "alt": "Offboarding order: disable LDAP login, zero Slurm associations, reassign files, remove keys and tokens, then disable cloud access.",
+  "cap": "Offboarding works best in a fixed order that closes the login path first and keeps the Slurm accounting history."
+ }
+]

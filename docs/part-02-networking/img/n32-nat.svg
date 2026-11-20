@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Cloud NAT and Private Google Access</title>
+  <desc>Visual infographic explaining outbound network traffic paths for a Google Cloud VM with no external IP: Cloud NAT to the Internet and Private Google Access to Google APIs.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Cloud NAT and Private Google Access</text>
+
+  
+  <rect x="50" y="130" width="350" height="1010" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="199" y="160" width="52" height="34" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="225" y1="194" x2="225" y2="214" stroke="#207448" stroke-width="4"/>
+  <line x1="205" y1="214" x2="245" y2="214" stroke="#207448" stroke-width="4"/>
+
+  
+  <text x="225" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="225" dy="0">A VM with no</tspan>
+    <tspan x="225" dy="34">external IP</tspan>
+    <tspan x="225" dy="34">in a subnet,</tspan>
+    <tspan x="225" dy="34">two outbound paths.</tspan>
+  </text>
+
+  
+  <rect x="75" y="490" width="295" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="194" y="525" width="56" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="210" cy="549" r="4" fill="#207448"/>
+  <line x1="222" y1="539" x2="238" y2="539" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="222" y1="549" x2="238" y2="549" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="222" y1="559" x2="232" y2="559" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  
+  <text x="222" y="625" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">VM</text>
+
+
+  
+  <rect x="450" y="130" width="1100" height="520" rx="16" fill="#fcfdfc" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <circle cx="495" cy="165" r="22" fill="#207448"/>
+  <text x="495" y="173" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="530" y="174" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Cloud NAT</text>
+
+  
+  <rect x="465" y="195" width="740" height="430" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="495" y="215" width="52" height="42" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="507" y1="236" x2="535" y2="236" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <polyline points="515,228 507,236 515,244" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="527,228 535,236 527,244" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <text x="565" y="238" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Cloud Router + Cloud NAT</text>
+  <text x="565" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">(regional, software-defined)</text>
+
+  
+  <rect x="485" y="285" width="700" height="78" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1"/>
+  <text x="510" y="316" font-family="monospace" font-size="24" fill="#207448">gcloud compute routers create nat-router</text>
+  <text x="510" y="348" font-family="monospace" font-size="24" fill="#207448">gcloud compute routers nats create nat-config</text>
+
+  
+  <text x="495" y="392" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="495" dy="0">each VM gets a minimum number of ports</tspan>
+    <tspan x="495" dy="28">(dynamic port allocation)</tspan>
+  </text>
+
+  
+  <rect x="485" y="460" width="700" height="145" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+
+  
+  <polygon points="518,485 531,509 505,509" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="518" y1="493" x2="518" y2="501" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="518" cy="505" r="1.5" fill="#db8129"/>
+
+  
+  <text x="545" y="498" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="545" dy="0">port exhaustion: dropped connections,</tspan>
+    <tspan x="545" dy="32">OUT_OF_RESOURCES log entries;</tspan>
+    <tspan x="545" dy="32">fix with more IPs or ports, pooling</tspan>
+  </text>
+
+  
+  <rect x="1270" y="240" width="255" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <circle cx="1397" cy="295" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+  <ellipse cx="1397" cy="295" rx="13" ry="26" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="1371" y1="295" x2="1423" y2="295" stroke="#207448" stroke-width="3"/>
+
+  
+  <text x="1397" y="370" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Internet,</text>
+  <text x="1397" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1397" dy="0">for example to</tspan>
+    <tspan x="1397" dy="32">pull a package</tspan>
+  </text>
+
+
+  
+  <rect x="450" y="680" width="1100" height="460" rx="16" fill="#fcfdfc" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <circle cx="495" cy="715" r="22" fill="#207448"/>
+  <text x="495" y="723" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="530" y="724" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Private Google Access</text>
+
+  
+  <rect x="480" y="760" width="480" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <path d="M720,785 L744,797 L744,821 C744,837 733,850 720,855 C707,850 696,837 696,821 L696,797 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="720" cy="818" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <text x="720" y="890" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">restricted.googleapis.com</text>
+  <text x="720" y="925" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">or</text>
+  <text x="720" y="960" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">private.googleapis.com VIPs</text>
+
+  
+  <rect x="1040" y="760" width="480" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <path d="M1256,825 C1250,825 1244,820 1244,814 C1244,809 1248,804 1253,803 C1253,793 1262,785 1272,785 C1280,785 1287,790 1290,797 C1293,795 1296,794 1300,794 C1307,794 1312,799 1312,806 C1315,807 1318,811 1318,815 C1318,821 1313,825 1307,825 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <ellipse cx="1280" cy="838" rx="22" ry="7" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M1258,838 L1258,850 C1258,854 1268,857 1280,857 C1292,857 1302,854 1302,850 L1302,838" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <text x="1280" y="885" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Cloud Storage,</text>
+  <text x="1280" y="925" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">BigQuery,</text>
+  <text x="1280" y="965" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Artifact Registry,</text>
+  <text x="1280" y="1015" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">with internal IPs only</text>
+
+
+  
+
+  
+  <path d="M 370 540 L 425 540 L 425 410 L 465 410" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1205 410 L 1270 410" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 370 680 L 425 680 L 425 930 L 480 930" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 960 930 L 1040 930" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+</svg>

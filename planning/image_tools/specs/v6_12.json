@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-launch-styles",
+  "title": "Two launch styles: srun per GPU or torchrun per node",
+  "spec": "Two panels side by side, each titled with its style. Left panel title: Style A, srun with one task per GPU. A top box labelled srun python train.py, with arrows fanning out to four node boxes labelled node 1 to node 4. Each node box holds a row of eight small rank boxes, one per GPU. A label under the left panel reads Slurm starts every rank. Right panel title: Style B, one torchrun per node. A top box labelled srun torchrun, with arrows to four node boxes labelled node 1 to node 4. Each node box holds one wide torchrun box, and inside it a row of eight small rank boxes started by torchrun. A label under the right panel reads Slurm sees one task per node. Below both panels, a comparison strip with two rows of short text. Row for Style A: Slurm keeps control of binding, cgroups, accounting per step and signals; train.py reads SLURM_PROCID, SLURM_LOCALID and SLURM_NTASKS. Row for Style B: torchrun adds elastic features and sets the rank variables for you; the cost is coarser per-rank binding and GPU isolation. Orange highlight on the label Slurm sees one task per node, the single most important item. Green takeaway bar at the bottom reads Pick the launch style before you write the batch script, because the training code has to match it.",
+  "anchor": "## 2. Two launch styles",
+  "alt": "Style A starts every GPU rank from srun, while style B starts one torchrun per node that launches the eight local ranks.",
+  "cap": "Style A lets Slurm start every GPU rank, while style B lets torchrun start the ranks on each node."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-glue-translation",
+  "title": "Translating Slurm variables into PyTorch variables",
+  "spec": "Two columns of boxes with a narrow translation band between them. Left column, titled Slurm variables, five boxes top to bottom: SLURM_PROCID (global task number), SLURM_LOCALID (position on its own node), SLURM_NTASKS (total number of tasks), SLURM_JOB_NODELIST (compressed nodelist), SLURM_JOB_ID (job number). Right column, titled PyTorch variables, five boxes in the same top-to-bottom order: RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR, MASTER_PORT. Five horizontal arrows run straight across the middle band, one per row, each labelled with its rule: the first row labelled global task number, the second labelled position on node, the third labelled total tasks, the fourth labelled first host in the nodelist, the fifth labelled 10000 plus job ID modulo 20000. The arrows are parallel and do not cross. In the middle band, above the arrows, a small box labelled dist_env() holds the rule set. Beneath the MASTER_ADDR and MASTER_PORT boxes, a dashed loop arrow labelled a value already set in the environment wins. The fifth arrow (MASTER_PORT) has the orange highlight as the single most important rule. Green takeaway bar at the bottom reads The glue only maps variables; it does not prove the network is fast.",
+  "anchor": "## 3. The glue, tested",
+  "alt": "Five Slurm variables map straight across to RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR and MASTER_PORT.",
+  "cap": "The glue maps five Slurm variables onto the PyTorch rendezvous variables, and a value you set yourself wins."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-master-addr-trap",
+  "title": "A loopback MASTER_ADDR splits one job into isolated groups",
+  "spec": "Two panels side by side. Left panel title: MASTER_ADDR set to 127.0.0.1. Two node boxes, node A and node B, drawn apart with no connection between them. Each node box holds its own group box labelled 1-node process group. A dashed double-headed line between node A and node B is crossed out with the note gradients are never synchronized across nodes. A status note under the left panel reads training looks normal and does not crash. Right panel title: MASTER_ADDR from the first host in the nodelist. The same two node boxes, now both with arrows pointing into one wide shared box labelled one process group across both nodes. The shared box shows a sub-label first host in the nodelist. Orange highlight on the two isolated groups in the left panel, the single most important item. Green takeaway bar at the bottom reads Derive MASTER_ADDR from the nodelist, and never use 127.0.0.1 on a multi-node job.",
+  "anchor": "## 7. Framework patterns",
+  "alt": "A MASTER_ADDR of 127.0.0.1 gives each node its own process group, while the first host in the nodelist joins all nodes into one group.",
+  "cap": "Setting MASTER_ADDR to 127.0.0.1 on a multi-node job splits it into separate single-node groups that never sync gradients."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-diagnose-ladder",
+  "title": "Diagnosing the fabric in three rungs",
+  "spec": "A vertical ladder with three rungs stacked from the bottom up, each rung a wide box with a green number circle and an outline icon. Rung 1 at the bottom, titled Reachability: each node pings the others, command srun -N 2 bash -c echo hostname and ping. Rung 2 in the middle, titled AllReduce sweep: tensor sizes 1, 10, 100 and 500 MB, with 3 warmup calls and 10 timed calls, and a formula line bandwidth = (size_mb * 2 * 10) / elapsed. Rung 3 at the top, titled Point-to-point latency: 100 round trips of a one-element tensor between rank 0 and the target, with a formula line one-way latency = (elapsed / 200) * 1e6 microseconds. An arrow on the left side runs up the ladder labelled work from small to large. A note beside rung 1 reads If this fails, nothing above it can work. Beside rung 3 is a short branch note: low bandwidth means bisect the node list with exclude. Orange highlight on rung 1, the single most important rung. Green takeaway bar at the bottom reads Test reachability first, then bandwidth, then latency.",
+  "anchor": "## 8. Failure and diagnosis",
+  "alt": "A three-step check tests node reachability, then AllReduce bandwidth across sizes, then point-to-point latency.",
+  "cap": "Check node reachability first, then all-reduce bandwidth, then point-to-point latency, because each step depends on the one below."
+ }
+]

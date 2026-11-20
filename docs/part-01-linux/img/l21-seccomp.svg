@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060">
+  <title>seccomp filters system calls</title>
+  <desc>Visual infographic explaining how seccomp filters system calls, inheritance, stacked filters, proc status check, and Kubernetes runtime default profile.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">seccomp filters system calls</text>
+
+  
+  <rect x="50" y="115" width="1500" height="395" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="160" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Flow</text>
+
+  
+  <g id="node-1">
+    <rect x="80" y="185" width="370" height="295" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="110" y="215" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="110" y1="230" x2="166" y2="230" stroke="#207448" stroke-width="3"/>
+    <circle cx="121" cy="223" r="2.5" fill="#207448"/>
+    <circle cx="129" cy="223" r="2.5" fill="#207448"/>
+    <circle cx="137" cy="223" r="2.5" fill="#207448"/>
+    <path d="M 122 243 L 130 248 L 122 253" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <circle cx="410" cy="240" r="24" fill="#207448"/>
+    <text x="410" y="249" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <text x="110" y="340" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="110" dy="0">program calls a</tspan>
+      <tspan x="110" dy="42">system call</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="450" y1="332" x2="510" y2="332" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-2">
+    <rect x="510" y="185" width="380" height="295" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 540 220 Q 568 210 596 220 C 596 246 582 270 568 278 C 554 270 540 246 540 220 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 556 232 L 580 232 L 572 244 L 572 256 L 564 252 L 564 244 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    
+    <circle cx="850" cy="240" r="24" fill="#207448"/>
+    <text x="850" y="249" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <text x="540" y="340" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="540" dy="0">a seccomp filter</tspan>
+      <tspan x="540" dy="42">checks it</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="890" y1="250" x2="970" y2="250" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 890 360 L 930 360 L 930 410 L 970 410" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+
+  
+  <g id="node-3">
+    <rect x="970" y="185" width="550" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="1000" y="227" width="46" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="992" y1="240" x2="1000" y2="240" stroke="#207448" stroke-width="3"/>
+    <line x1="992" y1="260" x2="1000" y2="260" stroke="#207448" stroke-width="3"/>
+    <line x1="1046" y1="240" x2="1054" y2="240" stroke="#207448" stroke-width="3"/>
+    <line x1="1046" y1="260" x2="1054" y2="260" stroke="#207448" stroke-width="3"/>
+    <path d="M 1013 250 L 1021 258 L 1035 242" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="1075" y="245" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1075" dy="0">allowed goes to</tspan>
+      <tspan x="1075" dy="40">the kernel</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-4">
+    <rect x="970" y="335" width="550" height="145" rx="12" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
+    
+    <circle cx="1025" cy="375" r="23" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="1009" y1="359" x2="1041" y2="391" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="1075" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">blocked is refused</text>
+    
+    <text x="1075" y="420" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1075" dy="0">examples mount, kexec_load,</tspan>
+      <tspan x="1075" dy="32">init_module, reboot</tspan>
+    </text>
+  </g>
+
+  
+  <g id="notes-container">
+    <rect x="50" y="550" width="720" height="460" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="80" y="595" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Notes</text>
+
+    
+    <rect x="80" y="620" width="660" height="110" rx="12" fill="#ffffff" stroke="#c4dcce" stroke-width="2"/>
+    <circle cx="127" cy="655" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="115" cy="685" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="139" cy="685" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 127 662 L 127 673 M 127 673 L 115 679 M 127 673 L 139 679" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="170" y="663" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="170" dy="0">filters are inherited by children</tspan>
+      <tspan x="170" dy="35">and cannot be removed</tspan>
+    </text>
+
+    
+    <rect x="80" y="745" width="660" height="110" rx="12" fill="#ffffff" stroke="#c4dcce" stroke-width="2"/>
+    <path d="M 107 780 L 127 770 L 147 780 L 127 790 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M 107 790 L 127 800 L 147 790" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 107 800 L 127 810 L 147 800" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="170" y="788" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="170" dy="0">stacked filters, the most</tspan>
+      <tspan x="170" dy="35">restrictive result wins</tspan>
+    </text>
+
+    
+    <rect x="80" y="870" width="660" height="110" rx="12" fill="#ffffff" stroke="#c4dcce" stroke-width="2"/>
+    <rect x="115" y="920" width="24" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 121 920 L 121 910 C 121 905 133 905 133 910 L 133 920" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="127" cy="930" r="2" fill="#207448"/>
+    <text x="170" y="913" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="170" dy="0">unprivileged process must set</tspan>
+      <tspan x="170" dy="35">no_new_privs first</tspan>
+    </text>
+  </g>
+
+  
+  <g id="check-container">
+    <rect x="810" y="550" width="740" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="840" y="595" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Check</text>
+
+    
+    <rect x="840" y="615" width="680" height="90" rx="12" fill="#ffffff" stroke="#c4dcce" stroke-width="2"/>
+    <text x="865" y="650" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="865" dy="0">grep -E 'Seccomp|NoNewPrivs'</tspan>
+      <tspan x="865" dy="32">/proc/self/status</tspan>
+    </text>
+
+    
+    <rect x="840" y="720" width="680" height="60" rx="12" fill="#ffffff" stroke="#c4dcce" stroke-width="2"/>
+    <text x="865" y="758" font-family="monospace" font-size="24" fill="#303a36">Seccomp: 0 none, 1 strict, 2 filter</text>
+  </g>
+
+  
+  <g id="kubernetes-container">
+    <rect x="810" y="840" width="740" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="840" y="885" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Kubernetes</text>
+
+    
+    <rect x="840" y="905" width="680" height="85" rx="12" fill="#ffffff" stroke="#c4dcce" stroke-width="2"/>
+    
+    <polygon points="887,925 904,935 904,955 887,965 870,955 870,935" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="887" cy="945" r="4" fill="#207448"/>
+    <line x1="887" y1="945" x2="887" y2="928" stroke="#207448" stroke-width="2"/>
+    <line x1="887" y1="945" x2="901" y2="937" stroke="#207448" stroke-width="2"/>
+    <line x1="887" y1="945" x2="901" y2="953" stroke="#207448" stroke-width="2"/>
+    <line x1="887" y1="945" x2="887" y2="962" stroke="#207448" stroke-width="2"/>
+    <line x1="887" y1="945" x2="873" y2="953" stroke="#207448" stroke-width="2"/>
+    <line x1="887" y1="945" x2="873" y2="937" stroke="#207448" stroke-width="2"/>
+    
+    <text x="930" y="955" font-family="monospace" font-size="24" fill="#303a36">seccompProfile.type: RuntimeDefault</text>
+  </g>
+</svg>

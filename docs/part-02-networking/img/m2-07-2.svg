@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>MTU, MSS, fragmentation and Path MTU Discovery</title>
+  <desc>Sequence diagram illustrating Path MTU Discovery (PMTUD) where a sender discovers path MTU through ICMP need frag messages from a router.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="18" markerHeight="12" refX="18" refY="6" orient="auto">
+      <path d="M 0 0 L 18 6 L 0 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange-left" markerWidth="18" markerHeight="12" refX="0" refY="6" orient="auto">
+      <path d="M 18 0 L 0 6 L 18 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">MTU, MSS, fragmentation and Path MTU Discovery</text>
+
+  
+  <line x1="250" y1="230" x2="250" y2="910" stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.5" />
+  <line x1="850" y1="230" x2="850" y2="910" stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.5" />
+  <line x1="1360" y1="230" x2="1360" y2="910" stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.5" />
+
+  
+  <line x1="220" y1="910" x2="280" y2="910" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="820" y1="910" x2="880" y2="910" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="1330" y1="910" x2="1390" y2="910" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+
+  
+  <g>
+    <rect x="60" y="110" width="380" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="222" y="126" width="56" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="250" y1="162" x2="250" y2="172" stroke="#207448" stroke-width="4" />
+    <line x1="236" y1="172" x2="264" y2="172" stroke="#207448" stroke-width="4" />
+    <text x="250" y="210" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Sender (MTU 1500)</text>
+  </g>
+
+  
+  <g>
+    <rect x="600" y="110" width="500" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="850" cy="148" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 836 148 L 864 148 M 842 142 L 836 148 L 842 154 M 858 142 L 864 148 L 858 154" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <path d="M 850 134 L 850 162 M 844 140 L 850 134 L 856 140 M 844 156 L 850 162 L 856 156" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <text x="850" y="210" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Router (egress MTU 1400)</text>
+  </g>
+
+  
+  <g>
+    <rect x="1180" y="110" width="360" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="1332" y="126" width="56" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="1360" y1="162" x2="1360" y2="172" stroke="#207448" stroke-width="4" />
+    <line x1="1346" y1="172" x2="1374" y2="172" stroke="#207448" stroke-width="4" />
+    <text x="1360" y="210" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Receiver</text>
+  </g>
+
+  
+  <g>
+    <circle cx="200" cy="355" r="24" fill="#207448" />
+    <text x="200" y="364" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <rect x="350" y="295" width="400" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="550" y="328" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">1500-byte packet, DF=1</text>
+    <line x1="250" y1="355" x2="850" y2="355" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  </g>
+
+  > A (ICMP type 3 code 4 "need frag", next-hop MTU 1400) -->
+  <g>
+    <circle cx="900" cy="525" r="24" fill="#207448" />
+    <text x="900" y="534" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <rect x="290" y="420" width="520" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="550" y="454" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="550" dy="0">ICMP type 3 code 4 "need frag",</tspan>
+      <tspan x="550" dy="32">next-hop MTU 1400</tspan>
+    </text>
+    <line x1="850" y1="525" x2="250" y2="525" stroke="#db8129" stroke-width="4" stroke-dasharray="10 6" marker-end="url(#arrow-orange-left)" />
+  </g>
+
+  
+  <g>
+    <rect x="40" y="585" width="420" height="92" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+    <text x="250" y="623" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="250" dy="0">cache path MTU 1400 for B,</tspan>
+      <tspan x="250" dy="32">retransmit smaller segments</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <circle cx="200" cy="745" r="24" fill="#207448" />
+    <text x="200" y="754" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <rect x="400" y="685" width="300" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="550" y="718" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">1400-byte packets</text>
+    <line x1="250" y1="745" x2="850" y2="745" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g>
+    <circle cx="900" cy="845" r="24" fill="#207448" />
+    <text x="900" y="854" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <rect x="1005" y="785" width="200" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1105" y="818" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">forwarded</text>
+    <line x1="850" y1="845" x2="1360" y2="845" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "25",
+  "name": "h25-proxyjump-hop",
+  "title": "ProxyJump passes the connection through the bastion",
+  "spec": "Two side-by-side panels. Left panel titled ProxyJump (ssh -J), the recommended choice. Three boxes in a row: Laptop (holds the private keys, labelled keys stay on the laptop), Bastion (labelled jump host, passes the encrypted connection through), login (labelled login.cluster.internal). Arrows run left to right from Laptop to Bastion to login. Under the arrow to login, a monospace label reads ssh -J user@bastion user@login. A bracket spans from Laptop to login with the text end to end encrypted. Right panel titled ForwardAgent yes (ssh -A), marked to avoid. Same three boxes, but the Bastion box holds an agent socket icon with a warning mark, and the label reads root on the intermediate host can use the agent socket. Orange note on the right panel: this exposes the user's agent socket to root on intermediate hosts. Keep the two panels equal in size, separated by a vertical divider. No green takeaway bar.",
+  "anchor": "### Client-side practices (document these for users)",
+  "alt": "ProxyJump sends an encrypted SSH connection through the bastion while keys stay on the laptop, unlike agent forwarding.",
+  "cap": "ProxyJump passes an end-to-end encrypted connection through the bastion and keeps your keys on the laptop."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "25",
+  "name": "h25-x11-role-swap",
+  "title": "The X11 role swap: the workstation is the server",
+  "spec": "Two large boxes side by side with an arrow between them. Left box titled Your workstation, containing a monitor icon and the label X server, with the sub-labels owns the physical or virtual display, display :0, keyboard, mouse. Right box titled Cluster node, containing a window icon and the label X client, with the sub-label graphical application, for example xclock. An arrow runs from the X client in the cluster node box to the X server in the workstation box, labelled X protocol over UNIX domain or TCP sockets. Monospace commands under the X server box: xclock -display :0 and export DISPLAY=:0. Above the two boxes, a small note: the program is the client, the workstation is the server. Orange note on the arrow or the server box: the role is swapped, so workstation security matters too. No numbered steps, no green takeaway bar.",
+  "anchor": "### X11 and graphical tools (*Supercomputers for Linux Sysadmins* Chapter 18)",
+  "alt": "In X11 the X server runs on the user's workstation and the graphical program on the cluster is the X client.",
+  "cap": "In X11 the workstation runs the X server and the program running on the cluster is the client."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "25",
+  "name": "h25-ood-request-chain",
+  "title": "How an Open OnDemand request reaches the compute node",
+  "spec": "A left-to-right chain of four boxes with numbered step circles 1 to 4 above them. Box 1: User browser (monitor icon), arrow labelled HTTPS 443 to box 2. Box 2: Apache front end (gear or server icon), with the label authenticates the user. Arrow labelled reverse proxies each user to her PUN via Unix domain sockets to box 3. Box 3: Per-User NGINX (PUN), with the sub-label runs as the user, starts per-user NGINX processes (PUNs). Ruby and Node web apps are shown inside as a small note, and the label job submission and interactive apps. Arrow labelled reverse proxies to interactive apps via TCP sockets runs from Apache (box 2) down to box 4. Box 4, placed below box 3 in the lower right: Compute node, containing the interactive apps labelled RStudio, Jupyter and VNC desktop. The Apache to compute node arrow must not cross the PUN arrow. Orange highlight on the PUN box: it runs as the user, so file access follows the user's real permissions. No green takeaway bar.",
+  "anchor": "### Architecture (from the OOD documentation)",
+  "alt": "Open OnDemand's Apache checks the user, hands traffic to that user's PUN, and proxies interactive apps on compute nodes over TCP.",
+  "cap": "Open OnDemand's Apache authenticates you, passes your traffic to your own PUN, and proxies interactive apps on compute nodes."
+ }
+]

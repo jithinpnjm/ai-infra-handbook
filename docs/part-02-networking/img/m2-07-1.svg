@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>traceroute, tracepath and mtr</title>
+  <desc>Sequence diagram illustrating traceroute packet probes and ICMP responses across routers to destination.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">traceroute, tracepath and mtr</text>
+
+  
+  <line x1="200" y1="260" x2="200" y2="1040" stroke="#a5c4b0" stroke-width="3" stroke-dasharray="8 8" />
+  <line x1="600" y1="260" x2="600" y2="1040" stroke="#a5c4b0" stroke-width="3" stroke-dasharray="8 8" />
+  <line x1="1000" y1="260" x2="1000" y2="1040" stroke="#a5c4b0" stroke-width="3" stroke-dasharray="8 8" />
+  <line x1="1400" y1="260" x2="1400" y2="1040" stroke="#a5c4b0" stroke-width="3" stroke-dasharray="8 8" />
+
+  
+  <g id="participant-host">
+    <rect x="70" y="110" width="260" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="175" y="132" width="50" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M188 166 L184 182 L216 182 L212 166" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="172" y1="182" x2="228" y2="182" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="185" y1="149" x2="195" y2="149" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="200" y="232" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host</text>
+  </g>
+
+  
+  <g id="participant-router-1">
+    <rect x="470" y="110" width="260" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <ellipse cx="600" cy="146" rx="28" ry="14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M572 146 v18 c0 7.7 12.5 14 28 14 s28 -6.3 28 -14 v-18" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M588 146 h24 M606 142 l6 4 l-6 4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M612 146 h-24 M594 142 l-6 4 l6 4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="600" y="232" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Router 1</text>
+  </g>
+
+  
+  <g id="participant-router-2">
+    <rect x="870" y="110" width="260" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <ellipse cx="1000" cy="146" rx="28" ry="14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M972 146 v18 c0 7.7 12.5 14 28 14 s28 -6.3 28 -14 v-18" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M988 146 h24 M1006 142 l6 4 l-6 4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M1012 146 h-24 M994 142 l-6 4 l6 4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="1000" y="232" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Router 2</text>
+  </g>
+
+  
+  <g id="participant-destination">
+    <rect x="1270" y="110" width="260" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="1374" y="130" width="52" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="1374" y1="147" x2="1426" y2="147" stroke="#207448" stroke-width="3" />
+    <line x1="1374" y1="164" x2="1426" y2="164" stroke="#207448" stroke-width="3" />
+    <circle cx="1384" cy="139" r="2.5" fill="#207448" />
+    <circle cx="1384" cy="156" r="2.5" fill="#207448" />
+    <circle cx="1384" cy="173" r="2.5" fill="#207448" />
+    <line x1="1394" y1="139" x2="1416" y2="139" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="1394" y1="156" x2="1416" y2="156" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="1394" y1="173" x2="1416" y2="173" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="1400" y="232" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Destination</text>
+  </g>
+
+  
+  <g id="step-1">
+    <circle cx="200" cy="365" r="24" fill="#207448" />
+    <text x="200" y="374" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <rect x="280" y="305" width="240" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="400" y="342" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">probe TTL=1</text>
+    <line x1="224" y1="365" x2="596" y2="365" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g id="step-2">
+    <circle cx="600" cy="485" r="24" fill="#207448" />
+    <text x="600" y="494" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <rect x="230" y="395" width="340" height="86" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="400" y="430" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="400" dy="0">ICMP time exceeded</tspan>
+      <tspan x="400" dy="30">(from R1)</tspan>
+    </text>
+    <line x1="576" y1="485" x2="204" y2="485" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g id="step-3">
+    <circle cx="200" cy="610" r="24" fill="#207448" />
+    <text x="200" y="619" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <rect x="420" y="520" width="360" height="86" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="600" y="555" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="600" dy="0">probe TTL=2</tspan>
+      <tspan x="600" dy="30">(R1 forwards, TTL→1)</tspan>
+    </text>
+    <line x1="224" y1="610" x2="996" y2="610" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g id="step-4">
+    <circle cx="1000" cy="735" r="24" fill="#207448" />
+    <text x="1000" y="744" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <rect x="430" y="645" width="340" height="86" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="600" y="680" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="600" dy="0">ICMP time exceeded</tspan>
+      <tspan x="600" dy="30">(from R2)</tspan>
+    </text>
+    <line x1="976" y1="735" x2="204" y2="735" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g id="step-5">
+    <circle cx="200" cy="855" r="24" fill="#207448" />
+    <text x="200" y="864" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    <rect x="680" y="795" width="240" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="832" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">probe TTL=3</text>
+    <line x1="224" y1="855" x2="1396" y2="855" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g id="step-6">
+    <circle cx="1400" cy="980" r="24" fill="#207448" />
+    <text x="1400" y="989" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    <rect x="540" y="890" width="520" height="86" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="925" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">port unreachable / echo reply /</tspan>
+      <tspan x="800" dy="30">SYN-ACK (end)</tspan>
+    </text>
+    <line x1="1376" y1="980" x2="204" y2="980" stroke="#db8129" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow-orange)" />
+  </g>
+</svg>

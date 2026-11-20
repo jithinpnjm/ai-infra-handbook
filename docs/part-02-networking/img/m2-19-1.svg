@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <title>The QoS toolbox</title>
+  <desc>Visual explanation of the QoS toolbox pipeline showing classification, marking, policing and shaping, queuing, queue length management, scheduling, and transmission.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" stroke="#207448" stroke-width="1" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">The QoS toolbox</text>
+
+  
+
+  
+  <g id="node-classify">
+    <rect x="65" y="130" width="450" height="240" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="107" cy="172" r="22" fill="#207448"/>
+    <text x="107" y="180" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(262, 146)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="24" cy="24" r="16"/>
+      <line x1="36" y1="36" x2="50" y2="50"/>
+      <line x1="16" y1="20" x2="32" y2="20"/>
+      <line x1="16" y1="27" x2="28" y2="27"/>
+    </g>
+    
+    <text x="290" y="244" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Classify</text>
+    <text x="290" y="288" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(match fields: DSCP, 802.1p,</text>
+    <text x="290" y="324" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">5-tuple, interface)</text>
+  </g>
+
+  
+  <path d="M 515 250 L 571 250" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-mark">
+    <rect x="585" y="130" width="450" height="240" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="627" cy="172" r="22" fill="#207448"/>
+    <text x="627" y="180" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(782, 146)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 10 26 L 26 10 L 48 10 L 48 32 L 32 48 L 10 26 Z"/>
+      <circle cx="38" cy="20" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="810" y="244" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Mark</text>
+    <text x="810" y="288" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(set DSCP/PCP/ECN,</text>
+    <text x="810" y="324" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">internal class)</text>
+  </g>
+
+  
+  <path d="M 1035 250 L 1091 250" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-police-shape">
+    <rect x="1105" y="130" width="430" height="240" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="1147" cy="172" r="22" fill="#207448"/>
+    <text x="1147" y="180" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(1292, 146)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 10 40 A 20 20 0 1 1 46 40"/>
+      <line x1="10" y1="40" x2="46" y2="40"/>
+      <line x1="28" y1="40" x2="38" y2="24"/>
+      <circle cx="28" cy="40" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="1320" y="244" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Police / shape</text>
+    <text x="1320" y="288" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(rate limit; drop/remark</text>
+    <text x="1320" y="324" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">vs delay)</text>
+  </g>
+
+  
+  <path d="M 1320 370 L 1320 418 Q 1320 430 1308 430 L 302 430 Q 290 430 290 442 L 290 476" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+
+  
+  <g id="node-queue">
+    <rect x="65" y="490" width="450" height="240" rx="16" ry="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    
+    <circle cx="107" cy="532" r="22" fill="#db8129"/>
+    <text x="107" y="540" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(262, 506)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="14" width="44" height="28" rx="4" ry="4"/>
+      <line x1="20" y1="14" x2="20" y2="42"/>
+      <line x1="34" y1="14" x2="34" y2="42"/>
+      <circle cx="13" cy="28" r="2" fill="#db8129"/>
+      <circle cx="27" cy="28" r="2" fill="#db8129"/>
+      <circle cx="41" cy="28" r="2" fill="#db8129"/>
+    </g>
+    
+    <text x="290" y="604" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Queue</text>
+    <text x="290" y="648" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(per-class queues,</text>
+    <text x="290" y="684" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">buffers)</text>
+  </g>
+
+  
+  <path d="M 515 610 L 571 610" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-schedule">
+    <rect x="585" y="490" width="450" height="240" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="627" cy="532" r="22" fill="#207448"/>
+    <text x="627" y="540" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(782, 506)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="18"/>
+      <line x1="28" y1="28" x2="28" y2="16"/>
+      <line x1="28" y1="28" x2="38" y2="28"/>
+      <path d="M 38 18 A 14 14 0 0 1 42 28"/>
+    </g>
+    
+    <text x="810" y="604" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Schedule</text>
+    <text x="810" y="648" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(strict priority, WFQ/DRR,</text>
+    <text x="810" y="684" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">shaping)</text>
+  </g>
+
+  
+  <path d="M 1035 610 L 1091 610" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-transmit">
+    <rect x="1105" y="490" width="430" height="240" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="1147" cy="532" r="22" fill="#207448"/>
+    <text x="1147" y="540" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g transform="translate(1292, 526)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="8" y1="28" x2="32" y2="28"/>
+      <path d="M 22 18 L 32 28 L 22 38"/>
+      <path d="M 38 18 A 14 14 0 0 1 38 38"/>
+      <path d="M 44 12 A 22 22 0 0 1 44 44"/>
+    </g>
+    
+    <text x="1320" y="632" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Transmit</text>
+  </g>
+
+  
+
+  
+  <path d="M 290 730 L 290 796" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-manage-queue">
+    <rect x="65" y="810" width="450" height="240" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(262, 826)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 12 12 L 12 44 L 44 44 L 44 12"/>
+      <line x1="8" y1="26" x2="48" y2="26" stroke-dasharray="4 4"/>
+      <line x1="28" y1="18" x2="28" y2="36"/>
+      <path d="M 22 30 L 28 36 L 34 30"/>
+    </g>
+    
+    <text x="290" y="924" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Manage queue length</text>
+    <text x="290" y="968" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(tail drop, WRED,</text>
+    <text x="290" y="1004" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">ECN, CoDel)</text>
+  </g>
+
+</svg>

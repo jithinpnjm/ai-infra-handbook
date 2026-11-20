@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Count first, then record</title>
+  <desc>Three-step performance profiling workflow showing perf stat counting, perf record sampling with a note on frame pointers and Python stacks, and perf report or flame graph analysis.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Count first, then record</text>
+
+  
+  
+  <path d="M 505 320 L 555 320" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+  
+  <path d="M 1045 320 L 1095 320" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(45, 140)">
+    
+    <rect x="0" y="0" width="460" height="500" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="56" cy="56" r="24" fill="#207448" />
+    <text x="56" y="65" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(100, 28)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 46 A 25 25 0 1 1 50 46" />
+      <line x1="28" y1="28" x2="42" y2="14" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+    </g>
+
+    
+    <text x="175" y="66" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">perf stat</text>
+
+    
+    <text x="24" y="130" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">cheap counting, gives IPC</tspan>
+      <tspan x="24" dy="36">(an insn per cycle below</tspan>
+      <tspan x="24" dy="36">about 0.5 suggests</tspan>
+      <tspan x="24" dy="36">memory stalls), e.g.</tspan>
+    </text>
+
+    
+    <rect x="20" y="360" width="420" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="36" y="425" font-family="monospace" font-size="24" fill="#303a36">sudo perf stat -a \</text>
+    <text x="56" y="455" font-family="monospace" font-size="24" fill="#303a36">-- sleep 5</text>
+  </g>
+
+  
+  <g transform="translate(570, 140)">
+    
+    <rect x="0" y="0" width="460" height="500" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="56" cy="56" r="24" fill="#207448" />
+    <text x="56" y="65" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(100, 28)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <circle cx="28" cy="28" r="14" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+    </g>
+
+    
+    <text x="175" y="66" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">perf record</text>
+
+    
+    <text x="24" y="130" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">sampling profile, e.g.</tspan>
+    </text>
+
+    
+    <rect x="20" y="360" width="420" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="32" y="410" font-family="monospace" font-size="24" fill="#303a36">sudo perf record -F 99 \</text>
+    <text x="52" y="445" font-family="monospace" font-size="24" fill="#303a36">-a -g -- sleep 30</text>
+  </g>
+
+  
+  <g transform="translate(480, 675)">
+    
+    <rect x="0" y="0" width="640" height="300" rx="14" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+
+    
+    <g transform="translate(24, 24)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 18 3 L 33 31 L 3 31 Z" />
+      <line x1="18" y1="13" x2="18" y2="21" />
+      <circle cx="18" cy="26" r="1.5" fill="#db8129" />
+    </g>
+
+    
+    <text x="72" y="52" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="72" dy="0">binaries built without frame</tspan>
+      <tspan x="24" dy="38">pointers show broken stacks;</tspan>
+      <tspan x="24" dy="38">Python shows interpreter frames</tspan>
+      <tspan x="24" dy="38">unless </tspan><tspan font-family="monospace" font-size="24">python -X perf</tspan><tspan font-family="sans-serif" font-size="24"> or </tspan><tspan font-family="monospace" font-size="24">py-spy</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1095, 140)">
+    
+    <rect x="0" y="0" width="460" height="500" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="56" cy="56" r="24" fill="#207448" />
+    <text x="56" y="65" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(100, 28)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 C 28 6 12 22 12 36 A 16 16 0 0 0 44 36 C 44 24 36 18 36 18 C 36 18 34 26 28 28 C 26 24 28 14 28 6 Z" />
+    </g>
+
+    
+    
+    <rect x="20" y="110" width="420" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="32" y="156" font-family="monospace" font-size="24" fill="#303a36">perf report --stdio -n</text>
+
+    
+    <text x="230" y="222" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">or</text>
+
+    
+    <rect x="20" y="246" width="420" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="148" y="292" font-family="monospace" font-size="24" fill="#303a36">perf script</text>
+
+    
+    <text x="24" y="375" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">, or turn into a flame graph</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Sanity-check arithmetic</title>
+  <desc>Visual sanity-check arithmetic comparing bandwidth, IOPS, and line rate claims against physical network ceilings.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="60" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Sanity-check arithmetic</text>
+
+  
+  <g id="row-1">
+    
+    <rect x="60" y="115" width="1480" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(85, 140)">
+      <ellipse cx="28" cy="14" rx="22" ry="9" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 14 v 24 c 0 5 10 9 22 9 s 22 -4 22 -9 v -24" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 26 c 0 5 10 9 22 9 s 22 -4 22 -9" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="47" r="4" fill="#207448" />
+      <path d="M 16 54 h 24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <rect x="160" y="140" width="410" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="185" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="185" dy="0">Claim 50,000 NFS IOPS</tspan>
+      <tspan x="185" dy="44">of 8 KiB over one</tspan>
+      <tspan x="185" dy="44">1 GbE link</tspan>
+    </text>
+
+    
+    <line x1="570" y1="245" x2="616" y2="245" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="630" y="140" width="450" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="655" y="195" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">50,000 x 8 KiB = 400,000 KB/s</text>
+    <line x1="655" y1="230" x2="1055" y2="230" stroke="#e8f1ea" stroke-width="3" />
+    <text x="655" y="275" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">about 3.2 Gbit/s</text>
+    <text x="655" y="320" font-family="sans-serif" font-size="26" fill="#303a36">more than 1 Gbit/s</text>
+
+    
+    <line x1="1080" y1="245" x2="1126" y2="245" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="1140" y="140" width="370" height="210" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <rect x="1165" y="165" width="320" height="60" rx="8" fill="#e8f1ea" />
+    <text x="1325" y="206" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">verdict impossible</text>
+    <rect x="1165" y="255" width="320" height="65" rx="8" fill="#db8129" />
+    <text x="1325" y="297" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">client cache measured</text>
+  </g>
+
+  
+  <g id="row-2">
+    
+    <rect x="60" y="405" width="1480" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(85, 430)">
+      <rect x="6" y="8" width="44" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 16 48 v -14 h 24 v 14" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="20" cy="20" r="3" fill="#207448" />
+      <circle cx="28" cy="20" r="3" fill="#207448" />
+      <circle cx="36" cy="20" r="3" fill="#207448" />
+    </g>
+
+    
+    <rect x="160" y="430" width="410" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="185" y="525" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="185" dy="0">Claim 350 MB/s</tspan>
+      <tspan x="185" dy="46">over 1 GbE</tspan>
+    </text>
+
+    
+    <line x1="570" y1="535" x2="616" y2="535" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="630" y="430" width="450" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="655" y="505" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">350 x 8 = 2.8 Gbit/s</text>
+    <line x1="655" y1="535" x2="1055" y2="535" stroke="#e8f1ea" stroke-width="3" />
+    <text x="655" y="585" font-family="sans-serif" font-size="24" fill="#303a36">about 119 MB/s is the real ceiling</text>
+
+    
+    <line x1="1080" y1="535" x2="1126" y2="535" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="1140" y="430" width="370" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="1185" y="495" width="280" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1325" y="547" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">bogus</text>
+  </g>
+
+  
+  <g id="row-3">
+    
+    <rect x="60" y="695" width="1480" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(85, 720)">
+      <rect x="8" y="10" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 4 44 h 48" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M 14 44 v 8 M 22 44 v 8 M 30 44 v 8 M 38 44 v 8" stroke="#207448" stroke-width="3" />
+      <circle cx="28" cy="27" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <rect x="160" y="720" width="410" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="185" y="795" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="185" dy="0">Claim 400 Gb/s NIC</tspan>
+      <tspan x="185" dy="44">delivers 55 GB/s</tspan>
+      <tspan x="185" dy="44">per direction</tspan>
+    </text>
+
+    
+    <line x1="570" y1="825" x2="616" y2="825" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="630" y="720" width="450" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="655" y="835" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">400 Gb/s = 50 GB/s raw</text>
+
+    
+    <line x1="1080" y1="825" x2="1126" y2="825" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="1140" y="720" width="370" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="1185" y="785" width="280" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1325" y="836" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">above line rate</text>
+  </g>
+
+  
+  <g id="footer">
+    <rect x="60" y="985" width="1480" height="80" rx="12" fill="#207448" />
+    <text x="800" y="1035" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">check bits against bytes, GiB against GB, one direction against both, per GPU against aggregate</text>
+  </g>
+</svg>

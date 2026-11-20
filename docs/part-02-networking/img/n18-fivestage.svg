@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Scaling table: 3-stage to 5-stage</title>
+  <desc>Visual comparison table of network scaling from 3-stage to 5-stage fabrics showing Config, GPUs, Leaves, Spines, Super-spines, and Oversubscription.</desc>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <g transform="translate(60, 36)">
+    <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="18" r="4" fill="#207448"/>
+    <circle cx="16" cy="40" r="4" fill="#207448"/>
+    <circle cx="40" cy="40" r="4" fill="#207448"/>
+    <line x1="28" y1="22" x2="16" y2="36" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="22" x2="40" y2="36" stroke="#207448" stroke-width="3"/>
+    <text x="76" y="44" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Scaling table: 3-stage to 5-stage</text>
+  </g>
+
+  
+  <rect x="60" y="115" width="1480" height="680" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <path d="M 60,127 A 12,12 0 0,1 72,115 L 1528,115 A 12,12 0 0,1 1540,127 L 1540,220 L 60,220 Z" fill="#e8f1ea"/>
+  <line x1="60" y1="220" x2="1540" y2="220" stroke="#207448" stroke-width="2"/>
+
+  
+  <line x1="460" y1="115" x2="460" y2="220" stroke="#c8dcd0" stroke-width="2"/>
+  <line x1="610" y1="115" x2="610" y2="220" stroke="#c8dcd0" stroke-width="2"/>
+  <line x1="750" y1="115" x2="750" y2="220" stroke="#c8dcd0" stroke-width="2"/>
+  <line x1="890" y1="115" x2="890" y2="220" stroke="#c8dcd0" stroke-width="2"/>
+  <line x1="1140" y1="115" x2="1140" y2="220" stroke="#c8dcd0" stroke-width="2"/>
+
+  
+  
+  <g transform="translate(260, 132)">
+    <rect x="-18" y="0" width="36" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="-10" y1="12" x2="10" y2="12" stroke="#207448" stroke-width="3"/>
+    <line x1="-10" y1="22" x2="10" y2="22" stroke="#207448" stroke-width="3"/>
+    <line x1="-10" y1="32" x2="10" y2="32" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <g transform="translate(535, 132)">
+    <rect x="-18" y="3" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="-8" y="13" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+    <line x1="-10" y1="-3" x2="-10" y2="3" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="-3" x2="0" y2="3" stroke="#207448" stroke-width="3"/>
+    <line x1="10" y1="-3" x2="10" y2="3" stroke="#207448" stroke-width="3"/>
+    <line x1="-10" y1="39" x2="-10" y2="45" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="39" x2="0" y2="45" stroke="#207448" stroke-width="3"/>
+    <line x1="10" y1="39" x2="10" y2="45" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <g transform="translate(680, 134)">
+    <rect x="-22" y="8" width="44" height="26" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="-12" cy="21" r="2.5" fill="#207448"/>
+    <circle cx="-4" cy="21" r="2.5" fill="#207448"/>
+    <circle cx="4" cy="21" r="2.5" fill="#207448"/>
+    <circle cx="12" cy="21" r="2.5" fill="#207448"/>
+  </g>
+
+  
+  <g transform="translate(820, 134)">
+    <rect x="-22" y="4" width="44" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="-12" y1="14" x2="12" y2="28" stroke="#207448" stroke-width="3"/>
+    <line x1="-12" y1="28" x2="12" y2="14" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <g transform="translate(1015, 132)">
+    <rect x="-22" y="0" width="44" height="18" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="-22" y="24" width="44" height="18" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="-10" y1="18" x2="-10" y2="24" stroke="#207448" stroke-width="3"/>
+    <line x1="10" y1="18" x2="10" y2="24" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <g transform="translate(1340, 132)">
+    <line x1="-20" y1="14" x2="20" y2="24" stroke="#207448" stroke-width="4"/>
+    <polygon points="0,22 -6,38 6,38" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M -26,26 Q -18,34 -10,26" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 10,36 Q 18,44 26,36" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="-18" y1="14" x2="-18" y2="26" stroke="#207448" stroke-width="2"/>
+    <line x1="18" y1="24" x2="18" y2="36" stroke="#207448" stroke-width="2"/>
+  </g>
+
+  
+  <text x="260" y="202" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Config</text>
+  <text x="535" y="202" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">GPUs</text>
+  <text x="680" y="202" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Leaves</text>
+  <text x="820" y="202" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Spines</text>
+  <text x="1015" y="202" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Super-spines</text>
+  <text x="1340" y="202" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Oversubscription</text>
+
+  
+  <rect x="60" y="220" width="1480" height="78" fill="#ffffff"/>
+  <line x1="60" y1="298" x2="1540" y2="298" stroke="#d0ded3" stroke-width="1.5"/>
+  <text x="260" y="267" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">1 row (one rail group)</text>
+  <text x="535" y="267" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">256</text>
+  <text x="680" y="267" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">8</text>
+  <text x="820" y="267" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">4</text>
+  <text x="1015" y="267" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">none</text>
+  <rect x="1275" y="238" width="130" height="42" rx="8" fill="#e8f1ea"/>
+  <text x="1340" y="267" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">1:1</text>
+
+  
+  <rect x="60" y="298" width="1480" height="78" fill="#e8f1ea" fill-opacity="0.45"/>
+  <line x1="60" y1="376" x2="1540" y2="376" stroke="#d0ded3" stroke-width="1.5"/>
+  <text x="260" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">2 rows</text>
+  <text x="535" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">512</text>
+  <text x="680" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">16</text>
+  <text x="820" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">8</text>
+  <text x="1015" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">none</text>
+  <rect x="1275" y="316" width="130" height="42" rx="8" fill="#e8f1ea"/>
+  <text x="1340" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">1:1</text>
+
+  
+  <rect x="60" y="376" width="1480" height="92" fill="#ffffff"/>
+  <text x="260" y="416" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="260" dy="0">8 rows</tspan>
+    <tspan x="260" dy="28">(3-stage, 64-port)</tspan>
+  </text>
+  <text x="535" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">2,048</text>
+  <text x="680" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">64</text>
+  <text x="820" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">32</text>
+  <text x="1015" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">none</text>
+  <rect x="1275" y="399" width="130" height="42" rx="8" fill="#e8f1ea"/>
+  <text x="1340" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">1:1</text>
+
+  
+  <rect x="60" y="468" width="1480" height="74" fill="#e8f1ea"/>
+  <line x1="60" y1="468" x2="1540" y2="468" stroke="#207448" stroke-width="2.5"/>
+  <line x1="80" y1="505" x2="1520" y2="505" stroke="#207448" stroke-width="3" stroke-dasharray="14 10"/>
+  <rect x="520" y="478" width="560" height="54" rx="27" fill="#207448"/>
+  <text x="800" y="514" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">add pods and super-spines</text>
+  <line x1="60" y1="542" x2="1540" y2="542" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <rect x="60" y="542" width="1480" height="92" fill="#ffffff"/>
+  <line x1="60" y1="634" x2="1540" y2="634" stroke="#d0ded3" stroke-width="1.5"/>
+  <text x="260" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="260" dy="0">5-stage</tspan>
+    <tspan x="260" dy="28">1K-GPU blocks</tspan>
+  </text>
+  <text x="535" y="594" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">2,048</text>
+  <text x="680" y="594" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">64</text>
+  <text x="820" y="594" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">64</text>
+  <text x="1015" y="594" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">32</text>
+  <rect x="1275" y="565" width="130" height="42" rx="8" fill="#e8f1ea"/>
+  <text x="1340" y="594" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">1:1</text>
+
+  
+  <rect x="60" y="634" width="1480" height="78" fill="#e8f1ea" fill-opacity="0.45"/>
+  <line x1="60" y1="712" x2="1540" y2="712" stroke="#d0ded3" stroke-width="1.5"/>
+  <text x="260" y="681" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">5-stage 4 blocks</text>
+  <text x="535" y="681" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">4,096</text>
+  <text x="680" y="681" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">128</text>
+  <text x="820" y="681" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">128</text>
+  <text x="1015" y="681" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">32</text>
+  <text x="1340" y="681" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">2:1 at super-spine</text>
+
+  
+  <path d="M 60,712 L 1540,712 L 1540,783 A 12,12 0 0,1 1528,795 L 72,795 A 12,12 0 0,1 60,783 Z" fill="#ffffff"/>
+  <text x="260" y="760" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">5-stage 8 blocks</text>
+  <text x="535" y="760" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">8,192</text>
+  <text x="680" y="760" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">256</text>
+  <text x="820" y="760" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">256</text>
+  <text x="1015" y="760" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">32</text>
+  
+  <rect x="1165" y="726" width="350" height="52" rx="10" fill="#db8129"/>
+  <text x="1340" y="761" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4:1 at super-spine</text>
+
+  
+  <line x1="460" y1="220" x2="460" y2="468" stroke="#d0ded3" stroke-width="1"/>
+  <line x1="460" y1="542" x2="460" y2="795" stroke="#d0ded3" stroke-width="1"/>
+  <line x1="610" y1="220" x2="610" y2="468" stroke="#d0ded3" stroke-width="1"/>
+  <line x1="610" y1="542" x2="610" y2="795" stroke="#d0ded3" stroke-width="1"/>
+  <line x1="750" y1="220" x2="750" y2="468" stroke="#d0ded3" stroke-width="1"/>
+  <line x1="750" y1="542" x2="750" y2="795" stroke="#d0ded3" stroke-width="1"/>
+  <line x1="890" y1="220" x2="890" y2="468" stroke="#d0ded3" stroke-width="1"/>
+  <line x1="890" y1="542" x2="890" y2="795" stroke="#d0ded3" stroke-width="1"/>
+  <line x1="1140" y1="220" x2="1140" y2="468" stroke="#d0ded3" stroke-width="1"/>
+  <line x1="1140" y1="542" x2="1140" y2="795" stroke="#d0ded3" stroke-width="1"/>
+</svg>

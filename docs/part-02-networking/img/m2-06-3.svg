@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Congestion control</title>
+  <desc>State transition diagram of TCP congestion control algorithms: Slow start, Congestion avoidance, Fast retransmit and fast recovery, and Retransmission Timeout (RTO).</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Congestion control</text>
+
+  
+  <g>
+    <rect x="440" y="130" width="720" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="800" cy="175" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="800" y1="147" x2="800" y2="153" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="794" y1="147" x2="806" y2="147" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polyline points="800,163 800,175 812,175" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="800" y="245" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">ssthresh = cwnd/2 ; cwnd = 1-10 MSS</text>
+  </g>
+
+  
+  <g>
+    <rect x="90" y="390" width="500" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 125 465 L 175 465" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 125 465 L 125 415" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 128 460 Q 155 458 172 422" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="172,420 164,428 175,432" fill="#207448"/>
+    
+    <text x="195" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Slow start</text>
+    <text x="125" y="510" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan x="125" dy="0">cwnd +1 MSS per ACK</tspan>
+      <tspan x="125" dy="34">→ doubles per RTT</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1010" y="390" width="500" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 1045 465 L 1095 465" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 1045 465 L 1045 415" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 1048 460 L 1090 422" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="1092,420 1082,423 1088,432" fill="#207448"/>
+    
+    <text x="1115" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Congestion avoidance</text>
+    <text x="1045" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">cwnd +1 MSS per RTT (linear)</text>
+  </g>
+
+  
+  <g>
+    <rect x="360" y="730" width="880" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 435 780 A 18 18 0 1 1 430 798" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="438,773 448,783 434,787" fill="#207448"/>
+    
+    <text x="470" y="785" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Fast retransmit + fast recovery</text>
+    <text x="405" y="860" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">ssthresh = cwnd/2 (Reno) ; cwnd = ssthresh</text>
+  </g>
+
+  
+  <g>
+    <path d="M 590 485 L 1010 485" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+    <rect x="670" y="457" width="260" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="493" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">cwnd ≥ ssthresh</text>
+  </g>
+
+  
+  <g>
+    <path d="M 1360 580 L 1360 825 L 1240 825" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+    <rect x="1225" y="642" width="270" height="76" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="2"/>
+    <text x="1360" y="674" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+      <tspan x="1360" dy="0">3 dup ACKs /</tspan>
+      <tspan x="1360" dy="30">SACK loss</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <path d="M 1120 730 L 1120 580" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  </g>
+
+  
+  <g>
+    <path d="M 1260 390 L 1260 205 L 1160 205" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+    <rect x="1205" y="286" width="110" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1260" y="319" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">RTO</text>
+  </g>
+
+  
+  <g>
+    <path d="M 440 205 L 260 205 L 260 390" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  </g>
+
+  
+  <g>
+    <path d="M 240 580 L 240 825 L 360 825" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+    <rect x="185" y="666" width="110" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="240" y="699" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">loss</text>
+  </g>
+</svg>

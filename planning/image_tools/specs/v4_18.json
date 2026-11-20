@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "18",
+  "name": "a18-plan-symbols",
+  "title": "Reading the symbols in a Terraform plan",
+  "spec": "A legend laid out as six equal rows stacked top to bottom, each row a horizontal strip with a large monospace symbol chip on the left, a bold title in the middle and one line of secondary text on the right. Row 1: chip + , title create, text: the resource will be created. Row 2: chip ~, title update in place, text: the change is made without destroying the object. Row 3: chip -, title destroy, text: the object is deleted. Row 4: chip -/+, title destroy and then create, text: forces replacement. Row 5: chip +/-, title create and then destroy, text: appears with create_before_destroy. Row 6: chip <=, title read, text: a data source is read. Draw the row 4 strip with the orange outline, because replacement of a stateful object is the change to question. Below the six rows, a green panel with the summary line in monospace: Plan: X to add, Y to change, Z to destroy. Under the panel, a short line: look for unexpected destroys and replacements first. No arrows. No takeaway bar.",
+  "anchor": "## 4. The workflow and CLI reference",
+  "alt": "A Terraform plan marks create with plus, update in place with tilde, destroy with minus, and replacement with minus-plus or plus-minus.",
+  "cap": "The plan symbols tell you whether Terraform creates, updates, destroys or replaces each object, and replacements deserve the closest reading."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "18",
+  "name": "a18-moved-block",
+  "title": "A moved block turns a rename into a move instead of a destroy and create",
+  "spec": "Two horizontal paths stacked in two bands, with a label on the left of each band. Top band labelled without a moved block. From the left, a state box with a disk cylinder icon holding the entry google_compute_network.fabric, then a box labelled config address module.network.google_compute_network.this. Two arrows leave the state box and the config box toward a destroy box and a create box on the right. The arrow from state to the destroy box is labelled no matching config. The arrow from config to the create box is labelled no state entry. The destroy box is drawn with the orange outline and carries the note: an outage for a network or a database. Bottom band labelled with a moved block. The same state box and the same config box, joined by one arrow labelled moved from ... to ... in monospace, ending at a result box with a checkmark icon labelled has moved, with the note nothing is destroyed. Show the moved block code under the bottom band in monospace: moved { from = google_compute_network.fabric, to = module.network.google_compute_network.this }. No takeaway bar.",
+  "anchor": "### Refactoring safely",
+  "alt": "Without a moved block a rename destroys and recreates the network, while a moved block keeps the same object under its new name.",
+  "cap": "A moved block tells Terraform that a renamed resource is the same object, so the plan shows a move rather than a destroy and create."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "18",
+  "name": "a18-terraform-ansible-handoff",
+  "title": "Terraform renders the inventory file that Ansible reads",
+  "spec": "A left-to-right flow in two labelled zones. A large container on the left titled Terraform decides which machines exist and what they are called, holding three boxes stacked and connected to a fourth box on the right. Box A: random_pet.cluster, icon dice, sub-label length = 2. Box B: var.nodes, icon list, sub-label gpu01 gpus=8, gpu02 gpus=8, gpu03 gpus=4. Box C: local_file.inventory, icon document, sub-label templatefile() renders inventory.tftpl. Arrow from box A to box C labelled cluster name, arrow from box B to box C labelled nodes. Box D on the far right: inventory.ini, icon file with a handoff arrow, drawn with the orange outline and the note the rendered file is the handoff. An arrow from box C to box D labelled rendered. A separate zone on the far right, beside box D, titled Ansible decides what runs on them, with a gear icon, connected to box D by a dotted arrow. Number circles 1 to 3 on boxes A, B and C to show the order of evaluation. Monospace text for the resource and file names. No takeaway bar.",
+  "anchor": "## 9. A small end-to-end example",
+  "alt": "Terraform renders a local file from a random cluster name and a node list, and the inventory file becomes the handoff to Ansible.",
+  "cap": "Terraform renders the inventory file from its own state and inputs, and Ansible reads that file to decide what runs on each machine."
+ }
+]

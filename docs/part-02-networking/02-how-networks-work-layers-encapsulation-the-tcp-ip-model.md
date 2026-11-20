@@ -50,6 +50,10 @@ After this chapter you can:
 
 ## 1. Two ways to build a network
 
+![Circuit switching versus packet switching](./img/n02-switching.svg)
+
+*Figure 2.2.1. Circuit switching reserves a path, while packet switching shares links and forwards each packet by its header.*
+
 Suppose you need to send a file to a server on the other side of the country. The network has to decide how to carry your bytes, and that decision shapes everything else in this chapter. Compare two ways of moving a crowd of people across a city. You could book a whole train for them, which nobody else may use, or you could let everyone take buses that share the same roads. There are two basic designs in networks as well. One reserves a path before any data moves. The other chops the data into pieces and lets those pieces share the wires.
 
 ### Circuit switching
@@ -111,16 +115,9 @@ A web page loads slowly, and you need to know which part of the stack to blame. 
 
 ### The DoD / TCP/IP model (4 layers)
 
-```mermaid
-flowchart TB
-  subgraph TCPIP["TCP/IP (DoD) model"]
-    A["Application: HTTP, DNS, SSH, TLS, NFS, gRPC"]
-    T["Transport: TCP, UDP (ports; reliability, flow control)"]
-    I["Internet: IPv4, IPv6, ICMP (addresses, routing, fragmentation)"]
-    L["Link (network access): Ethernet, Wi-Fi, PPP; physical signalling"]
-    A --- T --- I --- L
-  end
-```
+![The DoD / TCP/IP model (4 layers)](./img/m2-02-1.svg)
+
+*Figure 2.2.2. The DoD / TCP/IP model (4 layers), as a diagram.*
 
 The DoD model was developed in the 1960s to 1980s under DARPA sponsorship. It was not built to survive nuclear war. Its goal was much more practical. It aimed to let incompatible computers at universities and labs communicate. The model split the problem into four layers: link for frames on one network, internet for datagrams across networks, transport for end-to-end conversations, and application for user-visible protocols.
 
@@ -130,10 +127,9 @@ On a Linux host, the practical question is where each layer lives. Start by chec
 
 ### The OSI model (7 layers)
 
-```mermaid
-flowchart TB
-  L7["7 Application: user-facing protocols"] --- L6["6 Presentation: encoding, encryption, compression"] --- L5["5 Session: dialogue/session management"] --- L4["4 Transport: end-to-end delivery (TCP, UDP)"] --- L3["3 Network: addressing and routing (IP)"] --- L2["2 Data link: frames on one link, MAC addresses (Ethernet)"] --- L1["1 Physical: signals on the medium (cables, optics, radio)"]
-```
+![The OSI model (7 layers)](./img/m2-02-2.svg)
+
+*Figure 2.2.3. The OSI model (7 layers), as a diagram.*
 
 ISO proposed the OSI model in 1977 as an alternative to the DoD stack. It tried to blend circuit-oriented and packet-oriented thinking, and telecom and database interests drove it. The full OSI protocol suite never won. Its specifications were slow, complex and sold in paper form to members, while the TCP/IP specifications and implementations were free. When two designs are both reasonable, the one that people can download and try tends to win.
 
@@ -188,22 +184,21 @@ Think about one HTTP request leaving your laptop. The request text is not sent a
 
 ![Encapsulation: each layer adds a header](./img/n02-fig1-encap.jpg)
 
-*Figure 2.2.1. Each layer wraps the data from the layer above with its own header; the receiver strips them in reverse.*
+*Figure 2.2.4. Each layer wraps the data from the layer above with its own header; the receiver strips them in reverse.*
 
-```mermaid
-flowchart TB
-  APP["Application data: 'GET / HTTP/1.1 ...' (e.g. 1,000 bytes)"] --> TLS["(TLS record: + 5-byte header + 16-byte tag)"]
-  TLS --> TCP["TCP segment = TCP header (20-60 B) + payload"]
-  TCP --> IP["IP packet = IP header (IPv4 20-60 B / IPv6 40 B) + segment"]
-  IP --> ETH["Ethernet frame = dst MAC (6) + src MAC (6) + [802.1Q tag 4] + EtherType (2) + packet + FCS (4)"]
-  ETH --> PHY["On the wire: preamble (7) + SFD (1) + frame + inter-frame gap (12 byte times)"]
-```
+![Encapsulation and decapsulation](./img/m2-02-3.svg)
+
+*Figure 2.2.5. Encapsulation and decapsulation, as a diagram.*
 
 The headers are small, but they add up, and you will use these numbers constantly. A typical Ethernet header is 14 B, and an 802.1Q VLAN tag adds 4 B more. The FCS adds 4 B at the end of the frame. An IPv4 header is 20 B, while an IPv6 header is 40 B. A TCP header is 20 B, and it can grow to 60 B with options. Timestamps add 12 B of that. A UDP header is 8 B.
 
 On the wire, the preamble and SFD add 8 B, and the inter-frame gap adds 12 B. Together that is 20 B of fixed overhead for every frame. These two are not part of the frame you see in a capture, but the wire still has to spend time on them.
 
 ### Overhead and goodput (worked examples)
+
+![Goodput of a TCP segment](./img/n02-goodput.svg)
+
+*Figure 2.2.6. Headers and gaps cost about 5 percent at 1500 bytes MTU and under 1 percent with jumbo frames.*
 
 How much of the link carries your data, and how much carries wrapping? Work it out for one ordinary case. Start with a standard 1500-byte MTU, the largest IP packet on ordinary Ethernet. A TCP/IPv4 segment can carry at most 1500 bytes minus 20 bytes of IP header and 20 bytes of TCP header. That leaves a maximum segment size, or MSS, of 1460 bytes of data. With the TCP timestamp option, the payload drops to 1448 bytes.
 
@@ -233,6 +228,10 @@ Keep offloads in mind when you read these outputs, because they change what tcpd
 
 ### Demultiplexing: how the right code gets the bytes
 
+![Demultiplexing by protocol keys](./img/n02-demux.svg)
+
+*Figure 2.2.7. Each layer carries a key field that tells the receiver which code should get the payload next.*
+
 A frame arrives at the NIC. How does it end up in the right process? The network card does not know which program wants it, and neither does the cable. Each layer includes a field that tells the receiver which protocol should get the payload, a bit like the department name on an internal mail label. Three fields do this job.
 
 - The Ethernet EtherType is a 16-bit field. Its values include `0x0800` for IPv4, `0x86DD` for IPv6, `0x0806` for ARP, `0x8100` for a VLAN tag (802.1Q), `0x88A8` for QinQ, `0x8847` and `0x8848` for MPLS, `0x8915` for RoCE v1, `0x8808` for MAC control, which carries PAUSE and PFC, and `0x88CC` for LLDP.
@@ -254,6 +253,10 @@ If the inner packets are not reduced, or the MSS is not clamped, large packets e
 Before you deploy an overlay, measure the end-to-end MTU across it.
 
 ## 5. The three planes
+
+![Management, control and data planes](./img/n02-planes.svg)
+
+*Figure 2.2.8. The data plane moves packets, the control plane builds the tables it uses, and the management plane configures and monitors.*
 
 What should keep working when the routing software fails? A router that stops forwarding the moment its routing process crashes would be a fragile router. The answer depends on which plane does which job. Network devices and networks are organised into functional planes, and the table lists them.
 
@@ -293,18 +296,9 @@ Picture the Internet with many applications on top and many kinds of link undern
 
 ### The hourglass (wasp waist)
 
-```mermaid
-flowchart TB
-  subgraph APPS["Many application protocols"]
-    HTTP["HTTP"]; DNS["DNS"]; SSH["SSH"]; NFS["NFS"]; GRPC["gRPC"]; NCCL["NCCL (over TCP/RDMA)"]
-  end
-  TR["TCP / UDP / QUIC (few)"]
-  IPN["IP (exactly one, plus its IPv6 version)"]
-  subgraph LINKS["Many link technologies"]
-    ETH["Ethernet"]; WIFI["Wi-Fi"]; SAT["Satellite"]; PPP["PPP/LTE/5G"]; IB["IPoIB"]
-  end
-  APPS --> TR --> IPN --> LINKS
-```
+![The hourglass (wasp waist)](./img/m2-02-4.svg)
+
+*Figure 2.2.9. The hourglass (wasp waist), as a diagram.*
 
 Protocols are numerous at the top, where the applications are, and at the bottom, where the physical media are. At the narrow waist there is essentially one protocol, IP. Think of the electrical plug in a country. There are thousands of appliances and several power sources, but one socket shape in the wall means they all work together.
 
@@ -338,16 +332,9 @@ Suppose a packet from your training job disappears somewhere between an applicat
 
 ### The Linux stack
 
-```mermaid
-flowchart TB
-  APP["Application (user space): socket API (socket, bind, listen, connect, send, recv, epoll)"] --> SOCK["Socket layer: struct socket / sock; send and receive buffers (sk_buff queues)"]
-  SOCK --> L4["TCP / UDP / SCTP / QUIC-in-userspace: connection state, retransmit timers, congestion control"]
-  L4 --> L3["IP: routing (FIB), netfilter hooks (PREROUTING, INPUT, FORWARD, OUTPUT, POSTROUTING), fragmentation, IPsec/XFRM"]
-  L3 --> QD["Traffic control: qdisc (fq_codel, fq, mq, htb, tbf), tc filters, eBPF (tc, cgroup, XDP)"]
-  QD --> DRV["Device driver / NIC: TX/RX rings (DMA), NAPI polling, interrupts, RSS queues, offloads (checksum, TSO/GSO/GRO, VLAN, VXLAN)"]
-  DRV --> WIRE["Wire / fiber / virtual device (virtio, veth, vxlan, bridge, bond, tun)"]
-  RDMA["RDMA verbs (libibverbs): memory registration, QPs, CQs - NIC hardware transport"] -. "bypasses sockets, TCP/IP, qdisc" .-> WIRE
-```
+![The Linux stack](./img/m2-02-5.svg)
+
+*Figure 2.2.10. The Linux stack, as a diagram.*
 
 The unit of data inside the kernel is the `sk_buff`, or socket buffer. It is a descriptor with pointers into the packet data and metadata, such as headers, device, timestamps and checksum state. Layers add and remove headers by moving pointers, which is cheap, instead of copying the bytes. It is like sliding a stack of papers into a different folder instead of retyping each page.
 

@@ -85,6 +85,10 @@ Consider what happens if an automation change breaks the management network. You
 
 ## 2. The evolution of device management interfaces
 
+![Evolution of management interfaces](./img/n28-evolution.svg)
+
+*Figure 2.28.1. Each generation of device interface reacted to the weaknesses of the one before it.*
+
 Picture a script that reads the fourth column of a CLI table to find the interface state. One software release later, a new column appears before it, and the script keeps running without an error. It now reports the wrong state for every interface, and nobody notices for a week. This is why the newer interfaces return structured data with named fields. A missing field is an error you can see, not a silent shift you cannot. The history below shows how each generation tried to fix that kind of fragility.
 
 Walk through what happens to that script. It splits each line on spaces, takes the fourth field, and compares it with the word up. Then a vendor adds a column, and the fourth field becomes something else. The comparison fails quietly, every interface looks down, and the script raises an alarm for nothing. Nobody changed the network. The output format changed, and the script trusted the position of a word instead of its meaning.
@@ -298,7 +302,7 @@ Imagine writing a switch configuration by hand for every leaf in a fabric. Thirt
 
 ![Templates plus data](./img/n28-fig1-template.jpg)
 
-*Figure 2.28.1. A template and data are rendered into a device configuration.*
+*Figure 2.28.2. A template and data are rendered into a device configuration.*
 
 Here is the work that a template removes. You write the configuration once, with placeholders where the leaves differ. The engine reads the variables for one leaf, fills the placeholders, and writes a finished file. Then it repeats the work for the next leaf. A change to the template changes every output at once, and a reviewer reads one file rather than one file per leaf.
 
@@ -496,6 +500,10 @@ The pygnmi version does the same work in code. It reads capabilities, gets inter
 
 ### Comparing the model-driven protocols
 
+![Model-driven protocol comparison](./img/n28-modeldriven.svg)
+
+*Figure 2.28.3. NETCONF suits transactional configuration, RESTCONF suits simple web tooling and gNMI suits streaming telemetry.*
+
 The three protocols overlap, so compare them on the points that matter for your job.
 
 | | NETCONF | RESTCONF | gNMI |
@@ -576,6 +584,10 @@ The **southbound interface** sits between the controller and the network devices
 
 ### Four models of interaction
 
+![SDN interaction models](./img/n28-sdnmodels.svg)
+
+*Figure 2.28.4. The four models differ mainly in where the control plane runs.*
+
 The four models differ mainly in where the control plane runs. The table lists each one.
 
 Imagine the same link failure under each model. In the first, the switches reroute on their own, and the controller hears about the failure later. In the last, the controller must compute the new path and push it down before traffic moves. The difference lies in who holds the decision when the link breaks, and how long the traffic waits for that decision.
@@ -633,17 +645,9 @@ Before you centralise a function, ask what the fabric does when the controller i
 
 The pieces from this chapter fit into one pipeline, shown below. Follow it from left to right, and notice that every stage has a way to say no.
 
-```mermaid
-flowchart LR
-  SoT["Source of truth\n(Git YAML / NetBox)"] --> V["Validate\n(JSON Schema, pydantic)"]
-  V --> R["Render\n(Jinja2 templates)"]
-  R --> T["Test\n(emulation: containerlab, Batfish, unit tests)"]
-  T --> D["Deliver\n(NETCONF/gNMI/REST/CLI, staged)"]
-  D --> C["Verify\n(state assertions, telemetry)"]
-  C -->|fail| RB["Rollback / alert"]
-  C -->|pass| M["Monitor and detect drift"]
-  M --> SoT
-```
+![Putting it together: a minimal automation pipeline](./img/m2-28-1.svg)
+
+*Figure 2.28.5. Putting it together: a minimal automation pipeline, as a diagram.*
 
 A failed verification leads to rollback or an alert. A passing check moves on to monitoring, and monitoring feeds drift back into the source of truth.
 

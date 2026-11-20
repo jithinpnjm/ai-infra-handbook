@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "18",
+  "name": "h18-close-to-open",
+  "title": "NFS close-to-open consistency: when a reader sees a write",
+  "spec": "A two-lane time diagram. Two vertical swimlanes side by side, headed Client A (writer) on the left and Client B (reader) on the right, with a time axis running top to bottom labelled time. Four numbered steps in top-to-bottom order, each with a green number circle. Step 1 in Client A's lane: Write to the file, held in A's cache. Step 2 in Client B's lane: Open and read the file, with an orange box labelled stale data, since the write is not yet visible. Step 3 in Client A's lane: Close the file. Step 4 in Client B's lane: Open the file again and read the new data, shown in green. Beside steps 2 and 4, a note: a write becomes visible to another client only after the writer closes the file and the reader opens it. A grey side note at the bottom: noac or lookupcache=none fixes this, at a large cost, because every access asks the server again. No green takeaway bar.",
+  "anchor": "## 2. NFS: what it is and where it ends",
+  "alt": "An NFS reader sees a writer's data only after the writer closes the file and the reader opens it again.",
+  "cap": "On NFS a write becomes visible to another client only after the writer closes the file and the reader opens it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "18",
+  "name": "h18-stripe-alignment",
+  "title": "Stripe-aligned and unaligned writes to one shared file",
+  "spec": "Top band: one long horizontal bar representing a shared file, divided into four equal cells labelled stripe 1, stripe 2, stripe 3 and stripe 4. Above the bar a bracket labelled one stripe size on one cell. Below the bar two rows, each with a label on the left. Row 1 titled Unaligned boundary: Rank A on Node A writes a piece that ends in the middle of stripe 2, shown as a blue block covering stripe 1 and half of stripe 2; Rank B on Node B writes a piece that starts in the middle of stripe 2, shown as a green block covering the other half of stripe 2 and stripe 3 and stripe 4. Stripe 2 is outlined in orange because both ranks touch it. Two curved arrows between Node A and Node B labelled lock moves back and forth, each move costs a round trip. Row 2 titled Aligned boundary: Rank A writes exactly stripe 1 and stripe 2, Rank B writes exactly stripe 3 and stripe 4, so no stripe is touched by both ranks and no lock arrows appear. Green takeaway bar at the bottom: Aligning the boundary removes most of that lock traffic.",
+  "anchor": "## 5. I/O patterns and what breaks",
+  "alt": "Two ranks writing one file lock-bounce when their boundary splits a stripe, but not when the boundary sits on a stripe edge.",
+  "cap": "When two ranks share a stripe, their locks bounce between nodes, so aligning the write boundary to the stripe size removes that traffic."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "18",
+  "name": "h18-bytes-per-param",
+  "title": "Bytes per parameter in a mixed-precision Adam checkpoint",
+  "spec": "A single long horizontal stacked bar, representing one parameter, drawn to scale with its segments left to right and labelled with byte counts above each segment. Segment 1, 2 bytes, labelled bf16 weights. Segment 2, 4 bytes, labelled fp32 master weights. Segment 3, 8 bytes, wider than the first two, labelled two fp32 Adam moments. A bracket over the three solid segments labelled 14 bytes per parameter. A dashed segment to the right of the bracket, 4 bytes, labelled fp32 gradients in some stacks, which brings the total to about 18 bytes. Below the bar, a worked example box: 70B parameters times 14 bytes gives about 0.98 TB per checkpoint. A small orange note on the dashed segment: check the byte count for your framework and sharding. Green takeaway bar at the bottom: Per-parameter byte counts are the common accounting, and you should verify them for your own framework.",
+  "anchor": "## 6. Arithmetic you should be able to do",
+  "alt": "A mixed-precision Adam checkpoint holds about 14 bytes per parameter, so a 70B model writes about 0.98 TB.",
+  "cap": "A mixed-precision Adam checkpoint holds about 14 bytes per parameter, so a 70B model writes about 0.98 TB."
+ }
+]

@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>A safe cron job</title>
+  <desc>A safe cron job</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="9" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <polygon points="2,3 16,9 2,15" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">A safe cron job</text>
+
+  <!-- ==================== HEADER LINES PANEL ==================== -->
+  <g id="header-lines">
+    <rect x="50" y="115" width="490" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Terminal prompt / sliders -->
+    <g transform="translate(75, 167)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="4,12 18,28 4,44"/>
+      <line x1="24" y1="44" x2="48" y2="44"/>
+    </g>
+    <text x="155" y="160" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">SHELL=/bin/bash</text>
+    <text x="155" y="202" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">PATH=...</text>
+    <text x="155" y="244" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">MAILTO=""</text>
+  </g>
+
+  <!-- ==================== ORANGE NOTE PANEL ==================== -->
+  <g id="orange-note">
+    <rect x="580" y="115" width="970" height="160" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    <!-- Icon: Info / warning badge -->
+    <g transform="translate(1037, 132)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <line x1="28" y1="18" x2="28" y2="30"/>
+      <circle cx="28" cy="40" r="2.5" fill="#db8129"/>
+    </g>
+    <text x="1065" y="235" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">cron sets only HOME, LOGNAME, SHELL=/bin/sh and PATH=/usr/bin:/bin</text>
+  </g>
+
+  <!-- ==================== CENTRE CRONTAB LINE ==================== -->
+  <g id="crontab-line">
+    <rect x="50" y="320" width="1500" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Executable / console command -->
+    <g transform="translate(75, 347)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="48" height="40" rx="6"/>
+      <line x1="14" y1="22" x2="22" y2="28"/>
+      <line x1="22" y1="28" x2="14" y2="34"/>
+      <line x1="26" y1="36" x2="38" y2="36"/>
+    </g>
+    <text x="830" y="384" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" textLength="1360" lengthAdjust="spacing">*/5 * * * * root flock -n /run/lock/gpu-health.lock timeout 120 /usr/local/bin/gpu-health.sh 2&gt;&amp;1 | logger -t gpu-health</text>
+  </g>
+
+  <!-- ==================== ARROWS TO CALLOUTS ==================== -->
+  <line x1="222" y1="430" x2="222" y2="510" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="608" y1="430" x2="608" y2="510" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="992" y1="430" x2="992" y2="510" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="1378" y1="430" x2="1378" y2="510" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- ==================== CALLOUT 1 ==================== -->
+  <g id="callout-1">
+    <rect x="50" y="510" width="345" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Clock -->
+    <g transform="translate(194, 538)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="28,14 28,28 38,28"/>
+    </g>
+    <text x="222" y="655" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="222" dy="0">*/5 * * * * </tspan>
+      <tspan x="222" dy="36">every five minutes</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== CALLOUT 2 ==================== -->
+  <g id="callout-2">
+    <rect x="435" y="510" width="345" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Lock -->
+    <g transform="translate(579, 538)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="22" width="36" height="28" rx="5"/>
+      <path d="M18 22V14a10 10 0 0 1 20 0v8"/>
+      <circle cx="28" cy="34" r="3" fill="#207448"/>
+      <line x1="28" y1="37" x2="28" y2="43"/>
+    </g>
+    <text x="608" y="655" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="608" dy="0">flock -n prevents </tspan>
+      <tspan x="608" dy="36">overlapping runs</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== CALLOUT 3 ==================== -->
+  <g id="callout-3">
+    <rect x="820" y="510" width="345" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Hourglass / timer -->
+    <g transform="translate(964, 538)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 8h32M12 48h32M16 8v10l12 10-12 10v10M40 8v10L28 28l12 10v10"/>
+    </g>
+    <text x="992" y="655" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="992" dy="0">timeout 120 </tspan>
+      <tspan x="992" dy="36">kills a hang</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== CALLOUT 4 ==================== -->
+  <g id="callout-4">
+    <rect x="1205" y="510" width="345" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Journal / log book -->
+    <g transform="translate(1349, 538)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="8" width="36" height="42" rx="4"/>
+      <line x1="18" y1="18" x2="38" y2="18"/>
+      <line x1="18" y1="26" x2="38" y2="26"/>
+      <line x1="18" y1="34" x2="30" y2="34"/>
+    </g>
+    <text x="1378" y="640" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1378" dy="0">logger -t gpu-health </tspan>
+      <tspan x="1378" dy="36">sends output </tspan>
+      <tspan x="1378" dy="36">to the journal</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== TAKEAWAY BAR ==================== -->
+  <g id="takeaway-bar">
+    <rect x="50" y="865" width="1500" height="80" rx="12" fill="#207448"/>
+    <!-- Icon: Shield checkmark -->
+    <g transform="translate(75, 877)" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 8L10 16v14c0 14 18 22 18 22s18-8 18-22V16L28 8z"/>
+      <path d="M20 28l6 6 12-12"/>
+    </g>
+    <text x="830" y="915" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">before you schedule a job, make sure it is safe to run twice</text>
+  </g>
+</svg>

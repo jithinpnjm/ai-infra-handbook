@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Flood reduction in a small example</title>
+  <desc>Visual infographic explaining flood reduction in a leaf-spine network where leaves send updates to a single chosen spine relay, redundant copies are suppressed, and spines exchange state.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange-down" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-orange-up" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Flood reduction in a small example</text>
+
+  
+
+   S2: update sent -->
+  <path d="M 260 200 L 260 125 L 700 125" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 900 125 L 1520 125 L 1520 655 L 1480 655" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <rect x="700" y="103" width="200" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="133" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">update sent</text>
+
+  
+  <line x1="400" y1="290" x2="575" y2="290" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" />
+  <line x1="825" y1="290" x2="1200" y2="290" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow-green)" />
+  <rect x="575" y="268" width="250" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="700" y="298" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">copy suppressed</text>
+
+   S1: update sent -->
+  <path d="M 400 460 L 580 460 L 580 350 L 850 350" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="1050" y1="350" x2="1200" y2="350" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <rect x="850" y="328" width="200" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="950" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">update sent</text>
+
+  
+  <path d="M 400 520 L 660 520 L 660 625 L 825 625" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" />
+  <line x1="1075" y1="625" x2="1200" y2="625" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow-green)" />
+  <rect x="825" y="603" width="250" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="950" y="633" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">copy suppressed</text>
+
+   S2: update sent -->
+  <path d="M 400 725 L 580 725 L 580 680 L 700 680" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="900" y1="680" x2="1200" y2="680" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <rect x="700" y="658" width="200" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="688" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">update sent</text>
+
+   S2: spines exchange -->
+  <line x1="1340" y1="473" x2="1340" y2="400" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange-up)" />
+  <line x1="1340" y1="517" x2="1340" y2="590" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange-down)" />
+  <rect x="1215" y="473" width="250" height="44" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="1340" y="503" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">spines exchange</text>
+
+  
+
+  
+  <g id="node-leaf1">
+    <rect x="120" y="200" width="280" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(145, 237)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <path d="M 12 20 H 44 M 36 13 L 44 20 L 36 27" />
+      <path d="M 44 36 H 12 M 20 29 L 12 36 L 20 43" />
+    </g>
+    <text x="225" y="277" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">leaf1</text>
+  </g>
+
+  
+  <g id="node-leaf2">
+    <rect x="120" y="430" width="280" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(145, 467)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <path d="M 12 20 H 44 M 36 13 L 44 20 L 36 27" />
+      <path d="M 44 36 H 12 M 20 29 L 12 36 L 20 43" />
+    </g>
+    <text x="225" y="507" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">leaf2</text>
+  </g>
+
+  
+  <g id="node-leaf3">
+    <rect x="120" y="660" width="280" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(145, 697)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <path d="M 12 20 H 44 M 36 13 L 44 20 L 36 27" />
+      <path d="M 44 36 H 12 M 20 29 L 12 36 L 20 43" />
+    </g>
+    <text x="225" y="737" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">leaf3</text>
+  </g>
+
+  
+  <g id="node-spine1">
+    <rect x="1200" y="270" width="280" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(1225, 307)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <path d="M 12 20 H 44 M 36 13 L 44 20 L 36 27" />
+      <path d="M 44 36 H 12 M 20 29 L 12 36 L 20 43" />
+    </g>
+    <text x="1305" y="347" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">spine1</text>
+  </g>
+
+  
+  <g id="node-spine2">
+    <rect x="1200" y="590" width="280" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(1225, 627)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <path d="M 12 20 H 44 M 36 13 L 44 20 L 36 27" />
+      <path d="M 44 36 H 12 M 20 29 L 12 36 L 20 43" />
+    </g>
+    <text x="1305" y="667" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">spine2</text>
+  </g>
+</svg>
