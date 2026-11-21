@@ -1,9 +1,9 @@
 # Nebius SRE interview: personalised 14-day plan (25 Nov to 8 Dec 2026, interview 9 Dec)
 
-Built from the section-level maps in `map/` (one file per chapter, written by agents that read the whole chapter). Each map lists every section with level, interview use, priority (MUST/SHOULD/OPTIONAL/SKIP) and minutes. **Daily reading budget below = MUST sections only (about 5 h), plus 1-1.5 h hands-on practice and 20 min flashcards.**
-For you: beginner in Linux and networking (so Linux and networking come first, with real terminal work), refresh for Python and Kubernetes, first Linux-troubleshooting and first system-design interview (so day 10-12 are design drills and day 11-13 incident drills).
+Built from the section-level maps in `map/` (one file per chapter, written by agents that read the whole chapter). Each map lists every section with level, interview use, priority (MUST/SHOULD/OPTIONAL/SKIP) and minutes. **Daily reading budget = MUST sections only (about 5 h), plus 1-1.5 h hands-on practice and 20 min flashcards.**
+For you: beginner in Linux and networking (so these come first, with real terminal work), refresh for Python and Kubernetes, Ansible and Slurm basics added, first Linux-troubleshooting and first system-design interview (design drills from day 11, incident drills from day 12).
 
-How to use a day: open the chapter map, read ONLY the rows marked MUST in order (the verdict line below lists the section numbers), do the listed hands-on, then the day's practice block.
+How to use a day: open the chapter map, read ONLY the rows marked MUST in order (the sections column lists them), do the hands-on listed in the map, then the day's practice block.
 
 
 ## Day 1 - Wed 25 Nov - MUST reading 5.3 h
@@ -91,7 +91,7 @@ Practice: Terminal: curl -v/-w timing; dig +trace; ss -tnp; explain each aloud.
 | 3.2 Modules, packages, virtual environments and packaging (`map/03-02.md`) | 19 | 44 | READ-SECTIONS (section 1 import mechanics and `__name__` guard, circular imports, 3 virtual environments, 4 "Declaring dependencies", 5 wheels and tags, 7 GPU driver and  |
 | 3.3 Idiomatic Python: the data model, comprehensions, genera (`map/03-03.md`) | 28 | 32 | READ-SECTIONS (context managers, mappings and sets, text vs bytes, references and copies, comprehensions, the iterator protocol, generator functions, pipelines, EAFP, the |
 
-Practice: Network triage drill aloud (20.6). Start 20.11 coding problems: 3 today.
+Practice: Network triage drill aloud (20.6). Start the 20.11 coding problems: 3 today.
 
 
 ## Day 7 - Tue 01 Dec - MUST reading 5.4 h
@@ -114,52 +114,72 @@ Practice: Coding: 4 problems from 20.11 under a 30-min timer; write one subproce
 
 | Chapter | MUST min | Also if time (SHOULD min) | Sections to read (from map) |
 |---|---|---|---|
+| 4.3 Ansible from zero: what it is, how it works, installatio (`map/04-03.md`) | 46 | 29 | READ-SECTIONS (sections 1, 2, 4, 6, 7, 8, 9, 10, 11, 12, the checkpoint answers 1, 4, 5, 9, 10, 11, 12, 17); the Vagrant subsection and the install details can be skimmed |
+| 4.4 YAML and Jinja2 for infrastructure code (`map/04-04.md`) | 31 | 39 | READ-SECTIONS (1 "YAML essentials" incl. "Rules that bite", 2 "Jinja2 essentials" incl. "Filters" and "Whitespace control", 3 "Jinja2 in Ansible", 4 "Templating elsewhere |
+| 4.5 Ansible inventory: hosts, groups, dynamic inventory and  (`map/04-05.md`) | 26 | 34 | READ-SECTIONS (sections 2 Host patterns, 3 incl. "Variable precedence (summary)", 5 incl. "Source of truth for GPU fleets", 6 Designing inventory for GPU clusters, 7 Debu |
+| 4.6 Ansible playbooks: tasks, modules, idempotency and check (`map/04-06.md`) | 37 | 30 | READ-SECTIONS (1 "Playbook anatomy" and "Task anatomy and common keywords", 2 "Idempotency, the heart of playbooks", 4 "command, shell, script, raw: when and how", 5 "Che |
+| 4.7 Ansible variables, facts, templates and filters (`map/04-07.md`) | 32 | 39 | READ-SECTIONS (1 "Defining variables" incl. "Where and how", "Naming and types", "Scope and lifetime"; 2 "Registered results and set_fact"; 3 "Facts" incl. "Custom (local |
+| 4.8 Ansible handlers, conditionals, loops, blocks and error  (`map/04-08.md`) | 38 | 30 | READ-SECTIONS (1 "Handlers" incl. the "lost handler after failure" trap, 2 "Conditionals: when", 3 "Loops" for `until`/`retries` and the list-vs-loop point only, 4 "Error |
+| 4.9 A real playbook end to end: deploying an application (`map/04-09.md`) | 22 | 45 | READ-SECTIONS (1 "Target architecture", 3 "Variables", 5 "The application play: release directories and an atomic switch" incl. its "Four release habits" and the two migr |
+| 4.10 Debugging Ansible playbooks (`map/04-10.md`) | 27 | 44 | READ-SECTIONS (1 "A layered method", 2 "Verbosity and output" (table and last paragraph), 3 "The debug and assert modules" (first code block and the `stat` + `assert` par |
 | 5.1 Containers from first principles: images, layers, regist (`map/05-01.md`) | 46 | 54 | READ-SECTIONS. Sections 1, 2, 4, 7 and 8 carry most of the interview value and must be read; the rest can be skimmed for recall, because the Linux parts repeat Part 1 and |
+
+Practice: Ansible: write inventory + a playbook that installs and configures a service on a VM/container; run with --check, then for real, then again (idempotent). kind/minikube: create a cluster.
+
+
+## Day 9 - Thu 03 Dec - MUST reading 5.3 h
+
+| Chapter | MUST min | Also if time (SHOULD min) | Sections to read (from map) |
+|---|---|---|---|
 | 5.3 Kubernetes architecture overview: components and what ta (`map/05-03.md`) | 49 | 38 | READ-SECTIONS. Sections 1, 2, 3 (Capacity/Allocatable and Conditions only), 5, 6, 7 and 14 are must-reads for R2 and R3. Section 4 (ports) is a recall table. Sections 8 a |
 | 5.5 The API server and etcd: how a request becomes cluster s (`map/05-05.md`) | 53 | 34 | READ-SECTIONS. Must-read: section 1 (groups and verbs, one pass), section 2 (request pipeline and admission outage pattern), section 3 (resourceVersion, 409, 410, LIST se |
 | 5.6 Controllers and the reconcile loop: how Kubernetes think (`map/05-06.md`) | 46 | 34 | READ-SECTIONS. Must-read: section 1, section 3 (Deployment chain, DaemonSet, Job, node lifecycle), section 4 (ownerReferences and finalizers only), section 6 (symptom tab |
 | 5.7 Pods and workloads: Deployments, StatefulSets, DaemonSet (`map/05-07.md`) | 52 | 69 | READ-SECTIONS. Must read: section 1 (pod), containers and init containers, resources and QoS, lifecycle and termination, workload controller choice and the inference Depl |
 | 5.8 The life of a pod end to end, including what the kernel  (`map/05-08.md`) | 32 | 33 | READ-SECTIONS. Must read: Section 1 (timeline diagram), Section 2 (admission and scheduling), the kubelet sync loop, the sandbox steps 1 to 3, the image pull, create and  |
 | 5.9 The kubelet and the node: CRI, cgroups, QoS classes, pro (`map/05-09.md`) | 26 | 47 | READ-SECTIONS. Must read: section 1 (what the kubelet does), the allocatable and QoS sections, section 5 (probes, all three subsections), section 6 (node-pressure evictio |
-
-Practice: kind/minikube: create a cluster, deploy, break a pod (ImagePullBackOff, CrashLoop), fix with kubectl describe/logs.
-
-
-## Day 9 - Thu 03 Dec - MUST reading 5.2 h
-
-| Chapter | MUST min | Also if time (SHOULD min) | Sections to read (from map) |
-|---|---|---|---|
 | 5.10 Services, endpoints and kube-proxy: the life of a Servi (`map/05-10.md`) | 34 | 50 | READ-SECTIONS. Must read: section 1 (Service types, DNS, readiness), section 2 (EndpointSlices and propagation delay), section 3 (kube-proxy modes, the iptables packet pa |
 | 5.11 DNS and service discovery with CoreDNS (`map/05-11.md`) | 26 | 40 | READ-SECTIONS. Must read: section 1 (records table), section 2 (dnsPolicy, ndots:5 problem), the CoreDNS plugin list (skim the table, read the `loop`, `forward` and `fall |
-| 5.12 Ingress, load balancers and the Gateway API (`map/05-12.md`) | 21 | 55 | READ-SECTIONS. Must read: section 1 (layers), Ingress basics (the controller model, annotations and their portability, path rewriting, TLS Secret), the Gateway API sectio |
-| 5.15 NetworkPolicy and the kernel: netfilter, conntrack and  (`map/05-15.md`) | 50 | 48 | READ-SECTIONS (1 full, the kuard default-deny test, 2 trap table, 3 netfilter/conntrack and the Calico and Cilium enforcement subsections, 5 zone design rules, 6 testing  |
-| 5.16 Configuration, secrets and RBAC (`map/05-16.md`) | 46 | 66 | READ-SECTIONS (ConfigMap update behaviour and immutable; Secrets: the five protection layers and the verbs; Secret consumption choices; the GitOps-safe table; projected v |
-| 5.18 Scheduling in depth: kube-scheduler, affinity, taints,  (`map/05-18.md`) | 48 | 44 | READ-SECTIONS (1 scheduling cycle and Filter/Score, 2 resource accounting and fragmentation, 3 all placement rules, 4 priority, preemption and PDBs, 5 the gang problem an |
-| 5.23 Autoscaling: HPA, VPA, KEDA and the cluster autoscaler (`map/05-23.md`) | 29 | 45 | READ-SECTIONS (1 layers and the spike walkthrough; 2 algorithm, behaviour tuning, inference scaling signals, metric debugging; 5 CA scale-up/down and blockers, overprovis |
-| 5.25 Troubleshooting Kubernetes from the node: crictl, nsent (`map/05-25.md`) | 28 | 39 | MUST-READ-FULL. This is the chapter that matches the R1 "practical Linux console and troubleshooting" task most closely, and the R2 troubleshooting round. Read sections 1 |
-| 20.23 Kubernetes failure drills for GPU platforms (`map/20-23.md`) | 27 | 26 | READ-SECTIONS. Read sections 1, 2, 3, the "How to answer out loud" block, Drills 1, 3, 4, 6, 8 and the drill questions in full; skim Drills 2, 5, 9, 10, 11 and 12 (read e |
 
-Practice: K8s: DNS from inside a pod, Service with no endpoints, a Pending pod; 5.25 playbooks. Coding: 4 problems.
+Practice: K8s: deploy, break a pod (ImagePullBackOff, CrashLoop), fix with kubectl describe/logs. Coding: 4 problems.
 
 
 ## Day 10 - Fri 04 Dec - MUST reading 5.4 h
 
 | Chapter | MUST min | Also if time (SHOULD min) | Sections to read (from map) |
 |---|---|---|---|
+| 5.15 NetworkPolicy and the kernel: netfilter, conntrack and  (`map/05-15.md`) | 50 | 48 | READ-SECTIONS (1 full, the kuard default-deny test, 2 trap table, 3 netfilter/conntrack and the Calico and Cilium enforcement subsections, 5 zone design rules, 6 testing  |
+| 5.16 Configuration, secrets and RBAC (`map/05-16.md`) | 46 | 66 | READ-SECTIONS (ConfigMap update behaviour and immutable; Secrets: the five protection layers and the verbs; Secret consumption choices; the GitOps-safe table; projected v |
+| 5.18 Scheduling in depth: kube-scheduler, affinity, taints,  (`map/05-18.md`) | 48 | 44 | READ-SECTIONS (1 scheduling cycle and Filter/Score, 2 resource accounting and fragmentation, 3 all placement rules, 4 priority, preemption and PDBs, 5 the gang problem an |
+| 5.23 Autoscaling: HPA, VPA, KEDA and the cluster autoscaler (`map/05-23.md`) | 29 | 45 | READ-SECTIONS (1 layers and the spike walkthrough; 2 algorithm, behaviour tuning, inference scaling signals, metric debugging; 5 CA scale-up/down and blockers, overprovis |
+| 5.25 Troubleshooting Kubernetes from the node: crictl, nsent (`map/05-25.md`) | 28 | 39 | MUST-READ-FULL. This is the chapter that matches the R1 "practical Linux console and troubleshooting" task most closely, and the R2 troubleshooting round. Read sections 1 |
+| 20.23 Kubernetes failure drills for GPU platforms (`map/20-23.md`) | 27 | 26 | READ-SECTIONS. Read sections 1, 2, 3, the "How to answer out loud" block, Drills 1, 3, 4, 6, 8 and the drill questions in full; skim Drills 2, 5, 9, 10, 11 and 12 (read e |
 | 20.24 Terraform for resilient GPU clusters (`map/20-24.md`) | 26 | 34 | READ-SECTIONS. Read sections 1 (module inputs and prevent_destroy only), 2, 4, 5 (the strategy and capacity table), 8 (the test layers), 9, 10, the "How to answer out lou |
+| 6.1 What a supercomputer is: TOP500, Linpack, HPC versus AI  (`map/06-01.md`) | 18 | 30 | READ-SECTIONS (4, 5 HA/HTC/HPC subsection, 6 invariants and fleet-CLI subsection, 7 stack) plus SKIM-FOR-RECALL for 1-3 and 8; SKIP the history and facility material. Rea |
+| 6.7 Slurm architecture and installation (`map/06-07.md`) | 38 | 43 | READ-SECTIONS (1 workload manager ideas, 2 daemons, 3 life of a job, 5 state and HA, 6 munge, 8 upgrade order, 9 account tree intro, 11 install order and verification, 12 |
+| 6.10 Slurm GPU scheduling: GRES, NVML autodetect, MIG and de (`map/06-10.md`) | 13 | 23 | READ-SECTIONS (1 GRES and AutoDetect, 2 request options and what the job sees, 4 isolation, 5 MIG-and-choosing table, 6 GPU accounting, 7 operational drain rules and live |
+
+Practice: K8s: DNS from inside a pod, a Service with no endpoints, a Pending pod (5.25 playbooks). Slurm: read-only today, write the sbatch/srun/squeue/scancel cheat sheet.
+
+
+## Day 11 - Sat 05 Dec - MUST reading 5.1 h
+
+| Chapter | MUST min | Also if time (SHOULD min) | Sections to read (from map) |
+|---|---|---|---|
+| 6.11 Submitting and launching jobs: sbatch, srun, salloc, ar (`map/06-11.md`) | 37 | 22 | READ-SECTIONS (1 allocations, batch and steps; 2 batch script anatomy and env vars and rendezvous; 3 srun with overlap and kill-on-bad-exit; 5 arrays with throttle; 6 dep |
+| 6.12 Multi-node training on Slurm: PMIx, torchrun, NCCL envi (`map/06-12.md`) | 22 | 29 | READ-SECTIONS (1 layers, 2 two launch styles, 3 glue, 4 rendezvous gotchas, 5 NCCL minimum variables and baseline, 7 DeepSpeed 127.0.0.1 trap and checkpointing, 8 failure |
 | 20.12 Estimation toolkit for inference capacity (`map/20-12.md`) | 61 | 7 | READ-SECTIONS (intro; 1 estimation chain; 3 KV per request; 4 concurrency per GPU; 5 prefill vs decode only the practical formulas; 6 batching table; 8 GPUs for QPS with  |
 | 20.13 Design: a multi-tenant LLM inference API (`map/20-13.md`) | 69 | 15 | MUST-READ-FULL. This is the core R3 chapter, and the reader needs the framework (numbers first, then contract, then planes, then failure) more than any single fact. The P |
 | 20.14 Design: dedicated endpoints and safe model rollout (`map/20-14.md`) | 50 | 12 | READ-SECTIONS (0, 1, 2, 3, 5, 6, 7, 8, 9, "How to answer out loud", Scenarios A and B). These are the rollout and probe reasoning an SRE will be pushed on. Sections 4, 10 |
 | 20.15 Design: an observability pipeline for very high volume (`map/20-15.md`) | 68 | 20 | READ-SECTIONS (0, 1, 2, 3, 4, 5, 6, 7, 9, 10 intro and table, 12, 13, 14, "How to answer out loud", Question 1 to Question 5, Scenarios 1 and 3). Cardinality, metrics ver |
-| 20.16 Design: GPU fleet health and capacity (`map/20-16.md`) | 51 | 21 | READ-SECTIONS (1, 3, 6, 7, 8, 9, 10, "How to answer out loud", Scenarios A and C). These carry the reasoning interviewers push on: why automation needs limits, why spares |
 
-Practice: First system-design drill: pick one prompt in 20.17, 35 min timed, speak aloud, then compare with the chapter.
+Practice: Slurm: write one sbatch script (GPU request, array, dependency) and explain each line. First system-design drill: pick one prompt in 20.17, 35 min timed, speak aloud.
 
 
-## Day 11 - Sat 05 Dec - MUST reading 4.5 h
+## Day 12 - Sun 06 Dec - MUST reading 5.4 h
 
 | Chapter | MUST min | Also if time (SHOULD min) | Sections to read (from map) |
 |---|---|---|---|
+| 20.16 Design: GPU fleet health and capacity (`map/20-16.md`) | 51 | 21 | READ-SECTIONS (1, 3, 6, 7, 8, 9, 10, "How to answer out loud", Scenarios A and C). These carry the reasoning interviewers push on: why automation needs limits, why spares |
 | 20.17 System design drill sheet: twelve prompts (`map/20-17.md`) | 28 | 35 | READ-SECTIONS (0 "How to use the twelve prompts", 2 model inference serving, 4 detecting a failing GPU, 5 SRE variant, "The first five minutes script", "The one-page deci |
 | 20.18 How LLM serving fails (`map/20-18.md`) | 67 | 8 | MUST-READ-FULL. This is the incident-round chapter and the reader has no incident experience, so the method (name the full place, protect users, then root cause) matters  |
 | 20.19 SLIs, SLOs and alerts for token APIs (`map/20-19.md`) | 42 | 28 | READ-SECTIONS. Read sections 1, 2, 3, 5, 6, 7, 11, the "How to answer out loud" block and Scenarios 1, 2 and 4 in full; read the availability burn YAML and the calculator |
@@ -168,10 +188,10 @@ Practice: First system-design drill: pick one prompt in 20.17, 35 min timed, spe
 | 20.22 Operating vLLM, Triton, Ray and TensorRT-LLM (`map/20-22.md`) | 26 | 29 | READ-SECTIONS. Read sections 1, 3, 7, 8, 10, the "How to answer out loud" block, Scenario B and the drills in full; read sections 2, 4, 5, 6, 9 and 11 once each and Scena |
 | 20.25 PromQL, Grafana and tracing: the traps interviewers te (`map/20-25.md`) | 29 | 27 | READ-SECTIONS. The query traps (counters, rate, histograms, absent, for) are the likely screen-share question. The YAML, Alertmanager routing and the verification log are |
 
-Practice: Second and third design drills; do ch26 incident drill #1 (disk-full-node).
+Practice: Second and third design drills; incident drill #1 (disk-full-node, ch26 script). Coding: 4 problems.
 
 
-## Day 12 - Sun 06 Dec - MUST reading 2.2 h
+## Day 13 - Mon 07 Dec - MUST reading 2.2 h
 
 | Chapter | MUST min | Also if time (SHOULD min) | Sections to read (from map) |
 |---|---|---|---|
@@ -179,18 +199,17 @@ Practice: Second and third design drills; do ch26 incident drill #1 (disk-full-n
 | 20.27 Post-mortems, on-call and incident leadership (`map/20-27.md`) | 30 | 24 | READ-SECTIONS. Read core ideas 1, 2, 4 and 5 and the eight "How to answer out loud" prompts in full, because they are what R4 asks. Skim 3, 8 and 9 for numbers only, and  |
 | 20.28 The project deep dive and the final round (`map/20-28.md`) | 42 | 10 | MUST-READ-FULL. Nebius officially confirms only a one-hour final meeting with a team leader; the 90-minute project deep dive is one unverified secondary source. Section 3 |
 
-Practice: Incident drills #2 and #3 (dns-intermittent-failures, bad-config-push). Fill the project dossier (20.28).
+Practice: Incident drills #2 and #3 (dns-intermittent-failures, bad-config-push). Fill the project dossier (20.28). Then one full mock of each round type (see below).
 
 
-## Day 13 - Mon 7 Dec: rehearse, no new chapters
-- Full mock of each round type, spoken aloud with a timer: (1) 45-min Linux console triage using 20.3 + 20.26 drill, (2) 30-min coding (2 problems), (3) 45-min system design from a fresh prompt in 20.17, (4) 20-min project walk-through (20.28).
-- Re-read only your own notes and the one-page cheat sheet. Re-do the two weakest chapters' MUST sections.
+## Day 13 mocks (after the reading above)
+Spoken aloud with a timer: (1) 45-min Linux console triage using 20.3 + the 20.26 drill, (2) 30-min coding (2 problems), (3) 45-min system design from a fresh 20.17 prompt, (4) 20-min project walk-through (20.28).
 
-## Day 14 - Tue 8 Dec: light day
-- 1 h flashcards, one short incident drill, check setup (Zoom, camera, quiet room, no AI tools allowed). Sleep early. No new material.
+## Day 14 - Tue 8 Dec: light day, no new material
+1 h flashcards, one short incident drill, re-read your own notes and the one-page cheat sheet, check setup (Zoom, camera, quiet room; no AI tools allowed). Sleep early.
 
 ## If you fall behind
-Drop in this order: the SHOULD columns (already excluded), then 5.23, 3.9, 3.8, 2.20, 20.22, 20.25. Never drop: 20.3, 20.6, 20.7, 20.13, 20.18, 20.26, 20.28 and the Linux/network terminal practice.
+Drop in this order: 5.23, 3.9, 3.8, 2.20, 4.10, 6.12, 20.22, 20.25. Never drop: 20.3, 20.6, 20.7, 20.13, 20.18, 20.26, 20.28 and the Linux/network terminal practice.
 
 ## Not in the core plan (still mapped, read only if ahead)
-1.7 packages, 1.10 devices, 1.13 LVM, 1.14 boot, 1.20-1.22, 1.24-1.30; 2.9 DHCP, 2.11-2.12, 2.21, 2.23-2.24, 2.31-2.32; 3.7 FastAPI; 5.2, 5.4, 5.13-5.14, 5.17, 5.19-5.22, 5.24; 20.29-20.38; and the now-mapped extras: 17.1, 17.2, 17.3, 17.6, 17.7 (observability, SLOs, failure modes; best first pick if ahead), 4.1, 4.2, 4.18, 4.19 (Git, CI/CD, Terraform basics and state), 10.21 (GPU health, Xid), 11.2 (GPU device plugin).
+Best first picks: 17.6, 17.7 (SLOs, failure modes), 4.18, 4.19 (Terraform basics, state), 5.12 (ingress), 6.2 (cluster anatomy), 6.8 and 6.9 (Slurm config, accounting), 20.36 (Soperator). Also: 1.7, 1.10, 1.13, 1.14, 1.20-1.22, 1.24-1.30; 2.9, 2.11-2.12, 2.21, 2.23-2.24, 2.31-2.32; 3.7; 5.2, 5.4, 5.13-5.14, 5.17, 5.19-5.22, 5.24; 17.1-17.3; 4.1, 4.2; 10.21; 11.2. Vol 20 ch30-38 (Nebius architecture) are not mapped yet.
