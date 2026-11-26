@@ -69,6 +69,10 @@ A worked way to do this is to write the timeline on paper before you touch any s
 
 ## 2. Admission and scheduling (control plane)
 
+![A step-by-step pipeline from kubectl apply through API server admission and etcd storage to the scheduler filter, score, and binding stages.](./img/p4-0508-admission-scheduler-pipeline.svg)
+
+*Figure 5.0.0. The control-plane pipeline authenticates and mutates the pod, persists it with an empty nodeName, and filters and scores candidate nodes before posting the binding.*
+
 A pod that stays `Pending` with no node has not reached a kubelet yet. If you see that, start with the control plane.
 
 Think of the API server as the front desk of a building. Everything that wants to enter has to pass the desk. The desk checks identity, applies a few standard additions to each request and writes the request into the record book, which is etcd. Nothing happens to the pod on a node until that record exists, and nothing reaches a node that the desk has not recorded. So when a pod is missing from a node, check the record first, then the front desk, and only then look at the node.

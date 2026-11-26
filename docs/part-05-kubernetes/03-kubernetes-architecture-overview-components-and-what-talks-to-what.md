@@ -151,6 +151,10 @@ Remember that the scheduler only decides and writes the binding. The kubelet doe
 
 ### kube-controller-manager
 
+![A controller uses a Reflector, DeltaFIFO, local Indexer cache, and rate-limiting WorkQueue to reconcile state and update the API server.](./img/p4-0503-controller-loop.svg)
+
+*Figure 5.0.0. Inside each controller: a Reflector watches kube-apiserver, updates a local in-memory cache, and pushes object keys to a WorkQueue for level-triggered reconciliation.*
+
 kube-controller-manager is one binary that runs many **controllers**. Each controller is a control loop for one kind of object. A control loop reads the current state, compares it with the desired state, and makes a small change. Examples include node lifecycle, which marks nodes NotReady and evicts pods, ReplicaSet, Deployment, StatefulSet, DaemonSet, Job, CronJob, EndpointSlice, Namespace, and ServiceAccount. It also covers PV/PVC binding and attach/detach, HPA, the garbage collector, which follows ownerReferences, TTL, and certificate signing, among others.
 
 Controllers use **informers**, which list and watch resources and keep a local cache and work queues. A work queue holds the objects that need attention, so a controller handles each one in turn. Leader election makes sure only one instance is active at a time among the replicas. Section 5.6 covers the details.
@@ -180,6 +184,10 @@ In the example output, the `scheduler`, the `controller-manager`, and `etcd-0` a
 Your output may differ as Kubernetes changes over time. That is normal, so do not worry if your lines do not match this output exactly. Use the three rows as a first health check before you go deeper.
 
 ## 3. Node components
+
+![Worker node architecture showing the kubelet communicating with containerd over CRI, CSI storage, CNI networking, and GPU device plugins.](./img/p4-0503-node-internals.svg)
+
+*Figure 5.0.0. A worker node combines the host kubelet systemd service with pluggable CRI, CNI, CSI, and device plugin interfaces that manage pods and hardware.*
 
 Suppose a node flips to `NotReady` in the middle of the night. The node is the place where pods actually run, so the components on it are the first suspects. Every worker node runs a small set of components next to the containers. Each one has a clear job, and together they keep the node working as part of the cluster.
 
@@ -396,6 +404,10 @@ Kube-proxy programs each host so that workloads get a virtual IP (VIP). That vir
 Many other APIs take the plug-in route. Ingress and NetworkPolicy are examples. Creating an Ingress object by itself does nothing. The API exists, but the work is not core behavior, so you must choose a technology that implements it. Many teams run ingress-nginx in the cluster for this. It reads Ingress objects and writes NGINX configuration for instances that point at Pods. Project Contour implements the same Ingress API, but it programs Envoy, the proxy under Contour. The plug-in model gives teams a range of choices, and it also means an Ingress that "does nothing" usually has no controller installed.
 
 ### Interfaces: how plug-ins fit in
+
+![The kubelet uses standard gRPC and binary interfaces to interact with pluggable CRI runtimes, CNI network drivers, and CSI storage systems.](./img/p4-0503-interfaces-grpc.svg)
+
+*Figure 5.0.0. Kubernetes interfaces (CRI, CNI, CSI) separate the core kubelet logic from underlying container runtimes, network fabrics, and storage vendors.*
 
 An interface is a contract that says how something can be used. In software, a class or struct can implement an interface. In Kubernetes, you install plug-ins that satisfy these contracts. Networking is one example.
 

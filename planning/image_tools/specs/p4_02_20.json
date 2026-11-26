@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0220-sse-buffering",
+  "title": "Server-Sent Events streaming with proxy buffering enabled versus disabled in nginx",
+  "anchor": "### nginx",
+  "spec": "Top-to-bottom comparative pipeline illustrating how nginx proxy buffering impacts real-time SSE token delivery. Top flow (proxy_buffering on, default): vLLM backend produces incremental token chunks (data: token text at 20 tokens/sec). Nginx receives small chunks but retains them in an internal memory buffer (proxy_buffer_size 4k). A buffer fill meter shows data accumulating (0.5 KB, 1.5 KB, 3.2 KB, 4.0 KB). A timeline next to the client socket indicates a 6-second blank freeze where perceived TTFT is severely elevated. Once the 4 KB threshold fills, nginx flushes the entire block at once, delivering a burst of 100 tokens all at once and ruining streaming ergonomics. Bottom flow (proxy_buffering off; proxy_cache off; grpc_buffer_size 4k;): vLLM emits token chunk T1. Nginx bypasses memory buffering and immediately writes chunk T1 to the client TCP socket. Client perceives immediate TTFT matching backend generation time (180 ms). Subsequent tokens T2, T3, T4 arrive continuously at steady inter-token intervals (~50 ms). Callout box highlights necessary directives: proxy_buffering off, proxy_cache off, proxy_http_version 1.1, proxy_set_header Connection empty string, and proxy_read_timeout 600s.",
+  "alt": "Comparison of Server-Sent Events token streaming under nginx with proxy buffering enabled causing bursty delayed delivery versus proxy buffering disabled providing smooth real-time token delivery.",
+  "cap": "Disabling proxy buffering in nginx ensures each generated LLM token chunk flushes immediately to the client socket instead of stalling until an internal 4 KB buffer fills.",
+  "part": "part-02-networking",
+  "ch": "20"
+ },
+ {
+  "name": "p4-0220-prefix-cache-spill",
+  "title": "Prefix-cache-aware routing with bounded-load spillover for LLM inference",
+  "anchor": "## 9. Load balancing for AI inference",
+  "spec": "Flow diagram showing an L7 LLM router distributing prompt requests across three worker GPU replicas using prefix affinity and bounded-load spillover. On the left, incoming requests arrive: Request A and Request B share an identical 2,000-token system prompt prefix. At the center router, an affinity calculator hashes the prefix (hash(prefix) -> Worker 1). The router checks Worker 1 metrics: Queue depth = 2, KV-cache occupancy = 45%, which is well below the bounded load threshold (capped at 1.25x average cluster load, here 75%). Arrow shows Request A sent to Worker 1, which achieves an Automatic Prefix Caching HIT in GPU VRAM, bypassing the compute-heavy prefill phase and minimizing TTFT. On the right, a traffic surge scenario: Request C arrives with the same prefix, but Worker 1 is now overloaded with Queue depth = 14 and KV-cache occupancy = 88% (exceeding the 75% bounded load ceiling). The router's bounded-load rule intervenes: rather than exacerbating Worker 1's queue, the router spills Request C over to Worker 2 (Queue depth = 1, KV-cache = 30%). Worker 2 suffers a cache miss and computes the prefill, but starts execution immediately without queue starvation.",
+  "alt": "Flow diagram of prefix-cache-aware routing directing matching prompt prefixes to the replica holding cached KV blocks unless its load exceeds the bounded threshold, triggering a spillover.",
+  "cap": "Prefix-cache-aware routing hashes prompt prefixes to warm GPU replicas to eliminate prefill latency, using bounded-load spillover to prevent hot-spot overload.",
+  "part": "part-02-networking",
+  "ch": "20"
+ }
+]

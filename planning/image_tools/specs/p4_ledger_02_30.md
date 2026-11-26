@@ -1,0 +1,46 @@
+# docs/part-02-networking/30-network-troubleshooting-method-and-case-studies.md
+- ## Why this matters for AI infrastructure | 360 | NO FIGURE NEEDED narrative introduction to troubleshooting philosophy
+- ## Prerequisites and outcomes | 80 | NO FIGURE NEEDED prerequisite list and chapter framing
+- ## 1. The purpose and the components | 0 | NO FIGURE NEEDED section container header
+- ### Purpose first | 300 | COVERED(p3-0230-green-not-working)
+- ### Components | 90 | NO FIGURE NEEDED brief conceptual overview of interaction complexity
+- ## 2. Models | 130 | COVERED(p3-0230-three-models)
+- ### How models (theory) | 180 | COVERED(p3-0230-three-models)
+- ### What models (the state of your system) | 220 | COVERED(p3-0230-three-models)
+- ### Accurate models | 110 | COVERED(p3-0230-three-models)
+- ### Shifting between models and the model tree | 190 | COVERED(p3-0230-model-tree)
+- ## 3. Half-split, manipulation and simplification | 110 | COVERED(n30-fig1-halfsplit.jpg)
+- ### Half split and move | 320 | COVERED(p3-0230-halfsplit-worked, m2-30-1)
+- ### Manipulation: from correlation to causation | 230 | COVERED(p3-0230-manip-simplify)
+- ### Simplify before testing | 180 | COVERED(p3-0230-manip-simplify)
+- ### Fixing the problem, technical debt and learning | 200 | COVERED(p3-0230-two-fixes)
+- ## 4. A practical workflow | 450 | COVERED(p3-0230-which-direction, n30-workflow)
+- ## 5. The diagnostic kit | 480 | COVERED(n30-kit)
+- ## 6. Decision trees | 60 | NO FIGURE NEEDED introductory guide to decision trees
+- ### Connectivity: "A cannot reach B" | 160 | COVERED(m2-30-2)
+- ### Performance: "slow", "stalls", "low throughput" | 190 | COVERED(p2-0230-slow-funnel)
+- ### Intermittent faults | 210 | COVERED(p3-0230-intermittent)
+- ### AI-fabric symptoms | 190 | COVERED(p3-0230-ai-symptoms)
+- ## 7. Case studies | 120 | NO FIGURE NEEDED case study format framing
+- ### Case 1: SNAT port exhaustion | 230 | COVERED(p3-0230-case-snat-conntrack)
+- ### Case 2: Path MTU black hole | 220 | COVERED(p3-0230-case-mtu-hole)
+- ### Case 3: Conntrack table full | 160 | COVERED(p3-0230-case-snat-conntrack)
+- ### Case 4: ARP flux and reverse-path filtering on a multi-homed host | 190 | COVERED(p3-0230-case-host-quirks)
+- ### Case 5: UDP receive buffer overflow (StatsD/syslog) | 170 | COVERED(p3-0230-case-host-quirks)
+- ### Case 6: BGP route dampening after a flapping optic | 190 | COVERED(p3-0230-case-timers)
+- ### Case 7: TCP checksum offload failure | 170 | COVERED(p3-0230-case-host-quirks)
+- ### Case 8: PFC storm collapses an NCCL job | 190 | COVERED(n30-pfcstorm)
+- ### Case 9: veth CPU bottleneck in a pod | 160 | COVERED(p3-0230-case-host-quirks)
+- ### Case 10: TCP zero window stalls | 160 | COVERED(p3-0230-case-timers)
+- ### Case 11: Asymmetric ECMP and reordering from a host speaking BGP | 180 | COVERED(p3-0230-case-reorder-mcast)
+- ### Case 12: Multicast blackhole in an overlay | 130 | COVERED(p3-0230-case-reorder-mcast)
+- ### Case 13: DNS 5-second delays in Kubernetes | 180 | COVERED(p2-0230-dns-race)
+- ### Case 14: Silent corruption and a "slow rail" in a GPU cluster | 230 | COVERED(p2-0230-slow-rail)
+- ## 8. Hands-on lab: fault-injection exercises | 350 | COVERED(p3-0230-lab-faults)
+- ## 9. Common mistakes | 270 | COVERED(p3-0230-mistakes)
+- ## 10. Interview angles | 160 | NO FIGURE NEEDED interview prompt list
+- ## Exercises | 330 | NO FIGURE NEEDED hands-on review questions
+- ## Checkpoint questions (20) | 1200 | NO FIGURE NEEDED self-test Q and A bank
+- ## Sources and review notes | 200 | NO FIGURE NEEDED bibliography and citations
+
+Specs kept 0, dropped 0: []

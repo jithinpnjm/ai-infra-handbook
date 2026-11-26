@@ -1,0 +1,67 @@
+# docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md
+- ## Why this matters for AI infrastructure | 250 | NO FIGURE NEEDED introductory framing and motivation
+- ## Prerequisites and outcomes | 130 | NO FIGURE NEEDED prerequisites checklist
+- ## 1. The pod | 450 | COVERED(m5-07-1) pod conceptual anatomy and sandbox
+- ### Labels and annotations: syntax rules and selector queries | 270 | NO FIGURE NEEDED syntax rules and table of label keys
+- ### Why labels exist | 110 | NO FIGURE NEEDED short conceptual overview
+- ### Applying and changing labels | 300 | NO FIGURE NEEDED command walkthrough
+- ### Selecting objects with labels | 350 | COVERED(p3-0507-label-venn) selector Venn diagram and operators
+- ### Labels in the Kubernetes architecture | 170 | NO FIGURE NEEDED architectural explanation
+- ### Annotations | 270 | NO FIGURE NEEDED distinction between labels and annotations
+- ### Cleaning up the label examples | 30 | NO FIGURE NEEDED cleanup commands
+- ### Why containers share a Pod | 180 | NO FIGURE NEEDED container co-location rationale
+- ### Thinking with Pods | 140 | COVERED(p3-0507-same-pod-test) decision tree for grouping containers
+- ### Declarative configuration and Pod manifests | 160 | NO FIGURE NEEDED conceptual overview of desired state
+- ### Creating a Pod | 180 | NO FIGURE NEEDED basic kubectl run and YAML walkthrough
+- ## 2. Pod spec anatomy | 20 | NO FIGURE NEEDED section introduction
+- ### Containers and init containers | 380 | COVERED(p3-0507-sidecar-job-hang) init and native sidecar lifecycle
+- ### Resources and QoS | 430 | COVERED(p3-0507-shm-oom, p3-0507-qos-classes) shm OOM and QoS derivation
+- ### Resource requests and limits, with a worked example | 450 | COVERED(p3-0507-cpu-vs-memory, p2-0507-units-trap) CPU vs memory squeeze and units trap
+- ### Volumes | 140 | COVERED(p3-0507-subpath-symlink) subPath symlink update trap
+- ### Persisting data and volume patterns | 290 | NO FIGURE NEEDED volume use-case patterns and NFS snippet
+- ### Environment and configuration | 140 | NO FIGURE NEEDED env var and Downward API guidelines
+- ### Security context | 180 | NO FIGURE NEEDED field definitions and Pod Security Admission profiles
+- ### Reading a SecurityContext in a running Pod | 320 | NO FIGURE NEEDED verified bash session with id and touch output
+- ### Lifecycle, termination and restart policy | 310 | COVERED(p3-0507-termination-race) termination race and preStop sleep
+- ### Scheduling-related fields | 120 | NO FIGURE NEEDED summary list of scheduling primitives
+- ### Putting it all together | 210 | NO FIGURE NEEDED consolidated manifest example
+- ## 3. Workload controllers: choosing | 40 | COVERED(p2-0507-controller-choice) controller decision tree
+- ### Why a bare Pod is not enough | 180 | COVERED(p2-0507-bare-pod) node failure comparison with bare pod
+- ### ReplicaSets: one object for a group of identical Pods | 160 | NO FIGURE NEEDED ReplicaSet conceptual description
+- ### Deployment patterns for inference | 360 | COVERED(p3-0507-pdb-drain, p3-0507-gpu-surge-stall, p3-0507-probe-gates) PDB drain, GPU surge stall, and probe gates
+- ### Controlling Deployment rollouts: `change-cause`, `pause`, `resume`, `history`, and `undo --to-revision` | 410 | COVERED(p3-0507-undo-vs-git, k07-rollout-shift) undo vs git and rollout replica shifting
+- ### Rolling updates and version compatibility | 220 | COVERED(p3-0507-rollout-mixed-versions) rolling update version skew
+- ### StatefulSet example (vector database) | 230 | COVERED(k07-statefulset-identity) StatefulSet stable name and PVC identity
+- ### DaemonSet example (GPU telemetry agent) | 90 | NO FIGURE NEEDED code example of DCGM exporter DaemonSet
+- ### DaemonSets: one Pod on every node | 240 | NO FIGURE NEEDED conceptual DaemonSet overview
+- ### DaemonSet scheduling and reconciliation | 140 | COVERED(k07-daemonset-reconcile) DaemonSet reconciliation on node join
+- ### Creating a DaemonSet | 300 | NO FIGURE NEEDED fluentd manifest and describe output
+- ### Limiting a DaemonSet to specific nodes | 230 | COVERED(p3-0507-daemonset-label-switch) node selector filtering DaemonSet
+- ### Updating a DaemonSet | 180 | NO FIGURE NEEDED updateStrategy parameters explanation
+- ### Deleting a DaemonSet | 50 | NO FIGURE NEEDED delete command and cascade warning
+- ### DaemonSets and autoscaled clusters | 150 | NO FIGURE NEEDED autoscaler integration summary
+- ### Job patterns for batch and distributed work | 220 | COVERED(p3-0507-gang-vs-plain-job) plain Job vs gang scheduling
+- ### Job patterns: completions and parallelism | 100 | COVERED(p2-0507-job-patterns) completions vs parallelism table and patterns
+- ### One-shot jobs | 360 | NO FIGURE NEEDED kuard one-shot command and manifest
+- ### One-shot failures: restart policy and backoff | 240 | NEEDS FIGURE restartPolicy OnFailure vs Never creates dead pod accumulation
+- ### Parallel jobs: completions and parallelism together | 160 | NO FIGURE NEEDED parallel job configuration walkthrough
+- ### Work queues: parallel jobs that drain a queue | 380 | NEEDS FIGURE work queue flow with queue server, Service and parallel workers
+- ### CronJobs: run a Job on a schedule | 90 | NO FIGURE NEEDED CronJob manifest and schedule explanation
+- ### Packaging and templating manifests | 220 | NO FIGURE NEEDED Helm and templating overview
+- ### Pre-stop hooks and graceful shutdown | 400 | NO FIGURE NEEDED Go code example and preStop explanation
+- ### Resource limits and runtimes such as the JVM | 250 | NO FIGURE NEEDED JVM memory limit detection explanation
+- ## 4. Operating pods | 80 | COVERED(p3-0507-pod-wont-start-ladder) pod debugging ladder
+- ### Reading state | 190 | NO FIGURE NEEDED list of diagnostic kubectl commands
+- ### Listing and describing Pods | 220 | NO FIGURE NEEDED get and describe anatomy
+- ### Logs, exec and copying files | 200 | NO FIGURE NEEDED log streaming and exec commands
+- ### Deleting a Pod | 90 | NO FIGURE NEEDED termination warning and commands
+- ### Phases and states | 240 | COVERED(p2-0507-phase-reasons) pod phases vs container states
+- ## 5. Sizing and placement guidelines for GPU workloads | 560 | NEEDS FIGURE HGX node resource allocation and memory cgroup budgeting layout
+- ## 6. Lab | 420 | NO FIGURE NEEDED lab instructions and exercises
+- ## 7. Common mistakes | 280 | NO FIGURE NEEDED anti-patterns list
+- ## 8. Interview angles | 130 | NO FIGURE NEEDED interview questions list
+- ## Exercises | 300 | NO FIGURE NEEDED end of chapter exercises
+- ## Checkpoint questions (20) | 1800 | NO FIGURE NEEDED self-test Q and A
+- ## Sources and review notes | 350 | NO FIGURE NEEDED sources and audit trail
+
+Specs kept 3, dropped 0: []

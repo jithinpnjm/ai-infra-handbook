@@ -1364,6 +1364,10 @@ The example sets no labels on the Job. That matters, because other controllers, 
 
 ### One-shot failures: restart policy and backoff
 
+![Comparison between OnFailure restarting containers in-place and Never creating new pods that accumulate in Error state.](./img/p4-0507-job-restart-policy.svg)
+
+*Figure 5.0.0. Under OnFailure the kubelet restarts the container in the same pod with backoff, while Never causes the Job controller to spawn replacement pods leaving failed pods in the cluster.*
+
 A Job also has to handle failure. To test that, change the arguments so the program exits with a nonzero code after it generates three keys. The file uses `--keygen-exit-code=1` and `--keygen-num-to-gen=3`.
 
 ```yaml
@@ -1430,6 +1434,10 @@ Start it with `kubectl apply -f job-parallel.yaml`. Then watch the Pods with `ku
 Study the finished Pods and their logs if you like. Each one prints the fingerprints of the keys it made. When you are done, delete the finished Job with `kubectl delete job parallel`.
 
 ### Work queues: parallel jobs that drain a queue
+
+![A curl producer pushes 100 items into a queue server behind a Kubernetes Service while five consumer Job pods pull items and exit upon drain.](./img/p4-0507-work-queue-flow.svg)
+
+*Figure 5.0.0. The queue pod decouples producer from consumers, allowing parallel Job worker pods to process items independently and wind down once the queue is empty.*
 
 A common use of Jobs is to process work from a queue. A task creates a set of work items and publishes them to a queue. Then a worker Job runs until the queue is empty.
 
@@ -1759,6 +1767,10 @@ Use the table below to match a symptom to its likely cause and fix.
 For most of these symptoms, start with `describe`, because its events usually point at the cause.
 
 ## 5. Sizing and placement guidelines for GPU workloads
+
+![A diagram of an 8-GPU node showing kube-reserved headroom, a Guaranteed 8-GPU pod requesting full cores and RAM, and tmpfs shared memory budgeted inside the memory limit.](./img/p4-0507-gpu-node-sizing.svg)
+
+*Figure 5.0.0. Sizing a multi-GPU training pod as Guaranteed with requests matching limits prevents node fragmentation while budgeting tmpfs shared memory inside the container limit avoids unexpected OOM kills.*
 
 A GPU node has a fixed number of GPUs and CPU cores. A pod that claims the wrong share of them leaves the rest of the node idle or fragmented. Think of the node as a fixed-size parking garage. Oversized cars waste spaces, and undersized cars block the lanes. The guidelines below cover the sizing choices that matter most.
 

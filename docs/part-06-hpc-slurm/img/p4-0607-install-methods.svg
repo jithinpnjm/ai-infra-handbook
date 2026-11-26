@@ -1,0 +1,241 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1470" width="1600" height="1470">
+  <title>Four Slurm installation methods and silent build-time dependency drops</title>
+  <desc>Visual comparison of Slurm installation methods across distro packages, source builds, cluster managers, and containers, plus the silent compile-time dependency drop pitfall.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1470" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Four Slurm installation methods and</text>
+  <text x="800" y="115" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">silent build-time dependency drops</text>
+
+  
+
+  
+  <g id="col-distro">
+    <rect x="40" y="145" width="365" height="605" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="40" y="145" width="365" height="110" rx="14" fill="#e8f1ea"/>
+    
+    <g transform="translate(55, 172)" fill="none" stroke="#207448" stroke-width="3">
+      <path d="M 28 6 L 50 17 L 28 28 L 6 17 Z"/>
+      <path d="M 6 17 L 6 39 L 28 50 L 28 28"/>
+      <path d="M 50 17 L 50 39 L 28 50"/>
+    </g>
+    <text x="120" y="193" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Distro Packages</text>
+    <text x="120" y="227" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">(apt / dnf EPEL)</text>
+
+    
+    <rect x="55" y="270" width="335" height="260" rx="10" fill="#f5f8f5" stroke="#d0ded3" stroke-width="1.5"/>
+    <text x="70" y="302" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70">Controller:</tspan>
+      <tspan x="70" dy="28">slurm-slurmctld,</tspan>
+      <tspan x="70" dy="28">slurm-plugins</tspan>
+    </text>
+    <text x="70" y="398" font-family="sans-serif" font-size="24" fill="#303a36">Compute: slurm-slurmd</text>
+    <text x="70" y="438" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70">DB: slurm-slurmdbd,</tspan>
+      <tspan x="70" dy="28">slurm-sql, mariadb</tspan>
+    </text>
+    <text x="70" y="506" font-family="sans-serif" font-size="24" fill="#303a36">Login: slurm-sackd</text>
+
+    
+    <rect x="55" y="545" width="335" height="80" rx="8" fill="#e8f1ea"/>
+    <text x="70" y="593" font-family="sans-serif" font-size="24" fill="#207448">fast, zero compile</text>
+
+    
+    <rect x="55" y="635" width="335" height="100" rx="8" fill="#fdedec"/>
+    <text x="70" y="673" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70">outdated version,</tspan>
+      <tspan x="70" dy="30">inflexible build flags</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-source">
+    <rect x="425" y="145" width="365" height="605" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="425" y="145" width="365" height="110" rx="14" fill="#e8f1ea"/>
+    
+    <g transform="translate(440, 172)" fill="none" stroke="#207448" stroke-width="3">
+      <circle cx="28" cy="28" r="14"/>
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12"/>
+    </g>
+    <text x="505" y="182" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Source Builds</text>
+    <text x="505" y="212" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">(rpmbuild / debuild /</text>
+    <text x="505" y="242" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">tarball)</text>
+
+    
+    <rect x="440" y="270" width="335" height="260" rx="10" fill="#f5f8f5" stroke="#d0ded3" stroke-width="1.5"/>
+    <rect x="455" y="295" width="305" height="52" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="470" y="330" font-family="monospace" font-size="24" fill="#303a36">--prefix=/opt/slurm</text>
+
+    <text x="455" y="395" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="455">custom RPM/DEB</tspan>
+      <tspan x="455" dy="32">packaging</tspan>
+    </text>
+
+    
+    <rect x="440" y="545" width="335" height="80" rx="8" fill="#e8f1ea"/>
+    <text x="455" y="578" font-family="sans-serif" font-size="24" fill="#207448">
+      <tspan x="455">exact version,</tspan>
+      <tspan x="455" dy="30">reproducible image</tspan>
+    </text>
+
+    
+    <rect x="440" y="635" width="335" height="100" rx="8" fill="#fdedec"/>
+    <text x="455" y="693" font-family="sans-serif" font-size="24" fill="#303a36">requires build toolchain</text>
+  </g>
+
+  
+  <g id="col-clustermanagers">
+    <rect x="810" y="145" width="365" height="605" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="810" y="145" width="365" height="110" rx="14" fill="#e8f1ea"/>
+    
+    <g transform="translate(825, 172)" fill="none" stroke="#207448" stroke-width="3">
+      <rect x="8" y="6" width="40" height="16" rx="3"/>
+      <circle cx="16" cy="14" r="2" fill="#207448"/>
+      <rect x="8" y="28" width="40" height="16" rx="3"/>
+      <circle cx="16" cy="36" r="2" fill="#207448"/>
+    </g>
+    <text x="890" y="195" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Cluster Managers</text>
+    <text x="890" y="230" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">(BCM, DGX OS)</text>
+
+    
+    <rect x="825" y="270" width="335" height="260" rx="10" fill="#f5f8f5" stroke="#d0ded3" stroke-width="1.5"/>
+    <text x="850" y="340" font-family="sans-serif" font-size="24" fill="#303a36">turnkey image</text>
+    <text x="850" y="420" font-family="sans-serif" font-size="24" fill="#303a36">automated config</text>
+
+    
+    <rect x="825" y="545" width="335" height="80" rx="8" fill="#e8f1ea"/>
+    <text x="850" y="593" font-family="sans-serif" font-size="24" fill="#207448">supported stack</text>
+
+    
+    <rect x="825" y="635" width="335" height="100" rx="8" fill="#fdedec"/>
+    <text x="850" y="693" font-family="sans-serif" font-size="24" fill="#303a36">black-box defaults</text>
+  </g>
+
+  
+  <g id="col-containerized">
+    <rect x="1195" y="145" width="365" height="605" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="1195" y="145" width="365" height="110" rx="14" fill="#e8f1ea"/>
+    
+    <g transform="translate(1210, 172)" fill="none" stroke="#207448" stroke-width="3">
+      <rect x="6" y="22" width="22" height="22" rx="3"/>
+      <rect x="26" y="6" width="22" height="22" rx="3"/>
+    </g>
+    <text x="1270" y="195" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Containerized</text>
+    <text x="1270" y="230" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">(Slinky, Soperator)</text>
+
+    
+    <rect x="1210" y="270" width="335" height="260" rx="10" fill="#f5f8f5" stroke="#d0ded3" stroke-width="1.5"/>
+    <text x="1235" y="340" font-family="sans-serif" font-size="24" fill="#303a36">K8s Pods/DaemonSets</text>
+    <text x="1235" y="420" font-family="sans-serif" font-size="24" fill="#303a36">GitOps deployment</text>
+
+    
+    <rect x="1210" y="545" width="335" height="80" rx="8" fill="#e8f1ea"/>
+    <text x="1235" y="578" font-family="sans-serif" font-size="24" fill="#207448">
+      <tspan x="1235">cloud-native</tspan>
+      <tspan x="1235" dy="30">lifecycle</tspan>
+    </text>
+
+    
+    <rect x="1210" y="635" width="335" height="100" rx="8" fill="#fdedec"/>
+    <text x="1235" y="693" font-family="sans-serif" font-size="24" fill="#303a36">layering complexity</text>
+  </g>
+
+  
+
+  <g id="callout-pitfall">
+    
+    <rect x="40" y="775" width="1520" height="575" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+
+    
+    <g transform="translate(65, 795)" fill="none" stroke="#db8129" stroke-width="3">
+      <path d="M 28 6 L 50 46 L 6 46 Z"/>
+      <line x1="28" y1="20" x2="28" y2="34"/>
+      <circle cx="28" cy="40" r="2" fill="#db8129"/>
+    </g>
+    <text x="135" y="830" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">Silent Compile-Time Drop Pitfall</text>
+
+    
+    <rect x="70" y="865" width="250" height="460" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(165, 895)" fill="none" stroke="#207448" stroke-width="3">
+      <rect x="6" y="6" width="48" height="20" rx="3"/>
+      <circle cx="16" cy="16" r="2.5" fill="#207448"/>
+      <line x1="30" y1="16" x2="44" y2="16"/>
+      <rect x="6" y="32" width="48" height="20" rx="3"/>
+      <circle cx="16" cy="42" r="2.5" fill="#207448"/>
+      <line x1="30" y1="42" x2="44" y2="42"/>
+    </g>
+    <text x="195" y="990" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">build host</text>
+
+    
+    <rect x="95" y="1055" width="200" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="195" y="1096" font-family="monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">./configure</text>
+
+    
+    <path d="M 320 1087 L 350 1087 L 350 920 L 380 920" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M 320 1087 L 380 1087" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M 320 1087 L 350 1087 L 350 1230 L 380 1230" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="380" y="870" width="340" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="550" y="928" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">checks for nvml.h</text>
+
+    
+    <line x1="720" y1="920" x2="890" y2="920" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+    <rect x="735" y="898" width="140" height="44" rx="8" fill="#db8129"/>
+    <text x="805" y="929" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">IF MISSING</text>
+
+    
+    <rect x="890" y="860" width="640" height="120" rx="10" fill="#fdf2e9" stroke="#db8129" stroke-width="2"/>
+    <text x="915" y="905" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="915">builds without AutoDetect=nvml</tspan>
+      <tspan x="915" dy="32">(GPU autodetection broken at</tspan>
+      <tspan x="915" dy="30">runtime without error)</tspan>
+    </text>
+
+    
+    <rect x="380" y="1035" width="340" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="550" y="1093" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">checks for mysql_config</text>
+
+    
+    <line x1="720" y1="1085" x2="890" y2="1085" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+    <rect x="735" y="1063" width="140" height="44" rx="8" fill="#db8129"/>
+    <text x="805" y="1094" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">IF MISSING</text>
+
+    
+    <rect x="890" y="1035" width="640" height="100" rx="10" fill="#fdf2e9" stroke="#db8129" stroke-width="2"/>
+    <text x="915" y="1093" font-family="sans-serif" font-size="24" fill="#303a36">omits slurmdbd MySQL support</text>
+
+    
+    <rect x="380" y="1180" width="340" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="550" y="1238" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">checks for dbus</text>
+
+    
+    <line x1="720" y1="1230" x2="890" y2="1230" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+    <rect x="735" y="1208" width="140" height="44" rx="8" fill="#db8129"/>
+    <text x="805" y="1239" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">IF MISSING</text>
+
+    
+    <rect x="890" y="1180" width="640" height="100" rx="10" fill="#fdf2e9" stroke="#db8129" stroke-width="2"/>
+    <text x="915" y="1238" font-family="sans-serif" font-size="24" fill="#303a36">omits cgroup v2 plugin support</text>
+  </g>
+
+  
+  <rect x="40" y="1375" width="1520" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="1419" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">installing development headers BEFORE building</text>
+</svg>

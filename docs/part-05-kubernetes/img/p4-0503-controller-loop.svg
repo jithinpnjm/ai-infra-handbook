@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Inside a Controller: Informers, WorkQueues, and Reconciliation</title>
+  <desc>Flow diagram illustrating how a Kubernetes controller reconciles state using Reflector, DeltaFIFO, Indexer Cache, WorkQueue, and Worker Goroutines.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-dark" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#303a36" />
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b382b" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">Inside a Controller: Informers, WorkQueues, and Reconciliation</text>
+
+  
+  <g id="kube-apiserver-group">
+    <rect x="40" y="100" width="310" height="990" rx="20" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    
+    
+    <g transform="translate(165, 130)">
+      <rect x="-30" y="0" width="60" height="18" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="-16" cy="9" r="3" fill="#207448"/>
+      <rect x="-30" y="24" width="60" height="18" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="-16" cy="33" r="3" fill="#207448"/>
+      <rect x="-30" y="48" width="60" height="18" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="-16" cy="57" r="3" fill="#207448"/>
+    </g>
+    <text x="195" y="235" font-family="monospace" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">kube-apiserver</text>
+
+    
+    <rect x="65" y="270" width="260" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="195" y="330" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">List &amp; Watch API</text>
+  </g>
+
+  
+  <g id="controller-manager-group">
+    <rect x="390" y="100" width="1170" height="990" rx="20" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    <text x="430" y="148" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">kube-controller-manager</text>
+
+    
+    <g id="node-reflector" transform="translate(420, 260)">
+      <rect width="220" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      
+      <circle cx="110" cy="42" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="122" y1="54" x2="134" y2="66" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <text x="110" y="98" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">Reflector</text>
+    </g>
+
+    
+    <g id="node-deltafifo" transform="translate(700, 260)">
+      <rect width="220" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      
+      <rect x="85" y="25" width="50" height="10" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <rect x="85" y="40" width="50" height="10" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <rect x="85" y="55" width="50" height="10" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="110" y="98" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">DeltaFIFO</text>
+    </g>
+
+    
+    <g id="node-indexer" transform="translate(420, 480)">
+      <rect width="360" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      
+      <ellipse cx="200" cy="528" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 172 528 v 20 c 0 6 12 10 28 10 s 28 -4 28 -10 v -20" fill="none" stroke="#207448" stroke-width="3"/>
+      <text x="600" y="585" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">Indexer / Store Cache</text>
+      <text x="600" y="620" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="middle">(providing local fast reads)</text>
+    </g>
+
+    
+    <g id="node-handler" transform="translate(970, 250)">
+      <rect width="555" height="140" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      
+      <path d="M 1247 270 l -12 24 h 16 l -10 24 l 24 -28 h -16 z" fill="#207448"/>
+      <text x="1247" y="348" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">ResourceEventHandler</text>
+      <text x="1247" y="378" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(Add/Update/Delete)</text>
+    </g>
+
+    
+    <g id="node-workqueue" transform="translate(1080, 470)">
+      <rect width="340" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      
+      <rect x="1210" y="490" width="16" height="30" rx="3" fill="#207448"/>
+      <rect x="1234" y="490" width="16" height="30" rx="3" fill="#207448"/>
+      <rect x="1258" y="490" width="16" height="30" rx="3" fill="#207448"/>
+      <text x="1250" y="552" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">WorkQueue</text>
+      <text x="1250" y="582" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="middle">rate-limiting</text>
+    </g>
+
+    
+    <g id="node-workers" transform="translate(1030, 680)">
+      <rect width="440" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      
+      <rect x="1225" y="705" width="50" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="1215" y1="718" x2="1225" y2="718" stroke="#207448" stroke-width="3"/>
+      <line x1="1215" y1="734" x2="1225" y2="734" stroke="#207448" stroke-width="3"/>
+      <line x1="1275" y1="718" x2="1285" y2="718" stroke="#207448" stroke-width="3"/>
+      <line x1="1275" y1="734" x2="1285" y2="734" stroke="#207448" stroke-width="3"/>
+      <text x="1250" y="785" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Worker Goroutines</text>
+      
+      
+      <rect x="1070" y="810" width="360" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="1250" y="857" font-family="monospace" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">reconcile()</text>
+    </g>
+  </g>
+
+  
+
+  
+  <path d="M 325 320 L 420 320" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <rect x="335" y="278" width="80" height="34" rx="6" fill="#f5f8f5"/>
+  
+  <g transform="translate(372, 285)">
+    <rect x="-170" y="-36" width="340" height="40" rx="10" fill="#207448"/>
+    <text x="0" y="-8" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1. Stream changes (events)</text>
+  </g>
+
+  
+  <path d="M 640 320 L 700 320" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 750 380 L 750 435 L 600 435 L 600 480" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 920 320 L 970 320" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1250 390 L 1250 470" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <g transform="translate(1250, 430)">
+    <rect x="-140" y="-20" width="280" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="0" y="8" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">&#39;namespace/name&#39;</text>
+  </g>
+
+  
+  <path d="M 1250 600 L 1250 680" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <path d="M 600 640 L 600 847 L 1070 847" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#arrow-green)"/>
+  
+  <g transform="translate(830, 815)">
+    <rect x="-175" y="-28" width="350" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="0" y="-3" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">reads current state</text>
+    <text x="0" y="21" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">and desired state</text>
+  </g>
+
+  
+  
+  <path d="M 1030 865 L 195 865 L 195 370" fill="none" stroke="#db8129" stroke-width="4.5" marker-end="url(#arrow-orange)"/>
+  
+  
+  <g transform="translate(560, 920)">
+    <rect x="-260" y="-35" width="520" height="70" rx="12" fill="#db8129"/>
+    <text x="0" y="-6" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">2. Reconcile Action (POST/PUT/PATCH)</text>
+    <text x="0" y="24" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Drift</text>
+  </g>
+
+  
+  
+  <path d="M 1470 760 L 1520 760 L 1520 535 L 1420 535" fill="none" stroke="#303a36" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-dark)"/>
+  
+  
+  <g transform="translate(1490, 650)">
+    <rect x="-145" y="-45" width="200" height="90" rx="10" fill="#ffffff" stroke="#303a36" stroke-width="2"/>
+    <text x="-45" y="-18" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">409 Conflict</text>
+    <text x="-45" y="10" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">or error</text>
+    <text x="-45" y="36" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="middle">exponential backoff</text>
+  </g>
+
+  
+  <rect x="40" y="1025" width="1520" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1067" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Local cached fast reads decouple controllers from the API server, reconciling state reliably via rate-limiting queues.</text>
+
+</svg>

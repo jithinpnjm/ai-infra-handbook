@@ -1,0 +1,38 @@
+# docs/part-03-python/06-concurrency-threads-processes-and-asyncio.md
+- ## Why this matters for AI infrastructure | 160 | NO FIGURE NEEDED narrative motivation and fleet context
+- ## Prerequisites and outcomes | 170 | NO FIGURE NEEDED syllabus checklist and learning objectives
+- ## 1. Concepts | 230 | COVERED(m3-06-1)
+- ### The Global Interpreter Lock | 200 | COVERED(p3-0306-gil-releases, s06-gil)
+- ### A ten-minute experiment | 340 | COVERED(p3-0306-experiment-three-runs)
+- ### Choosing a model | 250 | COVERED(p3-0306-pool-sizing, s06-choosemodel)
+- ## 2. Threads | 80 | NO FIGURE NEEDED brief section introduction
+- ### Basics | 220 | COVERED(p3-0306-thread-basics)
+- ### Synchronisation primitives | 300 | COVERED(p3-0306-deadlock-fixes, p3-0306-lost-update)
+- ### Producer/consumer with a bounded queue | 170 | COVERED(p3-0306-sentinel-shutdown, s06-queue)
+- ### `concurrent.futures` | 300 | COVERED(p3-0306-map-vs-as-completed, s06-futures)
+- ### Backpressure with executors (avoiding the "10 million futures" OOM) | 180 | COVERED(p2-0306-bounded-map)
+- ### Thread safety of common objects | 160 | COVERED(p3-0306-client-thread-safety)
+- ## 3. Processes | 70 | NO FIGURE NEEDED brief section introduction
+- ### `multiprocessing` and `ProcessPoolExecutor` | 450 | COVERED(p3-0306-container-cpus, p3-0306-process-boundary, p3-0306-start-methods)
+- ### GPUs and data loading | 110 | COVERED(p3-0306-gpu-one-process)
+- ## 4. asyncio | 10 | NO FIGURE NEEDED structural section header
+- ### Why asyncio | 120 | COVERED(p3-0306-blocking-loop-fix)
+- ### Core concepts | 510 | COVERED(p3-0306-async-protocol-map, p3-0306-cancel-timeout, p3-0306-gather-vs-taskgroup, s06-asyncio)
+- ### A worker-pool template | 280 | COVERED(p3-0306-pool-template-flow)
+- ## 5. Patterns for infrastructure fan-out | 10 | NO FIGURE NEEDED structural section header
+- ### Retries, backoff and jitter | 170 | COVERED(p3-0306-retry-arithmetic, p2-0306-jitter-retry)
+- ### Rate limiting and circuit breaking | 120 | COVERED(s06-breaker)
+- ### Aggregating results | 100 | COVERED(p3-0306-protect-targets)
+- ### Streaming and pagination | 70 | COVERED(p3-0306-pipeline-and-schedule)
+- ### Scheduling and periodic tasks | 110 | COVERED(p3-0306-pipeline-and-schedule)
+- ### Combining models | 120 | COVERED(p3-0306-combine-models)
+- ### Distributed concurrency | 90 | NO FIGURE NEEDED forward pointer to Part 14 and distributed frameworks
+- ## 6. Pitfalls and diagnosis | 250 | COVERED(p3-0306-diagnosis-tools, p3-0306-symptom-ladder)
+- ## 7. Lab | 350 | NO FIGURE NEEDED lab exercises and practical steps
+- ## 8. Common mistakes | 240 | COVERED(p3-0306-mistake-groups)
+- ## 9. Interview angles | 120 | NO FIGURE NEEDED interview questions checklist
+- ## Exercises | 220 | NO FIGURE NEEDED practical problem prompts
+- ## Checkpoint questions (20) | 1200 | NO FIGURE NEEDED self-test questions and solutions
+- ## Sources and review notes | 200 | NO FIGURE NEEDED bibliography and chapter notes
+
+Specs kept 0, dropped 0: []

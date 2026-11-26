@@ -471,6 +471,10 @@ Read the two cluster-wide kinds as a pair of bookends. The admin policy sits at 
 
 ### Network identity with Calico and Cilium
 
+![A side-by-side architectural comparison of Calico Dikastes sidecar proxy model versus Cilium kernel eBPF numeric security identity model for workload authorization.](./img/p4-0515-identity-models.svg)
+
+*Figure 5.0.0. Calico pairs an Envoy sidecar and Dikastes daemon communicating over Unix sockets for service-account identity, whereas Cilium embeds numeric security identities directly into datapath eBPF maps.*
+
 For a long time, teams used the network itself as identity. IP addresses, VPNs and firewalls decided which application could reach which service. Cloud native systems break that model. Containers share network stacks and machines, and workloads move between nodes often. The result is a constant churn of IP addresses. In a multicloud, API-driven setup, calls also leave the cluster for providers that need proof of who is calling.
 
 So host IPs and firewalls cannot establish workload identity on their own. They still help, but only as an extra layer of defense in depth. They work best when the policy also knows the workload context, such as its namespace, labels or service account. Networking and security teams often resist this change. Most security postures remain possible, so start from the real requirement rather than the tool.

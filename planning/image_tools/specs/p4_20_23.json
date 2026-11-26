@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2023-drill1-scheduler-filter",
+  "title": "Scheduler Node Filtering for a Pending GPU Pod",
+  "anchor": "### Drill 1: Pending pod that requests nvidia.com/gpu",
+  "spec": "Top block: Incoming Pod 'llama-gpu' with spec 'limits: nvidia.com/gpu: 1' and 'tolerations: []' (empty). Downward arrows point to kube-scheduler running Filter plugins across 6 cluster nodes split into two pools: Left column (Untainted CPU Nodes): 2 nodes with 'Allocatable nvidia.com/gpu: 0'. Scheduler evaluates 'NodeResourcesFit' plugin -> Fails with '2 Insufficient nvidia.com/gpu'. Right column (Tainted GPU Nodes): 4 nodes with 'Allocatable nvidia.com/gpu: 8' and Taint 'nvidia.com/gpu=true:NoSchedule'. Scheduler evaluates 'TaintToleration' plugin -> Fails with '4 node(s) had untolerated taint(s)'. Middle summary bubble: Scheduler produces aggregate event '0/6 nodes are available: 4 node(s) had untolerated taint(s), 2 Insufficient nvidia.com/gpu' -> Pod status remains Pending. Bottom block: The Fix: Manifest patch adding toleration 'key: nvidia.com/gpu, operator: Exists, effect: NoSchedule'. An arrow shows the patched pod bypassing the TaintToleration filter, unlocking scheduling onto GPU node 1 (6 of 8 GPUs used, 2 free).",
+  "alt": "Scheduler filtering divides six nodes into two untainted nodes rejected for insufficient GPUs and four GPU nodes rejected for untolerated taints, resolved by adding the matching toleration.",
+  "cap": "A scheduler FailedScheduling event breaks down by node pool, showing how untolerated taints on GPU nodes and zero GPUs on CPU nodes leave no schedulable placement until a toleration is added.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23"
+ }
+]

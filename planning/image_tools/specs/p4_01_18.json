@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0118-cfs-vs-eevdf",
+  "title": "CFS Virtual Runtime Versus EEVDF Eligibility and Virtual Deadline",
+  "anchor": "### CFS and EEVDF",
+  "spec": "Two side-by-side panels contrasting CFS and EEVDF scheduling mechanisms. Left panel: 'CFS (Linux 2.6.23 to 6.5) - Red-Black Tree by vruntime'. Shows an RB-Tree with nodes ordered by vruntime = actual_runtime * 1024 / weight. The leftmost node is selected: 'Always picks leftmost task (least vruntime)'. A callout shows a sleeping task waking up with an outdated low vruntime, immediately dominating the CPU and causing wake-up latency spikes for running tasks, necessitating complex wake-up heuristics. Right panel: 'EEVDF (Linux 6.6+) - Eligibility Filter and Virtual Deadline'. Shows the run queue virtual time line V. Step 1 Eligibility: tasks are partitioned into Eligible (vruntime <= V, have not received more than their fair share) and Ineligible (vruntime > V). Step 2 Deadline selection: among eligible tasks, the scheduler computes deadline d_i = v_i + (slice q_i / weight w_i) and picks the task with the earliest deadline. A latency-sensitive task requesting a small slice (q = 1 ms) gets an early deadline and preempts batch tasks (q = 8 ms) cleanly without heuristics.",
+  "alt": "A side-by-side comparison of CFS selecting the leftmost task by virtual runtime versus EEVDF filtering eligible tasks and picking the earliest virtual deadline.",
+  "cap": "CFS always picks the task with the lowest virtual runtime, whereas EEVDF filters for eligible tasks whose virtual runtime is below the queue average and selects the one with the earliest virtual deadline.",
+  "part": "part-01-linux",
+  "ch": "18"
+ },
+ {
+  "name": "p4-0118-pstates-cstates",
+  "title": "Active C0 P-States and Governors Versus Idle C-States Sleep Depth",
+  "anchor": "### Governors and power states",
+  "spec": "A two-part diagram illustrating active operating states versus idle sleep states. Top section: 'C0 Active State: P-States and Governors'. Shows a running CPU core executing instructions. A frequency scale shows the CPUFreq driver and governors: 'powersave' (dynamic lower clocks), 'schedutil' / 'ondemand' (load-responsive), 'performance' (pinned at max base clock), and 'turbo boost' (exceeding nominal clock when power and thermal budgets allow). Shows cpupower frequency-set -g performance and /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor. Bottom section: 'C-States: Idle Sleep Depths'. Horizontal progression showing C0 (active, 0 us wake-up latency, 100% power), C1 (halt, clock gated, ~1-2 us exit latency), C1E (enhanced halt, voltage reduced, ~5-10 us exit latency), and C6 (deep power down, caches flushed and core powered off, ~50-100+ us exit latency). A warning callout highlights that deep C-state exit latency introduces jitter for GPU completion interrupts and RDMA network polling, explained alongside the mitigation settings processor.max_cstate=1 and intel_idle.max_cstate=1.",
+  "alt": "A diagram comparing active C0 P-state frequency governors and turbo boost against idle C-states showing the wake-up latency penalty of deeper sleep.",
+  "cap": "Frequency governors and P-states operate only while the core is active in C0, while deeper idle C-states save power at the cost of tens of microseconds of wake-up latency jitter.",
+  "part": "part-01-linux",
+  "ch": "18"
+ }
+]

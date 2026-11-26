@@ -1,0 +1,37 @@
+# docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md
+- ## Why this matters for AI infrastructure | 150 words | NO FIGURE NEEDED narrative introduction to OOP in infrastructure
+- ## Prerequisites and outcomes | 150 words | NO FIGURE NEEDED bulleted prerequisites and learning goals
+- ## 1. Classes and objects | 20 words | NO FIGURE NEEDED section container
+- ### Class definition and instances | 1400 words | COVERED(p3-0304-vector2d-habits, p3-0304-slots-rules, p3-0304-name-mangling, p3-0304-bound-method, p3-0304-class-scope)
+- ### Object lifecycle and identity | 100 words | NO FIGURE NEEDED short summary of lifecycle hooks and serialization
+- ### Classes as factories for many objects | 250 words | NO FIGURE NEEDED intro to instance generation from FirstClass
+- ### Instance attributes and inherited method lookup | 270 words | NO FIGURE NEEDED simple code walkthrough setting up tree search
+- ### Attribute search climbs a class tree | 280 words | COVERED(s04-attrsearch)
+- ### Where an assignment stores an attribute | 170 words | COVERED(s04-assignstore)
+- ### The constructor: `__init__` | 150 words | NO FIGURE NEEDED straightforward explanation of __init__
+- ### Subclasses customize by inheritance | 220 words | NO FIGURE NEEDED simple code override example
+- ### Polymorphism and programming by customization | 420 words | NEEDS FIGURE stream processor pipeline decoupling readers, converter, and writers
+- ### Classes live inside modules | 210 words | NO FIGURE NEEDED module import patterns and casing conventions
+- ### Operator overloading | 380 words | NO FIGURE NEEDED high-level intro to overloading covered in detail later
+- ### Classes as records | 280 words | COVERED(p3-0304-record-evolution)
+- ### Under the hood: namespaces are dictionaries | 270 words | NEEDS FIGURE namespace dictionary memory layout with __class__ and __bases__ links
+- ## 2. Inheritance, composition and protocols | 20 words | NO FIGURE NEEDED section container
+- ### Inheritance and `super()` | 750 words | COVERED(p3-0304-subclass-ways, p3-0304-super-rules, s04-mro)
+- ### Composition over inheritance | 240 words | COVERED(s04-composition)
+- ### Abstract base classes | 360 words | COVERED(p3-0304-abc-vs-protocol, s04-abc, m3-04-1)
+- ### Protocols (structural typing) | 180 words | COVERED(s04-protocol)
+- ## 3. Data class builders | 750 words | COVERED(p3-0304-dataclass-options, p3-0304-builders-table, s04-dataclass)
+- ### Pydantic | 380 words | COVERED(p3-0304-pydantic-flow)
+- ## 4. Type hints and static checking | 1100 words | COVERED(p3-0304-typing-toolkit, p3-0304-variance, s04-typehints)
+- ## 5. Operator overloading and comparison | 250 words | COVERED(p3-0304-version-bytes)
+- ### Sequence special methods (`Vector` Takes #1–#5, Fluent Python Chapter 12) and operator overloading (Fluent Python Chapter 16 and Learning Python Chapter 30) | 950 words | COVERED(p3-0304-vector-takes)
+- ## 6. Design guidance for infrastructure code | 300 words | NO FIGURE NEEDED design rules list illustrated in following section
+- ### Example: a typed provider layer | 250 words | COVERED(p3-0304-provider-layer)
+- ## 7. Lab | 350 words | NO FIGURE NEEDED hands-on lab instructions
+- ## 8. Common mistakes | 200 words | COVERED(p3-0304-mistakes)
+- ## 9. Interview angles | 150 words | NO FIGURE NEEDED interview questions list
+- ## Exercises | 350 words | NO FIGURE NEEDED exercise prompt list
+- ## Checkpoint questions (20) | 1800 words | NO FIGURE NEEDED self-test Q and A accordion list
+- ## Sources and review notes | 450 words | NO FIGURE NEEDED citations and provenance metadata
+
+Specs kept 2, dropped 0: []

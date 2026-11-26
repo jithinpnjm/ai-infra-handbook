@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-2008-unstuck-ladder",
+  "title": "The five-step recovery protocol when stuck",
+  "anchor": "### 5. Recovering when you are stuck",
+  "spec": "A vertical five-step escalation ladder arranged from top to bottom, showing the systematic protocol candidates use when hitting a mental block instead of going silent. Step 1 (top): 'Shrink the example' - box showing a small 2-element probe, tracing variable states on the screen line by line. Arrow down to Step 2: 'State brute force' - box showing baseline O(N^2) formulation, naming the cost and identifying the exact recomputed work (e.g. repeated scans). Arrow down to Step 3: 'Apply structural transforms' - decision branch checking two standard weapons: 'Does sorting remove repeated scanning?' and 'Does a hash map/set provide O(1) lookups?'. Arrow down to Step 4: 'Relax constraints' - box showing problem simplification (e.g., assume no negative numbers, assume unique elements, or drop memory limits). Arrow down to Step 5: 'Targeted hint or fallback' - two exit paths: Path A 'Ask targeted hint with context' showing spoken template ('I have sliding window, but need clarification on when left pointer advances'); Path B 'Deliver correct brute force' showing rollback strategy if time is running out ('Linear rollback: working quadratic answer beats half-finished syntax error'). Side panel contrasts 'Anti-pattern: 6 minutes of silent staring' with 'Rubric-aligned: narrate every step of the ladder out loud'.",
+  "alt": "A five-step escalation ladder for recovering when stuck in a coding interview, progressing from tracing a smaller example to structural transforms, targeted hints, and brute force fallbacks.",
+  "cap": "When mental block strikes, work down the five-step recovery ladder out loud rather than remaining silent.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08"
+ },
+ {
+  "name": "p4-2008-go-python-bridge",
+  "title": "Python standard library tools and their Go equivalents",
+  "anchor": "### 10. Go equivalents, briefly",
+  "spec": "A side-by-side comparison matrix with 4 columns: Feature / Pattern, Python stdlib tool, Go equivalent implementation, and Interview trade-off note. Row 1: 'Frequency counting' -> Python: 'Counter(s)' -> Go: 'map[rune]int' with 'm[r]++' -> Note: Go maps return the zero value (0) on missing keys, eliminating the need for defaultdict. Row 2: 'Priority Queue / Heap' -> Python: 'heapq.heappush / heappop' (built-in min-heap over list) -> Go: 'container/heap' requiring custom slice type 'intHeap []int' implementing 5 interface methods: 'Len()', 'Less()', 'Swap()', 'Push(any)', 'Pop() any' with pointer receivers -> Note: High interview boilerplate in Go; know the 5 methods by heart or use Python. Row 3: 'Binary search lower bound' -> Python: 'bisect.bisect_left(a, x)' -> Go: 'sort.SearchInts(a, x)' -> Note: Both return the first index where element >= x. Row 4: 'Sorting stability' -> Python: 'list.sort()' (Timsort, guaranteed stable) -> Go: 'sort.Slice()' (unstable) vs 'sort.SliceStable()' (stable) -> Note: Go requires explicit SliceStable to preserve order of equal keys. Row 5: 'String element access' -> Python: 'for ch in s' (characters) -> Go: 'for _, r := range s' (yields runes, not raw bytes) -> Note: Slicing bytes directly in Go can corrupt multi-byte UTF-8 characters.",
+  "alt": "A comparison diagram detailing Python standard library tools alongside their Go equivalents and boilerplate requirements for coding interviews.",
+  "cap": "Go equivalents for Python coding patterns require explicit boilerplate, especially the five container/heap interface methods and sort.SliceStable.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08"
+ }
+]

@@ -1,0 +1,39 @@
+# docs/part-02-networking/02-how-networks-work-layers-encapsulation-the-tcp-ip-model.md
+- ## Why this matters for AI infrastructure | 340 | NO FIGURE NEEDED introductory motivating text on network layers and troubleshooting
+- ## Prerequisites and outcomes | 160 | NO FIGURE NEEDED prerequisite and learning outcome bullet list
+- ## 1. Two ways to build a network | 80 | COVERED(n02-switching)
+- ### Circuit switching | 160 | COVERED(n02-switching) covered by circuit switching comparison
+- ### Packet switching | 200 | COVERED(n02-switching) covered by packet switching comparison
+- ### Fixed versus variable length frames | 110 | NO FIGURE NEEDED brief historical note on ATM 53-byte cells vs IP packets
+- ### Flow control and congestion | 100 | NO FIGURE NEEDED short conceptual overview linking to TCP and link-level PFC
+- ## 2. The four jobs of a protocol | 300 | COVERED(p3-0202-four-jobs)
+- ## 3. Layered models | 100 | NO FIGURE NEEDED section overview introducing vertical interfaces and horizontal peer protocols
+- ### The DoD / TCP/IP model (4 layers) | 180 | COVERED(m2-02-1)
+- ### The OSI model (7 layers) | 250 | COVERED(m2-02-2)
+- ### Comparison | 90 | NO FIGURE NEEDED compact mapping table directly below DoD and OSI figures
+- ### Packets, headers and payloads | 120 | NO FIGURE NEEDED basic definition and postcard analogy
+- ### A note on the OSI model | 60 | NO FIGURE NEEDED citation note referencing Tanenbaum and Wetherall
+- ### Where the layers blur | 80 | NO FIGURE NEEDED summary list of cross-layer protocols like ARP and VXLAN
+- ### Connection-oriented and connectionless | 200 | NEEDS FIGURE failure contrast between state in core vs state at edges (end-to-end principle)
+- ## 4. Encapsulation and decapsulation | 180 | COVERED(m2-02-3)
+- ### Overhead and goodput (worked examples) | 330 | COVERED(p3-0202-small-frame-pps)
+- ### Demultiplexing: how the right code gets the bytes | 220 | COVERED(n02-demux)
+- ### MTU, MSS and tunnels | 200 | COVERED(p3-0202-vxlan-mtu)
+- ## 5. The three planes | 250 | COVERED(n02-planes)
+- ### Loop-free paths: the control plane's core problem | 180 | COVERED(p3-0202-loop-free-families)
+- ### Quality of service | 160 | COVERED(p3-0202-qos-lanes)
+- ## 6. Taming complexity: the hourglass and the SOS triangle | 50 | NO FIGURE NEEDED brief section intro
+- ### The hourglass (wasp waist) | 230 | COVERED(m2-02-4)
+- ### State, Optimisation, Surface | 270 | COVERED(p3-0202-sos-triangle)
+- ## 7. Where the layers live: Linux and AI fabrics | 60 | NO FIGURE NEEDED brief section intro
+- ### The Linux stack | 200 | COVERED(m2-02-5)
+- ### AI fabrics in the model | 170 | COVERED(p3-0202-fabric-layers)
+- ## 8. Reading a capture: labelling layers | 190 | COVERED(p3-0202-syn-decode)
+- ## 9. Hands-on lab: layers, overhead, and captures | 350 | NO FIGURE NEEDED CLI and lab walkthrough instructions
+- ## 10. Common mistakes | 140 | NO FIGURE NEEDED bullet list of operational pitfalls
+- ## 11. Interview angles | 120 | NO FIGURE NEEDED sample interview questions
+- ## Exercises | 300 | NO FIGURE NEEDED practice exercises
+- ## Checkpoint questions (20) | 1200 | NO FIGURE NEEDED review Q and A with details blocks
+- ## Sources and review notes | 350 | NO FIGURE NEEDED source citations and verification notes
+
+Specs kept 1, dropped 0: []

@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Active C0 P-States and Governors Versus Idle C-States Sleep Depth</title>
+  <desc>Visual comparison of active C0 operating P-states and governors versus idle C-state sleep depth, latency impact, and mitigation parameters.</desc>
+
+  <defs>
+    <marker id="arrow-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Active C0 P-States and Governors</text>
+  <text x="800" y="106" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Versus Idle C-States Sleep Depth</text>
+
+  
+  <rect x="40" y="140" width="1520" height="425" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(65, 160)">
+    <rect x="6" y="6" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="16" y="16" width="24" height="24" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="16" y1="0" x2="16" y2="6" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="28" y1="0" x2="28" y2="6" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="40" y1="0" x2="40" y2="6" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="16" y1="50" x2="16" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="28" y1="50" x2="28" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="40" y1="50" x2="40" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="0" y1="16" x2="6" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="0" y1="28" x2="6" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="0" y1="40" x2="6" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="50" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="50" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="50" y1="40" x2="56" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="140" y="200" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">C0 Active State: P-States and Governors</text>
+
+  
+  <rect x="940" y="162" width="590" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1235" y="197" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">A running CPU core executing instructions</text>
+
+  
+  <text x="65" y="250" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">CPUFreq driver and governors:</text>
+
+  
+  
+  <rect x="65" y="270" width="345" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="237" y="325" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">powersave</text>
+  <text x="237" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">dynamic lower clocks</text>
+
+  
+  <rect x="435" y="270" width="355" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="612" y="325" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">schedutil / ondemand</text>
+  <text x="612" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">load-responsive</text>
+
+  
+  <rect x="815" y="270" width="350" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="990" y="325" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">performance</text>
+  <text x="990" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">pinned at max base clock</text>
+
+  
+  <rect x="1190" y="270" width="345" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1362" y="315" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">turbo boost</text>
+  <text x="1362" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">exceeding nominal clock</text>
+  <text x="1362" y="392" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">when power and thermal</text>
+  <text x="1362" y="426" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">budgets allow</text>
+
+  
+  <rect x="65" y="480" width="570" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="350" y="517" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">cpupower frequency-set -g performance</text>
+
+  <rect x="660" y="480" width="875" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1097" y="517" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor</text>
+
+
+  
+  <rect x="40" y="590" width="1520" height="570" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(65, 610)">
+    <path d="M 36 6 A 24 24 0 1 0 50 42 A 26 26 0 0 1 36 6 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  </g>
+
+  
+  <text x="140" y="650" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">C-States: Idle Sleep Depths</text>
+
+  
+  
+  <rect x="65" y="685" width="320" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="225" y="735" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">C0</text>
+  <text x="225" y="785" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">active, 0 us wake-up latency,</text>
+  <text x="225" y="825" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">100% power</text>
+
+  
+  <line x1="395" y1="787" x2="435" y2="787" stroke="#207448" stroke-width="4" marker-end="url(#arrow-head)" />
+
+  
+  <rect x="445" y="685" width="320" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="605" y="735" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">C1</text>
+  <text x="605" y="785" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">halt, clock gated,</text>
+  <text x="605" y="825" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">~1-2 us exit latency</text>
+
+  
+  <line x1="775" y1="787" x2="815" y2="787" stroke="#207448" stroke-width="4" marker-end="url(#arrow-head)" />
+
+  
+  <rect x="825" y="685" width="330" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="990" y="735" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">C1E</text>
+  <text x="990" y="775" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">enhanced halt,</text>
+  <text x="990" y="810" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">voltage reduced,</text>
+  <text x="990" y="845" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">~5-10 us exit latency</text>
+
+  
+  <line x1="1165" y1="787" x2="1205" y2="787" stroke="#207448" stroke-width="4" marker-end="url(#arrow-head)" />
+
+  
+  <rect x="1215" y="685" width="320" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1375" y="735" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">C6</text>
+  <text x="1375" y="770" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">deep power down,</text>
+  <text x="1375" y="802" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">caches flushed and core</text>
+  <text x="1375" y="834" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">powered off,</text>
+  <text x="1375" y="866" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">~50-100+ us exit latency</text>
+
+  
+  <rect x="65" y="915" width="1470" height="220" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+
+  
+  <g transform="translate(95, 935)">
+    <polygon points="28,4 52,48 4,48" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <circle cx="28" cy="42" r="2.5" fill="#db8129" />
+  </g>
+
+  
+  <text x="175" y="958" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">deep C-state exit latency introduces jitter for GPU completion interrupts</text>
+  <text x="175" y="996" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">and RDMA network polling</text>
+
+  
+  <rect x="175" y="1035" width="580" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="465" y="1082" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">processor.max_cstate=1</text>
+
+  <rect x="805" y="1035" width="580" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1095" y="1082" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">intel_idle.max_cstate=1</text>
+</svg>

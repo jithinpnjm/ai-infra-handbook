@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0226-byte-offsets",
+  "title": "Anatomy of pcap-filter Byte-Offset Slicing and Bitmasks",
+  "anchor": "### Capture filter syntax (pcap-filter)",
+  "spec": "A two-panel technical diagram mapping pcap-filter byte-offset slicing to packet header fields. Top panel: IPv4 header byte grid (bytes 0 to 19). Highlight Byte 1 (ToS/Traffic Class) expanded into 8 bits: Bits 7-2 are DSCP (6 bits), Bits 1-0 are ECN (2 bits). Annotate filter 'ip[1] & 0xfc == 0xb8' showing mask 0xfc isolating DSCP EF (value 46 shifted left 2 = 184 = 0xb8), and filter 'ip[1] & 0x03 == 3' showing mask 0x03 isolating ECN CE (11b = 3). Highlight Bytes 6-7 (Flags and Fragment Offset, 16 bits = 'ip[6:2]') with filter 'ip[6:2] & 0x2000 != 0' pointing to bit 13 (More Fragments bit). Highlight Byte 8 (TTL) with filter 'ip[8] < 5'. Bottom panel: TCP header byte grid (bytes 0 to 19 relative to TCP header start). Highlight Byte 13 ('tcp[13]' or 'tcp[tcpflags]') expanded into 8 flag bits: CWR (bit 7), ECE (bit 6), URG (bit 5), ACK (bit 4), PSH (bit 3), RST (bit 2), SYN (bit 1), FIN (bit 0). Show filter 'tcp[tcpflags] & (tcp-syn|tcp-ack) == tcp-syn' with bitmask 0x12 (SYN+ACK) evaluated against 0x02 to match pure SYN packets without ACK. Include an offset shift callout box noting that placing 'vlan' in the filter shifts all subsequent IP/TCP byte offsets by +4 bytes.",
+  "alt": "Diagram illustrating pcap-filter byte-offset slicing and bitmask operations across IPv4 and TCP headers for DSCP, ECN, fragmentation flags, TTL, and TCP flags.",
+  "cap": "Byte-offset syntax slices specific protocol header bytes and applies bitmasks, letting captures isolate DSCP EF, ECN CE, low TTL, and pure SYN flags directly in the kernel.",
+  "part": "part-02-networking",
+  "ch": "26"
+ }
+]

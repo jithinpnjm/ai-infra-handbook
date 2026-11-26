@@ -59,6 +59,10 @@ The web host runs nginx. `app01` and `app02` run the service, and `db01` runs Po
 
 ### Why production deployment is harder than `runserver` (*Ansible: Up and Running*, Chapters 6 and 7, `mezzanine.yml`)
 
+![Side-by-side comparison of a single-process runserver stack with SQLite versus a multi-tier production stack with NGINX, Gunicorn, systemd, and PostgreSQL.](./img/p4-0409-dev-vs-prod-stack.svg)
+
+*Figure 4.0.0. Production separates edge TLS termination, multi-worker process supervision, and networked database concurrency that runserver compresses into a single local process.*
+
 On a laptop, `runserver` starts the app and you see it working in a browser. Production has more moving parts. A process manager keeps the app alive, a reverse proxy takes the user's traffic, a database must already exist, and real users will not wait while you fix a mistake. The sections that follow explain how each part is added, and why it has to be there. Think of `runserver` as a test kitchen with one cook who also takes the orders. A restaurant needs a host at the door, a line of cooks and a pantry that stays stocked, even when the cook goes home.
 
 In *Ansible: Up and Running*, Chapters 6 and 7, Bas Meijer, Lorin Hochstein and René Moser compare a Python web application on a developer laptop with the same application in production. Their example is Mezzanine 4.3.1 on Django 1.11.29. Mezzanine is a content management system built on Django, which is a Python web framework.
@@ -483,6 +487,10 @@ Finally, prefer building artefacts in CI, as a wheel or a container, and let Ans
 Choose the artefact route before your first production release, so every host installs the same build.
 
 ## 6. The web tier: nginx, TLS and rate limiting
+
+![Flowchart showing NGINX handling port 80 redirects, port 443 TLS termination, rate limit checks, health checks, and upstream dispatch to application nodes.](./img/p4-0409-nginx-ingress-pipeline.svg)
+
+*Figure 4.0.0. Inbound traffic is redirected or decrypted at the edge, passed through a token bucket rate limiter, and load-balanced across healthy application servers.*
 
 Users reach the application through nginx. TLS encrypts their traffic on the way in, and rate limiting protects the app from a burst of requests from one client. A burst can come from a script that retries too fast, or from one client hammering a single endpoint. This section configures both, and it explains why each setting is there, so you can change one without breaking the other.
 

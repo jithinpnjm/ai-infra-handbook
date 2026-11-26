@@ -1,0 +1,69 @@
+# docs/part-03-python/01-python-core-types-control-flow-functions.md
+- ## Why this matters for AI infrastructure | 210 | NO FIGURE NEEDED motivational overview of Python in AI infrastructure
+- ## Prerequisites and outcomes | 185 | NO FIGURE NEEDED text list of prerequisites and learning objectives
+- ## 1. How Python runs programs | 50 | NO FIGURE NEEDED brief section intro
+- ### The execution model | 230 | NEEDS FIGURE source to bytecode compilation, __pycache__ caching, PVM loop, and sys.modules caching
+- ### Ways to run code | 380 | COVERED(p3-0301-import-vs-exec)
+- ### Starting the REPL | 210 | NO FIGURE NEEDED straightforward terminal interaction and keystroke summary
+- ### Writing and running a script | 170 | NO FIGURE NEEDED simple script creation and execution commands
+- ### Importing modules and module attributes | 210 | NO FIGURE NEEDED clear explanation of import vs from import syntax and reload quirks
+- ### Launching other programs | 60 | NO FIGURE NEEDED forward pointer to chapter 3.5 for subprocess details
+- ### Debugging your first programs | 170 | NO FIGURE NEEDED bulleted list of common debugging utilities
+- ### Python versions, `python` vs `python3`, and installation | 110 | NO FIGURE NEEDED short administrative guidance on system vs venv Python
+- ## 2. Objects, names and references | 80 | NO FIGURE NEEDED brief section intro
+- ### Everything is an object | 150 | COVERED(m3-01-1)
+- ### Mutability | 250 | COVERED(p3-0301-copy-depth)
+- ### Reference counting and garbage collection | 160 | NEEDS FIGURE mechanism of reference count zeroing versus circular references requiring cyclic gc
+- ### Dynamic typing and duck typing | 130 | NO FIGURE NEEDED conceptual summary of dynamic and duck typing
+- ## 3. Numbers and expressions | 220 | COVERED(p3-0301-numeric-traps)
+- ### Operator precedence hierarchy | 140 | NO FIGURE NEEDED comprehensive markdown table of 19 operator precedence tiers
+- ### Floor division (`//`, `math.floor`) versus truncation (`math.trunc`, `int`) | 190 | NEEDS FIGURE worked number line comparison showing floor division rounding toward negative infinity vs truncation toward zero
+- ## 4. Strings and bytes | 420 | COVERED(p3-0301-str-toolbox)
+- ## 5. Core collections | 360 | COVERED(p3-0301-aliasing-traps)
+- ### Truthiness and `None` | 90 | COVERED(p3-0301-none-trap)
+- ## 6. Files (preview)` | 110 | NO FIGURE NEEDED short code snippet and preview of chapter 3.5
+- ## 7. Statements and syntax | 40 | NO FIGURE NEEDED brief section intro
+- ### Structure | 70 | NO FIGURE NEEDED explanation of indentation and comments
+- ### Statement syntax compared with C-like languages | 470 | NO FIGURE NEEDED detailed prose and code blocks contrasting C and Python syntax
+- ### Assignment forms | 80 | NO FIGURE NEEDED compact annotated code block of assignment variations
+- ### `print()` call format and stream redirection | 200 | NO FIGURE NEEDED signature and code snippets showing stdout redirection
+- ### `if` / `elif` / `else` and conditional expressions | 90 | NO FIGURE NEEDED straightforward conditional syntax and short-circuit notes
+- ### The `match` statement (3.10+) | 140 | COVERED(p3-0301-match-handle)
+- ### `while` and `for` loops | 150 | COVERED(p3-0301-for-else-retry)
+- ### The iteration protocol (preview) | 90 | NO FIGURE NEEDED concise preview of iter() and next() protocol
+- ### Comprehensions (preview) | 40 | NO FIGURE NEEDED quick 4-line code preview of list/dict/set/generator comprehensions
+- ### Example: an interactive loop | 820 | COVERED(p3-0301-lbyl-eafp)
+- ## 8. Functions | 60 | NO FIGURE NEEDED brief section intro
+- ### Why use functions | 200 | NO FIGURE NEEDED conceptual motivation for functions and code reuse
+- ### The function toolbox at a glance | 170 | NO FIGURE NEEDED reference markdown table of function statements
+- ### Definition, calls and return | 110 | NO FIGURE NEEDED basic def signature example and docstring explanation
+- ### def runs at runtime | 160 | NO FIGURE NEEDED runtime nature of def statements and function objects
+- ### lambda makes an anonymous function | 170 | NO FIGURE NEEDED syntax and constraints of lambda expressions
+- ### A first example: times | 210 | NO FIGURE NEEDED step-by-step REPL example of times function
+- ### Polymorphism in Python | 210 | NO FIGURE NEEDED prose explanation of polymorphic operator routing
+- ### A second example: intersecting sequences | 400 | NO FIGURE NEEDED code walk of intersect function with various collection types
+- ### Parameters | 120 | NO FIGURE NEEDED parameter syntax table and star unpacking notes
+- ### The mutable default argument trap | 170 | NEEDS FIGURE state leakage across calls showing def-time default list allocation and reuse
+- ### Local variables | 160 | NO FIGURE NEEDED explanation of scope creation during call execution
+- ### Scope: LEGB | 170 | COVERED(p3-0301-closure-latebind)
+- ### Lambdas, higher-order functions | 130 | NO FIGURE NEEDED standard higher-order function examples with map/filter/functools
+- ### Recursion and limits | 80 | NO FIGURE NEEDED call stack exhaustion description and sys.getrecursionlimit
+- ### Docstrings, annotations, introspection | 100 | NO FIGURE NEEDED summary of docstrings, type annotations, and introspection built-ins
+- ### Generators (preview) | 100 | NO FIGURE NEEDED preview of yield and lazy log processing
+- ## 9. Documentation, introspection and benchmarking | 40 | NO FIGURE NEEDED brief section intro
+- ### Finding help | 160 | NO FIGURE NEEDED command line and REPL documentation lookup examples
+- ### Benchmarking | 150 | NO FIGURE NEEDED timeit and cProfile command examples and timing pitfalls
+- ## 10. Infrastructure patterns using the core | 40 | NO FIGURE NEEDED brief section intro
+- ### Safe environment configuration | 110 | NO FIGURE NEEDED annotated code snippet for env_int helper
+- ### Retry with backoff and jitter | 100 | NO FIGURE NEEDED annotated code snippet for retry helper
+- ### Parse and aggregate a log without loading it | 80 | NO FIGURE NEEDED annotated code snippet streaming lines into Counter
+- ### Compare desired and actual state (set algebra) | 80 | NO FIGURE NEEDED annotated code snippet of set differences
+- ### Data shaping | 80 | NO FIGURE NEEDED annotated code snippet using setdefault and comprehensions
+- ## 11. Common mistakes | 130 | COVERED(p3-0301-mistakes)
+- ## 12. Hands-on lab: Python core on a Linux box | 320 | NO FIGURE NEEDED step-by-step hands-on exercises
+- ## 13. Interview angles | 180 | NO FIGURE NEEDED sample interview questions
+- ## Exercises | 420 | NO FIGURE NEEDED chapter homework exercises
+- ## Checkpoint questions (20) | 1650 | NO FIGURE NEEDED self-study review questions and answers
+- ## Sources and review notes | 240 | NO FIGURE NEEDED bibliographic notes and citations
+
+Specs kept 4, dropped 0: []

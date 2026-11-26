@@ -49,6 +49,10 @@ Every Python story starts the same way: someone types `python3` and something ha
 
 ### The execution model
 
+![CPython execution pipeline showing source code compiled to bytecode, cached in pycache for imported modules, and executed inside the Python Virtual Machine loop.](./img/p4-0301-cpython-exec.svg)
+
+*Figure 3.0.0. CPython compiles source code to bytecode on the fly, caches imported module bytecode in pycache and sys.modules, and executes instructions in the stack-based PVM.*
+
 **CPython** is the Python you get when you type `python3`, and it is the reference implementation, the one the language is defined against. CPython is an **interpreted, byte-compiled** language: your source is first translated into **bytecode**, a compact instruction list, and a virtual machine then carries the instructions out one by one. When you run `python script.py`:
 
 ![How CPython runs code](./img/p01-exec.jpg)
@@ -286,6 +290,10 @@ d = copy.deepcopy(a)   # recursively copies nested mutable structures
 
 ### Reference counting and garbage collection
 
+![Two panels comparing immediate deallocation when reference count reaches zero against circular references that require the generational cyclic garbage collector.](./img/p4-0301-refcount-cycle.svg)
+
+*Figure 3.0.0. CPython frees objects instantly when their reference count drops to zero, but requires the cyclic garbage collector to detect and break self-referencing reference cycles.*
+
 **Garbage collection** is Python's way of reclaiming memory that no code can reach any more, and it works in two parts. CPython frees an object when its **reference count** drops to zero. The count is the number of labels on the object, so the moment the last one disappears, its memory is freed immediately, which is deterministic for non-cyclic garbage. A **cycle collector**, the `gc` module, periodically handles reference cycles, where objects keep each other's count above zero. `del name` removes a binding, not necessarily the object.
 
 ![Reference counting](./img/p01-refcount.jpg)
@@ -358,6 +366,10 @@ Operators: `+ - * / // % **`; `/` is always true division (float); `//` floors t
 | 19 (lowest) | `yield x`, `yield from x` | Generator function `send` protocol |
 
 ### Floor division (`//`, `math.floor`) versus truncation (`math.trunc`, `int`)
+
+![Number line demonstrating that 5 divided by negative 2 yields negative 3 under floor division but negative 2 under truncation toward zero.](./img/p4-0301-floor-trunc.svg)
+
+*Figure 3.0.0. Floor division rounds down toward negative infinity while truncation rounds toward zero, producing identical results for positive quotients but differing by one on negative quotients.*
 
 The `//` operator is often loosely called truncating division, but it actually performs **floor division**: it rounds the result down toward $-\infty$, the closest whole number less than or equal to the true quotient. By contrast, **truncation**, which `math.trunc()` and `int()` perform, drops the fractional part and rounds toward zero. For positive numbers, floor and truncation give the same answer. For negative numbers, they differ by 1:
 
@@ -1546,6 +1558,10 @@ func(*[1], 2, **dict(c=3), d=4)              # 1 2 3 4
 ```
 
 ### The mutable default argument trap
+
+![Diagram comparing how a mutable default list retains appended items across subsequent function calls with the safe None-default idiom that allocates fresh lists.](./img/p4-0301-mutable-default.svg)
+
+*Figure 3.0.0. Default arguments evaluate once at module load time, causing a mutable list default to accumulate state across every subsequent function call unless None is used as a sentinel.*
 
 Here is the bug that has bitten almost everyone at least once. A colleague writes a function that appends to a list, and the list is a default argument. On the second call, the first call's items are still in the list, even though the caller passed nothing. Nothing crashed, and no error message names the cause.
 

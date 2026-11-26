@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2021-deploy-grace-period",
+  "title": "Grace Period Sizing to Prevent Rolling Update Stream Truncation",
+  "anchor": "### Scenario C. Streams die on every deploy",
+  "spec": "A comparative timeline diagram contrasting the default Kubernetes termination timeline with the production-sized 135-second grace period for LLM inference pods. Top Timeline (Default 30s Grace Period): At t=0s, deployment rolls replica. Pod holds ~40 active streams lasting up to 90s. SIGTERM sent; endpoint removal races in parallel. At t=30s, termination grace period expires. Kubelet sends SIGKILL. Callout: 'SIGKILL at 30s truncates running 90s streams mid-generation. First token already delivered, so streams cannot be retried!'. Bottom Timeline (Production Grace Period = 135s): Structured in sequential blocks matching the worked arithmetic: Block 1 (t=0s to 5s): 'preStop sleep (5s) allows router EndpointSlice propagation across all proxies; router marks replica as draining'. Block 2 (t=5s to 125s): 'SIGTERM received by engine (--shutdown-timeout > 0). Max allowed stream duration (120s stream cap) allows active streams to finish generating'. Block 3 (t=125s to 135s): '10s safety margin buffer before SIGKILL'. Bottom summary formula: 'Grace Period = 5s (preStop sleep) + 120s (longest allowed stream) + 10s (margin) = 135s'. Side annotation: 'Roll 1 pod at a time; wait for readiness probe before proceeding to maintain spare capacity above X+1'.",
+  "alt": "A timeline comparing the default 30-second Kubernetes grace period cutting 90-second streams with SIGKILL against a 135-second budget combining a 5-second preStop sleep, 120-second stream cap, and 10-second margin.",
+  "cap": "Sizing the termination grace period to 135 seconds covers endpoint propagation and the maximum stream duration, preventing SIGKILL from truncating active generations.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21"
+ }
+]

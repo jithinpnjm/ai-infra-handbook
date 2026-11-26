@@ -1,0 +1,39 @@
+# docs/part-03-python/08-building-clis-agents-and-exporters-prometheus-exporters-redfish-client.md
+- ## Why this matters for AI infrastructure | 155 | NO FIGURE NEEDED introductory motivation and fleet context
+- ## Prerequisites and outcomes | 95 | NO FIGURE NEEDED bulleted list of chapter learning objectives
+- ## 1. Principles for operational tooling | 250 | COVERED(p3-0308-nine-principles)
+- ## 2. Command-line interfaces | 45 | NO FIGURE NEEDED brief section intro
+- ### 2.1 argparse: the standard library baseline | 230 | COVERED(p3-0308-argparse-anatomy)
+- ### 2.2 Click | 280 | COVERED(m3-08-1)
+- ### Case study from *Practical MLOps* Chapter 11: `csv-linter` and `cloud-translate` CLIs | 300 | COVERED(p3-0308-csv-linter-case)
+- ### 2.3 Typer and Rich | 170 | COVERED(p3-0308-framework-choice)
+- ### 2.4 Configuration and secrets | 140 | COVERED(p3-0308-config-precedence)
+- ### 2.5 Interactive and long-running UX | 90 | COVERED(p3-0308-long-running-ux)
+- ## 3. Resilient API clients | 60 | NO FIGURE NEEDED brief section intro
+- ### 3.1 Sessions, timeouts and connection reuse | 140 | COVERED(p3-0308-four-timeouts)
+- ### 3.2 Retries, backoff and jitter | 180 | COVERED(p3-0308-retry-classify)
+- ### 3.3 Circuit breakers and bulkheads | 140 | COVERED(p3-0308-resilience-layers)
+- ### 3.4 Pagination and completeness | 150 | COVERED(p3-0308-paginate-150, s08-paginate)
+- ### 3.5 Rate limits, concurrency and file operations | 130 | NEEDS FIGURE token bucket rate limiting and atomic POSIX file replacement vs TOCTOU race conditions
+- ## 4. Prometheus exporters | 55 | NO FIGURE NEEDED brief section intro
+- ### 4.1 Metric model essentials | 200 | COVERED(s08-cardinality, s08-metrictypes)
+- ### 4.2 The simple way: instrument and serve | 160 | COVERED(p3-0308-polling-staleness)
+- ### 4.3 The recommended way: a custom collector | 250 | COVERED(p3-0308-probe-relabel, s08-collector)
+- ### 4.4 Real-world GPU and hardware exporters | 140 | COVERED(p3-0308-exporter-gaps)
+- ## 5. Talking to hardware: a Redfish client | 85 | NO FIGURE NEEDED brief section intro
+- ### 5.1 Resource model | 160 | COVERED(p3-0308-redfish-vendor-security, s08-redfish)
+- ### 5.2 A small client | 380 | COVERED(p3-0308-redfish-session-flow)
+- ### 5.3 Fleet fan-out | 180 | COVERED(p3-0308-fleet-fanout-summary)
+- ## 6. Collecting from GPU hosts | 300 | COVERED(p3-0308-gpu-sources)
+- ## 7. Node agents and daemons | 450 | COVERED(p3-0308-systemd-unit-annotated, p3-0308-agent-lifecycle)
+- ## 8. Packaging and distribution of tools | 300 | COVERED(p3-0308-distribution-choice)
+- ## 9. Profiling and performance of tools | 280 | COVERED(p3-0308-profiling-tools)
+- ## 10. Worked capstone: a GPU fleet diagnostics CLI | 340 | COVERED(p3-0308-capstone-layers)
+- ## 11. Lab | 250 | NO FIGURE NEEDED lab verification steps and exercises
+- ## 12. Common mistakes | 200 | COVERED(p3-0308-mistakes-checklist)
+- ## 13. Interview angles | 150 | NO FIGURE NEEDED oral interview prompts and coverage checklist
+- ## Exercises | 320 | NO FIGURE NEEDED review exercises and prompt instructions
+- ## Checkpoint questions (20) | 1300 | NO FIGURE NEEDED revision questions with answers
+- ## Sources and review notes | 220 | NO FIGURE NEEDED bibliography and source audit notes
+
+Specs kept 1, dropped 0: []

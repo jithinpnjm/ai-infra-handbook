@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-2026-hypothesis-matrix",
+  "title": "Ranking Hypotheses by Likelihood and Test Cost",
+  "anchor": "### 3. Narrate hypotheses in order of likelihood and cost to test",
+  "spec": "Two-part diagram. Left: a 2x2 prioritization matrix with X-axis 'Cost to Test' (Low to High) and Y-axis 'Likelihood' (Low to High). Top-Left quadrant (High Likelihood, Low Cost): labeled 'Test 1st (Horses)' containing 'Recent deploy or config change', tested via 1 command (rollout status, values diff) and timestamp check. Bottom-Left quadrant (Low Likelihood, Low Cost): labeled 'Test 2nd (Cheap Check)' containing 'Single bad pod', tested via per-replica metric comparison. Top-Right quadrant (High Likelihood, High Cost): labeled 'Test 3rd' containing 'Deep resource saturation / cross-zone network degradation', tested via multi-graph correlation. Bottom-Right quadrant (Low Likelihood, High Cost): labeled 'Avoid Until Last (Zebras)' containing 'Kernel bug / driver race condition', requiring kernel tracing. Right: Scientific falsification sequence in five connected blocks: 1. Observation ('p99 TTFT alert at 14:05'); 2. Hypothesis ('13:50 deploy broke cache routing'); 3. Concrete Prediction ('If true: prefix cache hit ratio dropped at 13:52 across all replicas; If false: hit ratio flat'); 4. Decisive Test ('Query vllm:prefix_cache_hits / queries'); 5. Verdict ('Ratio fell from 0.55 to 0.03 -> Confirmed, roll back; If unchanged -> Hypothesis killed, proceed to next rank').",
+  "alt": "A 2x2 matrix ranking incident hypotheses by likelihood versus cost to test alongside a five-step scientific falsification loop.",
+  "cap": "Rank hypotheses by likelihood and cost to test, and formulate predictions that can decisively kill a theory before investigating zebras.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26"
+ },
+ {
+  "name": "p4-2026-drill-scorecard",
+  "title": "Drill Runner Architecture and 100-Point Scorecard",
+  "anchor": "### 6. How the drill runner works",
+  "spec": "Layout in two vertical tiers. Top tier: Session Event Loop. User input box on the left shows slash commands (/sev, /roles, /hyp, /do, /status, /cause, /hint, /done) and plain text questions ('Can I see the golden-signals dashboard?'). Arrow labeled 'session.log(kind, text)' feeds into Session State box (tracking monotonic elapsed time, 30-minute countdown, revealed question keys, hint counter). Bottom tier: 100-Point Scorecard Evaluation Pipeline. Event stream splits into seven parallel scoring evaluators matching the chapter code: 1. 'Take Control (15 pts)': sev declared <= 120s (5), roles declared <= 120s (5), impact/dashboard asked before first action (5); 2. 'Evidence Gathered (25 pts)': proportion of must_ask keys revealed; 3. 'Hypotheses (15 pts)': >=2 hypotheses (5), first is cheap/likely (5), names root cause (5); 4. 'Mitigation (20 pts)': points awarded for required mitigation actions (up to 20); 5. 'Order (5 pts)': mitigation /do strictly before root cause /cause; 6. 'Status Cadence (10 pts)': 1 update per 10 minutes elapsed; 7. 'Safety (10 pts)': starts at 10, -5 per destructive trap (e.g. restart all pods, defrag live etcd). Right side shows Hint Penalty (-2 pts per hint) and Final Grade Thresholds: >=85 'strong', >=70 'pass', <70 'repeat this drill'.",
+  "alt": "Architecture of the interview drill runner showing slash commands feeding an event log evaluated across seven scorecard categories totalling 100 points.",
+  "cap": "The drill runner evaluates session timing and actions across seven rubric categories, rewarding prompt control, structured evidence gathering, and safe mitigation order.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26"
+ }
+]

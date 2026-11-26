@@ -73,6 +73,10 @@ R6 and R7 are about the rest of the incident life. Detection, isolation and reme
 
 ### 4. Requirements, line by line
 
+![A comparison grid sorting the seven job requirements into day-one required foundations and desirable growth areas across three technical domains.](./img/p4-2002-requirements-split.svg)
+
+*Figure 20.0.0. Requirements split into required day-one engineering foundations and desirable AI-specific growth areas, with the evidence standard expected for each.*
+
 The same rule applies here. Each row gives short quotes, then where to study. Requirements tell you what the team expects on day one, and preferences tell you where you can grow. Read each row as a pair: the posting's words on one side and your own evidence on the other.
 
 | ID | Posting wording | This volume | Earlier parts |

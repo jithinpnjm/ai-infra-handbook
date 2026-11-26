@@ -86,6 +86,10 @@ Systems Performance gives the method in its USE appendix. USE stands for utilisa
 
 ### 3. Read /proc and lsof before you attach a tracer
 
+![Diagnostic pipeline grouping /proc/PID/fd symlink targets into regular file leaks, socket leaks, unlinked open files, and epoll instances.](./img/p4-2004-proc-fd-triage.svg)
+
+*Figure 20.0.0. Inspecting and grouping /proc/PID/fd targets identifies whether a file descriptor leak stems from unclosed files, leaked sockets, or unlinked logs before attaching any tracer.*
+
 The process is still alive, and that is good news. The cheapest evidence needs no tracer and does not slow the service. Read the limit, count the descriptors, and group them by what they point at. Each step takes a few seconds, and together they tell you whether you are looking at a leak or a limit that is simply too low.
 
 ```bash
@@ -384,6 +388,10 @@ The inode pool is exhausted. Remove or archive the tiny files, find which direct
 </details>
 
 ### Scenario 4: mode 755 and still Permission denied
+
+![Diagram contrasting direct execution failing on a noexec mount via execve with interpreter execution succeeding via openat read.](./img/p4-2004-noexec-bypass-mech.svg)
+
+*Figure 20.0.0. A noexec mount causes the kernel to fail execve with EACCES before inspecting file mode bits, whereas executing an interpreter reads the script file as plain data.*
 
 Problem. An installer drops a script on a data volume. It is mode 755 and owned by the right user, yet running it prints `Permission denied`, and `chmod +x` changes nothing.
 

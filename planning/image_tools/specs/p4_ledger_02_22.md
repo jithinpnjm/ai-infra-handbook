@@ -1,0 +1,42 @@
+# docs/part-02-networking/22-linux-networking-inspecting-state-with-ip-ss-and-counters.md
+- ## Why this matters for AI infrastructure | 150 words | NO FIGURE NEEDED - introductory framing and context
+- ## Prerequisites and outcomes | 75 words | NO FIGURE NEEDED - prerequisite checklist
+- ## 1. The kernel's view: network interfaces | 230 words | COVERED(m2-22-1) - kernel netdev interface stack diagram
+- ## 2. The `ip` command family | 430 words | COVERED(p2-0222-ip-addr-anatomy) - annotated ip addr output diagram
+- ### `ethtool`: the hardware side | 260 words | COVERED(p3-0222-ethtool-map) - hardware questions to ethtool options map
+- ## 3. Persistent configuration: managers and files | 440 words | COVERED(p3-0222-netplan-read, p3-0222-manager-rules, n22-netmanagers) - netplan syntax, manager comparison, and architecture
+- ### Why boot scripts fall short | 170 words | NO FIGURE NEEDED - historical context and narrative explanation
+- ### How NetworkManager chooses a connection | 215 words | COVERED(p3-0222-manager-rules) - 4-step NM connection selection algorithm is included in manager rules
+- ### Talking to NetworkManager with nmcli | 100 words | NO FIGURE NEEDED - command syntax and exit code explanation
+- ### NetworkManager configuration and unmanaged interfaces | 165 words | NO FIGURE NEEDED - configuration file snippet and directives
+- ### Dispatcher scripts | 85 words | NO FIGURE NEEDED - brief explanation of event hook scripts
+- ## 4. Sockets: how processes use the network | 370 words | COVERED(p3-0222-bind-reach, n22-socketlife) - listener bind reachability and TCP server socket life cycle
+- ### Inspecting sockets | 210 words | COVERED(p2-0222-recvq-sendq) - Recv-Q and Send-Q semantics for listen vs established sockets
+- ### Remote procedure calls and `rpcbind` | 80 words | NO FIGURE NEEDED - protocol definition and port 111 security advice
+- ### Learning the socket interface | 60 words | NO FIGURE NEEDED - bibliographic reference to Stevens UNP book
+- ### Unix domain sockets | 230 words | COVERED(p3-0222-unix-sockets) - loopback TCP vs Unix domain socket path comparison
+- ### Who is using a port: `lsof -i` | 175 words | COVERED(p3-0222-lsof-read) - annotated lsof -i output fields and flags
+- ## 5. Counters: where packets disappear | 420 words | COVERED(p3-0222-delta-method, p3-0222-counter-types, m2-22-2) - delta measurement method, counter mapping table, and 7-layer packet drop diagram
+- ## 6. Performance methodology | 115 words | COVERED(p3-0222-method-order) - 6-step performance methodology flow
+- ### Tools method (checklist) | 120 words | NO FIGURE NEEDED - brief checklist summary of commands
+- ### USE method | 200 words | COVERED(p3-0222-use-pcie) - USE method matrix and PCIe Gen4 vs Gen5 bandwidth calculation
+- ### Workload characterization | 115 words | NO FIGURE NEEDED - list of traffic metrics and diagnostic questions
+- ### Latency analysis | 170 words | COVERED(p3-0222-latency-split) - breakdown of latency phases and tools
+- ### TCP analysis | 120 words | NO FIGURE NEEDED - TCP bottleneck concepts covered in ss -ti and latency analysis figures
+- ### Static performance tuning | 180 words | COVERED(p3-0222-drift-bench) - configuration drift detection across fleet
+- ### Resource controls | 120 words | COVERED(p3-0222-bandwidth-caps) - 5 bandwidth limiting enforcement points
+- ### Micro-benchmarking | 160 words | NO FIGURE NEEDED - benchmarking rules and stream scaling discussed in text and drift figure
+- ## 7. Observability tools in practice | 15 words | NO FIGURE NEEDED - section introduction container
+- ### `ss -ti` fields | 190 words | COVERED(p3-0222-ssti-story, n22-ssti) - detailed breakdown of ss -ti output fields
+- ### BCC and bpftrace tools | 190 words | COVERED(p3-0222-ebpf-by-question) - BCC/bpftrace tools mapped to operational questions
+- ### `perf`, `tcpdump` and Wireshark | 105 words | NO FIGURE NEEDED - brief tool summary; tcpdump covered in depth in chapter 2.26
+- ### Experimentation tools | 80 words | NO FIGURE NEEDED - short list of active test tools
+- ## 8. Putting it together: a top-down and bottom-up checklist | 230 words | COVERED(p3-0222-bottom-up, p2-0222-topdown-ladder) - 10-step bottom-up ladder and 8-step top-down workflow
+- ## 9. Hands-on lab: a guided tour with deliberate faults | 370 words | NO FIGURE NEEDED - lab instructions
+- ## 10. Common mistakes | 120 words | NO FIGURE NEEDED - bulleted pitfalls list
+- ## 11. Interview angles | 120 words | NO FIGURE NEEDED - sample interview questions
+- ## Exercises | 280 words | NO FIGURE NEEDED - end-of-chapter exercises
+- ## Checkpoint questions (20) | 1700 words | NO FIGURE NEEDED - review questions and answers
+- ## Sources and review notes | 280 words | NO FIGURE NEEDED - bibliographic citations and provenance
+
+Specs kept 0, dropped 0: []

@@ -108,6 +108,10 @@ Proxies sit in the path. Forward proxies, set with `HTTP_PROXY` or `HTTPS_PROXY`
 
 ### `curl` as a diagnostic tool
 
+![A horizontal waterfall diagram showing the cumulative curl -w timing variables from time_namelookup to time_total with the five phase durations for DNS, TCP, TLS, server processing, and transfer.](./img/p4-0210-curl-timing.svg)
+
+*Figure 2.0.0. curl -w timing variables break an HTTP request into DNS, TCP, TLS, TTFB and transfer stages, pinpointing whether latency stems from network, crypto or model inference.*
+
 `curl` shows each stage of a request, so you can see which stage is slow or failing. It is the first tool to reach for when an API call misbehaves. The commands below show headers, timing, a DNS bypass, a verification skip for testing, mTLS and proxies.
 
 ```bash

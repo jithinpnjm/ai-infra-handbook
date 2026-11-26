@@ -245,6 +245,10 @@ High port-count devices use a crossbar fabric, a multi-stage Clos inside the cha
 
 ### Switching versus routing (L2 versus L3)
 
+![Comparison of L2 switching preserving Ethernet headers and forwarding broadcasts versus L3 routing stripping L2 headers, decrementing TTL, rewriting MAC addresses, and terminating broadcast domains.](./img/p4-0203-switch-vs-route.svg)
+
+*Figure 2.0.0. An L2 switch forwards frames unchanged based on MAC lookup and floods broadcasts, whereas an L3 router terminates the L2 frame, decrements TTL, rewrites source and destination MACs, and confines broadcast domains.*
+
 Switching forwards on the destination MAC and leaves the frame unchanged. Routing strips the L2 header, looks up the destination IP in a forwarding table, decrements the TTL and builds a new L2 header for the next hop. In the postal picture, a switch moves the letter between desks in one office, while a router re-addresses it for the next building. You route rather than switch for three reasons. Routing connects dissimilar link types. It limits state, because L2 tables grow with every host while IP prefixes aggregate. It also contains broadcast domains, since routers do not forward broadcasts. Most data-centre switches are really L3 switches, meaning routers with Ethernet ports. Modern fabrics push routing down to the top-of-rack switch to avoid large L2 domains (chapters 2.16, 2.18).
 
 For a large fabric, decide early whether routing to the rack keeps your broadcast domains small enough.

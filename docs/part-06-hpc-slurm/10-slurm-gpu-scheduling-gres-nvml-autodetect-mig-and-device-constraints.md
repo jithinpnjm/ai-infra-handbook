@@ -280,6 +280,10 @@ Decide now who drains a node when a GPU fails. That decision is much easier befo
 
 ### Live GPU job monitoring and distributed profiling (*Distributed AI Systems* Chapter 8)
 
+![A troubleshooting flowchart showing how live GPU metrics and torch.profiler distinguish stragglers, impending memory exhaustion, and false 100 percent utilization caused by NCCL polling loops.](./img/p4-0610-live-monitoring.svg)
+
+*Figure 6.0.0. Live GPU telemetry reveals true bottlenecks by distinguishing idle stragglers, VRAM exhaustion, and false 100 percent utilization from NCCL spin loops.*
+
 Once a multi-node GPU job is running, you need to confirm that every allocated GPU is actually computing. A GPU can look idle because it is waiting on data loading or on a hung collective. A collective is an operation, such as an all-reduce, in which every rank in the job must take part before any of them can continue. *Distributed AI Systems*, chapter 8, covers monitoring and debugging. Three approaches help.
 
 1. You can inspect the queue and the GPUs without SSH. Watch job state change in real time with `watch -n 1 squeue -u $USER` and `watch -n 1 scontrol show job <job_id>`. Even on clusters where direct `ssh` to compute nodes is disabled, you can attach to a running job's allocation. Use `srun --jobid=<job_id> nvidia-smi`, or `srun -N 2 nvidia-smi` inside an interactive `salloc` shell, to see `nvidia-smi` across nodes. Stream the output with `tail -f slurm-<job_id>.out`. After a job finishes, query its CPU and memory footprint with `sacct -j <job_id> --format=JobID,JobName,Elapsed,MaxRSS,MaxVMSize,State` and `sacct -u $USER --starttime=2024-01-01`.

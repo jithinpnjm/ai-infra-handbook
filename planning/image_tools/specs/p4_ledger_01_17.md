@@ -1,0 +1,42 @@
+# docs/part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md
+- ## Why this matters for AI infrastructure | 280 | NO FIGURE NEEDED introductory motivation and symptoms map to later sections
+- ## Prerequisites and outcomes | 180 | NO FIGURE NEEDED syllabus prerequisites and learning outcomes list
+- ## 1. Memory at a glance | 100 | COVERED(ch17-d1-luna)
+- ## 2. Virtual memory and paging | 230 | NO FIGURE NEEDED broad definitions of virtual vs resident and anonymous vs file-backed memory
+- ### Why virtual memory | 80 | NO FIGURE NEEDED concise bullet-like text defining benefits
+- ### Translation: page tables, MMU and TLB | 220 | COVERED(ch17-d2-luna)
+- ### Demand paging, page faults, memory states | 280 | COVERED(p3-0117-rss-pss-uss, l17-page-faults)
+- ### Overcommit | 180 | COVERED(l17-overcommit)
+- ### Utilisation and saturation | 90 | NO FIGURE NEEDED definitions of utilization and saturation metrics
+- ### Swap | 160 | NO FIGURE NEEDED conceptual trade-off discussion
+- ## 3. Memory hardware that affects performance | 180 | COVERED(p3-0117-memory-latency-ladder)
+- ### UMA versus NUMA | 230 | COVERED(p3-0117-loader-wrong-node, ch17-d3-luna)
+- ## 4. How Linux frees memory | 360 | NEEDS FIGURE ch17-d4-luna covers freeing stages but watermarks mechanism min low high with kswapd and direct reclaim needs diagram
+- ## 5. The OOM killer | 480 | COVERED(p3-0117-oom-report-read, p3-0117-oom-three-kinds)
+- ## 6. Observing memory | 70 | NO FIGURE NEEDED section introduction
+- ### The summary view: `free` and `/proc/meminfo` | 170 | COVERED(p3-0117-meminfo-breakdown)
+- ### Pressure and activity: `vmstat`, PSI, `sar` | 170 | COVERED(p3-0117-psi-read)
+- ### Per process | 130 | NO FIGURE NEEDED command cheatsheet for process inspection
+- ### Kernel memory and caches: `slabtop`, `/proc/slabinfo` | 80 | NO FIGURE NEEDED slabtop command instructions
+- ### Tracing: `perf`, BCC, `bpftrace` | 90 | NO FIGURE NEEDED tracing commands list
+- ### The method for memory problems | 230 | COVERED(p2-0117-mem-method)
+- ## 7. NUMA in practice | 40 | NO FIGURE NEEDED introduction to NUMA workflow
+- ### Discover the topology | 170 | COVERED(p3-0117-numa-counters)
+- ### Policies and binding | 280 | COVERED(p3-0117-numa-policies)
+- ## 8. Huge pages and transparent huge pages | 120 | COVERED(p3-0117-tlb-reach, l17-thp-modes)
+- ### Explicit huge pages (hugetlb) | 130 | NO FIGURE NEEDED configuration commands and hugetlbfs mount syntax
+- ### Transparent huge pages (THP) | 180 | NO FIGURE NEEDED sysfs knobs and policy guidance
+- ## 9. Allocators and heap behaviour | 420 | COVERED(p3-0117-fork-cow-workers, p3-0117-free-keeps-memory)
+- ## 10. Tuning parameters | 200 | NO FIGURE NEEDED sysctl reference table and conf example
+- ## 11. Memory in cgroups, containers and GPU workloads | 10 | NO FIGURE NEEDED section header
+- ### cgroup v2 memory controller | 190 | COVERED(p3-0117-cgroup-memory-ladder)
+- ### Pinned (page-locked) memory, `memlock`, and DMA | 250 | COVERED(p3-0117-pinned-path)
+- ### Host memory budget for a training node | 130 | COVERED(p3-0117-host-budget)
+- ### Swap and memory policy summary | 80 | COVERED(l17-memory-policy)
+- ## How it fails | 420 | COVERED(p3-0117-enomem-ladder)
+- ## Hands-on lab: virtual memory, NUMA, huge pages, OOM, and VM drills | 650 | NO FIGURE NEEDED hands-on CLI tutorial
+- ## Exercises | 290 | NO FIGURE NEEDED practical exercises
+- ## Checkpoint questions (20) | 1200 | NO FIGURE NEEDED review Q&A
+- ## Sources and review notes | 250 | NO FIGURE NEEDED bibliographic sources
+
+Specs kept 1, dropped 0: []

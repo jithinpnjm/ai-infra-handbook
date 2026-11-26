@@ -1,0 +1,42 @@
+[
+ {
+  "name": "p4-0302-from-mutation-reload",
+  "title": "Shared references, rebinding versus in-place mutation, and reload staleness",
+  "anchor": "### `import` versus `from`: shared references, cross-file mutation, and `reload()`",
+  "spec": "A three-panel comparative architecture diagram showing variable binding, heap memory, and reload mechanics. Panel 1 (Rebinding vs Mutation): Box for share.py module namespace containing x -> int 1 and y -> list [1, 2] in heap memory. Downward arrows to importer namespace after 'from share import x, y': local x points to 1, local y points to [1, 2]. Show 'x = hack' breaking the local arrow and pointing to str 'hack' while share.x remains 1. Show 'y[0] = hack' modifying the shared list in-place to ['hack', 2], with red sync arrows showing both namespaces see the change. Show 'import share; share.x = 23' modifying share.py namespace directly. Panel 2 (Reload Staleness with changer.py): Top row shows changer v1 (message='First version', def printer). Importer A runs 'from changer import printer'; Importer B runs 'import changer'. Middle row shows changer edited to v2 (message='After editing'). Bottom row shows 'importlib.reload(changer)': changer.__dict__ is overwritten in-place with new code object. Importer B calling changer.printer() gets v2. Importer A calling printer() still points to orphaned v1 function in heap, highlighted with a red warning badge.",
+  "alt": "A diagram comparing reference copying, local rebinding, in-place list mutation, and stale function references after a module reload.",
+  "cap": "Rebinding a name imported with from stays local, in-place mutation affects all importers sharing the heap object, and reload leaves from-bound references pointing to stale functions.",
+  "part": "part-03-python",
+  "ch": "02"
+ },
+ {
+  "name": "p4-0302-transitive-reload",
+  "title": "Shallow reload versus transitive dependency tree reload",
+  "anchor": "### Module introspection (`mydir.py`), dynamic string imports, and transitive reloaders (`reloadall.py`)",
+  "spec": "A side-by-side comparison of shallow versus deep transitive reloading across an import graph ra -> rb -> rc. Left column (Standard importlib.reload(ra)): ra is reloaded; its internal 'import rb' statement evaluates against sys.modules where rb already exists, so rb and rc remain unchanged with stale flags on ra.rb.Y and ra.rb.rc.Z. Right column (transitive reloadall.py walker): flow diagram showing reloadall(ra). Step 1: inspect ra.__dict__.values(), filtering for types.ModuleType to discover rb. Step 2: check 'if rb not in visited: visited.add(rb)' to prevent circular loops. Step 3: call tryreload(rb) inside a defensive try/except block that guards unreloadable modules such as sys.monitoring. Step 4: recurse into rb, discover rc, reload rc. Bottom box contrasts the recursive reloadall2 (visited set) with reloadall3 explicit stack implementation using objects.pop() and objects.extend().",
+  "alt": "A flowchart contrasting standard shallow reload which skips nested imports against a transitive walker that traverses module attributes with cycle detection.",
+  "cap": "Standard reload updates only the target module, while transitive reloaders walk the module dictionary, guard against circular dependencies with a visited set, and refresh nested imports.",
+  "part": "part-03-python",
+  "ch": "02"
+ },
+ {
+  "name": "p4-0302-circular-imports",
+  "title": "Execution timeline and sys.modules state during circular imports",
+  "anchor": "### Circular (`recursive`) imports: why `import recur1` fails while `import recur2` succeeds",
+  "spec": "Two parallel step-by-step execution timelines side by side. Left timeline (import recur1 fails): Step 1: sys.modules['recur1'] created as empty module object. Step 2: recur1.py executes 'X = 1'. Step 3: recur1.py executes 'import recur2' (recur1 paused at line 2). Step 4: sys.modules['recur2'] created. Step 5: recur2.py executes 'from recur1 import X' (succeeds, X=1 exists). Step 6: recur2.py executes 'from recur1 import Y' (FAILS with ImportError: cannot import name Y from partially initialized module recur1, because line 3 Y = 2 has not run yet). Right timeline (import recur2 first succeeds): Step 1: sys.modules['recur2'] created. Step 2: recur2.py executes 'from recur1 import X'. Step 3: sys.modules['recur1'] created; recur1.py runs line 1 'X = 1', line 2 'import recur2' (instant no-op since recur2 is already in sys.modules), line 3 'Y = 2' runs to completion. Step 4: control returns to recur2.py; both X and Y now exist in recur1.__dict__, so 'from recur1 import Y' succeeds.",
+  "alt": "A two-timeline diagram tracing module execution order and sys.modules registration to explain why import recur1 raises an ImportError while import recur2 succeeds.",
+  "cap": "Modules register in sys.modules before running their body, so circular imports fail when a from statement requests an attribute before the source file has executed its assignment.",
+  "part": "part-03-python",
+  "ch": "02"
+ },
+ {
+  "name": "p4-0302-src-vs-flat-layout",
+  "title": "Flat layout import pollution versus src layout build isolation",
+  "anchor": "### Typical project layout (src layout)",
+  "spec": "A comparative layout diagram showing test runner behavior under two folder structures. Left panel (Flat layout: myops/myops/ and myops/tests/): Terminal executes 'pytest' from root directory /home/user/myops. sys.path[0] is set to '/home/user/myops'. The test runner directly discovers and imports './myops' from disk. Result: test passes (False Green), masking missing dependencies, broken build backend declarations in pyproject.toml, and missing package data. Right panel (Src layout: myops/src/myops/ and myops/tests/): Terminal executes 'pytest' from root /home/user/myops. sys.path[0] is '/home/user/myops'. Neither 'myops.py' nor directory 'myops/' exists directly in root. Direct 'import myops' raises ModuleNotFoundError. Arrow shows developer running 'pip install -e .' first: wheels and editable .pth are built, validating that pyproject.toml and hatchling package definitions work before tests can execute.",
+  "alt": "A diagram comparing flat and src project layouts, showing how flat layout lets tests import local folders directly while src layout enforces packaging verification.",
+  "cap": "The src layout prevents accidental imports from the working directory, ensuring tests run against an installed editable package and catching missing build metadata before CI passes.",
+  "part": "part-03-python",
+  "ch": "02"
+ }
+]

@@ -1,0 +1,38 @@
+# docs/part-20-nebius-sre-interview/15-design-an-observability-pipeline-for-very-high-volume.md
+- ## What the interviewer is testing | 270 | NO FIGURE NEEDED interview framing and scope
+- ## The core ideas | 15 | NO FIGURE NEEDED container section
+- ### 1. Start from the questions, then count the cost | 230 | NO FIGURE NEEDED conceptual summary covered in detail in later sections
+- ### 2. What to collect for an inference platform | 340 | NEEDS FIGURE request path through layers contrasting SLI detection at edge with explanation at engine and hardware
+- ### 3. Cardinality is a budget, and labels are how you spend it | 350 | NO FIGURE NEEDED cardinality math and policy covered in scenario 1 figure
+- ### 4. Enforce the budget in three places | 290 | COVERED(p2-2015-three-places)
+- ### 5. Pull for metrics, push for traces and logs, and know the exceptions | 260 | COVERED(p3-2015-pull-vs-push-silence)
+- ### 6. One Prometheus does not scale forever, so split it on purpose | 310 | COVERED(p2-2015-prom-sharding)
+- ### 7. Long-term storage: choose by what breaks first | 390 | COVERED(p2-2015-long-term-store)
+- ### 8. Recording rules turn many series into few | 450 | COVERED(p2-2015-recording-rule-name)
+- ### 9. Logs: volume is the enemy, and metrics are the alert source | 350 | COVERED(p3-2015-log-volume-arithmetic)
+- ### 10. Traces: head sampling is cheap, tail sampling keeps what matters | 590 | COVERED(x15-tail-sampling-tiers)
+- ### 11. Exemplars link a metric spike to one trace | 230 | COVERED(p2-2015-exemplar-link)
+- ### 12. Metering for billing is a different system from operational metrics | 350 | COVERED(x15-metering-split)
+- ### 13. The pipeline loses data too, so decide where and in what order | 380 | COVERED(x15-where-data-drops)
+- ### 14. Monitor the monitoring | 350 | COVERED(p2-2015-dead-mans-switch)
+- ### 15. Cost: know which knob moves which bill | 250 | COVERED(p3-2015-cost-knobs)
+- ## The pipeline at a glance | 50 | COVERED(m20-15-1)
+- ## How to answer out loud | 130 | NO FIGURE NEEDED interview pacing table
+- ### Question 1: "How do you control cardinality?" | 80 | NO FIGURE NEEDED short interview prompt summary
+- ### Question 2: "Head or tail sampling?" | 90 | NO FIGURE NEEDED short interview prompt summary
+- ### Question 3: "Prometheus is out of memory. What now?" | 110 | COVERED(p3-2015-prometheus-oom-ladder)
+- ### Question 4: "How would you keep metrics for a year?" | 70 | NO FIGURE NEEDED short interview prompt summary
+- ### Question 5: "How do you know your monitoring works?" | 70 | NO FIGURE NEEDED short interview prompt summary
+- ## Worked scenarios | 15 | NO FIGURE NEEDED container section
+- ### Scenario 1: A tenant label breaks Prometheus | 220 | COVERED(x15-cardinality-math)
+- ### Scenario 2: The tail sampler drops half of the slow traces | 160 | COVERED(p3-2015-tail-sampler-sizing)
+- ### Scenario 3: Remote write is down for three hours | 140 | COVERED(p3-2015-remote-write-gap)
+- ### Scenario 4: Dashboard and invoice disagree by 2 percent | 160 | COVERED(p3-2015-invoice-dispute-ladder)
+- ## Hands-on lab | 260 | NO FIGURE NEEDED practical command sequence
+- ## Drill questions | 380 | NO FIGURE NEEDED flashcard drill questions
+- ## Common mistakes and weak answers | 210 | NO FIGURE NEEDED bulleted antipatterns
+- ## Connections to the rest of the handbook | 120 | NO FIGURE NEEDED cross reference links
+- ## Sources and review notes | 380 | NO FIGURE NEEDED citations and bibliography
+- ### Verification log | 250 | NO FIGURE NEEDED test and verification records
+
+Specs kept 1, dropped 0: []

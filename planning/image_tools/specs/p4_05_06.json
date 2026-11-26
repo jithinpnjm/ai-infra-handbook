@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0506-endpointslice-readiness",
+  "title": "EndpointSlice Controller Decoupling Readiness from Pod Lifecycle",
+  "anchor": "### EndpointSlice and Service controllers",
+  "spec": "Three-column flow diagram showing how pod readiness affects EndpointSlices and traffic routing during an AI model load. Left column (Pod Lifecycle on GPU Node): Step 1 shows an inference container started; Step 2 shows Model Weight Loading where readiness probe fails with HTTP 503 while liveness probe passes with HTTP 200; Step 3 shows Weights Ready where readiness probe succeeds with HTTP 200. Middle column (EndpointSlice Controller Loop): Controller watches Pod conditions; at Step 2 it sets endpoints[0].conditions.ready=false and serving=false in the EndpointSlice object; at Step 3 it updates endpoints[0].conditions.ready=true and serving=true. Right column (Traffic Routing Plane): Service vllm-service backed by EndpointSlice; arrows show kube-proxy and cloud load balancers directing client inference requests only to endpoints where ready=true. Crucial visual callout emphasizes that unready pods drop traffic without being terminated by kubelet, distinguishing readiness from liveness.",
+  "alt": "A three-column flow diagram showing how the EndpointSlice controller removes an unready inference pod from traffic routing during model loading without killing the container.",
+  "cap": "The EndpointSlice controller updates endpoint conditions based on readiness probes, removing an unready model server from traffic while keeping its container alive.",
+  "part": "part-05-kubernetes",
+  "ch": "06"
+ },
+ {
+  "name": "p4-0506-status-conditions",
+  "title": "Anatomy of Conditions, observedGeneration, and the /status Subresource",
+  "anchor": "### Status and conditions",
+  "spec": "Two-part diagram illustrating the status subresource boundary and condition structure. Top panel (Subresource Flow): An API client writes a spec update to /api/v1/namespaces/default/deployments/web, causing apiserver to increment metadata.generation from 1 to 2; the Deployment controller reconciles the changes and writes exclusively to the /status subresource, setting status.observedGeneration to 2 without re-incrementing metadata.generation, stopping infinite reconcile loops. Bottom panel (Condition Anatomy): Annotated breakdown of a single condition object inside status.conditions: type=Available (high-level capability), status=True (three-state value: True, False, Unknown), reason=MinimumReplicasAvailable (machine-readable CamelCase token), message=Deployment has minimum availability (human diagnostic text), lastTransitionTime=2025-05-10T12:00:00Z (timestamp updated only when status flips), and observedGeneration=2 (matching spec generation to confirm reconciliation is complete).",
+  "alt": "Diagram showing the separation between metadata.generation and status.observedGeneration through the status subresource, alongside the six fields of a condition object.",
+  "cap": "Writing status through the /status subresource updates observedGeneration and conditions without bumping metadata.generation, preventing reconcile loops.",
+  "part": "part-05-kubernetes",
+  "ch": "06"
+ }
+]

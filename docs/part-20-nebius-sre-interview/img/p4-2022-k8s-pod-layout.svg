@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1490" width="1600" height="1490">
+  <title>vLLM Kubernetes Pod Architecture and Probing Topology</title>
+  <desc>Visual diagram of the vLLM Kubernetes deployment detailing resource envelope, volumes, credentials, and cascaded probes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 0 L 18 9 L 0 18 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1490" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#303a36">vLLM Kubernetes Pod Architecture and Probing Topology</text>
+
+  
+  <g id="service-group">
+    <rect x="480" y="85" width="640" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 525 127 m -18 0 a 18 18 0 1 0 36 0 a 18 18 0 1 0 -36 0 M 525 103 v 6 M 525 145 v 6 M 501 127 h 6 M 543 127 h 6 M 508 110 l 4 4 M 538 140 l 4 4 M 508 144 l 4 -4 M 538 114 l 4 -4" stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none" />
+    <text x="560" y="138" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Service: vllm-llama-8b</text>
+  </g>
+
+  
+  <path d="M 800 170 L 800 248" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <rect x="520" y="192" width="560" height="38" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="218" text-anchor="middle" font-family="monospace" font-size="24px" fill="#303a36">mapping port 8000 to containerPort 8000</text>
+
+  
+  <rect x="50" y="250" width="1500" height="1200" rx="16" fill="#ffffff" stroke="#207448" stroke-width="4" />
+  
+  <rect x="80" y="275" width="46" height="38" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 92 275 v 38 M 114 275 v 38 M 80 294 h 46" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="142" y="306" font-family="sans-serif" font-size="34px" font-weight="bold" fill="#303a36">vllm-llama-8b Pod</text>
+
+  
+
+  
+  <g id="resource-envelope">
+    <rect x="80" y="340" width="690" height="520" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="108" y="365" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 118 365 v -8 M 128 365 v -8 M 138 365 v -8 M 118 405 v 8 M 128 405 v 8 M 138 405 v 8 M 108 375 h -8 M 108 385 h -8 M 108 395 h -8 M 148 375 h 8 M 148 385 h 8 M 148 395 h 8" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="165" y="396" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Resource Envelope</text>
+
+    
+    <rect x="105" y="425" width="640" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="125" y="460" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Requests</text>
+    <text x="125" y="498" font-family="monospace" font-size="24px" fill="#303a36">CPU 4</text>
+    <text x="125" y="534" font-family="monospace" font-size="24px" fill="#303a36">Memory 24Gi</text>
+    <text x="340" y="534" font-family="monospace" font-size="24px" fill="#303a36">GPU 1 nvidia.com/gpu</text>
+
+    
+    <rect x="105" y="585" width="640" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="125" y="620" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Limits</text>
+    <text x="125" y="658" font-family="monospace" font-size="24px" fill="#303a36">Memory 32Gi</text>
+    <text x="340" y="658" font-family="monospace" font-size="24px" fill="#303a36">GPU 1 nvidia.com/gpu</text>
+
+    
+    <rect x="105" y="710" width="640" height="125" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    <circle cx="135" cy="745" r="14" fill="#db8129" />
+    <text x="135" y="753" text-anchor="middle" font-family="sans-serif" font-size="22px" font-weight="bold" fill="#ffffff">!</text>
+    <text x="160" y="750" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129">Memory Headroom</text>
+    <text x="125" y="788" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="125" dy="0">8Gi headroom between memory request and</tspan>
+      <tspan x="125" dy="30">limit for weight loading</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="volumes-group">
+    <rect x="810" y="340" width="710" height="350" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <ellipse cx="848" cy="375" rx="18" ry="8" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 830 375 v 20 c 0 4.4 8.1 8 18 8 s 18 -3.6 18 -8 v -20" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 830 385 c 0 4.4 8.1 8 18 8 s 18 -3.6 18 -8" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="880" y="396" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Volumes</text>
+
+    
+    <rect x="830" y="420" width="670" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="846" y="452" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">/dev/shm</text>
+    <text x="965" y="452" font-family="monospace" font-size="24px" fill="#303a36">mounted to</text>
+    <text x="846" y="484" font-family="monospace" font-size="24px" fill="#303a36">emptyDir: medium: Memory, sizeLimit: 2Gi</text>
+    <text x="846" y="516" font-family="sans-serif" font-size="24px" fill="#303a36">Required for PyTorch and NCCL tensor-parallel IPC</text>
+
+    
+    <rect x="830" y="550" width="670" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="846" y="582" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">/root/.cache/huggingface</text>
+    <text x="846" y="618" font-family="monospace" font-size="24px" fill="#303a36">mounted to PVC: vllm-model-cache</text>
+    <text x="846" y="652" font-family="sans-serif" font-size="24px" fill="#303a36">Avoids re-downloading 16 GB weights on pod restart</text>
+  </g>
+
+  
+  <g id="credentials-group">
+    <rect x="810" y="710" width="710" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="835" y="745" width="28" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 841 745 v -8 a 8 8 0 0 1 16 0 v 8" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="875" y="756" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Environment &amp; Credentials</text>
+
+    <rect x="830" y="785" width="670" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="846" y="823" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">HF_TOKEN</text>
+    <text x="965" y="823" font-family="sans-serif" font-size="24px" fill="#303a36">pulled from</text>
+    <text x="1100" y="823" font-family="monospace" font-size="24px" fill="#303a36">Secret: hf-token-secret</text>
+  </g>
+
+  
+
+  <g id="probes-group">
+    <rect x="80" y="885" width="1440" height="535" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="118" cy="922" r="18" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 118 910 v 13 l 9 5" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="150" y="932" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Cascaded Probes</text>
+
+    
+    <rect x="105" y="960" width="450" height="435" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="140" cy="995" r="22" fill="#207448" />
+    <text x="140" y="1003" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+    <text x="175" y="1004" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">startupProbe</text>
+
+    <text x="125" y="1050" font-family="monospace" font-size="24px" fill="#303a36">/health</text>
+    <text x="125" y="1088" font-family="monospace" font-size="24px" fill="#303a36">period 10s, failure 90</text>
+
+    <line x1="125" y1="1115" x2="535" y2="1115" stroke="#e8f1ea" stroke-width="3" />
+
+    <text x="125" y="1155" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="125" dy="0">-&gt; 900s total budget to</tspan>
+      <tspan x="125" dy="36">absorb weight loading</tspan>
+      <tspan x="125" dy="36">and CUDA graph capture</tspan>
+    </text>
+
+    
+    <rect x="575" y="960" width="450" height="435" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="610" cy="995" r="22" fill="#207448" />
+    <text x="610" y="1003" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+    <text x="645" y="1004" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">readinessProbe</text>
+
+    <text x="595" y="1050" font-family="monospace" font-size="24px" fill="#303a36">/health</text>
+    <text x="595" y="1088" font-family="monospace" font-size="24px" fill="#303a36">period 5s, failure 3</text>
+
+    <line x1="595" y1="1115" x2="1005" y2="1115" stroke="#e8f1ea" stroke-width="3" />
+
+    <text x="595" y="1155" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="595" dy="0">-&gt; gates cluster traffic</tspan>
+    </text>
+
+    
+    <rect x="1045" y="960" width="455" height="435" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1080" cy="995" r="22" fill="#207448" />
+    <text x="1080" y="1003" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">3</text>
+    <text x="1115" y="1004" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">livenessProbe</text>
+
+    <text x="1065" y="1050" font-family="monospace" font-size="24px" fill="#303a36">/health</text>
+    <text x="1065" y="1088" font-family="monospace" font-size="24px" fill="#303a36">period 20s, timeout 10s</text>
+    <text x="1065" y="1124" font-family="monospace" font-size="24px" fill="#303a36">failure 6</text>
+
+    <line x1="1065" y1="1150" x2="1475" y2="1150" stroke="#e8f1ea" stroke-width="3" />
+
+    <text x="1065" y="1190" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="1065" dy="0">-&gt; forgiving threshold</tspan>
+      <tspan x="1065" dy="36">to prevent killing</tspan>
+      <tspan x="1065" dy="36">busy engines</tspan>
+    </text>
+  </g>
+</svg>

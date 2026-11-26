@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>QoS Classes: Cgroups, Requests, OOM Scores, and Eviction Priority</title>
+  <desc>Comparison matrix of Kubernetes QoS classes detailing criteria, cgroups, oom_score_adj, and eviction order</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">QoS Classes: Cgroups, Requests,</tspan>
+    <tspan x="800" dy="56">OOM Scores, and Eviction Priority</tspan>
+  </text>
+
+  
+  <rect x="40" y="145" width="1520" height="85" rx="10" fill="#207448"/>
+  <line x1="225" y1="145" x2="225" y2="230" stroke="#f5f8f5" stroke-width="2" stroke-opacity="0.3"/>
+  <line x1="495" y1="145" x2="495" y2="230" stroke="#f5f8f5" stroke-width="2" stroke-opacity="0.3"/>
+  <line x1="935" y1="145" x2="935" y2="230" stroke="#f5f8f5" stroke-width="2" stroke-opacity="0.3"/>
+  <line x1="1215" y1="145" x2="1215" y2="230" stroke="#f5f8f5" stroke-width="2" stroke-opacity="0.3"/>
+
+  <text x="132" y="198" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">QoS Class</text>
+  <text x="360" y="180" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="360" dy="0">Request/Limit</tspan>
+    <tspan x="360" dy="32">Criteria</tspan>
+  </text>
+  <text x="715" y="198" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Cgroup Location</text>
+  <text x="1075" y="180" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="1075" dy="0">Linux Kernel</tspan>
+    <tspan x="1075" dy="32">oom_score_adj</tspan>
+  </text>
+  <text x="1388" y="180" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="1388" dy="0">Eviction Order under</tspan>
+    <tspan x="1388" dy="32">Node Memory Pressure</tspan>
+  </text>
+
+  
+  <rect x="40" y="245" width="1520" height="265" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <line x1="225" y1="245" x2="225" y2="510" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="495" y1="245" x2="495" y2="510" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="935" y1="245" x2="935" y2="510" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="1215" y1="245" x2="1215" y2="510" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+
+  
+  <g transform="translate(104, 285)">
+    <path d="M 28,4 L 52,14 L 52,32 C 52,47 28,56 28,56 C 28,56 4,47 4,32 L 4,14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 16,30 L 24,38 L 40,20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="132" y="395" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Guaranteed</text>
+
+  
+  <text x="360" y="360" text-anchor="middle" fill="#303a36">
+    <tspan x="360" dy="0" font-family="monospace" font-size="24">requests == limits</tspan>
+    <tspan x="360" dy="40" font-family="sans-serif" font-size="24">for all containers</tspan>
+  </text>
+
+  
+  <text x="715" y="342" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="715" dy="0">/sys/fs/cgroup/</tspan>
+    <tspan x="715" dy="38">kubepods.slice/</tspan>
+    <tspan x="715" dy="38">kubepods-pod&lt;uid&gt;.slice</tspan>
+  </text>
+
+  
+  <text x="1075" y="388" text-anchor="middle" font-family="monospace" font-size="36" font-weight="bold" fill="#207448">-997</text>
+
+  
+  <text x="1388" y="342" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1388" dy="0" font-weight="bold">Tier 2, evicted last</tspan>
+    <tspan x="1388" dy="38">only if system daemons</tspan>
+    <tspan x="1388" dy="38">exceed reserved</tspan>
+  </text>
+
+  
+  <rect x="40" y="525" width="1520" height="305" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <line x1="225" y1="525" x2="225" y2="830" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="495" y1="525" x2="495" y2="830" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="935" y1="525" x2="935" y2="830" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="1215" y1="525" x2="1215" y2="830" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+
+  
+  <g transform="translate(104, 570)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 12,34 L 22,22 L 32,32 L 44,16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="132" y="675" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Burstable</text>
+
+  
+  <text x="360" y="630" text-anchor="middle" fill="#303a36">
+    <tspan x="360" dy="0" font-family="sans-serif" font-size="24">at least one request</tspan>
+    <tspan x="360" dy="36" font-family="sans-serif" font-size="24">or limit set,</tspan>
+    <tspan x="360" dy="40" font-family="monospace" font-size="24">requests &lt; limits</tspan>
+  </text>
+
+  
+  <text x="715" y="648" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="715" dy="0">.../</tspan>
+    <tspan x="715" dy="38">kubepods-burstable.slice/</tspan>
+    <tspan x="715" dy="38">...</tspan>
+  </text>
+
+  
+  <text x="1075" y="635" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0">calculated proportional</tspan>
+    <tspan x="1075" dy="38">between -998</tspan>
+    <tspan x="1075" dy="38">and 1000</tspan>
+  </text>
+
+  
+  <text x="1388" y="605" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1388" dy="0" font-weight="bold">Tier 1 if usage &gt; request</tspan>
+    <tspan x="1388" dy="36">ranked by priority then</tspan>
+    <tspan x="1388" dy="36">excess bytes,</tspan>
+    <tspan x="1388" dy="44" font-weight="bold">Tier 2 if usage &lt;= request</tspan>
+  </text>
+
+  
+  <rect x="40" y="845" width="1520" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <line x1="225" y1="845" x2="225" y2="1100" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="495" y1="845" x2="495" y2="1100" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="935" y1="845" x2="935" y2="1100" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+  <line x1="1215" y1="845" x2="1215" y2="1100" stroke="#207448" stroke-width="1" stroke-opacity="0.25"/>
+
+  
+  <g transform="translate(104, 885)">
+    <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8 6"/>
+    <circle cx="28" cy="28" r="6" fill="#207448"/>
+  </g>
+  <text x="132" y="995" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">BestEffort</text>
+
+  
+  <text x="360" y="960" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0">no requests or</tspan>
+    <tspan x="360" dy="38">limits set</tspan>
+  </text>
+
+  
+  <text x="715" y="942" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="715" dy="0">.../</tspan>
+    <tspan x="715" dy="38">kubepods-besteffort.slice/</tspan>
+    <tspan x="715" dy="38">...</tspan>
+  </text>
+
+  
+  <text x="1075" y="985" text-anchor="middle" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36">1000</text>
+
+  
+  <rect x="1232" y="915" width="312" height="115" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="1388" y="960" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="1388" dy="0">Tier 1, evicted first</tspan>
+    <tspan x="1388" dy="38">because request is 0</tspan>
+  </text>
+
+  
+  <rect x="40" y="1118" width="1520" height="58" rx="10" fill="#207448"/>
+  <text x="800" y="1155" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">kubelet/runtime processes: -999</text>
+</svg>

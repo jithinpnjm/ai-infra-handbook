@@ -1,0 +1,40 @@
+# docs/part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md
+- ## Why this matters for AI infrastructure | 210 | NO FIGURE NEEDED introductory motivation and incident story
+- ## Prerequisites and outcomes | 130 | NO FIGURE NEEDED bulleted list of chapter learning objectives
+- ## 1. Terminal, shell, command: three different things | 390 | COVERED(ch02-d1-luna)
+- ## 2. Anatomy of a command line | 140 | COVERED(l02-command-anatomy)
+- ### What the shell does with a line | 130 | COVERED(ch02-d2-luna)
+- ### How the shell finds a program: `PATH` | 110 | COVERED(l02-path-lookup)
+- ## 3. A survival kit of commands | 180 | NO FIGURE NEEDED structured reference table of core commands and options
+- ### The forms of the basic commands | 620 | NEEDS FIGURE process boundary showing why cd and export must be builtins rather than external child processes
+- ### The one habit that prevents most disasters | 140 | NO FIGURE NEEDED three-step safe deletion guideline
+- ## 4. Getting help without leaving the terminal | 250 | NO FIGURE NEEDED reference table of man sections 1 through 8
+- ### Reading a man page without getting lost | 200 | NO FIGURE NEEDED terminal output snippet and navigation advice
+- ## 5. Expansion and quoting: the rules that explain "weird" behaviour | 650 | COVERED(ch02-fig1-quoting.jpg)
+- ### Special characters: the names to know | 230 | NO FIGURE NEEDED reference table of special characters and spoken names
+- ## 6. Standard streams, redirection and pipes | 510 | COVERED(ch02-d3-luna, ch02-fig2-streams.jpg)
+- ## 7. Exit status and combining commands | 170 | COVERED(l02-chaining, ch02-fig3-exit-status.jpg)
+- ### Exit codes you will meet in AI infrastructure | 230 | NO FIGURE NEEDED reference table of common exit status codes
+- ## 8. Environment variables, `PATH` and startup files | 240 | COVERED(ch02-fig4-environment.jpg)
+- ### Modifying `PATH` safely | 180 | NO FIGURE NEEDED short code snippets and ordering guidelines
+- ### Startup files: where the settings live | 620 | COVERED(ch02-fig5-startup-files.jpg)
+- ## 9. Working faster: history, completion and editing | 220 | NEEDS FIGURE visual map of readline editing motions and kill ring across a command buffer
+- ### Shell tricks that save hours on clusters | 450 | COVERED(p3-0102-fd-swap)
+- ## 10. Understanding error messages | 580 | COVERED(p3-0102-error-anatomy)
+- ## 11. Mac or Linux? The differences that bite | 190 | NO FIGURE NEEDED comparative table of macOS versus Linux behavior
+- ## 12. Daily patterns for AI and HPC work | 230 | NO FIGURE NEEDED practical recipe list of bash one-liners
+- ## How it fails | 40 | NO FIGURE NEEDED section introduction
+- ### 1. A space in a filename, an unquoted variable | 40 | NO FIGURE NEEDED troubleshooting scenario with inline diagnostic
+- ### 2. `rm -rf "$DIR"/*` with an empty `DIR` | 50 | NO FIGURE NEEDED troubleshooting scenario with inline diagnostic
+- ### 3. Errors vanish or appear in the wrong place: redirection order | 45 | NO FIGURE NEEDED covered by redirection diagrams in section 6
+- ### 4. The wrong program runs: `PATH` or alias shadowing | 45 | NO FIGURE NEEDED covered by PATH lookup diagram in section 2
+- ### 5. "Argument list too long" | 40 | NO FIGURE NEEDED troubleshooting scenario with inline diagnostic
+- ### 6. `bad interpreter: No such file or directory` on a script that exists | 55 | NO FIGURE NEEDED troubleshooting scenario with inline diagnostic
+- ### 7. A failing pipeline stage hidden by a later one | 40 | NO FIGURE NEEDED covered by exit status diagrams in section 7
+- ### 8. A "bash script" that fails on another distribution: `/bin/sh` is not bash | 50 | NO FIGURE NEEDED troubleshooting scenario with inline diagnostic
+- ## Hands-on lab: shell parsing, redirection, and VM drills | 450 | NO FIGURE NEEDED hands-on CLI practice exercises
+- ## Exercises | 200 | NO FIGURE NEEDED student drill questions
+- ## Checkpoint questions (20) | 1100 | NO FIGURE NEEDED review Q and A accordion elements
+- ## Sources and review notes | 280 | NO FIGURE NEEDED bibliography and chapter citations
+
+Specs kept 2, dropped 0: []

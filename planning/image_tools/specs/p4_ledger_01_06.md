@@ -1,0 +1,52 @@
+# docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md
+- ## Why this matters for AI infrastructure | 150 | NO FIGURE NEEDED introductory framing connecting permissions to cluster errors
+- ## Prerequisites and outcomes | 160 | NO FIGURE NEEDED syllabus checklist and expected outcomes
+- ## 1. Users and groups: names for numbers | 210 | COVERED(ch06-d1-luna)
+- ### `/etc/passwd`: the user table | 230 | COVERED(l06-passwd-line)
+- ### `/etc/shadow`: passwords and aging | 170 | NO FIGURE NEEDED plain description of nine colon-separated fields and hash prefixes
+- ### `/etc/group`: the group table | 250 | NO FIGURE NEEDED syntax explanation of group fields and user-private groups
+- ### Why `/etc` is split into subdirectories | 160 | NO FIGURE NEEDED directory layout convention and upgrade durability explanation
+- ## 2. Managing users and groups | 480 | NO FIGURE NEEDED reference command list and callout box on usermod flags
+- ## 3. File permissions: read, write, execute | 220 | COVERED(p3-0106-check-order)
+- ### What the bits mean: files versus directories | 170 | NEEDS FIGURE non-intuitive contrast between file rw and directory traversal and deletion rules
+- ### Changing permissions: `chmod`, `chown`, `chgrp` | 240 | NO FIGURE NEEDED command syntax and octal reference table
+- ### Absolute modes: memorize the ones you use | 110 | NO FIGURE NEEDED reference list of common octal modes
+- ### `umask`: default permissions for new files | 220 | COVERED(p3-0106-umask-table)
+- ### The special bits: setuid, setgid, sticky | 180 | NO FIGURE NEEDED reference table comparing the three special bits on files vs directories
+- ### A recipe: a safe shared project directory | 130 | NEEDS FIGURE collaborative workflow showing directory setgid group inheritance and umask 002 coordination
+- ## 4. Access control lists (ACLs) | 300 | COVERED(l06-acl)
+- ## 5. Process identity, setuid and `sudo` | 60 | NO FIGURE NEEDED brief section roadmap
+- ### `getty` and `login`: how a terminal login starts | 190 | NO FIGURE NEEDED concise lifecycle explanation of virtual terminal authentication
+- ### How a process gets its identity, and how it changes | 150 | NO FIGURE NEEDED list of three kernel rules for UID transitions
+- ### Real, effective, saved (and filesystem) IDs | 160 | COVERED(l06-setuid-ids)
+- ### Why setuid is dangerous: security implications | 220 | NO FIGURE NEEDED security audit guidance and nosuid mount options
+- ### Identification, authentication, authorization | 160 | NO FIGURE NEEDED concise three-way terminology distinction
+- ### `sudo`: administrative power with a trail | 380 | NO FIGURE NEEDED syntax breakdown of sudoers rules and logging channels
+- ## 6. Shell startup files: the user environment | 90 | NO FIGURE NEEDED brief introduction to shell dotfiles
+- ### Which file is read when (bash) | 320 | COVERED(ch06-d2-luna)
+- ### What belongs in a startup file | 270 | NO FIGURE NEEDED best-practice configuration guidelines and security caveats
+- ### An example `~/.bashrc` | 110 | NO FIGURE NEEDED annotated shell script code block
+- ### Defaults for new users and cluster-wide defaults | 140 | NO FIGURE NEEDED description of /etc/skel and /etc/profile.d
+- ### Startup-file pitfalls and further startup topics | 100 | NO FIGURE NEEDED bulleted pitfalls list
+- ## 7. Limits and quotas (an introduction) | 380 | NO FIGURE NEEDED explanation of ulimit resources, limits.conf, and filesystem quota commands
+- ## 8. Identity in a cluster: keeping the numbers consistent (*Supercomputers for Linux Sysadmins* Chapter 11) | 120 | NO FIGURE NEEDED introduction to cluster identity synchronization architectures
+- ### 8.1 What must match everywhere and what must differ by node role | 240 | NO FIGURE NEEDED conceptual rules on role-based limit differences
+- ### 8.2 The classic file-synchronization approach and the pull-based `/usr/sbin/master-sync` design | 570 | COVERED(p3-0106-pull-sync)
+- ### 8.3 NIS and NIS+: why the commands start with `yp` and why 30 to 40 clients is the ceiling | 380 | NO FIGURE NEEDED historical narrative and eight-step setup list
+- ### 8.4 LDAP, explosive job-launch storms, and SSSD caching | 340 | NEEDS FIGURE failure cascade of synchronized 500-node job start query storm versus node-local SSSD caching
+- ### 8.5 How a program finds a user: the Name Service Switch (NSS) | 110 | COVERED(ch06-d3-luna)
+- ## 9. AI-infrastructure patterns | 340 | NO FIGURE NEEDED list of production rules for containers, GPU devices, and Slurm
+- ## How it fails | 40 | NO FIGURE NEEDED introduction to failure catalog
+- ### 1. "Permission denied" although the file looks readable | 90 | NO FIGURE NEEDED diagnostic checklist
+- ### 2. New files in a shared directory have the wrong group or permissions | 60 | NO FIGURE NEEDED diagnostic checklist
+- ### 3. After "fixing" with `chmod -R 777`, everything is wide open | 60 | NO FIGURE NEEDED diagnostic checklist
+- ### 4. Files owned by `root` in your project after running a container | 60 | NO FIGURE NEEDED diagnostic checklist
+- ### 5. The same user, different UID on different nodes | 90 | NO FIGURE NEEDED diagnostic checklist
+- ### 6. Locked out by a `sudoers` mistake | 60 | NO FIGURE NEEDED diagnostic checklist
+- ### 7. A `sudo` command behaves differently: environment and redirection surprises | 80 | COVERED(p3-0106-sudo-redirect)
+- ## Hands-on lab: permissions, ACLs, sudo, and VM drills | 650 | NO FIGURE NEEDED hands-on step-by-step lab instructions
+- ## Exercises | 280 | NO FIGURE NEEDED student practice problem set
+- ## Checkpoint questions (20) | 1200 | NO FIGURE NEEDED review Q and A accordion items
+- ## Sources and review notes | 260 | NO FIGURE NEEDED bibliography and verification notes
+
+Specs kept 3, dropped 0: []

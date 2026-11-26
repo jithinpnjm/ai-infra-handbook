@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Anatomy of a pathlib.Path Object and Path Transformations</title>
+  <desc>Visual anatomy diagram illustrating how Python pathlib.Path decomposes file paths into parent, name, stem, and suffix, and demonstrates multi-suffix handling and key path operations.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="38" font-weight="bold" fill="#303a36">Anatomy of a pathlib.Path Object and Path Transformations</text>
+
+  
+  <rect x="50" y="105" width="970" height="525" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 126)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 4h18l8 8v20H6z" />
+    <path d="M24 4v8h8" />
+    <path d="M12 18h14M12 24h10" />
+  </g>
+  <text x="125" y="152" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#207448">Single Suffix</text>
+
+  
+  
+  <path d="M 75 218 L 75 204 L 535 204 L 535 218" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M 305 204 L 305 196" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="235" y="166" width="140" height="34" rx="6" fill="#207448" />
+  <text x="305" y="190" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">p.parent</text>
+
+  
+  <path d="M 555 218 L 555 204 L 995 204 L 995 218" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M 775 204 L 775 196" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="715" y="166" width="120" height="34" rx="6" fill="#207448" />
+  <text x="775" y="190" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">p.name</text>
+
+  
+  
+  <rect x="75" y="226" width="460" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="90" y="262" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">/etc/kubernetes/manifests</text>
+
+  
+  <text x="540" y="262" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">/</text>
+
+  
+  <rect x="555" y="226" width="285" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="575" y="262" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">kube-apiserver</text>
+
+  
+  <rect x="850" y="226" width="145" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="870" y="262" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">.yaml</text>
+
+  
+  
+  <path d="M 555 288 L 555 300 L 840 300 L 840 288" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M 697 300 L 697 308" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="637" y="308" width="120" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="697" y="332" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">p.stem</text>
+
+  
+  <path d="M 850 288 L 850 300 L 995 300 L 995 288" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M 922 300 L 922 308" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="857" y="308" width="130" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="922" y="332" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">p.suffix</text>
+
+  
+  <rect x="75" y="358" width="440" height="74" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <text x="95" y="403" font-family="monospace" font-size="24" fill="#303a36">p.suffixes -&gt; [&quot;.yaml&quot;]</text>
+
+  <rect x="530" y="358" width="465" height="74" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <text x="545" y="403" font-family="monospace" font-size="24" fill="#303a36">p.parent.parent -&gt; /etc/kubernetes</text>
+
+  <rect x="75" y="446" width="920" height="74" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <text x="95" y="475" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">p.with_suffix(&quot;.bak&quot;) -&gt;</tspan>
+    <tspan x="95" dy="28">/etc/kubernetes/manifests/kube-apiserver.bak</tspan>
+  </text>
+
+  <rect x="75" y="534" width="920" height="74" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <text x="95" y="563" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">p.relative_to(&quot;/etc&quot;) -&gt;</tspan>
+    <tspan x="95" dy="28">kubernetes/manifests/kube-apiserver.yaml</tspan>
+  </text>
+
+  
+  <rect x="50" y="650" width="970" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 670)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 10l16-6 16 6v20l-16 6-16-6z" />
+    <path d="M4 10l16 6 16-6" />
+    <path d="M20 16v26" />
+  </g>
+  <text x="125" y="696" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#207448">Archive with Multi-suffix</text>
+
+  
+  <rect x="75" y="722" width="920" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="95" y="758" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">q = Path(&quot;/data/checkpoints/weights.tar.gz&quot;)</text>
+
+  
+  <rect x="75" y="794" width="445" height="70" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <text x="95" y="837" font-family="monospace" font-size="24" fill="#303a36">q.name -&gt; &quot;weights.tar.gz&quot;</text>
+
+  <rect x="540" y="794" width="455" height="70" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <text x="560" y="837" font-family="monospace" font-size="24" fill="#303a36">q.suffix -&gt; &quot;.gz&quot;</text>
+
+  <rect x="75" y="880" width="920" height="70" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <text x="95" y="923" font-family="monospace" font-size="24" fill="#303a36">q.suffixes -&gt; [&quot;.tar&quot;, &quot;.gz&quot;]</text>
+
+  
+  <rect x="75" y="966" width="920" height="150" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(95, 986)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="16" r="14" />
+    <path d="M16 9v8M16 22v1" />
+  </g>
+  <text x="135" y="1010" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="135" dy="0">q.stem -&gt; &quot;weights.tar&quot;</tspan>
+    <tspan x="135" dy="34">(drops only the final suffix)</tspan>
+  </text>
+
+  
+  <rect x="1045" y="105" width="505" height="1035" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(1070, 126)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="8" />
+    <path d="M18 4v4M18 28v4M4 18h4M28 18h4M8 8l3 3M25 25l3 3M8 28l3-3M25 11l3-3" />
+  </g>
+  <text x="1120" y="152" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#207448">Key Path operations</text>
+
+  
+  <rect x="1070" y="185" width="455" height="205" rx="10" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <rect x="1090" y="205" width="80" height="34" rx="6" fill="#207448" />
+  <text x="1130" y="229" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Join</text>
+  <text x="1095" y="280" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1095" dy="0">Join: Path(&quot;/etc&quot;) /</tspan>
+    <tspan x="1095" dy="36">&quot;kubernetes&quot;</tspan>
+  </text>
+
+  
+  <rect x="1070" y="415" width="455" height="210" rx="10" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <rect x="1090" y="435" width="110" height="34" rx="6" fill="#207448" />
+  <text x="1145" y="459" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Checks</text>
+  <text x="1095" y="510" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1095" dy="0">Checks: .exists(),</tspan>
+    <tspan x="1095" dy="36">.is_file(), .is_dir()</tspan>
+  </text>
+
+  
+  <rect x="1070" y="650" width="455" height="235" rx="10" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <rect x="1090" y="670" width="70" height="34" rx="6" fill="#207448" />
+  <text x="1125" y="694" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">I/O</text>
+  <text x="1095" y="740" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1095" dy="0">I/O:</tspan>
+    <tspan x="1095" dy="36">.read_text(encoding=&quot;utf-8&quot;),</tspan>
+    <tspan x="1095" dy="36">.write_text(...)</tspan>
+  </text>
+
+  
+  <rect x="1070" y="910" width="455" height="205" rx="10" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5" />
+  <rect x="1090" y="930" width="85" height="34" rx="6" fill="#207448" />
+  <text x="1132" y="954" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Glob</text>
+  <text x="1095" y="1005" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1095" dy="0">Glob: Path(&quot;/var/log&quot;)</tspan>
+    <tspan x="1095" dy="36">.glob(&quot;*.log&quot;)</tspan>
+  </text>
+</svg>

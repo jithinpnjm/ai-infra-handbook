@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0525-gpu-hw-ladder",
+  "title": "GPU and Fabric Hardware Diagnostic Ladder",
+  "anchor": "### 3.6 GPU and fabric hardware",
+  "spec": "A vertical 5-tier diagnostic ladder showing the order of inspection for GPU and fabric hardware failures on worker nodes. Tier 1 (top): 'High-Level Driver & Health' with commands 'nvidia-smi --query-gpu=... --format=csv' and 'dcgmi health -c; dcgmi diag -r 2', checking active throttling reasons, temperatures, power cap, and ECC uncorrected errors. Tier 2: 'NVLink & Fabric Topology' with commands 'nvidia-smi topo -m', 'nvidia-smi nvlink -s', and 'systemctl status nvidia-fabricmanager', checking link states and NVLink errors. Tier 3: 'PCIe Bus & Link Negotiation' with command 'lspci -vv -s <addr> | grep -E \"LnkSta|LnkCap|AER\"', showing a comparison box: 'LnkCap (Rated Gen5 x16)' vs 'LnkSta (Negotiated: e.g. Gen3 x4 downgraded)' and AER error counters. Tier 4: 'Kernel & Driver Hardware Events' with commands 'dmesg -T | grep -i xid' and 'journalctl -k | grep -E \"Xid|NVRM\"', listing common hardware fault codes 'Xid 13, 31, 43, 61, 74, 79 (Fallen off bus)'. Tier 5: 'Inter-Node Fabric & Collectives' with commands 'ibstat; rdma link', 'all_reduce_perf -b 8 -e 1G -f 2 -g 8', and 'NCCL_DEBUG=INFO'. A side callout at the bottom points to 'Evidence Snapshot' before any cordon or reboot: 'sudo nvidia-bug-report.sh -> nvidia-bug-report.log.gz'.",
+  "alt": "A five-tier diagnostic ladder for GPU and fabric hardware inspecting driver health, NVLink, PCIe link status, kernel Xid errors, and collective fabric tests before collecting a bug report.",
+  "cap": "GPU and fabric hardware triage moves through five layers from NVML queries down to PCIe link negotiation and kernel Xid errors before generating an official bug report.",
+  "part": "part-05-kubernetes",
+  "ch": "25"
+ }
+]

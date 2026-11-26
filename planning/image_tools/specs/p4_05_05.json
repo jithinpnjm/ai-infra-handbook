@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0505-etcd-topologies",
+  "title": "Stacked vs Dedicated etcd Topologies",
+  "anchor": "### Deployment models for etcd",
+  "spec": "Side-by-side comparison diagram of the two deployment topologies. Left panel: Stacked (Colocated) etcd (recommended for up to 50-200 worker nodes). Shows 3 Control Plane nodes (Control Plane Node 1, 2, 3). On each node: kube-apiserver process communicating via localhost:2379 to a colocated etcd pod managed as a static pod. Intra-etcd Raft peer communication connects the three etcd pods across nodes over port 2380. Pros and cons noted: lower cost, simple kubeadm setup, but shared CPU, RAM, and disk IO contention. Right panel: Dedicated (External) etcd (recommended for over 200 worker nodes and large AI/GPU clusters). Top row: 3-5 stateless Control Plane nodes running kube-apiserver behind a load balancer. Bottom row: 3 or 5 dedicated etcd nodes running on bare-metal or dedicated instances with local NVMe disks, isolated from control plane CPU and memory spikes. API servers connect to all etcd endpoints over HTTPS on port 2379; etcd members communicate over peer port 2380. High-latency cross-region links are marked with a red warning cross.",
+  "alt": "A diagram comparing stacked etcd on shared control plane nodes against dedicated etcd running on separate NVMe machines.",
+  "cap": "Stacked etcd simplifies small clusters, while dedicated etcd isolates disk and CPU contention for clusters with over 200 nodes.",
+  "part": "part-05-kubernetes",
+  "ch": "05"
+ },
+ {
+  "name": "p4-0505-registry-keyspace",
+  "title": "The etcd /registry Key Hierarchy",
+  "anchor": "### What lives in etcd",
+  "spec": "Tree diagram illustrating Kubernetes data layout in etcd under the root prefix /registry. Root node: /registry/. Branch 1: Core Namespaced Resources: /pods/[namespace]/[name], /configmaps/[namespace]/[name], /secrets/[namespace]/[name]. Note on secrets: stored as encrypted binary starting with prefix k8s:enc:... when EncryptionConfiguration is enabled. Branch 2: Leases: /leases/kube-node-lease/[node-name] (frequent node heartbeats) and /leases/kube-system/[leader-name] (controller-manager and scheduler leader election locks). Branch 3: Events: /events/[namespace]/[name] with a callout indicating high churn, 1-hour TTL, and redirect arrow showing --etcd-servers-overrides routing to a secondary etcd cluster. Branch 4: Custom Resources: /[crd-group]/[resource]/[namespace]/[name] (for example kueue.x-k8s.io or nvidia.com). Callout boxes highlight boundaries: 1.5 MiB maximum request size limit, Protobuf binary encoding, and anti-patterns (no metrics, no binary blobs, no continuous status updates).",
+  "alt": "A hierarchical tree diagram of keys stored in etcd under the registry prefix showing namespaces, leases, events, and size limits.",
+  "cap": "Kubernetes partitions cluster state under /registry, where high-churn events and node leases can be redirected or isolated from main state.",
+  "part": "part-05-kubernetes",
+  "ch": "05"
+ },
+ {
+  "name": "p4-0505-apiserver-ha-scaling",
+  "title": "kube-apiserver High Availability and Scale-Out Architecture",
+  "anchor": "## 8. API server operations and scaling",
+  "spec": "Architecture flow diagram showing scale-out control plane for large clusters (1,000 to 5,000 nodes). Left/Top: Ingress request sources: Worker Kubelets, Controllers (Kube-Controller-Manager, Kueue, Training Operator), Batch Schedulers, and kubectl clients. Layer 1: Layer 4/Layer 7 Load Balancer distributing requests. Annotation highlights: LB idle timeout must exceed API server watch timeout (min-request-timeout) to prevent mass watch disconnects and reconnect storms. Layer 2: Pool of 3 to 5 stateless kube-apiserver instances. Inside each API server box: independent in-memory Watch Cache (sized via --watch-cache-sizes=pods#5000), APF flow control queues, and etcd client pool. Layer 3: Storage backend split into two destinations: Main etcd cluster (3-5 NVMe members for /registry, pods, nodes, leases) and Secondary dedicated Events etcd cluster targeted via --etcd-servers-overrides=/events to absorb high-churn event writes without stalling WAL fsync on primary state.",
+  "alt": "An architecture diagram showing a load balancer distributing traffic across stateless API servers with independent watch caches and split etcd clusters.",
+  "cap": "Stateless API servers scale out behind a load balancer with long idle timeouts, offloading high-churn events to a separate etcd cluster.",
+  "part": "part-05-kubernetes",
+  "ch": "05"
+ }
+]

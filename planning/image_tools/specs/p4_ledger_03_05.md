@@ -1,0 +1,57 @@
+# docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md
+- ## Why this matters for AI infrastructure | 160 | NO FIGURE NEEDED introductory operational narrative
+- ## Prerequisites and outcomes | 160 | NO FIGURE NEEDED learning goals and prerequisites list
+- ## 1. Exceptions | 0 | NO FIGURE NEEDED container section heading
+- ### Why exceptions exist | 170 | NO FIGURE NEEDED conceptual pizza robot analogy
+- ### Exception roles | 160 | NO FIGURE NEEDED text enumeration of five exception roles
+- ### Mechanics | 800 | COVERED(p3-0305-ctxmgr-enter-exit, p3-0305-chain-and-unbind, s05-trycycle, m3-05-1)
+- ### Default exception handler | 180 | NO FIGURE NEEDED simple terminal traceback output explained in text
+- ### Catching exceptions | 210 | NO FIGURE NEEDED basic try except syntax covered by mechanics figures
+- ### Raising exceptions | 110 | NO FIGURE NEEDED short raise and assert examples
+- ### User-defined exceptions | 140 | COVERED(p3-0305-too-broad-narrow, p2-0305-baseexception-tree)
+- ### Termination actions with `finally` | 280 | COVERED(p2-0305-finally-paths)
+- ### Exceptions and backtracking | 80 | NO FIGURE NEEDED brief theoretical note on absence of backtracking
+- ### Nested try statements | 480 | COVERED(p3-0305-exception-group, p3-0305-nested-try-routing)
+- ### Why exceptions save code | 160 | NO FIGURE NEEDED code snippet comparing C return codes with Python try
+- ### Exception idioms | 50 | COVERED(p3-0305-exceptions-as-signals)
+- ### Breaking out of several loops | 160 | COVERED(p3-0305-exceptions-as-signals)
+- ### Exceptions that are signals, not errors | 150 | COVERED(p3-0305-exceptions-as-signals)
+- ### Raising to signal a result | 140 | COVERED(p3-0305-exceptions-as-signals)
+- ### Closing files and server connections | 120 | NO FIGURE NEEDED short comparison of try finally vs with
+- ### Outer try for debugging | 100 | NO FIGURE NEEDED brief snippet of top-level handler
+- ### Running in-process tests | 150 | NO FIGURE NEEDED illustrative test driver sketch
+- ### sys.exc_info, sys.exception, and tracebacks | 380 | COVERED(p3-0305-assert-warn-excinfo)
+- ### Exception design tips and gotchas | 450 | COVERED(p3-0305-too-broad-narrow, p2-0305-baseexception-tree)
+- ### Summary of exception tools | 80 | NO FIGURE NEEDED high-level summary of exception concepts
+- ### Error-handling strategy for tools and services | 340 | COVERED(p3-0305-eight-rules, p2-0305-main-exit-codes)
+- ## 2. Logging | 320 | COVERED(p3-0305-logging-setup, s05-logging)
+- ## 3. Files and paths | 80 | NO FIGURE NEEDED section introduction
+- ### `open()` and modes | 210 | COVERED(p3-0305-flush-fsync)
+- ### `pathlib` | 150 | NEEDS FIGURE visual anatomy of Path decomposition and methods
+- ### Safe writes: atomic replace | 210 | COVERED(s05-atomic)
+- ### Temporary files and directories | 70 | COVERED(p3-0305-secure-create)
+- ### Permissions, ownership and umask | 90 | COVERED(p3-0305-secure-create)
+- ### Locking and races | 120 | COVERED(p2-0305-toctou-lock)
+- ### `shutil`, archives and compression | 120 | NO FIGURE NEEDED inventory of utilities; tarfile traversal in p3-0305-secure-create
+- ## 4. Text, bytes and encodings in practice | 750 | COVERED(p3-0305-unicode-compare, p3-0305-encoding-settings, p2-0305-decode-boundary)
+- ## 5. Data formats | 270 | COVERED(p3-0305-format-traps)
+- ### Dates and times | 80 | COVERED(p3-0305-format-traps)
+- ## 6. Running external programs: `subprocess` | 80 | NO FIGURE NEEDED section introduction
+- ### Safe defaults | 250 | COVERED(p3-0305-injection-and-run, s05-subproc)
+- ### Streaming, pipelines and process control | 380 | COVERED(p3-0305-process-tree, p2-0305-pipe-deadlock)
+- ### Avoid shelling out when Python can do it | 130 | NO FIGURE NEEDED mapping list between commands and Python libraries
+- ## 7. Interacting with the operating system | 70 | NO FIGURE NEEDED section introduction
+- ### Environment, arguments, process info | 110 | COVERED(p3-0305-cron-vs-shell)
+- ### `/proc`, `/sys`, `psutil` | 110 | COVERED(p3-0305-cron-vs-shell)
+- ### Signals and graceful shutdown | 210 | COVERED(p3-0305-sigterm-pid1, s05-signals)
+- ### Network and system helpers | 90 | NO FIGURE NEEDED standard library module inventory
+- ### Development tools for larger projects | 450 | NO FIGURE NEEDED overview of linters, profilers, and packaging tools
+- ## 8. A template for robust operational scripts | 480 | COVERED(p3-0305-drain-template)
+- ## 9. Lab | 320 | NO FIGURE NEEDED lab instructions and verification steps
+- ## 10. Common mistakes | 230 | COVERED(p3-0305-mistakes)
+- ## 11. Interview angles | 160 | NO FIGURE NEEDED review questions list
+- ## Exercises | 580 | NO FIGURE NEEDED student coding exercises
+- ## Checkpoint questions (20) | 1300 | NO FIGURE NEEDED review Q&A list
+- ## Sources and review notes | 400 | NO FIGURE NEEDED reference list and review metadata
+
+Specs kept 1, dropped 0: []

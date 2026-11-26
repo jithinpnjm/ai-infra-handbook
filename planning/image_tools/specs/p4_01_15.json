@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0115-sandbox-layers",
+  "title": "systemd Sandboxing Layers and GPU DeviceAllow Pitfall",
+  "anchor": "## 11. Sandboxing and service hardening",
+  "spec": "Concentric rectangular layers depicting defense-in-depth isolation around a service process. Outermost boundary: Host Environment (root filesystem, /home, /dev, network namespace). First layer inward (Mount Namespace): ProtectSystem=strict (entire filesystem read-only except ReadWritePaths), ProtectHome=yes (hides /home and /root), and PrivateTmp=yes (allocates isolated tmpfs for /tmp). Second layer inward (Identity and Capabilities): DynamicUser=yes (transient unprivileged UID), NoNewPrivileges=yes (blocks setuid escalation), and CapabilityBoundingSet (drops raw capabilities, retaining e.g. CAP_NET_BIND_SERVICE). Third layer inward (Devices and Syscalls): Seccomp box with SystemCallFilter=@system-service; adjacent Device Cgroup callout showing a red cross on PrivateDevices=yes (breaks GPU daemons by masking /dev/nvidia*) and a green check on DeviceAllow=/dev/nvidia0 rw and /dev/nvidiactl rw. Innermost core: Service Process running securely with restricted host exposure.",
+  "alt": "Concentric boxes illustrate systemd sandboxing layers from filesystem and identity isolation to seccomp filtering, highlighting why GPU daemons require DeviceAllow instead of PrivateDevices.",
+  "cap": "systemd sandboxing creates defense-in-depth isolation around services, but GPU workloads must avoid PrivateDevices and explicitly permit device nodes with DeviceAllow.",
+  "part": "part-01-linux",
+  "ch": "15"
+ },
+ {
+  "name": "p4-0115-resolved-flow",
+  "title": "systemd-resolved Architecture and DNS Resolution Path",
+  "anchor": "## 13. The other built-in services: networkd, resolved, timesyncd",
+  "spec": "Flow diagram showing client DNS lookup paths through systemd-resolved to upstream nameservers. Top box: Client Application (calling getaddrinfo). Path 1: Libc consults /etc/nsswitch.conf with 'hosts: ... resolve [!UNAVAIL=return] dns' routing directly to systemd-resolved via D-Bus local IPC. Path 2: Legacy apps read /etc/resolv.conf, shown as a symlink pointing to /run/systemd/resolve/stub-resolv.conf, which defines 'nameserver 127.0.0.53'. Central component: systemd-resolved daemon containing three functional blocks: (1) Local Cache (configured with Cache=yes or no-negative), (2) Domain Routing Logic (evaluating Domains= search lists), and (3) Per-Interface Manager (ingesting link DNS from systemd-networkd .network files). Bottom egress arrows: Per-link queries dispatched over port 53 / DoT to Upstream DNS (e.g. cloud metadata resolver at 169.254.169.254 or corporate nameservers).",
+  "alt": "A flowchart shows how client DNS lookups travel through nsswitch and the 127.0.0.53 stub listener into systemd-resolved, which checks local caches and routes queries to upstream nameservers.",
+  "cap": "systemd-resolved handles DNS for applications through an NSS plugin or the 127.0.0.53 stub resolver, caching results and routing lookups to per-link upstream servers.",
+  "part": "part-01-linux",
+  "ch": "15"
+ },
+ {
+  "name": "p4-0115-gpu-startup-contract",
+  "title": "AI Node Startup Contract and GPU Service Dependency DAG",
+  "anchor": "## 16. AI-infrastructure patterns",
+  "spec": "Vertical dependency and ordering DAG showing the startup pipeline of an HGX GPU node. Top layer (Hardware & System Prep): sysinit.target and local-fs.target lead to network-online.target, alongside scratch mount units (/scratch with x-systemd.requires). Middle layer 1 (GPU Driver & Fabric): nvidia-persistenced.service (Type=forking) starts first; nvidia-fabricmanager.service (Type=forking) is ordered After=nvidia-persistenced.service. Middle layer 2 (Health Gate): gpu-health-check.service (Type=oneshot, RemainAfterExit=yes) runs after Fabric Manager, executing a readiness script (nvidia-smi -L count, nvlink status, ECC checks). Barrier line: Red stop line across the diagram showing schedulers blocked if health check fails. Bottom layer (Container & Cluster Daemons): containerd.service and kubelet.service ordered After=gpu-health-check.service and Requires=gpu-health-check.service; slurmd.service ordered After=munge.service and gpu-health-check.service; dcgm-exporter.service ordered After driver initialization. Workloads fan out inside kubepods.slice while host daemons stay protected in system.slice.",
+  "alt": "A vertical dependency graph shows the startup pipeline of an AI node where driver daemons and a oneshot health gate must succeed before containerd, kubelet, and workloads start.",
+  "cap": "A robust AI node startup contract uses drop-in dependencies and a oneshot health gate so container runtimes and schedulers only start after NVLink fabric initialization is verified.",
+  "part": "part-01-linux",
+  "ch": "15"
+ }
+]

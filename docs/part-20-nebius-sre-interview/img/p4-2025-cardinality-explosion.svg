@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Cardinality Arithmetic and Label Explosion</title>
+  <desc>A tree calculation layout illustrating label multiplication and TSDB memory cost across metric dimensions and anti-pattern label explosion.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Cardinality Arithmetic and Label Explosion</text>
+  <text x="800" y="98" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">A tree calculation layout illustrating label multiplication and TSDB memory cost.</text>
+
+  
+  <g id="level-1">
+    <rect x="120" y="125" width="1360" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(145, 152)">
+      <rect x="2" y="2" width="52" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="14" y1="44" x2="14" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="24" y1="44" x2="24" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="34" y1="44" x2="34" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="44" y1="44" x2="44" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="225" y="166" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Level 1 (Histogram base)</text>
+    <text x="225" y="206" font-family="sans-serif" font-size="24" fill="#303a36">A single histogram metric with 10 finite buckets + 1 '+Inf' bucket + 1 '_sum' + 1 '_count' = 13 series per label set.</text>
+  </g>
+
+  
+  <line x1="800" y1="235" x2="800" y2="265" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="level-2">
+    <rect x="120" y="265" width="1360" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(145, 292)">
+      <rect x="2" y="2" width="52" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 28 10 L 46 20 L 28 30 L 10 20 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <path d="M 10 20 L 10 38 L 28 48 L 46 38 L 46 20" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <line x1="28" y1="30" x2="28" y2="48" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="225" y="306" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Level 2 (Model dimension)</text>
+    <text x="225" y="346" font-family="sans-serif" font-size="24" fill="#303a36">Multiply by 20 models -&gt; 13 * 20 = 260 series.</text>
+  </g>
+
+  
+  <line x1="800" y1="375" x2="800" y2="405" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="level-3">
+    <rect x="120" y="405" width="1360" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(145, 434)">
+      <rect x="2" y="2" width="52" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="20" r="8" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 14 44 C 14 34, 42 34, 42 44" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="225" y="446" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Level 3 (Tenant dimension)</text>
+    <text x="225" y="486" font-family="sans-serif" font-size="24" fill="#303a36">Multiply by 1,000 tenants -&gt; 260 * 1,000 = 260,000 active series in memory (healthy TSDB state).</text>
+  </g>
+
+  
+  <g id="fork-connector">
+    <path d="M 800 520 L 800 550 L 800 595" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <rect x="610" y="538" width="380" height="40" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="2" />
+    <text x="800" y="566" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">addition of label 'request_id'</text>
+  </g>
+
+  
+  <g id="level-4">
+    <rect x="120" y="605" width="1360" height="185" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3" stroke-dasharray="8 4" />
+    
+    <g transform="translate(145, 638)">
+      <polygon points="28,6 52,48 4,48" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="42" r="2.5" fill="#db8129" />
+    </g>
+    <text x="225" y="650" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Level 4 (The Anti-Pattern)</text>
+    <text x="225" y="694" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="225" dy="0">Unbounded unique request IDs per day (e.g. 5,000,000 requests) multiply by 260,000 -&gt;</tspan>
+      <tspan x="225" dy="36">billions of series leading to TSDB Out of Memory crash.</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 450 790 L 450 860" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 1150 790 L 1150 860" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="destination-metrics">
+    <rect x="120" y="870" width="660" height="250" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(150, 900)">
+      <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 14 L 6 42 C 6 50, 50 50, 50 42 L 50 14" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 28 C 6 36, 50 36, 50 28" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="225" y="940" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Metrics TSDB</text>
+    <text x="150" y="1010" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="150" dy="0">bounded low-cardinality labels</tspan>
+      <tspan x="150" dy="36">(model, status)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="destination-traces">
+    <rect x="820" y="870" width="660" height="250" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(850, 900)">
+      <rect x="6" y="6" width="34" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 22 6 L 40 24 L 40 50 L 16 50" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <line x1="14" y1="20" x2="26" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="28" x2="30" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="36" x2="26" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="925" y="940" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Traces and Logs</text>
+    <text x="850" y="1010" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="850" dy="0">unbounded high-cardinality data</tspan>
+      <tspan x="850" dy="36">(request_id, prompt_id, user_id)</tspan>
+    </text>
+  </g>
+</svg>

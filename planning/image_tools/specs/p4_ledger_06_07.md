@@ -1,0 +1,42 @@
+# docs/part-06-hpc-slurm/07-slurm-architecture-and-installation.md
+- ## Why this matters for AI infrastructure | 190 | NO FIGURE NEEDED - introductory role context and motivation
+- ## Prerequisites and outcomes | 220 | NO FIGURE NEEDED - prerequisites and learning outcomes list
+- ## 1. What a workload manager does | 230 | COVERED(p3-0607-wm-four-jobs)
+- ### Why batch systems exist | 230 | NO FIGURE NEEDED - historical background and batch processing rationale
+- ### How the pieces of a task management system fit together | 210 | COVERED(p3-0607-wm-four-jobs)
+- ### Partitions, batch scripts and the job's view of its resources | 170 | NO FIGURE NEEDED - conceptual discussion of partitions and batch scripts
+- ### Kubernetes and HPC work | 110 | NO FIGURE NEEDED - conceptual contrast between K8s push and HPC queue models
+- ### Dedicated test partition, scheduler overhead, and compute-node access control (`pam_listfile` and `pam_slurm_adopt`) | 280 | COVERED(p3-0607-compute-node-access)
+- ### Summary: the queue is part of the cluster | 110 | NO FIGURE NEEDED - summary advice on scheduler tuning and baselines
+- ## 2. The daemons | 460 | COVERED(p2-0607-daemon-roles, m6-07-1)
+- ## 3. The life of a job | 550 | COVERED(p2-0607-job-life, m6-07-2)
+- ## 4. Plugins and extension points | 350 | COVERED(p3-0607-plugin-families)
+- ## 5. State, persistence and high availability | 70 | NO FIGURE NEEDED - short transition intro to persistence sections
+- ### What lives where | 170 | COVERED(p3-0607-state-stores, m6-07-3)
+- ### High availability of the controller | 400 | COVERED(p2-0607-controller-failover)
+- ### High availability of accounting | 80 | NO FIGURE NEEDED - brief note on slurmdbd standby host and MariaDB replication
+- ## 6. Authentication: munge, and its successor | 330 | COVERED(p3-0607-munge-checklist, h07-munge-credential)
+- ## 7. Configuration files and configless mode | 240 | COVERED(p3-0607-configless, m6-07-4)
+- ## 8. Planning and installing | 50 | NO FIGURE NEEDED - short section overview
+- ### Planning roles and sizing | 220 | COVERED(p3-0607-roles-ports)
+- ### Installation methods | 260 | NEEDS FIGURE - comparison of 4 deployment approaches and silent compile-time dependency drops
+- ### Versions and upgrades | 140 | COVERED(h07-upgrade-order)
+- ## 9. Accounting: the account tree | 380 | COVERED(p3-0607-accounting-enforce-order, m6-07-5)
+- ## 10. A first `slurm.conf`, and the node definition problem | 490 | COVERED(p3-0607-first-conf-blocks)
+- ## 11. Bringing it up, and verifying | 340 | COVERED(h07-bringup-order)
+- ## 12. How it fails during installation and early operation | 60 | COVERED(p3-0607-install-failure-table)
+- ### 1. "Invalid authentication credential" or "Unable to contact slurm controller" | 130 | COVERED(p3-0607-munge-checklist, h07-munge-credential)
+- ### 2. Node shows `invalid`, `drain` with "Low RealMemory" or "Low socket*core*thread count" | 120 | COVERED(p3-0607-node-def-drain)
+- ### 3. Jobs are rejected or accounting commands fail: `slurmdbd` unreachable or DB errors | 130 | COVERED(p3-0607-accounting-enforce-order)
+- ### 4. Controller will not start, or starts with an empty queue: `StateSaveLocation` problems | 240 | COVERED(p3-0607-statesave-recovery)
+- ### 5. Name resolution and identity problems | 110 | NO FIGURE NEEDED - straightforward DNS resolution and UID consistency rules
+- ### 6. `slurmd` will not start after an OS upgrade: cgroup mismatch | 100 | NO FIGURE NEEDED - concise 2-step version and filesystem check
+- ### 7. "Socket timed out on send/recv operation" and a sluggish controller: RPC overload | 190 | NEEDS FIGURE - lock contention cascade during polling storm and sdiag diagnosis
+- ### 8. Commands slow or timing out while running jobs keep going: the accounting database under strain | 170 | NO FIGURE NEEDED - text describes single slow query diagnosis with SHOW FULL PROCESSLIST
+- ## 13. Reading the logs: three patterns to recognise | 270 | COVERED(p3-0607-log-patterns)
+- ## Hands-on lab | 620 | NO FIGURE NEEDED - lab instructions and commands
+- ## Exercises | 320 | NO FIGURE NEEDED - practice exercises
+- ## Checkpoint questions (20) | 1100 | NO FIGURE NEEDED - review questions and answers
+- ## Sources and review notes | 220 | NO FIGURE NEEDED - references and citation notes
+
+Specs kept 2, dropped 0: []

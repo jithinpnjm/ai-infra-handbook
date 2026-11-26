@@ -138,6 +138,10 @@ The `replace` form is idempotent, which means running it twice leaves the same r
 
 ### `ip route get`: ask the kernel
 
+![Anatomy of an ip route get command showing how synthetic inputs like destination, source address, incoming interface and mark produce kernel-resolved next hop, device, and source IP.](./img/p4-0205-routeget.svg)
+
+*Figure 2.0.0. The ip route get command runs a full FIB lookup without sending traffic, exposing the selected gateway, egress device, and source address.*
+
 Reading the table tells you what should happen. `ip route get` tells you what will happen, because it runs the real lookup, the same one the kernel does for a live packet. It is the difference between reading a recipe and tasting the dish.
 
 ```bash
@@ -289,6 +293,10 @@ If the reply leaves on the wrong NIC, fix the routing with policy routing before
 
 ## 6. Static routes and persistence
 
+![Diagram comparing persistent configuration files in Netplan, NetworkManager, and systemd-networkd with ephemeral ip route add commands that disappear from the kernel FIB upon reboot.](./img/p4-0205-persistence.svg)
+
+*Figure 2.0.0. Routes added manually with ip route exist only in kernel RAM and vanish on reboot, whereas persistent managers reinstall routes from disk via Netlink during boot.*
+
 Suppose you add a route by hand, reboot the server, and the route is gone. That is expected, because routes added with `ip route add` disappear on reboot or when the interface is reconfigured. They live only in the kernel's memory. To keep a route, put it in the network manager your distribution uses. The Netplan file below sets a default route and a static route on `eno1`. It also gives `ens1f0` its own table with a source rule.
 
 ```yaml
@@ -405,6 +413,10 @@ L3-only hashing has a weakness. Every connection between the same two hosts uses
 Host-level ECMP across NICs is usually done with a bond (L2, chapter 2.12) or with per-rail routing. A default multipath route is not the usual choice, unless the design explicitly wants L3 ECMP with BGP to the host.
 
 ## 9. IPv6 routing on a host
+
+![Diagram contrasting unambiguous IPv4 next-hop gateway resolution with IPv6 link-local gateway ambiguity where fe80::1 exists on multiple interfaces and requires an explicit dev specification.](./img/p4-0205-ipv6-linklocal.svg)
+
+*Figure 2.0.0. Because every IPv6 interface shares the link-local fe80::/64 prefix, a next-hop gateway of fe80::1 is ambiguous without an explicit egress device.*
 
 IPv6 uses the same routing model as IPv4, with a few differences. If you can read an IPv4 table, you can read an IPv6 one after a short adjustment. The default route usually comes from a router advertisement (RA), so it carries `proto ra` and a link-local next hop. Routes with a link-local gateway need `dev`. The connected prefix route is installed when the address is configured, or when the host learns the prefix from an RA with the on-link flag.
 

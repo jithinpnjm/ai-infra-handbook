@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0511-cpa-autoscaling",
+  "title": "Proactive Cluster-Proportional Autoscaler vs Reactive HPA During Job Launch Bursts",
+  "anchor": "### Capacity",
+  "spec": "Side-by-side comparison layout showing how CoreDNS handles a sudden 5,000-pod job startup under two autoscaling models. Left panel: 'Reactive CPU-based HPA'. Step 1: 5,000 training pods launch simultaneously; query rate immediately surges to 100k+ QPS due to pod count \u00d7 lookup rate \u00d7 ndots:5 amplification. Step 2: The default 2 CoreDNS pods (handling 10k-20k QPS/core) saturate immediately, suffering CPU throttling and packet drops. Step 3: HPA evaluation metric lags behind by 15-60 seconds; pods experience 5s timeouts and startup crashes before extra replicas become Ready. Right panel: 'Proactive Cluster-Proportional Autoscaler (CPA)'. Step 1: CPA watches cluster size (nodesPerReplica: 16, coresPerReplica: 256, min: 3). As cluster scales up to 1,000 GPU nodes ahead of the run, CPA scales CoreDNS to 63 replicas before pods start. Step 2: Pod anti-affinity spreads replicas across nodes/zones; PodDisruptionBudget (minAvailable: 50%) protects availability; system-cluster-critical priority prevents eviction. Step 3: 5,000 pods launch and the 100k+ QPS burst distributes across the pre-warmed pool without latency spikes or drops.",
+  "alt": "A comparison shows how reactive HPA causes query drops during sudden pod start bursts while cluster-proportional autoscaling provisions CoreDNS replicas ahead of time based on node and core counts.",
+  "cap": "Cluster-proportional autoscaling sizes CoreDNS replicas before a large job launches, avoiding the scaling lag and query drops of reactive CPU autoscalers.",
+  "part": "part-05-kubernetes",
+  "ch": "11"
+ },
+ {
+  "name": "p4-0511-dns-tcp-truncation",
+  "title": "DNS UDP Truncation (TC Bit) and TCP/53 Fallback Under Default-Deny NetworkPolicy",
+  "anchor": "### Other hardening and operations",
+  "spec": "Sequence and decision flow showing how large DNS responses fall back to TCP/53 and fail when egress NetworkPolicies only permit UDP. Top swimlane shows 'Pod (Client Resolver)', middle swimlane shows 'NetworkPolicy Egress Filter', bottom swimlane shows 'CoreDNS / NodeLocal Cache'. Step 1 (Small Query): Pod sends UDP query (<512 bytes) for 'alpaca-prod'; egress filter allows UDP/53; CoreDNS returns single IP answer; lookup succeeds. Step 2 (Large Query): Pod queries headless Service 'trainer.ml.svc.cluster.local' backing 30+ pods. UDP request reaches CoreDNS. Step 3 (Truncation): Response size exceeds 512 bytes / EDNS0 MTU. CoreDNS sets TC=1 (Truncation bit) in the DNS header and returns an empty answer section. Step 4 (Resolver Fallback): Pod resolver detects TC=1 and immediately initiates a TCP handshake (SYN) to port 53. Step 5 splits into two outcomes. Path A (Misconfigured Policy allowing only UDP/53): NetworkPolicy drops TCP SYN; client resolver hangs silently until default 5s timeout, returning SERVFAIL or EAI_AGAIN. Path B (Correct Policy allowing UDP/53 and TCP/53): TCP SYN passes; 3-way handshake completes; full multi-IP answer is delivered over TCP stream successfully.",
+  "alt": "A sequence flow shows a large DNS response setting the UDP truncation bit and failing when an egress network policy allows UDP 53 but blocks TCP 53.",
+  "cap": "When large DNS responses set the truncation bit, resolvers fall back to TCP port 53, which fails unless egress NetworkPolicies explicitly permit both UDP and TCP.",
+  "part": "part-05-kubernetes",
+  "ch": "11"
+ }
+]

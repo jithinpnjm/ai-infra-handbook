@@ -1,0 +1,32 @@
+# docs/part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md
+- ## Why this matters for AI infrastructure | 180 | NO FIGURE NEEDED - introductory motivation and context
+- ## Prerequisites and outcomes | 160 | NO FIGURE NEEDED - prerequisites and learning checklist
+- ## 1. Paths: how you name a file | 430 | NEEDS FIGURE - tree topology showing absolute paths from root vs relative paths from cwd with dot and dot-dot traversal
+- ## 2. The standard layout: where things live | 870 | COVERED(l03-fhs-tree) - standard FHS directory tree
+- ## 3. File types and what `ls -l` really shows | 260 | NO FIGURE NEEDED - table decodes the seven type indicator characters
+- ### Reading a long listing column by column | 210 | COVERED(l03-ls-columns) - annotated columns of ls -l output
+- ## 4. Inodes: what a file really is | 550 | COVERED(p3-0103-path-walk) - path walking and directory table to inode mapping
+- ## 5. Links: hard and symbolic | 70 | NO FIGURE NEEDED - conceptual introduction defining links
+- ### Hard links | 210 | NO FIGURE NEEDED - hard link inode sharing and limits covered in comparative figure under next subsection
+- ### Symbolic (soft) links | 450 | NEEDS FIGURE - structural comparison of hard link sharing inode vs symlink storing path string and dangling link on deletion
+- ### The atomic "latest" pattern | 140 | NEEDS FIGURE - two-step atomic symlink replacement mechanism avoiding race conditions for readers
+- ## 6. Timestamps | 200 | COVERED(p3-0103-timestamps-matrix) - matrix of file operations vs mtime, ctime, atime
+- ## 7. Names, extensions and finding things | 160 | NO FIGURE NEEDED - text rules for filename conventions and casing
+- ### `find`: search by properties | 270 | NO FIGURE NEEDED - command syntax examples and flag combinations
+- ### `locate`: search by name in an index | 120 | NO FIGURE NEEDED - text comparison between indexed locate and dynamic find
+- ### Where is that command? | 40 | NO FIGURE NEEDED - short utility list for command resolution
+- ## 8. Archiving and compression | 750 | NEEDS FIGURE - archiving vs compression pipeline and multi-dimensional comparison of compressors
+- ## 9. AI-infrastructure patterns, in one place | 270 | NO FIGURE NEEDED - summary synthesizing patterns from earlier sections
+- ## How it fails | 40 | NO FIGURE NEEDED - introductory failure modes overview
+- ### 1. "No space left on device" but `df -h` shows free space | 100 | COVERED(p3-0103-disk-full-ladder) - troubleshooting ladder for full disk symptoms
+- ### 2. A dangling symlink: `latest -> checkpoints/step_900` but the directory was cleaned | 60 | NO FIGURE NEEDED - dangling link diagnosis covered in section 5 link diagram
+- ### 3. "Invalid cross-device link" when hard-linking or renaming | 80 | NO FIGURE NEEDED - explanation of EXDEV filesystem boundary limit
+- ### 4. The disk is full, but `du` cannot find the files: deleted but still open | 90 | COVERED(l03-deleted-open) - deleted-but-open file space retention
+- ### 5. An archive overwrote system files or exploded the working directory | 70 | NO FIGURE NEEDED - safe extraction rules and flags described in text
+- ### 6. `ls` or a job takes forever in a directory with millions of entries | 80 | NO FIGURE NEEDED - sharding and ls -f diagnosis clear from text
+- ## Hands-on lab: inodes, links, and VM drills | 530 | NO FIGURE NEEDED - hands-on lab exercises and shell drills
+- ## Exercises | 280 | NO FIGURE NEEDED - practice exercises and review problems
+- ## Checkpoint questions (20) | 1150 | NO FIGURE NEEDED - self-check questions and detailed answers
+- ## Sources and review notes | 260 | NO FIGURE NEEDED - bibliographical sources and review notes
+
+Specs kept 4, dropped 0: []

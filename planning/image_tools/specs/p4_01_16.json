@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0116-host-logging-flow",
+  "title": "Linux Host Logging Architecture and Data Flow",
+  "anchor": "## 1. System logging",
+  "spec": "A three-tier horizontal layout depicting how log messages originate, get collected, and are dispatched on a modern Linux host.\nLeft column (Log Sources):\n- Top box: 'Kernel Messages' (/dev/kmsg, ring buffer, drivers, OOM kills)\n- Middle box: 'Systemd Services' (stdout and stderr captured directly by systemd)\n- Bottom box: 'Applications and Utilities' (calls to syslog() writing to Unix datagram socket /dev/log; scripts calling logger)\nArrows from all three sources converge into the center column.\nCenter column (Collector: systemd-journald):\n- Large box: 'systemd-journald'\n- Inside callout 1: Attaches trusted kernel metadata (_PID, _UID, _COMM, _SYSTEMD_UNIT, _HOSTNAME) from socket credentials\n- Downward arrow to storage box: 'Structured Binary Journal' (/var/log/journal/ persistent or /run/log/journal/ volatile)\n- Local inspection arrow: 'journalctl' querying binary files with filters (-u, -b, -p, -S, -g, -o json)\n- Rightward forwarding arrow: 'Forwarding Path' (via /run/systemd/journal/syslog or rsyslog imjournal plugin)\nRight column (Legacy and Network Dispatch: rsyslog):\n- Box: 'rsyslog Daemon' (evaluates facility.severity selectors such as auth.*, kern.*, *.emerg)\n- Branch 1: Local text files (/var/log/syslog, /var/log/auth.log, /var/log/kern.log)\n- Branch 2: Broadcast to logged-in users (:omusrmsg:*)\n- Branch 3: Remote forwarder over network (@host:514 UDP or @@host:514 TCP with disk queue)",
+  "alt": "Architecture of host logging showing kernel messages, service stdout and stderr, and syslog datagrams ingested by journald into structured binary storage, then queried with journalctl or forwarded to rsyslog for text files and network transmission.",
+  "cap": "Figure 1.16.1b. Systemd-journald collects kernel messages, service output, and syslog socket datagrams into structured binary storage, optionally forwarding to rsyslog for text logging and network transmission.",
+  "part": "part-01-linux",
+  "ch": "16"
+ }
+]

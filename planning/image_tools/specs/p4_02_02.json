@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0202-connection-model",
+  "title": "State at the Edges versus State in the Network Core",
+  "anchor": "### Connection-oriented and connectionless",
+  "spec": "Two-panel horizontal comparison illustrating how link failure impacts connection state under two network models. Top panel: 'State in the Core (Circuit Switching / Virtual Circuits)'. On the left, Host A; in the center, intermediate Switch 1 and Switch 2, each maintaining an internal state table mapping [In-Port, Circuit ID] to [Out-Port, Circuit ID]; on the right, Host B. A red cross marks a link failure between Switch 1 and Switch 2. Callout text: 'Failure invalidates circuit state in transit; central controller or signaling protocol must tear down and re-establish each path before data resumes.' Bottom panel: 'State at the Edges (End-to-End Principle: IP Core with TCP/RDMA Edges)'. Left: Host A maintains endpoint connection state (TCP socket, seq/ack numbers, timers, congestion window). Center: Core Router 1, Router 2, Router 3, and Router 4 maintain only stateless destination prefix FIBs, holding zero flow state. Right: Host B maintains endpoint socket state. A red cross marks a link failure between Router 1 and Router 2. A green dashed arrow shows Router 1 instantly deflecting subsequent independent IP datagrams via Router 3 to Router 4. Callout text: 'Datagrams reroute dynamically around the broken link; connection state on Host A and Host B stays intact without notifying the core.' Bottom banner: 'End-to-End Principle: Keep core simple and connectionless; keep intelligence and state at the endpoints.'",
+  "alt": "Comparison of a stateful core where link failures break circuit state against the end-to-end model where a stateless IP core reroutes datagrams while endpoints preserve connection state.",
+  "cap": "In the end-to-end model, intermediate routers hold only prefix forwarding tables, allowing traffic to reroute around link failures without disrupting endpoint connection state.",
+  "part": "part-02-networking",
+  "ch": "02"
+ }
+]

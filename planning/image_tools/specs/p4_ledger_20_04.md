@@ -1,0 +1,37 @@
+# docs/part-20-nebius-sre-interview/04-files-descriptors-syscalls-and-permissions.md
+- ## What the interviewer is testing | 275 | NO FIGURE NEEDED meta interview framing and loop description
+- ## The core ideas | 35 | NO FIGURE NEEDED structural intro to following sections
+- ### 1. A descriptor is a small number that points at a kernel object | 380 | COVERED(p2-2004-open-walk, m20-04-1)
+- ### 2. Three ceilings: per process, per system, and the cap on the cap | 390 | COVERED(x04-emfile-enfile-ceilings)
+- ### 3. Read /proc and lsof before you attach a tracer | 330 | NEEDS FIGURE triage workflow grouping proc fd symlinks to distinguish socket file and deleted leaks
+- ### 4. strace: how to read what it prints | 550 | COVERED(p3-2004-ptrace-cost, x04-strace-line-anatomy)
+- ### 5. Blocks, inodes, and files that are deleted but still open | 580 | COVERED(x04-df-du-two-pools)
+- ### 6. Permission checks beyond the mode bits | 680 | COVERED(p3-2004-permission-layers, p2-2004-first-class-only, m20-04-2)
+- ### 7. Containers and Kubernetes change the answer | 620 | COVERED(p3-2004-pod-denied-ladder)
+- ## How to answer out loud | 80 | NO FIGURE NEEDED overview of interview spoken responses
+- ### Question 1. "A service logs Too many open files. What do you do?" | 120 | NO FIGURE NEEDED interview rehearsal drill text
+- ### Question 2. "df shows the disk is full but du finds nothing. Why?" | 135 | NO FIGURE NEEDED interview rehearsal drill text
+- ### Question 3. "The file is 666 and root runs the service, but it cannot open it." | 135 | NO FIGURE NEEDED interview rehearsal drill text
+- ### Question 4. "How would you use strace on production, and what do you look at?" | 115 | NO FIGURE NEEDED interview rehearsal drill text
+- ### Question 5. "A pod works locally and fails in the cluster with Permission denied." | 100 | NO FIGURE NEEDED interview rehearsal drill text
+- ## Worked scenarios | 150 | NO FIGURE NEEDED scenario introduction and namespace instructions
+- ### Scenario 1: the gateway that stops accepting | 160 | NO FIGURE NEEDED descriptor ceilings covered in 20.4.3
+- ### Scenario 2: the disk that is full of nothing | 180 | COVERED(x04-deleted-open-rescue)
+- ### Scenario 3: no space left, but half the disk is free | 150 | NO FIGURE NEEDED inode exhaustion covered in 20.4.6
+- ### Scenario 4: mode 755 and still Permission denied | 180 | NEEDS FIGURE mechanism showing why execve fails on noexec mount while interpreter read succeeds
+- ### Scenario 5: the ACL that a chmod cancelled | 170 | COVERED(p3-2004-acl-mask)
+- ### Scenario 6: readable file, locked directory | 430 | COVERED(x04-path-walk-locked-directory)
+- ### Scenario 7: mode 777 and Read-only file system | 250 | NO FIGURE NEEDED read-only mount behavior covered in pod ladder 20.4.10
+- ### Scenario 8: root cannot delete the file | 190 | NO FIGURE NEEDED immutable flag covered in permission ladder 20.4.7
+- ## Hands-on lab | 80 | NO FIGURE NEEDED lab setup guide
+- ### Part A: offline checks | 50 | NO FIGURE NEEDED terminal command list
+- ### Part B: on Linux | 220 | NO FIGURE NEEDED terminal verification steps
+- ## What the container run showed | 300 | NO FIGURE NEEDED empirical test notes
+- ## Drill questions | 400 | NO FIGURE NEEDED self-test Q&A list
+- ## Common mistakes and weak answers | 230 | NO FIGURE NEEDED interview anti-patterns discussion
+- ## Connections to the rest of the handbook | 150 | NO FIGURE NEEDED chapter cross-reference table
+- ## Sources and review notes | 170 | NO FIGURE NEEDED bibliography and documentation references
+- ### Explicitly labelled inferences | 160 | NO FIGURE NEEDED inference audit notes
+- ### Not verified | 180 | NO FIGURE NEEDED verification limits list
+
+Specs kept 2, dropped 0: []

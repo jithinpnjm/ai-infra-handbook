@@ -140,6 +140,10 @@ Picture the interviewer sliding a page across the table, with one drill on it. T
 
 ### Drill 1: Pending pod that requests nvidia.com/gpu
 
+![Scheduler filtering divides six nodes into two untainted nodes rejected for insufficient GPUs and four GPU nodes rejected for untolerated taints, resolved by adding the matching toleration.](./img/p4-2023-drill1-scheduler-filter.svg)
+
+*Figure 20.0.0. A scheduler FailedScheduling event breaks down by node pool, showing how untolerated taints on GPU nodes and zero GPUs on CPU nodes leave no schedulable placement until a toleration is added.*
+
 **Interviewer opens.** "The model pod `llama-gpu` has been Pending for ten minutes. The cluster has H100 nodes. Go."
 
 Before you reach for the table, repeat the symptom back in one sentence. Pending with a GPU request is a scheduling question, so the scheduler's event is where you start.

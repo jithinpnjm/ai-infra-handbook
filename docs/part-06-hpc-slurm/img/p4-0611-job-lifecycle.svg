@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The 6-Stage Slurm Job Life Cycle</title>
+  <desc>Horizontal sequence diagram showing the 6 stages of a Slurm job with actors, daemons, and failure branches.</desc>
+
+  <defs>
+    <marker id="green-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">The 6-Stage Slurm Job Life Cycle</text>
+  <text x="800" y="88" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Horizontal sequence diagram showing the 6 stages of a Slurm job with actors, daemons, and failure branches.</text>
+
+  
+  <g id="stage-1">
+    <rect x="40" y="118" width="480" height="505" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="82" cy="160" r="24" fill="#207448"/>
+    <text x="82" y="169" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    
+    <rect x="126" y="138" width="52" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="126" y1="150" x2="178" y2="150" stroke="#207448" stroke-width="2"/>
+    <polyline points="135,160 142,166 135,172" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="147" y1="172" x2="159" y2="172" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+
+    
+    <text x="194" y="170" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 1: Submission</text>
+    <line x1="60" y1="200" x2="500" y2="200" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="68" y="236" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="68" dy="0">Initiator <tspan font-family="monospace">sbatch/srun/salloc</tspan></tspan>
+      <tspan x="68" dy="32">sends request to <tspan font-family="monospace">slurmctld</tspan></tspan>
+      <tspan x="68" dy="32">(controller);</tspan>
+      <tspan x="68" dy="44">checks association and</tspan>
+      <tspan x="68" dy="32">QoS limits;</tspan>
+      <tspan x="68" dy="44">invokes <tspan font-family="monospace">SPANK</tspan> plugins (e.g.,</tspan>
+      <tspan x="68" dy="32"><tspan font-family="monospace">pyxis --container-image</tspan>) and</tspan>
+      <tspan x="68" dy="32"><tspan font-family="monospace">job_submit</tspan> plugins to validate</tspan>
+      <tspan x="68" dy="32">or rewrite request before</tspan>
+      <tspan x="68" dy="32">resources are allocated.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="520" y1="370" x2="558" y2="370" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+
+  
+  <g id="stage-2">
+    <rect x="560" y="118" width="480" height="505" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="602" cy="160" r="24" fill="#207448"/>
+    <text x="602" y="169" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    
+    <path d="M 672 138 L 696 146 L 696 162 C 696 176 672 186 672 186 C 672 186 648 176 648 162 L 648 146 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <polyline points="660,160 668,168 684,152" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+    
+    <text x="714" y="170" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 2: Prolog</text>
+    <line x1="580" y1="200" x2="1020" y2="200" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="588" y="236" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="588" dy="0"><tspan font-family="monospace">slurmctld</tspan> dispatches to</tspan>
+      <tspan x="588" dy="32">allocated nodes;</tspan>
+      <tspan x="588" dy="40"><tspan font-family="monospace">slurmd</tspan> executes root <tspan font-family="monospace">Prolog</tspan></tspan>
+      <tspan x="588" dy="32">on every node; cleans <tspan font-family="monospace">/tmp</tspan>,</tspan>
+      <tspan x="588" dy="32"><tspan font-family="monospace">/dev/shm</tspan>, and clears stale</tspan>
+      <tspan x="588" dy="32">IPC semaphores;</tspan>
+    </text>
+
+    
+    <rect x="578" y="440" width="444" height="168" rx="10" fill="#fdf8f3" stroke="#db8129" stroke-width="3"/>
+    <text x="592" y="474" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="592" dy="0" font-weight="bold" fill="#db8129">error branch:</tspan> if <tspan font-family="monospace">Prolog</tspan> exit != 0,
+      <tspan x="592" dy="32">Slurm aborts job launch, marks</tspan>
+      <tspan x="592" dy="32">offending node as <tspan font-family="monospace" font-weight="bold" fill="#db8129">DRAIN</tspan>, and</tspan>
+      <tspan x="592" dy="32">requeues or cancels job.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1040" y1="370" x2="1078" y2="370" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+
+  
+  <g id="stage-3">
+    <rect x="1080" y="118" width="480" height="505" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="1122" cy="160" r="24" fill="#207448"/>
+    <text x="1122" y="169" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    
+    <rect x="1166" y="140" width="38" height="38" rx="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="1176" y="150" width="18" height="18" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+    <line x1="1174" y1="133" x2="1174" y2="140" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1185" y1="133" x2="1185" y2="140" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1196" y1="133" x2="1196" y2="140" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1174" y1="178" x2="1174" y2="185" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1185" y1="178" x2="1185" y2="185" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1196" y1="178" x2="1196" y2="185" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <text x="1224" y="170" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 3: Step Creation</text>
+    <line x1="1100" y1="200" x2="1540" y2="200" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="1108" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1108" dy="0"><tspan font-family="monospace">slurmd</tspan> spawns <tspan font-family="monospace">slurmstepd</tspan>;</tspan>
+      <tspan x="1108" dy="44">invokes step plugins;</tspan>
+      <tspan x="1108" dy="44">sets up <tspan font-family="monospace">task/cgroup</tspan> for CPU,</tspan>
+      <tspan x="1108" dy="32">RAM, and GPU device constraints;</tspan>
+      <tspan x="1108" dy="44">starts Step 0 (batch script)</tspan>
+      <tspan x="1108" dy="32">on Node 0.</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1320 623 V 639 H 280 V 653" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+
+  
+  <g id="stage-4">
+    <rect x="40" y="655" width="480" height="505" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="82" cy="697" r="24" fill="#207448"/>
+    <text x="82" y="706" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    
+    <circle cx="152" cy="697" r="20" fill="none" stroke="#207448" stroke-width="3"/>
+    <polygon points="146,688 162,697 146,706" fill="#207448"/>
+    <line x1="152" y1="671" x2="152" y2="675" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="152" y1="719" x2="152" y2="723" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="126" y1="697" x2="130" y2="697" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="174" y1="697" x2="178" y2="697" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text x="194" y="707" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 4: Running</text>
+    <line x1="60" y1="737" x2="500" y2="737" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="68" y="773" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="68" dy="0">Batch script executes <tspan font-family="monospace">srun</tspan></tspan>
+      <tspan x="68" dy="32">commands creating numbered</tspan>
+      <tspan x="68" dy="32">steps (<tspan font-family="monospace">JOBID.0</tspan>, <tspan font-family="monospace">JOBID.1</tspan>);</tspan>
+    </text>
+
+    
+    <rect x="58" y="870" width="444" height="268" rx="10" fill="#f2f7f3" stroke="#207448" stroke-width="1.5"/>
+    <text x="72" y="904" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="72" dy="0" font-weight="bold" fill="#207448">parallel background loop:</tspan>
+      <tspan x="72" dy="32"><tspan font-family="monospace">slurmd</tspan> periodically runs</tspan>
+      <tspan x="72" dy="32"><tspan font-family="monospace">HealthCheckProgram</tspan> at</tspan>
+      <tspan x="72" dy="32"><tspan font-family="monospace">HealthCheckInterval</tspan> to</tspan>
+      <tspan x="72" dy="32">monitor <tspan font-family="monospace">dmesg</tspan> and GPU health,</tspan>
+      <tspan x="72" dy="32">draining failing nodes.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="520" y1="907" x2="558" y2="907" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+
+  
+  <g id="stage-5">
+    <rect x="560" y="655" width="480" height="505" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="602" cy="697" r="24" fill="#207448"/>
+    <text x="602" y="706" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    
+    <circle cx="672" cy="697" r="20" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="672,685 672,697 683,702" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+    
+    <text x="714" y="692" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 5: Preemption</text>
+    <text x="714" y="724" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">(conditional)</text>
+    <line x1="580" y1="737" x2="1020" y2="737" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="588" y="780" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="588" dy="0">Higher-priority job triggers</tspan>
+      <tspan x="588" dy="34"><tspan font-family="monospace">PreemptMode:</tspan></tspan>
+    </text>
+
+    
+    <rect x="580" y="840" width="440" height="280" rx="10" fill="#f2f7f3" stroke="#207448" stroke-width="1.5"/>
+    
+    <rect x="610" y="865" width="380" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="904" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">REQUEUE,</text>
+
+    <rect x="610" y="945" width="380" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="984" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">CANCEL, or</text>
+
+    <rect x="610" y="1025" width="380" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="1064" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">SUSPEND,GANG.</text>
+  </g>
+
+  
+  <line x1="1040" y1="907" x2="1078" y2="907" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+
+  
+  <g id="stage-6">
+    <rect x="1080" y="655" width="480" height="505" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="1122" cy="697" r="24" fill="#207448"/>
+    <text x="1122" y="706" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    
+    
+    <polygon points="1176,681 1192,681 1204,693 1204,707 1192,719 1176,719 1164,707 1164,693" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="1178" y1="700" x2="1190" y2="700" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text x="1224" y="707" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 6: Termination</text>
+    <line x1="1100" y1="737" x2="1540" y2="737" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <text x="1108" y="773" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1108" dy="0">Job exits, gets cancelled, or</tspan>
+      <tspan x="1108" dy="32">hits <tspan font-family="monospace">--time</tspan> limit;</tspan>
+      <tspan x="1108" dy="44">Slurm broadcasts <tspan font-family="monospace">SIGTERM</tspan> to</tspan>
+      <tspan x="1108" dy="32">all allocated processes;</tspan>
+      <tspan x="1108" dy="44"><tspan font-family="monospace">KillWait</tspan> timer counts down;</tspan>
+      <tspan x="1108" dy="44">Slurm follows with <tspan font-family="monospace">SIGKILL</tspan>;</tspan>
+      <tspan x="1108" dy="44"><tspan font-family="monospace">slurmd</tspan> runs root <tspan font-family="monospace">Epilog</tspan> on</tspan>
+      <tspan x="1108" dy="32">every node to verify cleanup</tspan>
+      <tspan x="1108" dy="32">and free resources.</tspan>
+    </text>
+  </g>
+</svg>

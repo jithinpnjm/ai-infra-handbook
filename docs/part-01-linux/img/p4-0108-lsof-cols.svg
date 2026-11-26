@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Anatomy of lsof Command Output</title>
+  <desc>Visual breakdown of the nine columns in lsof command output with callouts for key fields.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Anatomy of lsof Command Output</text>
+
+  
+  
+  
+
+  
+  <g id="callout-fd">
+    <rect x="50" y="105" width="870" height="245" rx="14" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(75, 122)">
+      <circle cx="24" cy="24" r="18" fill="none" stroke="#db8129" stroke-width="4"/>
+      <path d="M 38 34 L 54 50 M 46 42 L 52 36 M 50 46 L 56 40" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="145" y="158" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">FD</text>
+
+    
+    <text x="75" y="206" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">role strings</text>
+    <text x="75" y="242" font-family="sans-serif" font-size="24" fill="#303a36">'cwd' = current working directory</text>
+    <text x="75" y="278" font-family="sans-serif" font-size="24" fill="#303a36">'txt' = executable text</text>
+    <text x="75" y="314" font-family="sans-serif" font-size="24" fill="#303a36">'mem' = mapped library</text>
+
+    
+    <text x="490" y="206" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="490" dy="0">numeric open file descriptors</tspan>
+      <tspan x="490" dy="30">with access mode</tspan>
+    </text>
+    <text x="490" y="286" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="490" dy="0">'3u' = descriptor 3 opened</tspan>
+      <tspan x="490" dy="30">for read-write</tspan>
+    </text>
+  </g>
+
+  
+  <g id="callout-type">
+    <rect x="960" y="105" width="590" height="245" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(985, 122)">
+      <rect x="4" y="12" width="48" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4 20 L 22 20 L 28 28 L 52 28" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    
+    <text x="1055" y="158" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">TYPE</text>
+
+    <text x="985" y="235" font-family="sans-serif" font-size="26" fill="#303a36">'DIR' (directory)</text>
+    <text x="985" y="285" font-family="sans-serif" font-size="26" fill="#303a36">'REG' (regular file)</text>
+  </g>
+
+  
+  
+  
+  <g id="table-container">
+    
+    <rect x="50" y="415" width="1500" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    
+    <rect x="455" y="415" width="100" height="235" fill="#fff4e6"/>
+
+    
+    <path d="M 50 427 A 12 12 0 0 1 62 415 L 1538 415 A 12 12 0 0 1 1550 427 L 1550 475 L 50 475 Z" fill="#207448"/>
+    
+    <rect x="455" y="415" width="100" height="60" fill="#db8129"/>
+
+    
+    <text x="70" y="456" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">COMMAND</text>
+    <text x="250" y="456" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">PID</text>
+    <text x="350" y="456" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">USER</text>
+    <text x="485" y="456" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">FD</text>
+    <text x="580" y="456" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">TYPE</text>
+    <text x="690" y="456" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">DEVICE</text>
+    <text x="825" y="456" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">SIZE/OFF</text>
+    <text x="975" y="456" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">NODE</text>
+    <text x="1130" y="456" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">NAME</text>
+
+    
+    <text x="70" y="518" font-family="monospace" font-size="24" fill="#303a36">systemd</text>
+    <text x="250" y="518" font-family="monospace" font-size="24" fill="#303a36">1</text>
+    <text x="350" y="518" font-family="monospace" font-size="24" fill="#303a36">root</text>
+    <text x="485" y="518" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">cwd</text>
+    <text x="580" y="518" font-family="monospace" font-size="24" fill="#303a36">DIR</text>
+    <text x="690" y="518" font-family="monospace" font-size="24" fill="#303a36">8,1</text>
+    <text x="825" y="518" font-family="monospace" font-size="24" fill="#303a36">4096</text>
+    <text x="975" y="518" font-family="monospace" font-size="24" fill="#303a36">2</text>
+    <text x="1130" y="518" font-family="monospace" font-size="24" fill="#303a36">/</text>
+
+    
+    <rect x="50" y="533" width="1500" height="55" fill="#f0f6f2"/>
+    <rect x="455" y="533" width="100" height="55" fill="#ffebd4"/>
+    <text x="70" y="570" font-family="monospace" font-size="24" fill="#303a36">systemd</text>
+    <text x="250" y="570" font-family="monospace" font-size="24" fill="#303a36">1</text>
+    <text x="350" y="570" font-family="monospace" font-size="24" fill="#303a36">root</text>
+    <text x="485" y="570" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">txt</text>
+    <text x="580" y="570" font-family="monospace" font-size="24" fill="#303a36">REG</text>
+    <text x="690" y="570" font-family="monospace" font-size="24" fill="#303a36">8,1</text>
+    <text x="825" y="570" font-family="monospace" font-size="24" fill="#303a36">1595792</text>
+    <text x="975" y="570" font-family="monospace" font-size="24" fill="#303a36">9961784</text>
+    <text x="1130" y="570" font-family="monospace" font-size="24" fill="#303a36">/lib/systemd/systemd</text>
+
+    
+    <text x="70" y="624" font-family="monospace" font-size="24" fill="#303a36">vi</text>
+    <text x="250" y="624" font-family="monospace" font-size="24" fill="#303a36">1994</text>
+    <text x="350" y="624" font-family="monospace" font-size="24" fill="#303a36">juser</text>
+    <text x="485" y="624" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">3u</text>
+    <text x="580" y="624" font-family="monospace" font-size="24" fill="#303a36">REG</text>
+    <text x="690" y="624" font-family="monospace" font-size="24" fill="#303a36">8,1</text>
+    <text x="825" y="624" font-family="monospace" font-size="24" fill="#303a36">12288</text>
+    <text x="975" y="624" font-family="monospace" font-size="24" fill="#303a36">786440</text>
+    <text x="1130" y="624" font-family="monospace" font-size="24" fill="#303a36">/tmp/.ff.swp</text>
+  </g>
+
+  
+  
+  
+
+  
+  <g id="callout-device">
+    <rect x="50" y="750" width="460" height="280" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(75, 772)">
+      <ellipse cx="28" cy="14" rx="24" ry="10" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4 14 L 4 42 A 24 10 0 0 0 52 42 L 52 14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4 28 A 24 10 0 0 0 52 28" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    
+    <text x="145" y="808" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">DEVICE</text>
+    <text x="75" y="880" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">major,minor disk device</tspan>
+      <tspan x="75" dy="36">numbers ('8,1')</tspan>
+    </text>
+  </g>
+
+  
+  <g id="callout-node">
+    <rect x="550" y="750" width="460" height="280" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(575, 772)">
+      <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 28 2 L 28 10 M 28 46 L 28 54 M 2 28 L 10 28 M 46 28 L 54 28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="645" y="808" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">NODE</text>
+    <text x="575" y="880" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" dy="0">filesystem inode number</tspan>
+      <tspan x="575" dy="36">('786440')</tspan>
+    </text>
+  </g>
+
+  
+  <g id="callout-name">
+    <rect x="1050" y="750" width="500" height="280" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1075, 772)">
+      <path d="M 8 10 L 24 10 L 30 18 L 50 18 L 50 48 L 8 48 Z" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 20 34 L 38 34 M 32 28 L 38 34 L 32 40" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="1145" y="808" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">NAME</text>
+    <text x="1075" y="880" font-family="sans-serif" font-size="24" fill="#303a36">filesystem path or target</text>
+  </g>
+
+  
+  
+  
+
+  
+  <path d="M 505 350 L 505 407" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <path d="M 1150 350 L 1150 382 L 610 382 L 610 407" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 730 650 L 730 695 L 280 695 L 280 742" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1020 650 L 1020 695 L 780 695 L 780 742" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1300 650 L 1300 742" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+</svg>

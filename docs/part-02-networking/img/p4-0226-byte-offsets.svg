@@ -1,0 +1,308 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>Anatomy of pcap-filter Byte-Offset Slicing and Bitmasks</title>
+  <desc>Technical diagram mapping Berkeley Packet Filter byte-offset slicing and bitmasks to IPv4 and TCP packet header fields.</desc>
+
+  <defs>
+    <style>
+      .title-text { font-family: sans-serif; font-size: 44px; font-weight: bold; fill: #207448; }
+      .panel-title { font-family: sans-serif; font-size: 30px; font-weight: bold; fill: #207448; }
+      .box-label { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #303a36; }
+      .desc-text { font-family: sans-serif; font-size: 24px; fill: #303a36; }
+      .code-text { font-family: monospace; font-size: 24px; font-weight: bold; fill: #207448; }
+      .code-orange { font-family: monospace; font-size: 25px; font-weight: bold; fill: #db8129; }
+      .byte-num { font-family: monospace; font-size: 24px; fill: #303a36; }
+      .bit-label { font-family: monospace; font-size: 24px; font-weight: bold; fill: #303a36; }
+    </style>
+
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1480" fill="#f5f8f5"/>
+
+  
+  <g transform="translate(60, 40)">
+    
+    <rect x="0" y="5" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 12 33 L 44 33 M 28 17 L 28 49" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="33" r="7" fill="#207448"/>
+    <text x="76" y="47" class="title-text">Anatomy of pcap-filter Byte-Offset Slicing and Bitmasks</text>
+  </g>
+
+  
+  <g transform="translate(50, 115)">
+    
+    <rect x="0" y="0" width="1500" height="600" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="30" y="24" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 42 48 L 54 36 L 66 48" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="96" y="58" class="panel-title">IPv4 header byte grid (bytes 0 to 19)</text>
+
+    
+    <g transform="translate(30, 85)">
+      
+      
+      <rect x="0" y="0" width="70" height="48" rx="6" fill="#ffffff" stroke="#303a36" stroke-width="2"/>
+      <text x="35" y="32" text-anchor="middle" class="byte-num">0</text>
+      
+      <rect x="73" y="0" width="70" height="48" rx="6" fill="#db8129" fill-opacity="0.15" stroke="#db8129" stroke-width="3"/>
+      <text x="108" y="32" text-anchor="middle" class="byte-num" fill="#db8129" font-weight="bold">1</text>
+      
+      <rect x="146" y="0" width="70" height="48" rx="6" fill="#ffffff" stroke="#303a36" stroke-width="2"/>
+      <text x="181" y="32" text-anchor="middle" class="byte-num">2</text>
+      <rect x="219" y="0" width="70" height="48" rx="6" fill="#ffffff" stroke="#303a36" stroke-width="2"/>
+      <text x="254" y="32" text-anchor="middle" class="byte-num">3</text>
+      <rect x="292" y="0" width="70" height="48" rx="6" fill="#ffffff" stroke="#303a36" stroke-width="2"/>
+      <text x="327" y="32" text-anchor="middle" class="byte-num">4</text>
+      <rect x="365" y="0" width="70" height="48" rx="6" fill="#ffffff" stroke="#303a36" stroke-width="2"/>
+      <text x="400" y="32" text-anchor="middle" class="byte-num">5</text>
+      
+      <rect x="438" y="0" width="143" height="48" rx="6" fill="#207448" fill-opacity="0.15" stroke="#207448" stroke-width="3"/>
+      <text x="510" y="32" text-anchor="middle" class="byte-num" fill="#207448" font-weight="bold">6 - 7</text>
+      
+      <rect x="584" y="0" width="70" height="48" rx="6" fill="#207448" fill-opacity="0.15" stroke="#207448" stroke-width="3"/>
+      <text x="619" y="32" text-anchor="middle" class="byte-num" fill="#207448" font-weight="bold">8</text>
+      
+      <g fill="#ffffff" stroke="#303a36" stroke-width="2">
+        <rect x="657" y="0" width="68" height="48" rx="6"/>
+        <rect x="728" y="0" width="68" height="48" rx="6"/>
+        <rect x="799" y="0" width="68" height="48" rx="6"/>
+        <rect x="870" y="0" width="68" height="48" rx="6"/>
+        <rect x="941" y="0" width="68" height="48" rx="6"/>
+        <rect x="1012" y="0" width="68" height="48" rx="6"/>
+        <rect x="1083" y="0" width="68" height="48" rx="6"/>
+        <rect x="1154" y="0" width="68" height="48" rx="6"/>
+        <rect x="1225" y="0" width="68" height="48" rx="6"/>
+        <rect x="1296" y="0" width="68" height="48" rx="6"/>
+        <rect x="1367" y="0" width="73" height="48" rx="6"/>
+      </g>
+      <g class="byte-num" text-anchor="middle">
+        <text x="691" y="32">9</text>
+        <text x="762" y="32">10</text>
+        <text x="833" y="32">11</text>
+        <text x="904" y="32">12</text>
+        <text x="975" y="32">13</text>
+        <text x="1046" y="32">14</text>
+        <text x="1117" y="32">15</text>
+        <text x="1188" y="32">16</text>
+        <text x="1259" y="32">17</text>
+        <text x="1330" y="32">18</text>
+        <text x="1403" y="32">19</text>
+      </g>
+    </g>
+
+    
+    
+    <path d="M 138 133 L 138 160 L 80 160 L 80 185" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+    <g transform="translate(30, 185)">
+      <rect x="0" y="0" width="700" height="390" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+      <text x="24" y="40" class="panel-title" fill="#db8129">Byte 1 (ToS/Traffic Class)</text>
+
+      
+      <g transform="translate(24, 60)">
+        
+        <rect x="0" y="0" width="460" height="44" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <text x="230" y="30" text-anchor="middle" class="box-label">Bits 7-2 are DSCP (6 bits)</text>
+        
+        <rect x="475" y="0" width="175" height="44" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <text x="562" y="30" text-anchor="middle" class="box-label">Bits 1-0 are ECN (2 bits)</text>
+      </g>
+
+      
+      <g transform="translate(24, 130)">
+        <rect x="0" y="0" width="652" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+        <text x="20" y="38" class="code-orange">'ip[1] &amp; 0xfc == 0xb8'</text>
+        <text x="20" y="74" class="desc-text">mask 0xfc isolating DSCP EF</text>
+        <text x="20" y="100" class="desc-text">(value 46 shifted left 2 = 184 = 0xb8)</text>
+      </g>
+
+      
+      <g transform="translate(24, 255)">
+        <rect x="0" y="0" width="652" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+        <text x="20" y="38" class="code-text">'ip[1] &amp; 0x03 == 3'</text>
+        <text x="20" y="74" class="desc-text">mask 0x03 isolating ECN CE</text>
+        <text x="20" y="100" class="desc-text">(11b = 3)</text>
+      </g>
+    </g>
+
+    
+    
+    <path d="M 540 133 L 540 160 L 890 160 L 890 185" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <g transform="translate(755, 185)">
+      <rect x="0" y="0" width="715" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="24" y="40" class="box-label" fill="#207448">Bytes 6-7 (Flags and Fragment Offset, 16 bits = 'ip[6:2]')</text>
+
+      <g transform="translate(24, 65)">
+        <rect x="0" y="0" width="667" height="145" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+        <text x="20" y="42" class="code-text">'ip[6:2] &amp; 0x2000 != 0'</text>
+        
+        
+        <path d="M 360 36 L 410 36" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+        
+        <rect x="20" y="70" width="627" height="55" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+        <text x="35" y="106" class="box-label">bit 13 (More Fragments bit)</text>
+      </g>
+    </g>
+
+    
+    
+    <path d="M 649 133 L 649 435 L 755 465" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <g transform="translate(755, 440)">
+      <rect x="0" y="0" width="715" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="24" y="42" class="box-label" fill="#207448">Byte 8 (TTL)</text>
+      
+      <g transform="translate(24, 60)">
+        <rect x="0" y="0" width="667" height="55" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+        <text x="24" y="38" class="code-text">'ip[8] &lt; 5'</text>
+      </g>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 740)">
+    
+    <rect x="0" y="0" width="1500" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="30" y="24" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 42 36 L 66 36 M 42 48 L 66 48 M 42 60 L 66 60" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="96" y="58" class="panel-title">TCP header byte grid (bytes 0 to 19 relative to TCP header start)</text>
+
+    
+    <g transform="translate(30, 85)">
+      
+      <g fill="#ffffff" stroke="#303a36" stroke-width="2">
+        <rect x="0" y="0" width="68" height="48" rx="6"/>
+        <rect x="71" y="0" width="68" height="48" rx="6"/>
+        <rect x="142" y="0" width="68" height="48" rx="6"/>
+        <rect x="213" y="0" width="68" height="48" rx="6"/>
+        <rect x="284" y="0" width="68" height="48" rx="6"/>
+        <rect x="355" y="0" width="68" height="48" rx="6"/>
+        <rect x="426" y="0" width="68" height="48" rx="6"/>
+        <rect x="497" y="0" width="68" height="48" rx="6"/>
+        <rect x="568" y="0" width="68" height="48" rx="6"/>
+        <rect x="639" y="0" width="68" height="48" rx="6"/>
+        <rect x="710" y="0" width="68" height="48" rx="6"/>
+        <rect x="781" y="0" width="68" height="48" rx="6"/>
+        <rect x="852" y="0" width="68" height="48" rx="6"/>
+      </g>
+      <g class="byte-num" text-anchor="middle">
+        <text x="34" y="32">0</text>
+        <text x="105" y="32">1</text>
+        <text x="176" y="32">2</text>
+        <text x="247" y="32">3</text>
+        <text x="318" y="32">4</text>
+        <text x="389" y="32">5</text>
+        <text x="460" y="32">6</text>
+        <text x="531" y="32">7</text>
+        <text x="602" y="32">8</text>
+        <text x="673" y="32">9</text>
+        <text x="744" y="32">10</text>
+        <text x="815" y="32">11</text>
+        <text x="886" y="32">12</text>
+      </g>
+      
+      
+      <rect x="923" y="0" width="76" height="48" rx="6" fill="#207448" fill-opacity="0.15" stroke="#207448" stroke-width="3"/>
+      <text x="961" y="32" text-anchor="middle" class="byte-num" fill="#207448" font-weight="bold">13</text>
+
+      
+      <g fill="#ffffff" stroke="#303a36" stroke-width="2">
+        <rect x="1002" y="0" width="68" height="48" rx="6"/>
+        <rect x="1073" y="0" width="68" height="48" rx="6"/>
+        <rect x="1144" y="0" width="68" height="48" rx="6"/>
+        <rect x="1215" y="0" width="68" height="48" rx="6"/>
+        <rect x="1286" y="0" width="68" height="48" rx="6"/>
+        <rect x="1357" y="0" width="83" height="48" rx="6"/>
+      </g>
+      <g class="byte-num" text-anchor="middle">
+        <text x="1036" y="32">14</text>
+        <text x="1107" y="32">15</text>
+        <text x="1178" y="32">16</text>
+        <text x="1249" y="32">17</text>
+        <text x="1320" y="32">18</text>
+        <text x="1398" y="32">19</text>
+      </g>
+    </g>
+
+    
+    <path d="M 991 133 L 991 165 L 750 165 L 750 185" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <g transform="translate(30, 185)">
+      <rect x="0" y="0" width="1440" height="360" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      
+      <text x="30" y="42" class="box-label" fill="#207448">Byte 13 ('tcp[13]' or 'tcp[tcpflags]')</text>
+
+      
+      <g transform="translate(30, 65)">
+        
+        <g stroke="#207448" stroke-width="2">
+          
+          <rect x="0" y="0" width="166" height="60" rx="6" fill="#f5f8f5"/>
+          <text x="83" y="38" text-anchor="middle" class="bit-label">CWR (bit 7)</text>
+
+          
+          <rect x="173" y="0" width="166" height="60" rx="6" fill="#f5f8f5"/>
+          <text x="256" y="38" text-anchor="middle" class="bit-label">ECE (bit 6)</text>
+
+          
+          <rect x="346" y="0" width="166" height="60" rx="6" fill="#f5f8f5"/>
+          <text x="429" y="38" text-anchor="middle" class="bit-label">URG (bit 5)</text>
+
+          
+          <rect x="519" y="0" width="166" height="60" rx="6" fill="#f5f8f5"/>
+          <text x="602" y="38" text-anchor="middle" class="bit-label">ACK (bit 4)</text>
+
+          
+          <rect x="692" y="0" width="166" height="60" rx="6" fill="#f5f8f5"/>
+          <text x="775" y="38" text-anchor="middle" class="bit-label">PSH (bit 3)</text>
+
+          
+          <rect x="865" y="0" width="166" height="60" rx="6" fill="#f5f8f5"/>
+          <text x="948" y="38" text-anchor="middle" class="bit-label">RST (bit 2)</text>
+
+          
+          <rect x="1038" y="0" width="166" height="60" rx="6" fill="#f5f8f5"/>
+          <text x="1121" y="38" text-anchor="middle" class="bit-label">SYN (bit 1)</text>
+
+          
+          <rect x="1211" y="0" width="169" height="60" rx="6" fill="#f5f8f5"/>
+          <text x="1295" y="38" text-anchor="middle" class="bit-label">FIN (bit 0)</text>
+        </g>
+      </g>
+
+      
+      <g transform="translate(30, 145)">
+        <rect x="0" y="0" width="1380" height="190" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+        
+        <text x="28" y="44" class="code-text">'tcp[tcpflags] &amp; (tcp-syn|tcp-ack) == tcp-syn'</text>
+        
+        <rect x="28" y="65" width="1324" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+        <text x="50" y="105" class="desc-text">bitmask 0x12 (SYN+ACK) evaluated against 0x02 to match pure SYN packets without ACK</text>
+      </g>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 1335)">
+    <rect x="0" y="0" width="1500" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(30, 20)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="26" x2="28" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="16" r="3" fill="#207448"/>
+    </g>
+    <text x="100" y="56" class="box-label">placing 'vlan' in the filter shifts all subsequent IP/TCP byte offsets by +4 bytes</text>
+  </g>
+</svg>

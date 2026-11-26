@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>The Red Hat upstream-to-downstream distribution river</title>
+  <desc>Vertical river-flow diagram illustrating the Red Hat enterprise distribution lineage from upstream development to downstream production, showing Fedora, CentOS Stream, RHEL, and downstream derivatives alongside the shared toolchain ecosystem.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+    <filter id="card-shadow" x="-3%" y="-2%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#153624" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">The Red Hat upstream-to-downstream</tspan>
+    <tspan x="800" dy="58">distribution river</tspan>
+  </text>
+
+  <text x="800" y="160" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">Vertical river-flow diagram illustrating the Red Hat enterprise distribution</tspan>
+    <tspan x="800" dy="32">lineage from upstream development to downstream production.</tspan>
+  </text>
+
+  
+  <rect x="70" y="220" width="940" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+
+  
+  <g transform="translate(100, 252)">
+    <circle cx="28" cy="28" r="26" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 24 14 L 32 14 M 28 14 L 28 24 L 18 38 L 38 38 L 28 24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="22" y1="34" x2="34" y2="34" stroke="#207448" stroke-width="2.5"/>
+  </g>
+
+  <text x="175" y="265" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Top tier (Upstream): Fedora Project.</text>
+  <text x="175" y="312" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">Sponsored by Red Hat; fast release cycle (every 6 months);</tspan>
+    <tspan x="175" dy="36">incorporates cutting-edge upstream Linux kernels, gcc,</tspan>
+    <tspan x="175" dy="36">systemd, and glibc; acts as community testbed.</tspan>
+  </text>
+
+  
+  <line x1="540" y1="440" x2="540" y2="476" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="70" y="480" width="940" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+
+  
+  <g transform="translate(100, 510)">
+    <circle cx="28" cy="28" r="26" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 16 22 Q 28 16 40 22 M 16 28 Q 28 22 40 28 M 16 34 Q 28 28 40 34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <text x="175" y="525" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Middle tier (Midstream): CentOS Stream.</text>
+  <text x="175" y="572" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">Acts as a rolling-preview midstream between Fedora and RHEL;</tspan>
+    <tspan x="175" dy="36">incorporates stabilized upstream packages</tspan>
+    <tspan x="175" dy="36">before commercial freeze.</tspan>
+  </text>
+
+  
+  <line x1="540" y1="690" x2="540" y2="726" stroke="#db8129" stroke-width="5" marker-end="url(#arrowhead-orange)"/>
+
+  
+  <rect x="70" y="730" width="940" height="250" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" filter="url(#card-shadow)"/>
+
+  
+  <g transform="translate(100, 755)">
+    <circle cx="28" cy="28" r="26" fill="#fdf7f0" stroke="#db8129" stroke-width="3"/>
+    
+    <path d="M 28 15 L 40 21 V 30 C 40 37 28 43 28 43 C 28 43 16 37 16 30 V 21 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+
+  <text x="175" y="768" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="175" dy="0">Main branch (Downstream Commercial):</tspan>
+    <tspan x="175" dy="40">Red Hat Enterprise Linux (RHEL).</tspan>
+  </text>
+
+  <text x="175" y="852" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">Long-term commercial stability, vendor hardware/ISV</tspan>
+    <tspan x="175" dy="34">certifications (Slurm, NVIDIA drivers, Base Command Manager),</tspan>
+    <tspan x="175" dy="34">backported kernel features (e.g., 5.14 kernel backports in RHEL 9).</tspan>
+  </text>
+
+  
+  <line x1="540" y1="980" x2="540" y2="1016" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="70" y="1020" width="940" height="440" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+
+  
+  <g transform="translate(100, 1038)">
+    <circle cx="28" cy="28" r="26" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="28" cy="18" r="4" fill="#207448"/>
+    <circle cx="18" cy="38" r="4" fill="#207448"/>
+    <circle cx="38" cy="38" r="4" fill="#207448"/>
+    <path d="M 28 22 V 28 M 28 28 L 18 34 M 28 28 L 38 34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <text x="175" y="1055" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan x="175" dy="0">Downstream community and cloud derivatives</tspan>
+    <tspan x="175" dy="36">branching from RHEL source code:</tspan>
+  </text>
+
+  
+  <rect x="100" y="1110" width="880" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="125" y="1144" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="125" dy="0">1. Rocky Linux and AlmaLinux:</tspan>
+    <tspan font-weight="normal"> 1:1 bug-for-bug binary</tspan>
+  </text>
+  <text x="125" y="1180" font-family="sans-serif" font-size="24" fill="#303a36">compatible free rebuilds created after CentOS moved to Stream;</text>
+
+  
+  <rect x="100" y="1225" width="880" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="125" y="1258" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="125" dy="0">2. Amazon Linux 2023 (AL2023):</tspan>
+    <tspan font-weight="normal"> AWS cloud-tailored</tspan>
+  </text>
+  <text x="125" y="1292" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">distribution incorporating Fedora, CentOS Stream, and RHEL</tspan>
+    <tspan x="125" dy="30">source components;</tspan>
+  </text>
+
+  
+  <rect x="100" y="1350" width="880" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="125" y="1388" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="125" dy="0">3. Oracle Linux:</tspan>
+    <tspan font-weight="normal"> alternative enterprise rebuild.</tspan>
+  </text>
+
+  
+  
+  <path d="M 1035 225 L 1020 225 L 1020 835 L 1005 835 L 1020 835 L 1020 1455 L 1035 1455" fill="none" stroke="#207448" stroke-width="4.5" stroke-linecap="round"/>
+
+  
+  <rect x="1050" y="220" width="490" height="1240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+
+  
+  <g transform="translate(1090, 260)">
+    <circle cx="32" cy="32" r="30" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 32 16 L 47 24 L 32 32 L 17 24 Z" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 17 24 V 40 L 32 48 V 32 Z" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 47 24 V 40 L 32 48 V 32 Z" fill="none" stroke="#207448" stroke-width="2.5"/>
+  </g>
+
+  <text x="1090" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="1090" dy="0">Surrounding toolchain</tspan>
+    <tspan x="1090" dy="42">bracket:</tspan>
+  </text>
+
+  <rect x="1080" y="445" width="430" height="715" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+  <text x="1105" y="495" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1105" dy="0">Highlights shared package</tspan>
+    <tspan x="1105" dy="38">ecosystem across all</tspan>
+    <tspan x="1105" dy="38">members:</tspan>
+    <tspan x="1105" dy="56" font-weight="bold" fill="#207448">RPM package format (.rpm),</tspan>
+    <tspan x="1105" dy="56">low-level tool rpm, and</tspan>
+    <tspan x="1105" dy="56">high-level repository</tspan>
+    <tspan x="1105" dy="38">resolvers yum and modern</tspan>
+    <tspan x="1105" dy="38" font-family="monospace">dnf.</tspan>
+  </text>
+
+  
+  <g transform="translate(1105, 900)">
+    
+    <rect x="0" y="0" width="380" height="220" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="190" y="50" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">.rpm</text>
+    <line x1="40" y1="75" x2="340" y2="75" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="190" y="125" text-anchor="middle" font-family="monospace" font-size="26" fill="#303a36">rpm</text>
+    <text x="190" y="180" text-anchor="middle" font-family="monospace" font-size="26" fill="#303a36">yum  /  dnf</text>
+  </g>
+
+</svg>

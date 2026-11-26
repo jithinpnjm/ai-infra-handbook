@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1280" width="1600" height="1280">
+  <title>Prefix-cache-aware routing with bounded-load spillover for LLM inference</title>
+  <desc>Flow diagram illustrating prefix affinity routing, cache hit execution, and bounded-load spillover to secondary worker GPU replicas during traffic surges.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1280" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="42" font-weight="bold" fill="#303a36" text-anchor="middle">Prefix-cache-aware routing with bounded-load spillover for LLM inference</text>
+
+  
+  
+  
+
+  
+  <rect x="40" y="85" width="1520" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="70" y="125" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Normal Flow: Prefix Affinity Hit via L7 LLM router</text>
+
+  
+  <rect x="70" y="150" width="380" height="420" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="120" cy="205" r="28" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 110 205 L 120 215 L 132 195" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="165" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Incoming Requests</text>
+  
+  <text x="96" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="96" dy="0">Request A and Request B</tspan>
+    <tspan x="96" dy="36">share an identical 2,000-token</tspan>
+    <tspan x="96" dy="36">system prompt prefix.</tspan>
+  </text>
+  <rect x="94" y="380" width="332" height="155" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="110" y="420" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">Shared Prefix:</text>
+  <text x="110" y="460" font-family="monospace" font-size="24" fill="#303a36">[SYS: 2,000 tokens]</text>
+  <text x="110" y="500" font-family="sans-serif" font-size="24" fill="#303a36">affinity target: Worker 1</text>
+
+  
+  <path d="M 450 360 L 530 360" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="545" y="150" width="450" height="420" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="595" cy="205" r="26" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 595 173 L 595 185 M 595 225 L 595 237 M 563 205 L 575 205 M 615 205 L 627 205" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="640" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">affinity calculator</text>
+  <text x="575" y="275" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">hash(prefix) -> Worker 1</text>
+  <text x="575" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="575" dy="0">The router checks Worker 1</tspan>
+    <tspan x="575" dy="34">metrics: Queue depth = 2,</tspan>
+    <tspan x="575" dy="34">KV-cache occupancy = 45%,</tspan>
+    <tspan x="575" dy="34">which is well below the</tspan>
+    <tspan x="575" dy="34">bounded load threshold</tspan>
+    <tspan x="575" dy="34">(capped at 1.25x average</tspan>
+    <tspan x="575" dy="34">cluster load, here 75%).</tspan>
+  </text>
+
+  
+  <path d="M 995 360 L 1070 360" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <rect x="990" y="305" width="80" height="40" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1030" y="333" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Pass</text>
+
+  
+  <rect x="1085" y="150" width="445" height="420" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="1120" y="180" width="50" height="50" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="1145" cy="205" r="12" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 1110 195 L 1120 195 M 1110 215 L 1120 215 M 1170 195 L 1180 195 M 1170 215 L 1180 215" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="1190" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Worker 1</text>
+  
+  <rect x="1115" y="248" width="385" height="46" rx="8" fill="#e8f1ea" />
+  <text x="1125" y="280" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Request A sent to Worker 1</text>
+  <text x="1115" y="335" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0">Automatic Prefix Caching HIT</tspan>
+    <tspan x="1115" dy="36">in GPU VRAM, bypassing</tspan>
+    <tspan x="1115" dy="36">the compute-heavy prefill</tspan>
+    <tspan x="1115" dy="36">phase and minimizing TTFT.</tspan>
+  </text>
+  <rect x="1115" y="475" width="385" height="65" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="1130" y="515" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">Status: CACHE HIT (45%)</text>
+
+
+  
+  
+  
+
+  
+  <rect x="40" y="635" width="1520" height="585" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="2" />
+  <text x="70" y="675" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">traffic surge scenario: bounded-load spillover</text>
+
+  
+  <rect x="70" y="700" width="380" height="495" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 120 730 L 145 775 L 95 775 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+  <line x1="120" y1="748" x2="120" y2="758" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+  <circle cx="120" cy="766" r="2.5" fill="#db8129" />
+  <text x="160" y="765" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Surge Arrival</text>
+  <text x="95" y="820" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">Request C arrives with the</tspan>
+    <tspan x="95" dy="34">same prefix, but Worker 1 is</tspan>
+    <tspan x="95" dy="34">now overloaded with</tspan>
+    <tspan x="95" dy="34">Queue depth = 14 and</tspan>
+    <tspan x="95" dy="34">KV-cache occupancy = 88%</tspan>
+    <tspan x="95" dy="34">(exceeding the 75% bounded</tspan>
+    <tspan x="95" dy="34">load ceiling).</tspan>
+  </text>
+  <rect x="95" y="1070" width="330" height="95" rx="8" fill="#fdf3eb" stroke="#db8129" stroke-width="1.5" />
+  <text x="110" y="1108" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">Worker 1: OVERLOADED</text>
+  <text x="110" y="1144" font-family="sans-serif" font-size="24" fill="#303a36">Queue: 14 | Cache: 88%</text>
+
+  
+  <path d="M 450 930 L 530 930" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="545" y="700" width="450" height="495" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  
+  <path d="M 600 730 L 630 742 L 630 768 C 630 785 600 798 600 798 C 600 798 570 785 570 768 L 570 742 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+  <text x="645" y="765" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">prefix affinity</text>
+  <text x="575" y="825" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="575" dy="0">The router's bounded-load</tspan>
+    <tspan x="575" dy="36">rule intervenes: rather than</tspan>
+    <tspan x="575" dy="36">exacerbating Worker 1's</tspan>
+    <tspan x="575" dy="36">queue, the router spills</tspan>
+    <tspan x="575" dy="36">Request C over to</tspan>
+    <tspan x="575" dy="36">Worker 2 (Queue depth = 1,</tspan>
+    <tspan x="575" dy="36">KV-cache = 30%).</tspan>
+  </text>
+  <rect x="575" y="1080" width="390" height="85" rx="8" fill="#fdf3eb" stroke="#db8129" stroke-width="2" />
+  <text x="590" y="1120" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Action: Spillover Triggered</text>
+  <text x="590" y="1152" font-family="monospace" font-size="24" fill="#303a36">Reroute: Target -> Worker 2</text>
+
+  
+  <path d="M 995 930 L 1070 930" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+  <rect x="990" y="870" width="80" height="42" rx="6" fill="#fdf3eb" stroke="#db8129" stroke-width="1.5" />
+  <text x="1030" y="900" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">Spill</text>
+
+  
+  <rect x="1085" y="700" width="445" height="495" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <text x="1115" y="745" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">three worker GPU replicas</text>
+
+  
+  <rect x="1105" y="765" width="405" height="280" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <rect x="1120" y="785" width="36" height="36" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="1138" cy="803" r="8" fill="none" stroke="#207448" stroke-width="2.5" />
+  <text x="1170" y="812" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Worker 2</text>
+  <text x="1120" y="860" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1120" dy="0">Worker 2 suffers a cache miss</tspan>
+    <tspan x="1120" dy="34">and computes the prefill,</tspan>
+    <tspan x="1120" dy="34">but starts execution</tspan>
+    <tspan x="1120" dy="34">immediately without queue</tspan>
+    <tspan x="1120" dy="34">starvation.</tspan>
+  </text>
+
+  
+  <rect x="1105" y="1065" width="405" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" stroke-dasharray="6,4" />
+  <rect x="1120" y="1085" width="36" height="36" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="1138" cy="1103" r="8" fill="none" stroke="#207448" stroke-width="2.5" />
+  <text x="1170" y="1112" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Worker 3</text>
+  <text x="1120" y="1155" font-family="sans-serif" font-size="24" fill="#738276">Available GPU Replica (Standby)</text>
+
+  
+  <rect x="40" y="1235" width="1520" height="35" rx="6" fill="#207448" />
+  <text x="800" y="1260" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Bounded-load routing balances cache affinity gains with strict queue ceilings to prevent tail-latency degradation.</text>
+
+</svg>

@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
+  <title>CPU rings, privileged instructions, and fault handling</title>
+  <desc>Concentric circle diagram illustrating x86 processor privilege levels, dynamic system call flows, and hardware fault isolation.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+    
+    <filter id="soft-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#303a36" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1350" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">CPU rings, privileged instructions, and fault handling</text>
+
+  
+  
+  
+
+  
+  <circle cx="540" cy="720" r="490" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#soft-shadow)" />
+
+  
+  <circle cx="540" cy="720" r="290" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" />
+
+  
+  <circle cx="540" cy="720" r="286" fill="#ffffff" stroke="#207448" stroke-width="4" filter="url(#soft-shadow)" />
+
+  
+  <rect x="250" y="240" width="580" height="150" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#soft-shadow)" />
+  
+  <g transform="translate(268, 256)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="46" height="34" rx="4" />
+    <line x1="0" y1="10" x2="46" y2="10" />
+    <circle cx="8" cy="5" r="1.5" fill="#207448" />
+    <circle cx="15" cy="5" r="1.5" fill="#207448" />
+  </g>
+  <text x="550" y="282" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Ring 3 (User Mode / Unprivileged)</text>
+  <text x="550" y="318" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">PyTorch, bash, web browser, and</text>
+  <text x="550" y="348" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">processes running as root (UID 0 in Ring 3)</text>
+
+  
+  <rect x="290" y="1050" width="500" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#soft-shadow)" />
+  <text x="540" y="1092" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Unprivileged CPU instructions</text>
+  <text x="540" y="1126" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">execute directly</text>
+
+  
+  <rect x="360" y="410" width="360" height="46" rx="23" fill="#303a36" stroke="#207448" stroke-width="2" filter="url(#soft-shadow)" />
+  <text x="540" y="442" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">CPU privilege barrier</text>
+
+  
+  
+  <g transform="translate(517, 492)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="6" y="6" width="34" height="34" rx="4" />
+    <rect x="13" y="13" width="20" height="20" rx="2" />
+    <line x1="15" y1="0" x2="15" y2="6" /><line x1="23" y1="0" x2="23" y2="6" /><line x1="31" y1="0" x2="31" y2="6" />
+    <line x1="15" y1="40" x2="15" y2="46" /><line x1="23" y1="40" x2="23" y2="46" /><line x1="31" y1="40" x2="31" y2="46" />
+    <line x1="0" y1="15" x2="6" y2="15" /><line x1="0" y1="23" x2="6" y2="23" /><line x1="0" y1="31" x2="6" y2="31" />
+    <line x1="40" y1="15" x2="46" y2="15" /><line x1="40" y1="23" x2="46" y2="23" /><line x1="40" y1="31" x2="46" y2="31" />
+  </g>
+  <text x="540" y="565" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Ring 0 (Kernel Mode / Privileged)</text>
+
+  
+  <rect x="325" y="590" width="430" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="540" y="622" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Linux kernel, scheduler, virtual</text>
+  <text x="540" y="654" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">memory manager, device drivers</text>
+  <text x="540" y="686" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">(nvidia.ko, mlx5_core.ko), and</text>
+  <text x="540" y="718" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">kernel threads</text>
+  <text x="540" y="750" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">([kthreadd], [kworker], [ksoftirqd])</text>
+
+  
+  <rect x="325" y="790" width="430" height="175" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="540" y="824" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Privileged CPU instructions</text>
+  <text x="540" y="856" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(page table writes, direct</text>
+  <text x="540" y="888" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">device I/O, disabling interrupts)</text>
+  <text x="540" y="920" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">execute only here</text>
+
+  
+  
+  <path d="M 200 620 C 230 620, 260 635, 320 650" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 320 680 C 260 695, 230 710, 200 710" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="6 4" marker-end="url(#arrow-green)" />
+  <rect x="100" y="642" width="130" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="165" y="670" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Flow 1</text>
+
+  
+  <path d="M 200 840 C 225 840, 255 830, 280 815" fill="none" stroke="#db8129" stroke-width="5" />
+  
+  <line x1="272" y1="807" x2="288" y2="823" stroke="#db8129" stroke-width="5" stroke-linecap="round" />
+  <line x1="288" y1="807" x2="272" y2="823" stroke="#db8129" stroke-width="5" stroke-linecap="round" />
+  <path d="M 285 815 C 295 810, 305 805, 320 802" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+  <rect x="100" y="818" width="130" height="42" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text x="165" y="847" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Flow 2</text>
+
+
+  
+  
+  
+
+  
+  <rect x="1070" y="140" width="480" height="300" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#soft-shadow)" />
+  <rect x="1070" y="140" width="480" height="60" rx="16" fill="#e8f1ea" />
+  
+  <circle cx="1108" cy="170" r="18" fill="#207448" />
+  <text x="1108" y="177" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="1140" y="178" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Flow 1 (Legitimate)</text>
+  <text x="1100" y="235" font-family="sans-serif" font-size="24" fill="#303a36">User process invokes a system</text>
+  <text x="1100" y="267" font-family="sans-serif" font-size="24" fill="#303a36">call (e.g., read(), open()),</text>
+  <text x="1100" y="299" font-family="sans-serif" font-size="24" fill="#303a36">CPU performs controlled</text>
+  <text x="1100" y="331" font-family="sans-serif" font-size="24" fill="#303a36">transition into Ring 0, kernel</text>
+  <text x="1100" y="363" font-family="sans-serif" font-size="24" fill="#303a36">executes service and returns</text>
+  <text x="1100" y="395" font-family="sans-serif" font-size="24" fill="#303a36">result to Ring 3.</text>
+
+  
+  <rect x="1070" y="465" width="480" height="450" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" filter="url(#soft-shadow)" />
+  <rect x="1070" y="465" width="480" height="60" rx="16" fill="#fdf3e7" />
+  
+  <circle cx="1108" cy="495" r="18" fill="#db8129" />
+  <text x="1108" y="502" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="1140" y="503" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">Flow 2 (Fault Trap)</text>
+  <text x="1100" y="555" font-family="sans-serif" font-size="24" fill="#303a36">User process attempts a</text>
+  <text x="1100" y="587" font-family="sans-serif" font-size="24" fill="#303a36">privileged CPU instruction</text>
+  <text x="1100" y="619" font-family="sans-serif" font-size="24" fill="#303a36">directly; CPU hardware halts</text>
+  <text x="1100" y="651" font-family="sans-serif" font-size="24" fill="#303a36">the instruction, raises a</text>
+  <text x="1100" y="683" font-family="sans-serif" font-size="24" fill="#303a36">hardware fault/trap into</text>
+  <text x="1100" y="715" font-family="sans-serif" font-size="24" fill="#303a36">Ring 0, and the kernel trap</text>
+  <text x="1100" y="747" font-family="sans-serif" font-size="24" fill="#303a36">handler intercepts the fault</text>
+  <text x="1100" y="779" font-family="sans-serif" font-size="24" fill="#303a36">and sends SIGSEGV/kills the</text>
+  <text x="1100" y="811" font-family="sans-serif" font-size="24" fill="#303a36">rogue process while all other</text>
+  <text x="1100" y="843" font-family="sans-serif" font-size="24" fill="#303a36">user processes and the kernel</text>
+  <text x="1100" y="875" font-family="sans-serif" font-size="24" fill="#303a36">continue running unaffected.</text>
+
+  
+  <rect x="1070" y="940" width="480" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#soft-shadow)" />
+  <rect x="1070" y="940" width="480" height="58" rx="16" fill="#e8f1ea" />
+  
+  <g transform="translate(1088, 952)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 0 4 L 16 0 L 32 4 C 32 20 16 28 16 28 C 16 28 0 20 0 4 Z" />
+  </g>
+  <text x="1132" y="978" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Failure Scope Contrast</text>
+
+  
+  <rect x="1090" y="1015" width="440" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1110" y="1052" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">User process crash =</text>
+  <text x="1110" y="1084" font-family="sans-serif" font-size="24" fill="#303a36">local exit, kernel reclaims</text>
+  <text x="1110" y="1114" font-family="sans-serif" font-size="24" fill="#303a36">memory</text>
+
+  
+  <rect x="1090" y="1145" width="440" height="115" rx="10" fill="#fdf3e7" stroke="#db8129" stroke-width="1.5" />
+  <text x="1110" y="1182" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Kernel bug/module fault =</text>
+  <text x="1110" y="1214" font-family="sans-serif" font-size="24" fill="#303a36">whole system halts with</text>
+  <text x="1110" y="1244" font-family="sans-serif" font-size="24" fill="#303a36">kernel panic</text>
+
+</svg>

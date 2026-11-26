@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0501-lazy-pull",
+  "title": "Traditional Pull vs Lazy Pulling with Remote Snapshotters",
+  "anchor": "### Image size and startup",
+  "spec": "Two horizontal sequential workflows comparing how a 20 GB PyTorch image starts on a cluster node. Workflow A (Top): 'Traditional Pull (containerd overlayfs)'. Step 1: Download all layer tarballs sequentially or in parallel over network (20 GB total; node network saturated, waiting 15-30 minutes). Step 2: Unpack tarballs sequentially into local rootfs snapshots on disk. Step 3: Launch container process PID 1 (GPUs sit completely idle until 100 percent of bytes are downloaded and unpacked). Workflow B (Bottom): 'Lazy Pulling (SOCI, eStargz, Nydus)'. Step 1: Download only metadata index and Table of Contents (approx 10 MB in 2 seconds). Step 2: Mount remote virtual filesystem immediately and launch PID 1 (container starts in under 5 seconds; GPU begins initialization). Step 3: Background and on-demand streaming: as PyTorch imports modules, only accessed chunks (approx 1.5 GB of actual code/libraries) are fetched via HTTP Range requests; unread compiler tools and debug symbols remain in the registry. A side callout box highlights: 'Eliminates GPU cold-start stall for large AI inference and training workloads.'",
+  "alt": "Comparison between traditional image pull downloading all layers before startup and lazy pulling starting in seconds while streaming layer chunks on demand.",
+  "cap": "Lazy-pulling snapshotters fetch index metadata first so the container starts immediately, downloading remaining layer data only as the application reads it.",
+  "part": "part-05-kubernetes",
+  "ch": "01"
+ },
+ {
+  "name": "p4-0501-registry-anatomy",
+  "title": "Container Registry Anatomy and Multi-Region Replication",
+  "anchor": "### Registry anatomy and placement",
+  "spec": "Split diagram showing the three internal components of a container registry and how registries replicate across failure domains. Left Box: 'Registry Internal Architecture'. 1. Top tier: 'API and UI Server' implementing OCI Distribution API (endpoints: GET /v2/name/manifests/ref, GET /v2/name/blobs/digest, chunked blob upload, auth token verification). 2. Middle tier: 'Metadata Database' storing repository tags, RBAC policies, image vulnerability scan results, and manifest index mappings. 3. Bottom tier: 'Blob Store (S3, GCS, Ceph)' storing content-addressed immutable blobs under blobs/sha256/hash. Right Section: 'Topology Across Failure Domains'. Central Registry in Region A receives CI/CD build pushes. Directed replication arrows (push replication or webhook-triggered) sync images to Secondary Registry in Region B and an In-Cluster Registry/Cache in a Shared Services Cluster. Nodes in Region B pull from their local regional mirror rather than crossing the WAN, eliminating cross-region egress costs and surviving central registry outages.",
+  "alt": "Anatomy of an OCI container registry showing its API server, metadata database, and blob store replicated across regional failure domains.",
+  "cap": "A container registry splits metadata from content-addressed blob storage and replicates across regions to keep pull traffic local and fault-tolerant.",
+  "part": "part-05-kubernetes",
+  "ch": "01"
+ },
+ {
+  "name": "p4-0501-container-lifecycle",
+  "title": "Container Lifecycle State Machine, Signals, and Exit Codes",
+  "anchor": "## 7. Container lifecycle commands (cheat sheet)",
+  "spec": "State machine diagram with four main state boxes: 'Created', 'Running', 'Paused', and 'Stopped / Exited', plus final garbage-collection state 'Removed'. Transitions and annotations: 1. Image to 'Created' via 'docker create' (rootfs assembled, namespaces set up, process not yet started). 2. 'Created' to 'Running' via 'docker start' (or directly via 'docker run'; PID 1 starts inside namespaces). 3. 'Running' to 'Paused' via 'docker pause' (cgroup freezer pauses processes); back to 'Running' via 'docker unpause'. 4. 'Running' to 'Stopped / Exited' shows four distinct paths: Path A: Clean exit (process finishes, exit code 0). Path B: Application error (exit code 1 or 2). Path C: Graceful stop via 'docker stop' (sends SIGTERM 15; if unhandled within default 10s grace period, kernel sends SIGKILL 9, resulting in exit code 143 or 137). Path D: Immediate termination via 'docker kill' (kernel SIGKILL 9, exit code 137) or Cgroup OOM kill (kernel OOM-killer fires when memory hits memory.max, exit code 137 with State.OOMKilled=true). Path E: Segmentation fault (SIGSEGV 11, exit code 139) or bus error from full /dev/shm (SIGBUS 7, exit code 135). 5. 'Stopped / Exited' to 'Removed' via 'docker rm' (writable overlayfs upper layer and container config deleted).",
+  "alt": "State machine of container lifecycle showing transitions between Created, Running, Paused, and Stopped with commands, signals, and resulting exit codes.",
+  "cap": "The container lifecycle moves through distinct kernel states driven by CLI commands, signal propagation, and cgroup resource enforcement.",
+  "part": "part-05-kubernetes",
+  "ch": "01"
+ }
+]

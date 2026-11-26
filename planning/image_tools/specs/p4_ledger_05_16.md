@@ -1,0 +1,46 @@
+# docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md
+- ## Why this matters for AI infrastructure | 200 | NO FIGURE NEEDED introductory context and analogies
+- ## Prerequisites and outcomes | 150 | NO FIGURE NEEDED curriculum objectives list
+- ## 1. ConfigMaps | 950 | COVERED(p3-0516-immutable-rollout, k16-config-doors, m5-16-1)
+- ### Reading a ConfigMap back from the cluster | 220 | NO FIGURE NEEDED walkthrough of command output
+- ## 2. Secrets | 500 | NEEDS FIGURE KMS v2 envelope encryption mechanism in kube-apiserver
+- ### Defense in depth for secrets | 500 | COVERED(p2-0516-layers-secrets)
+- ### The Secret API, RBAC verbs, and scope | 450 | NO FIGURE NEEDED definitions of Secret API verbs and namespace scope
+- ### Consumption models: environment variables, volumes, and the client API | 650 | COVERED(p2-0516-config-doors)
+- ### A TLS Secret mounted as files | 280 | NO FIGURE NEEDED hands-on YAML and CLI walkthrough
+- ### Image pull secrets | 120 | NO FIGURE NEEDED concise explanation of dockerconfigjson
+- ### GitOps-safe secret management | 200 | COVERED(p3-0516-gitops-where-lives)
+- ### Sealed Secrets in depth | 800 | COVERED(p3-0516-sealed-flow)
+- ### Rotation | 120 | COVERED(k16-two-phase-rotation)
+- ### HashiCorp Vault Agent Injector and Kubernetes authentication | 600 | COVERED(p3-0516-vault-injector-flow)
+- ### Secrets Store CSI driver and CyberArk | 450 | NEEDS FIGURE node-level driver and provider plugin architecture mounting secrets without etcd
+- ### Best practices for secrets | 350 | NO FIGURE NEEDED list of security recommendations
+- ### Choosing how an application reads ConfigMaps and Secrets | 400 | COVERED(p2-0516-config-doors)
+- ### Injecting workload metadata with the Downward API | 150 | NO FIGURE NEEDED brief yaml snippet for memory limit injection
+- ### Offloading external secret systems to the platform | 130 | NO FIGURE NEEDED conceptual platform design guidance
+- ## 3. Projected volumes and ServiceAccount tokens | 150 | COVERED(p3-0516-projected-volume)
+- ### ServiceAccounts | 250 | NEEDS FIGURE workload identity federation flow mapping ServiceAccount to cloud IAM
+- ### Service Account tokens and TokenReview | 400 | COVERED(k16-tokenreview)
+- ### Projected service account tokens (PSAT) | 350 | COVERED(p3-0516-sat-vs-psat)
+- ## 4. Authentication | 280 | COVERED(p3-0516-auth-methods)
+- ### Shared secrets: static token and password files | 300 | NO FIGURE NEEDED deprecated antipattern explanation
+- ### Client certificates from the CSR flow | 600 | COVERED(p3-0516-csr-lifecycle)
+- ### OIDC for robot users and kubeconfig generation | 300 | NO FIGURE NEEDED prose explanation of robot authentication patterns
+- ## 5. RBAC | 300 | COVERED(p3-0516-trainer-runner-walk)
+- ### Why RBAC matters and how a request is checked | 250 | COVERED(p2-0516-rbac-check)
+- ### Verbs and HTTP methods | 180 | COVERED(p2-0516-rbac-verbs-rule, p2-0516-verb-map)
+- ### Properties | 300 | COVERED(p3-0516-role-binding-scope)
+- ### Design patterns for AI platforms | 300 | NO FIGURE NEEDED numbered list of ten multi-tenant patterns
+- ### Least-privilege admin elevation via RBAC `impersonate` (`sudo`-style workflow) | 450 | COVERED(k16-impersonate-sudo)
+- ### Testing and auditing RBAC | 130 | COVERED(p3-0516-rbac-testing-ladder)
+- ### Managing RBAC at scale | 150 | NO FIGURE NEEDED short CLI examples of can-i subresource and auth reconcile
+- ## 6. Configuration management patterns for AI workloads | 250 | NEEDS FIGURE configuration stacking and artifact placement hierarchy
+- ## 7. Failure modes and troubleshooting | 150 | COVERED(p3-0516-failure-ladder)
+- ## 8. Lab | 350 | NO FIGURE NEEDED hands-on validation commands and lab steps
+- ## 9. Common mistakes | 200 | COVERED(p3-0516-escalation-paths)
+- ## 10. Interview angles | 100 | NO FIGURE NEEDED interview question list
+- ## Exercises | 400 | NO FIGURE NEEDED study exercises
+- ## Checkpoint questions (20) | 1800 | NO FIGURE NEEDED quiz questions with collapsible answers
+- ## Sources and review notes | 400 | NO FIGURE NEEDED bibliographic citations and notes
+
+Specs kept 3, dropped 1: ['anchor not exact/unique: ## 6. Configuration management patterns for AI workloads']

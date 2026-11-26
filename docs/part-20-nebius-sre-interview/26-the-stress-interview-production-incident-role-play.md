@@ -72,6 +72,10 @@ Pick the lowest-risk reversible action, and name the graph that will confirm it.
 
 ### 3. Narrate hypotheses in order of likelihood and cost to test
 
+![A 2x2 matrix ranking incident hypotheses by likelihood versus cost to test alongside a five-step scientific falsification loop.](./img/p4-2026-hypothesis-matrix.svg)
+
+*Figure 20.0.0. Rank hypotheses by likelihood and cost to test, and formulate predictions that can decisively kill a theory before investigating zebras.*
+
 Picture a latency graph that bends upward at one clear moment, while the team is already arguing about why. Everyone has a favourite theory, and the job is to put them in order before anyone spends an hour on one.
 
 The SRE troubleshooting chapter says to test the most likely cause first and think of horses before zebras. Horses before zebras means the common explanation comes before the rare one, the same way a hoofbeat in a city street is probably a horse. Systems Performance chapter 2 gives the scientific method: question, hypothesis, prediction, test, analysis. The prediction makes you convincing. A prediction says in advance what the data should look like if you are right, so the claim can be checked. "If the deploy caused this, the metric turned at 13:50 on every replica. If one bad pod caused it, only that pod shows it." Those two sentences start from the same symptom and predict two different pictures, and the graph settles which one is true.
@@ -103,6 +107,10 @@ Roll back when the symptom began right after a change, the rollback is tested an
 Every drill has a destructive trap, such as restarting every replica at once, defragmenting a live etcd member, sending EU traffic to a US region, or editing live config that GitOps will overwrite. Each trap looks like a fix from a distance. Restarting everything feels decisive, defragmenting feels like tidying, and moving traffic feels like shelter. Before you run anything risky, say what it does, how to undo it, and how far the damage can spread. If you cannot say how to undo it, ask for a second pair of eyes.
 
 ### 6. How the drill runner works
+
+![Architecture of the interview drill runner showing slash commands feeding an event log evaluated across seven scorecard categories totalling 100 points.](./img/p4-2026-drill-scorecard.svg)
+
+*Figure 20.0.0. The drill runner evaluates session timing and actions across seven rubric categories, rewarding prompt control, structured evidence gathering, and safe mitigation order.*
 
 Picture yourself alone at a laptop with a 30-minute timer, typing questions to a program that stands in for the interviewer.
 

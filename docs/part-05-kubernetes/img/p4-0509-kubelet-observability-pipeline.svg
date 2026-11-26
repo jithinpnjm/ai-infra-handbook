@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
+  <title>Kubelet Observability and Metric Pipeline</title>
+  <desc>Architecture diagram illustrating node input subsystems, the core Kubelet daemon, metric endpoints, and critical alert thresholds.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#183624" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1350" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Kubelet Observability and Metric Pipeline</text>
+
+  
+  
+  <rect x="40" y="95" width="1520" height="235" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  
+  
+  <rect x="65" y="115" width="345" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="85" y="130" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <rect x="94" y="139" width="18" height="18" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="85" y1="142" x2="77" y2="142" stroke="#207448" stroke-width="3" />
+  <line x1="85" y1="154" x2="77" y2="154" stroke="#207448" stroke-width="3" />
+  <line x1="121" y1="142" x2="129" y2="142" stroke="#207448" stroke-width="3" />
+  <line x1="121" y1="154" x2="129" y2="154" stroke="#207448" stroke-width="3" />
+  <text x="135" y="157" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">cAdvisor</text>
+  <text x="85" y="200" font-family="sans-serif" font-size="24" fill="#303a36">subsystem reading</text>
+  <text x="85" y="235" font-family="sans-serif" font-size="24" fill="#303a36">cgroup v2 stats</text>
+  <text x="85" y="275" font-family="monospace" font-size="24" fill="#207448">(/sys/fs/cgroup)</text>
+
+  
+  <rect x="440" y="115" width="345" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="460" y="130" width="36" height="34" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="460" y1="146" x2="496" y2="146" stroke="#207448" stroke-width="2" />
+  <line x1="478" y1="146" x2="478" y2="164" stroke="#207448" stroke-width="2" />
+  <text x="510" y="157" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">CRI</text>
+  <text x="460" y="205" font-family="sans-serif" font-size="24" fill="#303a36">runtime events from</text>
+  <text x="460" y="245" font-family="sans-serif" font-size="24" fill="#303a36">containerd</text>
+
+  
+  <rect x="815" y="115" width="345" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="838" cy="148" r="17" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 826 148 L 833 148 L 836 138 L 841 158 L 844 148 L 850 148" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="865" y="157" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Prober</text>
+  <text x="835" y="200" font-family="sans-serif" font-size="24" fill="#303a36">execution engine</text>
+  <text x="835" y="235" font-family="sans-serif" font-size="24" fill="#303a36">running http/tcp/exec</text>
+  <text x="835" y="270" font-family="sans-serif" font-size="24" fill="#303a36">checks</text>
+
+  
+  <rect x="1190" y="115" width="345" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1215" cy="148" r="17" fill="none" stroke="#207448" stroke-width="3" />
+  <polyline points="1215,137 1215,148 1224,148" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="1242" y="157" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">PLEG</text>
+  <text x="1210" y="200" font-family="sans-serif" font-size="24" fill="#303a36">(Pod Lifecycle Event</text>
+  <text x="1210" y="235" font-family="sans-serif" font-size="24" fill="#303a36">Generator) watching</text>
+  <text x="1210" y="270" font-family="sans-serif" font-size="24" fill="#303a36">relist events</text>
+
+  
+  <line x1="237" y1="330" x2="237" y2="390" stroke="#207448" stroke-width="3" />
+  <line x1="237" y1="390" x2="650" y2="390" stroke="#207448" stroke-width="3" />
+  <line x1="650" y1="390" x2="650" y2="420" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  <line x1="612" y1="330" x2="612" y2="365" stroke="#207448" stroke-width="3" />
+  <line x1="612" y1="365" x2="750" y2="365" stroke="#207448" stroke-width="3" />
+  <line x1="750" y1="365" x2="750" y2="420" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  <line x1="987" y1="330" x2="987" y2="365" stroke="#207448" stroke-width="3" />
+  <line x1="987" y1="365" x2="850" y2="365" stroke="#207448" stroke-width="3" />
+  <line x1="850" y1="365" x2="850" y2="420" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  <line x1="1362" y1="330" x2="1362" y2="390" stroke="#207448" stroke-width="3" />
+  <line x1="1362" y1="390" x2="950" y2="390" stroke="#207448" stroke-width="3" />
+  <line x1="950" y1="390" x2="950" y2="420" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="420" y="425" width="760" height="110" rx="14" fill="#207448" filter="url(#shadow)" />
+  
+  <circle cx="470" cy="480" r="22" fill="none" stroke="#ffffff" stroke-width="4" stroke-dasharray="8 4" />
+  <circle cx="470" cy="480" r="11" fill="#ffffff" />
+  <text x="515" y="470" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Kubelet core daemon</text>
+  <text x="515" y="508" font-family="monospace" font-size="28" font-weight="bold" fill="#ffffff">on port :10250</text>
+
+  
+  
+  <line x1="560" y1="535" x2="560" y2="600" stroke="#207448" stroke-width="3" />
+  <line x1="560" y1="600" x2="435" y2="600" stroke="#207448" stroke-width="3" />
+  <line x1="435" y1="600" x2="435" y2="630" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="1040" y1="535" x2="1040" y2="600" stroke="#207448" stroke-width="3" />
+  <line x1="1040" y1="600" x2="1200" y2="600" stroke="#207448" stroke-width="3" />
+  <line x1="1200" y1="600" x2="1200" y2="630" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="1200" y1="910" x2="1200" y2="945" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+
+  
+  <g filter="url(#shadow)">
+    <rect x="40" y="635" width="790" height="495" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 40 647 Q 40 635 52 635 L 818 635 Q 830 635 830 647 L 830 705 L 40 705 Z" fill="#e8f1ea" />
+    <circle cx="75" cy="670" r="18" fill="#207448" />
+    <text x="69" y="678" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <text x="110" y="678" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">:10250/metrics</text>
+
+    
+    <text x="65" y="745" font-family="monospace" font-size="24" fill="#303a36">kubelet_running_pods</text>
+    <text x="65" y="795" font-family="monospace" font-size="24" fill="#303a36">kubelet_running_containers</text>
+    <text x="65" y="845" font-family="monospace" font-size="24" fill="#303a36">kubelet_pleg_relist_duration_seconds</text>
+    <text x="65" y="895" font-family="monospace" font-size="24" fill="#303a36">kubelet_pleg_relist_interval_seconds</text>
+    <text x="65" y="945" font-family="monospace" font-size="24" fill="#303a36">kubelet_evictions</text>
+    <text x="65" y="995" font-family="monospace" font-size="24" fill="#303a36">kubelet_pod_start_duration_seconds</text>
+    <text x="65" y="1045" font-family="monospace" font-size="24" fill="#303a36">kubelet_certificate_manager_client_ttl_seconds</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="860" y="635" width="700" height="275" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 860 647 Q 860 635 872 635 L 1548 635 Q 1560 635 1560 647 L 1560 705 L 860 705 Z" fill="#e8f1ea" />
+    <circle cx="895" cy="670" r="18" fill="#207448" />
+    <text x="888" y="678" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <text x="930" y="678" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">:10250/metrics/cadvisor</text>
+
+    
+    <text x="885" y="755" font-family="monospace" font-size="24" fill="#303a36">container_cpu_cfs_throttled_periods_total</text>
+    <text x="885" y="810" font-family="monospace" font-size="24" fill="#303a36">container_memory_working_set_bytes</text>
+    <text x="885" y="865" font-family="monospace" font-size="24" fill="#303a36">container_oom_events_total</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="860" y="950" width="700" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 860 962 Q 860 950 872 950 L 1548 950 Q 1560 950 1560 962 L 1560 1020 L 860 1020 Z" fill="#e8f1ea" />
+    <circle cx="895" cy="985" r="18" fill="#207448" />
+    <text x="888" y="993" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <text x="930" y="993" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">:10250/metrics/probes</text>
+
+    
+    <text x="885" y="1075" font-family="monospace" font-size="24" fill="#303a36">prober_probe_total</text>
+  </g>
+
+  
+  
+  <rect x="40" y="1160" width="350" height="145" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" stroke-dasharray="6 3" />
+  <circle cx="68" cy="1195" r="13" fill="#db8129" />
+  <text x="64" y="1203" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">!</text>
+  <text x="95" y="1202" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Critical Alert</text>
+  <text x="60" y="1255" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">PLEG relist &gt; 3s</text>
+
+  
+  <rect x="420" y="1160" width="340" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 3" />
+  <circle cx="448" cy="1195" r="13" fill="#207448" />
+  <text x="444" y="1203" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">!</text>
+  <text x="475" y="1202" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Critical Alert</text>
+  <text x="440" y="1255" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">client cert TTL &lt; 7d</text>
+
+  
+  <rect x="790" y="1160" width="375" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 3" />
+  <circle cx="818" cy="1195" r="13" fill="#207448" />
+  <text x="814" y="1203" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">!</text>
+  <text x="845" y="1202" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Critical Alert</text>
+  <text x="810" y="1245" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">CFS throttling ratio &gt; 20%</text>
+  <text x="810" y="1280" font-family="sans-serif" font-size="24" fill="#303a36">on latency-critical workloads</text>
+
+  
+  <rect x="1195" y="1160" width="365" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 3" />
+  <circle cx="1223" cy="1195" r="13" fill="#207448" />
+  <text x="1219" y="1203" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">!</text>
+  <text x="1250" y="1202" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Critical Alert</text>
+  <text x="1215" y="1245" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">memory.available</text>
+  <text x="1215" y="1280" font-family="sans-serif" font-size="24" fill="#303a36">approaching evictionHard</text>
+</svg>

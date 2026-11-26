@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Bottom-up state reconstruction from live cloud infrastructure</title>
+  <desc>Visual guide demonstrating bottom-up Terraform state reconstruction from live cloud infrastructure when bucket versioning was disabled.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="44" font-weight="bold" text-anchor="middle" fill="#207448">Bottom-up state reconstruction from live cloud infrastructure</text>
+  <text x="800" y="105" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#5a6862">Sequential import and verification when bucket versioning was disabled</text>
+
+  
+  
+  
+  <rect x="50" y="145" width="350" height="920" rx="16" fill="#eef5f0" stroke="#c0d6c6" stroke-width="2"/>
+  <text x="225" y="195" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Untouched Live Cloud</text>
+  <text x="225" y="228" font-family="sans-serif" font-size="24" fill="#5a6862" text-anchor="middle">queried via CLI/console</text>
+
+  
+  <rect x="70" y="255" width="310" height="175" rx="12" fill="#ffffff" stroke="#c0d6c6" stroke-width="1.5"/>
+  
+  <g transform="translate(95, 275)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="36" height="24" rx="4"/>
+    <line x1="18" y1="24" x2="18" y2="38"/>
+    <line x1="0" y1="38" x2="36" y2="38"/>
+  </g>
+  <text x="150" y="302" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Subnet</text>
+  <rect x="85" y="345" width="280" height="55" rx="8" fill="#f0f5f1"/>
+  <text x="225" y="380" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">vpcsubnet-e00demo</text>
+
+  
+  <rect x="70" y="505" width="310" height="175" rx="12" fill="#ffffff" stroke="#c0d6c6" stroke-width="1.5"/>
+  
+  <g transform="translate(95, 525)" stroke="#207448" stroke-width="3" fill="none">
+    <polygon points="18,2 34,11 34,29 18,38 2,29 2,11"/>
+    <circle cx="18" cy="20" r="6"/>
+  </g>
+  <text x="150" y="552" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Cluster</text>
+  <rect x="85" y="595" width="280" height="55" rx="8" fill="#f0f5f1"/>
+  <text x="225" y="630" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">mk8s-c01demo</text>
+
+  
+  <rect x="70" y="705" width="310" height="195" rx="12" fill="#ffffff" stroke="#c0d6c6" stroke-width="1.5"/>
+  
+  <g transform="translate(95, 725)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="2" y="2" width="32" height="14" rx="2"/>
+    <rect x="2" y="20" width="32" height="14" rx="2"/>
+    <circle cx="8" cy="9" r="1.5" fill="#207448"/>
+    <circle cx="8" cy="27" r="1.5" fill="#207448"/>
+  </g>
+  <text x="150" y="752" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Node Group</text>
+  <rect x="85" y="805" width="280" height="55" rx="8" fill="#f0f5f1"/>
+  <text x="225" y="840" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">mk8s-ng-gpu</text>
+
+  
+  <line x1="380" y1="342" x2="455" y2="342" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <line x1="380" y1="592" x2="455" y2="592" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <line x1="380" y1="802" x2="455" y2="802" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+  <rect x="440" y="145" width="720" height="920" rx="16" fill="#f9fbf9" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="195" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Sequential Import in Dependency Order</text>
+
+  
+  <rect x="465" y="220" width="670" height="265" rx="12" fill="#ffffff" stroke="#c0d6c6" stroke-width="1.5"/>
+  <circle cx="495" cy="248" r="18" fill="#207448"/>
+  <text x="495" y="256" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="525" y="256" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Step 1 (Network tier)</text>
+
+  
+  <rect x="485" y="275" width="630" height="68" rx="8" fill="#f0f5f1" stroke="#d5e3d8" stroke-width="1"/>
+  <text x="500" y="302" font-family="monospace" font-size="24" fill="#1b5e20">
+    <tspan x="500" dy="0">import { to = nebius_vpc_v1_subnet.this</tspan>
+    <tspan x="500" dy="28">  id = "vpcsubnet-e00demo" }</tspan>
+  </text>
+
+  
+  <rect x="485" y="358" width="220" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="595" y="390" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">terraform plan</text>
+
+  <line x1="705" y1="381" x2="745" y2="381" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+
+  <rect x="755" y="358" width="270" height="46" rx="8" fill="#fff8e7" stroke="#db8129" stroke-width="1.5"/>
+  <text x="890" y="390" font-family="sans-serif" font-size="24" fill="#9e5600" text-anchor="middle">fix code, not cloud</text>
+
+  
+  <line x1="595" y1="404" x2="595" y2="422" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <rect x="485" y="424" width="630" height="46" rx="8" fill="#e8f5e9" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="456" font-family="monospace" font-size="24" fill="#1b5e20" text-anchor="middle">0 to add, 0 to change, 0 to destroy</text>
+
+  
+  <rect x="465" y="500" width="670" height="180" rx="12" fill="#ffffff" stroke="#c0d6c6" stroke-width="1.5"/>
+  <circle cx="495" cy="528" r="18" fill="#207448"/>
+  <text x="495" y="536" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="525" y="536" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Step 2 (Cluster tier)</text>
+
+  
+  <rect x="485" y="555" width="630" height="68" rx="8" fill="#f0f5f1" stroke="#d5e3d8" stroke-width="1"/>
+  <text x="500" y="582" font-family="monospace" font-size="24" fill="#1b5e20">
+    <tspan x="500" dy="0">import { to = nebius_mk8s_v1_cluster.this</tspan>
+    <tspan x="500" dy="28">  id = "mk8s-c01demo" }</tspan>
+  </text>
+
+  <rect x="485" y="630" width="290" height="40" rx="8" fill="#e8f5e9" stroke="#207448" stroke-width="1.5"/>
+  <path d="M 505 650 L 513 658 L 525 642" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="535" y="658" font-family="sans-serif" font-size="24" fill="#207448">verifies clean plan</text>
+
+  
+  <rect x="465" y="695" width="670" height="210" rx="12" fill="#ffffff" stroke="#c0d6c6" stroke-width="1.5"/>
+  <circle cx="495" cy="723" r="18" fill="#207448"/>
+  <text x="495" y="731" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="525" y="731" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Step 3 (Pool tier)</text>
+
+  
+  <rect x="485" y="750" width="630" height="98" rx="8" fill="#f0f5f1" stroke="#d5e3d8" stroke-width="1"/>
+  <text x="500" y="777" font-family="monospace" font-size="24" fill="#1b5e20">
+    <tspan x="500" dy="0">import { to =</tspan>
+    <tspan x="500" dy="28">  nebius_mk8s_v1_node_group.pool["gpu"]</tspan>
+    <tspan x="500" dy="28">  id = "mk8s-ng-gpu" }</tspan>
+  </text>
+
+  <rect x="485" y="856" width="290" height="40" rx="8" fill="#e8f5e9" stroke="#207448" stroke-width="1.5"/>
+  <path d="M 505 876 L 513 884 L 525 868" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="535" y="884" font-family="sans-serif" font-size="24" fill="#207448">verifies clean plan</text>
+
+  
+  <rect x="465" y="925" width="670" height="115" rx="12" fill="#fdf2f2" stroke="#d9383a" stroke-width="2"/>
+  <g transform="translate(490, 955)" stroke="#d9383a" stroke-width="3" fill="none">
+    <polygon points="20,2 38,36 2,36"/>
+    <line x1="20" y1="14" x2="20" y2="24"/>
+    <circle cx="20" cy="30" r="1.5" fill="#d9383a"/>
+  </g>
+  <text x="545" y="968" font-family="sans-serif" font-size="24" font-weight="bold" fill="#b32628">
+    <tspan x="545" dy="0">Never run apply with replacements</tspan>
+    <tspan x="545" dy="32">or destroys during rebuild</tspan>
+  </text>
+
+  
+  <line x1="1160" y1="365" x2="1215" y2="365" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  
+  
+  <rect x="1200" y="145" width="350" height="920" rx="16" fill="#eef5f0" stroke="#c0d6c6" stroke-width="2"/>
+  <text x="1375" y="195" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Post-Recovery Hardening</text>
+
+  
+  <rect x="1225" y="245" width="300" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1350, 275)" stroke="#207448" stroke-width="3" fill="none">
+    <ellipse cx="25" cy="12" rx="25" ry="10"/>
+    <path d="M 0 12 L 0 45 C 0 52 12 58 25 58 C 38 58 50 52 50 45 L 50 12"/>
+    <path d="M 0 28 C 0 35 12 41 25 41 C 38 41 50 35 50 28"/>
+  </g>
+  <text x="1375" y="375" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="1375" dy="0">Object Storage</tspan>
+    <tspan x="1375" dy="32">state bucket</tspan>
+  </text>
+
+  
+  <line x1="1375" y1="480" x2="1375" y2="520" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1225" y="525" width="300" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1265" cy="565" r="18" fill="#207448"/>
+  <path d="M 1257 565 L 1263 571 L 1273 559" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <text x="1250" y="618" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1250" dy="0">Enable Bucket</tspan>
+    <tspan x="1250" dy="32">Versioning</tspan>
+    <tspan x="1250" dy="32">immediately</tspan>
+  </text>
+
+  
+  <line x1="1375" y1="720" x2="1375" y2="750" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1225" y="755" width="300" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1265" cy="795" r="18" fill="#207448"/>
+  <path d="M 1257 795 L 1263 801 L 1273 789" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <text x="1250" y="848" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1250" dy="0">Move bucket to</tspan>
+    <tspan x="1250" dy="32">dedicated protected</tspan>
+    <tspan x="1250" dy="32">project</tspan>
+  </text>
+</svg>

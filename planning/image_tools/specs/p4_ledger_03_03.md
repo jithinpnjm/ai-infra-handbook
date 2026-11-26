@@ -1,0 +1,37 @@
+# docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md
+- ## Why this matters for AI infrastructure | 170 | NO FIGURE NEEDED narrative introduction to chapter themes
+- ## Prerequisites and outcomes | 160 | NO FIGURE NEEDED learning outcomes and prerequisites list
+- ## 1. The Python data model | 230 | COVERED(s03-dunder)
+- ### Categories of special methods | 210 | COVERED(p3-0303-operator-dispatch)
+- ### A sequence by protocol: a node inventory | 380 | COVERED(p3-0303-protocol-free)
+- ### Context managers | 140 | COVERED(s03-ctxmgr)
+- ## 2. Sequences | 50 | NO FIGURE NEEDED short introductory transition to sequences
+- ### The sequence family | 680 | COVERED(p3-0303-tuple-puzzle, p3-0303-sequence-axes)
+- ### Memory and performance notes | 110 | NO FIGURE NEEDED bullet points on memory overhead and algorithmic tips
+- ## 3. Mappings and sets | 680 | COVERED(p3-0303-missing-keys)
+- ## 4. Text versus bytes | 310 | COVERED(p3-0303-text-bytes-boundary)
+- ## 5. Object references, mutability and recycling | 530 | COVERED(p3-0303-del-lifecycle, p3-0303-share-or-copy)
+- ## 6. Functions as objects, closures, decorators and design patterns | 120 | NO FIGURE NEEDED introductory concept on first-class functions
+- ### Callable objects (`RoundRobin`), `operator` (`itemgetter`, `attrgetter`, `methodcaller`), and `functools.partial` | 220 | NEEDS FIGURE stateful callable objects vs frozen partial applications and operator accessors
+- ### Closures (`make_averager`), decorators at import time, `@cache`, and `@singledispatch` | 370 | COVERED(p3-0303-decorators-closures, s03-closure)
+- ### Refactoring the Strategy pattern with first-class functions | 460 | COVERED(p3-0303-strategy-funcs)
+- ## 7. Comprehensions | 580 | COVERED(p3-0303-comp-scope)
+- ## 8. Iterables, iterators and generators | 70 | NO FIGURE NEEDED short conceptual introduction to iteration
+- ### The iterator protocol: multiple-pass iterables vs single-pass iterators | 490 | COVERED(m3-03-1)
+- ### Generator functions, `scramble` vs `permute` (`factorial(N)` explosion), and `myzip` / `mymapPad` | 610 | COVERED(p3-0303-gen-coroutine, p3-0303-permute-explosion)
+- ### Pipelines | 300 | COVERED(p3-0303-api-batches, s03-pipeline)
+- ### `itertools`, `functools`, `operator` | 220 | NEEDS FIGURE consecutive grouping mechanism of groupby versus pairwise and batched streaming
+- ## 9. Idioms for clarity and correctness | 370 | COVERED(p3-0303-idioms)
+- ## 10. Infrastructure examples | 30 | NO FIGURE NEEDED introductory transition to recipes
+- ### LRU cache of expensive lookups | 60 | NO FIGURE NEEDED compact implementation snippet
+- ### Sliding-window rate / anomaly detector | 70 | NO FIGURE NEEDED compact deque implementation snippet
+- ### Merging layered configuration | 70 | COVERED(p3-0303-chainmap)
+- ### A resource pool as a context manager | 60 | NO FIGURE NEEDED compact context manager pattern snippet
+- ## 11. Lab | 250 | NO FIGURE NEEDED lab instructions and verification steps
+- ## 12. Common mistakes | 160 | COVERED(p3-0303-mistakes)
+- ## 13. Interview angles | 120 | NO FIGURE NEEDED interview question list
+- ## Exercises | 320 | NO FIGURE NEEDED exercises list
+- ## Checkpoint questions (20) | 1800 | NO FIGURE NEEDED Q&A review
+- ## Sources and review notes | 450 | NO FIGURE NEEDED bibliographic sources and methodology notes
+
+Specs kept 2, dropped 0: []

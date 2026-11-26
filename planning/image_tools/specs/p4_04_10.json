@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0410-stat-assert-guard",
+  "title": "Pairing stat and assert as a preflight guardrail",
+  "anchor": "## 3. The `debug` and `assert` modules",
+  "spec": "Flow diagram contrasting early guardrail detection against downstream failure. Left box: Target file at /etc/nginx/conf. Step 1: ansible.builtin.stat queries target filesystem and populates dictionary 'st.stat' containing fields exists: true, isreg: true, isdir: false, pw_name: 'root', mode: '0644', size, checksum. Step 2: ansible.builtin.assert evaluates conditions [st.stat.exists, st.stat.isreg, st.stat.pw_name == 'root'] with quiet: true and fail_msg. Two diverging path panels below: Path A (With Guardrail) shows assert failing immediately at task 1 with explicit message 'Configuration file missing or owned by wrong user', playbook cleanly halts without modifying target. Path B (Without Guardrail) shows task 1 skipped or missing, task 2 applies template silently, task 3 fails downstream at systemd service restart with obscure error 'rc: 1 Job for nginx.service failed'.",
+  "alt": "A diagram showing how ansible.builtin.stat extracts file attributes into a dictionary evaluated by ansible.builtin.assert, contrasting early guardrail failure against a cryptic service failure three tasks later.",
+  "cap": "Pairing stat and assert creates a preflight guardrail that halts the play immediately with an explicit error message instead of failing downstream during service startup.",
+  "part": "part-04-automation",
+  "ch": "10"
+ },
+ {
+  "name": "p4-0410-app-layer-triage",
+  "title": "Triaging application failures: manual command versus Ansible execution",
+  "anchor": "### Application layer",
+  "spec": "Decision flowchart and environment comparison layout. Top node: Task fails at application layer (command or shell task returns non-zero rc). Action box: Extract exact command line from -vvv output. Decision node: Run command on target host by hand using 'sudo -u user -i'. Branch 1 (Fails manually): Root cause is in OS or host state. Diagnostic sub-boxes: check nvidia-smi for GPU state, verify missing shared libraries or packages, verify kernel modules loaded, verify file permissions. Branch 2 (Succeeds manually): Root cause is Ansible execution environment discrepancy. Comparison side-by-side callout: Left column 'Manual Login Shell (sudo -u user -i)' loads /etc/profile and ~/.bashrc, has full PATH (/usr/local/cuda/bin:/opt/slurm/bin:/usr/bin), active locale and proxy variables. Right column 'Ansible Task Execution' runs in non-interactive non-login shell, minimal default PATH (/usr/bin:/bin), stripped environment. Resolution: supply required variables explicitly using the task environment keyword.",
+  "alt": "A decision tree and environment comparison showing how to triage application layer failures by reproducing commands manually in a login shell versus Ansible minimal non-login execution.",
+  "cap": "Testing a failing command manually with sudo -u user -i isolates whether the failure stems from host state or from environment discrepancies such as minimal PATH in Ansible non-login shells.",
+  "part": "part-04-automation",
+  "ch": "10"
+ }
+]

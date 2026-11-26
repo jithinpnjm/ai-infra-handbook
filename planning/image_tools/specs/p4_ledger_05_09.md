@@ -1,0 +1,34 @@
+# docs/part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md
+- ## Why this matters for AI infrastructure | 200 | NO FIGURE NEEDED executive context intro
+- ## Prerequisites and outcomes | 150 | NO FIGURE NEEDED syllabus list
+- ## 1. What the kubelet does | 420 | COVERED(m5-09-1)
+- ## 2. A production KubeletConfiguration for GPU nodes | 500 | NEEDS FIGURE YAML anatomy showing functional blocks (auth/security, runtime/cgroup, image pulls, resource managers/NUMA, reservations/eviction)
+- ## 3. cgroups, QoS and node allocatable | 0 | NO FIGURE NEEDED structural container
+- ### The hierarchy (cgroup v2, systemd driver) | 160 | COVERED(k09-cgroup-tree)
+- ### Node capacity and allocatable | 220 | NEEDS FIGURE worked visual formula of Capacity minus kubeReserved minus systemReserved minus evictionHard equals Allocatable
+- ### QoS recap (details in 5.7) | 170 | NEEDS FIGURE comparison across QoS classes (Guaranteed, Burstable, BestEffort) showing cgroup slice, requests vs limits, oom_score_adj (-997 to 1000), and eviction rank
+- ### CPU limits and throttling in multithreaded code | 150 | COVERED(p3-0509-cfs-throttle-threads)
+- ## 4. Resource managers: CPU, memory, topology, devices | 0 | NO FIGURE NEEDED structural container
+- ### CPU Manager | 240 | COVERED(p3-0509-cpu-manager-static)
+- ### Memory Manager | 75 | NO FIGURE NEEDED brief mention of static memory manager
+- ### Topology Manager | 310 | COVERED(p3-0509-topology-policies)
+- ### Device Manager and Pod Resources API | 170 | COVERED(p3-0509-device-plugin-calls)
+- ## 5. Probes | 440 | COVERED(p2-0509-probe-questions)
+- ### A startup probe sized for a model load | 180 | COVERED(k09-startup-gate)
+- ### Designing liveness and readiness endpoints | 160 | NEEDS FIGURE decision flowchart for designing probe endpoints (startup vs liveness vs readiness, internal deadlock vs external DB dependencies, load shedding)
+- ## 6. Node-pressure eviction | 520 | COVERED(p3-0509-memory-available, p3-0509-eviction-thresholds, k09-eviction-order)
+- ### Reading an OOMKilled container | 180 | COVERED(p2-0509-oomkilled-read)
+- ## 7. Garbage collection and logs | 280 | COVERED(p3-0509-image-gc-example)
+- ## 8. Node status, leases and failure behaviour | 410 | COVERED(p3-0509-graceful-shutdown, p2-0509-lease-heartbeat)
+- ## 9. Static pods, kubelet API and security | 390 | COVERED(p3-0509-kubelet-api-trust, p3-0509-static-vs-daemonset)
+- ## 10. Observability | 180 | NEEDS FIGURE anatomy of kubelet metrics pipeline (cAdvisor, probes, runtime CRI, PLEG) and corresponding Prometheus metrics / key alert thresholds
+- ## 11. Troubleshooting guide | 300 | NEEDS FIGURE troubleshooting flow/decision tree based on node failure symptoms (NotReady, PLEG, TopologyAffinityError, OOMKilled vs Evicted)
+- ## 12. Tuning checklist for GPU nodes | 260 | COVERED(p3-0509-training-vs-inference-node)
+- ## 13. Lab | 420 | NO FIGURE NEEDED lab instructions and steps
+- ## 14. Common mistakes | 180 | NO FIGURE NEEDED checklist of pitfalls
+- ## 15. Interview angles | 90 | NO FIGURE NEEDED question list
+- ## Exercises | 180 | NO FIGURE NEEDED exercise prompts
+- ## Checkpoint questions (20) | 1800 | NO FIGURE NEEDED Q&A drill
+- ## Sources and review notes | 180 | NO FIGURE NEEDED source citations
+
+Specs kept 6, dropped 0: []

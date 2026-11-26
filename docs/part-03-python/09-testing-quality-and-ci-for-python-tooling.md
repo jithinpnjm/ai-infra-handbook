@@ -218,6 +218,10 @@ Follow a few rules when you patch. Patch where the name is looked up, for exampl
 
 ### HTTP-level fakes
 
+![A diagram contrasting brittle client method mocking where client serialization is bypassed against transport-level interception where real HTTP request and response decoding code runs in full.](./img/p4-0309-transport-mocking.svg)
+
+*Figure 3.0.0. Transport-level interception with respx or responses exercises URL formatting, header injection and status handling, whereas mocking client.get skips client internals entirely.*
+
 Rather than mocking `get`, intercept the traffic at the transport boundary, so the real client code still runs. The options include responses for `requests`, respx for `httpx`, aioresponses and pytest-aiohttp, and vcrpy or pytest-recording. The last two record real traffic once and replay it later. Scrub secrets from the cassettes, and re-record them periodically to detect drift.
 
 ```python
@@ -242,6 +246,10 @@ For subprocess code, test the parser with recorded output. Test the wrapper by p
 For filesystem code, use `tmp_path`. For `/proc` and `/sys` readers, take the root as a parameter, such as `root=Path("/")`, and point it at a fixture tree. When necessary, pyfakefs can fake the whole filesystem. Never let a test read a real home directory. Set environment variables with `monkeypatch.setenv`. For time, inject clocks or use freezegun or time-machine. For randomness, seed explicitly or inject `random.Random(1)`.
 
 ### Async code
+
+![A three panel diagram showing pytest-asyncio execution with AsyncMock collaborators, bounded wait_for timeouts, and task cancellation handling.](./img/p4-0309-async-testing.svg)
+
+*Figure 3.0.0. Async tests must be bounded with wait_for, isolate coroutines using AsyncMock, and explicitly verify CancelledError cleanup paths.*
 
 With pytest-asyncio, or the pytest plugin from anyio, mark tests as `async def`. Bound each test with `asyncio.wait_for`, and fake awaitables with `AsyncMock`. Test cancellation with `task.cancel()` and timeout behaviour explicitly. You can control time with a fake event loop clock, or by injecting sleep. Whenever a test would wait, inject the clock or sleep so it does not.
 

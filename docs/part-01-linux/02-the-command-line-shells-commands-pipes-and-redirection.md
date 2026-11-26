@@ -140,6 +140,10 @@ You do not need a hundred commands to survive your first week on a cluster. You 
 
 ### The forms of the basic commands
 
+![A comparison showing why an external cd command changes only its own child process directory before exiting, whereas a shell builtin changes the working directory of the interactive shell itself.](./img/p4-0102-builtin-cwd.svg)
+
+*Figure 1.2.5. A child process cannot alter its parent process environment or working directory, so commands like cd and export must execute directly inside the shell as builtins.*
+
 The one-line descriptions in the table hide the forms you will use every day. Read the next few paragraphs slowly, because they are where a copy goes right or quietly goes wrong.
 
 - **`cp`**: `cp file1 file2` copies a file to a new name, and `cp file dir` copies it into a directory and keeps its name. With several sources, as in `cp file1 file2 file3 dir`, the **last argument is the destination**, and it must be a directory. Get that order wrong and the copy lands somewhere you did not expect. Use `cp -r dir1 dir2` to copy an entire directory tree. `cp -p` keeps the original file's attributes, such as permissions and timestamps. Without it, the copy gets the current user's defaults and the current time. Use `cp -i` to ask before overwriting an existing destination. The same thinking shapes `mkdir`. `mkdir -p a/b/c` creates parent directories as needed and stays quiet if they already exist, while `mkdir -m 750 dir` sets the permission mode at creation. Typing `cat > notes.txt` is a quick way to create a file from the keyboard, and you end the text with Ctrl-D. `cat a b c > all` merges three files into one. The originals are kept and the target is overwritten, so use `>>` if you want to append instead. Text-mode file managers such as **Midnight Commander** (`mc`, with its editor `mcedit`) perform many of these operations without a graphical desktop, which makes them a gentle start for newcomers.
@@ -272,7 +276,7 @@ The most important rule in shell scripting is this: **double-quote your variable
 
 ![Infographic titled Quoting decides what the program receives. With file set to my report.txt, an unquoted dollar-file is split on whitespace into three arguments, which is wrong. A double-quoted dollar-file is kept whole as two arguments, which is correct. Single quotes keep everything literal, double quotes expand variables without splitting, and a backslash escapes one character.](./img/ch02-fig1-quoting.jpg)
 
-*Figure 1.2.5. Quoting decides what the program receives. An unquoted variable is split on whitespace, while a double-quoted variable reaches the program as one argument.*
+*Figure 1.2.6. Quoting decides what the program receives. An unquoted variable is split on whitespace, while a double-quoted variable reaches the program as one argument.*
 
 ### Special characters: the names to know
 
@@ -327,7 +331,7 @@ Keeping errors in a *separate* stream was a deliberate design choice, and it mat
 
 ![Standard streams, redirection and pipes](./img/ch02-d3-luna.svg)
 
-*Figure 1.2.6. Standard streams, redirection and pipes.*
+*Figure 1.2.7. Standard streams, redirection and pipes.*
 
 These are the redirection operators. Each one tells the shell where a descriptor should point before the program starts.
 
@@ -350,7 +354,7 @@ The table leaves out two points. First, **`>` destroys the previous contents of 
 
 ![Infographic titled Streams, redirection and pipes. A program reads standard input as file descriptor 0 from the keyboard and writes standard output as descriptor 1 and standard error as descriptor 2 to the terminal. With cmd  out.txt 2&1 both end up in the file. With cmd 2&1  out.txt the errors still reach the screen. A pipe turns the standard output of one command into the standard input of the next.](./img/ch02-fig2-streams.jpg)
 
-*Figure 1.2.7. Every process has three streams, the shell rewires them before the program starts, and the order of redirections decides where errors end up.*
+*Figure 1.2.8. Every process has three streams, the shell rewires them before the program starts, and the order of redirections decides where errors end up.*
 
 Four tools pair naturally with redirection and pipes.
 
@@ -375,7 +379,7 @@ Before you pipe a command, decide which stream you need, and redirect the other 
 
 ![A table of the ways to chain commands and when the second one runs.](./img/l02-chaining.svg)
 
-*Figure 1.2.8. Operators decide whether the second command runs based on the first command's exit status.*
+*Figure 1.2.9. Operators decide whether the second command runs based on the first command's exit status.*
 
 Suppose a job script runs three steps, the middle one fails, and the script still reports success. The culprit is not the script's logic but the way it reads exit statuses. When a process ends, it hands a small integer back to its parent. That number is the **exit status**, also called the exit code. By convention, **0 means success**, and any other value means failure. The shell stores the status of the last command in `$?`.
 
@@ -418,7 +422,7 @@ Check the status of every critical stage, not only the final one.
 
 ![Infographic titled Exit status. A child process hands an exit status to the shell, available as dollar-question-mark. Common codes are 0 for success, 1 generic error, 2 misuse of a command, 126 found but not executable and 127 command not found. A code of 128 plus N means killed by signal N: 130 for SIGINT 2, 137 for SIGKILL 9, often OOMKilled, and 143 for SIGTERM 15. The operators && and || run the second command on success or failure, and a pipeline reports only the last command status.](./img/ch02-fig3-exit-status.jpg)
 
-*Figure 1.2.9. The exit status is the number a finished process hands back to its parent, and 128 plus N means it was killed by signal N.*
+*Figure 1.2.10. The exit status is the number a finished process hands back to its parent, and 128 plus N means it was killed by signal N.*
 
 ## 8. Environment variables, `PATH` and startup files
 
@@ -437,7 +441,7 @@ Notice what the child sees in that block. It prints `[$name] [$CUDA_VISIBLE_DEVI
 
 ![Infographic titled Shell variables and the environment. A plain shell variable named name stays in the shell. CUDA_VISIBLE_DEVICES, once exported, is inherited by the child process. NCCL_DEBUG=INFO before a command sets a variable for that one command only. Steps: a plain assignment stays in the shell, export puts the variable into the environment, and every child process inherits the environment.](./img/ch02-fig4-environment.jpg)
 
-*Figure 1.2.10. A plain assignment never leaves the shell that made it, while an exported variable is copied into the environment that every child process inherits.*
+*Figure 1.2.11. A plain assignment never leaves the shell that made it, while an exported variable is copied into the environment that every child process inherits.*
 
 Some variables matter throughout this book. `PATH` drives command lookup. `HOME`, `USER` and `PWD` describe you and your location. `LANG` and `LC_ALL` set the locale and sorting order, and `EDITOR` picks your editor. You will also set AI-specific variables again and again: `CUDA_VISIBLE_DEVICES`, `NCCL_DEBUG`, `NCCL_SOCKET_IFNAME`, `OMP_NUM_THREADS`, and `LD_LIBRARY_PATH`. Remember this rule. An environment variable set in your terminal does not exist inside a Slurm job, a systemd service, or a container, unless it is passed along explicitly. Many "works interactively, fails in the job" mysteries come down to this rule.
 
@@ -472,7 +476,7 @@ Pay close attention to how bash handles login shells. It first executes `/etc/pr
 
 ![Infographic titled Which startup file runs. A login shell, such as an SSH login, reads /etc/profile and then only the first file it finds among .bash_profile, .bash_login and .profile. An interactive non-login shell, such as a new terminal window, reads .bashrc. A non-interactive shell, such as scripts, cron and Slurm batch steps, reads nothing by default. .bash_profile should source .bashrc.](./img/ch02-fig5-startup-files.jpg)
 
-*Figure 1.2.11. Which startup file bash reads depends on how the shell was started.*
+*Figure 1.2.12. Which startup file bash reads depends on how the shell was started.*
 
 In bash, you can choose among `.bash_profile`, `.profile`, `.bash_login` and `.bashrc`. Which one should hold your command path? The path starts with `/usr/local/bin:/usr/bin:/bin`, adds `$HOME/bin` or `$HOME/.local/bin`, and then includes `/usr/local/sbin:/usr/sbin:/sbin` for utilities such as `sysctl`, `fdisk` and `lsmod`. Where should the manual page path (`MANPATH`), the prompt (`PS1`), aliases, `EDITOR` (`vi`, `emacs`, or `nano`), `PAGER` (`less`) and the permissions mask (`umask 022`) go? Put your main configuration in `~/.bashrc`. Then have `~/.bash_profile` source `~/.bashrc`, so login and non-login interactive shells share one setup. One file to edit, one place to look when something is missing.
 
@@ -508,6 +512,10 @@ Before you blame a job failure on the code, check the environment the job actual
 
 ## 9. Working faster: history, completion and editing
 
+![A command line buffer diagram mapping readline shortcuts for word jumps, line boundaries, text cutting to the kill ring, and pasting with Ctrl-Y.](./img/p4-0102-readline-map.svg)
+
+*Figure 1.2.13. Readline shortcuts allow rapid navigation and in-place editing across the command buffer, with deleted text preserved in the kill ring for pasting.*
+
 You will retype the same long command many times today, and a typo in the middle of it costs you the whole line. The shell has shipped with an editor for decades, and most people never learn to use it. These are the built-in *readline* keystrokes. Once they are in your fingers, you will work much faster.
 
 | Keystroke | Action |
@@ -534,7 +542,7 @@ Three of these pay for themselves in a single day. `Ctrl-R` finds a command you 
 
 ![Four rows of file descriptor tables showing how the three redirections swap standard output and standard error so that only errors reach the pipe.](./img/p3-0102-fd-swap.svg)
 
-*Figure 1.2.12. Each redirection is applied left to right: fd 3 saves the pipe, fd 1 moves to the terminal, and fd 2 ends up on the pipe.*
+*Figure 1.2.14. Each redirection is applied left to right: fd 3 saves the pipe, fd 1 moves to the terminal, and fd 2 ends up on the pipe.*
 
 Administering hundreds of nodes means repeating the same operation many times, so small habits add up. The tricks below work in bash and mostly in zsh. A few of them do not work in plain `sh`, so check before you put one in a script.
 
@@ -554,7 +562,7 @@ Pick two of these habits and make them automatic, because you will use them ever
 
 ![An error message split into program name, attempted action and errno text, with a flow from the kernel errno code to the text and six common errors with their first checks.](./img/p3-0102-error-anatomy.svg)
 
-*Figure 1.2.13. The text after the last colon is the standard description of an errno code, so learning a few codes lets you diagnose any program.*
+*Figure 1.2.15. The text after the last colon is the standard description of an errno code, so learning a few codes lets you diagnose any program.*
 
 An error message looks cryptic until you see its fixed shape. Once you do, every program on the machine speaks the same small language.
 

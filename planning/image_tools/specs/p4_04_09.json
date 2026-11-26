@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0409-dev-vs-prod-stack",
+  "title": "Development versus Production Stack Architecture",
+  "anchor": "### Why production deployment is harder than `runserver` (*Ansible: Up and Running*, Chapters 6 and 7, `mezzanine.yml`)",
+  "spec": "Two-panel side-by-side comparison diagram contrasting a local development setup with the multi-tier production architecture described in the chapter text.\nLeft Panel: 'Developer Laptop (runserver)'\n- Inbound: Browser on localhost:8000 (Plain HTTP, no TLS, no rate limit).\n- Web & App Layer: Single foreground process 'python manage.py runserver 0.0.0.0:8000' (single-threaded, terminates on terminal exit, no supervisor, no concurrency).\n- Storage Layer: Local file 'db.sqlite3' (file lock concurrency bottleneck, no network isolation).\n- Caching: None.\n- Secrets: Plaintext in settings.py.\nRight Panel: 'Production Architecture (fleetapp / mezzanine)'\n- Inbound Edge: Client requests over port 80 and port 443 with wildcard DNS (192.168.33.10.nip.io).\n- Reverse Proxy (NGINX): Terminates HTTPS on port 443, redirects HTTP on 80 (301), serves /static/ directly, enforces rate limiting (limit_req zone=api rate=20r/s burst=40 nodelay).\n- IPC Boundary: Connects via Unix domain socket (unix:{{ proj_path }}/gunicorn.sock) or HTTP upstream.\n- App Server Tier: Process manager (systemd / Supervisor) managing Gunicorn/Uvicorn master and multiple workers ('workers = cpu_count() * 2'). Auto-restart on failure ('Restart=on-failure').\n- Cache Tier: Memcached on 127.0.0.1:11211.\n- Database Tier: Dedicated PostgreSQL instance, UTF8 encoding with template0 locale, SCRAM-SHA-256 authentication restricted to app host IPs.\n- Secrets: Ansible Vault encrypted file (vault.yml) rendered with mode 0600.",
+  "alt": "Side-by-side comparison of a single-process runserver stack with SQLite versus a multi-tier production stack with NGINX, Gunicorn, systemd, and PostgreSQL.",
+  "cap": "Production separates edge TLS termination, multi-worker process supervision, and networked database concurrency that runserver compresses into a single local process.",
+  "part": "part-04-automation",
+  "ch": "09"
+ },
+ {
+  "name": "p4-0409-nginx-ingress-pipeline",
+  "title": "NGINX Edge Pipeline: TLS Termination, Rate Limiting, and Upstream Balancing",
+  "anchor": "## 6. The web tier: nginx, TLS and rate limiting",
+  "spec": "Top-to-bottom and left-to-right request flow pipeline based directly on nginx-site.conf.j2 and playbooks/web.yml.\n1. Edge Entry Points:\n   - Port 80 (HTTP): hits 'listen 80; server_name fleet.lab.example.com'. Arrow points immediately to 'return 301 https://$host$request_uri' (redirect branch exits).\n   - Port 443 (HTTPS): hits 'listen 443 ssl http2'. Reads certificates 'fullchain.pem' and 'privkey.pem'. Enforces TLSv1.2/TLSv1.3 and injects Strict-Transport-Security header.\n2. Routing and Inspection Layer (inside Port 443 block):\n   - Branch A: 'location = /healthz' -> 'access_log off; return 200 ok' (bypasses upstream and rate limiting for load balancer probes).\n   - Branch B: 'location /' -> enters Rate Limiter: 'limit_req zone=api burst=40 nodelay' backed by shared memory zone '$binary_remote_addr zone=api:10m rate=20r/s'.\n     - Rate exceeded condition -> triggers HTTP 503 response.\n     - Rate accepted -> forwards into proxy module.\n3. Proxy Header Injection:\n   - Injects 'Host: $host', 'X-Forwarded-For: $proxy_add_x_forwarded_for', 'X-Forwarded-Proto: $scheme', 'Connection: empty string' for HTTP 1.1 keepalive reuse.\n   - Configures 'proxy_buffering off' for SSE/streaming passthrough and 'proxy_read_timeout 300s'.\n4. Upstream Dispatch ('upstream fleetapp'):\n   - Contains 'keepalive 32' connection pool.\n   - Dynamically populated server targets with passive failure parameters: 'app01:8000 max_fails=2 fail_timeout=10s' and 'app02:8000 max_fails=2 fail_timeout=10s'.",
+  "alt": "Flowchart showing NGINX handling port 80 redirects, port 443 TLS termination, rate limit checks, health checks, and upstream dispatch to application nodes.",
+  "cap": "Inbound traffic is redirected or decrypted at the edge, passed through a token bucket rate limiter, and load-balanced across healthy application servers.",
+  "part": "part-04-automation",
+  "ch": "09"
+ }
+]

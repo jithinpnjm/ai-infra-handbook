@@ -1,0 +1,244 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1190" width="1600" height="1190">
+  <title>Serving Engine and Orchestrator Specialisations</title>
+  <desc>Comparative architectural layout of vLLM, TensorRT-LLM, SGLang, Triton, and Ray Serve LLM engines and orchestrators.</desc>
+
+  
+  <rect width="1600" height="1190" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Serving Engine and Orchestrator Specialisations</text>
+
+  
+
+  
+  <g id="card-vllm">
+    <rect x="50" y="120" width="480" height="500" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="50" y="120" width="480" height="100" rx="16" fill="#e8f1ea" />
+    <rect x="50" y="204" width="480" height="16" fill="#e8f1ea" />
+
+    
+    <g transform="translate(68, 142)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="2" y="2" width="22" height="22" rx="4" />
+      <rect x="32" y="2" width="22" height="22" rx="4" />
+      <rect x="2" y="32" width="22" height="22" rx="4" />
+      <rect x="32" y="32" width="22" height="22" rx="4" fill="#207448" fill-opacity="0.2" />
+    </g>
+
+    
+    <text x="140" y="162" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="140" dy="0">vLLM</tspan>
+      <tspan x="140" dy="36">(Engine + Server)</tspan>
+    </text>
+
+    
+    <g font-family="sans-serif" font-size="24" fill="#303a36">
+      <circle cx="78" cy="262" r="5" fill="#207448" />
+      <text x="96" y="270">Paged KV caching</text>
+
+      <circle cx="78" cy="318" r="5" fill="#207448" />
+      <text x="96" y="326">continuous batching</text>
+
+      <circle cx="78" cy="374" r="5" fill="#207448" />
+      <text x="96" y="382">single model per instance</text>
+
+      <circle cx="78" cy="430" r="5" fill="#207448" />
+      <text x="96" y="438">broad open-source community</text>
+
+      <circle cx="78" cy="486" r="5" fill="#207448" />
+      <text x="96" y="494">
+        <tspan x="96" dy="0">rapid adoption of open</tspan>
+        <tspan x="96" dy="32">checkpoints</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="card-tensorrt">
+    <rect x="560" y="120" width="480" height="500" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="560" y="120" width="480" height="100" rx="16" fill="#e8f1ea" />
+    <rect x="560" y="204" width="480" height="16" fill="#e8f1ea" />
+
+    
+    <g transform="translate(578, 142)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="10" y="10" width="36" height="36" rx="6" />
+      <line x1="18" y1="2" x2="18" y2="10" />
+      <line x1="28" y1="2" x2="28" y2="10" />
+      <line x1="38" y1="2" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="54" />
+      <line x1="28" y1="46" x2="28" y2="54" />
+      <line x1="38" y1="46" x2="38" y2="54" />
+      <line x1="2" y1="18" x2="10" y2="18" />
+      <line x1="2" y1="28" x2="10" y2="28" />
+      <line x1="2" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="54" y2="18" />
+      <line x1="46" y1="28" x2="54" y2="28" />
+      <line x1="46" y1="38" x2="54" y2="38" />
+      <rect x="20" y="20" width="16" height="16" fill="#207448" fill-opacity="0.2" />
+    </g>
+
+    
+    <text x="648" y="162" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="648" dy="0">TensorRT-LLM</tspan>
+      <tspan x="648" dy="36">(Engine + Server)</tspan>
+    </text>
+
+    
+    <g font-family="sans-serif" font-size="24" fill="#303a36">
+      <circle cx="588" cy="254" r="5" fill="#207448" />
+      <text x="606" y="262">Dedicated NVIDIA optimisation</text>
+
+      <circle cx="588" cy="302" r="5" fill="#207448" />
+      <text x="606" y="310">
+        <tspan x="606" dy="0">PyTorch LLM API with</tspan>
+        <tspan x="606" dy="30">trtllm-serve</tspan>
+      </text>
+
+      <circle cx="588" cy="374" r="5" fill="#207448" />
+      <text x="606" y="382">in-flight batching</text>
+
+      <circle cx="588" cy="422" r="5" fill="#207448" />
+      <text x="606" y="430">
+        <tspan x="606" dy="0">disaggregated prefill/decode</tspan>
+        <tspan x="606" dy="30">(Beta)</tspan>
+      </text>
+
+      <circle cx="588" cy="494" r="5" fill="#207448" />
+      <text x="606" y="502">chunked context</text>
+
+      <circle cx="588" cy="544" r="5" fill="#207448" />
+      <text x="606" y="552">FP8/FP4 quantisation</text>
+    </g>
+  </g>
+
+  
+  <g id="card-sglang">
+    <rect x="1070" y="120" width="480" height="500" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="1070" y="120" width="480" height="100" rx="16" fill="#e8f1ea" />
+    <rect x="1070" y="204" width="480" height="16" fill="#e8f1ea" />
+
+    
+    <g transform="translate(1088, 142)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="28" cy="10" r="7" />
+      <circle cx="12" cy="44" r="7" />
+      <circle cx="44" cy="44" r="7" />
+      <line x1="23" y1="15" x2="15" y2="38" />
+      <line x1="33" y1="15" x2="41" y2="38" />
+      <line x1="28" y1="17" x2="28" y2="30" />
+      <circle cx="28" cy="34" r="3" fill="#207448" />
+    </g>
+
+    
+    <text x="1160" y="162" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1160" dy="0">SGLang</tspan>
+      <tspan x="1160" dy="36">(Engine + Server)</tspan>
+    </text>
+
+    
+    <g font-family="sans-serif" font-size="24" fill="#303a36">
+      <circle cx="1098" cy="262" r="5" fill="#207448" />
+      <text x="1116" y="270">
+        <tspan x="1116" dy="0">RadixAttention (radix tree</tspan>
+        <tspan x="1116" dy="32">for prefix reuse)</tspan>
+      </text>
+
+      <circle cx="1098" cy="344" r="5" fill="#207448" />
+      <text x="1116" y="352">structured output</text>
+
+      <circle cx="1098" cy="404" r="5" fill="#207448" />
+      <text x="1116" y="412">agentic workloads</text>
+
+      <circle cx="1098" cy="464" r="5" fill="#207448" />
+      <text x="1116" y="472">broad hardware support</text>
+    </g>
+  </g>
+
+  
+
+  
+  <g id="card-triton">
+    <rect x="50" y="650" width="735" height="490" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="50" y="650" width="735" height="100" rx="16" fill="#e8f1ea" />
+    <rect x="50" y="734" width="735" height="16" fill="#e8f1ea" />
+
+    
+    <g transform="translate(74, 672)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="4" y="4" width="48" height="14" rx="3" />
+      <rect x="4" y="21" width="48" height="14" rx="3" />
+      <rect x="4" y="38" width="48" height="14" rx="3" />
+      <circle cx="12" cy="11" r="2" fill="#207448" />
+      <circle cx="12" cy="28" r="2" fill="#207448" />
+      <circle cx="12" cy="45" r="2" fill="#207448" />
+      <line x1="22" y1="11" x2="44" y2="11" />
+      <line x1="22" y1="28" x2="44" y2="28" />
+      <line x1="22" y1="45" x2="44" y2="45" />
+    </g>
+
+    
+    <text x="146" y="692" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="146" dy="0">Triton</tspan>
+      <tspan x="146" dy="36">(Inference Server)</tspan>
+    </text>
+
+    
+    <g font-family="sans-serif" font-size="24" fill="#303a36">
+      <circle cx="78" cy="792" r="5" fill="#207448" />
+      <text x="96" y="800">Model repository with configuration files</text>
+
+      <circle cx="78" cy="852" r="5" fill="#207448" />
+      <text x="96" y="860">dynamic batcher</text>
+
+      <circle cx="78" cy="912" r="5" fill="#207448" />
+      <text x="96" y="920">instance groups across multiple GPUs</text>
+
+      <circle cx="78" cy="972" r="5" fill="#207448" />
+      <text x="96" y="980">
+        <tspan x="96" dy="0">hosts TensorRT-LLM or classic vision/tabular models</tspan>
+        <tspan x="96" dy="32">under one API</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="card-ray">
+    <rect x="815" y="650" width="735" height="490" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <rect x="815" y="650" width="735" height="100" rx="16" fill="#e8f1ea" />
+    <rect x="815" y="734" width="735" height="16" fill="#e8f1ea" />
+
+    
+    <g transform="translate(839, 672)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="28" cy="28" r="10" stroke="#db8129" fill="#db8129" fill-opacity="0.15" />
+      <circle cx="10" cy="12" r="5" />
+      <circle cx="46" cy="12" r="5" />
+      <circle cx="10" cy="44" r="5" />
+      <circle cx="46" cy="44" r="5" />
+      <line x1="20" y1="21" x2="14" y2="16" />
+      <line x1="36" y1="21" x2="42" y2="16" />
+      <line x1="20" y1="35" x2="14" y2="40" />
+      <line x1="36" y1="35" x2="42" y2="40" />
+    </g>
+
+    
+    <text x="912" y="692" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="912" dy="0">Ray Serve LLM</tspan>
+      <tspan x="912" dy="36">(Fleet Orchestrator)</tspan>
+    </text>
+
+    
+    <g font-family="sans-serif" font-size="24" fill="#303a36">
+      <circle cx="843" cy="792" r="5" fill="#207448" />
+      <text x="861" y="800">Ray head and worker nodes</text>
+
+      <circle cx="843" cy="852" r="5" fill="#207448" />
+      <text x="861" y="860">prefix-aware routing to warm cache replicas</text>
+
+      <circle cx="843" cy="912" r="5" fill="#207448" />
+      <text x="861" y="920">autoscaling</text>
+
+      <circle cx="843" cy="972" r="5" fill="#207448" />
+      <text x="861" y="980">
+        <tspan x="861" dy="0">disaggregated prefill and decode workers hosting</tspan>
+        <tspan x="861" dy="32">vLLM or SGLang engines underneath</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

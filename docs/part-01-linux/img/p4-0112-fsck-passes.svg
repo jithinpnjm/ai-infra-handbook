@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>The Five Passes of e2fsck and Backup Superblock Recovery</title>
+  <desc>A two-part workflow diagram illustrating how e2fsck verifies filesystems and how to recover from primary superblock corruption.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#207448">The Five Passes of e2fsck and Backup Superblock Recovery</text>
+
+  
+  <rect x="40" y="95" width="730" height="1015" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="40" y="95" width="730" height="60" rx="16" fill="#207448"/>
+  <rect x="40" y="135" width="730" height="20" fill="#207448"/>
+  <text x="405" y="138" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">e2fsck 5-Pass Verification Pipeline</text>
+
+  
+  <line x1="405" y1="325" x2="405" y2="350" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="405" y1="500" x2="405" y2="525" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="405" y1="675" x2="405" y2="700" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="405" y1="880" x2="405" y2="905" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="70" y="175" width="670" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(90, 222)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="52" height="52" rx="6"/>
+    <line x1="0" y1="26" x2="52" y2="26"/>
+    <line x1="26" y1="0" x2="26" y2="52"/>
+    <circle cx="13" cy="13" r="4" fill="#207448"/>
+    <circle cx="39" cy="13" r="4" fill="#207448"/>
+    <circle cx="13" cy="39" r="4" fill="#207448"/>
+    <circle cx="39" cy="39" r="4" fill="#207448"/>
+  </g>
+  <text x="160" y="212" font-family="system-ui, sans-serif" fill="#303a36">
+    <tspan x="160" dy="0" font-size="30" font-weight="bold">Pass 1: Checking Inodes,</tspan>
+    <tspan x="160" dy="34" font-size="30" font-weight="bold">Blocks, and Sizes</tspan>
+    <tspan x="160" dy="36" font-size="24">(validates inode tables, extent trees,</tspan>
+    <tspan x="160" dy="28" font-size="24">detects bad block pointers)</tspan>
+  </text>
+
+  
+  <rect x="70" y="350" width="670" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(90, 397)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 4 8 L 22 8 L 28 16 L 48 16 L 48 44 L 4 44 Z" rx="3"/>
+    <line x1="12" y1="26" x2="24" y2="26"/>
+    <line x1="12" y1="34" x2="36" y2="34"/>
+  </g>
+  <text x="160" y="387" font-family="system-ui, sans-serif" fill="#303a36">
+    <tspan x="160" dy="0" font-size="30" font-weight="bold">Pass 2: Checking Directory</tspan>
+    <tspan x="160" dy="34" font-size="30" font-weight="bold">Structure</tspan>
+    <tspan x="160" dy="36" font-size="24">(validates directory entries, checks</tspan>
+    <tspan x="160" dy="28" font-size="24">'.' and '..' linkages)</tspan>
+  </text>
+
+  
+  <rect x="70" y="525" width="670" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(90, 572)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="26" cy="10" r="7"/>
+    <circle cx="10" cy="42" r="7"/>
+    <circle cx="42" cy="42" r="7"/>
+    <line x1="22" y1="16" x2="14" y2="36"/>
+    <line x1="30" y1="16" x2="38" y2="36"/>
+  </g>
+  <text x="160" y="562" font-family="system-ui, sans-serif" fill="#303a36">
+    <tspan x="160" dy="0" font-size="30" font-weight="bold">Pass 3: Checking Directory</tspan>
+    <tspan x="160" dy="34" font-size="30" font-weight="bold">Connectivity</tspan>
+    <tspan x="160" dy="36" font-size="24">(verifies every directory links back</tspan>
+    <tspan x="160" dy="28" font-size="24">to root inode 2)</tspan>
+  </text>
+
+  
+  <rect x="70" y="700" width="670" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(90, 757)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 6 12 L 20 12 L 20 40 L 6 40 Z" rx="4"/>
+    <path d="M 28 12 L 42 12 L 42 40 L 28 40 Z" rx="4"/>
+    <line x1="16" y1="26" x2="32" y2="26"/>
+    <path d="M 40 40 L 48 48"/>
+  </g>
+  <text x="160" y="734" font-family="system-ui, sans-serif" fill="#303a36">
+    <tspan x="160" dy="0" font-size="30" font-weight="bold">Pass 4: Checking Reference Counts</tspan>
+    <tspan x="160" dy="38" font-size="24">(verifies inode link counts; unreferenced</tspan>
+    <tspan x="160" dy="30" font-size="24">orphan files are reconnected to</tspan>
+    <tspan x="160" dy="30" font-size="24">'/lost+found/#&lt;inode&gt;')</tspan>
+  </text>
+
+  
+  <rect x="70" y="905" width="670" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(90, 952)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="4" y="4" width="44" height="44" rx="4"/>
+    <path d="M 12 18 L 20 26 L 36 12"/>
+    <line x1="12" y1="36" x2="38" y2="36"/>
+  </g>
+  <text x="160" y="942" font-family="system-ui, sans-serif" fill="#303a36">
+    <tspan x="160" dy="0" font-size="30" font-weight="bold">Pass 5: Checking Group Summary</tspan>
+    <tspan x="160" dy="34" font-size="30" font-weight="bold">Information</tspan>
+    <tspan x="160" dy="36" font-size="24">(reconciles block and inode allocation</tspan>
+    <tspan x="160" dy="28" font-size="24">bitmaps against actual usage)</tspan>
+  </text>
+
+
+  
+  <rect x="830" y="95" width="730" height="1015" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="830" y="95" width="730" height="60" rx="16" fill="#207448"/>
+  <rect x="830" y="135" width="730" height="20" fill="#207448"/>
+  <text x="1195" y="138" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Emergency Superblock Corruption Decision Tree</text>
+
+  
+  <line x1="1195" y1="310" x2="1195" y2="335" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1195" y1="555" x2="1195" y2="580" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1195" y1="705" x2="1195" y2="730" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1195" y1="875" x2="1195" y2="900" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="860" y="175" width="670" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="900" cy="242" r="24" fill="#207448"/>
+  <text x="900" y="251" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(940, 214)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="26" cy="26" r="24"/>
+    <line x1="26" y1="12" x2="26" y2="28"/>
+    <circle cx="26" cy="38" r="2" fill="#207448"/>
+  </g>
+  <text x="1015" y="234" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1015" dy="0">Mount fails: recovery required</tspan>
+    <tspan x="1015" dy="36">or invalid superblock</tspan>
+  </text>
+
+  
+  <rect x="860" y="335" width="670" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="900" cy="385" r="24" fill="#207448"/>
+  <text x="900" y="394" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(940, 357)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="2" y="4" width="48" height="44" rx="6"/>
+    <path d="M 12 18 L 22 26 L 12 34"/>
+    <line x1="26" y1="34" x2="38" y2="34"/>
+  </g>
+  <text x="1015" y="375" fill="#303a36">
+    <tspan x="1015" dy="0" font-family="system-ui, sans-serif" font-size="30" font-weight="bold">Run dry-run simulation:</tspan>
+    <tspan x="1015" dy="36" font-family="monospace" font-size="25" font-weight="bold">sudo mke2fs -n /dev/sdb1</tspan>
+  </text>
+  
+  <rect x="880" y="450" width="630" height="85" rx="8" fill="#fef3e7" stroke="#db8129" stroke-width="2"/>
+  <text x="1195" y="484" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="1195" dy="0">never omit -n, which simulates creation</tspan>
+    <tspan x="1195" dy="30">and prints backup locations</tspan>
+  </text>
+
+  
+  <rect x="860" y="580" width="670" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(895, 617)" stroke="#207448" stroke-width="3" fill="none">
+    <ellipse cx="26" cy="12" rx="22" ry="7"/>
+    <path d="M 4 12 L 4 38 C 4 45 48 45 48 38 L 48 12"/>
+    <path d="M 4 25 C 4 32 48 32 48 25"/>
+  </g>
+  <text x="965" y="633" fill="#303a36">
+    <tspan x="965" dy="0" font-family="system-ui, sans-serif" font-size="30" font-weight="bold">Discovered Backup Superblocks:</tspan>
+    <tspan x="965" dy="40" font-family="monospace" font-size="25" font-weight="bold">32768, 98304, 163840...</tspan>
+  </text>
+
+  
+  <rect x="860" y="730" width="670" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="900" cy="802" r="24" fill="#207448"/>
+  <text x="900" y="811" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(940, 774)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 38 6 C 30 6 26 12 28 18 L 8 38 C 4 42 10 48 14 44 L 34 24 C 40 26 46 22 46 14 L 38 18 L 34 14 Z"/>
+  </g>
+  <text x="1015" y="790" fill="#303a36">
+    <tspan x="1015" dy="0" font-family="system-ui, sans-serif" font-size="30" font-weight="bold">Execute repair targeting backup:</tspan>
+    <tspan x="1015" dy="38" font-family="monospace" font-size="25" font-weight="bold">sudo e2fsck -b 32768 /dev/sdb1</tspan>
+  </text>
+
+  
+  <rect x="860" y="900" width="670" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="900" cy="970" r="24" fill="#207448"/>
+  <text x="900" y="979" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(940, 942)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 26 4 L 46 12 L 46 28 C 46 40 26 48 26 48 C 26 48 6 40 6 28 L 6 12 Z"/>
+    <path d="M 16 26 L 23 33 L 36 18"/>
+  </g>
+  <text x="1015" y="960" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1015" dy="0">Primary superblock restored and</tspan>
+    <tspan x="1015" dy="36">filesystem mounted cleanly</tspan>
+  </text>
+
+</svg>

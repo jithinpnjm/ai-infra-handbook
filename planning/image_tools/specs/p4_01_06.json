@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0106-dir-traversal",
+  "title": "Directory Traversal Versus File Access and Deletion Permissions",
+  "anchor": "### What the bits mean: files versus directories",
+  "spec": "A three-panel diagram demonstrating the kernel's distinct permission evaluation for directories versus files. Panel A (Path Traversal for 'cat /data/project/file'): Show a horizontal path hierarchy '[ / ] (root)' -> '[ /data ]' -> '[ /data/project ]' -> '[ file ]'. Label the directory check on each: requires 'x' (traverse inode). Step 1 checks '/' (needs x, granted). Step 2 checks '/data' (needs x, granted). Step 3 checks '/data/project' (needs x). Show two outcomes: if 'x' is granted, the kernel proceeds to 'file' and evaluates 'r' (read content); if 'x' is missing on '/data/project' (even if 'r' is set or file mode is 0777), the kernel immediately aborts with 'EACCES: Permission denied'. Panel B (File Deletion Mechanism for 'rm /data/project/file'): Box representing directory inode '/data/project' containing directory table entries '[ inode 4821 | file ]'. Inside it sits 'file' with mode '0444 (r--r--r--)'. Show an actor 'Bob' executing 'rm /data/project/file'. Draw an arrow showing the kernel checking write ('w') and execute ('x') exclusively on the parent directory inode '/data/project'. An unlinking action crosses out the entry in the directory table. Emphasize with a callout that deletion mutates the directory table, not the file contents, allowing Bob to delete a read-only 0444 file without write permission on the file itself. Panel C (Sticky Bit Defense on '/tmp' mode 1777 / 'drwxrwxrwt'): Show directory '/tmp' with sticky bit ('t'). Bob attempts 'rm /tmp/alice_temp.txt'. Show the kernel check: Bob is neither file owner (alice) nor directory owner (root) nor root, so the delete fails with 'EPERM: Operation not permitted'.",
+  "alt": "A diagram showing how directory path traversal requires execute permissions on every parent directory while file deletion depends on write permission in the parent directory.",
+  "cap": "Path traversal checks execute permission at every path segment, and file deletion modifies the directory inode rather than the file itself.",
+  "part": "part-01-linux",
+  "ch": "06"
+ },
+ {
+  "name": "p4-0106-shared-dir-recipe",
+  "title": "Safe Shared Directory Mechanics: setgid Group Inheritance and umask Coordination",
+  "anchor": "### A recipe: a safe shared project directory",
+  "spec": "A side-by-side workflow diagram contrasting the default Linux file creation failure against the safe shared project directory pattern. Left Column (Default Failure): Directory '/data/projx' has mode '0755' (drwxr-xr-x), owned by 'root:projx'. Alice (primary group 'alice', supplementary group 'projx', umask '022') creates 'notes.txt'. The kernel assigns owner 'alice:1042', group 'alice:1042' (inheriting creator primary group), and mode '0644 (rw-r--r--)'. Bob (supplementary group 'projx') attempts write access ('echo data >> notes.txt'). The kernel evaluates Bob under 'Other (r--)' because group does not match; write is denied ('Permission denied'). Right Column (The 2770 Recipe): Directory '/data/projx' is configured with 'chmod 2770' (drwxrws---) and group 'projx:2001', highlighting the 's' in the group execute position (setgid bit 2000). Alice sets 'umask 002' in her startup environment. Alice runs 'touch notes.txt'. Show two arrows: Arrow 1 from parent directory enforces group inheritance via setgid, setting file group to 'projx:2001'. Arrow 2 from umask 002 retains group write permission, setting file mode to '0664 (rw-rw-r--)'. Bob (member of 'projx') writes to 'notes.txt'. The kernel matches Bob's supplementary group 'projx' to the file group; write is granted ('rw-'). Outside users ('Other: ---') have zero access.",
+  "alt": "A comparison of default file creation resulting in permission denial versus a setgid 2770 directory with umask 002 enabling shared group collaboration.",
+  "cap": "The setgid bit on a directory forces new files to inherit the parent group while umask 002 preserves group write permissions for teammates.",
+  "part": "part-01-linux",
+  "ch": "06"
+ },
+ {
+  "name": "p4-0106-ldap-storm-sssd",
+  "title": "Standalone LDAP Connection Storm Versus Node-Local SSSD Caching at Scale",
+  "anchor": "### 8.4 LDAP, explosive job-launch storms, and SSSD caching",
+  "spec": "A two-part architectural failure cascade and resolution diagram. Top Panel (The Job-Launch Storm on Standalone LDAP): Slurm workload manager initiates a 500-node training job at time t=0 across nodes 'gpu001' to 'gpu500'. Each node's process executes 'getpwnam(alice)'. 500 concurrent TCP and TLS connection arrows converge simultaneously on a single central box: 'Central Standalone LDAP Server (port 636)'. Inside the LDAP server, show a queue container with 'Worker Thread Pool: 64 threads (saturated)'. Excess connection arrows overflow the TCP backlog queue, resulting in connection timeouts and dropped packets. Compute nodes whose queries time out return an error; Slurm step launch fails across affected nodes with 'slurmstepd: error: user alice not found'. Bottom Panel (Mitigation via Node-Local SSSD Caching): The same 500 compute nodes receive the Slurm launch trigger. On each compute node, the process calls 'getpwnam(alice)'. The C library NSS module delegates over a local Unix domain socket '/var/run/sssd/sssd.pipe' to a node-local 'SSSD Daemon'. SSSD performs an in-memory/LDB database lookup on '/var/lib/sss/db/cache_cluster.ldb'. The lookup succeeds locally in under 1 millisecond with zero network round trips, allowing all 500 nodes to launch the job steps immediately. A single dashed background arrow connects SSSD to the Central LDAP Server for periodic asynchronous background cache updates, eliminating query storms.",
+  "alt": "A diagram comparing a 500-node LDAP connection storm that drops requests against node-local SSSD caching that resolves queries locally in under one millisecond.",
+  "cap": "A standalone LDAP server drops requests during synchronized multi-node job launches unless node-local SSSD caches absorb the query burst.",
+  "part": "part-01-linux",
+  "ch": "06"
+ }
+]

@@ -333,6 +333,10 @@ The cost side is easy to state. One replica kept warm costs its GPUs for every h
 
 ## How to answer out loud
 
+![A visual answer architecture showing how the five dedicated endpoint interview questions map to control plane specs, checkpoint validation, surge-one rollout, quality gates, and SLA replica floors.](./img/p4-2014-interview-mental-map.svg)
+
+*Figure 20.0.0. Figure 20.14.17. Structuring the dedicated endpoint answer across lifecycle, scarce GPU rollout, multi-dimensional gates, and scale-to-zero trade-offs.*
+
 Picture an interviewer who has just said "design a dedicated endpoint" and is waiting for your first move. Each answer below is a short spoken outline. Say it in your own words, in under two minutes, and listen for the place where you hesitate.
 
 **Question 1. "Design a dedicated endpoint."** Say the order. State the spec: model, GPU type, GPUs per replica, minimum and maximum replicas, region. Separate the control plane, which stores desired state and lifecycle, from the regional data plane, which serves and keeps serving if the control plane is down. Size from memory first: weights are parameters times bytes. Name the SLA and the redundancy, one extra replica. Mention that Nebius publishes the split and the spec fields, and that the rest is your design. If the interviewer pushes on any field, answer from the public list first, then from your design, and say which is which.
@@ -348,6 +352,10 @@ Picture an interviewer who has just said "design a dedicated endpoint" and is wa
 ## Worked scenarios
 
 ### Scenario A. Eight replicas, one spare GPU
+
+![Step-by-step execution trace showing how a rolling update with maxSurge 1 and maxUnavailable 0 safely uses a single spare GPU slot to replace eight pods without dropping below minimum capacity.](./img/p4-2014-scenario-a-trace.svg)
+
+*Figure 20.0.0. Figure 20.14.18. Rolling update mechanics under strict single-GPU surge constraints compared with zero-spare hang and down-scaling trade-offs.*
 
 An endpoint runs 8 replicas, one GPU each, in a region that has exactly one spare GPU. A new engine image must roll out. Engineering proposes the Kubernetes defaults.
 

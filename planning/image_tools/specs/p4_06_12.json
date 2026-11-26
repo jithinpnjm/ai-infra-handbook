@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0612-hgx-rail-binding",
+  "title": "Rail-Optimized HGX NUMA, GPU, and NIC Binding Architecture",
+  "anchor": "## 6. Binding for training jobs",
+  "spec": "Layout: Two large side-by-side rectangular boxes representing the two NUMA domains of an 8-GPU HGX server, separated by a central bidirectional bus labeled 'CPU Interconnect (UPI link - Cross-Socket Chokepoint)'. Left box: 'NUMA Domain 0 (Socket 0)'. Contains: Top row shows 'CPU Cores 0..47' with 'CoreSpecCount' reserved cores partitioned away from rank worker cpusets; Middle row shows 'GPUs 0..3' (Ranks 0..3) interconnected by NVLink; Bottom row shows 4 PCIe-attached adapters: 'NIC 0 (mlx5_0, Rail 0)', 'NIC 1 (mlx5_1, Rail 1)', 'NIC 2 (mlx5_2, Rail 2)', 'NIC 3 (mlx5_3, Rail 3)'. Direct solid green arrows connect GPU 0 to NIC 0, GPU 1 to NIC 1, GPU 2 to NIC 2, GPU 3 to NIC 3, labeled 'Rail-Optimized Local Path: GPUDirect RDMA Enabled'. Right box: 'NUMA Domain 1 (Socket 1)'. Identical structure with CPU Cores 48..95, GPUs 4..7 (Ranks 4..7) and NICs 4..7 (mlx5_4..7, Rails 4..7) with local green paths. Contrast path: A prominent dashed red arrow originates from GPU 0 on NUMA 0, crosses the CPU Interconnect to NIC 4 on NUMA 1, labeled 'Anti-Pattern (Maligned Binding): Cross-Socket Interconnect Traversal -> Throughput Falls'. Bottom control summary banner lists the Slurm flags and verification recipe: '--cpus-per-gpu=12 --cpu-bind=cores --gpu-bind=closest --gres-flags=enforce-binding' paired with verify commands 'nvidia-smi topo -m', 'numactl -s', and 'taskset -pc $$'.",
+  "alt": "Architecture diagram of an 8-GPU HGX server showing two NUMA domains with direct rail-optimized GPU-to-NIC paths versus cross-socket interconnect penalties.",
+  "cap": "Rail-optimized HGX topologies pair each GPU directly with its local NUMA cores and dedicated network adapter to avoid crossing the slower CPU socket interconnect.",
+  "part": "part-06-hpc-slurm",
+  "ch": "12"
+ }
+]

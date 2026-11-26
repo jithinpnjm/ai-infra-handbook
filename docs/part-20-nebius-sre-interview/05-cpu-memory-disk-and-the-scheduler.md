@@ -272,6 +272,10 @@ The first thing to decide: reach for a profile only after a resource is proven s
 
 ### 11. eBPF tools at a high level
 
+![Linux kernel subsystems diagram mapping eight BCC and eBPF tools to system calls, the CPU scheduler, memory management, and block I/O.](./img/p4-2005-ebpf-subsystem-map.svg)
+
+*Figure 20.0.0. eBPF tools instrument specific kernel subsystems to answer targeted questions once metrics identify the bottlenecked resource.*
+
 eBPF lets the kernel run small verified programs at events such as a disk request or a scheduler wakeup. Verified means the kernel checks the program before it runs, so a buggy program cannot crash the kernel. For an SRE the useful point is that it gives you histograms and per-process answers that `iostat` and `top` cannot. Systems Performance chapter 15 splits the tooling in two. BCC has more than 80 ready-made tools and suits complex ones. bpftrace is a short scripting language suited to one-off questions. Netflix, as Systems Performance reports, installs both by default on cloud instances and uses them after dashboards point at a problem.
 
 | Question | Tool | Note |

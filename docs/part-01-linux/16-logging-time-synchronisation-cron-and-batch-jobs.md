@@ -52,6 +52,10 @@ By the end of the chapter you will be able to do the following:
 
 ## 1. System logging
 
+![Architecture of host logging showing kernel messages, service stdout and stderr, and syslog datagrams ingested by journald into structured binary storage, then queried with journalctl or forwarded to rsyslog for text files and network transmission.](./img/p4-0116-host-logging-flow.svg)
+
+*Figure 1.16.1. Figure 1.16.1b. Systemd-journald collects kernel messages, service output, and syslog socket datagrams into structured binary storage, optionally forwarding to rsyslog for text logging and network transmission.*
+
 It is three in the morning and a node has started misbehaving. The first thing you want to know is what it logged. Most programs report what they are doing to a system logger, and on Linux that has traditionally been the syslog service. A program calls `syslog()`, or it writes to `/dev/log`, which is a Unix datagram socket. The syslog daemon then sorts each message and sends it to files, the console, logged-in users, a database or another machine.
 
 On a systemd system, journald receives these messages. It also collects the standard output and standard error of every service, along with kernel messages, and stores all of it in a structured binary journal. A traditional daemon such as rsyslog may run alongside it. On some Fedora and RHEL-family defaults, journald is the only logger. Applications may also skip the whole arrangement and write their own files, as databases, web servers, Slurm, Kubernetes components and vendor daemons do.
@@ -104,7 +108,7 @@ Three login records are binary, so do not read them with `cat`. `wtmp` is the re
 
 ![Rsyslog rule lines split into selector and action with the selector grammar, action marks and the severity scale from 0 to 7.](./img/p3-0116-selector-anatomy.svg)
 
-*Figure 1.16.1. A selector names facility and severity and includes every more severe level, while the action says where the message goes.*
+*Figure 1.16.2. A selector names facility and severity and includes every more severe level, while the action says where the message goes.*
 
 rsyslog is the default text-file syslog daemon on Debian, Ubuntu and RHEL. It reads `/etc/rsyslog.conf`, then every file in `/etc/rsyslog.d/*.conf`. The classic style of rule maps a `facility.severity` selector to a destination. The modern style uses RainerScript filters. The examples below show both, side by side.
 
@@ -147,7 +151,7 @@ UDP can drop messages, and it has no authentication or encryption. For anything 
 
 ![Eight severity levels from emerg at 0 to debug at 7.](./img/l16-severity.svg)
 
-*Figure 1.16.2. A smaller severity number means a more urgent message.*
+*Figure 1.16.3. A smaller severity number means a more urgent message.*
 
 The journal and syslog store messages in very different ways, so compare them before you pick a design. The table sets them side by side.
 
@@ -168,7 +172,7 @@ Before you forward anything, pick one collector path for each host.
 
 ![A journal entry with underscore fields that journald adds and the sender cannot forge, and sender supplied fields such as MESSAGE and PRIORITY.](./img/p3-0116-journal-field-trust.svg)
 
-*Figure 1.16.3. Fields with a leading underscore are added by journald and cannot be forged, while the other fields are only the sender's claim.*
+*Figure 1.16.4. Fields with a leading underscore are added by journald and cannot be forged, while the other fields are only the sender's claim.*
 
 A job slows down, or a node drops out of the cluster, and you need the right slice of the journal quickly. The full set of options is in chapter 1.15, section 12, so this section sticks to the questions you ask most often. The table pairs each question with the filter that answers it.
 
@@ -209,11 +213,11 @@ Before you go hunting, pick the unit and the time window first, then add the sev
 
 ![A logrotate configuration for Slurm logs with callouts for schedule, retention, compression, create mode and the postrotate signal to the daemon.](./img/p3-0116-logrotate-anatomy.svg)
 
-*Figure 1.16.4. Each logrotate line has a job, and the postrotate command is what makes the daemon reopen its log after the rename.*
+*Figure 1.16.5. Each logrotate line has a job, and the postrotate command is what makes the daemon reopen its log after the rename.*
 
 ![Renaming a log does not move a process that holds it open, so the daemon must reopen it.](./img/l16-rotation-inode.svg)
 
-*Figure 1.16.5. A process keeps writing to the same inode after rename, so rotation needs a reopen or copytruncate.*
+*Figure 1.16.6. A process keeps writing to the same inode after rename, so rotation needs a reopen or copytruncate.*
 
 Text logs grow without limit, so something has to trim them, and that job falls to log rotation. Rotation splits a log into a series of chunks. On a typical host you might find `auth.log` as the current file, with `auth.log.1`, `.2.gz` and `.3.gz` behind it. Deleting the oldest lines from the front of a file is impractical, so rotation renames files instead. It deletes the oldest file, shifts each number up, renames the current file to `.1`, and creates a fresh empty file.
 
@@ -260,7 +264,7 @@ Once you run a fleet, the logs on each node stop being the archive and become a 
 
 ![Central logging for clusters](./img/ch16-d1-luna.svg)
 
-*Figure 1.16.6. Central logging for clusters.*
+*Figure 1.16.7. Central logging for clusters.*
 
 Reliability comes first, because a log you never received cannot be investigated. Agents should buffer to disk and retry, because syslog over UDP is not acceptable for audit-relevant logs. Back-pressure must never stall the application that writes the log.
 
@@ -292,7 +296,7 @@ Before you ship a log, check that a machine can parse each line without help fro
 
 ![A skewed node clock fanning out to Munge, Kerberos, TLS, kubeadm and etcd failures, log correlation problems and a blocked NTP port.](./img/p3-0116-skew-symptoms.svg)
 
-*Figure 1.16.7. A skewed clock shows up as authentication, certificate and cluster join errors that look like network or key problems.*
+*Figure 1.16.8. A skewed clock shows up as authentication, certificate and cluster join errors that look like network or key problems.*
 
 Two nodes disagree about the time by a few minutes, and jobs that land on the wrong one are rejected by authentication. Nothing looks broken on either machine, and nothing points at the clock. This section is about why that happens and how to stop it.
 
@@ -312,7 +316,7 @@ Three clocks matter to a programmer. `CLOCK_REALTIME` is wall time, and it jumps
 
 ![Linux clocks and time synchronisation](./img/ch16-d2-luna.svg)
 
-*Figure 1.16.8. Hardware RTC, kernel clocks, and NTP slewing versus stepping.*
+*Figure 1.16.9. Hardware RTC, kernel clocks, and NTP slewing versus stepping.*
 
 ### Time zones
 
@@ -345,11 +349,11 @@ Read the `timedatectl` output first, because it answers most of the questions in
 
 ![A chronyc tracking panel with what good offset, leap status and stratum look like, beside a legend of source markers and the octal Reach value.](./img/p3-0116-chronyc-read.svg)
 
-*Figure 1.16.9. Tracking shows the offset and stratum, and the sources list marks the best source with a star and shows reachability as an octal value.*
+*Figure 1.16.10. Tracking shows the offset and stratum, and the sources list marks the best source with a star and shows reachability as an octal value.*
 
 ![A two tier NTP layout where head nodes sync with upstream servers and compute nodes use only the head node, which keeps serving time if upstream is lost.](./img/p3-0116-ntp-two-tier.svg)
 
-*Figure 1.16.10. Compute nodes need one directive pointing at the head nodes, and an orphan setting lets the head keep serving time when upstream is lost.*
+*Figure 1.16.11. Compute nodes need one directive pointing at the head nodes, and an orphan setting lets the head keep serving time when upstream is lost.*
 
 NTP, the Network Time Protocol, synchronises a machine to a hierarchy of time servers. Servers are ranked by stratum, which is their distance from a trusted clock. Stratum 0 holds the reference clocks, such as GPS or atomic clocks. Stratum 1 servers connect to those clocks, stratum 2 servers synchronise to stratum 1, and so on. An NTP client measures several servers, filters out the bad ones, and steers the local clock. On Linux, you can choose from several implementations.
 
@@ -432,13 +436,13 @@ On each node, the `/etc/ntpd.conf` file needs only one line: `server server.clus
 
 ![The five cron fields with their ranges and syntax, and a worked trap showing that when both day fields are restricted the job runs when either matches.](./img/p3-0116-cron-dom-dow.svg)
 
-*Figure 1.16.11. If both day-of-month and day-of-week are restricted the job runs when either matches, so the schedule fires more often than expected.*
+*Figure 1.16.12. If both day-of-month and day-of-week are restricted the job runs when either matches, so the schedule fires more often than expected.*
 
 You inherit a node that runs a dozen unattended jobs, and the only documentation is the crontab itself. cron is the classic periodic scheduler, and it is old enough to be present on almost every Unix system you will meet. The `crond` daemon wakes every minute and runs jobs from crontab files. Each job is a command with five time fields in front of it:
 
 ![Reading a cron line](./img/ch16-fig1-cron.jpg)
 
-*Figure 1.16.12. The five time fields of a cron line and what the example means.*
+*Figure 1.16.13. The five time fields of a cron line and what the example means.*
 
 ```text
 # minute  hour  day-of-month  month  day-of-week   command
@@ -463,7 +467,7 @@ One trap catches almost everyone. If both day-of-month and day-of-week are restr
 
 ![A user crontab has five time fields and the command, while a system crontab adds a user field before the command.](./img/p2-0116-cron-user-system.svg)
 
-*Figure 1.16.13. A user crontab has five time fields followed by the command, while a system crontab adds a user field before the command.*
+*Figure 1.16.14. A user crontab has five time fields followed by the command, while a system crontab adds a user field before the command.*
 
 - User crontabs live in `/var/spool/cron/crontabs/` on Debian and in `/var/spool/cron/` on RHEL. Edit them only with `crontab -e`, which checks the syntax, and list them with `crontab -l`. Be careful with `crontab -r`, which removes the crontab with no confirmation. It sits right next to `-e` on the keyboard, which makes it a famous trap. Root can use `-u user`. These files have no user field.
 - System crontabs are `/etc/crontab` and the files in `/etc/cron.d/`. They carry an extra sixth field, the user, as in `42 6 * * * root /usr/local/bin/cleansystem >/dev/null 2>&1`. Packages drop their own files into `/etc/cron.d/`. Scripts in `/etc/cron.hourly`, `/etc/cron.daily`, `/etc/cron.weekly` and `/etc/cron.monthly` are run by `run-parts` at those intervals. On Debian, the names must not contain dots or tildes, and the scripts must be executable. `anacron` runs these jobs on machines that are not always on, and it catches up on any job missed while the machine was off.
@@ -473,7 +477,7 @@ One trap catches almost everyone. If both day-of-month and day-of-week are restr
 
 ![A login shell with a full environment compared with the minimal environment cron provides, with a numbered list of fixes and the env minus i test command.](./img/p3-0116-cron-env-gap.svg)
 
-*Figure 1.16.14. Cron sets only a handful of variables and a short PATH, so use absolute paths and test with the same minimal environment.*
+*Figure 1.16.15. Cron sets only a handful of variables and a short PATH, so use absolute paths and test with the same minimal environment.*
 
 Cron runs commands with a minimal environment, and this is the single biggest cause of a job that works in your terminal but fails on schedule. It sets only `HOME`, `LOGNAME`, `SHELL=/bin/sh` and `PATH=/usr/bin:/bin`. It does not run login startup files, and it gives the job no terminal. The working directory is the user's home.
 
@@ -485,11 +489,11 @@ Output goes to the owner by mail if a mailer exists. Otherwise it is discarded. 
 
 ![A five step ladder for debugging a cron job that did not run, with the safe flock and timeout wrapper line beside it.](./img/p3-0116-cron-ladder.svg)
 
-*Figure 1.16.15. Check the daemon, the crontab file, the time and logs, the minimal environment and the account, in that order.*
+*Figure 1.16.16. Check the daemon, the crontab file, the time and logs, the minimal environment and the account, in that order.*
 
 ![A cron line wrapped with flock, timeout and logger guards.](./img/l16-safe-cron.svg)
 
-*Figure 1.16.16. Guards against overlap, hangs and lost output make a cron job safe on a fleet.*
+*Figure 1.16.17. Guards against overlap, hangs and lost output make a cron job safe on a fleet.*
 
 This file shows a safe pattern you can copy. It sets the shell and the path, turns off mail, and wraps the job in two guards.
 
@@ -544,7 +548,7 @@ Before you use `at` or cron on a shared cluster, check whether the scheduler sho
 
 ![A nine row table comparing cron with systemd timers on configuration, tracking, dependencies, missed runs, load spreading, overlap, times, user access and portability.](./img/p3-0116-cron-vs-timer.svg)
 
-*Figure 1.16.17. Timers add tracking, ordering, catch-up and overlap protection, while cron is simpler and runs everywhere.*
+*Figure 1.16.18. Timers add tracking, ordering, catch-up and overlap protection, while cron is simpler and runs everywhere.*
 
 Your node image ships a nightly trim job, and someone on the team asks why it is a systemd timer and not a cron line. The `cron` utility is one of the oldest parts of a Unix or Linux system. It predates Linux itself, and its configuration format has barely changed in decades. A tool that familiar stays everywhere.
 
@@ -570,7 +574,7 @@ Before you add a recurring job, pick the mechanism that matches where the job wi
 
 ![A start order chain from chrony through a synchronisation wait gate to Munge, slurmd and kubelet, with fleet health checks for clock offset.](./img/p3-0116-clock-before-auth.svg)
 
-*Figure 1.16.18. Wait for clock synchronisation before starting Munge, slurmd and kubelet, and fail a node whose offset drifts past the threshold.*
+*Figure 1.16.19. Wait for clock synchronisation before starting Munge, slurmd and kubelet, and fail a node whose offset drifts past the threshold.*
 
 Clock discipline is the fleet baseline, and it is much cheaper to maintain than to debug. Run chrony on every node and point it at the management nodes, or at the cloud's internal source. Use UTC everywhere, with `makestep 1.0 3`. Add a health check that fails a node when the `chronyc tracking` offset exceeds a threshold such as 100 ms, or when the leap status is not normal. Drain that node before Slurm or Munge starts rejecting it. Export the offset as a metric, using the `node_exporter` timex collector or `chrony_exporter`, and alert across the fleet on drift.
 

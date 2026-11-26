@@ -1,0 +1,32 @@
+# docs/part-20-nebius-sre-interview/09-algorithm-patterns-for-sre-flavoured-problems.md
+- ## What the interviewer is testing | 160 | NO FIGURE NEEDED meta introduction to interview expectations
+- ## The core ideas | 110 | COVERED(m20-09-1)
+- ### 1. Log parsing and aggregation with hash maps | 450 | NO FIGURE NEEDED standard single-pass dictionary counting and regex normalization
+- ### 2. Sliding windows: rolling error rate and the maximum in a window | 580 | COVERED(p3-2009-monotonic-deque, x09-sliding-window-eviction)
+- ### 3. Two pointers | 350 | COVERED(p2-2009-two-pointers)
+- ### 4. Heaps and top-k | 450 | COVERED(p3-2009-heap-topk)
+- ### 5. Interval merging and scheduling | 510 | NEEDS FIGURE interval merge logic, nested sub-interval bug, and free-slot sweep cursor
+- ### 6. Rate limiters: four algorithms and their trade-offs | 620 | COVERED(p3-2009-token-bucket, x09-fixed-window-boundary-burst)
+- ### 7. LRU cache | 480 | COVERED(p2-2009-lru-links)
+- ### 8. Consistent hashing with virtual nodes | 500 | COVERED(p2-2009-hash-ring)
+- ### 9. Retry with exponential backoff and jitter | 420 | COVERED(x09-retry-jitter-herd)
+- ### 10. Topological sort and cycle detection | 580 | COVERED(x09-kahn-start-order)
+- ### 11. BFS, DFS and shortest path on a service graph | 340 | NEEDS FIGURE dependency reversal for blast radius and BFS ring-by-ring reachability
+- ### 12. Union-find | 380 | NEEDS FIGURE tree parent pointers, union by size, and path compression flattening on failing nodes
+- ### 13. Binary search on the answer | 450 | COVERED(p3-2009-binary-search-answer)
+- ### 14. Streaming percentiles, and why you never average percentiles | 620 | COVERED(p3-2009-histogram-tradeoff, x09-averaged-p99-trap)
+- ### 15. String compression and parsing | 480 | NO FIGURE NEEDED straightforward linear scan and state machine loops
+- ### 16. Basic concurrency: queues, counters and asyncio | 650 | COVERED(p3-2009-asyncio-two-timeouts, p3-2009-lost-update)
+- ## How to answer out loud | 340 | NO FIGURE NEEDED verbal structuring guide and sample verbal answers
+- ## Worked scenarios | 30 | NO FIGURE NEEDED scenario section overview
+- ### Scenario 1. A rolling error-rate alert with a quiet-period guard | 250 | NO FIGURE NEEDED worked volume threshold calculation
+- ### Scenario 2. Fitting a maintenance job into GPU reservations | 180 | COVERED(p3-2009-gpu-sweep)
+- ### Scenario 3. Which services break, and what starts first | 240 | NO FIGURE NEEDED graph application covered by Kahn and BFS diagrams
+- ## Hands-on lab | 280 | NO FIGURE NEEDED terminal commands and test steps
+- ## Drill questions | 330 | NO FIGURE NEEDED drill questions and answers
+- ## Common mistakes and weak answers | 240 | NO FIGURE NEEDED comparative reference table
+- ## Connections to the rest of the handbook | 120 | NO FIGURE NEEDED cross reference list
+- ## Sources and review notes | 260 | NO FIGURE NEEDED citations and review log
+- ### Verification log | 120 | NO FIGURE NEEDED verification log text
+
+Specs kept 3, dropped 0: []

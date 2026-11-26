@@ -1,0 +1,32 @@
+# docs/part-02-networking/03-ethernet-and-l2-frames-mac-addresses-switching-arp-and-ndp.md
+- ## Why this matters for AI infrastructure | 230 | NO FIGURE NEEDED motivating context and chapter overview
+- ## Prerequisites and outcomes | 240 | NO FIGURE NEEDED bullet list of prerequisites and learning outcomes
+- ## 1. Ethernet in one page | 380 | NO FIGURE NEEDED introductory concepts covered later; CSMA/CD vs full duplex compared in p3-0203-wifi-vs-wired
+- ## 2. MAC addresses | 350 | COVERED(n03-macbits)
+- ## 3. The Ethernet frame | 360 | COVERED(n03-frame)
+- ### Frame types you will see on a network | 160 | NO FIGURE NEEDED concise definitions of frame types
+- ## 4. Physical layers, media and optics (reading the names) | 580 | COVERED(p3-0203-optic-name)
+- ## 5. How an Ethernet switch works | 80 | COVERED(n03-fig1-switch-v2.jpg)
+- ### Learning, forwarding and flooding | 340 | COVERED(m2-03-1)
+- ### Switching modes and latency | 180 | COVERED(p3-0203-store-cut-through)
+- ### Inside a network device (packet switching, in brief) | 260 | COVERED(p3-0203-switch-inside)
+- ### Switching versus routing (L2 versus L3) | 180 | NEEDS FIGURE packet transformation differences and broadcast containment between L2 and L3
+- ## 6. Mapping between layers: ARP and Neighbor Discovery | 120 | COVERED(p3-0203-interlayer-patterns)
+- ### The default gateway problem | 140 | COVERED(p3-0203-on-link-decision)
+- ### IPv4 ARP (Address Resolution Protocol) | 480 | COVERED(p3-0203-arp-cache, n03-arp)
+- ### Linux ARP behaviour on multi-NIC hosts (important for AI nodes) | 270 | COVERED(p3-0203-weak-host)
+- ### IPv6 Neighbor Discovery (NDP) | 480 | COVERED(p3-0203-ra-flags, p3-0203-eui64, n03-ndp)
+- ### Clearing a stale ARP entry | 130 | NO FIGURE NEEDED brief explanation of ip neigh del command
+- ## 7. L2 on Linux: the objects behind the concepts | 200 | COVERED(p3-0203-l2-objects-path)
+- ## 8. Wi-Fi (802.11) in contrast | 240 | COVERED(p3-0203-wifi-vs-wired)
+- ### Connecting Wi-Fi from the command line | 210 | NO FIGURE NEEDED procedural CLI steps for iw and wpa_supplicant
+- ## 9. AI fabrics at layer 2 | 280 | COVERED(p3-0203-lossless-end-to-end)
+- ## 10. Failure modes and diagnosis | 130 | COVERED(p3-0203-link-counters)
+- ## 11. Hands-on lab: a switched L2 network in network namespaces | 420 | COVERED(p3-0203-lab-flood-learn)
+- ## 12. Common mistakes | 140 | NO FIGURE NEEDED list of common operational pitfalls
+- ## 13. Interview angles | 120 | NO FIGURE NEEDED list of sample interview questions
+- ## Exercises | 300 | NO FIGURE NEEDED hands-on review exercises
+- ## Checkpoint questions (20) | 1800 | NO FIGURE NEEDED self-test Q&A list
+- ## Sources and review notes | 260 | NO FIGURE NEEDED reference bibliographic notes
+
+Specs kept 1, dropped 0: []

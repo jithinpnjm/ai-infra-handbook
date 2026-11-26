@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>Multi-Model Placement Strategies and Disaggregated Autoscaling</title>
+  <desc>A comparison of latency-optimised dedicated fleet versus cost-optimised shared fleet, alongside disaggregated prefill and decode autoscaling with cache-aware warnings.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1500" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Multi-Model Placement Strategies</text>
+  <text x="800" y="108" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">and Disaggregated Autoscaling</text>
+
+  
+  
+  <rect x="40" y="135" width="1520" height="675" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  
+  <g id="client-traffic-node">
+    <rect x="290" y="155" width="290" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 320 200 A 14 14 0 0 1 348 200 Z M 334 184 A 8 8 0 1 1 334 168 A 8 8 0 1 1 334 184 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="365" y="199" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Client Traffic</text>
+  </g>
+
+  
+  <path d="M 580 190 L 650 190" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="model-router-node">
+    <rect x="660" y="155" width="290" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="700" cy="190" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 700 170 L 700 174 M 700 206 L 700 210 M 680 190 L 684 190 M 716 190 L 720 190" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="735" y="199" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Model Router</text>
+  </g>
+
+  
+  <g id="latency-optimised-fleet">
+    <rect x="60" y="245" width="710" height="545" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="85" y="285" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Latency-Optimised Dedicated Fleet</text>
+
+    
+    <rect x="130" y="320" width="620" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="155" y="342" width="38" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 162 336 L 162 342 M 174 336 L 174 342 M 186 336 L 186 342 M 162 380 L 162 386 M 174 380 L 174 386 M 186 380 L 186 386" stroke="#207448" stroke-width="3"/>
+    <text x="210" y="370" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Dedicated Model A Pool</text>
+    <text x="210" y="420" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="210" dy="0">Floor=3, always-on GPUs,</tspan>
+      <tspan x="210" dy="36">preserved prefix cache</tspan>
+    </text>
+
+    
+    <rect x="130" y="535" width="620" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="155" y="557" width="38" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 162 551 L 162 557 M 174 551 L 174 557 M 186 551 L 186 557 M 162 595 L 162 601 M 174 595 L 174 601 M 186 595 L 186 601" stroke="#207448" stroke-width="3"/>
+    <text x="210" y="585" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Dedicated Model B Pool</text>
+    <text x="210" y="635" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="210" dy="0">Floor=0 or 1, quiet model,</tspan>
+      <tspan x="210" dy="36">scaled independently</tspan>
+    </text>
+  </g>
+
+  
+  <g id="cost-optimised-fleet">
+    <rect x="830" y="245" width="710" height="545" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="855" y="285" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Cost-Optimised Shared Fleet</text>
+
+    
+    <rect x="850" y="320" width="670" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="885" cy="355" rx="18" ry="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 867 355 L 867 375 A 18 8 0 0 0 903 375 L 903 355" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="920" y="368" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Shared GPU Pool</text>
+    <text x="920" y="415" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0">instances dynamically load/evict</tspan>
+      <tspan x="920" dy="34">weights on demand</tspan>
+      <tspan x="920" dy="34">from shared storage</tspan>
+    </text>
+
+    
+    <rect x="850" y="545" width="670" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="875" y="592" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Cold Start Penalty: 10s-60s delay</text>
+
+    
+    <rect x="850" y="640" width="670" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="875" y="687" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Cache Thrashing</text>
+  </g>
+
+  
+  
+  <path d="M 735 225 L 735 265 L 95 265 L 95 415 L 120 415" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M 95 415 L 95 630 L 120 630" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 875 225 L 875 265 L 1185 265 L 1185 310" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1185 525 L 1185 537" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M 1185 620 L 1185 632" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="disaggregated-autoscaling">
+    <rect x="40" y="835" width="1520" height="625" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="75" y="880" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Disaggregated Fleet and Cache-Aware Scaling</text>
+
+    
+    <rect x="75" y="915" width="450" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="105" y="937" width="38" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 114 956 L 134 956 M 124 946 L 124 966" stroke="#207448" stroke-width="3"/>
+    <text x="160" y="965" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Prefill Workers</text>
+    <text x="105" y="1025" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">scale on prompt tokens /</tspan>
+      <tspan x="105" dy="36">arrival burst</tspan>
+    </text>
+
+    
+    <path d="M 525 1027 L 545 1027" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 1055 1027 L 1065 1027" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+    
+    <rect x="545" y="997" width="510" height="60" rx="30" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="1036" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">KV tensors over high-speed network</text>
+
+    
+    <rect x="1075" y="915" width="450" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="1105" y="937" width="38" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 1114 947 L 1134 947 M 1114 956 L 1128 956 M 1114 965 L 1134 965" stroke="#207448" stroke-width="3"/>
+    <text x="1160" y="965" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Decode Workers</text>
+    <text x="1105" y="1020" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1105" dy="0">scale on active concurrent</tspan>
+      <tspan x="1105" dy="34">sequences and output</tspan>
+      <tspan x="1105" dy="34">token length</tspan>
+    </text>
+
+    
+    <rect x="75" y="1175" width="1450" height="255" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+    
+    <path d="M 125 1245 L 145 1205 L 165 1245 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="145" cy="1237" r="2" fill="#db8129"/>
+    <path d="M 145 1219 L 145 1230" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+
+    <text x="185" y="1235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Scale-in Warning / Miss Storm</text>
+    <text x="115" y="1295" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="115" dy="0">when a replica is terminated, its warm local prefix cache is discarded,</tspan>
+      <tspan x="115" dy="42">causing downstream requests to suffer full prefill latency</tspan>
+    </text>
+  </g>
+</svg>

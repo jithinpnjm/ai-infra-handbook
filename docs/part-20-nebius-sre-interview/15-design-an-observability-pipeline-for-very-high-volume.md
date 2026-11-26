@@ -36,6 +36,10 @@ The three signals have different costs. A metric costs by series count, a log by
 
 ### 2. What to collect for an inference platform
 
+![A multi-layer diagram mapping an inference request through gateway, engine, and GPU infrastructure, showing customer SLI measurement at the edge and root-cause signals at the engine and hardware layers.](./img/p4-2015-telemetry-layers.svg)
+
+*Figure 20.0.0. Measure user-facing SLIs at the gateway edge and reserve engine, GPU, and node telemetry for explaining latency spikes.*
+
 Picture one slow customer request. It passed the gateway, a router, an engine, a GPU, a node and Kubernetes, and each of those layers can tell you something. One request meets the gateway, a router, an engine, a GPU, a node and Kubernetes. Each layer has a few signals that matter. Chapters 20.18 and 20.19 cover the engine signals and SLIs, so this table ties them to the pipeline.
 
 | Layer | Signals worth keeping | Source | Labels you can afford |

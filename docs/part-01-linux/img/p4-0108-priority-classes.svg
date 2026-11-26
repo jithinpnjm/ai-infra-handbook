@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Linux Task Priority Controls: Nice, Ionice, and CPU Affinity</title>
+  <desc>Three-panel architectural diagram illustrating CPU Niceness, Block I/O Priority (ionice), and CPU and NUMA Affinity controls in Linux.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">
+    Linux Task Priority Controls: Nice, Ionice, and CPU Affinity
+  </text>
+
+  
+  <rect x="50" y="110" width="470" height="1030" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(80, 140)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="14" y="14" width="28" height="28" rx="4" fill="#207448"/>
+    <line x1="14" y1="0" x2="14" y2="-8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="0" x2="28" y2="-8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="42" y1="0" x2="42" y2="-8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="14" y1="56" x2="14" y2="64" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="56" x2="28" y2="64" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="42" y1="56" x2="42" y2="64" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="0" y1="14" x2="-8" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="0" y1="28" x2="-8" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="0" y1="42" x2="-8" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="56" y1="14" x2="64" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="56" y1="28" x2="64" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="56" y1="42" x2="64" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="154" y="180" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">CPU Niceness</text>
+
+  
+  <rect x="74" y="230" width="422" height="130" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="96" y="274" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">-20</text>
+  <text x="96" y="312" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="96" dy="0">(highest priority,</tspan>
+    <tspan x="96" dy="30">least nice, root only)</tspan>
+  </text>
+
+  
+  <rect x="74" y="380" width="422" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="96" y="424" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">0</text>
+  <text x="96" y="458" font-family="sans-serif" font-size="24" fill="#303a36">(default)</text>
+
+  
+  <rect x="74" y="496" width="422" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="96" y="540" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">+19</text>
+  <text x="96" y="578" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="96" dy="0">(lowest priority,</tspan>
+    <tspan x="96" dy="30">most nice)</tspan>
+  </text>
+
+  
+  <rect x="74" y="650" width="422" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="96" y="694" font-family="sans-serif" font-size="24" fill="#303a36">kernel dynamic priority</text>
+  <text x="96" y="734" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">PR = 20 + NI</text>
+
+  
+  <rect x="74" y="784" width="422" height="326" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="96" y="828" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">sample commands:</text>
+  
+  <rect x="94" y="848" width="382" height="100" rx="6" fill="#f5f8f5" stroke="#c0d4c4" stroke-width="1.5"/>
+  <text x="110" y="890" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="110" dy="0">nice -n 15</tspan>
+    <tspan x="110" dy="34">./long_job.sh</tspan>
+  </text>
+
+  <rect x="94" y="970" width="382" height="116" rx="6" fill="#f5f8f5" stroke="#c0d4c4" stroke-width="1.5"/>
+  <text x="110" y="1012" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="110" dy="0">renice -n 10</tspan>
+    <tspan x="110" dy="34">-p 3322</tspan>
+  </text>
+
+  
+  <rect x="565" y="110" width="470" height="1030" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(595, 140)">
+    <ellipse cx="28" cy="14" rx="28" ry="12" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 0,14 L 0,42 A 28,12 0 0,0 56,42 L 56,14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 0,28 A 28,12 0 0,0 56,28" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="668" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Block I/O Priority (ionice)</text>
+
+  
+  <rect x="589" y="230" width="422" height="154" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="611" y="272" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">Class 1 Real-time</text>
+  <text x="611" y="312" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="611" dy="0">(-c 1, served first,</tspan>
+    <tspan x="611" dy="32">root only)</tspan>
+  </text>
+
+  
+  <rect x="589" y="408" width="422" height="154" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="611" y="450" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Class 2 Best-effort</text>
+  <text x="611" y="490" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="611" dy="0">(-c 2, levels 0 to 7,</tspan>
+    <tspan x="611" dy="32">default 4)</tspan>
+  </text>
+
+  
+  <rect x="589" y="586" width="422" height="174" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="611" y="628" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Class 3 Idle</text>
+  <text x="611" y="668" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="611" dy="0">(-c 3, served only</tspan>
+    <tspan x="611" dy="32">when disk has no</tspan>
+    <tspan x="611" dy="32">other traffic)</tspan>
+  </text>
+
+  
+  <rect x="589" y="784" width="422" height="326" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="611" y="828" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">sample command:</text>
+
+  <rect x="609" y="856" width="382" height="150" rx="6" fill="#f5f8f5" stroke="#c0d4c4" stroke-width="1.5"/>
+  <text x="625" y="904" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="625" dy="0">ionice -c 3</tspan>
+    <tspan x="625" dy="36">nice -n 19</tspan>
+    <tspan x="625" dy="36">rsync -a src/ dst/</tspan>
+  </text>
+
+  
+  <rect x="1080" y="110" width="470" height="1030" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1110, 140)">
+    <rect x="0" y="0" width="24" height="24" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="32" y="0" width="24" height="24" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="0" y="32" width="24" height="24" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="32" y="32" width="24" height="24" rx="4" fill="#207448"/>
+    <line x1="24" y1="12" x2="32" y2="12" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="24" x2="12" y2="32" stroke="#207448" stroke-width="3"/>
+    <line x1="44" y1="24" x2="44" y2="32" stroke="#207448" stroke-width="3"/>
+    <line x1="24" y1="44" x2="32" y2="44" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="1182" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">CPU and NUMA Affinity</text>
+
+  
+  <rect x="1104" y="230" width="422" height="340" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1126" y="276" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">taskset core pinning</text>
+  <text x="1126" y="320" font-family="sans-serif" font-size="24" fill="#303a36">(e.g. cores 0-7 via</text>
+
+  <rect x="1124" y="344" width="382" height="110" rx="6" fill="#f5f8f5" stroke="#c0d4c4" stroke-width="1.5"/>
+  <text x="1140" y="388" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0">taskset -c 0-7</tspan>
+    <tspan x="1140" dy="34">./prog</tspan>
+  </text>
+  <text x="1126" y="492" font-family="sans-serif" font-size="24" fill="#303a36">)</text>
+
+  
+  <rect x="1104" y="600" width="422" height="510" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1126" y="646" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="1126" dy="0">NUMA memory and CPU</tspan>
+    <tspan x="1126" dy="32">binding</tspan>
+  </text>
+  <text x="1126" y="728" font-family="sans-serif" font-size="24" fill="#303a36">via</text>
+
+  <rect x="1124" y="750" width="382" height="230" rx="6" fill="#f5f8f5" stroke="#c0d4c4" stroke-width="1.5"/>
+  <text x="1140" y="800" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0">numactl</tspan>
+    <tspan x="1140" dy="38">--cpunodebind=1</tspan>
+    <tspan x="1140" dy="38">--membind=1</tspan>
+    <tspan x="1140" dy="38">python train.py</tspan>
+  </text>
+
+</svg>

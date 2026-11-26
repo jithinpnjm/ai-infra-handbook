@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0111-syscall-mechanism",
+  "title": "System Call Execution Path, Errno Handling, and vDSO Bypass",
+  "anchor": "### The mechanism",
+  "spec": "Split diagram into two horizontal privilege domains separated by a thick dashed hardware boundary line: User Space (Ring 3) on top, and Kernel Space (Ring 0) below. On the left side, show the standard system call flow (e.g. openat): 1. User Application issues open('data.bin', O_RDONLY). 2. C Library Wrapper (libc) places syscall number into register rax (e.g. 257 for sys_openat) and argument pointers into rdi, rsi, rdx. 3. Wrapper executes the syscall instruction (or svc on ARM64). 4. Downward arrow crossing into Kernel Space (Ring 0): CPU switches to kernel mode at fixed entry point. 5. Kernel inspects system call table (sys_call_table[rax]) to dispatch sys_openat(). 6. Kernel performs filesystem traversal and permission checks; if path does not exist, kernel returns negative error number -ENOENT (-2) in rax. 7. Upward arrow crossing boundary back to User Space: CPU switches back to Ring 3. 8. C Wrapper inspects rax, detects negative value, copies positive 2 into thread-local variable errno (ENOENT), and returns -1 to Application. Application calls perror() or strerror(errno) to print 'No such file or directory'. On the right side, show the vDSO bypass path: User Application calls clock_gettime() or gettimeofday(). An arrow bypasses the Ring 0 boundary entirely, redirecting directly into the [vdso] memory page mapped by the kernel into process user space. Reading occurs entirely in Ring 3 with no context switch and no mode switch, annotated with callout: 'Invisible to strace and ptrace'.",
+  "alt": "A diagram contrasting the full kernel-switch system call path with register handling and errno translation against the user-space vDSO bypass.",
+  "cap": "A system call transitions from user space to kernel space via CPU registers and the syscall instruction, with libc mapping negative returns to errno; vDSO calls execute entirely in user space.",
+  "part": "part-01-linux",
+  "ch": "11"
+ },
+ {
+  "name": "p4-0111-futex-and-false-sharing",
+  "title": "Hybrid Futex Lock Escalation and Cache Line False Sharing",
+  "anchor": "### Common techniques applications use",
+  "spec": "Two side-by-side technical diagrams. Left panel: 'Hybrid Futex Escalation (pthread_mutex)'. Show a vertical 3-tier flowchart: Tier 1 at top: 'Atomic Compare-and-Swap (CAS) in User Space'. Uncontended lock acquired immediately via single CPU atomic instruction (~10-20 ns, zero syscall overhead). If locked, arrow points down to Tier 2: 'Adaptive Spin Loop'. Waiter thread spins briefly in user space checking lock variable if the lock owner is active on another CPU core. If released during spin, lock acquired. If still locked, arrow points down to Tier 3: 'futex(addr, FUTEX_WAIT_PRIVATE, val) Syscall'. Waiter traps into kernel, context-switches off CPU, and sleeps on kernel futex wait queue. Once owner releases, it calls futex(addr, FUTEX_WAKE, 1) to wake waiter. Annotation notes: 'futex syscall only appears in strace during heavy lock contention'. Right panel: 'False Sharing on 64-Byte Cache Line'. Draw two CPU Cores (Core 0 and Core 1). Between them, draw a single 64-byte L1 cache line containing two independent variables: var_a (modified by Thread 0 on Core 0) and var_b (modified by Thread 1 on Core 1). Show alternating red flash arrows: Core 0 writes var_a, forcing CPU interconnect cache invalidation (MESI protocol) of Core 1's cache line; Core 1 writes var_b, invalidating Core 0's cache line. Annotated penalty: 'Severe interconnect bus traffic and latency degradation despite independent code'. Below it, show the fix: alignas(64) padding pushing var_a and var_b into separate 64-byte cache lines.",
+  "alt": "Diagram showing the 3-tier hybrid futex escalation from user-space atomic CAS to sleeping syscall, alongside false sharing on a 64-byte CPU cache line.",
+  "cap": "Hybrid futex locks escalate from user-space atomic operations to kernel sleeps only under contention, while false sharing degrades multi-threaded performance across shared 64-byte cache lines.",
+  "part": "part-01-linux",
+  "ch": "11"
+ },
+ {
+  "name": "p4-0111-frame-pointer-unwind",
+  "title": "Call Stack Unwinding via Frame Pointers versus Truncated Stacks",
+  "anchor": "### Gotchas: missing symbols and missing stacks",
+  "spec": "Two comparative vertical columns showing stack memory layout during CPU profiling with perf record -g. Left column: 'Intact Frame Pointer Chain (-fno-omit-frame-pointer)'. Show three stacked stack frames in memory: Frame 0 (main), Frame 1 (work), Frame 2 (sqrt). Inside each frame, show local variables, Saved RIP (return instruction pointer), and Saved RBP (base/frame pointer). Green arrows link the RBP chain: CPU register RBP points to Frame 2's Saved RBP, which points directly up to Frame 1's Saved RBP, which points up to Frame 0's Saved RBP. A profiler side-bracket shows perf reading each Saved RIP at fixed offsets from RBP, walking the full chain to generate a complete 3-level flame graph stack (main -> work -> sqrt). Right column: 'Broken Stack (-fomit-frame-pointer)'. Show the same three frames, but with RBP omitted from stack frames and repurposed by compiler as a general-purpose register holding an arbitrary runtime calculation value (e.g. counter integer 42). Profiler reads RBP, treats 42 as a memory address, triggers invalid dereference or immediate unwinder halt at Frame 2. Result callout below: flame graph displays only a truncated 1-level stack or [unknown] hex address, hiding the caller hierarchy. Callout boxes list remedies: -fno-omit-frame-pointer, JVM -XX:+PreserveFramePointer, or perf --call-graph dwarf.",
+  "alt": "Diagram comparing intact call stack unwinding via RBP frame pointers against a truncated call stack caused by -fomit-frame-pointer.",
+  "cap": "Frame pointers maintain a linked chain of Saved RBP addresses on the stack that profilers walk; omitting frame pointers repurposes RBP, truncating profiles into single frames or unknown addresses.",
+  "part": "part-01-linux",
+  "ch": "11"
+ }
+]

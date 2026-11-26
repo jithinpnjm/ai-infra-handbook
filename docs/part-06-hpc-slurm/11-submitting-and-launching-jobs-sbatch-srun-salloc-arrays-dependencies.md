@@ -67,6 +67,10 @@ You can even launch multiple `srun` steps in parallel inside a single allocation
 
 ### The 6-stage Slurm job life cycle (*Supercomputers for Linux Sysadmins* Chapter 15)
 
+![A 6-stage flow diagram tracing a Slurm job from submission through root prolog, cgroup step creation, running with health checks, preemption modes, and termination cleanup.](./img/p4-0611-job-lifecycle.svg)
+
+*Figure 6.0.0. The 6-stage Slurm job life cycle moves from controller validation through root node preparation, cgroup containment, step execution, and cleanup.*
+
 Slurm carries out a sequence of steps behind the scenes for every job. You never type these steps, but they explain a lot of what you see. They explain why a job is rejected at submit time, why a broken node drains right after launch, and how stray processes get reaped at the end. The sequence below comes from *Supercomputers for Linux SysAdmins*, Chapter 15, *Job Life Cycle*.
 
 Stage 1 is submission, through `sbatch`, `srun` or `salloc`. The controller, `slurmctld`, checks whether your association and QoS allow the job to queue. A QoS is a quality-of-service policy that sets limits and priorities for a class of jobs or users. The controller then invokes registered SPANK plugins. SPANK plugins are small add-ons that can add custom flags to `sbatch` and `srun`, such as NVIDIA `pyxis` adding `--container-image`. It also invokes `job_submit` plugins, which validate or rewrite job requests. If a request is going to be wrong, this is the stage where it should be caught, because nothing has been spent yet.
@@ -277,6 +281,10 @@ Interactive policy matters, because an idle shell still holds its resources. Thi
 Give every interactive allocation a short time limit, and release it when you finish. The `exit` line in the example above is the release. Forgetting it is how an allocation quietly runs until its limit.
 
 ## 5. Job arrays
+
+![A diagram of a Slurm job array showing how the master job ID and task IDs relate, how the percent throttle caps concurrent running tasks, and how configs and logs are mapped.](./img/p4-0611-job-array-architecture.svg)
+
+*Figure 6.0.0. A job array manages many identical requests under one master job ID, using a throttle window to protect storage and sed indexing to dispatch configurations.*
 
 You have 100 learning-rate and batch-size settings to try before the morning standup. Submitting 100 near-identical scripts by hand is slow, and it is easy to lose track of which one wrote which result. A hyperparameter sweep is the usual reason to reach for a job array. Instead of submitting many near-identical jobs by hand, you submit one array, and each task picks its own configuration from its index.
 

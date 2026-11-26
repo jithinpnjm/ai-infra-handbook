@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0607-install-methods",
+  "title": "Four Slurm installation methods and silent build-time dependency drops",
+  "anchor": "### Installation methods",
+  "spec": "Top half: A 4-column comparison matrix comparing the four installation approaches. Column 1: 'Distro Packages (apt / dnf EPEL)' with roles (Controller: slurm-slurmctld, slurm-plugins; Compute: slurm-slurmd; DB: slurm-slurmdbd, slurm-sql, mariadb; Login: slurm-sackd), pros (fast, zero compile), cons (outdated version, inflexible build flags). Column 2: 'Source Builds (rpmbuild / debuild / tarball)' with configure flags (--prefix=/opt/slurm), custom RPM/DEB packaging, pros (exact version, reproducible image), cons (requires build toolchain). Column 3: 'Cluster Managers (BCM, DGX OS)' with turnkey image, automated config, pros (supported stack), cons (black-box defaults). Column 4: 'Containerized (Slinky, Soperator)' with K8s Pods/DaemonSets, GitOps deployment, pros (cloud-native lifecycle), cons (layering complexity). Bottom half: Callout box on the 'Silent Compile-Time Drop Pitfall'. Flow diagram showing ./configure running on build host: checks for nvml.h -> IF MISSING: builds without AutoDetect=nvml (GPU autodetection broken at runtime without error); checks for mysql_config -> IF MISSING: omits slurmdbd MySQL support; checks for dbus -> IF MISSING: omits cgroup v2 plugin support. Emphasizes installing development headers BEFORE building.",
+  "alt": "Comparison of four Slurm installation methods alongside the silent compile-time feature drop hazard when development headers are missing.",
+  "cap": "Choose source RPM or DEB packages for production GPU clusters, and install nvml, mysql, and dbus headers before compilation to avoid silent feature drops.",
+  "part": "part-06-hpc-slurm",
+  "ch": "07"
+ },
+ {
+  "name": "p4-0607-rpc-overload-cascade",
+  "title": "The controller RPC overload cascade, lock contention, and diagnosis with sdiag",
+  "anchor": "### 7. \"Socket timed out on send/recv operation\" and a sluggish controller: RPC overload",
+  "spec": "Left panel: The Polling Storm (Root Causes). Box showing three abusive request sources: 1) User terminal polling scripts (while true; do squeue; sleep 1; done), 2) External monitoring exporters querying squeue every 5s across hundreds of clients, 3) High-churn short jobs flooding job state changes. All send RPCs (port 6817) into slurmctld. Center panel: The slurmctld Contention Cascade. Incoming RPC queue exceeds thread pool limit -> Threads acquire global in-memory job read lock (job_read_lock) -> Read locks starve write locks (scheduling, node state updates, slurmd heartbeats) -> Backfill scheduler cycle time spikes from 0.05s to 15s+ -> slurmd ping heartbeats queue behind read requests -> Controller marks healthy nodes DOWN* (flapping). Right panel: Symptoms and Diagnosis with sdiag. Top error bubble: Client squeue hangs with 'Socket timed out on send/recv operation'. Diagnosis terminal showing sdiag output: 'Remote Procedure Call statistics by message type' highlighting REQUEST_JOB_INFO (92% of calls), 'RPCs by user' identifying abusive user UID, Agent queue size saturated. Bottom panel: Operational Remedies: 1) Throttle and cache polling; 2) Replace squeue polling with sacct or caching exporters; 3) Configure RPC rate limiting; 4) Raise MaxJobCount only after eliminating pollers.",
+  "alt": "Diagram of an RPC overload cascade in slurmctld showing how tight polling loops monopolize global read locks, delay scheduling, and appear in sdiag output.",
+  "cap": "A polling storm holds internal controller locks and delays scheduling, producing connection timeouts that can be isolated using sdiag RPC statistics.",
+  "part": "part-06-hpc-slurm",
+  "ch": "07"
+ }
+]

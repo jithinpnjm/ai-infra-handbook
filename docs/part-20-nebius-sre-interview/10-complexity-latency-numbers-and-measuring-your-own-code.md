@@ -46,6 +46,10 @@ Name worst case against average case too. Fluent Python, chapter 3, explains tha
 
 ### 2. The hidden costs of Python operations, measured
 
+![Comparison of list.insert shifting every contiguous element to the right versus deque.appendleft placing an element into a free head slot without shifting.](./img/p4-2010-insert-vs-deque.svg)
+
+*Figure 20.0.0. Inserting at the head of a list requires shifting every reference in contiguous memory taking 30 microseconds at 100,000 items, while deque.appendleft takes 0.16 microseconds in constant time.*
+
 You review code that looks like O(n) and runs like O(n squared). Python hides the cost behind a short operator, so a one-line change can change the whole complexity. A reviewer who has measured these operators spots the trap quickly, and a reviewer who has not may approve it.
 
 The table below comes from `c10_complexity_bench.py`, which ran on an Apple M3 laptop with 24 GB of memory, macOS, and CPython 3.12.7. CPython is the standard Python interpreter, the program that reads and runs your code. Each time is the best of several repeats, a method explained later in this chapter. Your numbers will differ, and the ratios matter more than the digits.

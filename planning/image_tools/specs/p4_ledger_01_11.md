@@ -1,0 +1,34 @@
+# docs/part-01-linux/11-how-a-program-runs-system-calls-libraries-elf-strace-and-ldd.md
+- ## Why this matters for AI infrastructure | 250 | NO FIGURE NEEDED introductory framing and motivation
+- ## Prerequisites and outcomes | 200 | NO FIGURE NEEDED outcome bullets and prerequisite checklist
+- ## 1. From keystroke to `main()` | 650 | COVERED(ch11-d1-luna)
+- ## 2. The ELF file format | 300 | COVERED(ch11-d2-luna)
+- ### Reading an ELF file | 250 | NO FIGURE NEEDED bash commands and parameter reference
+- ### Symbols, stripping and debug info | 180 | NO FIGURE NEEDED textual definitions of symbol tables and DWARF
+- ## 3. The process address space | 550 | COVERED(ch11-d3-luna)
+- ## 4. System calls | 100 | NO FIGURE NEEDED brief transitional introduction
+- ### The mechanism | 450 | NEEDS FIGURE step-by-step syscall execution path from libc wrapper across ring 3/0 boundary to kernel table, errno translation, and vDSO bypass
+- ### Common calls and what they tell you | 350 | NO FIGURE NEEDED reference table of syscall names and meanings
+- ## 5. Shared libraries in depth | 180 | NO FIGURE NEEDED section introduction
+- ### Names: soname, real name, linker name | 180 | COVERED(l11-lib-names)
+- ### Symbol versioning and glibc | 240 | COVERED(l11-glibc-direction)
+- ### glibc versus musl, and containers | 120 | NO FIGURE NEEDED short comparative explanation of missing interpreter path
+- ### Preloading and debugging the loader | 300 | COVERED(p3-0111-lib-search)
+- ### Python and extension modules | 280 | NO FIGURE NEEDED explanation of dlopen and wheel packaging
+- ## 6. Watching a program: `strace` and `ltrace` in practice | 450 | COVERED(l11-strace-reading)
+- ### Other process-inspection tools | 100 | NO FIGURE NEEDED summary list of diagnostic utilities
+- ## 7. Application performance: a first method | 60 | NO FIGURE NEEDED brief section intro
+- ### Know the application first | 250 | NO FIGURE NEEDED methodology principles and metrics checklist
+- ### Common techniques applications use | 550 | NEEDS FIGURE hybrid futex 3-tier lock escalation from user CAS to spin to futex syscall, contrasted with false sharing on 64-byte cache line
+- ### Languages and runtimes | 300 | NO FIGURE NEEDED textual overview of compiled, interpreted, VM, and GC runtimes
+- ### The analysis methods | 450 | COVERED(p3-0111-flamegraph-read)
+- ### Tools at a glance | 120 | NO FIGURE NEEDED lookup table of profilers and tracers
+- ### Gotchas: missing symbols and missing stacks | 180 | NEEDS FIGURE frame pointer call stack unwinding via RBP chain versus broken/truncated stack when -fomit-frame-pointer clobbers RBP
+- ## 8. AI-infrastructure patterns | 750 | COVERED(p3-0111-cuda-who-brings)
+- ## How it fails | 400 | COVERED(p3-0111-error-to-stage)
+- ## Hands-on lab: ELF, shared libraries, strace, and VM drills | 900 | NO FIGURE NEEDED step-by-step hands-on terminal exercises
+- ## Exercises | 300 | NO FIGURE NEEDED end-of-chapter practice questions
+- ## Checkpoint questions (20) | 1400 | NO FIGURE NEEDED reference questions and answers
+- ## Sources and review notes | 400 | NO FIGURE NEEDED source citations and review logs
+
+Specs kept 3, dropped 0: []

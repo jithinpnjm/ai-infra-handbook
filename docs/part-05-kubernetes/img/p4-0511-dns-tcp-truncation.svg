@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1420" viewBox="0 0 1600 1420">
+  <title>DNS UDP Truncation (TC Bit) and TCP/53 Fallback Under Default-Deny NetworkPolicy</title>
+  <desc>Visual sequence and decision flow illustrating DNS UDP truncation when large responses exceed MTU and subsequent TCP/53 fallback under Kubernetes NetworkPolicies.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-muted" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#506055"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1420" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="38" font-weight="bold" fill="#303a36">DNS UDP Truncation (TC Bit) and TCP/53 Fallback</text>
+  <text x="800" y="96" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Under Default-Deny NetworkPolicy</text>
+  <text x="800" y="132" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#506055">Sequence and decision flow showing how large DNS responses fall back to TCP/53 and fail when egress NetworkPolicies only permit UDP.</text>
+
+  
+  <rect x="50" y="160" width="1500" height="330" rx="14" fill="#f9fbf9" stroke="#207448" stroke-width="2"/>
+  <path d="M 50 174 Q 50 160 64 160 L 1536 160 Q 1550 160 1550 174 L 1550 210 L 50 210 Z" fill="#207448"/>
+  
+  <g transform="translate(72, 168)" stroke="#ffffff" stroke-width="2.5" fill="none">
+    <rect x="0" y="0" width="30" height="24" rx="4"/>
+    <line x1="0" y1="8" x2="30" y2="8"/>
+    <circle cx="6" cy="4" r="1.5" fill="#ffffff"/>
+    <circle cx="12" cy="4" r="1.5" fill="#ffffff"/>
+  </g>
+  <text x="120" y="196" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Pod (Client Resolver)</text>
+
+  
+  <rect x="50" y="520" width="1500" height="420" rx="14" fill="#edf5ef" stroke="#207448" stroke-width="2"/>
+  <path d="M 50 534 Q 50 520 64 520 L 1536 520 Q 1550 520 1550 534 L 1550 570 L 50 570 Z" fill="#207448"/>
+  
+  <g transform="translate(72, 528)" stroke="#ffffff" stroke-width="2.5" fill="none">
+    <path d="M 15 2 L 28 7 V 16 C 28 23 15 29 15 29 C 15 29 2 23 2 16 V 7 Z"/>
+  </g>
+  <text x="120" y="556" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">NetworkPolicy Egress Filter</text>
+
+  
+  <rect x="50" y="970" width="1500" height="400" rx="14" fill="#f9fbf9" stroke="#207448" stroke-width="2"/>
+  <path d="M 50 984 Q 50 970 64 970 L 1536 970 Q 1550 970 1550 984 L 1550 1020 L 50 1020 Z" fill="#207448"/>
+  
+  <g transform="translate(72, 978)" stroke="#ffffff" stroke-width="2.5" fill="none">
+    <rect x="0" y="0" width="28" height="11" rx="2"/>
+    <rect x="0" y="15" width="28" height="11" rx="2"/>
+    <circle cx="22" cy="5.5" r="1.5" fill="#ffffff"/>
+    <circle cx="22" cy="20.5" r="1.5" fill="#ffffff"/>
+  </g>
+  <text x="120" y="1006" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">CoreDNS / NodeLocal Cache</text>
+
+  
+  <rect x="75" y="230" width="340" height="235" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="110" cy="265" r="18" fill="#207448"/>
+  <text x="110" y="273" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="140" y="272" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Step 1 (Small Query)</text>
+  <text x="95" y="315" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">Pod sends UDP query</tspan>
+    <tspan x="95" dy="28">(&lt;512 bytes) for</tspan>
+    <tspan x="95" dy="28">'alpaca-prod'; egress</tspan>
+    <tspan x="95" dy="28">filter allows UDP/53;</tspan>
+    <tspan x="95" dy="28">CoreDNS returns single</tspan>
+    <tspan x="95" dy="28">IP answer; lookup succeeds.</tspan>
+  </text>
+
+  
+  <path d="M 200 465 L 200 1140" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-green)"/>
+  <path d="M 280 1140 L 280 475" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="445" y="230" width="510" height="235" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="480" cy="265" r="18" fill="#207448"/>
+  <text x="480" y="273" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="510" y="272" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Step 2 (Large Query)</text>
+  <text x="470" y="320" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="470" dy="0">Pod queries headless Service</tspan>
+    <tspan x="470" dy="32" font-family="monospace" font-size="24" fill="#207448">'trainer.ml.svc.cluster.local'</tspan>
+    <tspan x="470" dy="32">backing 30+ pods. UDP</tspan>
+    <tspan x="470" dy="30">request reaches CoreDNS.</tspan>
+  </text>
+
+  
+  <path d="M 520 465 L 520 1040" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <rect x="445" y="1050" width="510" height="280" rx="10" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+  
+  <circle cx="480" cy="1088" r="18" fill="#db8129"/>
+  <text x="480" y="1096" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="510" y="1095" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">Step 3 (Truncation)</text>
+  <text x="470" y="1144" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="470" dy="0">Response size exceeds 512 bytes /</tspan>
+    <tspan x="470" dy="32">EDNS0 MTU. CoreDNS sets TC=1</tspan>
+    <tspan x="470" dy="32">(Truncation bit) in the DNS header</tspan>
+    <tspan x="470" dy="32">and returns an empty answer section.</tspan>
+  </text>
+
+  
+  <path d="M 590 1050 L 590 345 L 970 345" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="985" y="230" width="530" height="235" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1020" cy="265" r="18" fill="#207448"/>
+  <text x="1020" y="273" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1050" y="272" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Step 4 (Resolver Fallback)</text>
+  <text x="1010" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1010" dy="0">Pod resolver detects TC=1</tspan>
+    <tspan x="1010" dy="32">and immediately initiates a</tspan>
+    <tspan x="1010" dy="32">TCP handshake (SYN) to port 53.</tspan>
+  </text>
+
+  
+  <path d="M 1250 465 L 1250 580" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1030" y="585" width="440" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1250" y="614" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Step 5 splits into two outcomes.</text>
+
+  
+  <path d="M 1120 627 L 870 655" fill="none" stroke="#506055" stroke-width="3" marker-end="url(#arrow-muted)"/>
+  <path d="M 1370 627 L 1370 655" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="645" y="660" width="440" height="260" rx="10" fill="#fdfefe" stroke="#506055" stroke-width="2"/>
+  
+  <circle cx="680" cy="695" r="14" fill="#506055"/>
+  <line x1="672" y1="687" x2="688" y2="703" stroke="#ffffff" stroke-width="3"/>
+  <line x1="688" y1="687" x2="672" y2="703" stroke="#ffffff" stroke-width="3"/>
+  <text x="704" y="692" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="704" dy="0">Path A (Misconfigured Policy</tspan>
+    <tspan x="704" dy="28">allowing only UDP/53)</tspan>
+  </text>
+  <text x="670" y="760" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="670" dy="0">NetworkPolicy drops</tspan>
+    <tspan x="670" dy="28">TCP SYN; client resolver</tspan>
+    <tspan x="670" dy="28">hangs silently until</tspan>
+    <tspan x="670" dy="28">default 5s timeout,</tspan>
+    <tspan x="670" dy="28">returning SERVFAIL</tspan>
+    <tspan x="670" dy="28">or EAI_AGAIN.</tspan>
+  </text>
+
+  
+  <rect x="1105" y="660" width="440" height="260" rx="10" fill="#fdfefe" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1140" cy="695" r="14" fill="#207448"/>
+  <polyline points="1133,695 1138,701 1147,688" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <text x="1164" y="692" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1164" dy="0">Path B (Correct Policy</tspan>
+    <tspan x="1164" dy="28">allowing UDP/53 and TCP/53)</tspan>
+  </text>
+  <text x="1130" y="765" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1130" dy="0">TCP SYN passes;</tspan>
+    <tspan x="1130" dy="30">3-way handshake completes;</tspan>
+    <tspan x="1130" dy="30">full multi-IP answer is</tspan>
+    <tspan x="1130" dy="30">delivered over TCP stream</tspan>
+    <tspan x="1130" dy="30">successfully.</tspan>
+  </text>
+
+  
+  <path d="M 1260 920 L 1260 1140" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <path d="M 1440 1140 L 1440 475" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+</svg>

@@ -315,6 +315,10 @@ Prefer cursor or token pagination over offset pagination. Offset pagination asks
 
 ### 3.5 Rate limits, concurrency and file operations
 
+![A token bucket rate limiter handing out tokens alongside safe atomic file replacement using temporary files and os.replace compared to an unsafe TOCTOU race condition.](./img/p4-0308-ratelimit-atomicfile.svg)
+
+*Figure 3.0.0. Outbound rate limiting uses a token bucket to avoid 429 errors, while safe file state updates require writing to a sibling temporary file before an atomic os.replace.*
+
 Respect the `X-RateLimit-*` and `Retry-After` headers. For outbound limits, use a token bucket from a library such as aiolimiter or ratelimit. A token bucket hands out sending permission at a steady rate, so your tool cannot exceed its allowance. File operations on shared systems raise a different problem, a race between checking a file and using it. Write to a temporary file in the same directory, then call `os.replace`, which is atomic on POSIX. Use `fcntl.flock` or a lock file for mutual exclusion. Open with `O_EXCL` when a file must be created only if it does not exist. Prefer `try: open(...)` over `if exists: open(...)`, because the file can disappear between the two checks.
 
 Before the next outage, make sure your client library carries these defences once, and let every tool that uses it inherit them.

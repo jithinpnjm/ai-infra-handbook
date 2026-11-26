@@ -1,0 +1,62 @@
+[
+ {
+  "name": "p4-0509-kubeletconfig-blocks",
+  "title": "Anatomy of a Production GPU KubeletConfiguration",
+  "anchor": "## 2. A production KubeletConfiguration for GPU nodes",
+  "spec": "Diagram showing the functional blocks of the KubeletConfiguration YAML file laid out side by side or in stacked logical groups. Group 1: Authentication & Authorization (anonymous.enabled: false, webhook.enabled: true, authorization.mode: Webhook, serverTLSBootstrap: true). Group 2: Host & Runtime Hardening (cgroupDriver: systemd, cgroupsPerQOS: true, protectKernelDefaults: true with checked sysctls vm.overcommit_memory=1 and panic settings, seccompDefault: true). Group 3: Scale & Pull Control (maxPods: 110, podPidsLimit: 8192, serializeImagePulls: false, maxParallelImagePulls: 3, registryPullQPS: 20). Group 4: AI/GPU Resource & NUMA Management (cpuManagerPolicy: static, full-pcpus-only: true, reservedSystemCPUs: 0-3, memoryManagerPolicy: Static, topologyManagerPolicy: single-numa-node, topologyManagerScope: pod). Group 5: Reservations & Node Allocatable (kubeReserved: 4Gi/5Gi, systemReserved: 8Gi/5Gi, enforceNodeAllocatable: [pods]). Group 6: Node-Pressure Eviction Thresholds (evictionHard memory.available: 2Gi, evictionSoft memory.available: 4Gi over 2m, evictionMinimumReclaim: 1Gi). Annotations indicate why each block matters for AI inference/training nodes.",
+  "alt": "Functional decomposition of the production GPU KubeletConfiguration into six key operational blocks from security and hardening to NUMA topology and eviction.",
+  "cap": "A production KubeletConfiguration organizes node parameters into six key operational domains for GPU stability and performance.",
+  "part": "part-05-kubernetes",
+  "ch": "09"
+ },
+ {
+  "name": "p4-0509-node-allocatable-math",
+  "title": "Calculating Node Allocatable from Raw Capacity",
+  "anchor": "### Node capacity and allocatable",
+  "spec": "A horizontal or stacked bar chart illustrating the allocation math. Left: Total Node Capacity bar (e.g., CPU, Memory, Ephemeral Storage). Minus kube-reserved bracket (for kubelet, containerd, node problem detector; e.g. 4Gi RAM, cores 0-3). Minus system-reserved bracket (for sshd, systemd, udev, OS daemons; e.g. 8Gi RAM). Minus eviction-threshold bracket (hard eviction threshold reserve e.g. 2Gi RAM). Equals Allocatable bar on the right. Below Allocatable, show how the Kubernetes Scheduler views the node: Pod Requests must fit entirely inside Allocatable. Show 'Allocated Resources' as the sum of current pod requests/limits within Allocatable, highlighting that raw Capacity is never what the scheduler sees. Show enforceNodeAllocatable boundary around the pods cgroup.",
+  "alt": "Breakdown of raw node capacity minus kube-reserved, system-reserved, and eviction thresholds to produce node allocatable used by the scheduler.",
+  "cap": "Node Allocatable is derived by subtracting kube-reserved, system-reserved, and eviction thresholds from raw node capacity.",
+  "part": "part-05-kubernetes",
+  "ch": "09"
+ },
+ {
+  "name": "p4-0509-qos-comparison-matrix",
+  "title": "QoS Classes: Cgroups, Requests, OOM Scores, and Eviction Priority",
+  "anchor": "### QoS recap (details in 5.7)",
+  "spec": "A comparison table/matrix layout across the three QoS classes: Guaranteed, Burstable, and BestEffort. Show columns: 1. QoS Class; 2. Request/Limit Criteria (Guaranteed: requests == limits for all containers; Burstable: at least one request or limit set, requests < limits; BestEffort: no requests or limits set); 3. Cgroup Location (Guaranteed: /sys/fs/cgroup/kubepods.slice/kubepods-pod<uid>.slice; Burstable: .../kubepods-burstable.slice/...; BestEffort: .../kubepods-besteffort.slice/...); 4. Linux Kernel oom_score_adj (Guaranteed: -997; Burstable: calculated proportional between -998 and 1000; BestEffort: 1000; kubelet/runtime processes: -999); 5. Eviction Order under Node Memory Pressure (Guaranteed: Tier 2, evicted last only if system daemons exceed reserved; Burstable: Tier 1 if usage > request ranked by priority then excess bytes, Tier 2 if usage <= request; BestEffort: Tier 1, evicted first because request is 0).",
+  "alt": "Comparison of Guaranteed, Burstable, and BestEffort QoS classes across cgroup paths, resource requests, oom scores, and eviction ranks.",
+  "cap": "The three QoS classes determine cgroup placement, kernel OOM scores, and the kubelet's eviction ranking under pressure.",
+  "part": "part-05-kubernetes",
+  "ch": "09"
+ },
+ {
+  "name": "p4-0509-probe-decision-flow",
+  "title": "Probe Architecture and Decision Flowchart",
+  "anchor": "### Designing liveness and readiness endpoints",
+  "spec": "Flowchart tracing how kubelet executes probes on a pod container over its lifecycle. Step 1: Container starts. Decision: Is startupProbe defined? If Yes, poll startupProbe (/healthz, period 10s, failureThreshold 30 = up to 300s window). While failing and attempts < threshold: keep waiting, do NOT run liveness or readiness probes. If startup probe reaches failureThreshold: trigger container kill and restart per restartPolicy. If startup probe succeeds (or none defined): proceed to parallel monitoring. Branch A: readinessProbe (/ready, period 5s, timeout 3s). Check: is model loaded and internal worker ready to accept traffic? If No: mark Pod NotReady, remove Pod IP from Service endpoints (no container restart). If Yes: Pod Ready, add to Service endpoints. Note: Never check hard external dependencies (e.g. database) that would cascade failure. Branch B: livenessProbe (/healthz, period 10s, timeout 3s). Check: is container process internally deadlocked/hung? If fails consecutive failureThreshold times: kill container and restart per restartPolicy.",
+  "alt": "Decision flowchart detailing startup probe gating, readiness probe endpoint detachment, and liveness probe restart loops.",
+  "cap": "Startup probes gate execution until initialization completes, while readiness and liveness probes independently govern service traffic and process restarts.",
+  "part": "part-05-kubernetes",
+  "ch": "09"
+ },
+ {
+  "name": "p4-0509-kubelet-observability-pipeline",
+  "title": "Kubelet Observability and Metric Pipeline",
+  "anchor": "## 10. Observability",
+  "spec": "Architecture diagram illustrating the kubelet observability components and exported metric streams. Center: Kubelet core daemon on port :10250. Inputs on the node: cAdvisor subsystem reading cgroup v2 stats (/sys/fs/cgroup), CRI runtime events from containerd, prober execution engine running http/tcp/exec checks, and PLEG (Pod Lifecycle Event Generator) watching relist events. Exporters/endpoints shown radiating from kubelet: 1. :10250/metrics (kubelet_running_pods, kubelet_running_containers, kubelet_pleg_relist_duration_seconds, kubelet_pleg_relist_interval_seconds, kubelet_evictions, kubelet_pod_start_duration_seconds, kubelet_certificate_manager_client_ttl_seconds). 2. :10250/metrics/cadvisor (container_cpu_cfs_throttled_periods_total, container_memory_working_set_bytes, container_oom_events_total). 3. :10250/metrics/probes (prober_probe_total). Callouts highlight critical alerting conditions: PLEG relist > 3s, client cert TTL < 7d, CFS throttling ratio > 20% on latency-critical workloads, and memory.available approaching evictionHard.",
+  "alt": "Architecture diagram of the kubelet metrics engine gathering data from cAdvisor, CRI, probes, and PLEG and exposing them on port 10250.",
+  "cap": "The kubelet gathers container, cgroup, probe, and lifecycle telemetry to expose distinct metric endpoints on port 10250.",
+  "part": "part-05-kubernetes",
+  "ch": "09"
+ },
+ {
+  "name": "p4-0509-troubleshooting-flowchart",
+  "title": "Kubelet and Node Failure Triage Tree",
+  "anchor": "## 11. Troubleshooting guide",
+  "spec": "Triage decision tree for node-level failures. Root: Node or Pod anomaly detected. Branch 1: Node status = NotReady. Check systemctl status kubelet. If stopped: check journalctl for swap on, cgroup driver mismatch, protectKernelDefaults failure, or stale cpu_manager_state. If running: check kube-node-lease expiry, network partition to apiserver, or container runtime health (crictl info). Branch 2: Pods failing / restarting. Sub-branch A: Pod Last State = Terminated, Reason: OOMKilled, Exit Code 137. Cause: Container memory limit reached cgroup ceiling (memory.max). Check memory.events and working set. Sub-branch B: Pod Status = Failed, Reason: Evicted. Message: 'The node was low on resource: memory/nodefs'. Cause: Node-pressure eviction manager triggered before OOM killer. Check memory.available vs evictionHard. Sub-branch C: Pod Unhealthy / Probe failures. Cause: CFS throttling delaying HTTP probe > timeoutSeconds, or NetworkPolicy blocking node-to-pod probe traffic. Sub-branch D: TopologyAffinityError. Cause: TopologyManager single-numa-node cannot fit requested GPUs/CPUs on one NUMA node.",
+  "alt": "Triage flowchart mapping node NotReady, OOMKilled, Evicted, probe failure, and TopologyAffinityError symptoms to root causes and inspection commands.",
+  "cap": "A diagnostic decision tree resolves common node failures by separating kubelet crashes, cgroup OOM kills, node-pressure evictions, and NUMA admission errors.",
+  "part": "part-05-kubernetes",
+  "ch": "09"
+ }
+]

@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0119-virtual-flavors",
+  "title": "Spectrum of Virtualization: Language Environments vs HPC Containers vs Application Containers vs System Containers",
+  "anchor": "## 12. Other flavours of \"virtual\"",
+  "spec": "Four side-by-side vertical architectural columns comparing the isolation boundaries and mechanisms described in the text: 1. Column 1: Language-level Environment (Python venv, conda). Box shows host shell running activate script. Changes PATH, sys.path, and VIRTUAL_ENV. Label: Zero kernel isolation; shares host filesystem, PIDs, network, and real UID. Best for resolving conflicting Python packages on shared developer workstations. 2. Column 2: HPC Container (Enroot + Pyxis). Box shows Slurm srun --container-image unpacking an OCI image into a squashfs rootfs directory. Uses unprivileged user and mount namespaces without a daemon. Runs as the user's real host UID/GID so shared NFS/Lustre quotas and file permissions remain valid. Direct access to host GPU and InfiniBand devices. 3. Column 3: Application Container (Docker, Podman). Box shows single entrypoint application process inside full set of namespaces (mnt, pid, net, ipc, uts, cgroup). Isolated virtual network via veth pair or pod network; cgroups limit CPU and memory. Daemon (dockerd) or daemonless (Podman). Best for microservices and cloud-native AI inference pods. 4. Column 4: System Container (LXC, LXD, Incus). Box shows full init system (systemd) as PID 1 running multiple internal services, background daemons, and syslog inside a single container boundary. Feels like a lightweight VM with deep namespace isolation, but shares the host kernel. Bottom summary banner highlights key decision: choose Python venv for interpreter isolation, Enroot for multi-node Slurm storage compatibility, Docker/Podman for isolated service delivery, and LXC for multi-service environments.",
+  "alt": "Comparison of language environments, HPC containers, application containers and system containers showing their isolation mechanisms and runtime models.",
+  "cap": "From shell path overrides to full system containers, each flavor of virtualization trades kernel isolation depth against setup complexity and shared-storage compatibility.",
+  "part": "part-01-linux",
+  "ch": "19"
+ }
+]

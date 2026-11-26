@@ -1,0 +1,46 @@
+# docs/part-01-linux/23-performance-methodology-use-workload-characterisation-drill-down.md
+- ## Why this matters for AI infrastructure | 250 | NO FIGURE NEEDED motivational narrative introducing cluster triage
+- ## Prerequisites and outcomes | 250 | NO FIGURE NEEDED learning outcomes and prerequisites list
+- ## 1. What "systems performance" covers | 260 | NEEDS FIGURE full training step path diagram across storage host PCIe GPU and fabric
+- ### Two perspectives | 110 | COVERED(ch23-d1-luna)
+- ### Why performance is hard | 130 | NO FIGURE NEEDED conceptual summary of four inherent challenges
+- ## 2. Vocabulary and concepts | 260 | COVERED(p3-0123-vocab-hit-ratio)
+- ### Latency and time scales | 300 | COVERED(l23-latency-scale)
+- ### Other concepts | 450 | COVERED(p3-0123-known-unknowns, p3-0123-load-vs-architecture)
+- ## 3. The problem statement comes first | 200 | COVERED(p3-0123-six-questions)
+- ## 4. Anti-methods and good methods | 550 | COVERED(p3-0123-anti-methods)
+- ### The Scientific Method in practice (examples) | 150 | COVERED(p3-0123-node17-prediction)
+- ### Elimination is also an answer | 60 | NO FIGURE NEEDED brief single-paragraph principle on negative results
+- ## 5. The Linux 60-second checklist | 350 | COVERED(p3-0123-gpu-util-trap, p3-0123-gpu-first-minute, ch23-fig1-60s.jpg)
+- ## 6. The USE method | 270 | COVERED(p3-0123-use-order-traps, ch23-d2-luna)
+- ### The USE table for a GPU server | 300 | COVERED(p3-0123-use-host-rows, p3-0123-use-gpu-rows)
+- ### RED for services | 160 | COVERED(p3-0123-llm-duration, p3-0123-use-software-rows)
+- ## 7. Workload characterisation | 260 | COVERED(l23-workload-4q)
+- ## 8. Drill-down and latency analysis | 50 | NO FIGURE NEEDED short introductory bridge to subsections
+- ### Three-stage drill-down | 120 | COVERED(ch23-d3-luna)
+- ### Five whys | 130 | COVERED(p2-0123-five-whys)
+- ### Latency analysis: halve the problem | 140 | COVERED(p3-0123-latency-halving)
+- ### Event tracing | 140 | COVERED(p3-0123-event-tracing-tools)
+- ### Baselines and static tuning | 220 | COVERED(p3-0123-baseline-static)
+- ### Performance mantras | 100 | COVERED(l23-mantras)
+- ## 9. Scalability, modelling and queueing | 20 | NO FIGURE NEEDED single introductory sentence
+- ### Reading scalability curves | 360 | COVERED(p3-0123-scaling-worked, ch23-d4-luna)
+- ### Queueing theory in four lines | 260 | COVERED(p3-0123-littles-law, p2-0123-queue-curve)
+- ## 10. Capacity planning | 250 | COVERED(p3-0123-capacity-worked)
+- ## 11. Statistics you must get right | 330 | COVERED(p3-0123-stats-worked)
+- ## 12. Visualisation and monitoring | 250 | COVERED(p3-0123-chart-chooser)
+- ### Observability tool taxonomy (preview of chapter 1.24) | 200 | COVERED(p3-0123-tool-families)
+- ## 13. AI-specific measures of efficiency | 270 | COVERED(p3-0123-gpu-starvation, l23-ai-metrics)
+- ## 14. Two worked case studies | 15 | NO FIGURE NEEDED brief section lead-in
+- ### Case 1: "Slow disks" becomes "slow data loading" | 300 | COVERED(p3-0123-case-slow-disks)
+- ### Case 2: non-regression test of a software change | 270 | COVERED(p3-0123-case-benchmark)
+- ## 15. Putting a method into practice: a template | 130 | COVERED(ch23-d5-luna)
+- ## 16. Hands-on lab: practise the method | 450 | NO FIGURE NEEDED hands-on CLI exercises and lab instructions
+- ## 17. Common mistakes | 200 | NO FIGURE NEEDED summary list of common methodology pitfalls
+- ## 18. Interview angles | 200 | NO FIGURE NEEDED list of interview scenario prompts
+- ### When the method itself fails | 180 | COVERED(p3-0123-method-failures)
+- ## Exercises | 300 | NO FIGURE NEEDED end of chapter exercises
+- ## Checkpoint questions (20) | 1300 | NO FIGURE NEEDED revision questions with answers
+- ## Sources and review notes | 250 | NO FIGURE NEEDED source citations and verification notes
+
+Specs kept 1, dropped 0: []

@@ -396,6 +396,10 @@ The second is "**cannot unmount, device is busy**". Here `lsof` or `fuser -vm /m
 
 ### Reading `lsof` output
 
+![Anatomy of lsof columns mapping process credentials, file descriptor types and numbers, and filesystem nodes.](./img/p4-0108-lsof-cols.svg)
+
+*Figure 1.8.8. The lsof command exposes process ownership, descriptor roles like cwd or descriptor 3u, filesystem node IDs, and device numbers.*
+
 Unix puts a lot of weight on files, so a tool that lists them is a good place to start an investigation. `lsof` does not stop at regular files. It also reports network sockets, dynamic libraries, pipes and similar objects.
 
 `lsof` prints a lot of lines, so learning its columns matters more than reading every row. The excerpt below comes from the `systemd` init process and a running `vi` editor.
@@ -495,7 +499,7 @@ The numbers are for x86 Linux, so use names in scripts. `kill -l` lists all of t
 
 ![Escalation runs from SIGTERM to a wait for clean shutdown, and only if the program does not respond it moves to SIGKILL, which gives no cleanup.](./img/p2-0108-escalate.svg)
 
-*Figure 1.8.8. Send SIGTERM first and give the program time to clean up, and use SIGKILL only when it does not respond.*
+*Figure 1.8.9. Send SIGTERM first and give the program time to clean up, and use SIGKILL only when it does not respond.*
 
 ```bash
 kill 1234               # SIGTERM (15)
@@ -517,7 +521,7 @@ A killed process gets no chance to clean up. That can leave lock files, half-wri
 
 ![How signals reach a process](./img/ch08-d4-luna.svg)
 
-*Figure 1.8.9. How signals reach a process, dispositions, and why D state delays SIGKILL.*
+*Figure 1.8.10. How signals reach a process, dispositions, and why D state delays SIGKILL.*
 
 ### Stopping, continuing and processes that resist
 
@@ -533,7 +537,7 @@ Do not kill processes indiscriminately, especially ones you do not understand. Y
 
 ![A timeline where Slurm sends SIGUSR1 to the batch shell 180 seconds before the time limit, the trap forwards it to the training process, which saves a checkpoint.](./img/p3-0108-slurm-checkpoint.svg)
 
-*Figure 1.8.10. Run training in the background and wait for it, so the trap fires immediately and forwards SIGUSR1 to save a checkpoint before the time limit.*
+*Figure 1.8.11. Run training in the background and wait for it, so the trap fires immediately and forwards SIGUSR1 to save a checkpoint before the time limit.*
 
 A shell script handles signals with `trap`. A batch script can use it to clean up its scratch files, or to turn `SIGTERM` into a graceful stop.
 
@@ -570,7 +574,7 @@ On a shared cluster, keep core dumps off by default, and turn them on only when 
 
 ![Dropping the SSH session sends SIGHUP to jobs, and five remedies keep work alive.](./img/l08-hangup-remedies.svg)
 
-*Figure 1.8.11. Choose tmux, the scheduler, nohup, disown or systemd before the connection drops.*
+*Figure 1.8.12. Choose tmux, the scheduler, nohup, disown or systemd before the connection drops.*
 
 You have seen this happen, or you will. You start a long command over SSH, the VPN hiccups, the session drops, and the job dies with the terminal. Or you press Ctrl-Z in front of a long task, and the shell says `Stopped`. Both events come from the same small mechanism, and once you can see it, you can also outwit it.
 
@@ -605,7 +609,7 @@ Pick the remedy before you start the job, not after the connection drops.
 
 ![Ctrl-Z stops the foreground job, bg resumes it in the background, and fg brings it back to the foreground.](./img/p2-0108-job-states.svg)
 
-*Figure 1.8.12. Ctrl-Z suspends the foreground job, bg resumes it in the background, and fg brings it back to the foreground.*
+*Figure 1.8.13. Ctrl-Z suspends the foreground job, bg resumes it in the background, and fg brings it back to the foreground.*
 
 Job control lets you suspend a program with Ctrl-Z and resume it later with `fg` or `bg`. It works by sending TSTP and CONT signals for you, which is handy. It is not required, though, and it can confuse beginners. Many people press Ctrl-Z when they meant Ctrl-C, forget what they were running, and end up with several suspended processes. Run `jobs` to see whether you have suspended anything in the current terminal.
 
@@ -620,6 +624,10 @@ The trouble is that a background program may still expect the terminal. If it re
 When stray output clutters the screen, press Ctrl-L to redraw it. Many full-screen programs support Ctrl-L, and so does bash. Ctrl-R usually redraws the current line in a program that reads input, but at the bash prompt it starts a reverse search, and Esc exits that mode. Pressing the wrong key at the wrong time can make things worse, so check the screen before you type again.
 
 ## 6. Priority: `nice`, `ionice`, CPU affinity
+
+![Three dimensions of Linux task priority: CPU niceness from -20 to 19, disk IO classes 1 through 3, and CPU core affinity.](./img/p4-0108-priority-classes.svg)
+
+*Figure 1.8.14. Combining nice, ionice, and taskset or numactl controls CPU shares, disk scheduling priority, and NUMA core pinning independently.*
 
 Picture a shared login node on a Friday afternoon. One user starts a compile with many parallel jobs, and every other shell on the machine turns sluggish. Nobody has done anything wrong, and the scheduler is working exactly as designed. The lever you have for this situation is priority, and it is gentler than it sounds.
 
@@ -682,7 +690,7 @@ To make a background job yield, raise its nice value with `renice`. Use a positi
 
 ![Four layers that set process limits, login sessions, systemd services, containers and Slurm jobs, each with where the limit is configured.](./img/p3-0108-limit-layers.svg)
 
-*Figure 1.8.13. Raising limits.conf does nothing for a systemd service or container, so find which layer actually starts the process.*
+*Figure 1.8.15. Raising limits.conf does nothing for a systemd service or container, so find which layer actually starts the process.*
 
 Two error messages account for a surprising number of GPU cluster tickets. One says "Too many open files", and the other says "Cannot allocate memory". Both appear while the machine has plenty of RAM and disk free. Neither is really about the machine. Both are about a per-process ceiling that was set long before the job started.
 
@@ -727,7 +735,7 @@ Those resources are **CPU, memory and I/O**. The kernel is a resource too, since
 
 ![Three worked examples of time output showing a job that mostly waits, a job using several cores, and a start-up with two major and 254 minor page faults.](./img/p3-0108-time-classify.svg)
 
-*Figure 1.8.14. When real is much bigger than user plus sys the job is waiting, and when user plus sys is bigger than real it used several cores.*
+*Figure 1.8.16. When real is much bigger than user plus sys the job is waiting, and when user plus sys is bigger than real it used several cores.*
 
 ```bash
 time ls /usr/lib
@@ -767,7 +775,7 @@ If the load is high and the system drags, check memory. When memory runs short, 
 
 ![A flow from an unmapped address to a page fault that branches into a cheap minor fault and a slow major fault that reads from disk.](./img/p3-0108-page-faults.svg)
 
-*Figure 1.8.15. A minor fault only updates a mapping, while a major fault must read from disk and a steady stream of them means memory pressure.*
+*Figure 1.8.17. A minor fault only updates a mapping, while a major fault must read from disk and a steady stream of them means memory pressure.*
 
 Chapter 1.17 is the full treatment. For now, hold one idea: the CPU's **memory management unit (MMU)** translates **virtual addresses**, which processes use, into **physical addresses**. It does this with page tables that the kernel maintains, in units called **pages**. A page is 4 KiB normally, and `getconf PAGE_SIZE` reports the size on your system.
 
@@ -791,7 +799,7 @@ When you run `free`, read the **available** figure, not **free**. Linux delibera
 
 ![A decision tree maps vmstat column patterns to a bottleneck, such as CPU-bound, I/O-bound, memory exhaustion or noisy neighbours.](./img/p2-0108-vmstat-tree.svg)
 
-*Figure 1.8.16. Reading vmstat columns in patterns tells you whether the machine is CPU-bound, I/O-bound, out of memory or sharing a VM with noisy neighbours.*
+*Figure 1.8.18. Reading vmstat columns in patterns tells you whether the machine is CPU-bound, I/O-bound, out of memory or sharing a VM with noisy neighbours.*
 
 The first time you run `vmstat`, it looks like a wall of columns with no story. Learn what one or two of them count, and the story appears. Running `vmstat 2` reports statistics every two seconds.
 
@@ -966,7 +974,7 @@ systemd-cgtop           # top-style live resource use per cgroup
 
 ![A cgroup with cpu.max, memory.max and pids.max limits and what happens on exceeding each: throttling, an OOM kill, and failing fork.](./img/p3-0108-cgroup-exceed.svg)
 
-*Figure 1.8.17. Exceeding the CPU quota throttles the group, exceeding the memory limit triggers an OOM kill, and exceeding the pids limit makes fork fail.*
+*Figure 1.8.19. Exceeding the CPU quota throttles the group, exceeding the memory limit triggers an OOM kill, and exceeding the pids limit makes fork fail.*
 
 Writing to these files changes behaviour. Run them as root.
 
@@ -1001,7 +1009,7 @@ Before you cap a workload, check which cgroup it actually runs in.
 
 ![A shell wrapper as PID 1 never forwards SIGTERM, so Kubernetes kills the pod with SIGKILL after 30 seconds, while exec lets Python handle SIGTERM.](./img/p2-0108-k8s-stop.svg)
 
-*Figure 1.8.18. When the shell wrapper stays PID 1 the training job never gets SIGTERM and is killed after 30 seconds, but exec fixes it.*
+*Figure 1.8.20. When the shell wrapper stays PID 1 the training job never gets SIGTERM and is killed after 30 seconds, but exec fixes it.*
 
 Everything so far was about one process on one machine. On a cluster, the same rules apply inside containers and batch jobs, where you do not control the parent process and cannot press Ctrl-C. These are the patterns you will meet most often.
 

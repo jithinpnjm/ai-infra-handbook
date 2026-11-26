@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1450" width="1600" height="1450">
+  <title>kube-apiserver High Availability and Scale-Out Architecture</title>
+  <desc>Architecture flow diagram showing scale-out control plane for large clusters from ingress sources to load balancer, stateless API server instances, and split etcd storage clusters.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-fit">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-fit">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1450" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448">kube-apiserver High Availability and Scale-Out Architecture</text>
+  <text x="800" y="105" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">scale-out control plane for large clusters (1,000 to 5,000 nodes)</text>
+
+  
+  <g id="ingress-sources">
+    <rect x="40" y="135" width="1520" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="70" y="172" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Ingress request sources:</text>
+
+    
+    <rect x="70" y="190" width="240" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="190" y="240" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Worker Kubelets</text>
+
+    
+    <rect x="335" y="190" width="615" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="642" y="226" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Controllers</text>
+    <text x="642" y="254" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">(Kube-Controller-Manager, Kueue, Training Operator)</text>
+
+    
+    <rect x="975" y="190" width="250" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1100" y="240" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Batch Schedulers</text>
+
+    
+    <rect x="1250" y="190" width="280" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1390" y="240" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">kubectl clients</text>
+  </g>
+
+  
+  <path d="M 800 290 L 800 345" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="layer-1">
+    
+    <rect x="40" y="350" width="680" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(70, 395)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="0" y="10" width="60" height="45" rx="6" />
+      <path d="M 15 25 L 45 25 M 35 18 L 45 25 L 35 32" />
+      <path d="M 45 40 L 15 40 M 25 33 L 15 40 L 25 47" />
+    </g>
+    <text x="410" y="445" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Layer 4/Layer 7 Load Balancer</text>
+
+    
+    <rect x="750" y="350" width="810" height="170" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(775, 405)" stroke="#db8129" stroke-width="4" fill="none">
+      <circle cx="25" cy="25" r="22" />
+      <path d="M 25 13 L 25 25 L 35 25" />
+    </g>
+    <text x="835" y="405" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="835" dy="0">LB idle timeout must exceed API server watch timeout</tspan>
+      <tspan x="835" dy="36">(min-request-timeout) to prevent mass watch disconnects</tspan>
+      <tspan x="835" dy="36">and reconnect storms.</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 380 520 L 380 575" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="layer-2">
+    
+    <rect x="40" y="580" width="1520" height="450" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="70" y="625" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Pool of 3 to 5 stateless kube-apiserver instances</text>
+
+    
+    <rect x="100" y="660" width="1440" height="345" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="8,6" opacity="0.6" />
+    <rect x="85" y="670" width="1440" height="345" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="8,6" opacity="0.8" />
+
+    
+    <rect x="70" y="680" width="1440" height="330" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    
+    <rect x="100" y="715" width="1380" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(125, 730)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="5" width="45" height="45" rx="4" />
+      <path d="M 10 0 L 10 5 M 22 0 L 22 5 M 35 0 L 35 5" />
+      <path d="M 10 50 L 10 55 M 22 50 L 22 55 M 35 50 L 35 55" />
+      <circle cx="22" cy="27" r="8" />
+    </g>
+    <text x="195" y="753" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">independent in-memory Watch Cache</text>
+    <text x="195" y="784" font-family="monospace" font-size="24px" fill="#303a36">sized via --watch-cache-sizes=pods#5000</text>
+
+    
+    <rect x="100" y="815" width="1380" height="80" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(125, 830)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="10" width="48" height="30" rx="3" />
+      <path d="M 12 10 L 12 40 M 24 10 L 24 40 M 36 10 L 36 40" />
+    </g>
+    <text x="195" y="865" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">APF flow control queues</text>
+
+    
+    <rect x="100" y="910" width="1380" height="80" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(125, 925)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="24" cy="24" r="8" />
+      <path d="M 8 24 L 0 24 M 40 24 L 48 24 M 24 8 L 24 0 M 24 40 L 24 48" />
+    </g>
+    <text x="195" y="960" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">etcd client pool</text>
+  </g>
+
+  
+  
+  <path d="M 430 1030 L 430 1105" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  
+  <path d="M 1170 1030 L 1170 1105" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="layer-3">
+    
+    <rect x="40" y="1110" width="1520" height="290" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="70" y="1150" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">Storage backend split into two destinations:</text>
+
+    
+    <rect x="70" y="1175" width="680" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(100, 1205)" stroke="#207448" stroke-width="4" fill="none">
+      <ellipse cx="28" cy="14" rx="24" ry="10" />
+      <path d="M 4 14 L 4 50 C 4 58 52 58 52 50 L 52 14" />
+      <path d="M 4 32 C 4 40 52 40 52 32" />
+    </g>
+    <text x="180" y="1235" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Main etcd cluster</text>
+    <text x="100" y="1310" font-family="sans-serif" font-size="24px" fill="#303a36">(3-5 NVMe members for /registry, pods, nodes, leases)</text>
+
+    
+    <rect x="780" y="1175" width="750" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(805, 1205)" stroke="#207448" stroke-width="4" fill="none">
+      <ellipse cx="28" cy="14" rx="24" ry="10" />
+      <path d="M 4 14 L 4 50 C 4 58 52 58 52 50 L 52 14" />
+      <path d="M 28 24 L 18 38 L 32 38 L 22 52" />
+    </g>
+    <text x="880" y="1235" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Secondary dedicated Events etcd cluster</text>
+    <text x="805" y="1285" font-family="monospace" font-size="24px" fill="#303a36">targeted via --etcd-servers-overrides=/events</text>
+    <text x="805" y="1325" font-family="sans-serif" font-size="24px" fill="#303a36">to absorb high-churn event writes without stalling</text>
+    <text x="805" y="1360" font-family="sans-serif" font-size="24px" fill="#303a36">WAL fsync on primary state.</text>
+  </g>
+</svg>

@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2015-telemetry-layers",
+  "title": "Inference Telemetry Layers: Detection at Edge vs Explanation at Engine and Infra",
+  "anchor": "### 2. What to collect for an inference platform",
+  "spec": "Diagram showing the inference request path across platform layers and the exact signals collected at each level. Left-to-right flow: An incoming Customer Request reaches a high-level box 'Gateway Layer (Edge SLI Measurement)', passes to 'Router', then to 'Engine Layer (vLLM Execution)', which drives 'Hardware & Platform Layers (GPU, Node, K8s)'. \n\n1. Top tier / Gateway: Labeled 'MEASURE SLIs AT THE EDGE (Detect Customer Impact)'. Shows metrics emitted: Gateway code / requests counter by code (labels: model, code, route, reason), Latency histogram (TTFT and end-to-end), Token counters (in and out), and Rejections by reason. A banner notes: 'Seen directly by customer. Drives customer SLO alerts.'\n\n2. Middle tier / Engine: Labeled 'EXPLAIN SLIs AT THE ENGINE (Decompose Time & Bottlenecks)'. Shows vLLM /metrics breakdown: num_requests_waiting (queue time), running requests, kv_cache_usage_perc (memory pressure), preemptions, TTFT & inter-token histograms, finish reasons. Labels kept: model_name, engine, finished_reason. A callout notes: 'Splits latency into queue wait vs prefill vs decode.'\n\n3. Bottom tier / Hardware & Platform: Labeled 'CONTEXT & ROOT CAUSE (Infrastructure Health)'. Split into three cards: \n   - GPU (DCGM exporter, port 9400): memory used, temperature, power, ECC and Xid errors (labels: gpu, hostname).\n   - Node (node-exporter): CPU, memory, disk, network, pressure (labels: instance).\n   - Kubernetes (kube-state-metrics): pod phase, restarts, requests and limits (labels: namespace, pod).\n\nDistinct styling shows Gateway metrics driving customer alerts, while Engine and Infrastructure metrics provide drill-down context during an incident.",
+  "alt": "A multi-layer diagram mapping an inference request through gateway, engine, and GPU infrastructure, showing customer SLI measurement at the edge and root-cause signals at the engine and hardware layers.",
+  "cap": "Measure user-facing SLIs at the gateway edge and reserve engine, GPU, and node telemetry for explaining latency spikes.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15"
+ }
+]

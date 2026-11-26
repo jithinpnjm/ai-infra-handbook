@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0123-training-path",
+  "title": "The Full Distributed Training Data and Communication Path",
+  "anchor": "## 1. What \"systems performance\" covers",
+  "spec": "A wide multi-tier architecture diagram showing the entire path traversed by work in a distributed training step, as described in section 1. Arrange left to right in two aligned horizontal tracks: top track showing the Software Stack and bottom track showing the Hardware Infrastructure. Hop 1: Remote Data Store (Parallel FS / Object Storage, checkpoint store) connecting via Storage Fabric to Storage NIC. Hop 2: Network Filesystem Client (kernel NFS/Lustre driver) delivering raw shards to Host DRAM. Hop 3: CPU Data Pipeline (Python DataLoader workers, batching, tokenization, data augmentation) pinned to host NUMA node memory. Hop 4: Host-to-Device Transfer over PCIe Bus (PCIe Gen4/Gen5 x16 link, pinned memory / cudaHostAlloc) moving batches into GPU HBM. Hop 5: GPU Accelerator (SMs executing Forward & Backward passes, Tensor Cores, HBM memory). Hop 6: Intra-node Synchronization via NVLink / NVSwitch mesh connecting 8 GPUs on the same board. Hop 7: Inter-node Collective Fabric via Cluster NIC / InfiniBand HCA / RoCE over Leaf-Spine Network, driven by the NCCL collective library executing All-Reduce and All-to-All communication. Add callout badges highlighting potential bottlenecks at each hop: 'FS latency / metadata contention', 'Page cache eviction', 'Python GIL / CPU launch overhead', 'PCIe lane downgrading', 'SM occupancy / small kernel launch', 'NVLink error drops', and 'Fabric congestion / straggler rank'.",
+  "alt": "A schematic of the complete hardware and software path traversed during a distributed training step from remote data store to inter-node collective fabric.",
+  "cap": "A distributed training step traverses storage, host OS, PCIe, GPU accelerators, NVLink switches, and InfiniBand fabric, where any hop can become the bottleneck.",
+  "part": "part-01-linux",
+  "ch": "23"
+ }
+]

@@ -1,0 +1,38 @@
+# docs/part-01-linux/18-cpu-scheduling-and-cgroups-v1-and-v2.md
+- ## Why this matters for AI infrastructure | 350 | NO FIGURE NEEDED introductory framing for CPU scheduling and cgroups
+- ## Prerequisites and outcomes | 170 | NO FIGURE NEEDED syllabus prerequisites and learning outcome bullets
+- ## 1. CPU basics | 660 | COVERED(p3-0118-ipc-regimes, ch18-d1-luna)
+- ## 2. The Linux scheduler | 20 | NO FIGURE NEEDED brief section transition introduction
+- ### Run queues, time sharing, preemption, load balancing | 340 | NO FIGURE NEEDED covered by topology and balancing figures in adjacent sections
+- ### Scheduling classes and policies | 340 | COVERED(p3-0118-rt-valve, l18-sched-classes)
+- ### Nice values and weights | 200 | COVERED(p3-0118-nice-weight)
+- ### CFS and EEVDF | 280 | NEEDS FIGURE comparison between CFS vruntime leftmost picking and EEVDF eligibility plus deadline selection
+- ### Load balancing and migration cost | 240 | COVERED(ch18-d2-luna)
+- ### Interrupts and softirqs | 230 | COVERED(p3-0118-irq-path)
+- ## 3. Observing CPUs | 460 | COVERED(p3-0118-load-and-mpstat)
+- ### The method for CPU problems | 210 | COVERED(p3-0118-cpu-method)
+- ## 4. Controlling placement and priority | 10 | NO FIGURE NEEDED brief section transition introduction
+- ### Affinity | 230 | COVERED(p3-0118-affinity-fence)
+- ### Isolation: keeping the kernel and others off chosen cores | 250 | COVERED(l18-isolation)
+- ### Governors and power states | 200 | NEEDS FIGURE C0 active P-states and frequency governors versus idle C-states wake-up latency penalties
+- ## 5. Control groups: the idea | 250 | NO FIGURE NEEDED conceptual overview covered by subsequent tree and v1 vs v2 diagrams
+- ### v1 versus v2 | 330 | COVERED(p3-0118-cgroup-version-check, l18-cgroup-v1-v2)
+- ## 6. cgroups v2 by hand | 250 | COVERED(ch18-fig1-cgtree.jpg)
+- ### The no-internal-processes rule and delegation | 240 | COVERED(p3-0118-no-internal-processes)
+- ## 7. The CPU controller: weight, quota and throttling | 10 | COVERED(l18-weight-quota)
+- ### Weight (shares): relative fairness | 150 | NO FIGURE NEEDED covered by l18-weight-quota proportional sharing diagram
+- ### Quota: hard ceiling (CFS bandwidth control) | 450 | COVERED(p3-0118-throttle-oversubscribe, ch18-d3-luna)
+- ### cpuset: which CPUs and memory nodes | 200 | COVERED(p3-0118-cpuset-vs-quota)
+- ### Other controllers in brief | 280 | COVERED(p3-0118-gpu-device-control)
+- ### PSI and monitoring per cgroup | 140 | NO FIGURE NEEDED short summary of per-cgroup PSI files
+- ## 8. Systemd, Docker, Slurm and the cgroup tree | 380 | COVERED(p3-0118-manager-to-files, ch18-d4-luna)
+- ## 9. Kubernetes and cgroups | 500 | COVERED(p3-0118-k8s-static-cpu, p2-0118-k8s-mapping)
+- ## 10. Troubleshooting | 310 | COVERED(p3-0118-cgroup-write-failures, ch18-d5-luna)
+- ## 11. Hands-on lab: CPU scheduling, weights, quota, cpuset, and VM drills | 450 | NO FIGURE NEEDED interactive command lab walkthrough
+- ## 12. Common mistakes | 140 | NO FIGURE NEEDED bullet list of operational failure modes
+- ## 13. Interview angles | 120 | NO FIGURE NEEDED sample interview questions and answers
+- ## Exercises | 400 | NO FIGURE NEEDED practice problem set
+- ## Checkpoint questions (20) | 1400 | NO FIGURE NEEDED self-test questions and solutions
+- ## Sources and review notes | 350 | NO FIGURE NEEDED bibliography and test verification log
+
+Specs kept 2, dropped 0: []

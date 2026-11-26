@@ -100,6 +100,10 @@ Choose the verbosity level by the question you are asking. Use `-vvv` when you w
 
 ## 3. The `debug` and `assert` modules
 
+![A diagram showing how ansible.builtin.stat extracts file attributes into a dictionary evaluated by ansible.builtin.assert, contrasting early guardrail failure against a cryptic service failure three tasks later.](./img/p4-0410-stat-assert-guard.svg)
+
+*Figure 4.0.0. Pairing stat and assert creates a preflight guardrail that halts the play immediately with an explicit error message instead of failing downstream during service startup.*
+
 A variable is not what you expected, so you ask the run to print it. The `debug` module prints values, and `assert` stops the run with a clear message when a condition is false. Both turn a silent wrong value into a visible fact you can act on.
 
 Sometimes the quickest fix is to look at what Ansible actually sees. A value that looks right in your YAML can arrive as something else once it is templated. The `debug` and `assert` modules let you print the value and stop the run early when it is wrong.
@@ -281,6 +285,10 @@ The connection worked, but the task could not do its job. Picture a delivery dri
 | `Unsupported parameters for (module) module: foo` | Argument name wrong or from a newer collection | `ansible-doc <module>`; align collection version |
 
 ### Application layer
+
+![A decision tree and environment comparison showing how to triage application layer failures by reproducing commands manually in a login shell versus Ansible minimal non-login execution.](./img/p4-0410-app-layer-triage.svg)
+
+*Figure 4.0.0. Testing a failing command manually with sudo -u user -i isolates whether the failure stems from host state or from environment discrepancies such as minimal PATH in Ansible non-login shells.*
 
 The task succeeded, but the service it started is still broken. Ansible reports on the module, not on the application, so you check the application directly. A green recap only means the module did its job. Think of a mechanic who replaces a part and marks the job as done. The work order is closed, but the car still makes the noise. The module ran correctly, and the application underneath it did not behave.
 

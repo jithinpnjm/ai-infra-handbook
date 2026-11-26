@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
+  <title>System Call Execution Path, Errno Handling, and vDSO Bypass</title>
+  <desc>Infographic illustrating standard system call execution path, errno handling, and the vDSO bypass path between User Space (Ring 3) and Kernel Space (Ring 0).</desc>
+
+  <defs>
+    <marker id="m-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="m-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1420" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">System Call Execution Path, Errno Handling, and vDSO Bypass</text>
+
+  
+  
+  <rect x="40" y="85" width="1520" height="585" rx="16" fill="#ffffff" stroke="#c2d8c8" stroke-width="2" />
+  <rect x="40" y="85" width="360" height="48" rx="8" fill="#207448" />
+  <text x="55" y="119" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">User Space (Ring 3)</text>
+
+  
+  <line x1="40" y1="695" x2="1560" y2="695" stroke="#db8129" stroke-width="5" stroke-dasharray="16 10" />
+  <rect x="620" y="675" width="360" height="40" rx="20" fill="#db8129" />
+  <text x="800" y="703" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Hardware Boundary Line</text>
+
+  
+  <rect x="40" y="725" width="1520" height="665" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="40" y="725" width="360" height="48" rx="8" fill="#207448" />
+  <text x="55" y="759" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Kernel Space (Ring 0)</text>
+
+  
+
+  
+  <g filter="url(#shadow)">
+    <rect x="70" y="150" width="450" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="106" cy="186" r="22" fill="#207448" />
+    <text x="106" y="195" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <rect x="144" y="164" width="44" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <path d="M 152 186 L 180 186 M 152 196 L 174 196 M 152 174 H 180" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="204" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">User Application</text>
+    <text x="94" y="248" font-family="sans-serif" font-size="24" fill="#303a36">issues</text>
+    <text x="168" y="248" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">open('data.bin', O_RDONLY)</text>
+  </g>
+
+  
+  <path d="M 295 325 L 295 365" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#m-green)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="70" y="375" width="480" height="275" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="106" cy="412" r="22" fill="#207448" />
+    <text x="106" y="421" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <rect x="144" y="390" width="44" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="166" cy="412" r="12" fill="none" stroke="#207448" stroke-width="4" />
+    <text x="204" y="421" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">C Library Wrapper (libc)</text>
+    <text x="94" y="468" font-family="sans-serif" font-size="24" fill="#303a36">places syscall number into register</text>
+    <text x="94" y="504" font-family="monospace" font-size="24" fill="#207448">rax (e.g. 257 for sys_openat)</text>
+    <text x="94" y="540" font-family="sans-serif" font-size="24" fill="#303a36">and argument pointers into</text>
+    <text x="390" y="540" font-family="monospace" font-size="24" fill="#207448">rdi, rsi, rdx</text>
+    
+    
+    <line x1="90" y1="562" x2="520" y2="562" stroke="#c2d8c8" stroke-width="1.5" stroke-dasharray="4 4" />
+    <circle cx="106" cy="598" r="18" fill="#207448" />
+    <text x="106" y="606" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="135" y="596" font-family="sans-serif" font-size="24" fill="#303a36">Wrapper executes the</text>
+    <text x="135" y="630" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">syscall instruction (or svc on ARM64)</text>
+  </g>
+
+  
+  <path d="M 295 650 L 295 780" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#m-orange)" />
+  <rect x="80" y="690" width="360" height="75" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" filter="url(#shadow)" />
+  <circle cx="105" cy="727" r="18" fill="#db8129" />
+  <text x="105" y="735" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="135" y="722" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">CPU switches to kernel mode</text>
+  <text x="135" y="752" font-family="sans-serif" font-size="24" fill="#303a36">at fixed entry point</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="70" y="795" width="480" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="106" cy="835" r="22" fill="#207448" />
+    <text x="106" y="844" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <rect x="144" y="813" width="44" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <rect x="156" y="825" width="20" height="20" fill="none" stroke="#207448" stroke-width="2" />
+    <text x="204" y="844" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">System Call Dispatch</text>
+    <text x="94" y="895" font-family="sans-serif" font-size="24" fill="#303a36">Kernel inspects system call table</text>
+    <text x="94" y="935" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">(sys_call_table[rax])</text>
+    <text x="94" y="975" font-family="sans-serif" font-size="24" fill="#303a36">to dispatch</text>
+    <text x="220" y="975" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">sys_openat()</text>
+  </g>
+
+  
+  <path d="M 550 900 L 595 900" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#m-green)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="605" y="795" width="460" height="290" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="641" cy="835" r="22" fill="#207448" />
+    <text x="641" y="844" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <rect x="679" y="813" width="44" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <ellipse cx="701" cy="827" rx="14" ry="5" fill="none" stroke="#207448" stroke-width="2" />
+    <path d="M 687 827 v 16 c 0 3 6 5 14 5 s 14 -2 14 -5 v -16" fill="none" stroke="#207448" stroke-width="2" />
+    <text x="739" y="844" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Filesystem Subsystem</text>
+    <text x="629" y="890" font-family="sans-serif" font-size="24" fill="#303a36">Kernel performs filesystem</text>
+    <text x="629" y="924" font-family="sans-serif" font-size="24" fill="#303a36">traversal and permission checks;</text>
+    <text x="629" y="966" font-family="sans-serif" font-size="24" fill="#303a36">if path does not exist, kernel returns</text>
+    <text x="629" y="1002" font-family="sans-serif" font-size="24" fill="#303a36">negative error number</text>
+    <text x="629" y="1042" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">-ENOENT (-2) in rax</text>
+  </g>
+
+  
+  <path d="M 835 795 L 835 635" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#m-green)" />
+  <rect x="680" y="630" width="340" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  <circle cx="705" cy="655" r="16" fill="#207448" />
+  <text x="705" y="663" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+  <text x="730" y="663" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">CPU switches back to Ring 3</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="585" y="150" width="480" height="465" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="621" cy="186" r="22" fill="#207448" />
+    <text x="621" y="195" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+    
+    <rect x="659" y="164" width="44" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <path d="M 681 174 L 695 180 V 194 C 695 201 681 206 681 206 C 681 206 667 201 667 194 V 180 Z" fill="none" stroke="#207448" stroke-width="2" />
+    <text x="719" y="195" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Errno Handling</text>
+    
+    <text x="609" y="246" font-family="sans-serif" font-size="24" fill="#303a36">C Wrapper inspects</text>
+    <text x="825" y="246" font-family="monospace" font-size="24" fill="#207448">rax</text>
+    <text x="870" y="246" font-family="sans-serif" font-size="24" fill="#303a36">, detects</text>
+    <text x="609" y="282" font-family="sans-serif" font-size="24" fill="#303a36">negative value, copies positive 2</text>
+    <text x="609" y="318" font-family="sans-serif" font-size="24" fill="#303a36">into thread-local variable</text>
+    <text x="609" y="354" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">errno (ENOENT)</text>
+    <text x="795" y="354" font-family="sans-serif" font-size="24" fill="#303a36">, and</text>
+    <text x="609" y="390" font-family="sans-serif" font-size="24" fill="#303a36">returns</text>
+    <text x="696" y="390" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">-1</text>
+    <text x="726" y="390" font-family="sans-serif" font-size="24" fill="#303a36">to Application.</text>
+
+    <line x1="605" y1="416" x2="1045" y2="416" stroke="#c2d8c8" stroke-width="1.5" stroke-dasharray="4 4" />
+
+    <text x="609" y="454" font-family="sans-serif" font-size="24" fill="#303a36">Application calls</text>
+    <text x="796" y="454" font-family="monospace" font-size="24" fill="#207448">perror()</text>
+    <text x="609" y="492" font-family="sans-serif" font-size="24" fill="#303a36">or</text>
+    <text x="640" y="492" font-family="monospace" font-size="24" fill="#207448">strerror(errno)</text>
+    <text x="830" y="492" font-family="sans-serif" font-size="24" fill="#303a36">to print</text>
+    <rect x="609" y="520" width="430" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="824" y="558" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">'No such file or directory'</text>
+  </g>
+
+
+  
+
+  
+  <line x1="1090" y1="100" x2="1090" y2="1370" stroke="#c2d8c8" stroke-width="2" stroke-dasharray="8 6" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1120" y="150" width="415" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="1145" y="168" width="44" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="1167" cy="190" r="14" fill="none" stroke="#207448" stroke-width="2" />
+    <path d="M 1167 182 V 190 L 1173 194" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <text x="1205" y="198" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">vDSO Fast Path</text>
+    <text x="1145" y="248" font-family="sans-serif" font-size="24" fill="#303a36">User Application calls</text>
+    <text x="1145" y="284" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">clock_gettime()</text>
+    <text x="1355" y="284" font-family="sans-serif" font-size="24" fill="#303a36">or</text>
+    <text x="1145" y="318" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">gettimeofday()</text>
+  </g>
+
+  
+  <path d="M 1325 330 L 1325 410" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#m-green)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1120" y="420" width="415" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <rect x="1120" y="420" width="415" height="46" rx="8" fill="#207448" />
+    <text x="1327" y="452" font-family="monospace" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">[vdso] memory page</text>
+    <text x="1145" y="504" font-family="sans-serif" font-size="24" fill="#303a36">mapped by the kernel</text>
+    <text x="1145" y="540" font-family="sans-serif" font-size="24" fill="#303a36">into process user space.</text>
+    <line x1="1140" y1="560" x2="1515" y2="560" stroke="#c2d8c8" stroke-width="1.5" />
+    <text x="1145" y="596" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Reading occurs entirely in</text>
+    <text x="1145" y="630" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Ring 3 with no context switch</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1120" y="775" width="415" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1145" y="820" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Zero Ring Transitions</text>
+    <text x="1145" y="864" font-family="sans-serif" font-size="24" fill="#303a36">and no mode switch</text>
+    <text x="1145" y="902" font-family="sans-serif" font-size="24" fill="#303a36">takes place on the CPU.</text>
+  </g>
+
+  
+  <path d="M 1485 330 C 1530 460 1530 680 1485 770" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 6" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1120" y="970" width="415" height="110" rx="12" fill="#f5f8f5" stroke="#db8129" stroke-width="3" />
+    <circle cx="1155" cy="1025" r="16" fill="#db8129" />
+    <text x="1155" y="1033" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">!</text>
+    <text x="1185" y="1015" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Callout:</text>
+    <text x="1185" y="1052" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">'Invisible to strace and ptrace'</text>
+  </g>
+
+</svg>

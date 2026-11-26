@@ -1,0 +1,32 @@
+# docs/part-01-linux/15-systemd-units-targets-timers-journald.md
+- ## Why this matters for AI infrastructure | 315 | NO FIGURE NEEDED introductory motivating overview
+- ## Prerequisites and outcomes | 230 | NO FIGURE NEEDED outcomes checklist
+- ## 1. What systemd is | 360 | NO FIGURE NEEDED conceptual introduction to PID 1 init
+- ### Older init systems | 130 | NO FIGURE NEEDED historical background on SysV and Upstart
+- ## 2. Units | 210 | NO FIGURE NEEDED reference table of unit types
+- ### Where unit files live (and the precedence rule) | 185 | COVERED(ch15-d3-luna) search precedence and drop-in directories
+- ### Anatomy of a service unit | 390 | COVERED(p2-0115-unit-anatomy) three sections of a unit file
+- ### Service types: how systemd knows a service is "started" | 200 | COVERED(l15-service-types) table of Type options
+- ### Common [Service] options | 440 | COVERED(p3-0115-restart-loop) restart cycle and crash looping
+- ## 3. Operating systemd: `systemctl` | 450 | COVERED(p3-0115-status-anatomy, p3-0115-enable-start-mask) status output anatomy and lifecycle commands
+- ## 4. Dependencies and ordering | 650 | COVERED(p3-0115-dependency-matrix) dependency directives and ordering
+- ## 5. Overriding units: drop-ins | 320 | COVERED(p3-0115-dropin-merge) drop-in overriding and clearing list keys
+- ## 6. Targets | 330 | COVERED(ch15-d1-luna) target milestones and dependency graph
+- ## 7. Templates and instances | 240 | COVERED(p3-0115-template-instance) template units and instance specifiers
+- ## 8. Socket, path and automount activation | 460 | COVERED(p3-0115-accept-modes, l15-socket-activation) socket activation flow and accept modes
+- ## 9. Timers: the cron replacement | 390 | COVERED(p3-0115-timer-triggers, l15-timer-pair) calendar and monotonic timer triggers
+- ## 10. Resource control, slices and host protection | 620 | COVERED(ch15-d2-luna) cgroup v2 slice hierarchy and resource knobs
+- ## 11. Sandboxing and service hardening | 220 | NEEDS FIGURE sandboxing isolation layers and GPU DeviceAllow pitfall
+- ## 12. Journald and `journalctl` | 460 | COVERED(p3-0115-journal-storage, l15-journalctl) journal storage modes and filtering options
+- ## 13. The other built-in services: networkd, resolved, timesyncd | 280 | NEEDS FIGURE systemd-resolved DNS resolution architecture and stub routing
+- ## 14. Debugging and analysing | 330 | COVERED(p3-0115-status-code-ladder) status codes and failure diagnostics
+- ## 15. Shutdown, rescue and legacy | 330 | COVERED(p3-0115-shutdown-sequence) shutdown timeout sequence
+- ### Runlevels: the older way to name a system state | 280 | COVERED(p3-0115-rc-link-names) SysV rc link naming convention
+- ## 16. AI-infrastructure patterns | 440 | NEEDS FIGURE GPU node startup contract and health-gate dependency pipeline
+- ## How it fails | 610 | NO FIGURE NEEDED troubleshooting failure reference list
+- ## Hands-on lab: systemd units, timers, slices, and VM drills | 650 | NO FIGURE NEEDED practical step-by-step commands and lab drills
+- ## Exercises | 240 | NO FIGURE NEEDED exercise prompt questions
+- ## Checkpoint questions (20) | 1100 | NO FIGURE NEEDED review Q and A
+- ## Sources and review notes | 320 | NO FIGURE NEEDED bibliographic attribution and notes
+
+Specs kept 3, dropped 0: []

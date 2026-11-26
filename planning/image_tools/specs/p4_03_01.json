@@ -1,0 +1,42 @@
+[
+ {
+  "name": "p4-0301-cpython-exec",
+  "title": "CPython Execution Pipeline from Source to PVM",
+  "anchor": "### The execution model",
+  "spec": "Flowchart diagram illustrating the two-stage CPython execution model and import caching. Left box: 'Source Code (script.py / module.py)'. Arrow 1 labeled 'Compiler (Frontend)' points to middle box 'Bytecode Generation'. Split path from Bytecode: Branch A (top) labeled 'If imported module' writes to disk box '__pycache__/module.cpython-312.pyc' and caches the module object in 'sys.modules'; Branch B (bottom) labeled 'If direct script' keeps bytecode in-memory only. Both paths converge with an arrow labeled 'Instruction stream' into a large right box 'Python Virtual Machine (PVM)'. Inside the PVM box: a cyclic loop shows 'Fetch instruction' -> 'Decode opcode' -> 'Execute against Evaluation Stack' -> 'Repeat'. Side callout at PVM: 'dis.dis() inspects bytecode instructions; runtime execution begins without separate link phase'.",
+  "alt": "CPython execution pipeline showing source code compiled to bytecode, cached in pycache for imported modules, and executed inside the Python Virtual Machine loop.",
+  "cap": "CPython compiles source code to bytecode on the fly, caches imported module bytecode in pycache and sys.modules, and executes instructions in the stack-based PVM.",
+  "part": "part-03-python",
+  "ch": "01"
+ },
+ {
+  "name": "p4-0301-refcount-cycle",
+  "title": "Reference Counting Deallocation versus Cyclic Garbage Collection",
+  "anchor": "### Reference counting and garbage collection",
+  "spec": "Two-panel comparison diagram illustrating CPython memory management. Panel 1 (left): 'Deterministic Reference Counting (Non-Cyclic)'. Box A: Object 'data = [1, 2, 3]' has an attached counter box 'refcount: 2'. Two labels 'a' and 'b' point to Box A with solid arrows. Step 1: 'del a' crosses out label 'a'; counter decrements to 'refcount: 1'. Step 2: 'del b' crosses out label 'b'; counter drops to 'refcount: 0'. Arrow labeled 'Immediate Free' leads to 'Memory reclaimed instantaneously'. Panel 2 (right): 'Cyclic Garbage Collection (Cycle Detector)'. Box X ('nodeA') holds attribute 'nodeA.peer' pointing to Box Y ('nodeB'). Box Y holds attribute 'nodeB.peer' pointing back to Box X. An external pointer 'root' is crossed out ('del root'). Both Box X and Box Y have 'refcount: 1' because they hold references to each other, yet zero outside references reach them. Dotted box labeled 'gc module (generational cyclic collector)' surrounds the isolated island with label: 'Periodic cycle detector detects unreachable group and reclaims memory'.",
+  "alt": "Two panels comparing immediate deallocation when reference count reaches zero against circular references that require the generational cyclic garbage collector.",
+  "cap": "CPython frees objects instantly when their reference count drops to zero, but requires the cyclic garbage collector to detect and break self-referencing reference cycles.",
+  "part": "part-03-python",
+  "ch": "01"
+ },
+ {
+  "name": "p4-0301-floor-trunc",
+  "title": "Floor Division versus Truncation on Positive and Negative Quotients",
+  "anchor": "### Floor division (`//`, `math.floor`) versus truncation (`math.trunc`, `int`)",
+  "spec": "Horizontal number line diagram spanning from -4 to +3 with marked integer tick marks (-4, -3, -2, -1, 0, 1, 2, 3). Two worked quotient scenarios are mapped above and below the line. Scenario 1 (Positive): true quotient 5 / 2 = 2.5 is marked with a diamond between 2 and 3. Above the line, two arrows point leftward to 2: green arrow '5 // 2, math.floor(2.5) -> 2 (rounds down toward -inf)' and blue arrow 'math.trunc(2.5), int(2.5) -> 2 (truncates toward 0)'. Callout: 'For positive numbers, floor and truncation agree'. Scenario 2 (Negative): true quotient 5 / -2 = -2.5 is marked with an amber diamond between -3 and -2. Blue arrow points rightward toward 0: 'math.trunc(-2.5), int(-2.5) -> -2 (truncates toward 0)'. Green arrow points leftward toward -inf: '5 // -2, math.floor(-2.5) -> -3 (rounds down toward -inf)'. Callout highlights: 'For negative results, floor division and truncation differ by 1'.",
+  "alt": "Number line demonstrating that 5 divided by negative 2 yields negative 3 under floor division but negative 2 under truncation toward zero.",
+  "cap": "Floor division rounds down toward negative infinity while truncation rounds toward zero, producing identical results for positive quotients but differing by one on negative quotients.",
+  "part": "part-03-python",
+  "ch": "01"
+ },
+ {
+  "name": "p4-0301-mutable-default",
+  "title": "Mutable Default Argument State Leak across Function Invocations",
+  "anchor": "### The mutable default argument trap",
+  "spec": "Two-row comparison diagram demonstrating the mutable default argument trap in service code. Top row: 'Buggy: def add_node(ip, nodes=[])'. Step 0 (Import time): function object 'add_node' is created in memory; its attribute '__defaults__' points to a single list object '[]' in heap memory. Step 1 (Call 1: add_node('10.0.0.1')): caller omits nodes argument; function appends '10.0.0.1' into the shared default list; returned value is ['10.0.0.1']. Step 2 (Call 2: add_node('10.0.0.2')): second request omits nodes argument; function accesses the SAME heap list, appending '10.0.0.2'; returned value is ['10.0.0.1', '10.0.0.2']. Red callout: 'State leaked across requests!'. Bottom row: 'Safe Idiom: def add_node_safe(ip, nodes=None)'. Step 0 (Import time): '__defaults__' points to immutable singleton 'None'. Step 1 (Call 1): 'if nodes is None' evaluates to True; fresh list L1 ['10.0.0.1'] is allocated. Step 2 (Call 2): fresh list L2 ['10.0.0.2'] is allocated. Green callout: 'Clean isolation across all calls'.",
+  "alt": "Diagram comparing how a mutable default list retains appended items across subsequent function calls with the safe None-default idiom that allocates fresh lists.",
+  "cap": "Default arguments evaluate once at module load time, causing a mutable list default to accumulate state across every subsequent function call unless None is used as a sentinel.",
+  "part": "part-03-python",
+  "ch": "01"
+ }
+]

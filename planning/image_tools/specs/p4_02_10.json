@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0210-curl-timing",
+  "title": "curl -w Connection Timing Waterfall and Stage Breakdown",
+  "anchor": "### `curl` as a diagnostic tool",
+  "spec": "A horizontal waterfall and timeline diagram illustrating the exact stages of an HTTPS request as measured by curl -w.\nTop: A code banner displaying the exact command:\ncurl -sS -o /dev/null -w 'dns=%{time_namelookup} tcp=%{time_connect} tls=%{time_appconnect} ttfb=%{time_starttransfer} total=%{time_total} code=%{http_code}\\n' https://api.example.com/\nMiddle: Horizontal timeline starting at 0.000s and progressing to the right with vertical checkpoint markers for the cumulative timestamps:\n1. time_namelookup: end of DNS resolution (domain name to IP lookup).\n2. time_connect: end of TCP 3-way handshake with remote host IP.\n3. time_appconnect: end of TLS handshake (cipher negotiation, cert verification, key exchange).\n4. time_starttransfer: first byte of HTTP response received (TTFB, time to first byte).\n5. time_total: last byte received and transaction completed.\nBottom: Five colored horizontal duration bars (deltas) showing how each operational phase is derived from the timestamps:\n- Phase 1: DNS Resolution = time_namelookup (Annotation: A long time points to DNS server latency or recursion).\n- Phase 2: TCP Handshake = time_connect - time_namelookup (Annotation: 1 RTT to establish TCP connection).\n- Phase 3: TLS Handshake = time_appconnect - time_connect (Annotation: 1 RTT for TLS 1.3 or 2 RTT for TLS 1.2 crypto exchange).\n- Phase 4: Server Processing / Model Latency = time_starttransfer - time_appconnect (Annotation: Request travel, queueing, and model inference computation time before first token/byte).\n- Phase 5: Content Transfer = time_total - time_starttransfer (Annotation: Response payload download over the network).",
+  "alt": "A horizontal waterfall diagram showing the cumulative curl -w timing variables from time_namelookup to time_total with the five phase durations for DNS, TCP, TLS, server processing, and transfer.",
+  "cap": "curl -w timing variables break an HTTP request into DNS, TCP, TLS, TTFB and transfer stages, pinpointing whether latency stems from network, crypto or model inference.",
+  "part": "part-02-networking",
+  "ch": "10"
+ }
+]

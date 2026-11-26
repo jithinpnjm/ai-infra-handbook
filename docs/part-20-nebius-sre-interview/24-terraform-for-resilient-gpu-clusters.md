@@ -505,6 +505,10 @@ Answer in the interview with that order. Say plainly that restore speed depends 
 
 ### Scenario C. The state bucket is deleted
 
+![A three-step bottom-up state recovery flow importing network, cluster, and pool resources in dependency order, validating clean plans, and enabling bucket versioning.](./img/p4-2024-unversioned-state-rebuild.svg)
+
+*Figure 20.0.0. Rebuilding unversioned lost state: import resources bottom-up in dependency order, adjust code until plan is clean, and enable bucket versioning immediately.*
+
 Your state bucket was deleted by a cleanup script. Versioning was off. You have the code and a running cluster, and the cleanup script's author is in the meeting, looking worried. Your job is to rebuild the map without touching the territory.
 
 Reason it through. Versioning would have saved you, and the docs highly recommend it, so state that mistake first. Now you rebuild. Start with the smallest stack, the network. Write an `import` block per object with the real ID from the Nebius CLI or console. Run plan. A diff means your code and the real object differ, so fix the code, not the cloud. Move up to the cluster, then the pools. Do not apply anything that plans a replace or delete, and treat a gigantic diff as a stop sign. After you finish, enable versioning, move the bucket to a protected project, and add the restore drill.

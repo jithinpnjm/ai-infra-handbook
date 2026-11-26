@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2028-dossier-linter-pipeline",
+  "title": "Architecture and Rule Passes of the Dossier Checker",
+  "anchor": "## Hands-on lab",
+  "spec": "Flowchart diagram oriented left-to-right showing how c28_dossier_check.py processes a project dossier. Left box: 'Input: dossier.md'. Arrow to Stage 1 'strip_comments()': replaces HTML comments with newline preserving exact line counts. Arrow to Stage 2 'Parser: Heading & Block AST': splits lines on '##' (SECTIONS: Context, My role, Constraints, Numbers, Architecture, Decisions, Failures, Changes, Metrics), '###' (blocks), and bullets ('- Label: Value'). Arrow to Stage 3 'Rules Engine (6 checks)': Box with 6 distinct audit rules: 1) 'Missing/Empty Sections' (checks 9 required sections), 2) 'Placeholder Scanner' (regex matches [YOUR...], TODO, TBD), 3) 'Numeric Line Count' (Numbers >= 3, Metrics >= 2, Failures >= 1), 4) 'Decision Block Audit' (>= 3 decisions, >= 2 alternatives per decision), 5) 'Field Completeness' (checks chosen, alternatives, why, cost accepted), 6) 'Unquantified Claim Regex' (flags 'faster', 'slower', 'massive', 'greatly' if line lacks digits). Stage 3 branches to two outputs: Bottom output 'Findings list & line numbers' -> 'exit code 1'; Top output 'summary: clean' -> 'exit code 0'. Annotate that it checks structure and completeness, not factual truth.",
+  "alt": "Flowchart showing the dossier checker parsing markdown into sections and blocks, evaluating six rule sets including placeholders, numbers, and unquantified claims, and yielding an exit code.",
+  "cap": "Figure 20.28.13. Parsing and validation pipeline of c28_dossier_check.py, illustrating how structural completeness, numeric density, and unquantified claims are audited.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28"
+ }
+]

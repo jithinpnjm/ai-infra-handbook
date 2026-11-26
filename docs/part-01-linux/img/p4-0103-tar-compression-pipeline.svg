@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1300" width="1600" height="1300">
+  <title>Tar Archiving Pipeline and Compressor Trade-off Comparison</title>
+  <desc>Visual explanation of the two-stage tar archiving and compression pipeline with a comparative trade-off matrix across gzip, bzip2, xz, and zstd.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1300" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="46" font-weight="bold" text-anchor="middle" fill="#207448">
+    Tar Archiving Pipeline and Compressor Trade-off Comparison
+  </text>
+
+  
+  
+  
+  <rect x="40" y="85" width="1520" height="595" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="70" y="125" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    Two-stage archiving and compression pipeline
+  </text>
+
+  
+  <rect x="65" y="145" width="480" height="345" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  
+  
+  <path d="M 85 160 L 110 160 L 120 172 L 145 172 A 4 4 0 0 1 149 176 L 149 194 A 4 4 0 0 1 145 198 L 85 198 A 4 4 0 0 1 81 194 L 81 164 A 4 4 0 0 1 85 160 Z" 
+        fill="none" stroke="#207448" stroke-width="3" />
+  <text x="160" y="185" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    Stage 1 (Archive)
+  </text>
+
+  
+  <rect x="80" y="210" width="450" height="260" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="105" y="242" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    Multiple directory tree files
+  </text>
+  <text x="105" y="278" font-family="monospace" font-size="24" fill="#303a36">project/code.py</text>
+  <text x="105" y="314" font-family="monospace" font-size="24" fill="#303a36">project/config.yaml</text>
+  <text x="105" y="350" font-family="monospace" font-size="24" fill="#303a36">project/model.safetensors</text>
+  <text x="105" y="392" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="105" dy="0">individual metadata</tspan>
+    <tspan x="105" dy="30">(permissions, owner, mtime)</tspan>
+  </text>
+
+  
+  <path d="M 530 245 L 575 245" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  
+  <rect x="590" y="215" width="410" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="795" y="253" font-family="monospace" font-size="26" font-weight="bold" text-anchor="middle" fill="#303a36">
+    tar -c
+  </text>
+
+  
+  <path d="M 795 275 L 795 300" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="590" y="305" width="410" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="795" y="338" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">
+    <tspan x="795" dy="0">bundling into a continuous</tspan>
+    <tspan x="795" dy="28">sequential tar stream</tspan>
+  </text>
+
+  
+  <path d="M 795 385 L 795 410" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="590" y="415" width="410" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="795" y="445" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#207448">
+    compressor tool
+  </text>
+  
+  <rect x="605" y="455" width="80" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="645" y="480" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle" fill="#303a36">gzip</text>
+
+  <rect x="698" y="455" width="90" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="743" y="480" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle" fill="#303a36">bzip2</text>
+
+  <rect x="802" y="455" width="60" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="832" y="480" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle" fill="#303a36">xz</text>
+
+  <rect x="875" y="455" width="110" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="930" y="480" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle" fill="#303a36">zstd</text>
+
+  
+  <path d="M 1000 455 L 1025 455 L 1025 340 L 1045 340" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1055" y="145" width="485" height="345" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  
+  
+  <ellipse cx="1085" cy="165" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 1067 165 L 1067 190 A 18 6 0 0 0 1103 190 L 1103 165" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="1115" y="185" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    Stage 2 (Compress)
+  </text>
+
+  
+  <rect x="1070" y="210" width="455" height="260" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="1297" y="242" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#303a36">
+    creating single archive file
+  </text>
+
+  
+  <rect x="1085" y="260" width="425" height="85" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <text x="1297" y="293" font-family="sans-serif" font-size="24" text-anchor="middle">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">project.tar.gz</tspan>
+    <tspan fill="#303a36"> via </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">tar -czf</tspan>
+  </text>
+
+  
+  <rect x="1085" y="360" width="425" height="85" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <text x="1297" y="393" font-family="sans-serif" font-size="24" text-anchor="middle">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">project.tar.zst</tspan>
+    <tspan fill="#303a36"> via </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">tar --zstd -f</tspan>
+  </text>
+
+  
+  <rect x="65" y="515" width="1475" height="145" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <text x="90" y="555" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    Reverse flow
+  </text>
+
+  
+  <rect x="270" y="530" width="1010" height="52" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="775" y="564" font-family="sans-serif" font-size="24" text-anchor="middle">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">tar -tf</tspan>
+    <tspan fill="#303a36"> lists and verifies table of contents</tspan>
+  </text>
+
+  
+  <rect x="270" y="593" width="1010" height="52" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="775" y="627" font-family="sans-serif" font-size="24" text-anchor="middle">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">tar -xzf -C /target</tspan>
+    <tspan fill="#303a36"> extracts into dedicated folder</tspan>
+  </text>
+
+  
+  <path d="M 1340 470 L 1340 556 L 1295 556" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 1370 470 L 1370 619 L 1295 619" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 270 619 L 200 619" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  
+  
+  <rect x="40" y="700" width="1520" height="460" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="70" y="740" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    Comparative trade-off matrix across 4 compressors
+  </text>
+
+  
+  <rect x="65" y="760" width="355" height="380" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="85" y="800" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    (1) gzip (-z)
+  </text>
+  <text x="85" y="845" font-family="sans-serif" font-size="24" fill="#303a36">fast compression</text>
+  <text x="85" y="885" font-family="sans-serif" font-size="24" fill="#303a36">moderate ratio</text>
+  <text x="85" y="925" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">single/multi-core</tspan>
+    <tspan x="85" dy="28">via pigz</tspan>
+  </text>
+  <text x="85" y="995" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">ubiquitous standard</tspan>
+    <tspan x="85" dy="28">for logs/configs</tspan>
+  </text>
+
+  
+  <rect x="445" y="760" width="355" height="380" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="465" y="800" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    (2) bzip2 (-j)
+  </text>
+  <text x="465" y="845" font-family="sans-serif" font-size="24" fill="#303a36">slower compression</text>
+  <text x="465" y="885" font-family="sans-serif" font-size="24" fill="#303a36">higher ratio</text>
+  <text x="465" y="930" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">pbzip2</text>
+  <text x="465" y="975" font-family="sans-serif" font-size="24" fill="#303a36">legacy text</text>
+
+  
+  <rect x="825" y="760" width="355" height="380" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="845" y="800" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    (3) xz (-J)
+  </text>
+  <text x="845" y="845" font-family="sans-serif" font-size="24" fill="#303a36">very slow compression</text>
+  <text x="845" y="885" font-family="sans-serif" font-size="24" fill="#303a36">maximum ratio</text>
+  <text x="845" y="930" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">xz -T0</text>
+  <text x="845" y="975" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="845" dy="0">software release</tspan>
+    <tspan x="845" dy="28">tarballs</tspan>
+  </text>
+
+  
+  <rect x="1205" y="760" width="355" height="380" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1225" y="800" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    (4) zstd (--zstd)
+  </text>
+  <text x="1225" y="845" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1225" dy="0">very fast gzip-like</tspan>
+    <tspan x="1225" dy="28">speed</tspan>
+  </text>
+  <text x="1225" y="915" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1225" dy="0">high compression</tspan>
+    <tspan x="1225" dy="28">ratio</tspan>
+  </text>
+  <text x="1225" y="985" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">zstd -T0</text>
+  <text x="1225" y="1030" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1225" dy="0">modern AI default</tspan>
+    <tspan x="1225" dy="28">for checkpoints/</tspan>
+    <tspan x="1225" dy="28">datasets</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="40" y="1180" width="1520" height="80" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <text x="800" y="1228" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#303a36">
+    Do not compress already compressed files (.safetensors, .pt, .zip); wastes CPU with zero byte reduction.
+  </text>
+</svg>

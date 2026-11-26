@@ -290,6 +290,10 @@ The `timeout tunnel 1h` line is the one to watch for streams, since it covers we
 
 ### nginx
 
+![Comparison of Server-Sent Events token streaming under nginx with proxy buffering enabled causing bursty delayed delivery versus proxy buffering disabled providing smooth real-time token delivery.](./img/p4-0220-sse-buffering.svg)
+
+*Figure 2.0.0. Disabling proxy buffering in nginx ensures each generated LLM token chunk flushes immediately to the client socket instead of stalling until an internal 4 KB buffer fills.*
+
 ```nginx
 upstream triton_grpc { least_conn; keepalive 32; server 10.1.0.11:8001; server 10.1.0.12:8001; }
 server {
@@ -415,6 +419,10 @@ Picture kube-proxy in its iptables mode for a Service with N pods. Each new conn
 One warning applies to the Kubernetes side. The iptables mode of kube-proxy balances connections randomly and is not load-aware. Long-lived gRPC connections therefore need L7 or client-side balancing to spread load evenly.
 
 ## 9. Load balancing for AI inference
+
+![Flow diagram of prefix-cache-aware routing directing matching prompt prefixes to the replica holding cached KV blocks unless its load exceeds the bounded threshold, triggering a spillover.](./img/p4-0220-prefix-cache-spill.svg)
+
+*Figure 2.0.0. Prefix-cache-aware routing hashes prompt prefixes to warm GPU replicas to eliminate prefill latency, using bounded-load spillover to prevent hot-spot overload.*
 
 ![Five differences of LLM serving from web traffic: long variable requests, long-lived connections, cache locality, expensive heterogeneous backends and slow autoscaling, with the routing response to each.](./img/p3-0220-llm-differences.svg)
 

@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-2007-passwd-group-df",
+  "title": "Anatomy of /etc/passwd, /etc/group, and df -P for Console Parsing",
+  "anchor": "### 8. Disk, mount, user and group chores",
+  "spec": "Three-panel vertical breakdown illustrating predictable parsing rules. Top panel: /etc/passwd record formatted as 7 colon-separated boxes: [1: username 'alice'] : [2: password 'x'] : [3: UID '1001'] : [4: GID '1001'] : [5: GECOS 'Alice User'] : [6: Home '/home/alice'] : [7: Shell '/bin/bash']. Highlight Field 3 with decision callout: UID == 0 flags rogue root (like 'toor'), UID >= 1000 indicates human login user. Highlight Field 7 with filter callout: exclude shells matching nologin or false. Middle panel: /etc/group record formatted as 4 colon-separated boxes: [1: group 'sudo'] : [2: password 'x'] : [3: GID '27'] : [4: members 'alice,carol,dave,erin']. Highlight Field 4 as comma-delimited string intersected against valid login users. Bottom panel: df -P table showing 6 POSIX fixed columns: Filesystem ($1), 1024-blocks ($2), Used ($3), Available ($4), Capacity ($5, '95%'), Mounted on ($6+). Show row '/dev/sdb1 104857600 95000000 5000000 95% /mnt/model cache' where space splits 'model' ($6) and 'cache' ($7), with arrow showing awk loop rebuilding $6 to $NF into '/mnt/model cache'.",
+  "alt": "Anatomy of colon-separated passwd and group files alongside POSIX df table showing UID thresholds and multi-word mount point reconstruction.",
+  "cap": "Parsing colon-delimited user databases and POSIX df tables relies on fixed field indices and loop reconstruction for spaced paths.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07"
+ },
+ {
+  "name": "p4-2007-bash-pitfalls",
+  "title": "Production Bash Pitfalls: pipefail, Local Masking, and Arithmetic Status",
+  "anchor": "### 10. Bash that survives production",
+  "spec": "Three horizontal comparison panels detailing silent failure traps in bash scripts. Panel 1 (Pipeline failure): Show pipeline 'false | true'. Without pipefail: 'false' exits 1, 'true' exits 0, resulting in overall status $? = 0 (silent failure masked). With 'set -o pipefail': pipe captures rightmost non-zero exit, resulting in $? = 1 (script halts or handles failure). Add note showing 'yes | head -1' closing pipe early, raising SIGPIPE (exit status 141) under pipefail, contrasted with 'awk NR<=5' reading without early pipe closure. Panel 2 (Local variable masking): Under 'set -e', show line 'local x=$(false)'. The subshell fails with status 1, but 'local' command itself succeeds with exit 0, causing set -e to ignore the failure. Show the fix: separate 'local x' followed by 'x=$(false)'. Panel 3 (Arithmetic exit code): Show 'set -e; i=0; ((i++))'. In bash 5.2, post-increment evaluates the expression to the old value 0, returning exit status 1 and terminating the script immediately. Show safe alternative 'i=$((i+1))' which always returns exit status 0.",
+  "alt": "Three bash production pitfalls showing how unquoted pipes hide failures, local masks subshell exit codes, and arithmetic post-increment trips set -e.",
+  "cap": "Shell safety flags like set -e require defensive coding because pipes, local assignments, and arithmetic expansions can silently mask or trigger exit codes.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07"
+ },
+ {
+  "name": "p4-2007-auth-log-shift",
+  "title": "Field Position Shifts in auth.log Between Valid and Invalid Users",
+  "anchor": "### Task 5. Failed SSH logins (fixture `auth.log`)",
+  "spec": "Side-by-side comparison illustrating why counting columns breaks on variable syslog lines. Top box: Valid user log line broken into numbered tokens: [1: Mar] [2: 12] [3: 10:14:02] [4: srv] [5: sshd[1234]:] [6: Failed] [7: password] [8: for] [9: root] [10: from] [11: 198.51.100.23] [12: port] [13: 45120] [14: ssh2]. Token $11 correctly holds the IP address 198.51.100.23. Middle box: Invalid user log line broken into numbered tokens: [1: Mar] [2: 12] [3: 10:14:05] [4: srv] [5: sshd[1235]:] [6: Failed] [7: password] [8: for] [9: invalid] [10: user] [11: admin] [12: from] [13: 198.51.100.23] [14: port] [15: 45122] [16: ssh2]. The insertion of 'invalid user' shifts token $11 to the username 'admin', while the true IP moves to $13. A red arrow shows 'awk {print $11}' mistakenly extracting the word 'admin' as an IP. Bottom box: Solution using delimiter anchoring with sed: 'from ([0-9.]+) port' capturing the IP cleanly in group \\1 regardless of word count shifts.",
+  "alt": "Comparison of auth.log lines showing how invalid user insertions shift column 11 from an IP address to a username.",
+  "cap": "Log lines with variable phrase counts shift positional fields, making delimiter-anchored regular expressions far more reliable than fixed column extraction.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07"
+ }
+]

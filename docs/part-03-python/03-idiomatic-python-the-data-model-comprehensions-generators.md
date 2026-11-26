@@ -365,6 +365,10 @@ Many small patterns become simpler once functions can be passed around. The sect
 
 ### Callable objects (`RoundRobin`), `operator` (`itemgetter`, `attrgetter`, `methodcaller`), and `functools.partial`
 
+![Three panels comparing a stateful RoundRobin callable object, a functools.partial argument wrapper, and operator dot-path accessors.](./img/p4-0303-callables-partial.svg)
+
+*Figure 3.0.0. RoundRobin encapsulates mutable index state inside a callable instance, partial freezes positional arguments and keywords into an immutable adapter, and operator accessors extract fields without lambda overhead.*
+
 A class that implements `__call__` behaves like a function that keeps state. A `RoundRobin` class, for example, copies its hosts into `self._hosts` and keeps an index. Its `pick(self)` method returns the next host, and `def __call__(self): return self.pick()` makes the instance callable. After `rr = RoundRobin(['gpu01', 'gpu02'])`, the call `rr()` works the same way as `rr.pick()`, and `callable(rr)` is `True`.
 
 Keyword-only arguments give callers clearer code. In `command(name, *args, user=None, **env)`, the `user=None` parameter comes after `*args`, so callers must pass `user='deploy'` by keyword. The `**env` parameter collects any environment variables, as in `command('restart', 'nginx', user='deploy', LANG='C')`.
@@ -639,6 +643,10 @@ for ids in batched(all_instance_ids, 100): client.bulk_delete(ids)       # API l
 Here the bulk delete runs in batches of 100, which matches the API limit of 100 per call.
 
 ### `itertools`, `functools`, `operator`
+
+![Three panels contrasting the itertools.groupby consecutive grouping gotcha with pairwise sliding deltas and batched fixed-size chunks.](./img/p4-0303-itertools-mechanisms.svg)
+
+*Figure 3.0.0. itertools.groupby clusters only adjacent identical keys requiring a pre-sort step, while pairwise creates two-element overlapping sliding windows for rate calculation, and batched partitions streams into fixed API batch sizes.*
 
 The table below lists the most useful tools. Use it to find a helper before you write a loop by hand.
 

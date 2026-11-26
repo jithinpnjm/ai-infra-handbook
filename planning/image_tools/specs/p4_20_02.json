@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2002-requirements-split",
+  "title": "Requirements Taxonomy: Day-One Must-Haves vs Desirable Preferences",
+  "anchor": "### 4. Requirements, line by line",
+  "spec": "A 2-column comparative layout categorizing Q1 through Q7, with a bottom callout for adjacent unstated areas. Left column header: 'Required on Day One (Must-Have Evidence)'. Right column header: 'Desirable / Growth Areas (Learning Trajectory)'. Inside Left Column, group into two technical domains: [Domain 1: Core Systems & Tooling] contains card Q1: 'Kubernetes, Prometheus, Grafana, Terraform fluency' (Chapters 20.23, 20.24, 20.25) and card Q2: 'Python or Bash scripting' (Chapters 20.7 to 20.11; note: correct, clear, testable code). [Domain 2: Reliability & Debugging Depth] contains card Q3: 'Alert design & SLOs for high-throughput APIs' (Chapters 20.19, 20.25), card Q4: 'How distributed back-ends fail' (Chapters 20.18, 20.21, 20.23), and card Q7: 'Building self-healing systems and debugging from kernel to application layer' (Chapters 20.3 to 20.6, 20.16). Under Left Column, show evidence rule: 'Must prove with concrete story: start, problem, change made, measured result'. Inside Right Column [Domain 3: AI Inference & MLOps Platform], contains card Q5: 'Shepherding GPU workloads with vLLM, Triton, Ray' (Chapter 20.22; note: desirable, not disqualifying) and card Q6: 'MLOps or model-hosting platform background' (Chapter 20.14). Under Right Column, show evidence rule: 'Interviewers probe reasoning, metrics understanding (e.g. waiting queue vs running batch vs KV cache), and learning ability'. At the bottom spanning both columns, draw an adjacent dashed box: 'Adjacent Unstated Topics (Design Questions on Multi-tenancy)' pointing to Part 12 (AI networking fabrics) and Part 18 (security & multi-tenant isolation).",
+  "alt": "A comparison grid sorting the seven job requirements into day-one required foundations and desirable growth areas across three technical domains.",
+  "cap": "Requirements split into required day-one engineering foundations and desirable AI-specific growth areas, with the evidence standard expected for each.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "02"
+ }
+]

@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0305-pathlib-anatomy",
+  "title": "Anatomy of a pathlib.Path Object and Path Transformations",
+  "anchor": "### `pathlib`",
+  "spec": "A two-panel anatomy diagram detailing how pathlib.Path deconstructs file paths and transforms them without string manipulation. Top panel (Single Suffix): Displays the path '/etc/kubernetes/manifests/kube-apiserver.yaml' divided into highlighted segments. A bracket spanning '/etc/kubernetes/manifests' is labeled 'p.parent'. A bracket spanning 'kube-apiserver.yaml' is labeled 'p.name'. Within 'p.name', a sub-bracket spanning 'kube-apiserver' is labeled 'p.stem', and a sub-bracket spanning '.yaml' is labeled 'p.suffix'. Callout annotations show: 'p.suffixes -> [\".yaml\"]', 'p.with_suffix(\".bak\") -> /etc/kubernetes/manifests/kube-apiserver.bak', 'p.parent.parent -> /etc/kubernetes', and 'p.relative_to(\"/etc\") -> kubernetes/manifests/kube-apiserver.yaml'. Bottom panel (Archive with Multi-suffix): Displays 'q = Path(\"/data/checkpoints/weights.tar.gz\")'. Annotated callouts show: 'q.name -> \"weights.tar.gz\"', 'q.stem -> \"weights.tar\" (drops only the final suffix)', 'q.suffix -> \".gz\"', and 'q.suffixes -> [\".tar\", \".gz\"]'. Side box: Key Path operations: 'Join: Path(\"/etc\") / \"kubernetes\"', 'Checks: .exists(), .is_file(), .is_dir()', 'I/O: .read_text(encoding=\"utf-8\"), .write_text(...)', and 'Glob: Path(\"/var/log\").glob(\"*.log\")'.",
+  "alt": "An anatomy diagram showing how a pathlib Path object decomposes file paths into parent, name, stem, suffix, and suffixes for single and multi-dot filenames.",
+  "cap": "A pathlib Path breaks file locations into structured attributes like parent, name, stem, and suffix, eliminating fragile string splitting and slash joins.",
+  "part": "part-03-python",
+  "ch": "05"
+ }
+]

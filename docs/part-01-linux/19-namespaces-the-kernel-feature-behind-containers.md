@@ -421,6 +421,10 @@ Before you debug a GPU in a container, confirm which layer should supply the dev
 
 ## 12. Other flavours of "virtual"
 
+![Comparison of language environments, HPC containers, application containers and system containers showing their isolation mechanisms and runtime models.](./img/p4-0119-virtual-flavors.svg)
+
+*Figure 1.19.21. From shell path overrides to full system containers, each flavor of virtualization trades kernel isolation depth against setup complexity and shared-storage compatibility.*
+
 Not every isolation tool is a container. Some are tools for a shared host, and some are runtimes built for HPC. Knowing which one you are looking at saves confusion later.
 
 - **LXC, LXD and Incus** run system containers. Each one runs a whole init and several services. You set up more by hand, including the network and UID mappings, so they feel closer to a lightweight VM. The first Docker versions were built on LXC.
@@ -436,7 +440,7 @@ Before you reach for a tool here, decide which kind of isolation the job needs: 
 
 ![A five question ladder for diagnosing a misbehaving container from startup through limits, the container view, the host view and shared resources, with symptom pointers.](./img/p3-0119-five-questions.svg)
 
-*Figure 1.19.21. Ask whether it starts, whether limits are hit, what the container and host each see, and what is shared, and stop at the first answer that fits.*
+*Figure 1.19.22. Ask whether it starts, whether limits are hit, what the container and host each see, and what is shared, and stop at the first answer that fits.*
 
 A container misbehaves during an on-call shift, and you need to get from symptom to cause quickly. This table is built for that moment. It maps common symptoms to their likely causes and fixes. Scan the symptom column first, then read the fix in the right-hand column.
 

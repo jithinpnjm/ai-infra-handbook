@@ -225,6 +225,10 @@ Decide: during a partial outage, reduce the number of attempts first, because mo
 
 ### 10. Noisy tenants
 
+![An aggregate dashboard shows normal latency and green status, while a per-tenant gateway breakdown reveals that one tenant takes 68 percent of prompt tokens and starves others in the queue.](./img/p4-2018-noisy-tenant.svg)
+
+*Figure 20.0.0. Aggregate dashboards mask noisy tenant starvation, which is confirmed by breaking down prompt tokens and request rates by tenant at the gateway.*
+
 Picture a status page where the average looks healthy, but one customer keeps writing in to say their answers are slow. Symptom. One customer's p99 is fine, another's is awful, and aggregate dashboards look normal. A single tenant is sending large batches or long prompts.
 
 Confirm. Break prompt tokens and request rate down by tenant at the gateway. A tenant holding half or more of the prompt tokens while others queue is the signature. Be careful about putting tenant ID on engine histograms. The vLLM metrics page warns that every histogram bucket adds one series per label combination, so a tenant label multiplies series quickly. A series is one stored time line in the metrics database, and too many series slow the whole system down.

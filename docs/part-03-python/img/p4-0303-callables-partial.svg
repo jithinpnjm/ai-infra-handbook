@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>First-Class Callables: Stateful __call__ Objects, functools.partial Binding, and operator Extractors</title>
+  <desc>Infographic comparing stateful callable objects, partial application adapters, and high-speed operator extractors in Python.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 Z" fill="#207448" />
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1380" fill="#f5f8f5" />
+
+  
+  <text x="50" y="52" font-family="sans-serif" font-size="40" font-weight="bold" fill="#207448">First-Class Callables: Stateful __call__ Objects,</text>
+  <text x="50" y="98" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">functools.partial Binding, and operator Extractors</text>
+
+  
+  
+  
+  <rect x="50" y="125" width="1500" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(75, 145)">
+    
+    <circle cx="28" cy="28" r="20" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 4 L 28 12 M 28 44 L 28 52 M 4 28 L 12 28 M 44 28 L 52 28 M 11 11 L 17 17 M 39 39 L 45 45 M 11 45 L 17 39 M 39 11 L 45 17" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="70" y="38" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Panel 1: Stateful Callable Object</text>
+  </g>
+
+  
+  <rect x="75" y="215" width="460" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="95" y="252" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">RoundRobin instance</text>
+  <text x="95" y="285" font-family="monospace" font-size="24" fill="#207448">rr = RoundRobin(["gpu01", "gpu02"])</text>
+  
+  <line x1="95" y1="305" x2="515" y2="305" stroke="#e8f1ea" stroke-width="2" />
+  <text x="95" y="338" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Inside instance state:</text>
+  <text x="95" y="375" font-family="monospace" font-size="24" fill="#303a36">attribute '_hosts' -> ["gpu01", "gpu02"]</text>
+  <text x="95" y="415" font-family="monospace" font-size="24" fill="#303a36">_index: 0</text>
+
+  
+  <path d="M 535 295 L 675 295" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+  
+  
+  <rect x="690" y="215" width="460" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="710" y="252" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">rr()</text>
+  <text x="765" y="252" font-family="sans-serif" font-size="24" fill="#303a36">triggers</text>
+  <text x="860" y="252" font-family="monospace" font-size="24" fill="#207448">__call__()</text>
+  <text x="980" y="252" font-family="sans-serif" font-size="24" fill="#303a36">-></text>
+  <text x="1010" y="252" font-family="monospace" font-size="24" fill="#207448">self.pick()</text>
+  <text x="710" y="295" font-family="sans-serif" font-size="24" fill="#303a36">increments '_index' to 1 and returns '"gpu01"'</text>
+
+  
+  <path d="M 920 330 L 920 355" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="690" y="360" width="460" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="710" y="400" font-family="sans-serif" font-size="24" fill="#303a36">next <tspan font-family="monospace" fill="#207448">rr()</tspan> call returns '"gpu02"'</text>
+  <text x="710" y="435" font-family="sans-serif" font-size="24" fill="#303a36">and wraps '_index' back to 0</text>
+
+  
+  <rect x="1190" y="270" width="330" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1225" y="325" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">callable(rr) == True</text>
+
+  
+  
+  
+  <rect x="50" y="510" width="1500" height="425" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(75, 530)">
+    
+    <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 22 6 C 22 14 34 14 34 6 M 50 22 C 42 22 42 34 50 34" fill="none" stroke="#207448" stroke-width="4" />
+    <text x="70" y="38" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Panel 2: Partial Application Adapter</text>
+  </g>
+
+  
+  <rect x="75" y="600" width="440" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="95" y="635" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">base function signature</text>
+  <text x="95" y="672" font-family="monospace" font-size="24" fill="#207448">command(name, *args, user=None, **env)</text>
+
+  
+  <path d="M 295 695 L 295 725" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="75" y="730" width="440" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="95" y="765" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">functools.partial wrapper object</text>
+  <text x="95" y="800" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">restart_nginx</text>
+  <text x="95" y="835" font-family="monospace" font-size="24" fill="#303a36">.func -> command</text>
+  <text x="95" y="868" font-family="monospace" font-size="24" fill="#303a36">.args -> ("restart", "nginx")</text>
+  <text x="95" y="900" font-family="sans-serif" font-size="24" fill="#303a36">(frozen positional arguments)</text>
+
+  
+  <rect x="545" y="600" width="400" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="565" y="638" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">frozen keyword arguments</text>
+  <text x="565" y="675" font-family="monospace" font-size="24" fill="#303a36">.keywords -> {"user": "deploy"}</text>
+
+  <rect x="545" y="745" width="400" height="145" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <text x="565" y="785" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Call trigger:</text>
+  <text x="565" y="825" font-family="sans-serif" font-size="24" fill="#303a36">caller runs</text>
+  <text x="565" y="865" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">restart_nginx(LANG="C")</text>
+
+  
+  <path d="M 945 815 L 985 815" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrowhead-orange)" />
+
+  
+  <rect x="995" y="600" width="530" height="315" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1020" y="640" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Splice box shows runtime merging:</text>
+  
+  <text x="1020" y="685" font-family="sans-serif" font-size="24" fill="#303a36">positionals ('restart', 'nginx')</text>
+  <text x="1020" y="720" font-family="sans-serif" font-size="24" fill="#303a36">prepended to empty caller args,</text>
+
+  <text x="1020" y="775" font-family="sans-serif" font-size="24" fill="#303a36">kwargs merged to</text>
+  <text x="1020" y="812" font-family="monospace" font-size="24" fill="#207448">{'user': 'deploy', 'LANG': 'C'}</text>
+
+  <line x1="1020" y1="840" x2="1495" y2="840" stroke="#e8f1ea" stroke-width="2" />
+  <text x="1020" y="885" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">passed to command()</text>
+
+  
+  
+  
+  <rect x="50" y="960" width="1500" height="385" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(75, 980)">
+    
+    <polygon points="26,6 10,32 26,32 22,50 42,22 28,22" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <text x="70" y="38" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Panel 3: High-Speed Extractors with operator</text>
+  </g>
+
+  
+  <rect x="75" y="1045" width="1450" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <text x="95" y="1080" font-family="monospace" font-size="24" fill="#207448">Host = namedtuple("Host", "name gpus loc")</text>
+  <text x="740" y="1080" font-family="monospace" font-size="24" fill="#207448">Loc = namedtuple("Loc", "rack slot")</text>
+  
+  <text x="95" y="1125" font-family="sans-serif" font-size="24" fill="#303a36">An instance</text>
+  <text x="235" y="1125" font-family="monospace" font-size="24" fill="#207448">Host("gpu01", 8, Loc("r1", "04"))</text>
+  <text x="735" y="1125" font-family="sans-serif" font-size="24" fill="#303a36">is targeted by</text>
+  <text x="890" y="1125" font-family="monospace" font-size="24" fill="#207448">operator.attrgetter("name", "loc.rack")</text>
+
+  
+  <path d="M 95 1160 L 140 1160" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+  <text x="155" y="1168" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Arrows trace the dot-path traversal returning ('gpu01', 'r1') at C speed without creating a lambda frame</text>
+
+  
+  <rect x="75" y="1220" width="1450" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="95" y="1278" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">operator.itemgetter(1, 0)</text>
+  <text x="500" y="1278" font-family="sans-serif" font-size="26" fill="#303a36">extracting (item_1, item_0) directly by index</text>
+
+</svg>

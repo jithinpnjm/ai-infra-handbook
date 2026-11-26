@@ -1,0 +1,31 @@
+# docs/part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md
+- ## What the interviewer is testing | 230 | NO FIGURE NEEDED framing section introducing the interview scenario
+- ## The core ideas | 110 | COVERED(m20-05-1)
+- ### 1. Load average, utilisation and saturation | 460 | COVERED(x05-load-counts-d-state)
+- ### 2. The run queue and pressure stall information | 450 | COVERED(x05-psi-load-vs-pressure)
+- ### 3. CPU throttling from cgroup limits in containers | 580 | COVERED(p2-2005-quota-stall, m20-05-2)
+- ### 4. Steal time | 240 | COVERED(p2-2005-steal-time)
+- ### 5. NUMA basics | 300 | COVERED(p3-2005-numa-gpu-sockets)
+- ### 6. Page cache, anonymous memory and swap | 440 | COVERED(x05-reclaim-order)
+- ### 7. The OOM killer and how to read its log | 500 | COVERED(x05-oom-log-four-steps)
+- ### 8. cgroup memory limits versus node memory | 430 | COVERED(p3-2005-qos-eviction, p2-2005-cgroup-wall)
+- ### 9. Disk latency versus throughput | 420 | COVERED(x05-iostat-row-order)
+- ### 10. perf and flame graphs | 360 | COVERED(p3-2005-flamegraph-anatomy)
+- ### 11. eBPF tools at a high level | 260 | NEEDS FIGURE visual map of eBPF tools placed across Linux kernel layers
+- ### 12. Pinned memory and why GPU inference hosts hit host-memory limits | 540 | COVERED(p2-2005-pinned-budget)
+- ## How to answer out loud | 360 | NO FIGURE NEEDED interview spoken drill scripts
+- ## Worked scenarios | 110 | NO FIGURE NEEDED introductory text for code scenarios
+- ### Scenario 1. High load, idle CPUs | 380 | NO FIGURE NEEDED hands-on script verifying D-state concept in figure x05-load-counts-d-state
+- ### Scenario 2. Slow container, idle node | 320 | NO FIGURE NEEDED hands-on script verifying cgroup throttling concept in figure p2-2005-quota-stall
+- ### Scenario 3. OOMKilled with free node memory | 390 | NO FIGURE NEEDED hands-on script verifying cgroup OOM log concept in figure x05-oom-log-four-steps
+- ### Scenario 4. No free memory | 250 | NO FIGURE NEEDED hands-on script verifying reclaim order in figure x05-reclaim-order
+- ### Scenario 5. Slow disk or just a busy one | 360 | NO FIGURE NEEDED hands-on script verifying iostat reading order in figure x05-iostat-row-order
+- ### Scenario 6. Pinned memory on a GPU host | 350 | NO FIGURE NEEDED hands-on script verifying host-memory budget in figure p2-2005-pinned-budget
+- ## Hands-on lab | 240 | NO FIGURE NEEDED lab reproduction steps
+- ## What the container run showed | 310 | NO FIGURE NEEDED post-run debrief notes
+- ## Drill questions | 340 | NO FIGURE NEEDED self-test questions and answers
+- ## Common mistakes and weak answers | 200 | NO FIGURE NEEDED list of anti-patterns and corrections
+- ## Connections to the rest of the handbook | 150 | NO FIGURE NEEDED cross-reference list
+- ## Sources and review notes | 450 | NO FIGURE NEEDED citations and environment review
+
+Specs kept 1, dropped 0: []

@@ -87,11 +87,15 @@ Treat that layering as a sketch, not a law, because **user space has no real rul
 
 ### Why two modes? Kernel mode and user mode
 
+![Concentric rings showing Ring 3 user mode and Ring 0 kernel mode, illustrating how CPU hardware traps illegal privileged instructions to protect the system.](./img/p4-0101-cpu-rings.svg)
+
+*Figure 1.1.3. The CPU hardware boundary: user processes run in Ring 3 and trap into Ring 0 via system calls, while illegal privileged instructions trigger hardware faults that terminate the rogue process without halting the system.*
+
 You might wonder who stops a program from simply ignoring these rules. Nobody's honor is required, because modern CPUs build the split into the hardware. A CPU can run in at least two privilege levels. On x86 processors, people traditionally call them **ring 0** and **ring 3**. Ring 0 is the most privileged level, and the kernel runs there. Ring 3 is the least privileged level, and your programs run there. In ring 0, the CPU allows the dangerous instructions: the ones that control memory protection, talk to devices, and handle interrupts. In ring 3, those same instructions are refused. If a normal program tries one, the CPU raises a fault and hands the case to the kernel. The kernel then decides what to do, and usually it kills the offending program.
 
 ![Infographic titled Kernel mode and user mode. The kernel runs in the inner ring 0 and programs run in the outer ring 3. When a program attempts a privileged instruction the CPU refuses it, raises a fault and hands it to the kernel, which usually kills the program. A user-space crash lets the rest of the system continue, while a kernel bug can stop the whole machine.](./img/ch01-fig2-kernel-user-mode.jpg)
 
-*Figure 1.1.3. Kernel mode and user mode. A privileged instruction tried from ring 3 triggers a fault that the kernel handles, and the program is usually killed.*
+*Figure 1.1.4. Kernel mode and user mode. A privileged instruction tried from ring 3 triggers a fault that the kernel handles, and the program is usually killed.*
 
 This boundary buys you a property you rely on every single day. **If a user-space program crashes, the kernel cleans it up and the rest of the system continues.** A buggy Python script can die without corrupting the kernel's memory or another user's process. The reverse is why kernel problems are more serious: a bug *inside* the kernel can bring down the whole machine. That includes a bug in a kernel module, such as a GPU driver, because that code runs in kernel mode. When the kernel itself concludes it cannot safely continue, the machine stops with a "kernel panic".
 
@@ -118,7 +122,7 @@ What triggers the switch? A hardware timer. At the end of a slice, the timer int
 
 ![Job 1: running processes](./img/ch01-d2-luna.svg)
 
-*Figure 1.1.4. Job 1: running processes.*
+*Figure 1.1.5. Job 1: running processes.*
 
 Two consequences of this design are worth carrying with you. First, *the kernel only runs between slices of user programs*, or when a program makes a system call, or when a device raises an interrupt. The kernel is not a separate program running in parallel with yours; it is the manager who steps in on a regular basis, does the bookkeeping, and steps out again. Second, on a machine with several cores, this same dance happens per core, with one extra decision: which core a process should run on. That placement matters a great deal for performance with GPUs and fast networks, and chapter 1.17 covers it under the name NUMA.
 
@@ -126,7 +130,7 @@ Two consequences of this design are worth carrying with you. First, *the kernel 
 
 ![A worked example translating virtual address 8,320 through a page table to physical frame 15, and virtual address 28,736 hitting an unmapped page and causing a page fault.](./img/p3-0101-pagetable-example.svg)
 
-*Figure 1.1.5. Worked example: virtual page 2 maps to frame 15 and the access succeeds, while virtual page 7 is not mapped and raises a page fault.*
+*Figure 1.1.6. Worked example: virtual page 2 maps to frame 15 and the access succeeds, while virtual page 7 is not mapped and raises a page fault.*
 
 Every process believes it owns a large, private, continuous block of memory. That belief is an illusion, and the kernel works hard to maintain it, with help from a piece of CPU hardware called the **memory management unit**, or **MMU** for short. The design behind the illusion is called **virtual memory**.
 
@@ -140,7 +144,7 @@ Here is how the illusion works. The addresses a program uses are virtual address
 
 ![Infographic titled Virtual memory. Process A and Process B each have their own page table. One MMU translates each virtual address to a page in physical RAM. A shared page is mapped by both processes, and an address that is not mapped raises a page fault. Four steps: virtual address, MMU lookup, mapped access to RAM, or not mapped and a page fault.](./img/ch01-fig3-virtual-memory.jpg)
 
-*Figure 1.1.6. Virtual memory. Each process has its own page table, the MMU translates every access in hardware, and an access to a page that is not mapped raises a page fault.*
+*Figure 1.1.7. Virtual memory. Each process has its own page table, the MMU translates every access in hardware, and an access to a page that is not mapped raises a page fault.*
 
 What happens when a program touches a page that is not currently mapped? The CPU raises a **page fault**, and the kernel takes over. The kernel may load the page from disk, allocate a fresh one, or kill the program if the access was illegal. That last case is the famous "segmentation fault". You will meet page faults again in GPU work, because GPU unified memory is built on this same idea.
 
@@ -148,19 +152,27 @@ The kernel's own bookkeeping is also memory, and the kernel needs a private regi
 
 ### Job 3: managing devices
 
+![Diagram illustrating how file operations on device nodes under slash dev route through kernel device drivers to physical hardware or software pseudodevices.](./img/p4-0101-device-files.svg)
+
+*Figure 1.1.8. Linux device architecture: ordinary file system calls on files under slash dev are routed by the kernel to either hardware device drivers or kernel-internal pseudodevices.*
+
 Disks, network cards, keyboards, and GPUs all speak different low-level languages, and no program should have to learn them all. The kernel's answer is the **device driver**: one piece of code per kind of hardware that understands its device and exposes it through a common, simple interface. A driver is code that runs in kernel mode, and this one fact explains a lot about GPU nodes: **the NVIDIA driver is kernel code.** It arrives as kernel modules named `nvidia`, `nvidia_uvm`, and a few more, together with user-space libraries that talk to those modules.
 
 Linux goes one step further and presents many devices as **special files** under `/dev`. A program can open `/dev/nvidia0` or `/dev/nvme0n1` and use ordinary file operations on it, and the kernel quietly routes those operations to the right driver. Notice the idea underneath, because it is one you will see everywhere in Linux: *many things are made to look like files*. Devices, processes under `/proc`, hardware information under `/sys`, and network sockets all look like files, so the same small set of tools and system calls works on all of them.
 
 ![Infographic titled Many things look like files. A program performs ordinary file operations on /dev/nvidia0, /dev/nvme0n1 and /dev/null. The kernel routes each operation to the device driver, which talks to the GPU, the NVMe disk or discards what is written. Proc, sys and network sockets are also made to look like files.](./img/ch01-fig4-everything-is-a-file.jpg)
 
-*Figure 1.1.7. Many things look like files. A program uses ordinary file operations, and the kernel quietly routes them to the right driver for the hardware.*
+*Figure 1.1.9. Many things look like files. A program uses ordinary file operations, and the kernel quietly routes them to the right driver for the hardware.*
 
 Some device files do not correspond to any hardware at all. **Pseudodevices** look like devices to programs, but they are implemented purely in software, usually inside the kernel for practical reasons. `/dev/null` discards whatever you write. `/dev/zero` provides an endless supply of zero bytes. `/dev/random` and `/dev/urandom` supply random numbers from the kernel's generator, which would be hard to implement securely in an ordinary program. Notice also that a process still needs a system call to open one of these; on Linux, processes never escape system calls entirely.
 
 Finally, drivers can be built into the kernel itself, or loaded on demand as **kernel modules** shipped in `.ko` files. Loading a module puts new code *into the running kernel*. That is why a module compiled for one kernel version often refuses to load on another, and it is the origin of one of the most common GPU-node failures, which you will meet at the end of this chapter.
 
 ### Job 4: system calls and the services around them
+
+![Diagram of a system call journey showing user code calling glibc, transitioning through the CPU syscall instruction into kernel subsystems, with strace intercepting at the boundary.](./img/p4-0101-syscall-boundary.svg)
+
+*Figure 1.1.10. The system call path: user applications invoke glibc wrappers that trigger the hardware syscall instruction, transitioning execution to the kernel dispatcher across five functional categories while strace observes the boundary.*
 
 You have walked past the front desk several times now, so here is its proper definition. A **system call**, often shortened to syscall, is a request from a user program to the kernel through the defined doorway. There are a few hundred of them, and together they are the entire vocabulary a program has for dealing with the world outside its own memory. The table groups the common ones by category. Learn the categories first; the individual names will become familiar with use.
 
@@ -176,7 +188,7 @@ In practice you almost never call these directly. Your program calls a function 
 
 ![Infographic titled System calls. Your program calls a library function such as open, glibc (libc.so.6) makes the system call, and the call crosses a dashed line to the system call interface in the kernel, which has counters for files, processes, memory, network, and control and info. strace prints every system call a program makes.](./img/ch01-fig5-system-calls.jpg)
 
-*Figure 1.1.8. System calls. A program's library call, through glibc, becomes the system call that enters the kernel, which serves it by category.*
+*Figure 1.1.11. System calls. A program's library call, through glibc, becomes the system call that enters the kernel, which serves it by category.*
 
 Two notation habits will greet you in every book and manual page. First, system calls are written with parentheses, such as `fork()`, `exec()`, and `execve()`; the habit comes from the C language, in which they are called. You do not need to know C. Just remember that *a system call is an interaction between a process and the kernel*. Second, a name like `exec()` usually stands for a **family** of related C library functions, such as `execl()`, `execv()`, and `execvp()`. Those functions differ only in how they pass their arguments, and all of them invoke the same underlying kernel system call, `execve()`.
 
@@ -192,7 +204,7 @@ Here is the most important worked example in the whole chapter, because it answe
 
 ![What happens when you type a command](./img/ch01-d3-luna.svg)
 
-*Figure 1.1.9. What happens when you type a command.*
+*Figure 1.1.12. What happens when you type a command.*
 
 Two steps in that diagram do all the real work. The first step creates a new process. The classic Unix call for this is `fork()`, which makes the child an almost exact copy of the parent. On modern Linux, the C library implements `fork()` using the `clone` system call, so `strace` will show `clone` or `clone3`.
 
@@ -204,7 +216,7 @@ Every process except the very first is created this way, so processes form a **t
 
 ![A process with a UID and GID and a file with owner and permission bits are compared by the kernel.](./img/l01-uid-gid.svg)
 
-*Figure 1.1.10. The kernel decides access by comparing the numeric IDs of the process with the owner, group and permission bits on the file.*
+*Figure 1.1.13. The kernel decides access by comparing the numeric IDs of the process with the owner, group and permission bits on the file.*
 
 Everything so far was about one program asking one machine for things. Linux adds a second question: who is asking? Linux is a multi-user system. Each user has a numeric **user ID**, or **UID**, and belongs to one or more groups, and each group has a numeric **group ID**, or **GID**. Every process runs *as* some UID and GID, and every file carries an owner and a group. The kernel makes access decisions by comparing these numbers with permission bits stored on files. The special account **root** has UID 0, and it bypasses most permission checks.
 
@@ -290,9 +302,13 @@ A **distribution**, or **distro** for short, bundles that kernel with a selectio
 
 ![Distributions: Linux is a kernel, not a system](./img/ch01-d4-luna.svg)
 
-*Figure 1.1.11. Distributions: Linux is a kernel, not a system.*
+*Figure 1.1.14. Distributions: Linux is a kernel, not a system.*
 
 ### 6.1 The Red Hat, Fedora, CentOS, and Amazon Linux branch
+
+![Lineage diagram showing the flow of packages from upstream Fedora through midstream CentOS Stream to downstream RHEL and binary rebuilds Rocky Linux, AlmaLinux, and Amazon Linux.](./img/p4-0101-rhel-lineage.svg)
+
+*Figure 1.1.15. The Red Hat distribution lineage: innovations flow from upstream Fedora through midstream CentOS Stream to RHEL, which downstream community distributions like Rocky Linux and cloud distributions like Amazon Linux rebuild or adapt using RPM and DNF.*
 
 The easiest way to remember this branch is as a river, because the family itself talks in upstreams and downstreams. At the mouth of the river sits **Red Hat Enterprise Linux**, or **RHEL**, the first major commercial success in the Linux market. Enterprise and HPC data centers prize it for multi-year stability, vendor certifications, and commercial support contracts. Fast-moving upstream kernel development clashes with the slow, careful stability that RHEL customers need, so Red Hat sponsors **Fedora** as its upstream distribution. New kernels, package tools, and system features land in Fedora first, developers and the open-source community vet them there, and they later flow downstream into RHEL.
 
@@ -307,7 +323,7 @@ Every distribution in this branch shares the **RPM** format, and its package fil
 
 ![Old programs run on new kernels, but newer glibc programs and kernel modules fail on mismatched systems.](./img/l01-asymmetry.svg)
 
-*Figure 1.1.12. Kernel and user space move independently, and the reverse direction fails in two ways.*
+*Figure 1.1.16. Kernel and user space move independently, and the reverse direction fails in two ways.*
 
 The second lineage starts with **Debian GNU/Linux**, founded by Ian Murdock in 1993 and sponsored early on by the Free Software Foundation's GNU Project, from November 1994 through November 1995. Debian remains the only major Linux distribution governed entirely by a community project rather than a corporate parent. It also has a naming habit you will grow to like: every Debian release since version 1.1 in June 1996, code-named *Buzz*, is named after a *Toy Story* character. You will meet Debian 11.0 *Bullseye*, released in August 2021, and Debian 12 *Bookworm*. Debian maintains three branches: `unstable`, which is always named *Sid*, then `testing`, and finally `stable`. Packages mature through `unstable` and `testing` before they freeze into a rock-solid `stable` release. That patience makes Debian a favorite base for other distributions, including NVIDIA's Cumulus Linux on network switches.
 
@@ -336,7 +352,7 @@ Time to land the map on the machine you will actually work on: a server with GPU
 
 ![Putting a GPU node on the map](./img/ch01-d5-luna.svg)
 
-*Figure 1.1.13. Putting a GPU node on the map.*
+*Figure 1.1.17. Putting a GPU node on the map.*
 
 The table lists each component with its layer, its role, and the boundary where its failures show up, so when something breaks you know where to look first.
 
@@ -363,7 +379,7 @@ Use the map as a lookup table from now on. The notes below walk through the five
 
 ![A table mapping six classic failure symptoms to the system layer that causes them.](./img/l01-layer-failures.svg)
 
-*Figure 1.1.14. Before touching anything, ask which layer of the system the failure actually lives in.*
+*Figure 1.1.18. Before touching anything, ask which layer of the system the failure actually lives in.*
 
 Everything in this chapter pays off here. Each of the six stories below is a real incident pattern, born from mixing up the layers. Read them with one habit in mind: before you touch anything, ask which layer of the system the failure actually lives in.
 
@@ -378,7 +394,7 @@ Everything in this chapter pays off here. Each of the six stories below is a rea
 
 ![Two panels comparing a process in state D, stuck in a kernel system call waiting on I/O, with a zombie in state Z, which has finished and waits for its parent to call wait4.](./img/p3-0101-d-versus-z.svg)
 
-*Figure 1.1.15. State D is alive and waiting inside the kernel on I/O, while state Z is already finished and only waits for its parent to collect it.*
+*Figure 1.1.19. State D is alive and waiting inside the kernel on I/O, while state Z is already finished and only waits for its parent to collect it.*
 
 ### 4. "The kernel killed my job": the out-of-memory killer
 **Symptom:** a training process vanishes with no error in its own log, and `dmesg` shows "Out of memory: Killed process ...". **Cause:** physical memory plus swap was exhausted. The kernel's OOM killer chose a victim to save the machine. **Diagnose:** `dmesg -T | grep -i -E "killed process|oom"`, `free -h`, and the per-cgroup limits in `memory.max`. **Fix:** reduce memory use, add memory, or set realistic limits. In containers and Slurm, the same event happens at the cgroup limit instead of at whole-machine exhaustion, as chapters 1.17 and 1.18 explain. If you see this in your logs, check the cgroup limit first.

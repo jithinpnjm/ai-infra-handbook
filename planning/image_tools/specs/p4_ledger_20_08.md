@@ -1,0 +1,34 @@
+# docs/part-20-nebius-sre-interview/08-the-coding-round-what-to-expect-and-how-to-perform.md
+- ## What the interviewer is testing | 270 words | NO FIGURE NEEDED introductory interview context and quoted requirements
+- ## The core ideas | 10 words | NO FIGURE NEEDED section container
+- ### 1. The coding round grades a process, and the code is only the last step | 310 words | NO FIGURE NEEDED behavioral grading principles explained directly in text
+- ### 2. The 60-minute structure | 250 words | COVERED(m20-08-1)
+- ### 3. Clarify and use examples as a specification | 220 words | NO FIGURE NEEDED checklist of clarification questions and example framing
+- ### 4. How to think aloud without rambling | 260 words | COVERED(p2-2008-three-part-sentence)
+- ### 5. Recovering when you are stuck | 270 words | NEEDS FIGURE five-step escalation ladder for getting unstuck under interview pressure
+- ### 6. Writing code that runs first time in a plain editor | 480 words | COVERED(x08-compress-trace)
+- ### 7. Testing by hand with edge-case checklists | 220 words | COVERED(p2-2008-edge-checklists)
+- ### 8. A reusable harness for practice | 380 words | NO FIGURE NEEDED self-contained test script with detailed inline explanation
+- ### 9. Python tools that save time | 350 words | COVERED(p2-2008-stdlib-results)
+- ### 10. Go equivalents, briefly | 380 words | NEEDS FIGURE mapping Python standard library tools to Go equivalents and interface boilerplate
+- ### 11. Pitfalls that cost points | 640 words | COVERED(p3-2008-mutable-default, x08-grid-aliasing)
+- ### 12. Follow-ups: when the parameters change | 210 words | COVERED(p2-2008-param-change)
+- ### 13. A four-week practice routine | 250 words | COVERED(p2-2008-four-week-plan)
+- ## How to answer out loud | 10 words | NO FIGURE NEEDED section container
+- ### The first two minutes of any problem | 110 words | NO FIGURE NEEDED verbatim conversational script
+- ### Presenting brute force and the improvement | 120 words | NO FIGURE NEEDED verbatim trade-off dialogue script
+- ### Before running or submitting | 120 words | NO FIGURE NEEDED verbatim hand-trace dialogue script
+- ### When the interviewer changes the problem | 70 words | NO FIGURE NEEDED conversational adaptation lines
+- ### When you do not know | 80 words | NO FIGURE NEEDED conversational recovery script
+- ## Worked scenarios | 10 words | NO FIGURE NEEDED section container
+- ### Scenario 1: string compression, start to finish | 360 words | NO FIGURE NEEDED walk-through text using trace illustrated in section 6
+- ### Scenario 2: top error endpoints from a log | 250 words | COVERED(p3-2008-topk-scale-ladder)
+- ### Scenario 3: you are stuck on merge intervals | 260 words | COVERED(x08-merge-intervals-sorted)
+- ## Hands-on lab | 240 words | NO FIGURE NEEDED command line steps and drill instructions
+- ## Drill questions | 250 words | NO FIGURE NEEDED Q&A drill review items
+- ## Common mistakes and weak answers | 150 words | NO FIGURE NEEDED bulleted anti-patterns list
+- ## Connections to the rest of the handbook | 110 words | NO FIGURE NEEDED chapter reference index
+- ## Sources and review notes | 230 words | NO FIGURE NEEDED bibliography and citation notes
+- ### Verification log | 120 words | NO FIGURE NEEDED verification checklist log
+
+Specs kept 2, dropped 0: []

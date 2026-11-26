@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0117-zone-watermarks",
+  "title": "Zone Watermarks and Page Reclaim Dynamics",
+  "anchor": "## 4. How Linux frees memory",
+  "spec": "A vertical water-level gauge representing available free memory in a zone (Normal zone), marked with three horizontal threshold lines from top to bottom: high, low, and min. Above high: 'Normal Zone State' where free memory is plentiful and background kswapd sleeps. At high: marked as the hysteresis stop point where kswapd returns to sleep. Between high and low: allocations proceed smoothly without application stall. At low: annotated with 'kswapd wakes up'; an arrow shows kswapd scanning active/inactive LRU lists, dropping clean page cache and unmapping pages asynchronously in the background. The gap between low and high is labelled 'Spacing controlled by vm.watermark_scale_factor (default 10 = 0.1% RAM)'. At min: annotated with 'Direct Reclaim Threshold', derived from vm.min_free_kbytes. Below min: labelled 'Direct Reclaim Zone'; an allocating application thread is forced to synchronously reclaim memory (pgscand/s, allocstall), causing severe application latency spikes and high sys time. Bottom of the gauge: exhaustion below min triggers the OOM killer. A side panel contrasts the knobs: vm.min_free_kbytes sets the min baseline, while raising vm.watermark_scale_factor (e.g. to 50 or 100) widens the watermark gaps to start kswapd earlier and avoid direct-reclaim stalls.",
+  "alt": "A vertical water-level gauge showing the high, low, and min memory zone watermarks, where kswapd reclaims in the background between low and high while dropping to min triggers synchronous direct reclaim stalls.",
+  "cap": "Zone watermarks govern page reclaim: kswapd wakes at the low watermark to restore free pages to high in the background, while hitting the min watermark forces synchronous direct reclaim and latency spikes.",
+  "part": "part-01-linux",
+  "ch": "17"
+ }
+]

@@ -1,0 +1,34 @@
+# docs/part-03-python/09-testing-quality-and-ci-for-python-tooling.md
+- ## Why this matters for AI infrastructure | 114 | NO FIGURE NEEDED introductory motivation
+- ## Prerequisites and outcomes | 118 | NO FIGURE NEEDED syllabus checklist
+- ## 1. Test strategy for infrastructure code | 247 | COVERED(p3-0309-degraded-conditions, s09-pyramid, m3-09-1)
+- ## 2. pytest essentials | 296 | COVERED(p3-0309-markers-config-flags, p3-0309-parametrize-anatomy)
+- ### Fixtures that clean up and avoid leaked state | 206 | COVERED(p3-0309-fixture-scopes)
+- ## 3. Isolating dependencies: fakes, stubs and mocks | 129 | COVERED(p3-0309-test-doubles)
+- ### Dependency injection beats patching | 148 | COVERED(p3-0309-drainer-timeline, s09-di)
+- ### unittest.mock and pytest-mock | 108 | COVERED(p3-0309-patch-rules)
+- ### HTTP-level fakes | 97 | NEEDS FIGURE transport layer interception flow with respx vs mocking client.get
+- ### Subprocess, filesystem and environment | 120 | COVERED(p3-0309-fake-the-edges)
+- ### Async code | 65 | NEEDS FIGURE async test lifecycle with AsyncMock, wait_for timeout and fake event loop clock
+- ## 4. Beyond example-based tests | 47 | NO FIGURE NEEDED short transition paragraph
+- ### Property-based testing with Hypothesis | 179 | COVERED(p3-0309-hypothesis-properties, s09-hypothesis)
+- ### Golden files and snapshot tests | 95 | COVERED(p3-0309-beyond-examples-table)
+- ### Contract tests | 88 | COVERED(p3-0309-beyond-examples-table)
+- ### Integration tests with real dependencies | 83 | COVERED(p3-0309-beyond-examples-table)
+- ### Testing CLIs | 115 | COVERED(p3-0309-clirunner-checks)
+- ### Mutation testing and test quality | 81 | COVERED(p3-0309-mutation-flaky)
+- ### Flaky tests | 77 | COVERED(p3-0309-mutation-flaky)
+- ## 5. Static quality gates | 390 | COVERED(p3-0309-config-annotated, p3-0309-gate-tools)
+- ## 6. Continuous integration | 57 | NO FIGURE NEEDED transition into CI section
+- ### Pipeline architecture | 25 | COVERED(m3-09-2)
+- ### GitHub Actions example | 487 | COVERED(p3-0309-ci-hardening, p3-0309-workflow-jobs)
+- ## 7. Testing the infrastructure code around Python | 525 | COVERED(p3-0309-iteration-timings, p3-0309-benchmark-method, p3-0309-molecule-lifecycle, p3-0309-iac-testing-map)
+- ## 8. Observability of the tests themselves | 87 | COVERED(p3-0309-test-suite-health)
+- ## 9. Lab | 247 | NO FIGURE NEEDED lab instructions
+- ## 10. Common mistakes | 196 | COVERED(p3-0309-mistake-groups)
+- ## 11. Interview angles | 116 | NO FIGURE NEEDED interview questions list
+- ## Exercises | 291 | NO FIGURE NEEDED study exercises
+- ## Checkpoint questions (20) | 1290 | NO FIGURE NEEDED Q&A answers
+- ## Sources and review notes | 275 | NO FIGURE NEEDED citations and notes
+
+Specs kept 2, dropped 0: []

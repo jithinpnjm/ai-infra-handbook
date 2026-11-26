@@ -270,6 +270,10 @@ The first DNS outage many teams see happens when a big job starts. Thousands of 
 
 ### Capacity
 
+![A comparison shows how reactive HPA causes query drops during sudden pod start bursts while cluster-proportional autoscaling provisions CoreDNS replicas ahead of time based on node and core counts.](./img/p4-0511-cpa-autoscaling.svg)
+
+*Figure 5.0.0. Cluster-proportional autoscaling sizes CoreDNS replicas before a large job launches, avoiding the scaling lag and query drops of reactive CPU autoscalers.*
+
 Picture a 5,000-pod job that starts all at once, with every pod calling `getaddrinfo` for each connection. That job can easily generate 100k+ queries in seconds. The query rate grows with pod count × lookup rate × ndots amplification, so each factor multiplies the load. Put simply, the total is the product of those factors, so trimming any one of them cuts the whole load. Each factor is a lever you can pull without adding replicas, which makes the ndots setting one of the cheapest changes to test first.
 
 As a rule of thumb, CoreDNS handles about 10-20k QPS per CPU core when caching is on. Its pods hold no state, so you add capacity by adding replicas. Defaults ship with 2 replicas. Two replicas can survive a single restart, but they are often not enough for a large job start. The recommendation is replicas ≈ nodes/100 to nodes/20, with a minimum of 3 for high availability. Spread the replicas across nodes and zones with anti-affinity, and protect them with a PDB, such as `minAvailable: 1` or 50%. Treat these numbers as starting points and measure your own cluster. The `dnsperf` run in section 6 is the way to find your own numbers.
@@ -305,6 +309,10 @@ Each fix removes one ingredient of the race: the shared socket, the DNAT, or the
 If you see exact 5-second delays, check the conntrack counters before you change the application.
 
 ### Other hardening and operations
+
+![A sequence flow shows a large DNS response setting the UDP truncation bit and failing when an egress network policy allows UDP 53 but blocks TCP 53.](./img/p4-0511-dns-tcp-truncation.svg)
+
+*Figure 5.0.0. When large DNS responses set the truncation bit, resolvers fall back to TCP port 53, which fails unless egress NetworkPolicies explicitly permit both UDP and TCP.*
 
 A few smaller habits keep DNS healthy over time. Think of these as the small habits of a tidy kitchen. None of them looks urgent, and each one prevents a late-night problem. Keep CoreDNS and the Corefile in GitOps, and test changes in staging first. Check version skew against Kubernetes releases, and watch for the `loop` plugin crash.
 

@@ -86,6 +86,10 @@ Keep the work done at import time small. Avoid network calls, config file reads,
 
 ### `import` versus `from`: shared references, cross-file mutation, and `reload()`
 
+![A diagram comparing reference copying, local rebinding, in-place list mutation, and stale function references after a module reload.](./img/p4-0302-from-mutation-reload.svg)
+
+*Figure 3.0.0. Rebinding a name imported with from stays local, in-place mutation affects all importers sharing the heap object, and reload leaves from-bound references pointing to stale functions.*
+
 When a program grows past one script, you split it. A top-level script such as `a.py` runs the work. Module files such as `b.py` and `c.py` define reusable tools as attributes. Suppose `b.py` defines `def job(tool): print(tool, 'coder')`. If `a.py` runs `import b; b.job('Python')`, it prints `Python coder`.
 
 Module filenames must end in `.py`. Python turns the filename, without `.py`, into a variable name on import. So the name must follow ordinary variable rules: letters, digits and underscores only, with no spaces and no reserved keywords. Writing `import if` raises a `SyntaxError`. Package folder names follow the same rule.
@@ -248,6 +252,10 @@ func1()                # OK: both func1 and func2 have been assigned -> prints "
 Calling `func1()` before `func2` exists fails. Calling it after both definitions exist works, and it prints `Hello`.
 
 ### Module introspection (`mydir.py`), dynamic string imports, and transitive reloaders (`reloadall.py`)
+
+![A flowchart contrasting standard shallow reload which skips nested imports against a transitive walker that traverses module attributes with cycle detection.](./img/p4-0302-transitive-reload.svg)
+
+*Figure 3.0.0. Standard reload updates only the target module, while transitive reloaders walk the module dictionary, guard against circular dependencies with a visited set, and refresh nested imports.*
 
 Everything so far assumed that you know the name of the module you want. Python also exposes module internals as ordinary attributes and dictionaries. That lets you write code that inspects, imports and reloads other modules. You do not need to know their names in advance. Three techniques follow.
 
@@ -443,6 +451,10 @@ For example, set `export PYTHONPATH=ns/part1:ns/part2`, then run `import sub.mod
 
 ### Circular (`recursive`) imports: why `import recur1` fails while `import recur2` succeeds
 
+![A two-timeline diagram tracing module execution order and sys.modules registration to explain why import recur1 raises an ImportError while import recur2 succeeds.](./img/p4-0302-circular-imports.svg)
+
+*Figure 3.0.0. Modules register in sys.modules before running their body, so circular imports fail when a from statement requests an attribute before the source file has executed its assignment.*
+
 Two modules can import each other without looping forever. The trick is the order in which Python builds them. Python adds the new module object to `sys.modules` before it runs the file's top-level statements. The problem is that a circular `from` import can catch a module only partly built. The book uses two files to show it.
 
 ![Why import recur1 fails while import recur2 first works](./img/p02-circular.jpg)
@@ -462,6 +474,10 @@ Two other tools avoid hard-coded imports. For lazy imports, `importlib.import_mo
 For data files inside a package, use `importlib.resources.files("myops") / "templates/x.j2"`, rather than a path built from `__file__`. The resources call keeps working in zip archives and wheel installs.
 
 ### Typical project layout (src layout)
+
+![A diagram comparing flat and src project layouts, showing how flat layout lets tests import local folders directly while src layout enforces packaging verification.](./img/p4-0302-src-vs-flat-layout.svg)
+
+*Figure 3.0.0. The src layout prevents accidental imports from the working directory, ensuring tests run against an installed editable package and catching missing build metadata before CI passes.*
 
 The layout below is the one to copy when you start a new tool. It uses the src layout, which puts your package inside a folder called `src/`.
 

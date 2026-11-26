@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Blast Radius Calculation via Dependency Edge Reversal</title>
+  <desc>Visual comparison showing original service dependency graph versus reversed BFS traversal determining failure blast radius from network failure.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    Blast Radius Calculation via Dependency Edge Reversal
+  </text>
+
+  
+  
+  
+  <g id="left-panel">
+    
+    <rect x="50" y="110" width="560" height="990" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="75" y="130" width="510" height="60" rx="10" fill="#207448" />
+    <text x="330" y="172" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">
+      Original Dependency Graph
+    </text>
+
+    
+    <line x1="330" y1="285" x2="330" y2="355" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <path d="M 270 420 L 195 490" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <path d="M 390 420 L 465 490" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <path d="M 195 575 L 275 645" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <path d="M 465 575 L 385 645" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="230" y="215" width="200" height="70" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <rect x="245" y="233" width="34" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="245" y1="241" x2="279" y2="241" stroke="#207448" stroke-width="2" />
+    <text x="345" y="260" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">web</text>
+
+    
+    <rect x="230" y="360" width="200" height="70" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="262" cy="395" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="262" cy="395" r="6" fill="#207448" />
+    <text x="345" y="405" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">api</text>
+
+    
+    <rect x="95" y="500" width="200" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <ellipse cx="130" cy="527" rx="15" ry="6" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 115 527 v 20 c 0 4 6 7 15 7 s 15 -3 15 -7 v -20" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="215" y="548" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">db</text>
+
+    
+    <rect x="365" y="500" width="200" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <rect x="385" y="522" width="26" height="28" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="390" y1="522" x2="390" y2="517" stroke="#207448" stroke-width="2" />
+    <line x1="404" y1="522" x2="404" y2="517" stroke="#207448" stroke-width="2" />
+    <line x1="390" y1="550" x2="390" y2="555" stroke="#207448" stroke-width="2" />
+    <line x1="404" y1="550" x2="404" y2="555" stroke="#207448" stroke-width="2" />
+    <text x="480" y="548" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">cache</text>
+
+    
+    <rect x="230" y="650" width="200" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="255" cy="687" r="5" fill="#207448" />
+    <circle cx="275" cy="677" r="5" fill="#207448" />
+    <circle cx="275" cy="697" r="5" fill="#207448" />
+    <line x1="255" y1="687" x2="275" y2="677" stroke="#207448" stroke-width="2" />
+    <line x1="255" y1="687" x2="275" y2="697" stroke="#207448" stroke-width="2" />
+    <text x="345" y="698" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">net</text>
+
+    
+    <rect x="80" y="780" width="500" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="330" y="860" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      <tspan x="330" dy="0">network (net) is the deepest dependency</tspan>
+    </text>
+    <line x1="120" y1="900" x2="540" y2="900" stroke="#e8f1ea" stroke-width="3" />
+    <text x="330" y="950" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="330" dy="0">Downstream services point downward</tspan>
+      <tspan x="330" dy="36">to components they rely upon.</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <g id="right-panel">
+    
+    <rect x="640" y="110" width="910" height="990" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="665" y="130" width="860" height="60" rx="10" fill="#207448" />
+    <text x="1095" y="172" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">
+      Edge Reversal and BFS Blast Radius
+    </text>
+
+    
+    <rect x="670" y="210" width="850" height="60" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="1095" y="250" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">
+      Root of search is failed node net
+    </text>
+
+    
+    <rect x="670" y="290" width="850" height="470" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    
+    <rect x="690" y="310" width="810" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" />
+    <text x="710" y="345" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      Distance 3 ring contains web
+    </text>
+
+    
+    <rect x="690" y="450" width="810" height="130" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" />
+    <text x="710" y="485" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      Distance 2 ring contains api
+    </text>
+
+    
+    <rect x="690" y="600" width="810" height="140" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" />
+    <text x="710" y="635" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      Distance 1 ring contains db and cache
+    </text>
+
+    
+    
+    <rect x="1010" y="350" width="170" height="65" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="1095" y="392" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">web</text>
+
+    
+    <rect x="1010" y="495" width="170" height="65" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="1095" y="537" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">api</text>
+
+    
+    <line x1="1095" y1="495" x2="1095" y2="425" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="880" y="650" width="170" height="65" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="965" y="692" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">db</text>
+
+    
+    <rect x="1140" y="650" width="170" height="65" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="1225" y="692" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">cache</text>
+
+    
+    <path d="M 995 650 L 1055 570" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <path d="M 1195 650 L 1135 570" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    
+    <rect x="910" y="775" width="370" height="65" rx="12" fill="#db8129" />
+    <text x="1095" y="817" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      failed service net
+    </text>
+
+    
+    <path d="M 1030 775 L 980 725" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <path d="M 1160 775 L 1210 725" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="670" y="860" width="850" height="210" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <text x="1095" y="902" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      BFS queue with seen-set check
+    </text>
+
+    
+    <text x="1095" y="948" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1095" dy="0">nodes are marked as seen immediately upon being enqueued so that</tspan>
+      <tspan x="1095" dy="36">diamond dependencies (db and cache both reaching api)</tspan>
+      <tspan x="1095" dy="36">do not enqueue api twice</tspan>
+    </text>
+  </g>
+</svg>

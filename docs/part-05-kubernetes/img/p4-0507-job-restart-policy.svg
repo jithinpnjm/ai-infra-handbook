@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1280" width="1600" height="1280">
+  <title>Job failure behavior under restartPolicy: OnFailure versus Never</title>
+  <desc>Visual comparison showing how Kubernetes handles container failures under OnFailure versus Never restart policies.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1280" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448">Job failure behavior under</text>
+  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448">restartPolicy: OnFailure versus Never</text>
+
+  
+  <rect x="50" y="150" width="725" height="1090" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="75" y="165" width="675" height="60" rx="10" fill="#207448"/>
+  <text x="412" y="206" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">restartPolicy: OnFailure</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="160" y="245" width="505" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(185, 260)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="22" cy="22" r="10"/>
+      <path d="M22 4 L22 10 M22 34 L22 40 M4 22 L10 22 M34 22 L40 22 M9 9 L14 14 M30 30 L35 35 M9 35 L14 30 M30 14 L35 9"/>
+    </g>
+    <text x="250" y="292" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Job object 'oneshot'</text>
+  </g>
+
+  
+  <line x1="412" y1="320" x2="412" y2="352" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="75" y="360" width="675" height="630" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="95" y="380" width="635" height="75" rx="10" fill="#f5f8f5" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="412" y="412" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">single Pod 'oneshot-4nzfb'</text>
+  <text x="412" y="442" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">hosted on a Node</text>
+
+  
+  <rect x="95" y="475" width="635" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(115, 490)" stroke="#207448" stroke-width="2.5" fill="none">
+    <rect x="4" y="4" width="36" height="32" rx="4"/>
+    <line x1="4" y1="14" x2="40" y2="14"/>
+    <circle cx="10" cy="9" r="1.5" fill="#207448"/>
+    <circle cx="16" cy="9" r="1.5" fill="#207448"/>
+  </g>
+  <text x="170" y="515" font-family="sans-serif" font-size="24px" fill="#303a36">container runs with args</text>
+  <text x="170" y="547" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">'--keygen-exit-code=1'</text>
+
+  
+  <rect x="115" y="580" width="595" height="80" rx="8" fill="#ffffff" stroke="#d9534f" stroke-width="2"/>
+  <text x="412" y="628" text-anchor="middle" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#d9534f">Container crashes with exit code 1</text>
+
+  
+  <path d="M 680 680 C 725 720, 725 770, 680 810" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  <rect x="95" y="700" width="570" height="155" rx="10" fill="#fdfbf7" stroke="#db8129" stroke-width="2"/>
+  <text x="380" y="734" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">local kubelet restarting the container</text>
+  <text x="380" y="768" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">in place inside the same Pod,</text>
+  <text x="380" y="802" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">applying exponential backoff</text>
+  <text x="380" y="836" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129">(10s, 20s, 40s... up to 5m)</text>
+
+  
+  <rect x="115" y="880" width="595" height="85" rx="42" fill="#fff3cd" stroke="#db8129" stroke-width="2"/>
+  <text x="412" y="932" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#856404">'CrashLoopBackOff (restarts: 4)'</text>
+
+  
+  <rect x="75" y="1015" width="675" height="90" rx="12" fill="#207448"/>
+  <text x="412" y="1070" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">Total Pod count remains 1</text>
+
+
+  
+  <rect x="825" y="150" width="725" height="1090" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="850" y="165" width="675" height="60" rx="10" fill="#207448"/>
+  <text x="1187" y="206" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">restartPolicy: Never</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="935" y="245" width="505" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(960, 260)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="22" cy="22" r="10"/>
+      <path d="M22 4 L22 10 M22 34 L22 40 M4 22 L10 22 M34 22 L40 22 M9 9 L14 14 M30 30 L35 35 M9 35 L14 30 M30 14 L35 9"/>
+    </g>
+    <text x="1025" y="292" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Job object 'oneshot'</text>
+  </g>
+
+  
+  <line x1="1187" y1="320" x2="1187" y2="352" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="850" y="360" width="675" height="160" rx="12" fill="#ffffff" stroke="#c2d8c6" stroke-width="2"/>
+    <text x="1187" y="398" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Pod 1 'oneshot-1a2b' crashing with exit code 1</text>
+    
+    <rect x="870" y="425" width="635" height="75" rx="8" fill="#fbeae8" stroke="#d9534f" stroke-width="1.5"/>
+    <text x="1187" y="456" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#c0392b">Kubelet does NOT restart it; Pod 1 is marked</text>
+    <text x="1187" y="486" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#c0392b">'Error / Failed'</text>
+  </g>
+
+  
+  <line x1="1187" y1="520" x2="1187" y2="547" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="850" y="555" width="675" height="120" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <text x="1187" y="592" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">Job controller detects failure,</text>
+  <text x="1187" y="626" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">decrements active count, and</text>
+  <text x="1187" y="660" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">creates Pod 2 'oneshot-3c4d'</text>
+
+  
+  <line x1="1187" y1="675" x2="1187" y2="702" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="850" y="710" width="675" height="75" rx="12" fill="#ffffff" stroke="#d9534f" stroke-width="2"/>
+  <text x="1187" y="756" text-anchor="middle" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#c0392b">Pod 2 crashes and becomes 'Error'</text>
+
+  
+  <line x1="1187" y1="785" x2="1187" y2="812" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="850" y="820" width="675" height="75" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <text x="1187" y="866" text-anchor="middle" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#207448">Job controller creates Pod 3 'oneshot-5e6f'</text>
+
+  
+  <line x1="1187" y1="895" x2="1187" y2="927" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="850" y="935" width="675" height="170" rx="14" fill="#fdf2e9" stroke="#db8129" stroke-width="2.5"/>
+    <text x="1187" y="985" text-anchor="middle" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#b25e15">cluster accumulating multiple terminated</text>
+    <text x="1187" y="1025" text-anchor="middle" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#b25e15">Pods in Error state, wasting etcd</text>
+    <text x="1187" y="1065" text-anchor="middle" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#b25e15">and pod table slots</text>
+  </g>
+</svg>

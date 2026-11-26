@@ -174,6 +174,10 @@ In Linux, the kernel mostly handles the transport layer and everything below it.
 
 ### Connection-oriented and connectionless
 
+![Comparison of a stateful core where link failures break circuit state against the end-to-end model where a stateless IP core reroutes datagrams while endpoints preserve connection state.](./img/p4-0202-connection-model.svg)
+
+*Figure 2.0.0. In the end-to-end model, intermediate routers hold only prefix forwarding tables, allowing traffic to reroute around link failures without disrupting endpoint connection state.*
+
 A connection-oriented service sets up state before it sends data. Often it also reserves resources and a path. It is like a phone call, where you dial, wait for an answer and then talk. After that, data flows with little overhead for each packet. TCP at the edge works this way, and so do ATM, MPLS LSPs, InfiniBand queue pairs and RDMA reliable connections.
 
 A connectionless service carries everything needed to deliver each unit inside the unit itself. It is like posting letters, where each envelope carries the full address and nobody sets up anything first. IP datagrams, UDP and Ethernet frames are examples.

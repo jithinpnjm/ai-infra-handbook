@@ -1,0 +1,35 @@
+# docs/part-05-kubernetes/25-troubleshooting-kubernetes-from-the-node-crictl-nsenter-tcpdump-and-ip.md
+- ## Why this matters for AI infrastructure | 180 | NO FIGURE NEEDED introductory motivation
+- ## Prerequisites and outcomes | 160 | NO FIGURE NEEDED prerequisite checklist and outcomes
+- ## 1. Method | 340 | COVERED(p2-0525-scope-first, m5-25-1)
+- ## 2. kubectl toolkit | 380 | COVERED(p3-0525-debug-modes)
+- ## 3. Node-level toolkit | 60 | COVERED(p3-0525-tool-picker)
+- ### 3.1 Container runtime state (crictl / ctr) | 180 | COVERED(p2-0525-pod-name-to-node)
+- ### 3.2 Namespaces: nsenter, lsns, unshare | 200 | COVERED(k25-nsenter-room)
+- ### 3.3 Networking tools | 260 | COVERED(p3-0525-connectivity-bisect, k25-capture-points)
+- ### 3.4 Storage and filesystem | 180 | COVERED(p3-0525-storage-ladder)
+- ### 3.5 Processes and performance | 180 | COVERED(p3-0525-process-tools)
+- ### 3.6 GPU and fabric hardware | 240 | NEEDS FIGURE multi-layer diagnostic ladder from driver to PCIe bus and kernel Xid logs
+- ## 4. Failure playbooks | 40 | NO FIGURE NEEDED brief introduction to playbooks
+- ### 4.1 Pod Pending | 160 | COVERED(p2-0525-pending-ladder)
+- ### 4.2 `ContainerCreating` for a long time | 110 | COVERED(p2-0525-creating-branches)
+- ### 4.3 `CrashLoopBackOff` | 190 | COVERED(p3-0525-exit-code-decoder)
+- ### 4.4 Network and Service failures | 130 | COVERED(p3-0525-service-failure-chain)
+- ### 4.5 Node `NotReady` | 150 | COVERED(p3-0525-notready-checklist)
+- ### 4.6 OOM and eviction | 150 | COVERED(k25-oom-scope)
+- ### 4.7 Terminating pods that never finish | 160 | COVERED(p2-0525-terminating-chain)
+- ### 4.8 DNS issues | 75 | NO FIGURE NEEDED brief playbook covered by section 5.11 references
+- ### 4.9 Storage problems | 85 | NO FIGURE NEEDED brief playbook covered by section 5.17 and storage ladder
+- ### 4.10 GPU workloads | 280 | COVERED(p3-0525-gpu-symptom-table)
+- ### 4.11 Control-plane slowness | 100 | NO FIGURE NEEDED short summary referencing APF and 5.5
+- ### 4.12 Cluster-wide incidents after change | 90 | NO FIGURE NEEDED short summary of change review steps
+- ## 5. Chaos and game days | 120 | NO FIGURE NEEDED high-level staging drill guidelines
+- ## 6. Evidence, communication and learning | 180 | COVERED(p3-0525-evidence-loop)
+- ## 7. Lab | 340 | NO FIGURE NEEDED hands-on practice lab steps
+- ## 8. Common mistakes | 240 | NO FIGURE NEEDED list of troubleshooting anti-patterns
+- ## 9. Interview angles | 100 | NO FIGURE NEEDED list of interview questions
+- ## Exercises | 340 | NO FIGURE NEEDED student exercise prompts
+- ## Checkpoint questions (20) | 1700 | NO FIGURE NEEDED review Q&A
+- ## Sources and review notes | 180 | NO FIGURE NEEDED citations and source notes
+
+Specs kept 1, dropped 0: []

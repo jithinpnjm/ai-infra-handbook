@@ -1,0 +1,39 @@
+# docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md
+- ## Why this matters for AI infrastructure | 120 | NO FIGURE NEEDED prose introduction to module and packaging significance
+- ## Prerequisites and outcomes | 150 | NO FIGURE NEEDED bulleted prerequisites and learning outcomes
+- ## 1. Modules | 280 | NO FIGURE NEEDED introductory concepts of module namespaces, detailed in subsections
+- ### `import` versus `from`: shared references, cross-file mutation, and `reload()` | 510 | NEEDS FIGURE mechanism of reference copying vs in-place mutation and reload staleness across namespaces
+- ### Module namespaces (`__dict__`), lexical scoping, and downward attribute paths | 320 | NO FIGURE NEEDED text clearly describes LEGB resolution and dictionary attribute chains
+- ### Data hiding (`_X`, `__all__`, `__getattr__`, `__dir__`), `__future__`, and `__name__ == '__main__'` | 600 | COVERED(p3-0302-toplevel-order, p3-0302-gamod-lookup)
+- ### Module introspection (`mydir.py`), dynamic string imports, and transitive reloaders (`reloadall.py`) | 420 | NEEDS FIGURE mechanism of shallow reload versus transitive reload walking the module dependency graph with cycle guard
+- ### How imports work (3 steps) and the 5-component module search path | 480 | COVERED(p3-0302-shadowing)
+- ### `.pyc` and bytecode caches | 100 | NO FIGURE NEEDED short description of compilation cache invalidation and container flags
+- ## 2. Packages | 170 | NO FIGURE NEEDED introductory definition of package folder structures
+- ### Why packages exist: resolving `system1/utilities.py` vs `system2/utilities.py` | 200 | NO FIGURE NEEDED simple namespace collision scenario solved by directory prefix
+- ### Dotted package walkthrough (`dir0/dir1/dir2/mod.py`), `__init__.py` roles, and `__main__.py` | 490 | COVERED(p3-0302-init-roles, s02-dotted)
+- ### Four import models, PEP 420 namespace packages (`__path__`), and the 4-step search algorithm | 390 | COVERED(s02-fourmodels, m3-02-1, s02-nspkg)
+- ### Circular (`recursive`) imports: why `import recur1` fails while `import recur2` succeeds | 310 | NEEDS FIGURE state trace of sys.modules and partially initialized module execution order
+- ### Typical project layout (src layout) | 130 | NEEDS FIGURE comparison of flat versus src layout showing how sys.path[0] masks packaging bugs
+- ## 3. Virtual environments | 350 | COVERED(p3-0302-service-python, s02-venv)
+- ### Managing Python versions | 110 | NO FIGURE NEEDED short summary of interpreter managers and support windows
+- ## 4. Installing and managing dependencies | 70 | NO FIGURE NEEDED short introductory transition
+- ### pip | 210 | NO FIGURE NEEDED command reference and option overview
+- ### Declaring dependencies: libraries vs applications | 350 | COVERED(p3-0302-index-confusion, s02-piptools)
+- ### conda / mamba | 130 | NO FIGURE NEEDED concise comparison of package managers and channels
+- ### Choosing | 90 | COVERED(s02-choosetool)
+- ## 5. Packaging your own code | 60 | NO FIGURE NEEDED brief overview of packaging workflow
+- ### `pyproject.toml` | 250 | COVERED(s02-pyproject)
+- ### Building, installing, publishing | 410 | COVERED(p3-0302-wheel-name, s02-build)
+- ### Native extensions | 130 | NO FIGURE NEEDED brief architectural notes on ABI tags and libraries
+- ## 6. Plugins and entry points | 130 | COVERED(s02-entrypoints)
+- ## 7. Python packaging on GPU and ML systems | 580 | COVERED(p3-0302-gpu-install-failures, s02-gpucheck)
+- ## 8. Containers and system integration | 380 | COVERED(p3-0302-cluster-install, s02-multistage)
+- ## 9. Troubleshooting imports and environments | 220 | COVERED(p3-0302-error-ladder)
+- ## 10. Lab: environments and a packaged tool | 360 | NO FIGURE NEEDED lab instructions and verification commands
+- ## 11. Common mistakes | 180 | NO FIGURE NEEDED bulleted checklist of common pitfalls
+- ## 12. Interview angles | 120 | NO FIGURE NEEDED list of sample interview questions
+- ## Exercises | 350 | NO FIGURE NEEDED exercise questions
+- ## Checkpoint questions (20) | 1500 | NO FIGURE NEEDED self-test questions and detailed answers
+- ## Sources and review notes | 180 | NO FIGURE NEEDED bibliography and testing notes
+
+Specs kept 4, dropped 0: []

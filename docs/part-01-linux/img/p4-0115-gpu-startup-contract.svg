@@ -1,0 +1,235 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1420" viewBox="0 0 1600 1420" style="background:#f5f8f5; font-family:sans-serif;">
+  <title>AI Node Startup Contract and GPU Service Dependency DAG</title>
+  <desc>Visual dependency and ordering DAG showing systemd targets, GPU driver initialization, fabric manager, readiness health check gate, and container/cluster daemon orchestration on an HGX node.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#d32f2f"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <text x="800" y="55" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">AI Node Startup Contract and GPU Service Dependency DAG</text>
+
+  
+  
+  
+  <rect x="50" y="85" width="1500" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+  <text x="80" y="125" font-size="30" font-weight="bold" fill="#207448">Hardware &amp; System Prep</text>
+
+  
+  <g transform="translate(80, 145)">
+    <rect width="300" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="45" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <path d="M 33 45 L 41 53 L 57 37" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="80" y="53" font-size="24" font-weight="bold" fill="#303a36">System Init</text>
+    <text x="25" y="112" font-family="monospace" font-size="24" fill="#207448">sysinit.target</text>
+  </g>
+
+  
+  <g transform="translate(420, 145)">
+    <rect width="300" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="45" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <rect x="33" y="33" width="24" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="33" y1="45" x2="57" y2="45" stroke="#207448" stroke-width="3"/>
+    <text x="80" y="53" font-size="24" font-weight="bold" fill="#303a36">Local Filesystem</text>
+    <text x="25" y="112" font-family="monospace" font-size="24" fill="#207448">local-fs.target</text>
+  </g>
+
+  
+  <g transform="translate(760, 145)">
+    <rect width="360" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="45" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="45" cy="45" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 32 32 A 18 18 0 0 1 58 32 M 27 27 A 25 25 0 0 1 63 27" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="80" y="53" font-size="24" font-weight="bold" fill="#303a36">Network Ready</text>
+    <text x="25" y="112" font-family="monospace" font-size="24" fill="#207448">network-online.target</text>
+  </g>
+
+  
+  <g transform="translate(1160, 145)">
+    <rect width="360" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="45" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <ellipse cx="45" cy="38" rx="12" ry="5" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 33 38 v 14 c 0 2.8 5.4 5 12 5 s 12 -2.2 12 -5 v -14" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <text x="80" y="53" font-size="24" font-weight="bold" fill="#303a36">scratch mount units</text>
+    <text x="22" y="98" font-family="monospace" font-size="24" fill="#207448">/scratch with</text>
+    <text x="22" y="128" font-family="monospace" font-size="24" fill="#207448">x-systemd.requires</text>
+  </g>
+
+  
+  <path d="M 380 217 L 420 217" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <path d="M 720 217 L 760 217" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+  <rect x="50" y="350" width="1500" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+  <text x="80" y="390" font-size="30" font-weight="bold" fill="#207448">GPU Driver &amp; Fabric</text>
+
+  
+  <g transform="translate(140, 410)">
+    <rect width="560" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="45" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 45 35 L 47 38 L 51 38 L 49 42 L 51 45 L 47 45 L 45 49 L 43 45 L 39 45 L 41 42 L 39 38 L 43 38 Z" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="45" cy="42" r="3" fill="#207448"/>
+    <text x="80" y="45" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">nvidia-persistenced.service</text>
+    <rect x="80" y="60" width="170" height="32" rx="6" fill="#e8f1ea"/>
+    <text x="90" y="83" font-family="monospace" font-size="24" fill="#207448">Type=forking</text>
+    <text x="25" y="125" font-size="24" fill="#303a36">Starts driver persistence daemon</text>
+  </g>
+
+  
+  <g transform="translate(900, 410)">
+    <rect width="560" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="45" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 35 35 L 55 35 L 55 52 L 35 52 Z M 35 44 L 55 44 M 45 35 L 45 52" fill="none" stroke="#207448" stroke-width="2"/>
+    <text x="80" y="45" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">nvidia-fabricmanager.service</text>
+    <rect x="80" y="60" width="170" height="32" rx="6" fill="#e8f1ea"/>
+    <text x="90" y="83" font-family="monospace" font-size="24" fill="#207448">Type=forking</text>
+    <text x="25" y="125" font-size="24" fill="#303a36">Configures NVSwitch fabric partition</text>
+  </g>
+
+  
+  <path d="M 700 482 L 900 482" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <rect x="715" y="445" width="170" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="723" y="468" font-family="monospace" font-size="24" fill="#207448">starts first</text>
+
+  
+  <path d="M 940 290 L 940 320 L 420 320 L 420 410" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+  <rect x="50" y="615" width="1500" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+  <text x="80" y="655" font-size="30" font-weight="bold" fill="#207448">Health Gate</text>
+
+  
+  <g transform="translate(340, 670)">
+    <rect width="920" height="155" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <circle cx="50" cy="50" r="26" fill="#fdf3e7" stroke="#db8129" stroke-width="3"/>
+    
+    <path d="M 50 32 L 64 38 V 50 C 64 60 50 67 50 67 C 50 67 36 60 36 50 V 38 Z" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    <path d="M 43 49 L 48 54 L 57 44" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+
+    <text x="95" y="45" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">gpu-health-check.service</text>
+    <rect x="95" y="58" width="480" height="32" rx="6" fill="#fdf3e7"/>
+    <text x="105" y="81" font-family="monospace" font-size="24" fill="#db8129">Type=oneshot, RemainAfterExit=yes</text>
+
+    
+    <text x="95" y="115" font-size="24" font-weight="bold" fill="#303a36">readiness script</text>
+    <text x="290" y="115" font-family="monospace" font-size="24" fill="#207448">nvidia-smi -L count, nvlink status, ECC checks</text>
+  </g>
+
+  
+  <path d="M 1180 555 L 1180 670" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <rect x="910" y="580" width="440" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="920" y="604" font-family="monospace" font-size="24" fill="#207448">After=nvidia-fabricmanager.service</text>
+
+  
+  
+  
+  <g transform="translate(50, 870)">
+    <line x1="0" y1="0" x2="1500" y2="0" stroke="#d32f2f" stroke-width="6" stroke-dasharray="14 10"/>
+    <circle cx="45" cy="0" r="18" fill="#d32f2f"/>
+    <text x="45" y="7" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">✕</text>
+    <circle cx="1455" cy="0" r="18" fill="#d32f2f"/>
+    <text x="1455" y="7" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">✕</text>
+    <rect x="460" y="-20" width="580" height="40" rx="8" fill="#d32f2f"/>
+    <text x="750" y="8" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">schedulers blocked if health check fails</text>
+  </g>
+
+  
+  
+  
+  <rect x="50" y="900" width="1500" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+  <text x="80" y="940" font-size="30" font-weight="bold" fill="#207448">Container &amp; Cluster Daemons</text>
+
+  
+  <rect x="80" y="960" width="940" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="100" y="975" width="200" height="34" rx="6" fill="#e8f1ea"/>
+  <text x="110" y="1000" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">system.slice</text>
+
+  
+  <g transform="translate(100, 1025)">
+    <rect width="420" height="120" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="42" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">containerd.service</text>
+    <text x="20" y="78" font-family="monospace" font-size="24" fill="#207448">After=gpu-health-check.service</text>
+    <text x="20" y="106" font-family="monospace" font-size="24" fill="#db8129">Requires=gpu-health-check.service</text>
+  </g>
+
+  
+  <g transform="translate(100, 1165)">
+    <rect width="420" height="120" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="42" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">kubelet.service</text>
+    <text x="20" y="78" font-family="monospace" font-size="24" fill="#207448">After=gpu-health-check.service</text>
+    <text x="20" y="106" font-family="monospace" font-size="24" fill="#db8129">Requires=gpu-health-check.service</text>
+  </g>
+
+  
+  <g transform="translate(560, 1025)">
+    <rect width="440" height="100" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="42" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">munge.service</text>
+    <text x="20" y="80" font-size="24" fill="#303a36">Authentication daemon</text>
+  </g>
+
+  
+  <g transform="translate(560, 1145)">
+    <rect width="440" height="140" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="38" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">slurmd.service</text>
+    <text x="20" y="74" font-family="monospace" font-size="24" fill="#207448">After=munge.service</text>
+    <text x="20" y="104" font-family="monospace" font-size="24" fill="#207448">and gpu-health-check.service</text>
+  </g>
+
+  
+  <path d="M 780 1125 L 780 1145" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(1045, 960)">
+    <rect width="480" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="45" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 35 55 L 35 35 M 45 55 L 45 42 M 55 55 L 55 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="80" y="50" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">dcgm-exporter.service</text>
+    <rect x="80" y="75" width="370" height="34" rx="6" fill="#e8f1ea"/>
+    <text x="90" y="100" font-family="monospace" font-size="24" fill="#207448">After driver initialization</text>
+  </g>
+
+  
+  <g transform="translate(1045, 1125)">
+    <rect width="480" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="20" y="15" width="220" height="34" rx="6" fill="#e8f1ea"/>
+    <text x="30" y="40" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">kubepods.slice</text>
+    <text x="20" y="85" font-size="24" fill="#303a36">Workloads fan out inside</text>
+    <text x="20" y="118" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">kubepods.slice</text>
+    <text x="20" y="150" font-size="24" fill="#303a36">protected from system host</text>
+  </g>
+
+  
+  <text x="800" y="1375" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    Workloads fan out inside kubepods.slice while host daemons stay protected in system.slice.
+  </text>
+
+  
+  
+  <path d="M 520 825 L 520 860 L 310 860 L 310 1025" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 800 825 L 800 860 L 930 860 L 930 1145" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1240 555 L 1240 960" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+</svg>

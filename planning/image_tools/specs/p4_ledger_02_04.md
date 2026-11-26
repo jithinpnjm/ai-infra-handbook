@@ -1,0 +1,38 @@
+# docs/part-02-networking/04-ip-addressing-subnetting-and-cidr-ipv4-and-ipv6-with-practice.md
+- ## Why this matters for AI infrastructure | 250 | NO FIGURE NEEDED high-level introduction to IP planning and motivations
+- ## Prerequisites and outcomes | 150 | NO FIGURE NEEDED bulleted checklist of skills
+- ## 1. Number systems you need | 270 | COVERED(p2-0204-bit-weights)
+- ## 2. IPv4 addresses and masks | 250 | COVERED(n04-fig1-cidr-v2)
+- ### The reserved host addresses | 120 | COVERED(p2-0204-host-count)
+- ### Fast subnetting: the block-size method | 220 | COVERED(p2-0204-block-size)
+- ### Reference table | 120 | NO FIGURE NEEDED lookup reference table of prefixes and masks
+- ### Same subnet or not? | 120 | COVERED(p2-0204-same-subnet)
+- ## 3. VLSM, supernetting and summarisation | 340 | COVERED(m2-04-1)
+- ## 4. Special-purpose IPv4 ranges | 220 | COVERED(p3-0204-special-ranges)
+- ## 5. NAT, briefly (more in chapter 2.9) | 120 | NO FIGURE NEEDED brief conceptual summary cross-referenced to chapter 2.9
+- ## 6. IPv6 | 15 | NO FIGURE NEEDED section container
+- ### Why and what | 120 | NO FIGURE NEEDED historical background and motivators
+- ### Notation | 130 | COVERED(p3-0204-v6-compress)
+- ### Address types | 120 | COVERED(n04-ipv6types)
+- ### Global and link-local addresses | 140 | NO FIGURE NEEDED text explains scopes and prefixes covered in existing figures
+- ### Structure and the /64 convention | 280 | COVERED(p3-0204-v6-delegation, n04-ipv6struct)
+- ### Configuration and inspection | 150 | NO FIGURE NEEDED command line syntax and examples
+- ### Running IPv4 and IPv6 side by side | 100 | NO FIGURE NEEDED conceptual summary of dual-stack hosts
+- ## 7. The IP headers | 20 | NO FIGURE NEEDED section container
+- ### IPv4 header (20 bytes minimum) | 160 | COVERED(n04-ipv4hdr)
+- ### IPv6 header (40 bytes, fixed) | 130 | COVERED(p3-0204-v4-v6-header)
+- ### Fragmentation and path MTU | 320 | COVERED(p3-0204-blackhole-fixes, p2-0204-pmtud)
+- ## 8. Configuring addresses on Linux | 240 | COVERED(p3-0204-address-persist)
+- ## 9. Address planning for AI clusters and clouds | 180 | COVERED(p3-0204-pod-cidr)
+- ### A worked cluster plan (illustrative) | 310 | COVERED(p3-0204-cluster-plan)
+- ### Rail-optimised and L3-to-the-host numbering | 130 | NEEDS FIGURE visual topology showing server GPU NICs connecting to dedicated rail leaf switches with deterministic IP mapping
+- ### GCP/VPC notes | 80 | NO FIGURE NEEDED concise bullet points cross-referenced to chapter 2.32
+- ## 10. Practice problems (with answers) | 480 | NO FIGURE NEEDED practice questions and worked answers
+- ## 11. Hands-on lab: subnetting, VLSM, IPv6, and cluster IP plans | 360 | NO FIGURE NEEDED hands-on lab instructions
+- ## 12. Common mistakes | 160 | NO FIGURE NEEDED text list of operational pitfalls
+- ## 13. Interview angles | 160 | NO FIGURE NEEDED interview questions and answers
+- ## Exercises | 240 | NO FIGURE NEEDED practice exercises
+- ## Checkpoint questions (20) | 950 | NO FIGURE NEEDED self-check questions and solutions
+- ## Sources and review notes | 230 | NO FIGURE NEEDED source citations and review notes
+
+Specs kept 1, dropped 0: []

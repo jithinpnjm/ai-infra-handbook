@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0109-getopts-trace",
+  "title": "Trace of getopts Parsing Flags, Advancing OPTIND, and Shifting Positional Arguments",
+  "anchor": "### Options with `getopts`",
+  "spec": "A step-by-step trace diagram illustrating how while getopts \":hn:t:\" opt processes command-line arguments and updates internal pointers. Top section: Input argument array with 6 boxes representing positional parameters: [1: \"-n\"], [2: \"4\"], [3: \"-t\"], [4: \"/data\"], [5: \"train.py\"], [6: \"run42\"]. Middle section shows 3 sequential iterations: Step 1 (Parsing -n): getopts inspects index 1 (\"-n\"); matches 'n:' which expects an argument; consumes index 2 (\"4\"); variable opt is assigned \"n\"; variable OPTARG is assigned \"4\"; internal pointer OPTIND advances from 1 to 3 (pointing to index 3). Step 2 (Parsing -t): getopts inspects index 3 (\"-t\"); matches 't:' which expects an argument; consumes index 4 (\"/data\"); opt is assigned \"t\"; OPTARG is assigned \"/data\"; internal pointer OPTIND advances from 3 to 5 (pointing to index 5). Step 3 (Non-option terminator): getopts inspects index 5 (\"train.py\"); encounters no leading hyphen; getopts returns exit code 1; while loop terminates; OPTIND remains 5. Bottom section (The shift operation): Shows command shift $((OPTIND - 1)) evaluated as shift 4; a scissor or slice icon removes arguments 1 through 4 (\"-n\", \"4\", \"-t\", \"/data\"); shows remaining positional arguments array where $1 becomes \"train.py\" and $2 becomes \"run42\", ready to be consumed via \"$@\".",
+  "alt": "Step-by-step trace of getopts parsing short options and arguments, advancing OPTIND from 1 to 5, and shifting off processed flags.",
+  "cap": "How getopts iterates over flags and values, updates OPTIND, and hands remaining arguments to the script via shift.",
+  "part": "part-01-linux",
+  "ch": "09"
+ }
+]

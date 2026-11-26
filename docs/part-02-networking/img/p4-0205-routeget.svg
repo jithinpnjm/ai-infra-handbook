@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Anatomy of an ip route get Kernel FIB Query</title>
+  <desc>Visual comparison of synthetic ip route get query inputs against the anatomy of the resulting kernel FIB route output.</desc>
+
+  <defs>
+    
+    <marker id="green-arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M 0 1 L 14 7 L 0 13 Z" fill="#207448" />
+    </marker>
+    <marker id="orange-arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M 0 1 L 14 7 L 0 13 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Anatomy of an ip route get Kernel FIB Query</text>
+
+  
+  <rect x="40" y="120" width="330" height="850" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(60, 142)">
+    <line x1="8" y1="12" x2="48" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="20" cy="12" r="7" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <line x1="8" y1="28" x2="48" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="36" cy="28" r="7" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <line x1="8" y1="44" x2="48" y2="44" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="24" cy="44" r="7" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+  </g>
+
+  
+  <text x="125" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="125" dy="0">Simulated Query</tspan>
+    <tspan x="125" dy="36">Inputs</tspan>
+  </text>
+
+  
+  <rect x="58" y="240" width="294" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="78" y="285" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Destination IP</text>
+  <rect x="78" y="305" width="254" height="58" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="96" y="343" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">8.8.8.8</text>
+
+  
+  <rect x="58" y="420" width="294" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="78" y="465" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Source IP</text>
+  <rect x="78" y="485" width="254" height="58" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="86" y="523" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">from 10.100.0.45</text>
+
+  
+  <rect x="58" y="600" width="294" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="78" y="645" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Input Interface</text>
+  <rect x="78" y="665" width="254" height="58" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="96" y="703" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">iif lo</text>
+
+  
+  <rect x="58" y="780" width="294" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="78" y="825" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Firewall Mark</text>
+  <rect x="78" y="845" width="254" height="58" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="96" y="883" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">mark 0x10</text>
+
+
+  
+  
+  <line x1="370" y1="545" x2="388" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+
+  
+  <rect x="388" y="375" width="216" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+  
+  <g transform="translate(468, 395)">
+    <rect x="10" y="10" width="40" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    <line x1="20" y1="2" x2="20" y2="10" stroke="#207448" stroke-width="3" />
+    <line x1="30" y1="2" x2="30" y2="10" stroke="#207448" stroke-width="3" />
+    <line x1="40" y1="2" x2="40" y2="10" stroke="#207448" stroke-width="3" />
+    <line x1="20" y1="50" x2="20" y2="58" stroke="#207448" stroke-width="3" />
+    <line x1="30" y1="50" x2="30" y2="58" stroke="#207448" stroke-width="3" />
+    <line x1="40" y1="50" x2="40" y2="58" stroke="#207448" stroke-width="3" />
+    <line x1="2" y1="20" x2="10" y2="20" stroke="#207448" stroke-width="3" />
+    <line x1="2" y1="30" x2="10" y2="30" stroke="#207448" stroke-width="3" />
+    <line x1="2" y1="40" x2="10" y2="40" stroke="#207448" stroke-width="3" />
+    <line x1="50" y1="20" x2="58" y2="20" stroke="#207448" stroke-width="3" />
+    <line x1="50" y1="30" x2="58" y2="30" stroke="#207448" stroke-width="3" />
+    <line x1="50" y1="40" x2="58" y2="40" stroke="#207448" stroke-width="3" />
+  </g>
+
+  
+  <text x="496" y="495" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="496" dy="0">Kernel FIB</tspan>
+    <tspan x="496" dy="34">Engine</tspan>
+  </text>
+
+  <line x1="408" y1="550" x2="584" y2="550" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  <text x="496" y="585" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="496" dy="0">runs the lookup</tspan>
+    <tspan x="496" dy="30">rules and trie</tspan>
+    <tspan x="496" dy="30">without sending</tspan>
+    <tspan x="496" dy="30">wire packets</tspan>
+  </text>
+
+  
+  <line x1="604" y1="545" x2="626" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+
+
+  
+  <rect x="626" y="120" width="934" height="850" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(650, 145)">
+    <rect x="2" y="4" width="52" height="40" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    <line x1="2" y1="16" x2="54" y2="16" stroke="#207448" stroke-width="2" />
+    <circle cx="10" cy="10" r="2.5" fill="#207448" />
+    <circle cx="18" cy="10" r="2.5" fill="#207448" />
+    <polyline points="10,24 16,30 10,36" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="20" y1="36" x2="30" y2="36" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="720" y="180" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Output Anatomy</text>
+
+  
+  <rect x="646" y="215" width="894" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="664" y="262" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">10.30.7.8 via 10.20.0.254 dev eno1 src 10.20.0.45 uid 1000</text>
+
+  
+  
+  <path d="M 810 298 L 810 310 L 920 310 L 1030 310 L 1030 298" fill="none" stroke="#207448" stroke-width="2.5" />
+  
+  <path d="M 1050 298 L 1050 310 L 1106 310 L 1162 310 L 1162 298" fill="none" stroke="#207448" stroke-width="2.5" />
+  
+  <path d="M 1180 298 L 1180 310 L 1284 310 L 1388 310 L 1388 298" fill="none" stroke="#db8129" stroke-width="2.5" />
+  
+  <path d="M 1406 298 L 1406 310 L 1466 310 L 1526 310 L 1526 298" fill="none" stroke="#207448" stroke-width="2.5" />
+
+  
+  
+  <path d="M 920 310 L 920 334 L 840 334 L 840 348" fill="none" stroke="#207448" stroke-width="2" marker-end="url(#green-arrow)" />
+
+  
+  <path d="M 1106 310 L 1106 474 L 840 474 L 840 488" fill="none" stroke="#207448" stroke-width="2" marker-end="url(#green-arrow)" />
+
+  
+  <path d="M 1284 310 L 1284 614 L 840 614 L 840 628" fill="none" stroke="#db8129" stroke-width="2.5" marker-end="url(#orange-arrow)" />
+
+  
+  <path d="M 1466 310 L 1466 828 L 840 828 L 840 842" fill="none" stroke="#207448" stroke-width="2" marker-end="url(#green-arrow)" />
+
+
+  
+
+  
+  <rect x="646" y="350" width="410" height="112" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="682" cy="406" r="22" fill="#207448" />
+  <text x="682" y="414" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="720" y="392" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">matched gateway</text>
+  <text x="720" y="432" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">via 10.20.0.254</text>
+
+  
+  <rect x="646" y="490" width="410" height="112" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="682" cy="546" r="22" fill="#207448" />
+  <text x="682" y="554" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="720" y="532" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">egress interface</text>
+  <text x="720" y="572" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">dev eno1</text>
+
+  
+  <rect x="646" y="630" width="600" height="195" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <circle cx="682" cy="690" r="22" fill="#db8129" />
+  <text x="682" y="698" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="720" y="670" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">chosen source IP</text>
+  <text x="720" y="708" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">src 10.20.0.45</text>
+  <text x="720" y="754" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="720" dy="0">critical for asymmetric</tspan>
+    <tspan x="720" dy="30">routing debugging</tspan>
+  </text>
+
+  
+  <rect x="646" y="844" width="410" height="112" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="682" cy="900" r="22" fill="#207448" />
+  <text x="682" y="908" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="720" y="886" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">socket context</text>
+  <text x="720" y="926" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">uid 1000</text>
+</svg>

@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2005-ebpf-subsystem-map",
+  "title": "eBPF and BCC observability tools mapped to Linux kernel subsystems",
+  "anchor": "### 11. eBPF tools at a high level",
+  "spec": "A diagram mapping the eight BCC/eBPF tools named in the chapter to the Linux operating system architecture from user space to physical hardware. Top box: User Space Applications and Runtimes. Boundary: System Call Interface, instrumented by opensnoop (tracing opened files). Three main vertical columns beneath: Column 1 (CPU & Scheduler): contains Process Scheduler and Run Queue, instrumented by runqlat (measures wake-to-switch latency; labeled with warning box: high overhead, over 1M events/sec), runqlen (99 Hz sampling of queue depth; labeled: low overhead), and offcputime (context-switch wait reasons feeding off-CPU flame graphs). Column 2 (Memory Management): contains VFS / Page Cache, instrumented by cachestat (kprobes checking page cache hits), and MM / OOM Killer, instrumented by oomkill (tracing SIGKILL invocation and victim stats). Column 3 (Storage & Block Layer): contains Block Device Queue and Drivers, instrumented by biolatency (latency distribution histogram in power-of-two buckets), biotop (top processes by I/O), and biosnoop (individual I/O requests with latency). Bottom box: Physical Hardware (CPUs, System RAM, NVMe/Disks). Alongside, show a decision box distinguishing BCC (80+ prepackaged tools for complex multi-probe diagnostics) from bpftrace (one-liner scripts for ad-hoc custom questions), with the rule: identify bottlenecked resource first, sample before tracing.",
+  "alt": "Linux kernel subsystems diagram mapping eight BCC and eBPF tools to system calls, the CPU scheduler, memory management, and block I/O.",
+  "cap": "eBPF tools instrument specific kernel subsystems to answer targeted questions once metrics identify the bottlenecked resource.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05"
+ }
+]

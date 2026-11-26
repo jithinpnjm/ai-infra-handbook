@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1440" width="1600" height="1440">
+  <title>Keyless Workload Identity Federation Flow</title>
+  <desc>Sequence flow across four vertical swimlanes showing keyless workload identity federation from Kubernetes Training Pod to Cloud Storage via OIDC and Cloud STS.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green-right" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-green-left" markerWidth="14" markerHeight="14" refX="2" refY="7" orient="auto">
+      <path d="M 11 2 L 1 7 L 11 12 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange-left" markerWidth="14" markerHeight="14" refX="2" refY="7" orient="auto">
+      <path d="M 11 2 L 1 7 L 11 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1440" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Keyless Workload Identity Federation Flow</text>
+
+  
+  
+  <rect x="45" y="105" width="345" height="1215" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.65" />
+  
+  <rect x="425" y="105" width="350" height="1215" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.65" />
+  
+  <rect x="810" y="105" width="365" height="1215" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.65" />
+  
+  <rect x="1210" y="105" width="345" height="1215" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 8" opacity="0.65" />
+
+  
+  
+  <g transform="translate(55, 115)">
+    <rect width="325" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <rect x="20" y="27" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 47 L 48 37 L 68 47 L 48 57 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 28 47 L 28 65 L 48 75 L 48 57" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 68 47 L 68 65 L 48 75" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="96" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Training Pod</text>
+  </g>
+
+  
+  <g transform="translate(435, 115)">
+    <rect width="330" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="50" cy="55" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="50" cy="55" r="9" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 50 25 L 50 33 M 50 77 L 50 85 M 20 55 L 28 55 M 72 55 L 80 55 M 29 34 L 35 40 M 65 70 L 71 76 M 29 76 L 35 70 M 65 40 L 71 34" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="94" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">kube-apiserver</text>
+    <text x="94" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(OIDC Issuer)</text>
+  </g>
+
+  
+  <g transform="translate(820, 115)">
+    <rect width="345" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 50 28 L 74 38 C 74 62 50 78 50 82 C 50 78 26 62 26 38 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="50" cy="50" r="6" fill="#207448" />
+    <path d="M 50 56 L 50 68" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="94" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Cloud STS / IAM</text>
+    <text x="94" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(AWS/GCP/Azure)</text>
+  </g>
+
+  
+  <g transform="translate(1220, 115)">
+    <rect width="325" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <ellipse cx="50" cy="40" rx="24" ry="10" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 26 40 L 26 70 C 26 76 37 82 50 82 C 63 82 74 76 74 70 L 74 40" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 26 55 C 26 61 37 66 50 66 C 63 66 74 61 74 55" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="90" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Cloud Storage</text>
+    <text x="90" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(S3/GCS Checkpoints Bucket)</text>
+  </g>
+
+  
+  
+  <line x1="217" y1="235" x2="217" y2="1310" stroke="#207448" stroke-width="3" opacity="0.4" stroke-dasharray="6 6" />
+  <line x1="600" y1="235" x2="600" y2="1310" stroke="#207448" stroke-width="3" opacity="0.4" stroke-dasharray="6 6" />
+  <line x1="992" y1="235" x2="992" y2="1310" stroke="#207448" stroke-width="3" opacity="0.4" stroke-dasharray="6 6" />
+  <line x1="1382" y1="235" x2="1382" y2="1310" stroke="#207448" stroke-width="3" opacity="0.4" stroke-dasharray="6 6" />
+
+  
+  
+  
+  <line x1="217" y1="270" x2="590" y2="270" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green-right)" />
+  
+  <circle cx="217" cy="270" r="24" fill="#207448" />
+  <text x="217" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(255, 290)">
+    <rect width="660" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="25" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Pod requests or mounts projected ServiceAccount token with audience</text>
+    <text x="25" y="78" font-family="monospace, monospace" font-size="24" fill="#207448">&#39;sts.googleapis.com&#39; <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36">or</tspan> &#39;sts.amazonaws.com&#39;</text>
+    <text x="25" y="114" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">via TokenRequest API.</text>
+  </g>
+
+  
+  
+  
+  <line x1="217" y1="480" x2="982" y2="480" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green-right)" />
+  
+  <circle cx="217" cy="480" r="24" fill="#207448" />
+  <text x="217" y="488" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(255, 500)">
+    <rect width="840" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="25" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Pod presents short-lived PSAT JWT to Cloud STS endpoint</text>
+    <text x="25" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">requesting temporary cloud credentials.</text>
+  </g>
+
+  
+  
+  
+  <line x1="992" y1="670" x2="610" y2="670" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green-left)" />
+  
+  <circle cx="992" cy="670" r="24" fill="#207448" />
+  <text x="992" y="678" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(460, 690)">
+    <rect width="690" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="25" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Cloud STS contacts cluster public OIDC discovery endpoint</text>
+    <text x="25" y="78" font-family="monospace, monospace" font-size="24" fill="#207448">&#39;/.well-known/openid-configuration&#39;</text>
+    <text x="25" y="114" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and fetches signing keys from <tspan font-family="monospace, monospace" fill="#207448">&#39;jwks_uri&#39;</tspan> to cryptographically</text>
+    <text x="25" y="146" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">verify the JWT signature.</text>
+  </g>
+
+  
+  
+  
+  <line x1="992" y1="915" x2="227" y2="915" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange-left)" />
+  
+  <circle cx="992" cy="915" r="24" fill="#db8129" />
+  <text x="992" y="923" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(255, 935)">
+    <rect width="850" height="150" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="25" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Cloud STS evaluates IAM trust policy matching</text>
+    <text x="25" y="80" font-family="monospace, monospace" font-size="24" fill="#db8129">&#39;sub: system:serviceaccount:team-a:trainer&#39;</text>
+    <text x="25" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and returns short-lived federated Cloud IAM OAuth/STS token (e.g., valid for 1 hour).</text>
+  </g>
+
+  
+  
+  
+  <line x1="217" y1="1145" x2="1372" y2="1145" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green-right)" />
+  
+  <circle cx="217" cy="1145" r="24" fill="#207448" />
+  <text x="217" y="1153" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <g transform="translate(255, 1165)">
+    <rect width="980" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="25" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Training job directly reads training datasets and writes</text>
+    <text x="25" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">model checkpoint blobs to bucket using the temporary IAM token.</text>
+  </g>
+
+  
+  <g transform="translate(45, 1345)">
+    <rect width="1510" height="70" rx="12" fill="#207448" />
+    
+    <circle cx="45" cy="35" r="18" fill="#ffffff" />
+    <path d="M 37 35 L 43 41 L 53 29" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="80" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Zero static cloud API keys or passwords stored in Kubernetes Secrets or Git</text>
+  </g>
+</svg>

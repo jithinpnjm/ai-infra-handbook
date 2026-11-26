@@ -1,0 +1,281 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Architecture of a parallel work queue Job draining items from a queue service</title>
+  <desc>Visual architecture of Kubernetes parallel Job draining work items from a central queue service via REST API.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="40" font-weight="bold" fill="#303a36" text-anchor="middle">
+    Architecture of a parallel work queue Job
+  </text>
+  <text x="800" y="100" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448" text-anchor="middle">
+    draining items from a queue service
+  </text>
+
+  
+  
+  
+  <g id="stage-producer">
+    
+    <rect x="45" y="130" width="410" height="840" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="85" cy="180" r="24" fill="#207448" />
+    <text x="85" y="189" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="125" y="190" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Producer</text>
+
+    
+    <rect x="75" y="230" width="60" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="75" y1="246" x2="135" y2="246" stroke="#207448" stroke-width="3" />
+    <circle cx="87" cy="238" r="3" fill="#207448" />
+    <circle cx="97" cy="238" r="3" fill="#207448" />
+    <path d="M 85 260 L 93 266 L 85 272" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text x="150" y="262" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">CLI Work Producer</text>
+
+    
+    <rect x="65" y="310" width="370" height="370" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="65" y="310" width="370" height="44" rx="12" fill="#207448" />
+    <rect x="65" y="340" width="370" height="14" fill="#207448" />
+    <circle cx="87" cy="332" r="5" fill="#f5f8f5" />
+    <circle cx="105" cy="332" r="5" fill="#f5f8f5" />
+    <circle cx="123" cy="332" r="5" fill="#f5f8f5" />
+    <text x="250" y="339" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">bash terminal</text>
+
+    
+    <text x="85" y="390" font-family="monospace" font-size="24" fill="#303a36">$ curl -X POST \</text>
+    <text x="85" y="425" font-family="monospace" font-size="24" fill="#303a36">  localhost:8080/ \</text>
+    <text x="85" y="460" font-family="monospace" font-size="24" fill="#303a36">  memq/server/ \</text>
+    <text x="85" y="495" font-family="monospace" font-size="24" fill="#303a36">  queues/keygen/ \</text>
+    <text x="85" y="530" font-family="monospace" font-size="24" fill="#303a36">  enqueue \</text>
+    <text x="85" y="565" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">  -d work-item-N</text>
+
+    
+    <rect x="85" y="595" width="330" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="250" y="635" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      for N in {0..99}
+    </text>
+
+    
+    <rect x="65" y="720" width="370" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="250" y="765" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      pushing 100 items
+    </text>
+    <text x="250" y="800" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      into the queue
+    </text>
+  </g>
+
+  
+  
+  
+  <path d="M 455 550 L 535 550" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <rect x="460" y="500" width="70" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="495" y="527" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">POST</text>
+
+  
+  
+  
+  <g id="stage-queue-server">
+    
+    <rect x="545" y="130" width="460" height="840" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="585" cy="180" r="24" fill="#207448" />
+    <text x="585" y="189" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="625" y="190" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Queue Server</text>
+
+    
+    <ellipse cx="945" cy="170" rx="28" ry="12" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 917 170 v 22 c 0 7 13 12 28 12 s 28 -5 28 -12 v -22" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 917 192 v 22 c 0 7 13 12 28 12 s 28 -5 28 -12 v -22" fill="none" stroke="#207448" stroke-width="3" />
+
+    
+    <rect x="565" y="230" width="420" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="775" y="270" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+      service-queue
+    </text>
+    <text x="775" y="310" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      Kubernetes Service (port 8080)
+    </text>
+
+    
+    <rect x="565" y="360" width="420" height="440" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <text x="775" y="400" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+      ReplicaSet with 1 Pod
+    </text>
+    <text x="775" y="435" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">
+      'kuard' MemQ server
+    </text>
+
+    
+    <rect x="585" y="460" width="380" height="320" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    
+    <text x="775" y="495" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      In-Memory Work Queue
+    </text>
+
+    
+    <g transform="translate(605, 515)">
+      <rect x="0" y="0" width="340" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="170" y="28" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">work-item-0</text>
+      
+      <rect x="0" y="52" width="340" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="170" y="80" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">work-item-1</text>
+      
+      <text x="170" y="125" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">•  •  •</text>
+      
+      <rect x="0" y="142" width="340" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="170" y="170" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">work-item-99</text>
+    </g>
+
+    
+    <rect x="635" y="725" width="280" height="42" rx="21" fill="#207448" />
+    <text x="775" y="754" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      queue depth = 100
+    </text>
+
+    
+    <rect x="565" y="820" width="420" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="775" y="860" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      FIFO Queue Array
+    </text>
+    <text x="775" y="895" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      Drains to 0 items during batch
+    </text>
+  </g>
+
+  
+  
+  
+  
+  <line x1="1005" y1="460" x2="1085" y2="460" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <line x1="1085" y1="520" x2="1005" y2="520" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1015" y="405" width="70" height="38" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="1050" y="432" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">GET</text>
+
+  
+  
+  
+  <g id="stage-consumers">
+    
+    <rect x="1095" y="130" width="460" height="840" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="1135" cy="180" r="24" fill="#207448" />
+    <text x="1135" y="189" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="1175" y="190" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Parallel Consumers</text>
+
+    
+    <rect x="1115" y="230" width="420" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1325" y="268" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+      Job: consumers
+    </text>
+    <text x="1325" y="303" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">
+      parallelism: 5
+    </text>
+    
+    
+    <rect x="1130" y="318" width="390" height="50" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="1325" y="350" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      polling /memq/.../keygen
+    </text>
+
+    
+    <g transform="translate(1115, 395)">
+      
+      <rect x="0" y="0" width="420" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="30" cy="26" r="14" fill="#207448" />
+      <text x="30" y="33" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">0</text>
+      <text x="60" y="34" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">consumers-0</text>
+      <text x="390" y="33" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="end">dequeue item</text>
+
+      
+      <rect x="0" y="60" width="420" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="30" cy="86" r="14" fill="#207448" />
+      <text x="30" y="93" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="60" y="94" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">consumers-1</text>
+      <text x="390" y="93" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="end">processing key</text>
+
+      
+      <rect x="0" y="120" width="420" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="30" cy="146" r="14" fill="#207448" />
+      <text x="30" y="153" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="60" y="154" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">consumers-2</text>
+      <text x="390" y="153" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="end">requesting next</text>
+
+      
+      <rect x="0" y="180" width="420" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="30" cy="206" r="14" fill="#207448" />
+      <text x="30" y="213" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <text x="60" y="214" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">consumers-3</text>
+      <text x="390" y="213" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="end">processing key</text>
+
+      
+      <rect x="0" y="240" width="420" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="30" cy="266" r="14" fill="#207448" />
+      <text x="30" y="273" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      <text x="60" y="274" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">consumers-4</text>
+      <text x="390" y="273" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="end">dequeue item</text>
+    </g>
+
+    
+    <rect x="1115" y="700" width="420" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <text x="1325" y="736" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      Polling Endpoint URL:
+    </text>
+    <text x="1325" y="770" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">
+      http://queue:8080/memq/
+    </text>
+    <text x="1325" y="802" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">
+      server/queues/keygen
+    </text>
+
+    
+    <line x1="1135" y1="825" x2="1515" y2="825" stroke="#e8f1ea" stroke-width="2" />
+    <text x="1325" y="860" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      Work Cycle:
+    </text>
+    <text x="1325" y="895" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="middle">
+      dequeue an item →
+    </text>
+    <text x="1325" y="925" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="middle">
+      processing a key → requesting the next item
+    </text>
+  </g>
+
+  
+  
+  
+  <g id="completion-summary">
+    <rect x="45" y="990" width="1510" height="110" rx="14" fill="#207448" />
+    
+    
+    <circle cx="100" cy="1045" r="30" fill="#ffffff" />
+    <path d="M 86 1045 L 96 1055 L 115 1034" fill="none" stroke="#207448" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text x="155" y="1035" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      When depth hits 0, workers receive empty responses, exit with return code 0,
+    </text>
+    <text x="155" y="1072" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      and the Job controller marks the batch complete.
+    </text>
+  </g>
+</svg>

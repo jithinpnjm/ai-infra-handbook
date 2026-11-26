@@ -1,0 +1,31 @@
+# docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md
+- ## Why this matters for AI infrastructure | 230 | NO FIGURE NEEDED - motivating introduction to scheduling challenges
+- ## Prerequisites and outcomes | 160 | NO FIGURE NEEDED - learning outcomes and prerequisites list
+- ## 1. The scheduler's job and model | 700 | COVERED(p3-0518-profile-binpack, m5-18-1)
+- ## 2. Resource fit and accounting | 400 | COVERED(p3-0518-scheduler-paperwork, k18-fragmentation)
+- ## 3. Placement constraints | 60 | NO FIGURE NEEDED - introductory transition to constraint subsections
+- ### nodeSelector and node affinity | 250 | COVERED(p3-0518-affinity-anatomy)
+- ### Pod affinity and anti-affinity | 200 | COVERED(p2-0518-anti-affinity)
+- ### Topology spread constraints | 120 | COVERED(p2-0518-zone-spread)
+- ### Taints and tolerations | 300 | COVERED(p3-0518-taint-effects, k18-taint-toleration-selector)
+- ### Other fields | 150 | NO FIGURE NEEDED - concise definitions of nodeName, gates, and cordoning
+- ### Spreading replicas across failure domains | 270 | COVERED(p2-0518-egg-carton)
+- ## 4. Priority, preemption and disruption | 20 | COVERED(p2-0518-preempt-steps)
+- ### PriorityClass | 650 | COVERED(p3-0518-preemption-pitfalls, p2-0518-priority-floors)
+- ## 5. Why default scheduling fails for distributed jobs | 180 | COVERED(p3-0518-kueue-quota-numbers, k18-gang-deadlock)
+- ### Kueue | 420 | COVERED(p3-0518-kueue-objects)
+- ### Volcano | 160 | NEEDS FIGURE - Volcano multi-stage action loop and batch plugin architecture
+- ### Other gang mechanisms | 150 | COVERED(p3-0518-gang-tools-compare)
+- ## 6. Topology-aware and device-aware scheduling | 480 | COVERED(p3-0518-topology-reject, p3-0518-device-plugin-vs-dra)
+- ## 7. Descheduling, autoscaling and scheduler tuning | 350 | NEEDS FIGURE - control loop interaction among scheduler, descheduler, and autoscaler
+- ### Extending the scheduler | 420 | NO FIGURE NEEDED - policy configmaps are deprecated and profiles are already shown in section 1
+- ## 8. Debugging scheduling | 350 | COVERED(p3-0518-failedscheduling-anatomy)
+- ## 9. Reference patterns for a GPU platform | 250 | COVERED(p3-0518-gpu-platform-layers)
+- ## 10. Lab | 450 | NO FIGURE NEEDED - lab exercise steps and simulator instructions
+- ## 11. Common mistakes | 200 | NO FIGURE NEEDED - summary list of operational pitfalls
+- ## 12. Interview angles | 120 | COVERED(p3-0518-pending-symptom-table)
+- ## Exercises | 400 | NO FIGURE NEEDED - hands-on problem set
+- ## Checkpoint questions (20) | 1300 | NO FIGURE NEEDED - self-check questions and solutions
+- ## Sources and review notes | 250 | NO FIGURE NEEDED - bibliography and citations
+
+Specs kept 2, dropped 0: []

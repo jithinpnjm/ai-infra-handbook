@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Diagnostic Decision Tree: SSH Timeout versus Connection Refused</title>
+  <desc>Visual decision tree diagnosing SSH timeout, connection refused, and handshake stalls based on network packet flow and server state.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    Diagnostic Decision Tree: SSH Timeout versus Connection Refused
+  </text>
+
+  
+  <g id="root-node">
+    <rect x="520" y="90" width="560" height="76" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="545" y="106" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 555 120 L 565 128 L 555 136 M 569 136 L 579 136" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="610" y="139" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">ssh user@host -p 22</text>
+  </g>
+
+  
+  <path d="M 800 166 L 800 230" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <path d="M 680 166 L 680 198 L 290 198 L 290 230" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <path d="M 920 166 L 920 198 L 1310 198 L 1310 230" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  
+  <g id="branch-1">
+    
+    <rect x="50" y="240" width="480" height="920" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="68" y="258" width="444" height="170" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <path d="M 104 290 L 126 278 L 148 290 L 148 318 C 148 334 126 346 126 346 C 126 346 104 334 104 318 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 118 304 L 134 320 M 134 304 L 118 320" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="166" y="300" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="166" dy="0">Hangs 30-120 s, then</tspan>
+      <tspan x="166" dy="38">'Connection timed out' /</tspan>
+      <tspan x="166" dy="38">ETIMEDOUT</tspan>
+    </text>
+
+    
+    <rect x="68" y="446" width="444" height="390" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="106" cy="486" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 96 486 L 116 486 M 108 476 L 118 486 L 108 496" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="140" y="494" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Packet Flow</text>
+
+    <text x="88" y="542" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="88" dy="0">Packet path shows Client</tspan>
+      <tspan x="88" dy="34">sending TCP SYN -&gt; packet</tspan>
+      <tspan x="88" dy="34">dropped silently by Firewall,</tspan>
+      <tspan x="88" dy="34">Cloud Security Group</tspan>
+      <tspan x="88" dy="34">(GCP/AWS), routing black hole,</tspan>
+      <tspan x="88" dy="34">or host is powered off.</tspan>
+      <tspan x="88" dy="38" font-weight="bold">No packet returns.</tspan>
+    </text>
+
+    
+    <rect x="68" y="854" width="444" height="288" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="88" y="896" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Action step:</text>
+    <text x="88" y="938" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="88" dy="0" font-family="monospace" font-weight="bold">'ping host',</tspan>
+      <tspan x="88" dy="36" font-family="monospace" font-weight="bold">'traceroute -T -p 22 host',</tspan>
+      <tspan x="88" dy="36">check cloud VPC security</tspan>
+      <tspan x="88" dy="34">group egress/ingress rules,</tspan>
+      <tspan x="88" dy="34">verify host power via BMC.</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <g id="branch-2">
+    
+    <rect x="560" y="240" width="480" height="920" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="578" y="258" width="444" height="170" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="616" cy="316" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="616,302 616,316 626,322" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="654" y="300" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="654" dy="0">Fails immediately in 0.01 s,</tspan>
+      <tspan x="654" dy="38">'Connection refused' /</tspan>
+      <tspan x="654" dy="38">ECONNREFUSED</tspan>
+    </text>
+
+    
+    <rect x="578" y="446" width="444" height="390" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="616" cy="486" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 606 486 L 626 486 M 618 476 L 628 486 L 618 496" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="650" y="494" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Packet Flow</text>
+
+    <text x="598" y="542" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="598" dy="0">Packet path shows Client</tspan>
+      <tspan x="598" dy="34">sending TCP SYN -&gt; reaches</tspan>
+      <tspan x="598" dy="34">server IP and network stack</tspan>
+      <tspan x="598" dy="34">successfully -&gt; Server kernel</tspan>
+      <tspan x="598" dy="34">finds no process listening on</tspan>
+      <tspan x="598" dy="34">TCP port 22 -&gt; Server kernel</tspan>
+      <tspan x="598" dy="38">immediately returns TCP RST/ACK.</tspan>
+    </text>
+
+    
+    <rect x="578" y="854" width="444" height="288" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="598" y="896" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Action step:</text>
+    <text x="598" y="938" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="598" dy="0" font-family="monospace" font-weight="bold">'nc -vz host 22',</tspan>
+      <tspan x="598" dy="34">on server check</tspan>
+      <tspan x="598" dy="34" font-family="monospace" font-weight="bold">'systemctl status sshd'</tspan>
+      <tspan x="598" dy="34">and <tspan font-family="monospace" font-weight="bold">'ss -tlnp | grep :22'</tspan></tspan>
+      <tspan x="598" dy="34">(sshd dead or bound to</tspan>
+      <tspan x="598" dy="32">non-default port).</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <g id="branch-3">
+    
+    <rect x="1070" y="240" width="480" height="920" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="1088" y="258" width="444" height="170" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1126" cy="316" r="16" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 1126 294 L 1126 302 M 1126 330 L 1126 338 M 1104 316 L 1112 316 M 1140 316 L 1148 316 M 1110 300 L 1116 306 M 1136 326 L 1142 332 M 1110 332 L 1116 326 M 1136 306 L 1142 300" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1164" y="300" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="1164" dy="0">TCP handshake succeeds</tspan>
+      <tspan x="1164" dy="38">SYN/ACK, but hangs</tspan>
+      <tspan x="1164" dy="38">before login</tspan>
+    </text>
+
+    
+    <rect x="1088" y="446" width="444" height="390" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="1126" cy="486" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 1116 486 L 1136 486 M 1128 476 L 1138 486 L 1128 496" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="1160" y="494" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Packet Flow</text>
+
+    <text x="1108" y="542" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1108" dy="0">Packet path shows TCP</tspan>
+      <tspan x="1108" dy="34">connection established,</tspan>
+      <tspan x="1108" dy="34">but stalls during SSH version</tspan>
+      <tspan x="1108" dy="34">string exchange</tspan>
+      <tspan x="1108" dy="38" font-family="monospace" font-weight="bold">('SSH-2.0-...').</tspan>
+    </text>
+
+    
+    <rect x="1088" y="854" width="444" height="288" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1108" y="896" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Action step:</text>
+    <text x="1108" y="938" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1108" dy="0" font-family="monospace" font-weight="bold">'ssh -vvv host'</tspan>
+      <tspan x="1108" dy="36">to check MTU</tspan>
+      <tspan x="1108" dy="34">fragmentation or</tspan>
+      <tspan x="1108" dy="34">hung sshd process.</tspan>
+    </text>
+  </g>
+</svg>

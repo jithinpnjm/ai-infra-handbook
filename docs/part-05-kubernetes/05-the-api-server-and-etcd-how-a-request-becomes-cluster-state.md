@@ -276,6 +276,10 @@ Before you raise any limit, give the noisy client its own level and check whethe
 
 ### Deployment models for etcd
 
+![A diagram comparing stacked etcd on shared control plane nodes against dedicated etcd running on separate NVMe machines.](./img/p4-0505-etcd-topologies.svg)
+
+*Figure 5.0.0. Stacked etcd simplifies small clusters, while dedicated etcd isolates disk and CPU contention for clusters with over 200 nodes.*
+
 etcd is the database behind every object in a cluster. It is a distributed store. It uses a consensus algorithm to keep one copy of the cluster state on several machines. Consensus depends on reliable network links between the etcd members, and those members need low latency. Two choices shape the deployment. One is whether etcd runs on dedicated machines or shares them with the control plane. The other is whether etcd runs in a container or directly on the host.
 
 On the network side, the default etcd settings suit the latency inside a single datacenter. If you spread etcd across several datacenters, test the average round-trip time between members. Tune the heartbeat interval and the election timeout if you need to. Do not spread etcd clusters across regions, because that is strongly discouraged. For better availability, keep your datacenters close together, inside one region.
@@ -326,6 +330,10 @@ etcdctl $EP get /registry/namespaces/default       # protobuf-encoded value (bin
 The first lines show the status, health and membership. The compaction and defragmentation steps come next. The compaction line reads the current revision from the status and then compacts up to it, so only the newest history survives. The last two commands tell you which resource types take the most space, and they show that a stored value is protobuf-encoded binary. When you see binary output, that is normal, and it is not a sign of corruption.
 
 ### What lives in etcd
+
+![A hierarchical tree diagram of keys stored in etcd under the registry prefix showing namespaces, leases, events, and size limits.](./img/p4-0505-registry-keyspace.svg)
+
+*Figure 5.0.0. Kubernetes partitions cluster state under /registry, where high-churn events and node leases can be redirected or isolated from main state.*
 
 Keys live under `/registry/<resource>/...`. For namespaced objects, the key is `/registry/pods/<ns>/<name>`. Leases hold node heartbeats and leader election state. Events churn quickly and expire after one hour. Many clusters move events into a separate etcd cluster with `--etcd-servers-overrides=/events#https://...`. CRD custom resources live under `/registry/<group>/<resource>/...`.
 
@@ -539,6 +547,10 @@ Restoring etcd rewinds the cluster to the snapshot time. Objects created after t
 Practise restores on a scratch cluster before you need one. A restore you have never run is a guess, and the middle of an outage is the worst time to learn the steps.
 
 ## 8. API server operations and scaling
+
+![An architecture diagram showing a load balancer distributing traffic across stateless API servers with independent watch caches and split etcd clusters.](./img/p4-0505-apiserver-ha-scaling.svg)
+
+*Figure 5.0.0. Stateless API servers scale out behind a load balancer with long idle timeouts, offloading high-churn events to a separate etcd cluster.*
 
 kubeadm sets these flags through `ClusterConfiguration.apiServer.extraArgs`. Each flag controls one dial on the server. You do not need to memorize them all. Learn the groups, so you know which dial to look at when a symptom points to a particular area.
 

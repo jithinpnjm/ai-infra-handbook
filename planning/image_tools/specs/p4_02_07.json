@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0207-lab-topology",
+  "title": "Namespace Testbed for UDP, Traceroute, and MTU Black Hole Lab",
+  "anchor": "## 8. Hands-on lab: UDP, ICMP, traceroute, and an MTU black hole",
+  "spec": "A horizontal network topology diagram showing the disposable Linux VM testbed spanning 3 network namespaces (hA, r, hB) with the step-by-step experiment controls. Left box: Namespace 'hA' (Client Host) with veth interface 'vA' (10.1.0.2/24, MTU 1500, default route via 10.1.0.1). Inside hA, annotate test tools: 'nc -u', 'iperf3 -u -b 100M -l 1400', 'ping -M do -s 1472 10.2.0.2', and 'traceroute -n'. Middle box: Namespace 'r' (Router with ip_forward=1). Ingress interface 'rA' (10.1.0.1/24, MTU 1500) connected to vA. Egress interface 'rB' (10.2.0.1/24) where MTU is stepped down to 1400. In router 'r', highlight two fault injection points: (1) tc qdisc tbf rate 50mbit latency 50ms and netem loss 1%, and (2) iptables OUTPUT rule dropping icmp --icmp-type fragmentation-needed. Show an optional chained router 'r2' inserted between r and hB for the traceroute hop test. Right box: Namespace 'hB' (Server Host) with interface 'vB' (10.2.0.2/24, MTU 1500, default route via 10.2.0.1). Inside hB, annotate services: 'nc -u -l 5000' and 'iperf3 -s'. Illustrate the PMTU black hole packet flow: 1500-byte IP packet with DF=1 travels from hA to r, is discarded at rB because MTU is 1400, and when iptables drops the ICMP Type 3 Code 4 notification, the connection silently hangs.",
+  "alt": "Network namespace topology for the hands-on lab showing client host hA, intermediate router r with MTU 1400 and iptables need-frag drop rule, and server host hB.",
+  "cap": "Figure 2.7.18. The three-namespace lab topology implements an MTU mismatch and ICMP filter on router r to recreate and fix a Path MTU black hole.",
+  "part": "part-02-networking",
+  "ch": "07"
+ }
+]

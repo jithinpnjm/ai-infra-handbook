@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2020-multimodel-placement",
+  "title": "Multi-Model Placement Strategies and Disaggregated Autoscaling",
+  "anchor": "### 9. Multi-model fleets and placement",
+  "spec": "Two-part diagram comparing multi-model topology options and disaggregated scaling axes. Top half: Placement comparison. Left side shows Latency-Optimised Dedicated Fleet: Client Traffic reaches a Model Router; Router dispatches Model A requests to 'Dedicated Model A Pool' (Floor=3, always-on GPUs, preserved prefix cache), and Model B requests to 'Dedicated Model B Pool' (Floor=0 or 1, quiet model, scaled independently). Right side shows Cost-Optimised Shared Fleet: Router dispatches to 'Shared GPU Pool' where instances dynamically load/evict weights on demand from shared storage, labeled with 'Cold Start Penalty: 10s-60s delay' and 'Cache Thrashing'. Bottom half: Disaggregated Fleet and Cache-Aware Scaling. Shows incoming traffic split by request phase: Prefill Workers (scale on prompt tokens / arrival burst) feed KV tensors over high-speed network to Decode Workers (scale on active concurrent sequences and output token length). An alert box highlights 'Scale-in Warning / Miss Storm': when a replica is terminated, its warm local prefix cache is discarded, causing downstream requests to suffer full prefill latency.",
+  "alt": "A diagram contrasting dedicated always-on pools against shared on-demand pools, alongside disaggregated prefill and decode worker autoscaling with prefix cache eviction risks.",
+  "cap": "Dedicated pools isolate hot model scaling and protect prefix caches, while disaggregated serving enables prefill and decode pools to scale on their distinct bottlenecks.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20"
+ }
+]

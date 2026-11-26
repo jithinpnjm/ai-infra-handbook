@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0108-lsof-cols",
+  "title": "Anatomy of lsof Command Output",
+  "anchor": "### Reading `lsof` output",
+  "spec": "Command-output anatomy diagram breaking down the 9 columns of lsof based on the chapter listing: COMMAND, PID, USER, FD, TYPE, DEVICE, SIZE/OFF, NODE, NAME. Show sample rows from text: (1) 'systemd 1 root cwd DIR 8,1 4096 2 /', (2) 'systemd 1 root txt REG 8,1 1595792 9961784 /lib/systemd/systemd', and (3) 'vi 1994 juser 3u REG 8,1 12288 786440 /tmp/.ff.swp'. Use callout brackets with descriptive annotations for key columns: FD column callout highlights role strings ('cwd' = current working directory, 'txt' = executable text, 'mem' = mapped library) versus numeric open file descriptors with access mode ('3u' = descriptor 3 opened for read-write); TYPE callout highlights 'DIR' (directory) and 'REG' (regular file); DEVICE callout points to major,minor disk device numbers ('8,1'); NODE callout points to filesystem inode number ('786440'); NAME callout points to filesystem path or target.",
+  "alt": "Anatomy of lsof columns mapping process credentials, file descriptor types and numbers, and filesystem nodes.",
+  "cap": "The lsof command exposes process ownership, descriptor roles like cwd or descriptor 3u, filesystem node IDs, and device numbers.",
+  "part": "part-01-linux",
+  "ch": "08"
+ },
+ {
+  "name": "p4-0108-priority-classes",
+  "title": "Linux Task Priority Controls: Nice, Ionice, and CPU Affinity",
+  "anchor": "## 6. Priority: `nice`, `ionice`, CPU affinity",
+  "spec": "Three-panel architectural diagram illustrating the three dimensions of Linux task priority discussed in Section 6. Left panel: 'CPU Niceness' showing the scale from -20 (highest priority, least nice, root only) through 0 (default) to +19 (lowest priority, most nice). Show kernel dynamic priority PR = 20 + NI and sample commands: 'nice -n 15 ./long_job.sh' and 'renice -n 10 -p 3322'. Center panel: 'Block I/O Priority (ionice)' showing the 3 classes: Class 1 Real-time (-c 1, served first, root only); Class 2 Best-effort (-c 2, levels 0 to 7, default 4); Class 3 Idle (-c 3, served only when disk has no other traffic). Show sample command: 'ionice -c 3 nice -n 19 rsync -a src/ dst/'. Right panel: 'CPU and NUMA Affinity' showing taskset core pinning (e.g. cores 0-7 via 'taskset -c 0-7 ./prog') and NUMA memory and CPU binding via 'numactl --cpunodebind=1 --membind=1 python train.py'.",
+  "alt": "Three dimensions of Linux task priority: CPU niceness from -20 to 19, disk IO classes 1 through 3, and CPU core affinity.",
+  "cap": "Combining nice, ionice, and taskset or numactl controls CPU shares, disk scheduling priority, and NUMA core pinning independently.",
+  "part": "part-01-linux",
+  "ch": "08"
+ }
+]

@@ -1,0 +1,284 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
+  <title>Transport Marshaling Grammars and Error Correction</title>
+  <desc>Visual comparison of Fixed-Length, TLV, and Shared Dictionaries marshaling alongside ARQ and FEC error correction mechanisms.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#71827a"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1420" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="38" font-weight="bold" fill="#303a36">Transport Marshaling Grammars and Error Correction:</text>
+  <text x="800" y="96" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fixed, TLV, and Shared Dictionaries</text>
+
+  
+  <rect x="40" y="125" width="740" height="1135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(65, 145)">
+    
+    <rect x="0" y="0" width="36" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="12" x2="28" y2="12" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="20" x2="28" y2="20" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="28" x2="20" y2="28" stroke="#207448" stroke-width="3"/>
+    <text x="50" y="32" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Digital Marshaling Grammars</text>
+  </g>
+
+  
+  <rect x="60" y="200" width="700" height="295" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+  <text x="80" y="235" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">1. Fixed-Length Fields (IPv4, Base TCP Header)</text>
+  
+  
+  <g transform="translate(80, 250)">
+    
+    <rect x="0" y="0" width="325" height="32" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="162" y="23" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Src Port (16b)</text>
+    <rect x="325" y="0" width="325" height="32" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="487" y="23" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Dst Port (16b)</text>
+
+    
+    <rect x="0" y="32" width="650" height="32" fill="#f0f6f1" stroke="#207448" stroke-width="1.5"/>
+    <text x="325" y="55" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Seq Num (32b)</text>
+
+    
+    <rect x="0" y="64" width="650" height="32" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="325" y="87" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Ack Num (32b)</text>
+
+    
+    <rect x="0" y="96" width="160" height="32" fill="#f0f6f1" stroke="#207448" stroke-width="1.5"/>
+    <text x="80" y="119" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Offset (4b)</text>
+    <rect x="160" y="96" width="165" height="32" fill="#f0f6f1" stroke="#207448" stroke-width="1.5"/>
+    <text x="242" y="119" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Flags (6b)</text>
+    <rect x="325" y="96" width="325" height="32" fill="#f0f6f1" stroke="#207448" stroke-width="1.5"/>
+    <text x="487" y="119" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Win (16b)</text>
+
+    
+    <rect x="0" y="128" width="325" height="32" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="162" y="151" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Checksum (16b)</text>
+    <rect x="325" y="128" width="325" height="32" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="487" y="151" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Urgent (16b)</text>
+  </g>
+
+  
+  <rect x="75" y="420" width="670" height="64" rx="6" fill="#f5f8f5"/>
+  <text x="85" y="445" font-family="sans-serif" font-size="24" fill="#303a36">Parsed at fixed byte offsets with no loops; rigid,</text>
+  <text x="85" y="473" font-family="sans-serif" font-size="24" fill="#303a36">inflexible to evolve, wastes space if fields unneeded</text>
+
+  
+  <rect x="60" y="510" width="700" height="360" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+  <text x="80" y="542" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">2. Type-Length-Value / TLV (TCP Options, BGP Attributes, LLDP)</text>
+
+  
+  <g transform="translate(80, 560)">
+    
+    <rect x="0" y="0" width="335" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="167" y="29" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Type: 1B (e.g. 0x02 MSS)</text>
+
+    <line x1="335" y1="21" x2="363" y2="21" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="365" y="0" width="285" height="42" rx="6" fill="#f0f6f1" stroke="#207448" stroke-width="1.5"/>
+    <text x="507" y="29" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Length: 1B (4B)</text>
+
+    
+    <path d="M 507 42 L 507 55 L 325 55 L 325 68" fill="none" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="175" y="70" width="300" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="325" y="99" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Value: 2B (1460)</text>
+
+    
+    <text x="325" y="138" text-anchor="middle" font-family="sans-serif" font-size="24" font-style="italic" fill="#71827a">followed by</text>
+    <line x1="325" y1="145" x2="325" y2="160" stroke="#71827a" stroke-width="2" marker-end="url(#arrow-dim)"/>
+
+    
+    <rect x="0" y="165" width="335" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="167" y="194" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Type: 1B (0x03 WScale)</text>
+
+    <line x1="335" y1="186" x2="363" y2="186" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="365" y="165" width="285" height="42" rx="6" fill="#f0f6f1" stroke="#207448" stroke-width="1.5"/>
+    <text x="507" y="194" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Length: 1B (3B)</text>
+
+    
+    <path d="M 507 207 L 507 220 L 325 220 L 325 231" fill="none" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="175" y="233" width="300" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="325" y="262" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Value: 1B (shift 7)</text>
+  </g>
+
+  
+  <rect x="75" y="800" width="670" height="60" rx="6" fill="#f5f8f5"/>
+  <text x="85" y="826" font-family="sans-serif" font-size="24" fill="#303a36">Self-describing and extensible via length-bounded loops;</text>
+  <text x="85" y="852" font-family="sans-serif" font-size="24" fill="#303a36">middleboxes can strip unknown tags</text>
+
+  
+  <rect x="60" y="885" width="700" height="360" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+  <text x="80" y="920" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">3. Shared Dictionary / Schemas (Protobuf/gRPC, ASN.1, YANG)</text>
+
+  
+  <rect x="75" y="940" width="670" height="110" rx="8" fill="#f8faf8" stroke="#207448" stroke-width="1.5"/>
+  <text x="90" y="972" font-family="monospace" font-size="24" fill="#207448">Schema compiled out-of-band:</text>
+  <text x="90" y="1006" font-family="monospace" font-size="24" fill="#303a36">message TensorMeta {</text>
+  <text x="110" y="1038" font-family="monospace" font-size="24" fill="#303a36">int32 rank=1; string shape=2; }</text>
+
+  
+  <line x1="410" y1="1052" x2="410" y2="1078" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  
+  <g transform="translate(75, 1083)">
+    <rect x="0" y="0" width="165" height="44" rx="6" fill="#e8f1ea"/>
+    <text x="15" y="31" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Wire format:</text>
+
+    <rect x="175" y="0" width="245" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="297" y="31" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Varint tag/wire-type</text>
+
+    <rect x="430" y="0" width="240" height="44" rx="6" fill="#f0f6f1" stroke="#207448" stroke-width="1.5"/>
+    <text x="550" y="31" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">packed binary bytes</text>
+  </g>
+
+  
+  <rect x="75" y="1170" width="670" height="64" rx="6" fill="#f5f8f5"/>
+  <text x="85" y="1196" font-family="sans-serif" font-size="24" fill="#303a36">Most compact and type-safe; requires both endpoints</text>
+  <text x="85" y="1224" font-family="sans-serif" font-size="24" fill="#303a36">to share identical schema in advance</text>
+
+
+  
+  <rect x="820" y="125" width="740" height="1135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(845, 145)">
+    
+    <circle cx="18" cy="20" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 10 20 L 16 26 L 27 14" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="50" y="32" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Error Correction: ARQ vs FEC</text>
+  </g>
+
+  
+  <rect x="840" y="200" width="700" height="480" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+  <text x="860" y="235" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Automatic Repeat reQuest (ARQ)</text>
+
+  
+  <rect x="865" y="255" width="130" height="36" rx="6" fill="#207448"/>
+  <text x="930" y="281" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Sender</text>
+
+  <rect x="1385" y="255" width="135" height="36" rx="6" fill="#207448"/>
+  <text x="1452" y="281" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Receiver</text>
+
+  
+  <line x1="930" y1="295" x2="930" y2="595" stroke="#c0d4c6" stroke-width="2" stroke-dasharray="6,6"/>
+  <line x1="1452" y1="295" x2="1452" y2="595" stroke="#c0d4c6" stroke-width="2" stroke-dasharray="6,6"/>
+
+  
+  <line x1="930" y1="330" x2="1190" y2="360" stroke="#db8129" stroke-width="2.5"/>
+  <rect x="965" y="308" width="275" height="34" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <text x="975" y="333" font-family="sans-serif" font-size="24" fill="#303a36">Sender sends Segment 10</text>
+  
+  
+  <circle cx="1205" cy="362" r="15" fill="#fde8e8" stroke="#d32f2f" stroke-width="2"/>
+  <path d="M 1197 354 L 1213 370 M 1213 354 L 1197 370" stroke="#d32f2f" stroke-width="3"/>
+  <rect x="1228" y="347" width="210" height="32" rx="4" fill="#fde8e8"/>
+  <text x="1235" y="371" font-family="sans-serif" font-size="24" font-weight="bold" fill="#d32f2f">Dropped in transit</text>
+
+  
+  <rect x="865" y="405" width="550" height="42" rx="6" fill="#f5f8f5" stroke="#71827a" stroke-width="1.5"/>
+  <text x="875" y="435" font-family="sans-serif" font-size="24" fill="#303a36">Sender RTO timer expires or 3 dup ACKs arrive</text>
+
+  
+  <line x1="930" y1="480" x2="1444" y2="510" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="980" y="468" width="330" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="990" y="493" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Sender retransmits Segment 10</text>
+
+  
+  <line x1="1452" y1="540" x2="938" y2="570" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="1100" y="538" width="240" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1110" y="563" font-family="sans-serif" font-size="24" fill="#303a36">Receiver sends ACK</text>
+
+  
+  <rect x="855" y="605" width="670" height="64" rx="6" fill="#f5f8f5"/>
+  <text x="865" y="631" font-family="sans-serif" font-size="24" fill="#303a36">Zero constant overhead; costs 1+ RTT latency and</text>
+  <text x="865" y="659" font-family="sans-serif" font-size="24" fill="#303a36">requires sender timers and retransmission buffers</text>
+
+
+  
+  <rect x="840" y="695" width="700" height="550" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+  <text x="860" y="730" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Forward Error Correction (FEC)</text>
+
+  
+  <text x="860" y="765" font-family="sans-serif" font-size="24" fill="#303a36">Sender calculates parity upfront. Transmits</text>
+
+  
+  <g transform="translate(860, 780)">
+    <rect x="0" y="0" width="180" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="90" y="30" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Data Packet A</text>
+
+    <text x="195" y="31" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">+</text>
+
+    <rect x="220" y="0" width="180" height="44" rx="6" fill="#fde8e8" stroke="#d32f2f" stroke-width="1.5"/>
+    <text x="310" y="30" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Data Packet B</text>
+
+    <text x="415" y="31" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">+</text>
+
+    <rect x="440" y="0" width="220" height="44" rx="6" fill="#f0f6f1" stroke="#207448" stroke-width="1.5"/>
+    <text x="550" y="30" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Parity Packet P = A xor B</text>
+  </g>
+
+  
+  <g transform="translate(860, 845)">
+    <rect x="0" y="0" width="660" height="48" rx="6" fill="#fde8e8" stroke="#d32f2f" stroke-width="1"/>
+    <circle cx="28" cy="24" r="14" fill="#d32f2f"/>
+    <path d="M 21 17 L 35 31 M 35 17 L 21 31" stroke="#ffffff" stroke-width="2.5"/>
+    <text x="52" y="33" font-family="sans-serif" font-size="24" font-weight="bold" fill="#d32f2f">Packet B is dropped in transit (red X)</text>
+  </g>
+
+  
+  <path d="M 1190 900 L 1190 925" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  
+  <rect x="860" y="935" width="660" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(880, 955)">
+    
+    <rect x="0" y="5" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 10 23 L 26 23 M 18 15 L 18 31" stroke="#207448" stroke-width="2.5"/>
+    <text x="50" y="30" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Receiver reconstructs Packet B using A and P</text>
+    <text x="50" y="60" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">without sender round-trip.</text>
+  </g>
+
+  
+  <rect x="910" y="1035" width="560" height="60" rx="6" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5"/>
+  <text x="1190" y="1074" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">Packet B = Packet A ⊕ Parity Packet P</text>
+
+  
+  <rect x="855" y="1170" width="670" height="64" rx="6" fill="#f5f8f5"/>
+  <text x="865" y="1196" font-family="sans-serif" font-size="24" fill="#303a36">Zero recovery latency; imposes constant bandwidth</text>
+  <text x="865" y="1224" font-family="sans-serif" font-size="24" fill="#303a36">overhead on every transmission</text>
+
+  
+  <rect x="40" y="1275" width="1520" height="115" rx="10" fill="#207448"/>
+  <g transform="translate(70, 1315)">
+    
+    <circle cx="15" cy="18" r="8" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <circle cx="35" cy="6" r="5" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="35" cy="30" r="5" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <line x1="22" y1="14" x2="30" y2="8" stroke="#ffffff" stroke-width="2"/>
+    <line x1="22" y1="22" x2="30" y2="28" stroke="#ffffff" stroke-width="2"/>
+
+    <text x="55" y="15" font-family="sans-serif" font-size="24" fill="#ffffff">
+      <tspan font-weight="bold">Addressing Modes: </tspan>Unicast (1:1), Multicast (1:group via IGMP), Broadcast (1:all, IPv4 only),
+    </text>
+    <text x="55" y="48" font-family="sans-serif" font-size="24" fill="#ffffff">
+      Anycast (1:nearest via BGP; mid-connection route shifts trigger TCP RST)
+    </text>
+  </g>
+
+</svg>

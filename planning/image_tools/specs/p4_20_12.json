@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2012-opening-calc",
+  "title": "Full Nine-Step Capacity and Cost Calculation Pipeline for Scenario 1",
+  "anchor": "### Scenario 1: the opening question",
+  "spec": "A structured step-by-step calculation pipeline in 9 sequential boxes grouped into three phases: (A) Memory Budget, (B) Throughput Ceilings, and (C) Fleet Sizing and Economics. Phase A (top row): Box 1 'Step 1: Weights' shows '8.2B params x 2 B = 16.4 GB (BF16)'; Box 2 'Step 2: KV per Request' shows '2,500 tokens (2,000 prompt + 500 answer) x 147,456 B/tok = 0.36864 GB'; Box 3 'Step 3: Fit Ceiling' shows '(72.0 GB usable - 16.4 GB weights - 5.0 GB overhead) = 50.6 GB cache room / 0.36864 GB = 137 requests max'. Phase B (middle row): Box 4 'Step 4: Batch Selection' shows 'Select batch = 64 (50 percent of 137 ceiling for burst safety)'; Box 5 'Step 5: Decode Rate' shows 'Step time = (16.4 GB + 64 x 0.36864 GB) / 3,350 GB/s = 11.94 ms -> 64 / 0.01194 s = 5,361 tokens/s'; Box 6 'Step 6: Prefill Rate' shows '989.5 TFLOPS x 0.40 MFU / (2 x 8.2B) = 24,134 tokens/s -> 2,000 / 24,134 = 0.0829 s'; Box 7 'Step 7: Per-GPU Rate' shows 'Time = 0.0829 s (prefill) + 500 / 5,361 = 0.0933 s (decode) = 0.1762 s -> 1 / 0.1762 = 5.68 requests/s'. Phase C (bottom row): Box 8 'Step 8: Replicas and Spares' shows '40 target QPS / (5.68 x 0.90 headroom) = 7.83 -> 8 active replicas + 1 spare (N+1) = 9 H100 GPUs'; Box 9 'Step 9: Cost per Million' shows '$4.50 / (2,839 output tok/s x 3,600 s) x 1e6 = $0.44 / million output tokens ($29,565/month)'. Arrows link Box 1 and 2 to 3, Box 3 to 4, Box 4 to 5, Box 5 and 6 to 7, Box 7 to 8, and Box 8 to 9.",
+  "alt": "Flowchart showing the nine sequential calculation steps that lead from model weights and KV memory to 9 H100 GPUs and 44 cents per million tokens.",
+  "cap": "The nine calculation steps for the opening scenario work from model parameters and KV cache to per-GPU throughput, replica count, and token cost.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12"
+ }
+]

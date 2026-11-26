@@ -1,0 +1,42 @@
+[
+ {
+  "name": "p4-0105-ssh-keypairs",
+  "title": "Host Key versus User Key: Trust Direction and File Locations",
+  "anchor": "## 2. Keys: create, install, protect",
+  "spec": "Two-lane architecture diagram comparing the two distinct key pairs in an SSH session. Top lane (Server Authentication / Host Key): Left box 'Client (Laptop)' containing '~/.ssh/known_hosts' (mode 0644). Right box 'Server (gpu01)' containing '/etc/ssh/ssh_host_ed25519_key' (private, mode 0600) and 'ssh_host_ed25519_key.pub' (public, mode 0644). Arrow from Server to Client: 'Server proves identity with Host Key signature on key exchange' -> Client verifies against 'known_hosts' fingerprint. Protects against Man-in-the-Middle attacks. Bottom lane (User Authentication / User Key): Left box 'Client (Laptop)' containing '~/.ssh/id_ed25519' (private key, mode 0600, passphrase protected) and '~/.ssh/id_ed25519.pub' (public key, mode 0644). Right box 'Server (gpu01)' containing target user's '~/.ssh/authorized_keys' (mode 0600) inside '~/.ssh' (mode 0700) within '~/' (mode 0750/0755, non-writable by group/others). Arrow from Client to Server: 'Client proves identity by signing server challenge with user private key' -> Server verifies signature against public key in 'authorized_keys'. Highlights StrictModes permission callout box on both sides.",
+  "alt": "Comparison of server host key and client user key storage, file permissions, and cryptographic trust directions.",
+  "cap": "Two key pairs secure an SSH session: the host key authenticates the server to the client, while the user key authenticates the client to the server.",
+  "part": "part-01-linux",
+  "ch": "05"
+ },
+ {
+  "name": "p4-0105-tmux-architecture",
+  "title": "Process Lifecycle Under tmux: Isolating Processes from SIGHUP",
+  "anchor": "## 5. Sessions that survive: `tmux`",
+  "spec": "Split-panel comparison of process lifecycles during network disconnection. Panel A (Without tmux: Plain SSH): Box 'Client' running 'ssh user@gpu01' over TCP to Box 'Remote Server'. On remote server, process tree shows 'sshd (daemon)' -> child 'sshd (privsep session)' allocating pseudo-terminal '/dev/pts/1' -> 'bash (login shell)' -> foreground process 'python train.py'. Red lightning bolt 'Network Drop / Laptop Sleep' breaks TCP connection. Consequence: 'sshd session' terminates, '/dev/pts/1' hangs up, kernel sends 'SIGHUP' to foreground process group -> 'python train.py' killed. Panel B (With tmux: Persistent Multiplexer): Box 'Client' running 'ssh -t gpu01 tmux attach' over TCP. On remote server, 'sshd session' runs transient 'tmux client' talking over local Unix socket '/tmp/tmux-UID/default' to background 'tmux server (daemon)'. The persistent 'tmux server' owns virtual ptys: '/dev/pts/2' running 'bash' and 'python train.py'. Red lightning bolt 'Network Drop' or user 'Ctrl-b d (detach)' terminates only transient 'sshd' and 'tmux client'. Consequence: 'tmux server' and 'python train.py' continue running unharmed. Green reconnect arrow shows subsequent 'tmux attach -t train' re-establishing visual output.",
+  "alt": "Architecture diagram showing how tmux isolates running processes from SIGHUP when an SSH connection drops.",
+  "cap": "tmux decouples processes from the interactive terminal, allowing jobs to persist on the server even when the SSH client disconnects.",
+  "part": "part-01-linux",
+  "ch": "05"
+ },
+ {
+  "name": "p4-0105-vim-modes",
+  "title": "Vim Modal Editing State Machine and Key Transitions",
+  "anchor": "## 7. Editors: enough to survive anywhere",
+  "spec": "State machine diagram showing Vim modes and keystroke transitions. Central node (Initial State): 'Normal Mode' (Navigation & Command Execution: 'x' delete char, 'dd' cut line, 'yy' yank line, 'p' paste, 'u' undo, 'Ctrl-r' redo, '/word' search, 'gg'/'G' top/bottom). Transition 1 to top-right node 'Insert Mode' (Text entry): forward arrow labeled 'i' (insert at cursor) or 'a' (append); return arrow labeled 'Esc' returning to Normal Mode. Transition 2 to bottom-right node 'Visual Mode' (Text selection): forward arrow labeled 'v' (character visual) or 'V' (line visual); return arrow labeled 'Esc' returning to Normal Mode. Box notes operations like 'd' (delete) or 'y' (yank) apply to highlighted selection and return to Normal Mode. Transition 3 to bottom-left node 'Command-Line Mode' (Ex commands): forward arrow labeled ':' from Normal Mode. Shows screen-bottom prompt ':' with key commands listed: ':w' (save buffer), ':q' (quit), ':wq' (save & quit), ':q!' (force quit discarding changes), ':%s/old/new/g' (global substitution). Return arrow labeled 'Enter' (executes) or 'Esc' (cancels) returning to Normal Mode. Callout box on safe editing: 'cp -a config config.bak' -> 'sudoedit config' -> 'diff -u' -> syntax check ('sshd -t') -> reload.",
+  "alt": "State machine diagram showing transitions between Vim normal, insert, visual, and command-line modes.",
+  "cap": "Vim operates as a modal state machine where key presses trigger commands in normal mode, text entry in insert mode, selections in visual mode, and file actions in command-line mode.",
+  "part": "part-01-linux",
+  "ch": "05"
+ },
+ {
+  "name": "p4-0105-timeout-refused",
+  "title": "Diagnostic Decision Tree: SSH Timeout versus Connection Refused",
+  "anchor": "### 3. Hangs, timeouts and \"Connection refused\"",
+  "spec": "Three-way diagnostic branching flowchart starting from command 'ssh user@host -p 22'. Branch 1 (Hangs 30-120 s, then 'Connection timed out' / ETIMEDOUT): Packet path shows Client sending TCP SYN -> packet dropped silently by Firewall, Cloud Security Group (GCP/AWS), routing black hole, or host is powered off. No packet returns. Action step: 'ping host', 'traceroute -T -p 22 host', check cloud VPC security group egress/ingress rules, verify host power via BMC. Branch 2 (Fails immediately in 0.01 s, 'Connection refused' / ECONNREFUSED): Packet path shows Client sending TCP SYN -> reaches server IP and network stack successfully -> Server kernel finds no process listening on TCP port 22 -> Server kernel immediately returns TCP RST/ACK. Action step: 'nc -vz host 22', on server check 'systemctl status sshd' and 'ss -tlnp | grep :22' (sshd dead or bound to non-default port). Branch 3 (TCP handshake succeeds SYN/ACK, but hangs before login): Packet path shows TCP connection established, but stalls during SSH version string exchange ('SSH-2.0-...'). Action step: 'ssh -vvv host' to check MTU fragmentation or hung sshd process.",
+  "alt": "Diagnostic flowchart contrasting the causes and network signatures of an SSH connection timeout versus connection refused.",
+  "cap": "An SSH timeout indicates silent packet drops along the network path, whereas connection refused confirms the host responded with a TCP reset because no service was listening on port 22.",
+  "part": "part-01-linux",
+  "ch": "05"
+ }
+]

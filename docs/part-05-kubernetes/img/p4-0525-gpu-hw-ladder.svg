@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1460" width="1600" height="1460">
+  <title>GPU and Fabric Hardware Diagnostic Ladder</title>
+  <desc>A vertical 5-tier diagnostic ladder showing the order of inspection for GPU and fabric hardware failures on worker nodes, leading to an evidence snapshot before cordon or reboot.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1460" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36">GPU and Fabric Hardware Diagnostic Ladder</text>
+
+  
+  
+  
+  <g id="tier-1">
+    <rect x="70" y="95" width="1460" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="120" cy="142" r="24" fill="#207448"/>
+    <text x="120" y="151" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g stroke="#207448" stroke-width="3" fill="none" transform="translate(162, 117)">
+      <rect x="8" y="8" width="34" height="34" rx="4"/>
+      <rect x="17" y="17" width="16" height="16" fill="#207448" fill-opacity="0.2"/>
+      <line x1="15" y1="2" x2="15" y2="8"/><line x1="25" y1="2" x2="25" y2="8"/><line x1="35" y1="2" x2="35" y2="8"/>
+      <line x1="15" y1="42" x2="15" y2="48"/><line x1="25" y1="42" x2="25" y2="48"/><line x1="35" y1="42" x2="35" y2="48"/>
+      <line x1="2" y1="15" x2="8" y2="15"/><line x1="2" y1="25" x2="8" y2="25"/><line x1="2" y1="35" x2="8" y2="35"/>
+      <line x1="42" y1="15" x2="48" y2="15"/><line x1="42" y1="25" x2="48" y2="25"/><line x1="42" y1="35" x2="48" y2="35"/>
+    </g>
+
+    
+    <text x="230" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">High-Level Driver &amp; Health</text>
+
+    
+    <rect x="100" y="185" width="670" height="105" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="125" y="226" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">nvidia-smi --query-gpu=... --format=csv</text>
+    <text x="125" y="268" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">dcgmi health -c; dcgmi diag -r 2</text>
+
+    
+    <rect x="790" y="185" width="710" height="105" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="815" y="228" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="815" dy="0">active throttling reasons, temperatures,</tspan>
+      <tspan x="815" dy="38">power cap, and ECC uncorrected errors</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="310" x2="800" y2="333" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+  <g id="tier-2">
+    <rect x="70" y="335" width="1460" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="120" cy="382" r="24" fill="#207448"/>
+    <text x="120" y="391" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g stroke="#207448" stroke-width="3" fill="none" transform="translate(162, 357)">
+      <circle cx="12" cy="14" r="6" fill="#207448" fill-opacity="0.2"/>
+      <circle cx="38" cy="14" r="6" fill="#207448" fill-opacity="0.2"/>
+      <circle cx="12" cy="38" r="6" fill="#207448" fill-opacity="0.2"/>
+      <circle cx="38" cy="38" r="6" fill="#207448" fill-opacity="0.2"/>
+      <line x1="18" y1="14" x2="32" y2="14"/>
+      <line x1="12" y1="20" x2="12" y2="32"/>
+      <line x1="38" y1="20" x2="38" y2="32"/>
+      <line x1="18" y1="38" x2="32" y2="38"/>
+      <line x1="17" y1="18" x2="33" y2="34"/>
+    </g>
+
+    
+    <text x="230" y="392" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">NVLink &amp; Fabric Topology</text>
+
+    
+    <rect x="100" y="420" width="670" height="135" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="125" y="456" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">nvidia-smi topo -m</text>
+    <text x="125" y="495" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">nvidia-smi nvlink -s</text>
+    <text x="125" y="534" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">systemctl status nvidia-fabricmanager</text>
+
+    
+    <rect x="790" y="420" width="710" height="135" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="815" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">link states and NVLink errors</text>
+  </g>
+
+  
+  <line x1="800" y1="575" x2="800" y2="598" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+  <g id="tier-3">
+    <rect x="70" y="600" width="1460" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="120" cy="647" r="24" fill="#207448"/>
+    <text x="120" y="656" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g stroke="#207448" stroke-width="3" fill="none" transform="translate(162, 622)">
+      <rect x="6" y="10" width="38" height="24" rx="3"/>
+      <line x1="6" y1="34" x2="44" y2="34"/>
+      <line x1="12" y1="34" x2="12" y2="42"/><line x1="18" y1="34" x2="18" y2="42"/><line x1="24" y1="34" x2="24" y2="42"/>
+      <line x1="32" y1="34" x2="32" y2="42"/><line x1="38" y1="34" x2="38" y2="42"/>
+      <path d="M 2 8 L 6 8 L 6 42"/>
+    </g>
+
+    
+    <text x="230" y="657" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">PCIe Bus &amp; Link Negotiation</text>
+
+    
+    <rect x="100" y="682" width="1400" height="52" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="125" y="717" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">lspci -vv -s &lt;addr&gt; | grep -E "LnkSta|LnkCap|AER"</text>
+
+    
+    <rect x="100" y="746" width="1400" height="106" rx="8" fill="#f2f7f4" stroke="#207448" stroke-width="1.5"/>
+    
+    
+    <rect x="120" y="759" width="370" height="80" rx="6" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="305" y="793" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+      <tspan x="305" dy="0">LnkCap</tspan>
+      <tspan x="305" dy="32">(Rated Gen5 x16)</tspan>
+    </text>
+
+    
+    <text x="525" y="806" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">vs</text>
+
+    
+    <rect x="560" y="759" width="530" height="80" rx="6" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="825" y="793" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+      <tspan x="825" dy="0">LnkSta</tspan>
+      <tspan x="825" dy="32">(Negotiated: e.g. Gen3 x4 downgraded)</tspan>
+    </text>
+
+    
+    <rect x="1110" y="759" width="370" height="80" rx="6" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="1295" y="808" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">AER error counters</text>
+  </g>
+
+  
+  <line x1="800" y1="870" x2="800" y2="893" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+  <g id="tier-4">
+    <rect x="70" y="895" width="1460" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="120" cy="942" r="24" fill="#207448"/>
+    <text x="120" y="951" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">4</text>
+
+    
+    <g stroke="#207448" stroke-width="3" fill="none" transform="translate(162, 917)">
+      <rect x="4" y="6" width="42" height="36" rx="4"/>
+      <path d="M 12 18 L 20 24 L 12 30"/>
+      <line x1="24" y1="30" x2="34" y2="30"/>
+    </g>
+
+    
+    <text x="230" y="952" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Kernel &amp; Driver Hardware Events</text>
+
+    
+    <rect x="100" y="980" width="670" height="115" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="125" y="1022" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">dmesg -T | grep -i xid</text>
+    <text x="125" y="1068" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">journalctl -k | grep -E "Xid|NVRM"</text>
+
+    
+    <rect x="790" y="980" width="710" height="115" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="815" y="1046" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Xid 13, 31, 43, 61, 74, 79 (Fallen off bus)</text>
+  </g>
+
+  
+  <line x1="475" y1="1115" x2="475" y2="1138" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+  <g id="tier-5">
+    <rect x="70" y="1140" width="810" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="120" cy="1187" r="24" fill="#207448"/>
+    <text x="120" y="1196" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">5</text>
+
+    
+    <g stroke="#207448" stroke-width="3" fill="none" transform="translate(162, 1162)">
+      <rect x="4" y="6" width="16" height="14" rx="2"/>
+      <rect x="30" y="6" width="16" height="14" rx="2"/>
+      <rect x="17" y="28" width="16" height="14" rx="2"/>
+      <line x1="12" y1="20" x2="12" y2="24"/>
+      <line x1="38" y1="20" x2="38" y2="24"/>
+      <line x1="12" y1="24" x2="38" y2="24"/>
+      <line x1="25" y1="24" x2="25" y2="28"/>
+    </g>
+
+    
+    <text x="230" y="1197" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Inter-Node Fabric &amp; Collectives</text>
+
+    
+    <rect x="100" y="1225" width="750" height="175" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="125" y="1268" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">ibstat; rdma link</text>
+    <text x="125" y="1318" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">all_reduce_perf -b 8 -e 1G -f 2 -g 8</text>
+    <text x="125" y="1368" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">NCCL_DEBUG=INFO</text>
+  </g>
+
+  
+  <line x1="880" y1="1280" x2="926" y2="1280" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+  
+  
+  
+  <g id="evidence-snapshot">
+    
+    <rect x="930" y="1140" width="600" height="280" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+
+    
+    <g stroke="#db8129" stroke-width="3" fill="none" transform="translate(960, 1162)">
+      <path d="M 8 14 L 14 6 L 34 6 L 40 14 L 44 14 A 4 4 0 0 1 48 18 L 48 40 A 4 4 0 0 1 44 44 L 4 44 A 4 4 0 0 1 0 40 L 0 18 A 4 4 0 0 1 4 14 Z"/>
+      <circle cx="24" cy="28" r="9"/>
+    </g>
+
+    
+    <text x="1025" y="1197" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Evidence Snapshot</text>
+
+    
+    <text x="960" y="1252" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">before any cordon or reboot:</text>
+
+    
+    <rect x="960" y="1275" width="540" height="125" rx="8" fill="#f5f8f5" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="985" y="1323" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">
+      <tspan x="985" dy="0">sudo nvidia-bug-report.sh -&gt;</tspan>
+      <tspan x="985" dy="45">nvidia-bug-report.log.gz</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0508-admission-scheduler-pipeline",
+  "title": "Admission and Scheduling Pipeline from YAML to Node Binding",
+  "anchor": "## 2. Admission and scheduling (control plane)",
+  "spec": "Two-lane vertical flowchart illustrating control plane admission and scheduling. Left lane (kube-apiserver and etcd): 1. User/Controller sends Pod via 'kubectl apply'. 2. Authentication & Authorization verify credentials and RBAC. 3. Mutating Admission Webhook modifies spec: injects ServiceAccount token volume, DefaultTolerationSeconds, LimitRange defaults, sidecars. 4. Validating Admission runs schema validation, ResourceQuota checks, and PodSecurity enforcement. 5. Write to etcd: state is persisted as status.phase='Pending', spec.nodeName=''. Right lane (kube-scheduler): 6. Scheduler Queue picks pod. 7. Filtering (Predicates) checks: allocatable resources including nvidia.com/gpu, nodeSelector/affinity, taints and tolerations, volume topology and zones, host ports, pod topology spread. Decision fork: If 0 nodes pass, emit event 'FailedScheduling: 0/50 nodes available (20 Insufficient nvidia.com/gpu, 30 untolerated taint)' with PodScheduled=False. 8. Scoring (Priorities) ranks passing nodes: pod spread, image locality, resource balance, affinity weights. 9. Reserve & Permit (gang scheduling check). 10. Binding: scheduler sends POST Binding to apiserver, setting spec.nodeName, emitting event 'Scheduled: Successfully assigned ns/pod to node' and PodScheduled=True.",
+  "alt": "A step-by-step pipeline from kubectl apply through API server admission and etcd storage to the scheduler filter, score, and binding stages.",
+  "cap": "The control-plane pipeline authenticates and mutates the pod, persists it with an empty nodeName, and filters and scores candidate nodes before posting the binding.",
+  "part": "part-05-kubernetes",
+  "ch": "08"
+ }
+]

@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2024-unversioned-state-rebuild",
+  "title": "Bottom-up state reconstruction from live cloud infrastructure",
+  "anchor": "### Scenario C. The state bucket is deleted",
+  "spec": "Three-column horizontal diagram illustrating bottom-up state rebuild when bucket versioning was disabled. Column 1 (Left - Untouched Live Cloud): Three stacked boxes showing live Nebius resources queried via CLI/console: Subnet 'vpcsubnet-e00demo', Cluster 'mk8s-c01demo', and Node Group 'mk8s-ng-gpu'. Column 2 (Middle - Sequential Import in Dependency Order): Step 1 (Network tier) writes 'import { to = nebius_vpc_v1_subnet.this id = \"vpcsubnet-e00demo\" }', runs 'terraform plan', loops on 'fix code, not cloud' until '0 to add, 0 to change, 0 to destroy'; Step 2 (Cluster tier) writes 'import { to = nebius_mk8s_v1_cluster.this id = \"mk8s-c01demo\" }', verifies clean plan; Step 3 (Pool tier) writes 'import { to = nebius_mk8s_v1_node_group.pool[\"gpu\"] id = \"mk8s-ng-gpu\" }', verifies clean plan. A red callout box warns: 'Never run apply with replacements or destroys during rebuild'. Column 3 (Right - Post-Recovery Hardening): Arrow pointing to recovered Object Storage state bucket with two checkmark actions: 'Enable Bucket Versioning immediately' and 'Move bucket to dedicated protected project'.",
+  "alt": "A three-step bottom-up state recovery flow importing network, cluster, and pool resources in dependency order, validating clean plans, and enabling bucket versioning.",
+  "cap": "Rebuilding unversioned lost state: import resources bottom-up in dependency order, adjust code until plan is clean, and enable bucket versioning immediately.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24"
+ }
+]

@@ -179,6 +179,10 @@ Save that healthy baseline before you change any NCCL variable, so you have some
 
 ## 6. Binding for training jobs
 
+![Architecture diagram of an 8-GPU HGX server showing two NUMA domains with direct rail-optimized GPU-to-NIC paths versus cross-socket interconnect penalties.](./img/p4-0612-hgx-rail-binding.svg)
+
+*Figure 6.0.0. Rail-optimized HGX topologies pair each GPU directly with its local NUMA cores and dedicated network adapter to avoid crossing the slower CPU socket interconnect.*
+
 ![Four Slurm binding flags each paired with the question it answers and a check recipe.](./img/p3-0612-binding-flags.svg)
 
 *Figure 6.12.7. Bind and then verify on every node before trusting throughput numbers.*

@@ -171,6 +171,10 @@ Before you use `grep` in a script, test the pattern on a small file and check th
 
 ## 4. Slicing, ordering and counting: `cut`, `tr`, `sort`, `uniq`, `wc`, `head`, `tail`
 
+![Comparison of how cut and awk split a space-aligned table line into fields.](./img/p4-0104-cut-vs-awk-delim.svg)
+
+*Figure 1.4.5. cut treats every individual space as a delimiter and produces empty fields on aligned tables, while awk collapses runs of whitespace.*
+
 Suppose each line in a log starts with a host name, and you want to know which host logs the most lines. That question needs three steps. First you pull out the host column. Then you bring identical names together. Then you count each group. The tools in this section each handle one of those three jobs well.
 
 **`cut`** extracts fields by position or by a one-character delimiter, which is the character that separates one field from the next.
@@ -244,7 +248,7 @@ Test each stage of a combined pipeline on a small file before you run it on the 
 
 ![The parts of a sed substitute command with a few variations.](./img/l04-sed-substitute.svg)
 
-*Figure 1.4.5. sed applies an edit to each line as it passes through and does not change the file unless asked.*
+*Figure 1.4.6. sed applies an edit to each line as it passes through and does not change the file unless asked.*
 
 Suppose a config file has a debug flag set to the wrong value on many lines. You do not want to open an editor and change each one by hand. `sed`, the stream editor, applies editing commands to each input line as it passes through, and its most used command is substitute.
 
@@ -272,7 +276,7 @@ Use `sed` when you need a quick, simple edit. The moment your change has several
 
 ![A lookup table keyed by name updating line by line as awk reads five lines, then printing counts at the end, compared with uniq -c on unsorted input.](./img/p3-0104-awk-groupby.svg)
 
-*Figure 1.4.6. awk keeps a count per key while it reads, prints once at END, and so needs no sort before it, unlike uniq -c.*
+*Figure 1.4.7. awk keeps a count per key while it reads, prints once at END, and so needs no sort before it, unlike uniq -c.*
 
 Picture a `ps` or `nvidia-smi` table. Its columns are lined up with runs of spaces, and you want just one of them. `awk` is a small programming language built for data made of lines and fields, and it reads that kind of table correctly.
 
@@ -309,7 +313,7 @@ When a field carries units, strip them before you do any arithmetic on it.
 
 ![How awk splits a line into fields](./img/ch04-fig2-awk-v2.jpg)
 
-*Figure 1.4.7. How awk reads a line: fields, NF, NR and `pattern  action `.*
+*Figure 1.4.8. How awk reads a line: fields, NF, NR and `pattern  action `.*
 
 ## 7. Fan-out: `find`, `xargs`, and parallelism
 
@@ -338,11 +342,15 @@ For any fan-out job, start with `-print0` and `-0`, so that odd file names canno
 
 ![xargs fan-out](./img/ch04-fig3-xargs.jpg)
 
-*Figure 1.4.8. Fan-out with find -print0 and xargs -0.*
+*Figure 1.4.9. Fan-out with find -print0 and xargs -0.*
 
 ## 8. Comparing files and handling structured text
 
 ### `diff`, `comm`, `cmp`
+
+![Diagram showing comm three-column output format and column suppression flags.](./img/p4-0104-comm-columns.svg)
+
+*Figure 1.4.10. comm outputs three columns for lines unique to file A, unique to file B, and common to both, where flags suppress rather than select columns.*
 
 Suppose two config files look almost the same, and one of them broke a service. You need to see the exact difference between them, not a vague impression that they look alike. These commands show it.
 
@@ -361,7 +369,7 @@ sha256sum model.bin                # compare by checksum when files are huge
 
 ![A jq filter applied to a JSON list of two GPUs: iterate the array, keep the one with more than 80000 memory, and print its id.](./img/p3-0104-jq-filter.svg)
 
-*Figure 1.4.9. Each jq stage passes items to the next: iterate the array, keep matching items, then read one field.*
+*Figure 1.4.11. Each jq stage passes items to the next: iterate the array, keep matching items, then read one field.*
 
 Modern tools emit JSON, and a lot of it. Parsing that with `grep` and `sed` works for a while, then it breaks. `jq` is the tool for the job, and you can think of it as `sed` for JSON: it reads the nested structure instead of the raw characters.
 
@@ -417,7 +425,7 @@ Before you run a pipeline on a large file, filter it with `grep` first.
 
 ![A five stage pipeline of grep, sed, sort, uniq and sort that masks numbers in error lines so two NCCL timeout messages are counted together.](./img/p3-0104-mask-rank-errors.svg)
 
-*Figure 1.4.10. After the numbers are masked to N, the two NCCL timeout lines become identical, sort puts them side by side, and uniq -c counts them as 2.*
+*Figure 1.4.12. After the numbers are masked to N, the two NCCL timeout lines become identical, sort puts them side by side, and uniq -c counts them as 2.*
 
 You are on call, and a user asks which GPU is running hot. Then someone asks which node is down, and someone else asks why their job is still queued. Questions like these come up again and again on a GPU cluster, and the ten recipes below are the short answers. They are patterns you will adapt to your own cluster, not commands to paste blindly. Before you trust any of them, run its first stage alone and look at the data it produces.
 

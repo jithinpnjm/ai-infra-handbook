@@ -1,0 +1,60 @@
+# docs/part-01-linux/09-shell-scripting-that-survives-production.md
+- ## Why this matters for AI infrastructure | 250 | NO FIGURE NEEDED motivational overview of shell in AI platforms
+- ## Prerequisites and outcomes | 180 | NO FIGURE NEEDED list of prerequisites and learning goals
+- ## 1. The shape of a script | 220 | NO FIGURE NEEDED walk-through of an annotated five-line script
+- ### Choosing the interpreter | 180 | COVERED(p2-0109-shebang-split)
+- ### Run, source, or exec | 140 | COVERED(l09-run-source)
+- ### The limits of shell (*How Linux Works* Section 11.1.1) | 90 | NO FIGURE NEEDED short architectural rule of thumb
+- ## 2. Quoting and expansion: the heart of shell | 110 | COVERED(ch09-d1-luna)
+- ### The three kinds of quoting (*How Linux Works* Section 11.2) | 260 | COVERED(p2-0109-dollar-100)
+- ### Word splitting: why `$var` should almost always be `"$var"` | 130 | COVERED(p2-0109-word-split)
+- ### `$@` versus `$*` | 110 | COVERED(l09-args)
+- ### Even `echo $var` can misbehave | 40 | NO FIGURE NEEDED brief warning on dash-prefixed values
+- ### Globbing | 110 | NO FIGURE NEEDED syntax summary for pathname expansion
+- ## 3. Variables, parameters and special variables | 50 | NO FIGURE NEEDED brief section introduction
+- ### Variables | 90 | NO FIGURE NEEDED syntax examples for string and export variables
+- ### Positional parameters and special variables | 170 | NO FIGURE NEEDED reference table and shift example
+- ### Exit codes | 180 | COVERED(p2-0109-exit-map)
+- ## 4. Conditionals | 40 | NO FIGURE NEEDED brief section introduction
+- ### `if` runs a command and tests its exit code | 110 | COVERED(p2-0109-if-exit)
+- ### `[`, `test` and `[[` | 170 | NO FIGURE NEEDED comparison text and short syntax examples
+- ### The test operators | 170 | NO FIGURE NEEDED reference tables of test operators
+- ### Logical constructs: `&&` and `||` as one-line conditionals | 90 | COVERED(p3-0109-and-or-trap)
+- ### `case` | 70 | NO FIGURE NEEDED code snippet illustrating case pattern dispatch
+- ### `select` and `read` | 70 | NO FIGURE NEEDED brief usage tips and non-blocking advice
+- ### Arithmetic | 70 | NO FIGURE NEEDED syntax summary of arithmetic expansion
+- ## 5. Loops | 40 | NO FIGURE NEEDED brief section introduction
+- ### `for` | 70 | NO FIGURE NEEDED common for loop variations list
+- ### `while` and `until` (*How Linux Works* Section 11.6.2) | 120 | NO FIGURE NEEDED condition exit-code description and until ping idiom
+- ### Reading a file line by line (the right way) | 90 | COVERED(p2-0109-pipe-subshell)
+- ### Loops over command output and find results | 110 | NO FIGURE NEEDED safe pattern snippets with find and xargs
+- ## 6. Command and process substitution, temporary files, here documents | 40 | NO FIGURE NEEDED brief section introduction
+- ### Command substitution | 90 | NO FIGURE NEEDED syntax explanation of command and process substitution
+- ### Temporary files (`mktemp` and `trap`) | 190 | COVERED(ch09-fig1-strict)
+- ### Here documents and here strings | 130 | NO FIGURE NEEDED code samples illustrating heredoc syntax
+- ## 7. Parameter expansion, functions, grouping and subshells | 40 | NO FIGURE NEEDED brief section introduction
+- ### Parameter expansion: string work without extra processes | 180 | COVERED(p3-0109-param-path)
+- ### Arrays | 80 | NO FIGURE NEEDED code examples for indexed and associative arrays
+- ### Functions | 130 | NO FIGURE NEEDED function definition snippet showing local variables
+- ### Options with `getopts` | 120 | NEEDS FIGURE trace of getopts parsing loop, OPTIND advancement, OPTARG extraction, and post-loop shift
+- ### Grouping and subshells | 160 | COVERED(l09-subshell)
+- ### Command search and builtins | 90 | NO FIGURE NEEDED short summary of command inspection tools
+- ## 8. Making scripts safe: strict mode, traps, locks, retries | 50 | NO FIGURE NEEDED brief section introduction
+- ### Strict mode, and its traps | 260 | COVERED(p2-0109-set-e-contexts)
+- ### Cleanup with `trap` | 90 | NO FIGURE NEEDED code pattern for EXIT and ERR traps
+- ### Logging and output discipline | 90 | NO FIGURE NEEDED bullet points on stderr discipline and tee
+- ### Locking: only one copy at a time | 80 | COVERED(p2-0109-flock-lanes)
+- ### Idempotence | 100 | NO FIGURE NEEDED list of idempotent shell practices
+- ### Retries and timeouts | 110 | COVERED(l09-retry)
+- ### Lint and debug | 110 | NO FIGURE NEEDED tool list covering ShellCheck and bats
+- ## 9. Important shell script utilities (*How Linux Works* Section 11.10) | 260 | NO FIGURE NEEDED reference catalog of standard command-line tools
+- ## 10. Common mistakes, collected | 280 | NO FIGURE NEEDED numbered checklist of common traps
+- ## 11. Performance in a few lines | 120 | NO FIGURE NEEDED guidance on avoiding process-fork loops
+- ## 12. AI-infrastructure patterns | 620 | COVERED(p3-0109-sbatch-anatomy, p2-0109-health-flow)
+- ## How it fails | 310 | NO FIGURE NEEDED troubleshooting bullet list
+- ## Hands-on lab: shell scripting, strict mode, and VM drills | 380 | NO FIGURE NEEDED practical terminal commands
+- ## Exercises | 220 | NO FIGURE NEEDED exercise problem list
+- ## Checkpoint questions (20) | 900 | NO FIGURE NEEDED self-assessment Q and A
+- ## Sources and review notes | 250 | NO FIGURE NEEDED bibliographic attribution
+
+Specs kept 1, dropped 0: []

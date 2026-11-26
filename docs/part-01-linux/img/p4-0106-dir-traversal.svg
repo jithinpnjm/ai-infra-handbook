@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1440" width="1600" height="1440">
+  <title>Directory Traversal Versus File Access and Deletion Permissions</title>
+  <desc>Kernel permission evaluation for directories versus files across path traversal, file unlinking, and sticky bit protection.</desc>
+
+  <defs>
+    <marker id="arr-green" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arr-orange" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+    <marker id="arr-gray" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#6a7d74" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1440" fill="#f5f8f5" />
+
+  
+  <g transform="translate(40, 52)">
+    <rect x="0" y="-38" width="8" height="46" rx="4" fill="#207448" />
+    <text x="24" y="0" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+      Directory Traversal Versus File Access and Deletion Permissions
+    </text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(40, 80)">
+    
+    <rect x="0" y="0" width="1520" height="440" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="24" y="20" width="700" height="46" rx="8" fill="#207448" />
+    <text x="44" y="52" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      Path Traversal for 'cat /data/project/file'
+    </text>
+
+    
+    
+    <g transform="translate(40, 88)">
+      <rect x="0" y="0" width="220" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <text x="110" y="38" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">[ / ]</text>
+      <text x="110" y="66" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(root)</text>
+    </g>
+
+    
+    <line x1="260" y1="128" x2="310" y2="128" stroke="#207448" stroke-width="4" marker-end="url(#arr-green)" />
+
+    
+    <g transform="translate(320, 88)">
+      <rect x="0" y="0" width="220" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <text x="110" y="50" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">[ /data ]</text>
+    </g>
+
+    
+    <line x1="540" y1="128" x2="590" y2="128" stroke="#207448" stroke-width="4" marker-end="url(#arr-green)" />
+
+    
+    <g transform="translate(600, 88)">
+      <rect x="0" y="0" width="260" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <text x="130" y="50" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">[ /data/project ]</text>
+    </g>
+
+    
+    <g transform="translate(900, 24)">
+      <rect x="0" y="0" width="580" height="42" rx="8" fill="#ffffff" stroke="#6a7d74" stroke-width="2" />
+      <text x="290" y="30" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+        requires 'x' (traverse inode)
+      </text>
+    </g>
+
+    
+    <line x1="860" y1="128" x2="920" y2="128" stroke="#207448" stroke-width="4" marker-end="url(#arr-green)" />
+
+    
+    <g transform="translate(930, 88)">
+      <rect x="0" y="0" width="200" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <text x="100" y="50" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">[ file ]</text>
+    </g>
+
+    
+    
+    <g transform="translate(40, 185)">
+      <rect x="0" y="0" width="460" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="20" y="36" font-family="sans-serif" font-size="24" fill="#303a36">
+        Step 1 checks '/' (needs x, granted)
+      </text>
+    </g>
+
+    
+    <g transform="translate(520, 185)">
+      <rect x="0" y="0" width="480" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="20" y="36" font-family="sans-serif" font-size="24" fill="#303a36">
+        Step 2 checks '/data' (needs x, granted)
+      </text>
+    </g>
+
+    
+    <g transform="translate(1020, 185)">
+      <rect x="0" y="0" width="460" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="20" y="36" font-family="sans-serif" font-size="24" fill="#303a36">
+        Step 3 checks '/data/project' (needs x)
+      </text>
+    </g>
+
+    
+    
+    <g transform="translate(40, 255)">
+      <rect x="0" y="0" width="1440" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="37" r="16" fill="#207448" />
+      <path d="M 28 37 L 34 43 L 45 30" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="68" y="46" font-family="sans-serif" font-size="24" fill="#303a36">
+        if 'x' is granted, the kernel proceeds to 'file' and evaluates 'r' (read content)
+      </text>
+    </g>
+
+    
+    <g transform="translate(40, 345)">
+      <rect x="0" y="0" width="1440" height="78" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+      <circle cx="36" cy="39" r="16" fill="#db8129" />
+      <line x1="28" y1="31" x2="44" y2="47" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+      <line x1="44" y1="31" x2="28" y2="47" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+      <text x="68" y="36" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="68" dy="0">if 'x' is missing on '/data/project' (even if 'r' is set or file mode is 0777), the kernel immediately aborts with</tspan>
+        <tspan font-family="monospace" font-weight="bold" fill="#303a36"> 'EACCES: Permission denied'</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g transform="translate(40, 545)">
+    
+    <rect x="0" y="0" width="1520" height="470" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="24" y="20" width="750" height="46" rx="8" fill="#207448" />
+    <text x="44" y="52" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      File Deletion Mechanism for 'rm /data/project/file'
+    </text>
+
+    
+    <g transform="translate(40, 86)">
+      <rect x="0" y="0" width="340" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="60" cy="55" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 30 115 C 30 90, 90 90, 90 115" fill="none" stroke="#207448" stroke-width="4" />
+      <text x="110" y="66" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Bob</text>
+      <line x1="20" y1="124" x2="320" y2="124" stroke="#e8f1ea" stroke-width="2" />
+      <text x="170" y="156" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">rm /data/project/file</text>
+    </g>
+
+    
+    <path d="M 380 176 L 470 176" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arr-green)" />
+
+    
+    <g transform="translate(480, 86)">
+      <rect x="0" y="0" width="990" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="495" y="42" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        write ('w') and execute ('x') exclusively on the parent directory inode '/data/project'
+      </text>
+    </g>
+
+    
+    <g transform="translate(480, 166)">
+      <rect x="0" y="0" width="990" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <rect x="20" y="16" width="220" height="42" rx="6" fill="#e8f1ea" />
+      <text x="130" y="45" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">/data/project</text>
+
+      
+      <g transform="translate(260, 24)">
+        <rect x="0" y="0" width="370" height="100" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="3" stroke-dasharray="6,4" />
+        <text x="185" y="58" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+          [ inode 4821 | file ]
+        </text>
+        
+        <line x1="16" y1="50" x2="354" y2="50" stroke="#db8129" stroke-width="5" stroke-linecap="round" />
+      </g>
+
+      
+      <g transform="translate(660, 24)">
+        <rect x="0" y="0" width="300" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <text x="150" y="46" font-family="monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">file</text>
+        <text x="150" y="80" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">0444 (r--r--r--)</text>
+      </g>
+    </g>
+
+    
+    <g transform="translate(40, 335)">
+      <rect x="0" y="0" width="1440" height="110" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      <text x="30" y="44" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="30" dy="0">deletion mutates the directory table, not the file contents, allowing Bob to delete a read-only 0444 file</tspan>
+        <tspan x="30" dy="36">without write permission on the file itself.</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g transform="translate(40, 1035)">
+    
+    <rect x="0" y="0" width="1520" height="365" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="24" y="20" width="820" height="46" rx="8" fill="#207448" />
+    <text x="44" y="52" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      Sticky Bit Defense on '/tmp' mode 1777 / 'drwxrwxrwt'
+    </text>
+
+    
+    <g transform="translate(40, 86)">
+      <rect x="0" y="0" width="460" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <text x="230" y="45" font-family="monospace" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">/tmp</text>
+      <text x="230" y="80" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        sticky bit ('t')
+      </text>
+    </g>
+
+    
+    <g transform="translate(530, 86)">
+      <rect x="0" y="0" width="950" height="100" rx="12" fill="#ffffff" stroke="#6a7d74" stroke-width="2" />
+      
+      <circle cx="50" cy="50" r="26" fill="none" stroke="#db8129" stroke-width="4" />
+      <line x1="36" y1="36" x2="64" y2="64" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="64" y1="36" x2="36" y2="64" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <text x="100" y="58" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        Bob attempts 'rm /tmp/alice_temp.txt'
+      </text>
+    </g>
+
+    
+    <line x1="1005" y1="186" x2="1005" y2="216" stroke="#db8129" stroke-width="4" marker-end="url(#arr-orange)" />
+
+    
+    <g transform="translate(40, 222)">
+      <rect x="0" y="0" width="1440" height="114" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+      <circle cx="46" cy="57" r="20" fill="#db8129" />
+      <line x1="36" y1="47" x2="56" y2="67" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+      <line x1="56" y1="47" x2="36" y2="67" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+      <text x="86" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="86" dy="0">Bob is neither file owner (alice) nor directory owner (root) nor root,</tspan>
+        <tspan x="86" dy="38">so the delete fails with</tspan>
+        <tspan font-family="monospace" font-weight="bold" fill="#303a36"> 'EPERM: Operation not permitted'</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

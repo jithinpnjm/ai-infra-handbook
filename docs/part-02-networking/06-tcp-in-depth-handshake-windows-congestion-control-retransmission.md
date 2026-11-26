@@ -48,6 +48,10 @@ Use this list as a self-check when you reach the end of the chapter. Each line i
 
 ## 1. What a transport protocol must solve
 
+![Comparison of three marshaling grammars showing fixed-length headers, TLV option blocks, and shared dictionary schemas, alongside ARQ retransmission versus FEC forward error correction.](./img/p4-0206-marshaling.svg)
+
+*Figure 2.0.0. Fixed-length fields parse at constant offsets, TLV allows modular options, and shared schemas minimize payload overhead, while ARQ exchanges latency for bandwidth efficiency compared to FEC.*
+
 Packets cross the network with no promises. They can be dropped, duplicated, reordered, corrupted or delayed, a bit like parcels sent through a postal system that sometimes loses them and sometimes delivers two copies. Applications want something much simpler: a pipe between two processes. The transport layer closes that gap, to varying degrees. The table shows which problems it covers and how TCP and UDP each handle them.
 
 | Problem | Mechanism | TCP | UDP |
@@ -82,6 +86,10 @@ If you run a service on anycast, know the one catch with TCP. If a route changes
 Flow control protects the receiver. Congestion control protects the network. The two use different signals, and people often confuse them. A driver who slows down because the passenger feels sick is doing flow control. A driver who slows down because the road ahead is jammed is doing congestion control. TCP implements both, and the sender never has more in flight than the smaller of the two windows allows. When a flow is slow, first ask whether the receiver or the network is the limit. The fix differs for each.
 
 ## 2. Transport models: DoD, OSI, RINA, and connection-oriented versus connectionless
+
+![Diagram mapping the four DoD layers to the seven OSI layers and RINA recursive IPC scopes, contrasted with connection-oriented and connectionless state models.](./img/p4-0206-transport-models.svg)
+
+*Figure 2.0.0. DoD and OSI describe protocol stacks while RINA models networking as recursive IPC at expanding scopes, reflecting the fundamental trade-off between TCP connection state and UDP stateless datagrams.*
 
 When engineers talk about layers, they usually have one of two models in mind. Two models describe the layers of a network stack. The DoD model, also called the TCP/IP model, has four layers: link, internet, transport and application. It grew out of running real protocols. The OSI model has seven layers, from physical to application, and it was designed by committee. Engineers still use OSI numbers as shorthand. L2 means a switch, L3 a router, L4 a load balancer and L7 a proxy. They use that vocabulary while implementing the DoD stack.
 

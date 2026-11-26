@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1440" width="1600" height="1440">
+  <title>Bare-Metal Load Balancing: MetalLB Layer 2 Mode vs BGP ECMP Mode</title>
+  <desc>Two-column comparison showing bare-metal LoadBalancer routing.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+    <filter id="soft-shadow" x="-4%" y="-2%" width="108%" height="106%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1440" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Bare-Metal Load Balancing:</tspan>
+    <tspan x="800" dy="52">MetalLB Layer 2 Mode vs BGP ECMP Mode</tspan>
+  </text>
+
+  
+  <g transform="translate(0, 0)">
+    
+    <rect x="60" y="165" width="710" height="1225" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#soft-shadow)" />
+
+    
+    <rect x="90" y="188" width="650" height="74" rx="12" fill="#207448" />
+    <text x="415" y="236" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">
+      Layer 2 Mode (L2Advertisement)
+    </text>
+
+    
+    <rect x="90" y="285" width="650" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(130, 305)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="20" cy="20" r="18" />
+      <line x1="2" y1="20" x2="38" y2="20" />
+      <ellipse cx="20" cy="20" rx="9" ry="18" />
+    </g>
+    <text x="430" y="336" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">
+      External VIP 198.51.100.1
+    </text>
+
+    
+    <rect x="90" y="385" width="650" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="415" y="430" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="415" dy="0">A single elected speaker node</tspan>
+      <tspan x="415" dy="36">(Node 1) answers ARP/NDP requests</tspan>
+      <tspan x="415" dy="36">for the VIP on the LAN.</tspan>
+    </text>
+
+    
+    <rect x="90" y="560" width="650" height="165" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="415" y="610" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="415" dy="0">All external ingress traffic flows into</tspan>
+      <tspan x="415" dy="36">Node 1 interface eth0, creating a</tspan>
+      <tspan x="415" dy="36">single-node bandwidth bottleneck.</tspan>
+    </text>
+
+    
+    <rect x="90" y="745" width="650" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="415" y="795" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="415" dy="0">Node 1 then forwards via kube-proxy</tspan>
+      <tspan x="415" dy="36">or overlay to backend pods on</tspan>
+      <tspan x="415" dy="36">Node 2 and Node 3.</tspan>
+    </text>
+
+    
+    <rect x="90" y="920" width="650" height="440" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+    
+    <rect x="315" y="945" width="200" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="340" cy="968" r="10" fill="#207448" />
+    <line x1="335" y1="968" x2="345" y2="968" stroke="#ffffff" stroke-width="2" />
+    <line x1="340" y1="963" x2="340" y2="973" stroke="#ffffff" stroke-width="2" />
+    
+    <line x1="415" y1="991" x2="415" y2="1055" stroke="#db8129" stroke-width="7" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="295" y="1065" width="240" height="85" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <rect x="385" y="1055" width="60" height="18" rx="4" fill="#db8129" />
+    <circle cx="330" cy="1107" r="12" fill="#db8129" />
+    <rect x="360" y="1092" width="150" height="12" rx="4" fill="#e8f1ea" />
+    <rect x="360" y="1112" width="150" height="12" rx="4" fill="#e8f1ea" />
+
+    
+    <path d="M 330 1150 Q 330 1200 220 1225" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="6,4" marker-end="url(#arrow-green)" />
+    <path d="M 500 1150 Q 500 1200 610 1225" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="6,4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="140" y="1235" width="160" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="170" cy="1277" r="10" fill="#207448" />
+    <rect x="195" y="1262" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+    <rect x="195" y="1282" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+
+    
+    <rect x="530" y="1235" width="160" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="560" cy="1277" r="10" fill="#207448" />
+    <rect x="585" y="1262" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+    <rect x="585" y="1282" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  </g>
+
+  
+  <g transform="translate(0, 0)">
+    
+    <rect x="830" y="165" width="710" height="1225" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#soft-shadow)" />
+
+    
+    <rect x="860" y="188" width="650" height="74" rx="12" fill="#207448" />
+    <text x="1185" y="236" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">
+      BGP Mode (BGPAdvertisement)
+    </text>
+
+    
+    <rect x="860" y="285" width="650" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(900, 305)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="20" cy="20" r="18" />
+      <line x1="2" y1="20" x2="38" y2="20" />
+      <ellipse cx="20" cy="20" rx="9" ry="18" />
+    </g>
+    <text x="1200" y="336" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">
+      External VIP 198.51.100.1
+    </text>
+
+    
+    <rect x="860" y="385" width="650" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1185" y="430" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1185" dy="0">All speaker nodes (Node 1, Node 2, Node 3)</tspan>
+      <tspan x="1185" dy="34">establish BGP peering sessions over</tspan>
+      <tspan x="1185" dy="34">TCP port 179 with Top-of-Rack</tspan>
+      <tspan x="1185" dy="34">(ToR) physical switches.</tspan>
+    </text>
+
+    
+    <rect x="860" y="585" width="650" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1185" y="637" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      Each node advertises a /32 route to the VIP.
+    </text>
+
+    
+    <rect x="860" y="690" width="650" height="210" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1185" y="738" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1185" dy="0">ToR switch performs line-rate ECMP</tspan>
+      <tspan x="1185" dy="36">(Equal-Cost Multi-Path) hashing, distributing</tspan>
+      <tspan x="1185" dy="36">incoming connections evenly across all nodes</tspan>
+      <tspan x="1185" dy="36">without a single-node choke point.</tspan>
+    </text>
+
+    
+    <rect x="860" y="920" width="650" height="440" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+    
+    <rect x="1010" y="945" width="350" height="70" rx="8" fill="#207448" />
+    
+    <g fill="#ffffff" opacity="0.9">
+      <rect x="1035" y="965" width="20" height="14" rx="2" />
+      <rect x="1065" y="965" width="20" height="14" rx="2" />
+      <rect x="1095" y="965" width="20" height="14" rx="2" />
+      <rect x="1125" y="965" width="20" height="14" rx="2" />
+      <circle cx="1205" cy="972" r="5" fill="#a3e635" />
+      <circle cx="1225" cy="972" r="5" fill="#a3e635" />
+      <circle cx="1245" cy="972" r="5" fill="#a3e635" />
+      <path d="M 1290 972 L 1335 972 M 1315 962 L 1335 972 L 1315 982" stroke="#ffffff" stroke-width="3" fill="none" stroke-linejoin="round" />
+    </g>
+
+    
+    <line x1="1060" y1="1015" x2="975" y2="1225" stroke="#207448" stroke-width="4.5" marker-end="url(#arrow-green)" />
+    <line x1="1185" y1="1015" x2="1185" y2="1225" stroke="#207448" stroke-width="4.5" marker-end="url(#arrow-green)" />
+    <line x1="1310" y1="1015" x2="1395" y2="1225" stroke="#207448" stroke-width="4.5" marker-end="url(#arrow-green)" />
+
+    
+    <path d="M 995 1225 Q 1040 1110 1100 1025" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" />
+    <path d="M 1205 1225 Q 1205 1110 1205 1025" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" />
+    <path d="M 1375 1225 Q 1330 1110 1270 1025" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" />
+
+    
+    <rect x="895" y="1235" width="160" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="925" cy="1277" r="10" fill="#207448" />
+    <rect x="950" y="1262" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+    <rect x="950" y="1282" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+
+    
+    <rect x="1105" y="1235" width="160" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="1135" cy="1277" r="10" fill="#207448" />
+    <rect x="1160" y="1262" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+    <rect x="1160" y="1282" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+
+    
+    <rect x="1315" y="1235" width="160" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="1345" cy="1277" r="10" fill="#207448" />
+    <rect x="1370" y="1262" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+    <rect x="1370" y="1282" width="85" height="10" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  </g>
+</svg>

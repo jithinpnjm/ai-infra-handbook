@@ -60,6 +60,10 @@ Draining first is the same courtesy you would extend to a colleague before you s
 
 ## 2. A production KubeletConfiguration for GPU nodes
 
+![Functional decomposition of the production GPU KubeletConfiguration into six key operational blocks from security and hardening to NUMA topology and eviction.](./img/p4-0509-kubeletconfig-blocks.svg)
+
+*Figure 5.0.0. A production KubeletConfiguration organizes node parameters into six key operational domains for GPU stability and performance.*
+
 The file below is the kind of configuration a GPU node needs. Several of its settings depend on other parts of the cluster, and the comments mark those spots. Read it as a starting point for your own nodes.
 
 Read the file in groups rather than line by line. The top block covers who may talk to the kubelet and how. The cgroup and kernel block covers how the kubelet and the kernel are expected to cooperate. The next block covers how many pods and images the node handles at once. Then comes the block for GPU and NUMA placement, followed by reservations and eviction. Grouping the file this way makes it much easier to see which change affects which behavior.
@@ -164,6 +168,10 @@ Read the tree as the floor plan of a building. The top level holds the rooms for
 
 ### Node capacity and allocatable
 
+![Breakdown of raw node capacity minus kube-reserved, system-reserved, and eviction thresholds to produce node allocatable used by the scheduler.](./img/p4-0509-node-allocatable-math.svg)
+
+*Figure 5.0.0. Node Allocatable is derived by subtracting kube-reserved, system-reserved, and eviction thresholds from raw node capacity.*
+
 The scheduler places pods against allocatable, not raw capacity. The kubelet gets allocatable by subtracting the reservations and the hard eviction threshold from capacity.
 
 Think of capacity as the total size of a fridge and allocatable as the space left after you reserve shelves for the milk, the eggs and the cleaning supplies that must always be there. The scheduler only fills the space that is left. If the reservations are too big, the node looks full while it is actually half empty for pods. If they are too small, the node accepts more pods than the system daemons can tolerate, and the daemons are the first things to suffer.
@@ -183,6 +191,10 @@ Capacity (reported by kubelet: cpu, memory, ephemeral-storage, pods, hugepages-*
 The distinction matters because enforcement is a hard wall. Reserved memory is normally a promise the scheduler keeps, not a limit the kernel enforces on the system services. Turning on enforcement for the system services turns that promise into a wall around them. A wall set too low will kill a daemon that needed more room, so enforce only after you have measured what the daemons really use.
 
 ### QoS recap (details in 5.7)
+
+![Comparison of Guaranteed, Burstable, and BestEffort QoS classes across cgroup paths, resource requests, oom scores, and eviction ranks.](./img/p4-0509-qos-comparison-matrix.svg)
+
+*Figure 5.0.0. The three QoS classes determine cgroup placement, kernel OOM scores, and the kubelet's eviction ranking under pressure.*
 
 Guaranteed, Burstable and BestEffort decide three things: cgroup placement, OOM score and eviction order. The kernel OOM killer picks its victims by `oom_score`, which includes `oom_score_adj`. The kubelet sets -997 for Guaranteed pods and 1000 for BestEffort pods. Burstable pods land between those two values, in proportion to request and capacity. Critical kubelet and runtime processes have -999. System daemons without protection can still be killed if the node runs out of memory outside the pods cgroup.
 
@@ -338,6 +350,10 @@ The startup probe may fail 30 times, 10 seconds apart, so the server has up to 3
 The restart policy matters here. A failed liveness probe kills the container, and the pod's `restartPolicy` decides what follows. The default `Always` restarts it. `OnFailure` restarts it only after a nonzero exit, and `Never` leaves it dead.
 
 ### Designing liveness and readiness endpoints
+
+![Decision flowchart detailing startup probe gating, readiness probe endpoint detachment, and liveness probe restart loops.](./img/p4-0509-probe-decision-flow.svg)
+
+*Figure 5.0.0. Startup probes gate execution until initialization completes, while readiness and liveness probes independently govern service traffic and process restarts.*
 
 Liveness and readiness have different consequences, so give them different endpoints. A failed liveness probe restarts the container. A failed readiness probe only removes the pod from Service endpoints until it passes again.
 
@@ -495,6 +511,10 @@ Review every role that holds `nodes/proxy`, and then work through the checklist 
 
 ## 10. Observability
 
+![Architecture diagram of the kubelet metrics engine gathering data from cAdvisor, CRI, probes, and PLEG and exposing them on port 10250.](./img/p4-0509-kubelet-observability-pipeline.svg)
+
+*Figure 5.0.0. The kubelet gathers container, cgroup, probe, and lifecycle telemetry to expose distinct metric endpoints on port 10250.*
+
 The kubelet exposes metrics you can scrape at `:10250/metrics`, `/metrics/cadvisor` and `/metrics/probes`. The ones that tell you the most about a node are `kubelet_running_pods`, `kubelet_running_containers`, `kubelet_pod_start_duration_seconds`, `kubelet_runtime_operations_duration_seconds`, `kubelet_pleg_relist_duration_seconds`, `kubelet_pleg_relist_interval_seconds`, `kubelet_evictions`, `kubelet_node_name` and `kubelet_certificate_manager_client_ttl_seconds`. Volume usage shows up in `kubelet_volume_stats_*` for PVCs. Container-level signals include `container_cpu_cfs_throttled_periods_total`, `container_memory_working_set_bytes`, `container_oom_events_total`, `prober_probe_total` and `rest_client_requests_total`.
 
 Alerts worth having cover node NotReady, slow PLEG relist, an expiring kubelet certificate, and a high container CPU throttling ratio on latency-critical pods. They should also catch disk/inode/PID pressure approaching thresholds, image pull errors, kubelet restarts and runtime operation latency.
@@ -502,6 +522,10 @@ Alerts worth having cover node NotReady, slow PLEG relist, an expiring kubelet c
 Use `journalctl -u kubelet -f` to follow kubelet logs. The default verbosity is `--v=2`, and `4` adds sync details. Runtime logs come from `journalctl -u containerd`. Kernel messages come from `dmesg -T`, and OOM kills appear there as lines such as "Killed process" or "oom-kill:constraint=CONSTRAINT_MEMCG". Pod logs live in `/var/log/pods`.
 
 ## 11. Troubleshooting guide
+
+![Triage flowchart mapping node NotReady, OOMKilled, Evicted, probe failure, and TopologyAffinityError symptoms to root causes and inspection commands.](./img/p4-0509-troubleshooting-flowchart.svg)
+
+*Figure 5.0.0. A diagnostic decision tree resolves common node failures by separating kubelet crashes, cgroup OOM kills, node-pressure evictions, and NUMA admission errors.*
 
 Read the table from left to right. The first column is the symptom you see. The second is the most likely cause, and the third is the command or log that confirms it.
 

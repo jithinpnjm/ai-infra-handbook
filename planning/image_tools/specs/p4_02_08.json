@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0208-local-resolver",
+  "title": "Rack-level local caching resolver architecture and query routing",
+  "anchor": "## 9. Running your own DNS",
+  "spec": "A topology and request-routing diagram in three horizontal zones. Left zone (Cluster Nodes): two GPU worker nodes (gpu01 at 10.20.0.45 and gpu02 at 10.20.0.46) with their /etc/resolv.conf pointing to local rack resolvers (nameserver 10.20.0.10, nameserver 10.20.0.11). Middle zone (Site/Rack Resolver Tier): two redundant resolver boxes across distinct failure domains (Resolver 01 at 10.20.0.10, Resolver 02 at 10.20.0.11) running dnsmasq/Unbound. Inside Resolver 01, show three operational functional blocks: Block A 'Local Authoritative Records' loaded with domain=cluster.lab, local=/cluster.lab/, address=/gpu01.cluster.lab/10.20.0.45, host-record=gpu02.cluster.lab,10.20.0.46, and ptr-record=45.0.20.10.in-addr.arpa,gpu01.cluster.lab; Block B 'In-Memory Cache' storing recent external query answers with remaining TTL; Block C 'Upstream Forwarder' (configured with no-resolv, server=8.8.8.8 and cloud VPC resolver 169.254.169.254). Show three numbered query flows with distinct arrow styles: Flow 1 (green arrow) 'Local Cluster Query' for gpu01.cluster.lab or PTR 45.0.20.10 -> hits Block A directly -> answered authoritatively in sub-millisecond (less than 0.5 ms), zero WAN traffic; Flow 2 (blue arrow) 'Cached External Query' -> hits Block B -> sub-millisecond cached answer; Flow 3 (orange arrow) 'Cache Miss' -> routed through Block C upstream to Right zone. Right zone (Upstream & Observability): Upstream resolvers (8.8.8.8 / VPC resolver) answering uncached queries, and an Observability box monitoring Resolver 01 and 02 key metrics: query rate (QPS), p99 latency, SERVFAIL ratio, and cache hit rate (percentage).",
+  "alt": "A rack caching resolver architecture showing redundant dnsmasq instances answering local records, caching external replies, and forwarding misses upstream to shield resolvers.",
+  "cap": "A dedicated rack-level caching resolver serves local cluster records, caches external queries to reduce latency, and forwards cache misses upstream.",
+  "part": "part-02-networking",
+  "ch": "08"
+ }
+]

@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Placement lifecycle: kube-scheduler, descheduler, and autoscaler coordination</title>
+  <desc>Closed-loop coordination of kube-scheduler, Cluster Autoscaler Karpenter, and Descheduler operating on Kubernetes node capacity and pod lifecycle.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <g id="header-group">
+    <text x="80" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Placement lifecycle: kube-scheduler, descheduler,</text>
+    <text x="80" y="120" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">and autoscaler coordination</text>
+    
+    
+    <rect x="80" y="145" width="1440" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="100" y="177" font-family="sans-serif" font-size="24" fill="#303a36">A closed-loop coordination diagram showing three independent controllers operating on cluster node capacity and pod lifecycle.</text>
+  </g>
+
+  
+  <g id="controller-scheduler">
+    <rect x="80" y="225" width="670" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <circle cx="130" cy="275" r="24" fill="#207448" />
+    <text x="130" y="284" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    
+    <text x="170" y="284" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">kube-scheduler</text>
+
+    
+    <g transform="translate(670, 248)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="54" height="54" rx="6" />
+      <rect x="8" y="8" width="16" height="16" rx="3" fill="#207448" />
+      <rect x="30" y="8" width="16" height="16" rx="3" fill="#207448" />
+      <rect x="8" y="30" width="16" height="16" rx="3" fill="#207448" />
+      <rect x="30" y="30" width="16" height="16" rx="3" stroke-dasharray="3 3" />
+    </g>
+
+    
+    <text x="110" y="340" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="110" dy="0">Reads pending pods from activeQ,</tspan>
+      <tspan x="110" dy="36">evaluates feasible nodes via Filter and Score</tspan>
+      <tspan x="110" dy="36">(configured with percentageOfNodesToScore: 50</tspan>
+      <tspan x="110" dy="36">and parallelism: 16),</tspan>
+      <tspan x="110" dy="36">and packs pods using MostAllocated scoring;</tspan>
+      <tspan x="110" dy="42" font-weight="bold" fill="#207448">unschedulable pods remain Pending.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="controller-autoscaler">
+    <rect x="850" y="225" width="670" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <circle cx="900" cy="275" r="24" fill="#207448" />
+    <text x="900" y="284" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    
+    <text x="940" y="284" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cluster Autoscaler / Karpenter</text>
+
+    
+    <g transform="translate(1440, 248)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="8" width="54" height="42" rx="6" />
+      <line x1="12" y1="22" x2="26" y2="22" />
+      <line x1="12" y1="34" x2="20" y2="34" />
+      <circle cx="40" cy="29" r="6" />
+      <path d="M 27 0 L 27 8 M 23 4 L 31 4" stroke-width="3" />
+    </g>
+
+    
+    <text x="880" y="340" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="880" dy="0">Observes Pending pods,</tspan>
+      <tspan x="880" dy="38">provisions new GPU nodes (or triggers atomic</tspan>
+      <tspan x="880" dy="38">ProvisioningRequests),</tspan>
+      <tspan x="880" dy="38">and cordons/terminates idle nodes</tspan>
+      <tspan x="880" dy="38">after cool-down.</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 750 440 L 834 440" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g id="controller-descheduler">
+    <rect x="80" y="730" width="1440" height="410" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <circle cx="130" cy="780" r="24" fill="#207448" />
+    <text x="130" y="789" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    
+    <text x="170" y="789" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Descheduler</text>
+
+    
+    <g transform="translate(1440, 755)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="27" cy="27" r="22" stroke-dasharray="14 6" />
+      <polyline points="22,5 29,5 29,12" />
+      <polyline points="32,49 25,49 25,42" />
+    </g>
+
+    
+    <text x="110" y="845" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="110" dy="0">Periodically scans running workloads, applying strategies like</tspan>
+      <tspan x="110" dy="38">LowNodeUtilization to consolidate fragmented GPU nodes and</tspan>
+      <tspan x="110" dy="38">RemovePodsViolatingTopologySpreadConstraint; respects PodDisruptionBudgets (PDB)</tspan>
+      <tspan x="110" dy="38">while strictly ignoring training pods marked with</tspan>
+      <tspan x="110" dy="38" font-family="monospace">descheduler.alpha.kubernetes.io/evict: 'false'.</tspan>
+      <tspan x="110" dy="46" font-weight="bold" fill="#db8129">Evicted pods re-enter the scheduling queue for defragmented placement.</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1185 655 L 1185 714" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 415 730 L 415 671" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
+
+</svg>

@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Kubelet and Node Failure Triage Tree</title>
+  <desc>Triage decision tree for diagnosing node-level and pod-level failures in Kubernetes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="48" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Kubelet and Node Failure Triage Tree</text>
+  <text x="800" y="86" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Triage decision tree for node-level failures</text>
+
+  
+  <g id="root-node">
+    <rect x="420" y="112" width="760" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(442, 122)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <path d="M 16 28 L 24 28 L 27 20 L 31 36 L 34 26 L 37 30 L 40 28" />
+    </g>
+    <text x="515" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Root: Node or Pod anomaly detected</text>
+  </g>
+
+  
+  <path d="M 600 188 V 214 H 320 V 238" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 1000 188 V 214 H 1100 V 238" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  
+  <g id="branch-1-header">
+    <rect x="40" y="240" width="560" height="76" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(58, 250)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="18" rx="3" />
+      <rect x="4" y="28" width="44" height="18" rx="3" />
+      <circle cx="12" cy="15" r="2" fill="#207448" />
+      <circle cx="20" cy="15" r="2" fill="#207448" />
+      <circle cx="12" cy="37" r="2" fill="#207448" />
+      <circle cx="20" cy="37" r="2" fill="#207448" />
+      <line x1="38" y1="15" x2="42" y2="15" />
+      <line x1="38" y1="37" x2="42" y2="37" />
+    </g>
+    <text x="125" y="288" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Branch 1: Node status = NotReady</text>
+  </g>
+
+  
+  <path d="M 320 316 V 354" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="node-check-kubelet">
+    <rect x="40" y="356" width="560" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(56, 368)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="38" rx="4" />
+      <path d="M 12 18 L 22 25 L 12 32" />
+      <line x1="26" y1="34" x2="38" y2="34" />
+    </g>
+    <text x="120" y="403" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">Check systemctl status kubelet</text>
+  </g>
+
+  
+  <path d="M 320 432 V 455 H 55 V 890" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 55 520 H 74" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 55 890 H 74" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="box-if-stopped">
+    <rect x="76" y="475" width="524" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(530, 492)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="16,4 36,4 48,16 48,36 36,48 16,48 4,36 4,16" />
+      <line x1="18" y1="18" x2="34" y2="34" />
+      <line x1="34" y1="18" x2="18" y2="34" />
+    </g>
+    <text x="105" y="520" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">If stopped:</text>
+    <text x="105" y="565" font-family="sans-serif" font-size="24" fill="#303a36">check journalctl for swap on,</text>
+    <text x="105" y="608" font-family="sans-serif" font-size="24" fill="#303a36">cgroup driver mismatch,</text>
+    <text x="105" y="651" font-family="sans-serif" font-size="24" fill="#303a36">protectKernelDefaults failure, or</text>
+    <text x="105" y="694" font-family="sans-serif" font-size="24" fill="#303a36">stale cpu_manager_state</text>
+  </g>
+
+  
+  <g id="box-if-running">
+    <rect x="76" y="825" width="524" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(530, 842)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="20" />
+      <polyline points="26,14 26,26 36,26" />
+    </g>
+    <text x="105" y="870" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">If running:</text>
+    <text x="105" y="915" font-family="sans-serif" font-size="24" fill="#303a36">check kube-node-lease expiry,</text>
+    <text x="105" y="958" font-family="sans-serif" font-size="24" fill="#303a36">network partition to apiserver, or</text>
+    <text x="105" y="1001" font-family="sans-serif" font-size="24" fill="#303a36">container runtime health</text>
+    <text x="105" y="1044" font-family="monospace" font-size="24" fill="#207448">(crictl info)</text>
+  </g>
+
+  
+  
+  <g id="branch-2-header">
+    <rect x="640" y="240" width="920" height="76" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(660, 250)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="26,6 46,17 46,39 26,50 6,39 6,17" />
+      <line x1="26" y1="6" x2="26" y2="50" />
+      <line x1="6" y1="17" x2="46" y2="39" />
+      <line x1="6" y1="39" x2="46" y2="17" />
+    </g>
+    <text x="730" y="288" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Branch 2: Pods failing / restarting</text>
+  </g>
+
+  
+  <path d="M 1100 316 V 338 H 655 V 1045" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 655 450 H 674" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 655 645 H 674" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 655 845 H 674" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 655 1045 H 674" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="sub-branch-a">
+    <rect x="676" y="356" width="884" height="185" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(698, 372)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="10" width="44" height="34" rx="3" />
+      <line x1="12" y1="4" x2="12" y2="10" />
+      <line x1="20" y1="4" x2="20" y2="10" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="36" y1="4" x2="36" y2="10" />
+      <line x1="12" y1="44" x2="12" y2="50" />
+      <line x1="20" y1="44" x2="20" y2="50" />
+      <line x1="28" y1="44" x2="28" y2="50" />
+      <line x1="36" y1="44" x2="36" y2="50" />
+      <path d="M 14 30 L 26 18 L 38 30" />
+    </g>
+    <text x="765" y="396" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Sub-branch A: Pod Last State = Terminated,</text>
+    <text x="765" y="428" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Reason: OOMKilled, Exit Code 137</text>
+    <text x="705" y="474" font-family="sans-serif" font-size="24" fill="#303a36">Cause: Container memory limit reached cgroup ceiling (memory.max)</text>
+    <text x="705" y="512" font-family="monospace" font-size="24" fill="#207448">Check memory.events and working set</text>
+  </g>
+
+  
+  <g id="sub-branch-b">
+    <rect x="676" y="556" width="884" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(698, 572)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="26" cy="14" rx="20" ry="8" />
+      <path d="M 6 14 v 12 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8 v -12" />
+      <path d="M 6 26 v 12 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8 v -12" />
+    </g>
+    <text x="765" y="600" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Sub-branch B: Pod Status = Failed, Reason: Evicted</text>
+    <text x="705" y="642" font-family="monospace" font-size="24" fill="#303a36">Message: 'The node was low on resource: memory/nodefs'</text>
+    <text x="705" y="682" font-family="sans-serif" font-size="24" fill="#303a36">Cause: Node-pressure eviction manager triggered before OOM killer</text>
+    <text x="705" y="722" font-family="monospace" font-size="24" fill="#207448">Check memory.available vs evictionHard</text>
+  </g>
+
+  
+  <g id="sub-branch-c">
+    <rect x="676" y="756" width="884" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(698, 772)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="20" />
+      <polyline points="10,26 18,26 23,16 29,36 34,26 42,26" />
+    </g>
+    <text x="765" y="802" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Sub-branch C: Pod Unhealthy / Probe failures</text>
+    <text x="705" y="852" font-family="sans-serif" font-size="24" fill="#303a36">Cause: CFS throttling delaying HTTP probe &gt; timeoutSeconds, or</text>
+    <text x="705" y="892" font-family="sans-serif" font-size="24" fill="#303a36">NetworkPolicy blocking node-to-pod probe traffic</text>
+  </g>
+
+  
+  <g id="sub-branch-d">
+    <rect x="676" y="946" width="884" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(698, 964)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="16" height="16" rx="2" />
+      <rect x="30" y="6" width="16" height="16" rx="2" />
+      <rect x="6" y="30" width="16" height="16" rx="2" />
+      <rect x="30" y="30" width="16" height="16" rx="2" />
+      <line x1="22" y1="14" x2="30" y2="14" />
+      <line x1="14" y1="22" x2="14" y2="30" />
+      <line x1="38" y1="22" x2="38" y2="30" />
+      <line x1="22" y1="38" x2="30" y2="38" />
+    </g>
+    <text x="765" y="996" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Sub-branch D: TopologyAffinityError</text>
+    <text x="705" y="1046" font-family="sans-serif" font-size="24" fill="#303a36">Cause: TopologyManager single-numa-node cannot fit requested</text>
+    <text x="705" y="1086" font-family="sans-serif" font-size="24" fill="#303a36">GPUs/CPUs on one NUMA node</text>
+  </g>
+</svg>

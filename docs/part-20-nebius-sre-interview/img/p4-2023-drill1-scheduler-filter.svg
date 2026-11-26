@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Scheduler Node Filtering for a Pending GPU Pod</title>
+  <desc>Diagram showing Kubernetes scheduler filter plugin failures across CPU and GPU nodes, resulting aggregate failure event, and resolution via pod toleration patch.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448">
+    Scheduler Node Filtering for a Pending GPU Pod
+  </text>
+
+  
+  <g id="top-pod">
+    <rect x="220" y="85" width="1160" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(245, 112)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 12 18 L 44 18 M 12 28 L 44 28 M 12 38 L 32 38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="325" y="128" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">
+      Incoming Pod &apos;llama-gpu&apos;
+    </text>
+    <text x="325" y="168" font-family="monospace" font-size="24px" fill="#303a36">
+      spec: limits: nvidia.com/gpu: 1, tolerations: [] (empty)
+    </text>
+  </g>
+
+  
+  <path d="M 800 195 L 800 230" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g id="scheduler-engine">
+    <rect x="200" y="235" width="1200" height="70" rx="12" fill="#207448" />
+    
+    <g transform="translate(225, 243)">
+      <circle cx="27" cy="27" r="14" fill="none" stroke="#ffffff" stroke-width="4" />
+      <path d="M 27 5 L 27 13 M 27 41 L 27 49 M 5 27 L 13 27 M 41 27 L 49 27 M 11 11 L 17 17 M 37 37 L 43 43 M 11 43 L 17 37 M 37 17 L 43 11" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="300" y="280" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">
+      kube-scheduler running Filter plugins across 6 cluster nodes split into two pools
+    </text>
+  </g>
+
+  
+  <path d="M 450 305 L 450 365" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 1150 305 L 1150 365" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="cpu-nodes-column">
+    <rect x="50" y="370" width="720" height="260" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 390)">
+      <rect x="8" y="8" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 18 18 L 38 18 L 38 38 L 18 38 Z" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 20 0 L 20 8 M 36 0 L 36 8 M 20 48 L 20 56 M 36 48 L 36 56 M 0 20 L 8 20 M 0 36 L 8 36 M 48 20 L 56 20 M 48 36 L 56 36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="150" y="426" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
+      Untainted CPU Nodes
+    </text>
+    <text x="75" y="480" font-family="sans-serif" font-size="24px" fill="#303a36">
+      2 nodes with <tspan font-family="monospace">Allocatable nvidia.com/gpu: 0</tspan>
+    </text>
+    <text x="75" y="535" font-family="sans-serif" font-size="24px" fill="#303a36">
+      Scheduler evaluates <tspan font-family="monospace" font-weight="bold">&apos;NodeResourcesFit&apos;</tspan> plugin
+    </text>
+    
+    <rect x="75" y="560" width="510" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="90" y="592" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+      Fails with &apos;2 Insufficient nvidia.com/gpu&apos;
+    </text>
+  </g>
+
+  
+  <g id="gpu-nodes-column">
+    <rect x="830" y="370" width="720" height="260" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(855, 390)">
+      <rect x="10" y="20" width="36" height="30" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 18 20 L 18 14 A 10 10 0 0 1 38 14 L 38 20" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="34" r="3" fill="#207448" />
+    </g>
+    <text x="930" y="426" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
+      Tainted GPU Nodes
+    </text>
+    <text x="855" y="475" font-family="sans-serif" font-size="24px" fill="#303a36">
+      4 nodes with <tspan font-family="monospace">Allocatable nvidia.com/gpu: 8</tspan>
+    </text>
+    <text x="855" y="508" font-family="sans-serif" font-size="24px" fill="#303a36">
+      and Taint <tspan font-family="monospace">&apos;nvidia.com/gpu=true:NoSchedule&apos;</tspan>
+    </text>
+    <text x="855" y="546" font-family="sans-serif" font-size="24px" fill="#303a36">
+      Scheduler evaluates <tspan font-family="monospace" font-weight="bold">&apos;TaintToleration&apos;</tspan> plugin
+    </text>
+    
+    <rect x="855" y="565" width="600" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="870" y="597" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+      Fails with &apos;4 node(s) had untolerated taint(s)&apos;
+    </text>
+  </g>
+
+  
+  <path d="M 410 630 L 410 680 L 730 680 L 730 705" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 1190 630 L 1190 680 L 870 680 L 870 705" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="summary-bubble">
+    <rect x="80" y="715" width="1440" height="155" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(115, 765)">
+      <rect x="0" y="0" width="56" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 0 16 L 56 16" stroke="#207448" stroke-width="4" />
+      <circle cx="12" cy="8" r="3" fill="#207448" />
+      <circle cx="22" cy="8" r="3" fill="#207448" />
+      <circle cx="32" cy="8" r="3" fill="#207448" />
+    </g>
+    <text x="195" y="760" font-family="sans-serif" font-size="26px" fill="#303a36">
+      Scheduler produces aggregate event:
+    </text>
+    <text x="195" y="800" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">
+      0/6 nodes are available: 4 node(s) had untolerated taint(s), 2 Insufficient nvidia.com/gpu
+    </text>
+    <text x="195" y="845" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
+      Pod status remains Pending
+    </text>
+  </g>
+
+  
+  <g id="bottom-fix-block">
+    <rect x="80" y="910" width="1440" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(115, 940)">
+      <path d="M 28 6 L 50 14 L 50 30 C 50 44 28 54 28 54 C 28 54 6 44 6 30 L 6 14 Z" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 18 30 L 25 37 L 38 23" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    <text x="195" y="965" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">
+      The Fix: Manifest patch adding toleration
+    </text>
+    <text x="195" y="1005" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">
+      tolerations: [{key: nvidia.com/gpu, operator: Exists, effect: NoSchedule}]
+    </text>
+
+    
+    <rect x="195" y="1035" width="1280" height="90" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+
+    
+    <path d="M 230 1080 L 320 1080" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+
+    <text x="345" y="1073" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+      Patched pod bypassing the TaintToleration filter
+    </text>
+    <text x="345" y="1105" font-family="sans-serif" font-size="24px" fill="#207448">
+      Unlocking scheduling onto GPU node 1 (6 of 8 GPUs used, 2 free)
+    </text>
+  </g>
+</svg>

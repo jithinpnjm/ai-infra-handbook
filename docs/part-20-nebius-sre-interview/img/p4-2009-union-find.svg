@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Union-Find with Union by Size and Path Compression</title>
+  <desc>A three-stage visual state diagram of disjoint set trees representing failing node clusters, illustrating initial clusters, union by size, and path compression during find.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    Union-Find with Union by Size and Path Compression
+  </text>
+
+  
+  
+  
+  <g transform="translate(40, 100)">
+    <rect width="480" height="1060" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="24" y="24" width="432" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" fill="none" transform="translate(44, 46)">
+      <rect x="0" y="0" width="48" height="22" rx="4" />
+      <circle cx="10" cy="11" r="2.5" fill="#207448" />
+      <line x1="20" y1="11" x2="40" y2="11" stroke-linecap="round" />
+      <rect x="0" y="30" width="48" height="22" rx="4" />
+      <circle cx="10" cy="41" r="2.5" fill="#207448" />
+      <line x1="20" y1="41" x2="40" y2="41" stroke-linecap="round" />
+    </g>
+    <text x="110" y="66" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Initial Clusters</text>
+    <text x="110" y="104" font-family="sans-serif" font-size="24" fill="#303a36">Two trees of failing rack nodes</text>
+
+    
+    <rect x="24" y="165" width="432" height="375" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="44" y="202" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Tree A</text>
+
+    
+    <rect x="106" y="225" width="268" height="70" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" />
+    <text x="240" y="269" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node A (size 3)</text>
+
+    
+    <rect x="44" y="420" width="180" height="70" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="134" y="464" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node B</text>
+
+    <rect x="256" y="420" width="180" height="70" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="346" y="464" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node C</text>
+
+    
+    <line x1="134" y1="420" x2="200" y2="303" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <line x1="346" y1="420" x2="280" y2="303" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="24" y="560" width="432" height="475" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="44" y="598" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Tree D</text>
+
+    
+    <rect x="106" y="618" width="268" height="70" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" />
+    <text x="240" y="662" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node D (size 2)</text>
+
+    
+    <rect x="126" y="760" width="228" height="70" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="240" y="804" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node E</text>
+
+    
+    <rect x="126" y="905" width="228" height="70" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="240" y="949" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node F</text>
+
+    
+    <line x1="240" y1="760" x2="240" y2="696" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <line x1="240" y1="905" x2="240" y2="838" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  
+  
+  <g transform="translate(560, 100)">
+    <rect width="480" height="1060" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="24" y="24" width="432" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" fill="none" transform="translate(44, 46)">
+      <circle cx="14" cy="14" r="10" />
+      <circle cx="38" cy="14" r="10" />
+      <path d="M 24 24 L 24 44" stroke-linecap="round" />
+      <circle cx="24" cy="46" r="3" fill="#207448" />
+    </g>
+    <text x="110" y="80" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Union by Size</text>
+
+    
+    <rect x="24" y="165" width="432" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="44" y="202" font-family="sans-serif" font-size="24" fill="#303a36">An edge links Node B and Node E</text>
+    <text x="44" y="238" font-family="monospace" font-size="24" fill="#207448">Find identifies root A (size 3) and root D (size 2)</text>
+
+    
+    <rect x="24" y="280" width="432" height="495" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+    
+    <rect x="106" y="305" width="268" height="70" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" />
+    <text x="240" y="349" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node A</text>
+
+    
+    <rect x="36" y="480" width="124" height="65" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="98" y="521" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node B</text>
+
+    <rect x="178" y="480" width="124" height="65" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="240" y="521" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node C</text>
+
+    
+    <rect x="320" y="480" width="124" height="65" rx="8" fill="#fdf3e7" stroke="#db8129" stroke-width="2.5" />
+    <text x="382" y="521" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Node D</text>
+
+    
+    <rect x="320" y="580" width="124" height="60" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="382" y="618" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node E</text>
+
+    
+    <rect x="320" y="675" width="124" height="60" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="382" y="713" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node F</text>
+
+    
+    <line x1="98" y1="480" x2="190" y2="382" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <line x1="240" y1="480" x2="240" y2="383" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <line x1="360" y1="480" x2="290" y2="382" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+    <line x1="382" y1="580" x2="382" y2="548" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <line x1="382" y1="675" x2="382" y2="648" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="24" y="795" width="432" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="44" y="840" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="44" dy="0">Because size(D) &lt; size(A),</tspan>
+      <tspan x="44" dy="42">root D is attached under root A,</tspan>
+      <tspan x="44" dy="42">pointing D -&gt; A,</tspan>
+      <tspan x="44" dy="42">updating size(A) to 5.</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(1080, 100)">
+    <rect width="480" height="1060" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="24" y="24" width="432" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" fill="none" transform="translate(44, 46)">
+      <polygon points="26,2 8,28 22,28 14,48 38,18 24,18" fill="none" />
+    </g>
+    <text x="110" y="70" font-family="sans-serif" font-size="27" font-weight="bold" fill="#303a36">
+      Path Compression during Find
+    </text>
+
+    
+    <rect x="24" y="165" width="432" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="44" y="222" font-family="monospace" font-size="24" fill="#207448">
+      A call to find(F) traverses F -&gt; E -&gt; D -&gt; A
+    </text>
+
+    
+    <rect x="24" y="280" width="432" height="395" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+    
+    <rect x="106" y="305" width="268" height="70" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" />
+    <text x="240" y="349" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node A</text>
+
+    
+    <rect x="36" y="520" width="72" height="65" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="72" y="561" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node B</text>
+
+    <rect x="118" y="520" width="72" height="65" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="154" y="561" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node C</text>
+
+    <rect x="200" y="520" width="72" height="65" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="236" y="561" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node D</text>
+
+    <rect x="282" y="520" width="72" height="65" rx="8" fill="#fdf3e7" stroke="#db8129" stroke-width="2" />
+    <text x="318" y="561" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Node E</text>
+
+    <rect x="364" y="520" width="72" height="65" rx="8" fill="#fdf3e7" stroke="#db8129" stroke-width="2" />
+    <text x="400" y="561" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Node F</text>
+
+    
+    <line x1="72" y1="520" x2="160" y2="382" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <line x1="154" y1="520" x2="200" y2="382" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <line x1="236" y1="520" x2="236" y2="383" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    
+    <line x1="318" y1="520" x2="272" y2="382" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+    <line x1="400" y1="520" x2="310" y2="382" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="24" y="695" width="432" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="44" y="742" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="44" dy="0">Path compression executes</tspan>
+      <tspan x="44" dy="38">iteratively, updating parent</tspan>
+      <tspan x="44" dy="38">pointers so Node E and</tspan>
+      <tspan x="44" dy="38">Node F both point directly</tspan>
+      <tspan x="44" dy="38">to root Node A,</tspan>
+      <tspan x="44" dy="38">reducing tree height to 1</tspan>
+      <tspan x="44" dy="38">and enabling constant-time</tspan>
+      <tspan x="44" dy="38">subsequent lookups.</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0611-job-lifecycle",
+  "title": "The 6-Stage Slurm Job Life Cycle",
+  "anchor": "### The 6-stage Slurm job life cycle (*Supercomputers for Linux Sysadmins* Chapter 15)",
+  "spec": "Horizontal sequence diagram showing the 6 stages of a Slurm job with actors, daemons, and failure branches. Stage 1: Submission. Initiator sbatch/srun/salloc sends request to slurmctld (controller); checks association and QoS limits; invokes SPANK plugins (e.g., pyxis --container-image) and job_submit plugins to validate or rewrite request before resources are allocated. Stage 2: Prolog. slurmctld dispatches to allocated nodes; slurmd executes root Prolog on every node; cleans /tmp, /dev/shm, and clears stale IPC semaphores; error branch: if Prolog exit != 0, Slurm aborts job launch, marks offending node as DRAIN, and requeues or cancels job. Stage 3: Step Creation. slurmd spawns slurmstepd; invokes step plugins; sets up task/cgroup for CPU, RAM, and GPU device constraints; starts Step 0 (batch script) on Node 0. Stage 4: Running. Batch script executes srun commands creating numbered steps (JOBID.0, JOBID.1); parallel background loop: slurmd periodically runs HealthCheckProgram at HealthCheckInterval to monitor dmesg and GPU health, draining failing nodes. Stage 5: Preemption (conditional). Higher-priority job triggers PreemptMode: REQUEUE, CANCEL, or SUSPEND,GANG. Stage 6: Termination. Job exits, gets cancelled, or hits --time limit; Slurm broadcasts SIGTERM to all allocated processes; KillWait timer counts down; Slurm follows with SIGKILL; slurmd runs root Epilog on every node to verify cleanup and free resources.",
+  "alt": "A 6-stage flow diagram tracing a Slurm job from submission through root prolog, cgroup step creation, running with health checks, preemption modes, and termination cleanup.",
+  "cap": "The 6-stage Slurm job life cycle moves from controller validation through root node preparation, cgroup containment, step execution, and cleanup.",
+  "part": "part-06-hpc-slurm",
+  "ch": "11"
+ },
+ {
+  "name": "p4-0611-job-array-architecture",
+  "title": "Job Array Execution, Throttling, and Task Dispatch",
+  "anchor": "## 5. Job arrays",
+  "spec": "Architectural diagram illustrating how sbatch --array=0-99%10 script.sh executes. Top section: ID hierarchy and variables. Show Array Master Job ID SLURM_ARRAY_JOB_ID (variable %A, e.g., 12345), total count SLURM_ARRAY_TASK_COUNT (100 tasks), and task indices SLURM_ARRAY_TASK_ID (%a, 0 through 99). Each task receives its own unique SLURM_JOB_ID (%j). Middle section: Throttling window. A sliding execution window of size %10 shows tasks 0 through 9 in state R (RUNNING) across compute nodes, while tasks 10 through 99 wait in state PD (PENDING). An arrow indicates that as task 0 completes, task 10 moves into the active execution window, protecting shared storage and scheduler fair-share. Bottom-left box: Config file indexing. Shows configs.txt with 1-based lines; command CONFIG=$(sed -n '$((SLURM_ARRAY_TASK_ID+1))p' configs.txt) maps task 0 to line 1, task 1 to line 2, avoiding off-by-one errors. Bottom-right box: Output logging and scancel control. Default output slurm-%A_%a.out produces individual logs slurm-12345_0.out, slurm-12345_1.out; callout contrasts scancel 12345 (cancels all 100 tasks) versus scancel 12345_7 (cancels only task index 7).",
+  "alt": "A diagram of a Slurm job array showing how the master job ID and task IDs relate, how the percent throttle caps concurrent running tasks, and how configs and logs are mapped.",
+  "cap": "A job array manages many identical requests under one master job ID, using a throttle window to protect storage and sed indexing to dispatch configurations.",
+  "part": "part-06-hpc-slurm",
+  "ch": "11"
+ }
+]

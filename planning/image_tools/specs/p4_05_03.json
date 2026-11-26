@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0503-controller-loop",
+  "title": "Inside a Controller: Informers, WorkQueues, and Reconciliation",
+  "anchor": "### kube-controller-manager",
+  "spec": "Flow diagram showing how a controller inside kube-controller-manager reconciles state without hammering the API server. Left: kube-apiserver with box 'List & Watch API'. Arrow '1. Stream changes (events)' leads to 'Reflector' in the Controller. Reflector puts deltas into 'DeltaFIFO'. From DeltaFIFO, two arrows: one updates the local in-memory 'Indexer / Store Cache' (providing local fast reads), the other sends notifications to 'ResourceEventHandler (Add/Update/Delete)'. The handler enqueues only the object key (e.g. 'namespace/name') into a rate-limiting 'WorkQueue'. Right: 'Worker Goroutines' pull keys from the WorkQueue via 'reconcile()'. The reconcile loop reads current state from 'Indexer / Store Cache' and desired state from the object spec. If difference detected ('Drift'), arrow '2. Reconcile Action (POST/PUT/PATCH)' writes back to kube-apiserver. If operation fails with 409 Conflict or error, arrow returns the key to WorkQueue with exponential backoff.",
+  "alt": "A controller uses a Reflector, DeltaFIFO, local Indexer cache, and rate-limiting WorkQueue to reconcile state and update the API server.",
+  "cap": "Inside each controller: a Reflector watches kube-apiserver, updates a local in-memory cache, and pushes object keys to a WorkQueue for level-triggered reconciliation.",
+  "part": "part-05-kubernetes",
+  "ch": "03"
+ },
+ {
+  "name": "p4-0503-node-internals",
+  "title": "Worker Node Anatomy: Daemons, Interfaces, and Hardware",
+  "anchor": "## 3. Node components",
+  "spec": "Structural node anatomy diagram showing all components running on a worker node. Outer box: 'Worker Node Host (Linux OS)'. Top layer: Host System Services running under systemd: 'kubelet' (listening on 10250, heartbeating via Lease to apiserver:6443, reading static manifests /etc/kubernetes/manifests), alongside 'containerd.service' and 'sshd / systemd-journald' (in system-reserved / kube-reserved cgroups). Middle layer: Plugin interfaces: kubelet connects to Container Runtime via 'CRI (gRPC unix:///run/containerd/containerd.sock)', to Storage via 'CSI Drivers', and to Devices via 'Device Plugin API (/var/lib/kubelet/device-plugins/nvidia.sock)'. Also on host: 'kube-proxy' (or eBPF) programming host iptables/IPVS, and 'CNI Plugin daemon' (/opt/cni/bin, /etc/cni/net.d). Bottom layer: 'Pod Sandboxes and Containers' (cgroups, network namespaces) running user workloads and accessing GPU hardware.",
+  "alt": "Worker node architecture showing the kubelet communicating with containerd over CRI, CSI storage, CNI networking, and GPU device plugins.",
+  "cap": "A worker node combines the host kubelet systemd service with pluggable CRI, CNI, CSI, and device plugin interfaces that manage pods and hardware.",
+  "part": "part-05-kubernetes",
+  "ch": "03"
+ },
+ {
+  "name": "p4-0503-interfaces-grpc",
+  "title": "Decoupling Through Interfaces: Kubelet and Pluggable Runtimes",
+  "anchor": "### Interfaces: how plug-ins fit in",
+  "spec": "Component interaction diagram contrasting tight coupling with interface decoupling. Top: 'Kubelet (Core Kubernetes)' with standard method calls. Three vertical interface boundaries: 1. 'CRI (Container Runtime Interface)' over gRPC UNIX socket (calls like CreateContainerRequest, StartContainerRequest, RunPodSandbox) talking to either 'containerd' (via containerd-cri plugin) or 'CRI-O' or 'Firecracker', which in turn execute OCI runc/runw. 2. 'CNI (Container Network Interface)' invoked as binary plugin or daemon (ADD/DEL commands with JSON payload) talking to 'Calico / Cilium / Flannel' to attach veth pairs to host and pod network namespaces. 3. 'CSI (Container Storage Interface)' over gRPC UNIX socket (NodeStageVolume, NodePublishVolume) talking to 'Ceph / Cloud EBS / Lustre / local-path' to mount block devices into pod directories.",
+  "alt": "The kubelet uses standard gRPC and binary interfaces to interact with pluggable CRI runtimes, CNI network drivers, and CSI storage systems.",
+  "cap": "Kubernetes interfaces (CRI, CNI, CSI) separate the core kubelet logic from underlying container runtimes, network fabrics, and storage vendors.",
+  "part": "part-05-kubernetes",
+  "ch": "03"
+ }
+]

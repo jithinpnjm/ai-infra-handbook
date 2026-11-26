@@ -1,0 +1,66 @@
+# docs/part-01-linux/12-disks-partitions-and-filesystems.md
+- ## Why this matters for AI infrastructure | 230 | NO FIGURE NEEDED - narrative framing introducing storage questions in AI clusters
+- ## Prerequisites and outcomes | 160 | NO FIGURE NEEDED - bulleted prerequisites and learning goals
+- ## 1. The storage stack in one picture | 120 | COVERED(ch12-d1-luna) - the complete storage stack diagram from VFS to media
+- ## 2. Disks and their behaviour | 40 | NO FIGURE NEEDED - short section introduction
+- ### Disk types | 380 | NO FIGURE NEEDED - comprehensive reference table comparing HDD, SSD, NVMe, PMEM, and virtual block devices
+- ### Sectors and block sizes | 130 | NEEDS FIGURE - mechanism of 512e emulation and read-modify-write penalty on 4 KiB physical sectors
+- ### Rotational disk mechanics (why old advice exists) | 200 | NO FIGURE NEEDED - historical narrative explaining CHS, elevator seeking, and sector zoning
+- ### Interfaces | 170 | NO FIGURE NEEDED - reference table comparing SCSI, SAS, SATA, FC, and NVMe interfaces
+- ### How storage is attached | 220 | COVERED(l12-attach-paths) - five attachment paths from JBOD and RAID to SAN, NAS, and local NVMe
+- ## 3. Partitioning | 150 | NO FIGURE NEEDED - high-level introduction to disk partitions and partition tables
+- ### MBR and GPT | 170 | COVERED(ch12-d7-luna) - comparison diagram of MBR versus GPT on-disk layout
+- ### Tools | 150 | NO FIGURE NEEDED - comparison table of read-only and destructive partitioning CLI tools
+- ### Reading a partition table with parted -l | 270 | NO FIGURE NEEDED - annotated CLI output walk-through of parted on MBR and GPT disks
+- ### Partition tables on an LVM system | 100 | NO FIGURE NEEDED - short code snippet and explanation of LVM flag on partition tables
+- ### An MBR example with fdisk | 350 | NO FIGURE NEEDED - step-by-step interactive fdisk session transcript
+- ### How the kernel learns about a new table | 140 | NO FIGURE NEEDED - explanation of BLKRRPART ioctl and user-space partition table updates
+- ### Alignment examples with parted | 140 | NO FIGURE NEEDED - CLI transcript showing parted 1049kB boundary alignment
+- ### A worked example (a spare disk, GPT) | 180 | NO FIGURE NEEDED - procedural script and commands for creating a GPT partition
+- ### Alignment (*How Linux Works* Section 4.1.6) | 190 | COVERED(p3-0112-alignment-math) - flash page alignment math comparing sector 2048 to 1953126
+- ### Partition types you will meet | 130 | NO FIGURE NEEDED - descriptive list of typical partitions in cloud and GPU servers
+- ## 4. Creating filesystems | 80 | NO FIGURE NEEDED - conceptual definition of a filesystem as a database on blocks
+- ### Filesystem types | 280 | COVERED(l12-fs-types) - comparison table of common Linux filesystem types and fit for AI work
+- ### Making one | 290 | NO FIGURE NEEDED - command examples and parameter list for mkfs options
+- ### Filesystem families and their history | 250 | NO FIGURE NEEDED - evolutionary narrative from ext2 to ext4, XFS, and btrfs
+- ### What mkfs runs behind the scenes | 130 | NO FIGURE NEEDED - command output showing symlinks from mkfs.ext4 to mke2fs
+- ## 5. Mounting | 210 | COVERED(ch12-fig1-mount) - concept diagram showing filesystem mounting over an existing directory
+- ### Identifying filesystems: UUID and labels | 110 | NO FIGURE NEEDED - short command recipe for UUID inspection and alteration
+- ### Mount options | 270 | NO FIGURE NEEDED - comprehensive table of standard mount flags and remount commands
+- ### Short and long mount options | 170 | NO FIGURE NEEDED - textual explanation of short versus long mount flags and -n option
+- ### Remounting a filesystem in place | 80 | NO FIGURE NEEDED - brief operational recipe for remounting root read-write during rescue
+- ### Removable media and noauto | 90 | NO FIGURE NEEDED - concise explanation of noauto and user mount options
+- ### /etc/fstab: mounts at boot | 230 | COVERED(p3-0112-fstab-anatomy) - anatomy of fstab six fields and the safe five-step edit routine
+- ### Capacity: df, du, inodes, reserved blocks | 440 | COVERED(p3-0112-disk-full-ladder) - diagnostic decision ladder for seven causes of ENOSPC errors
+- ### Reading the df output | 180 | NO FIGURE NEEDED - annotated CLI output breakdown of df columns and 5 percent reserved blocks
+- ### Finding space hogs with du | 80 | NO FIGURE NEEDED - brief command tips for du usage
+- ### Swap, in brief | 140 | NO FIGURE NEEDED - high-level overview of swap creation and GPU node sizing guidelines
+- ### Swap partitions in detail | 80 | NO FIGURE NEEDED - brief recipe for mkswap and swapon on raw partitions
+- ### Swap files in detail | 100 | NO FIGURE NEEDED - brief recipe for creating and activating swap files
+- ### How much swap you need | 180 | NO FIGURE NEEDED - historical rationale and modern sizing rules for swap
+- ## 6. Inside a traditional filesystem | 580 | COVERED(p3-0112-deleted-open, ch12-d2-luna) - filesystem structural internals and open-deleted file space leak timeline
+- ### Special-purpose filesystems | 140 | NO FIGURE NEEDED - reference table mapping pseudo-filesystems to mount points and purposes
+- ### Special filesystem details | 140 | NO FIGURE NEEDED - descriptive summary of proc, sysfs, tmpfs, and squashfs
+- ## 7. Checking and repairing filesystems | 440 | NEEDS FIGURE - e2fsck five-pass architecture and backup superblock disaster recovery flow
+- ### Running fsck by hand | 270 | NO FIGURE NEEDED - annotated command transcript of interactive fsck execution
+- ### Checking ext3 and ext4 after a crash | 90 | NO FIGURE NEEDED - concise operational commands for journal replay via e2fsck
+- ### The worst case | 120 | NO FIGURE NEEDED - prioritized salvage steps from ddrescue to debugfs and data recovery
+- ### Quotas | 480 | NEEDS FIGURE - soft versus hard limits with grace period timer and the six-step Linux quota administrative workflow
+- ## 8. Files, file descriptors and the read path | 130 | COVERED(ch12-d3-luna) - process file descriptors and the read system call sequence down to media
+- ## 9. Filesystem performance: the concepts | 10 | NO FIGURE NEEDED - section title banner
+- ### Latency, caching and the page cache | 280 | NO FIGURE NEEDED - textual overview of page cache, dentry cache, inode cache, and slabtop
+- ### Access patterns and read-ahead | 170 | NO FIGURE NEEDED - explanation of sequential vs random I/O and kernel prefetch heuristics
+- ### Write-back caching and durability | 320 | COVERED(l12-atomic-replace, ch12-d4-luna) - write-back flusher thread dynamics and atomic file replacement pattern
+- ### Direct, raw, non-blocking and memory-mapped I/O | 250 | NO FIGURE NEEDED - descriptive comparison of raw, direct, io_uring, and mmap I/O semantics
+- ### Metadata, and logical versus physical I/O | 220 | COVERED(p3-0112-logical-physical) - causes of logical versus physical I/O inflation and deflation
+- ### Capacity and timestamps | 90 | NO FIGURE NEEDED - short note on free extent fragmentation near full capacity and atime penalties
+- ## 10. Choosing and tuning filesystems | 420 | NO FIGURE NEEDED - feature matrix table and workload-specific recommendation list
+- ## 11. Methodology and tools | 540 | COVERED(p3-0112-iostat-read) - iostat column anatomy and NVMe saturation decision tree
+- ## 12. AI-infrastructure patterns | 700 | COVERED(ch12-d5-luna, ch12-d6-luna) - checkpoint metadata storms and GPUDirect Storage direct DMA path versus page cache
+- ## How it fails | 390 | NO FIGURE NEEDED - 17-point numbered symptom-cause-fix troubleshooting index
+- ## Hands-on lab: disks, partitions, filesystems, and VM drills | 480 | NO FIGURE NEEDED - step-by-step disposable loop-device drill commands
+- ## Exercises | 310 | COVERED(p3-0112-transaction-cost) - Amdahl speedup bar charts comparing 180 ms vs 2 ms filesystem transaction costs
+- ## Checkpoint questions (20) | 1150 | NO FIGURE NEEDED - 20 comprehensive self-check questions and solutions
+- ## Sources and review notes | 380 | NO FIGURE NEEDED - bibliographic citations and lab execution notes
+
+Specs kept 3, dropped 0: []

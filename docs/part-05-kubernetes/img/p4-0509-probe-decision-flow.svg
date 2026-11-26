@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Probe Architecture and Decision Flowchart</title>
+  <desc>Flowchart tracing how kubelet executes startup, readiness, and liveness probes on a pod container over its lifecycle.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+    
+    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#303a36" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Probe Architecture and Decision Flowchart</text>
+
+  
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="40" y="95" width="290" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  </g>
+  
+  <circle cx="75" cy="135" r="24" fill="#207448" />
+  <text x="75" y="144" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(60, 168)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 0 10 L 15 2 L 30 10 L 30 32 L 15 40 L 0 32 Z" />
+    <path d="M 0 10 L 15 18 L 30 10" />
+    <path d="M 15 18 L 15 40" />
+  </g>
+  <text x="120" y="143" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Container</text>
+  <text x="120" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">starts</text>
+
+  
+  <path d="M 330 160 L 390 160" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="400" y="95" width="370" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <g transform="translate(420, 132)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22" stroke-dasharray="7 5" />
+    <path d="M 22 20 C 22 14, 34 14, 34 22 C 34 28, 28 28, 28 34" />
+    <circle cx="28" cy="42" r="1.5" fill="#207448" />
+  </g>
+  <text x="490" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is startupProbe</text>
+  <text x="490" y="188" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">defined?</text>
+
+  
+  <path d="M 770 160 L 860 160" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <rect x="785" y="128" width="60" height="34" rx="6" fill="#f5f8f5" />
+  <text x="815" y="153" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="870" y="95" width="690" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  </g>
+  
+  <g transform="translate(895, 132)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <circle cx="28" cy="28" r="24" />
+    <polyline points="28,14 28,28 38,28" />
+    <path d="M 46 10 A 28 28 0 0 1 54 28" stroke-width="2" />
+  </g>
+  <text x="965" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">poll startupProbe</text>
+  <text x="965" y="178" font-family="monospace" font-size="24" fill="#303a36">/healthz, period 10s,</text>
+  <text x="965" y="208" font-family="monospace" font-size="24" fill="#303a36">failureThreshold 30 = up to 300s window</text>
+
+  
+  <path d="M 1030 225 L 1030 265" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g filter="url(#card-shadow)">
+    <rect x="870" y="275" width="690" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  </g>
+  <text x="890" y="308" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">While failing and attempts &lt; threshold:</text>
+  <text x="890" y="344" font-family="sans-serif" font-size="24" fill="#303a36">keep waiting, do NOT run liveness or readiness probes</text>
+
+  
+  <path d="M 1430 225 L 1430 380" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g filter="url(#card-shadow)">
+    <rect x="870" y="390" width="690" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  </g>
+  <text x="890" y="423" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">If startup probe reaches failureThreshold:</text>
+  <text x="890" y="458" font-family="sans-serif" font-size="24" fill="#303a36">trigger container kill and restart per restartPolicy</text>
+
+  
+  
+  <path d="M 585 225 L 585 500 L 790 500" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 910 225 L 910 250 L 820 250 L 820 500 L 790 500" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 800 500 L 800 520" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="340" y="525" width="920" height="85" rx="12" fill="#207448" />
+  </g>
+  <text x="800" y="557" font-family="sans-serif" font-size="25" fill="#f5f8f5" text-anchor="middle">If startup probe succeeds (or none defined):</text>
+  <text x="800" y="592" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">proceed to parallel monitoring</text>
+
+  
+  <path d="M 550 610 L 550 645 L 400 645 L 400 660" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 1050 610 L 1050 645 L 1200 645 L 1200 660" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="40" y="665" width="720" height="505" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  </g>
+
+  
+  <rect x="65" y="685" width="160" height="42" rx="8" fill="#207448" />
+  <text x="145" y="715" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Branch A</text>
+
+  
+  <text x="245" y="718" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">readinessProbe</text>
+  <text x="65" y="756" font-family="monospace" font-size="24" fill="#303a36">/ready, period 5s, timeout 3s</text>
+
+  
+  <rect x="65" y="775" width="670" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(80, 785)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <circle cx="25" cy="25" r="22" />
+    <path d="M 15 25 L 23 33 L 37 17" />
+  </g>
+  <text x="135" y="805" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Check: is model loaded and internal worker</text>
+  <text x="135" y="833" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ready to accept traffic?</text>
+
+  
+  <path d="M 230 845 L 230 875" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <rect x="65" y="885" width="320" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="85" y="918" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">If No:</text>
+  <text x="85" y="950" font-family="sans-serif" font-size="24" fill="#303a36">mark Pod NotReady,</text>
+  <text x="85" y="980" font-family="sans-serif" font-size="24" fill="#303a36">remove Pod IP from</text>
+  <text x="85" y="1010" font-family="sans-serif" font-size="24" fill="#303a36">Service endpoints</text>
+  <text x="85" y="1040" font-family="sans-serif" font-size="24" fill="#303a36">(no container restart)</text>
+
+  
+  <path d="M 570 845 L 570 875" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <rect x="415" y="885" width="320" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="435" y="918" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">If Yes:</text>
+  <text x="435" y="960" font-family="sans-serif" font-size="24" fill="#303a36">Pod Ready,</text>
+  <text x="435" y="995" font-family="sans-serif" font-size="24" fill="#303a36">add to Service</text>
+  <text x="435" y="1030" font-family="sans-serif" font-size="24" fill="#303a36">endpoints</text>
+
+  
+  <rect x="65" y="1065" width="670" height="85" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="80" y="1098" font-family="sans-serif" font-size="24" fill="#303a36">Note: Never check hard external dependencies</text>
+  <text x="80" y="1132" font-family="sans-serif" font-size="24" fill="#303a36">(e.g. database) that would cascade failure</text>
+
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="840" y="665" width="720" height="505" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  </g>
+
+  
+  <rect x="865" y="685" width="160" height="42" rx="8" fill="#207448" />
+  <text x="945" y="715" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Branch B</text>
+
+  
+  <text x="1045" y="718" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">livenessProbe</text>
+  <text x="865" y="756" font-family="monospace" font-size="24" fill="#303a36">/healthz, period 10s, timeout 3s</text>
+
+  
+  <rect x="865" y="775" width="670" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(880, 785)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="25" cy="25" r="22" />
+    <path d="M 12 25 L 19 25 L 23 15 L 28 35 L 32 22 L 35 25 L 39 25" />
+  </g>
+  <text x="935" y="818" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Check: is container process internally</text>
+  <text x="935" y="845" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">deadlocked/hung?</text>
+
+  
+  <path d="M 1200 845 L 1200 905" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+  <rect x="990" y="860" width="420" height="34" rx="6" fill="#f5f8f5" />
+  <text x="1200" y="885" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">If fails consecutive failureThreshold times:</text>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="865" y="915" width="670" height="135" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  </g>
+  
+  <g transform="translate(895, 955)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 35 12 A 20 20 0 1 0 45 28" />
+    <polyline points="35,6 35,16 45,16" />
+    <line x1="25" y1="20" x2="25" y2="28" stroke-width="3" />
+    <circle cx="25" cy="35" r="1.5" fill="#db8129" />
+  </g>
+  <text x="965" y="970" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">kill container and</text>
+  <text x="965" y="1010" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">restart per restartPolicy</text>
+
+</svg>

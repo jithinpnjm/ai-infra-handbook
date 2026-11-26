@@ -46,6 +46,10 @@ Treat this list as a checklist, not a contract. If an item is still unclear afte
 
 ## 1. Paths: how you name a file
 
+![Diagram illustrating absolute path resolution starting at root slash and relative path navigation from current working directory usr lib using dot and dot-dot.](./img/p4-0103-paths-traversal.svg)
+
+*Figure 1.3.1. Absolute paths always resolve from root slash, while relative paths depend on the process current working directory with dot representing current and dot-dot representing parent directory.*
+
 Your script works in your terminal, then fails when cron runs it from somewhere else. The reason is almost always the path.
 
 Every file or directory on Linux is reached through a **path**: a string of names separated by `/`. There is one tree with a single top, the **root directory**, written `/`. Unlike some other operating systems, there are no drive letters. Additional disks and network filesystems are *attached into the same tree* at chosen directories called mount points. Chapter 1.12 covers mount points in detail.
@@ -54,7 +58,7 @@ An **absolute path** starts with `/` and means the same thing everywhere, such a
 
 ![Absolute paths mean the same thing everywhere, while a relative path depends on the working directory, with . and .. shortcuts.](./img/ch03-fig4-paths.jpg)
 
-*Figure 1.3.1. An absolute path starts at the root; a relative path is read from the current working directory.*
+*Figure 1.3.2. An absolute path starts at the root; a relative path is read from the current working directory.*
 
 Relative paths are convenient at a prompt. They are also a classic source of script bugs, because the working directory is whatever the caller happened to be in. Cron jobs, systemd services, Slurm jobs and containers each start in a different directory. Automation should therefore use absolute paths, or `cd` explicitly first.
 
@@ -72,7 +76,7 @@ Before you put a script into cron or Slurm, switch every path in it to an absolu
 
 ![The root directory with its standard subdirectories and what each one holds.](./img/l03-fhs-tree.svg)
 
-*Figure 1.3.2. The Filesystem Hierarchy Standard tells you where each kind of file lives on every Linux machine.*
+*Figure 1.3.3. The Filesystem Hierarchy Standard tells you where each kind of file lives on every Linux machine.*
 
 You log into an unfamiliar GPU node and someone asks where the Slurm configuration lives. You could search the whole disk and hope. You could also learn the layout once and know the answer on every machine you ever touch. That is what the standard behind this section gives you.
 
@@ -168,7 +172,7 @@ Make `file` your first step with any unknown file.
 
 ![One ls -l line with each column labelled.](./img/l03-ls-columns.svg)
 
-*Figure 1.3.3. Each column of a long listing answers one question about the file.*
+*Figure 1.3.4. Each column of a long listing answers one question about the file.*
 
 A long listing packs a lot into each line, so it helps to know what each column answers. Think of each line as a short sentence about one file. Here is a home directory from a typical Linux system, with the `total` line at the top.
 
@@ -195,7 +199,7 @@ Use `ls -F` when you want a quick hint about each name's type. It appends a mark
 
 ![A chain of three directory tables resolving the path home, alice and train.py to inode numbers, ending at the file inode and its data blocks.](./img/p3-0103-path-walk.svg)
 
-*Figure 1.3.4. The kernel resolves a path one component at a time, each lookup returning an inode number, and only the last inode leads to the file data.*
+*Figure 1.3.5. The kernel resolves a path one component at a time, each lookup returning an inode number, and only the last inode leads to the file data.*
 
 Here are two puzzles you will meet in your first month. You rename a file that is huge, and the command returns at once. You delete a file that a program still has open, and the disk can stay full. Both behaviours come from the inode.
 
@@ -211,7 +215,7 @@ A **directory** is a special file that holds a simple table. Each entry maps a n
 
 ![A directory entry maps a name to an inode, and the inode holds the metadata and data block pointers.](./img/ch03-fig1-inode.jpg)
 
-*Figure 1.3.5. The name lives in the directory; everything else about the file lives in the inode.*
+*Figure 1.3.6. The name lives in the directory; everything else about the file lives in the inode.*
 
 You can look at the inode yourself with these commands. The `ls -li` output shows the inode number in its first column.
 
@@ -258,6 +262,10 @@ Hard links are widely used for space-efficient deduplication, with tools such as
 
 ### Symbolic (soft) links
 
+![Side by side comparison showing a hard link sharing an inode record and a symbolic link containing a target path string with dangling behavior on deletion.](./img/p4-0103-hard-vs-symlink.svg)
+
+*Figure 1.3.7. Hard links create multiple directory entries for a single inode that survive deletion of other names, whereas symbolic links store path strings that become dangling if the target is moved or deleted.*
+
 A **symbolic link**, or symlink, is a tiny file of type `l`. Its content is a path, and the system resolves that path each time you use the link. Think of it as a signpost rather than a copy: the sign is cheap, and it is only useful while the place it names still exists. It can point anywhere: to another directory, to another filesystem, or even to a path that does not exist.
 
 ```bash
@@ -291,9 +299,13 @@ Notice the row for a deleted original, because it decides most real incidents. A
 
 ![A hard link is a second name for one inode, and a symbolic link is a small file that names a path.](./img/ch03-fig2-links.jpg)
 
-*Figure 1.3.6. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
+*Figure 1.3.8. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
 
 ### The atomic "latest" pattern
+
+![Two-step sequence diagram illustrating creation of latest.tmp pointing to new checkpoint step followed by atomic rename over latest to prevent reader race conditions.](./img/p4-0103-atomic-symlink-swap.svg)
+
+*Figure 1.3.9. Creating latest.tmp before executing an atomic rename over latest ensures continuous resolution for reader processes with zero downtime window.*
 
 A common AI-infrastructure pattern keeps a `latest` symlink that points at the newest checkpoint. Readers can switch to a new checkpoint without ever seeing a half-written state. The trick is that renaming a symlink over another one is atomic on a filesystem. Atomic here means all or nothing: a reader sees the old link or the new one, never a moment in between.
 
@@ -306,7 +318,7 @@ The `-f` flag replaces an existing link. `-n` treats an existing directory symli
 
 ![A temporary symlink is created, then renamed over latest in one atomic step.](./img/ch03-fig3-atomic-latest.jpg)
 
-*Figure 1.3.7. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
+*Figure 1.3.10. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
 
 Before you point a `latest` link at a new checkpoint, use this two-step swap so readers never find it missing.
 
@@ -314,7 +326,7 @@ Before you point a `latest` link at a new checkpoint, use this two-step swap so 
 
 ![A matrix of five file actions against the three timestamps mtime, ctime and atime, showing which ones change for each action.](./img/p3-0103-timestamps-matrix.svg)
 
-*Figure 1.3.8. Writing changes mtime and ctime, changing permissions changes only ctime, and reading changes atime only occasionally because of relatime.*
+*Figure 1.3.11. Writing changes mtime and ctime, changing permissions changes only ctime, and reading changes atime only occasionally because of relatime.*
 
 You ask what changed recently, and Linux gives you three different answers depending on which time you read. That is not a trick. Every inode records three times, and `stat` shows all of them.
 
@@ -374,6 +386,10 @@ Think of the difference as a library catalogue versus walking the shelves. The c
 Before you search the whole disk, check whether a `find` with a simple `-name` test answers your question.
 
 ## 8. Archiving and compression
+
+![Flow diagram of two-stage tar archiving and compression pipeline with a comparison matrix of gzip, bzip2, xz, and zstd compressors.](./img/p4-0103-tar-compression-pipeline.svg)
+
+*Figure 1.3.12. Archiving bundles files and metadata into a stream while compression shrinks the bytes, with zstd and pigz providing modern speed and ratio trade-offs for AI workloads.*
 
 You need to move a whole directory tree as one object, with its permissions and timestamps intact. A directory full of loose files is painful to copy, count and verify. What you need is an **archive**.
 
@@ -453,7 +469,7 @@ Most filesystem failures look like something other than a filesystem problem. Th
 
 ![A troubleshooting ladder for a disk that looks full, branching to out of inodes, a deleted but open file, or a quota or container layer limit.](./img/p3-0103-disk-full-ladder.svg)
 
-*Figure 1.3.9. Run df -h and df -i first, then compare du with df to find deleted-but-open files, then check quotas.*
+*Figure 1.3.13. Run df -h and df -i first, then compare du with df to find deleted-but-open files, then check quotas.*
 
 **Symptom:** writes fail with ENOSPC, yet `df -h` shows free space. You may be sure the disk has room, and that is the trap. **Cause:** the filesystem ran out of **inodes**, not bytes. That is typically millions of tiny files. Or a per-user or project quota has been reached, or a container's writable layer is full. **Diagnose:** run `df -h` **and** `df -i` on the path. Then run `find /dir -xdev -type f | wc -l`, and `quota -s` where quotas are used. **Fix:** delete or pack the small files. Or recreate the filesystem with more inodes, using `mkfs.ext4 -N`, or choose a different filesystem such as XFS, which allocates inodes dynamically. You can also move the data. **Prevention:** shard your datasets.
 
@@ -469,7 +485,7 @@ Most filesystem failures look like something other than a filesystem problem. Th
 
 ![A deleted file that a process still holds open keeps using disk space that du cannot see.](./img/l03-deleted-open.svg)
 
-*Figure 1.3.10. df counts the space while a process holds the file open, but du no longer finds the name.*
+*Figure 1.3.14. df counts the space while a process holds the file open, but du no longer finds the name.*
 
 **Symptom:** `df` shows 95% used, but `du -sh /*` totals much less. **Cause:** a large log or temporary file was deleted while a process still had it open. The data is kept until that process closes the file or exits. The name is gone, but the space is not. **Diagnose:** run `sudo lsof +L1`, which lists open files with a link count below 1. Or run `ls -l /proc/<pid>/fd | grep deleted`. **Fix:** restart the process, or signal it to reopen its log. `logrotate` with `copytruncate` or `postrotate` handles this properly. You can also truncate the file through its descriptor with `: > /proc/<pid>/fd/<n>`.
 

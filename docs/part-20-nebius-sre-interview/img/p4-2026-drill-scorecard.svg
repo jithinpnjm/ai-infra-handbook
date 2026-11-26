@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>Drill Runner Architecture and 100-Point Scorecard</title>
+  <desc>Architecture diagram of the drill runner session event loop feeding the 100-point scorecard evaluation pipeline with seven evaluators, hint penalties, and grading thresholds.</desc>
+
+  <defs>
+    <marker id="green-arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1380" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Drill Runner Architecture and 100-Point Scorecard</text>
+
+  
+  <rect x="50" y="105" width="1500" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="85" y="150" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Session Event Loop</text>
+
+  
+  <rect x="85" y="175" width="620" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(110, 195)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="46" height="36" rx="4" />
+    <line x1="0" y1="12" x2="46" y2="12" />
+    <circle cx="8" cy="6" r="2" fill="#207448" />
+    <circle cx="15" cy="6" r="2" fill="#207448" />
+    <path d="M 8 20 L 15 25 L 8 30" />
+    <line x1="18" y1="30" x2="26" y2="30" />
+  </g>
+  <text x="175" y="222" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">User Input</text>
+
+  
+  <text x="110" y="275" font-family="monospace" font-size="24" fill="#303a36">/sev, /roles, /hyp, /do,</text>
+  <text x="110" y="310" font-family="monospace" font-size="24" fill="#303a36">/status, /cause, /hint, /done</text>
+
+  
+  <text x="110" y="365" font-family="monospace" font-size="24" fill="#303a36">&apos;Can I see the golden-signals dashboard?&apos;</text>
+
+  
+  <line x1="705" y1="287" x2="895" y2="287" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+
+  
+  <rect x="715" y="235" width="165" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="797" y="263" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">session.log(kind, text)</text>
+
+  
+  <rect x="910" y="175" width="605" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(935, 192)" stroke="#207448" stroke-width="3" fill="none">
+    <ellipse cx="22" cy="10" rx="20" ry="7" />
+    <path d="M 2 10 v 12 c 0 4 9 7 20 7 s 20 -3 20 -7 v -12" />
+    <path d="M 2 22 v 12 c 0 4 9 7 20 7 s 20 -3 20 -7 v -12" />
+  </g>
+  <text x="995" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Session State</text>
+
+  <text x="940" y="270" font-family="sans-serif" font-size="24" fill="#303a36">• tracking monotonic elapsed time</text>
+  <text x="940" y="306" font-family="sans-serif" font-size="24" fill="#303a36">• 30-minute countdown</text>
+  <text x="940" y="342" font-family="sans-serif" font-size="24" fill="#303a36">• revealed question keys</text>
+  <text x="940" y="378" font-family="sans-serif" font-size="24" fill="#303a36">• hint counter</text>
+
+  
+  <rect x="50" y="455" width="1500" height="895" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="85" y="500" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">100-Point Scorecard Evaluation Pipeline</text>
+  
+  <text x="85" y="538" font-family="sans-serif" font-size="24" fill="#303a36">Event stream splits into seven parallel scoring evaluators matching the chapter code:</text>
+
+  
+  
+  <rect x="85" y="560" width="455" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="105" y="596" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">1. &apos;Take Control (15 pts)&apos;:</text>
+  <text x="105" y="630" font-family="sans-serif" font-size="24" fill="#303a36">sev declared &lt;= 120s (5)</text>
+  <text x="105" y="662" font-family="sans-serif" font-size="24" fill="#303a36">roles declared &lt;= 120s (5)</text>
+  <text x="105" y="694" font-family="sans-serif" font-size="24" fill="#303a36">impact/dashboard asked</text>
+  <text x="105" y="724" font-family="sans-serif" font-size="24" fill="#303a36">before first action (5)</text>
+
+  
+  <rect x="85" y="755" width="455" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="105" y="793" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">2. &apos;Evidence Gathered (25 pts)&apos;:</text>
+  <text x="105" y="834" font-family="sans-serif" font-size="24" fill="#303a36">proportion of must_ask</text>
+  <text x="105" y="866" font-family="sans-serif" font-size="24" fill="#303a36">keys revealed</text>
+
+  
+  <rect x="85" y="905" width="455" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="105" y="943" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">3. &apos;Hypotheses (15 pts)&apos;:</text>
+  <text x="105" y="980" font-family="sans-serif" font-size="24" fill="#303a36">&gt;=2 hypotheses (5)</text>
+  <text x="105" y="1014" font-family="sans-serif" font-size="24" fill="#303a36">first is cheap/likely (5)</text>
+  <text x="105" y="1048" font-family="sans-serif" font-size="24" fill="#303a36">names root cause (5)</text>
+
+  
+  <rect x="85" y="1095" width="455" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="105" y="1133" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">4. &apos;Mitigation (20 pts)&apos;:</text>
+  <text x="105" y="1173" font-family="sans-serif" font-size="24" fill="#303a36">points awarded for required</text>
+  <text x="105" y="1207" font-family="sans-serif" font-size="24" fill="#303a36">mitigation actions (up to 20)</text>
+
+  
+  
+  <rect x="560" y="560" width="455" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="580" y="598" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">5. &apos;Order (5 pts)&apos;:</text>
+  <text x="580" y="638" font-family="sans-serif" font-size="24" fill="#303a36">mitigation /do strictly</text>
+  <text x="580" y="670" font-family="sans-serif" font-size="24" fill="#303a36">before root cause /cause</text>
+
+  
+  <rect x="560" y="720" width="455" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="580" y="758" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">6. &apos;Status Cadence (10 pts)&apos;:</text>
+  <text x="580" y="802" font-family="sans-serif" font-size="24" fill="#303a36">1 update per 10 minutes</text>
+  <text x="580" y="834" font-family="sans-serif" font-size="24" fill="#303a36">elapsed</text>
+
+  
+  <rect x="560" y="870" width="455" height="210" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="580" y="908" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">7. &apos;Safety (10 pts)&apos;:</text>
+  <text x="580" y="948" font-family="sans-serif" font-size="24" fill="#303a36">starts at 10, -5 per</text>
+  <text x="580" y="980" font-family="sans-serif" font-size="24" fill="#303a36">destructive trap</text>
+  <text x="580" y="1014" font-family="sans-serif" font-size="24" fill="#303a36">(e.g. restart all pods,</text>
+  <text x="580" y="1046" font-family="sans-serif" font-size="24" fill="#303a36">defrag live etcd)</text>
+
+  
+  
+  <rect x="1035" y="560" width="480" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1055, 580)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="20" cy="20" r="18" />
+    <line x1="12" y1="20" x2="28" y2="20" />
+  </g>
+  <text x="1110" y="608" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Hint Penalty</text>
+  <text x="1060" y="668" font-family="sans-serif" font-size="26" fill="#303a36">(-2 pts per hint)</text>
+
+  
+  <rect x="1035" y="730" width="480" height="350" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1055, 750)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 5 8 L 35 8 L 30 28 A 12 12 0 0 1 10 28 Z" />
+    <path d="M 20 28 L 20 36" />
+    <line x1="12" y1="36" x2="28" y2="36" />
+  </g>
+  <text x="1110" y="780" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Final Grade Thresholds:</text>
+
+  
+  <rect x="1060" y="815" width="430" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1080" y="854" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">&gt;=85 &apos;strong&apos;</text>
+
+  
+  <rect x="1060" y="895" width="430" height="60" rx="8" fill="#db8129" stroke="#db8129" stroke-width="2" />
+  <text x="1080" y="934" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">&gt;=70 &apos;pass&apos;</text>
+
+  
+  <rect x="1060" y="975" width="430" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1080" y="1014" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">&lt;70 &apos;repeat this drill&apos;</text>
+
+</svg>

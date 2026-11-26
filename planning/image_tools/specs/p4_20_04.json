@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-2004-proc-fd-triage",
+  "title": "Triage Pipeline for Leaked File Descriptors via /proc and lsof",
+  "anchor": "### 3. Read /proc and lsof before you attach a tracer",
+  "spec": "Flow diagram of descriptor triage on PID $pid. Step 1: inspect limits via grep 'Max open files' /proc/$pid/limits yielding soft limit (e.g. 1024) and hard limit (1048576). Step 2: count current descriptors with ls /proc/$pid/fd | wc -l. Step 3: aggregation pipeline ls -l /proc/$pid/fd | awk 'NR > 1 {print $NF}' | sort | uniq -c | sort -rn | head. Step 4 splits into four diagnostic target boxes: Box A (Regular file path repeated hundreds of times, e.g. /var/log/app.log) pointing to 'Bug: Missing close() call in file handler'. Box B (socket:[2248868] repeating) pointing to 'Bug: Leaked TCP connections, missing socket close'. Box C (Target ending in ' (deleted)', e.g. /tmp/app.log (deleted)) pointing to 'Bug: Unlinked log held open, blocks not freed'. Box D (anon_inode:[eventpoll] repeating) pointing to 'Bug: Leaked epoll instances'. Side panel shows lsof columns comparison (COMMAND, PID, USER, FD, TYPE, DEVICE, SIZE/OFF, NODE, NAME) highlighting +L1 for unlinked files.",
+  "alt": "Diagnostic pipeline grouping /proc/PID/fd symlink targets into regular file leaks, socket leaks, unlinked open files, and epoll instances.",
+  "cap": "Inspecting and grouping /proc/PID/fd targets identifies whether a file descriptor leak stems from unclosed files, leaked sockets, or unlinked logs before attaching any tracer.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04"
+ },
+ {
+  "name": "p4-2004-noexec-bypass-mech",
+  "title": "Kernel noexec Mount Enforcement versus Interpreter Execution",
+  "anchor": "### Scenario 4: mode 755 and still Permission denied",
+  "spec": "Split diagram showing how a noexec mount affects direct binary execution versus interpreter execution. Context header shows mount at /mnt/data with flags 'rw,noexec,relatime' containing script run.sh with permissions 0755 (-rwxr-xr-x) owned by user u. Left panel: Direct execution './run.sh'. Step 1: Shell invokes execve('./run.sh', ...). Step 2: Linux VFS examines mount flags for /mnt/data and encounters MS_NOEXEC. Step 3: Kernel immediately halts execution and returns -1 EACCES. Step 4: Shell outputs 'Permission denied' with exit status 126; inode execute bits are never evaluated. Right panel: Interpreter execution 'sh run.sh'. Step 1: Shell invokes execve('/bin/sh', ['sh', 'run.sh']). Step 2: /bin/sh binary is on rootfs mounted with exec; execve succeeds. Step 3: Running sh process issues openat(AT_FDCWD, 'run.sh', O_RDONLY). Step 4: VFS checks read permission on run.sh; read is allowed by both mount flags ('rw') and inode mode ('r-x'). Step 5: Shell reads script text as data into memory and runs commands; prints 'it ran'. Bottom annotation notes remount fix: 'mount -o remount,bind,exec /mnt/data'.",
+  "alt": "Diagram contrasting direct execution failing on a noexec mount via execve with interpreter execution succeeding via openat read.",
+  "cap": "A noexec mount causes the kernel to fail execve with EACCES before inspecting file mode bits, whereas executing an interpreter reads the script file as plain data.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04"
+ }
+]

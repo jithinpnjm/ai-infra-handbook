@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>Workload identity enforcement: Calico Dikastes sidecar versus Cilium kernel eBPF</title>
+  <desc>Side-by-side architectural comparison diagram showing Calico Dikastes sidecar model versus Cilium kernel eBPF datapath model.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1380" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Workload identity enforcement:</text>
+  <text x="800" y="105" text-anchor="middle" font-family="sans-serif" font-size="40" font-weight="bold" fill="#207448">Calico Dikastes sidecar versus Cilium kernel eBPF</text>
+
+  
+  <rect x="40" y="130" width="740" height="1210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(65, 150)">
+    <rect x="0" y="0" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 12 24 L 36 24 M 24 12 L 24 36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="130" y="184" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Calico + Dikastes Sidecar Model</text>
+
+  
+  <rect x="65" y="220" width="690" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="95" cy="270" r="18" fill="#207448" />
+  <text x="95" y="277" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">1</text>
+  <text x="130" y="258" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="130" dy="0">Incoming packet with Istio mTLS client</tspan>
+    <tspan x="130" dy="30">certificate arrives at Envoy</tspan>
+  </text>
+
+  
+  <rect x="65" y="340" width="690" height="690" rx="16" fill="#fdfefd" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
+  <text x="90" y="380" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Pod</text>
+
+  
+  <rect x="90" y="405" width="640" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="110" y="425" width="44" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="110" y1="438" x2="154" y2="438" stroke="#207448" stroke-width="3" />
+  <circle cx="120" cy="432" r="2" fill="#207448" />
+  <circle cx="128" cy="432" r="2" fill="#207448" />
+  <text x="175" y="462" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Application Container (app: summary)</text>
+
+  
+  <rect x="90" y="525" width="640" height="235" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="110" y="545" width="44" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 122 545 A 10 10 0 0 1 142 545" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="175" y="575" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Envoy Sidecar Container</text>
+  
+  <rect x="110" y="600" width="600" height="140" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <circle cx="135" cy="635" r="16" fill="#207448" />
+  <text x="135" y="642" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffffff">2</text>
+  <text x="165" y="632" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">Envoy verifies certificate against Istio CA,</tspan>
+    <tspan x="165" dy="32">then issues gRPC CheckRequest over local</tspan>
+    <tspan x="165" dy="32">Unix Domain Socket</tspan>
+    <tspan font-family="monospace" font-size="24"> (/var/run/dikastes/dikastes.sock)</tspan>
+    <tspan font-family="sans-serif" font-size="24"> to Dikastes.</tspan>
+  </text>
+
+  
+  <line x1="410" y1="760" x2="410" y2="780" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="90" y="785" width="640" height="225" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 132 805 L 152 813 L 152 833 C 152 845 132 853 132 853 C 132 853 112 845 112 833 L 112 813 Z" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="175" y="835" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Dikastes Sidecar Container</text>
+  
+  <rect x="110" y="865" width="600" height="125" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <circle cx="135" cy="900" r="16" fill="#207448" />
+  <text x="135" y="907" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffffff">3</text>
+  <text x="165" y="897" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">Dikastes evaluates GlobalNetworkPolicy</tspan>
+    <tspan x="165" dy="32">and returns Allow/Deny to Envoy.</tspan>
+  </text>
+
+  
+  <rect x="65" y="1055" width="690" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="1100" r="18" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 105 1076 L 105 1124 M 81 1100 L 129 1100 M 88 1083 L 122 1117 M 88 1117 L 122 1083" stroke="#207448" stroke-width="3" />
+  <text x="145" y="1108" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Host Control Plane</text>
+  <text x="90" y="1160" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="90" dy="0">Felix agent on host resolves Kubernetes</tspan>
+    <tspan x="90" dy="34">ServiceAccount 'customer' to Pod IPs</tspan>
+    <tspan x="90" dy="34">and programs Dikastes;</tspan>
+  </text>
+  <line x1="410" y1="1055" x2="410" y2="1015" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-green)" />
+
+
+  
+  <rect x="820" y="130" width="740" height="1210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(845, 150)">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <polygon points="20,12 34,24 20,36" fill="#207448" />
+  </g>
+  <text x="910" y="184" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cilium Datapath eBPF Model</text>
+
+  
+  <rect x="845" y="220" width="690" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="870" y="240" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="880" y1="234" x2="880" y2="240" stroke="#207448" stroke-width="3" />
+  <line x1="900" y1="234" x2="900" y2="240" stroke="#207448" stroke-width="3" />
+  <line x1="880" y1="280" x2="880" y2="286" stroke="#207448" stroke-width="3" />
+  <line x1="900" y1="280" x2="900" y2="286" stroke="#207448" stroke-width="3" />
+  <text x="930" y="268" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Cilium Control Plane</text>
+  <text x="870" y="318" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="870" dy="0">Cilium control plane assigns numeric</tspan>
+    <tspan x="870" dy="34">Security Identity (e.g. Identity 1597 for 'luke',</tspan>
+    <tspan x="870" dy="34">57962 for divergent pod).</tspan>
+  </text>
+
+  
+  <rect x="845" y="420" width="690" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="875" cy="480" r="18" fill="#207448" />
+  <text x="875" y="487" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">1</text>
+  <text x="910" y="468" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="910" dy="0">Inbound packet carries Security Identity</tspan>
+    <tspan x="910" dy="32">1597 in encapsulation/metadata.</tspan>
+  </text>
+
+  
+  <rect x="845" y="565" width="690" height="465" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <path d="M 870 595 L 905 595 L 905 625 L 880 625 L 880 610" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="925" y="612" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Kernel Datapath (tc BPF hook)</text>
+  
+  <rect x="865" y="640" width="650" height="370" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <circle cx="895" cy="680" r="18" fill="#db8129" />
+  <text x="895" y="687" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">2</text>
+  
+  <text x="930" y="675" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="930" dy="0">At the kernel tc BPF hook on the veth pair,</tspan>
+    <tspan x="930" dy="36">BPF program performs O(1) lookup in BPF map</tspan>
+    <tspan x="930" dy="36" font-family="monospace">cilium_policy_&lt;ep_id&gt;</tspan>
+    <tspan font-family="sans-serif"> keyed by numeric</tspan>
+    <tspan x="930" dy="36">source identity, destination port, and protocol,</tspan>
+    <tspan x="930" dy="36">enforcing decision in kernel space without sidecar</tspan>
+    <tspan x="930" dy="36">containers or Unix domain socket hops.</tspan>
+  </text>
+
+  
+  <line x1="1190" y1="1030" x2="1190" y2="1055" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="845" y="1055" width="690" height="260" rx="16" fill="#fdfefd" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
+  <text x="870" y="1100" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Application Pod</text>
+  
+  
+  <rect x="870" y="1125" width="640" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="895" y="1160" width="44" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="895" y1="1173" x2="939" y2="1173" stroke="#207448" stroke-width="3" />
+  <circle cx="905" cy="1167" r="2" fill="#207448" />
+  <circle cx="913" cy="1167" r="2" fill="#207448" />
+
+  <text x="960" y="1185" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="960" dy="0">Application Pod runs with</tspan>
+    <tspan x="960" dy="36">ServiceAccount 'leia'.</tspan>
+  </text>
+
+</svg>

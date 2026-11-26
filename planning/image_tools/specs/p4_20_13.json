@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2013-retry-cascade",
+  "title": "Worked Retry Storm Cascade Arithmetic and Defense Architecture",
+  "anchor": "### Scenario 3: the retry storm",
+  "spec": "Two-panel layout contrasting failure cascade arithmetic with the four-part defense architecture. Left panel titled 'Uncontrolled Retry Storm Cascade': show 10 total replicas serving 100% capacity; 2 replicas fail leaving 8 replicas (80% remaining capacity); 5% initial error rate triggers 3 unbudgeted client retries per failed request (5% * 3 = 15% added load); total offered load becomes 100% + 15% = 115%; effective load on 8 surviving replicas is 115% / 80% = 144% load saturation; downward arrow showing queue buildup, timeouts, further retries, and total collapse. Right panel titled 'The Four-Part Defense Architecture': box 1 'Pre-first-token only' (only requests failing before first token are eligible for retry; partial streams abort to avoid nondeterministic replays); box 2 '10% Retry Budget Cap' (gateway rejects retries exceeding 10% of total normal traffic); box 3 'Jittered Exponential Backoff' (retries disperse smoothly instead of synchronized waves); box 4 'Single-layer Retries with 429 Shedding' (retries execute only at gateway, never stacked with SDK; router sheds full queues immediately with HTTP 429 and Retry-After header).",
+  "alt": "Comparison of retry storm load escalation arithmetic against the four-point defense architecture of retry budgets, jitter, pre-token guards, and 429 shedding.",
+  "cap": "Losing two replicas while retrying three times amplifies load to 144 percent of capacity, which is prevented by a 10 percent retry budget, pre-token retries, and 429 shedding.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13"
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0516-kms-envelope",
+  "title": "KMS v2 Envelope Encryption in kube-apiserver",
+  "anchor": "## 2. Secrets",
+  "spec": "Flow diagram showing write and read paths through kube-apiserver envelope encryption. Left box: 'API Client' submits Secret YAML with plaintext base64 payload. Center box: 'kube-apiserver' containing: (1) 'DEK Generator' producing an ephemeral Data Encryption Key, (2) 'Local Cipher' encrypting the Secret data with DEK, (3) 'gRPC KMS Client' communicating over a Unix domain socket with an external KMS plugin. Right box: 'External KMS Provider' (Cloud KMS / Vault Transit) holding Key Encryption Key (KEK). Step 1: Client sends POST/PUT Secret. Step 2: API server generates fresh DEK. Step 3: API server sends DEK to KMS plugin over gRPC. Step 4: KMS encrypts DEK with KEK and returns ciphertext DEK. Step 5: API server encrypts Secret payload with plaintext DEK, then discards plaintext DEK from memory. Step 6: API server writes combined record to etcd with prefix 'k8s:enc:kms:v2:<provider-name>:' containing encrypted DEK and ciphertext Secret payload. Bottom box: 'etcd storage' showing key '/registry/secrets/ns/name' storing only ciphertext.",
+  "alt": "A diagram shows kube-apiserver using an external KMS provider to encrypt a data encryption key and storing the resulting ciphertext payload in etcd.",
+  "cap": "KMS v2 envelope encryption uses an external Key Encryption Key to wrap a local Data Encryption Key, ensuring etcd stores only ciphertext.",
+  "part": "part-05-kubernetes",
+  "ch": "16"
+ },
+ {
+  "name": "p4-0516-secrets-store-csi",
+  "title": "Secrets Store CSI Driver Architecture and Lifecycle",
+  "anchor": "### Secrets Store CSI driver and CyberArk",
+  "spec": "Component interaction diagram spanning three zones: Cluster/Pod, Node Host, and External Secret Store. In Cluster/Pod zone: A Pod spec references volume 'secrets-api' with driver 'secrets-store.csi.k8s.com' and volumeAttributes 'secretProviderClass: apitoken'. In Node Host zone: 'Kubelet Volume Manager' triggers mount; talks over local gRPC socket to 'secrets-store-csi-driver DaemonSet Pod'; CSI driver invokes host provider binary '/etc/kubernetes/secrets-store-csi-providers/vault/provider-vault'. In External Secret Store zone: 'HashiCorp Vault / Cloud Secret Manager' receives authenticated request from provider using the Pod ServiceAccount token. Arrows: (1) Kubelet calls CSI driver on container start. (2) CSI driver executes provider-vault with parameters from SecretProviderClass. (3) Provider fetches secret '/secret/team-a' key 'apitoken' from Vault. (4) Provider writes payload to tmpfs mount at '/var/lib/kubelet/pods/<uid>/volumes/kubernetes.io~csi/secrets-store-inline/mount'. (5) Container consumes mounted file at '/etc/secrets/apitoken'. Callout box explicitly highlights: 'Zero persistence in etcd: native Kubernetes Secret is never created'.",
+  "alt": "A diagram illustrates the Secrets Store CSI driver fetching secrets directly from an external store into a node tmpfs mount without storing them in etcd.",
+  "cap": "The Secrets Store CSI Driver mounts external secrets directly into pod tmpfs via a node provider plugin, completely bypassing etcd storage.",
+  "part": "part-05-kubernetes",
+  "ch": "16"
+ },
+ {
+  "name": "p4-0516-workload-identity",
+  "title": "Keyless Workload Identity Federation Flow",
+  "anchor": "### ServiceAccounts",
+  "spec": "Sequence flow across four vertical swimlanes: 'Training Pod', 'kube-apiserver (OIDC Issuer)', 'Cloud STS / IAM (AWS/GCP/Azure)', and 'Cloud Storage (S3/GCS Checkpoints Bucket)'. Step 1 (Pod -> kube-apiserver): Pod requests or mounts projected ServiceAccount token with audience 'sts.googleapis.com' or 'sts.amazonaws.com' via TokenRequest API. Step 2 (Pod -> Cloud STS): Pod presents short-lived PSAT JWT to Cloud STS endpoint requesting temporary cloud credentials. Step 3 (Cloud STS -> kube-apiserver): Cloud STS contacts cluster public OIDC discovery endpoint '/.well-known/openid-configuration' and fetches signing keys from 'jwks_uri' to cryptographically verify the JWT signature. Step 4 (Cloud STS -> Pod): Cloud STS evaluates IAM trust policy matching 'sub: system:serviceaccount:team-a:trainer' and returns short-lived federated Cloud IAM OAuth/STS token (e.g., valid for 1 hour). Step 5 (Pod -> Cloud Storage): Training job directly reads training datasets and writes model checkpoint blobs to bucket using the temporary IAM token. Bottom banner notes: 'Zero static cloud API keys or passwords stored in Kubernetes Secrets or Git'.",
+  "alt": "A sequence diagram shows a pod exchanging its projected ServiceAccount token with a cloud STS service via cluster OIDC keys to obtain short-lived cloud credentials.",
+  "cap": "Workload Identity Federation verifies Kubernetes projected tokens against the cluster OIDC endpoint to issue short-lived cloud credentials without static keys.",
+  "part": "part-05-kubernetes",
+  "ch": "16"
+ }
+]

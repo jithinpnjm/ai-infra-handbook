@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0518-volcano-architecture",
+  "title": "Volcano batch scheduling action pipeline and plugin interaction",
+  "anchor": "### Volcano",
+  "spec": "A three-tier horizontal architectural diagram. Top tier: Custom resources including vcjob / PodGroup with minMember: 4 and minResources: {nvidia.com/gpu: 32}, pointing to a Volcano Queue with configured weight, capability, and reclaimable settings. Middle tier: The Volcano Scheduler executing its five-stage cyclic action pipeline: 1. enqueue (admits queued jobs based on queue capability), 2. allocate (evaluates candidate nodes for gang allocation), 3. preempt (evicts lower-priority pods within the same queue), 4. reclaim (reclaims quota across queues according to dominant resource fairness weights), and 5. backfill (places small tasks onto idle GPU slots). Bottom tier: Plugin layer invoked during actions, showing gang (checks minMember threshold before assigning), drf (calculates dominant resource shares), binpack (maximizes node utilization), and task-topology / numa-aware (optimizes network hops and socket placement). Arrows show pods directly bound to target nodes via schedulerName: volcano.",
+  "alt": "Volcano batch scheduling pipeline showing enqueue, allocate, preempt, reclaim, and backfill actions coordinating with gang and fairness plugins.",
+  "cap": "Volcano replaces kube-scheduler for batch workloads, evaluating all-or-nothing PodGroup admission and cross-queue fairness in a multi-stage action loop.",
+  "part": "part-05-kubernetes",
+  "ch": "18"
+ },
+ {
+  "name": "p4-0518-placement-lifecycle",
+  "title": "Placement lifecycle: kube-scheduler, descheduler, and autoscaler coordination",
+  "anchor": "## 7. Descheduling, autoscaling and scheduler tuning",
+  "spec": "A closed-loop coordination diagram showing three independent controllers operating on cluster node capacity and pod lifecycle. 1. kube-scheduler: Reads pending pods from activeQ, evaluates feasible nodes via Filter and Score (configured with percentageOfNodesToScore: 50 and parallelism: 16), and packs pods using MostAllocated scoring; unschedulable pods remain Pending. 2. Cluster Autoscaler / Karpenter: Observes Pending pods, provisions new GPU nodes (or triggers atomic ProvisioningRequests), and cordons/terminates idle nodes after cool-down. 3. Descheduler: Periodically scans running workloads, applying strategies like LowNodeUtilization to consolidate fragmented GPU nodes and RemovePodsViolatingTopologySpreadConstraint; respects PodDisruptionBudgets (PDB) while strictly ignoring training pods marked with descheduler.alpha.kubernetes.io/evict: 'false'. Evicted pods re-enter the scheduling queue for defragmented placement.",
+  "alt": "Three control loops coordinate placement: kube-scheduler places pods, the descheduler periodically evicts drifted pods to consolidate nodes, and the autoscaler provisions or removes nodes.",
+  "cap": "Maintaining optimal GPU cluster placement requires coordinating kube-scheduler placement, descheduler defragmentation, and autoscaler provisioning without interrupting running training jobs.",
+  "part": "part-05-kubernetes",
+  "ch": "18"
+ }
+]

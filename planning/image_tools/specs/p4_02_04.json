@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0204-rail-addressing",
+  "title": "Rail-Optimised Back-End Topology and Deterministic IP Scheme",
+  "anchor": "### Rail-optimised and L3-to-the-host numbering",
+  "spec": "Diagram layout comparing two GPU server nodes connected to 8 independent rail leaf switches. Top row: 8 separate leaf switch boxes labelled 'Rail 0 Leaf (10.100.0.0/21)', 'Rail 1 Leaf (10.100.1.0/21)', through 'Rail 7 Leaf (10.100.7.0/21)'. Bottom row: two large server boxes labelled 'Server Node 1 (Node 1)' and 'Server Node 2 (Node 2)'. Inside Server Node 1, show 8 back-end NIC ports (NIC 0 to NIC 7) paired to GPU 0 through GPU 7: NIC 0 has IP '10.100.0.1', NIC 1 has IP '10.100.1.1', up to NIC 7 with IP '10.100.7.1'. Inside Server Node 2, show 8 back-end NIC ports: NIC 0 has IP '10.100.0.2', NIC 1 has IP '10.100.1.2', up to NIC 7 with IP '10.100.7.2'. Vertical arrows link each NIC index directly to its corresponding Rail Leaf: Server 1 NIC 0 and Server 2 NIC 0 connect only to Rail 0 Leaf; Server 1 NIC 7 and Server 2 NIC 7 connect only to Rail 7 Leaf. A prominent callout box explains the deterministic addressing rule '10.100.[rail].[node]': alert address '10.100.5.42' immediately identifies Rail 5, GPU 5, Server Node 42 without an external IPAM lookup.",
+  "alt": "A rail-optimised fabric connects each server GPU NIC to a dedicated rail leaf switch using the deterministic addressing scheme 10.100.rail.node.",
+  "cap": "In a rail-optimised compute fabric, each GPU index connects to its dedicated rail leaf switch, and addresses following 10.100.rail.node immediately reveal the rail and machine.",
+  "part": "part-02-networking",
+  "ch": "04"
+ }
+]

@@ -1,0 +1,34 @@
+# docs/part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md
+- ## What the interviewer is testing | 310 | NO FIGURE NEEDED interview context and exam scope
+- ## The core ideas | 0 | NO FIGURE NEEDED section container
+- ### 1. A token API breaks the usual SLI recipe | 420 | COVERED(p3-2019-sli-menu, p2-2019-slo-chain)
+- ### 2. Latency is three numbers, and end-to-end depends on length | 440 | COVERED(p3-2019-length-latency)
+- ### 3. Why averages lie | 460 | COVERED(p3-2019-quantile-traps, x19-averages-hide-the-tail)
+- ### 4. Per model and per tenant, and what it costs | 410 | COVERED(p3-2019-tenant-dilution)
+- ### 5. Error budgets: do the arithmetic | 380 | COVERED(p2-2019-budget-minutes)
+- ### 6. Burn rate and the multiwindow alert | 580 | COVERED(p3-2019-time-to-fire, p3-2019-burn-formulas, x19-two-windows-clear-fast, m20-19-1)
+- ### 7. Symptoms, not causes, and what pages | 450 | COVERED(p2-2019-symptom-cause)
+- ### 8. Quality signals: the finish reason mix | 320 | COVERED(p3-2019-finish-reason-mix)
+- ### 9. Goodput: speed that counts | 310 | COVERED(p2-2019-goodput-split)
+- ### 10. Dedicated versus serverless endpoints | 340 | COVERED(p3-2019-429-counting)
+- ### 11. Measure at the gateway, explain at the engine | 390 | COVERED(p2-2019-cashier-kitchen, m20-19-2)
+- ### The rules and the calculator | 550 | NO FIGURE NEEDED concrete PromQL yaml listings and python implementation of formulas drawn above
+- ## How to answer out loud | 20 | NO FIGURE NEEDED interview script container
+- ### Question 1: "Which SLIs and SLOs for a streaming chat endpoint?" | 130 | NO FIGURE NEEDED spoken script format
+- ### Question 2: "Explain burn-rate alerts. Give the numbers." | 110 | NO FIGURE NEEDED spoken script format
+- ### Question 3: "Why not alert on GPU utilisation or average latency?" | 80 | NO FIGURE NEEDED spoken script format
+- ### Question 4: "Would the SLO differ for dedicated and serverless?" | 70 | NO FIGURE NEEDED spoken script format
+- ### Question 5: "Your pager is too noisy. What do you do?" | 90 | NO FIGURE NEEDED spoken script format
+- ## Worked scenarios | 10 | NO FIGURE NEEDED scenario section container
+- ### Scenario 1: A deploy takes a dedicated endpoint down | 220 | COVERED(x19-scenario1-rollout-timeline)
+- ### Scenario 2: The TTFT page fires | 180 | COVERED(p3-2019-ttft-page-ladder)
+- ### Scenario 3: The tenant ticket is noisy | 210 | NO FIGURE NEEDED short numerical narrative applying traffic guard already drawn in p3-2019-tenant-dilution
+- ### Scenario 4: Everything is green and users complain | 190 | COVERED(p3-2019-stream-good-event)
+- ## Hands-on lab | 340 | NO FIGURE NEEDED step-by-step CLI commands and test validation
+- ## Drill questions | 270 | NO FIGURE NEEDED checkpoint questions and answers
+- ## Common mistakes and weak answers | 180 | NO FIGURE NEEDED comparison table of weak vs strong interview responses
+- ## Connections to the rest of the handbook | 100 | NO FIGURE NEEDED cross-references
+- ## Sources and review notes | 480 | NO FIGURE NEEDED bibliographic citations and notes
+- ### Verification log (fact-check pass, 2026-11-09) | 160 | NO FIGURE NEEDED audit record
+
+Specs kept 0, dropped 0: []

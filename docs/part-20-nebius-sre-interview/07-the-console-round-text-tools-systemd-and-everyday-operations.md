@@ -237,6 +237,10 @@ Decide: when a log does not rotate, check whether the writer reopens the file be
 
 ### 8. Disk, mount, user and group chores
 
+![Anatomy of colon-separated passwd and group files alongside POSIX df table showing UID thresholds and multi-word mount point reconstruction.](./img/p4-2007-passwd-group-df.svg)
+
+*Figure 20.0.0. Parsing colon-delimited user databases and POSIX df tables relies on fixed field indices and loop reconstruction for spaced paths.*
+
 Someone asks "which filesystems are nearly full" or "who has sudo on this box." These are reading tasks, and they look easy until the output is messy. For disks, use `df -P`, because the POSIX format puts each filesystem on exactly one line and makes the columns predictable. Mount points can contain spaces, as the fixture shows with `/mnt/model cache`. So rebuild the mount point from the sixth field onward. Chapter 20.4 explains when `df` and `du` disagree, and chapter 20.5 covers disk latency.
 
 For users, `/etc/passwd` and `/etc/group` are colon-separated. The book shows the group file as name, password placeholder, group number and a comma-separated member list. In passwd the third field is the user ID and the seventh is the shell. A login user has an ID of 1000 or more on most distributions, and a shell that is not `nologin`. Any account other than root with user ID 0 deserves a hard look, because it is a second root. The 1000 threshold is a convention of common distributions, not a law. Say so when you use it.
@@ -266,6 +270,10 @@ The trailing slash on `rsync` looks like a small detail, and it changes what get
 Decide: in a script, always give `curl` the `-f` flag and a time limit, and use `rsync --dry-run` first. A script that gets an error page back and reports success is worse than a script that stops.
 
 ### 10. Bash that survives production
+
+![Three bash production pitfalls showing how unquoted pipes hide failures, local masks subshell exit codes, and arithmetic post-increment trips set -e.](./img/p4-2007-bash-pitfalls.svg)
+
+*Figure 20.0.0. Shell safety flags like set -e require defensive coding because pipes, local assignments, and arithmetic expansions can silently mask or trigger exit codes.*
 
 A script works on your laptop and does something awful at 03:00. Chapter 11 of How Linux Works explains that every program leaves an exit code, zero for success, and that `$?` holds the last one and is overwritten by the next command. Its advice on temporary files is to use `trap` so a Ctrl-C does not leave them behind. The demo script `c07_robust_demo.sh` runs eight pitfalls and prints the results. These are real outputs from bash 3.2.57 on macOS. I ran the demo again on bash 5.2.21 in the Ubuntu container. Six of the seven rows matched. The `((i++))` pitfall differs, and it has its own row.
 
@@ -451,6 +459,10 @@ n=3181 p50=1.152 p95=2.857 p99=29.176
 Why it works: after a numeric sort, the nearest-rank value is the one at position ceil(p/100 × N). The loop only has to look up three positions in the sorted list. Common wrong approach: reporting the mean. The mean is 1.606 on the same file, and it hides the 504 timeouts that sit in the top one percent.
 
 ### Task 5. Failed SSH logins (fixture `auth.log`)
+
+![Comparison of auth.log lines showing how invalid user insertions shift column 11 from an IP address to a username.](./img/p4-2007-auth-log-shift.svg)
+
+*Figure 20.0.0. Log lines with variable phrase counts shift positional fields, making delimiter-anchored regular expressions far more reliable than fixed column extraction.*
 
 Someone on the security side asks which source addresses are guessing passwords. Task: find the three source addresses with the most failed password attempts.
 

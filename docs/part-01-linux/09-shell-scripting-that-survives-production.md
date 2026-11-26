@@ -550,6 +550,10 @@ Define a function as `name() { ...; }`. The `function` keyword is a bash and ksh
 
 ### Options with `getopts`
 
+![Step-by-step trace of getopts parsing short options and arguments, advancing OPTIND from 1 to 5, and shifting off processed flags.](./img/p4-0109-getopts-trace.svg)
+
+*Figure 1.9.13. How getopts iterates over flags and values, updates OPTIND, and hands remaining arguments to the script via shift.*
+
 ```bash
 usage() { echo "usage: $0 [-h] [-n nodes] [-t dir] file..." >&2; exit 2; }
 nodes=1; target=.
@@ -571,7 +575,7 @@ The option string lists single-letter options. A colon after a letter means that
 
 ![A subshell discards its changes, while a brace group runs in the current shell.](./img/l09-subshell.svg)
 
-*Figure 1.9.13. Changes made inside a subshell vanish when it ends, but a brace group changes the current shell.*
+*Figure 1.9.14. Changes made inside a subshell vanish when it ends, but a brace group changes the current shell.*
 
 - `(commands )` runs in a **subshell**, a child copy of the shell. Changes to variables, the working directory and options vanish when it ends. Use it to run `uglyprogram` inside `uglydir`, or with a temporary `PATH`, without touching your parent shell: `(cd uglydir; uglyprogram)` or `(PATH=/usr/confusing:$PATH; uglyprogram)`. For a single command, prefixing `PATH=/usr/confusing:$PATH uglyprogram` avoids the subshell.
 - `{ commands; }` runs in the **current shell**. Note the spaces and the semicolon. Use it to group commands under one redirection, as in `{ echo a; echo b; } > file`.
@@ -600,7 +604,7 @@ Picture the page at 3 a.m. A nightly job stopped half way through, left a half-w
 
 ![A bare failing command stops a script with set -e, but failures inside if or while conditions, left sides of and-or lists, negated commands, and functions called from those contexts do not.](./img/p2-0109-set-e-contexts.svg)
 
-*Figure 1.9.14. Under set -e a bare failing command stops the script, but failures in conditions, and-or lists, negations and functions called from them do not.*
+*Figure 1.9.15. Under set -e a bare failing command stops the script, but failures in conditions, and-or lists, negations and functions called from them do not.*
 
 Most production scripts open with the same few lines. They turn on the switches that make bash fail on purpose.
 
@@ -645,7 +649,7 @@ Two more traps are useful. `trap 'echo "error on line $LINENO" >&2' ERR` reports
 
 ![Cron run A takes the flock on file descriptor 9 and works, while run B fails the non-blocking flock and exits.](./img/p2-0109-flock-lanes.svg)
 
-*Figure 1.9.15. The first cron run holds the flock while it works, so a second run that overlaps fails the non-blocking lock and exits.*
+*Figure 1.9.16. The first cron run holds the flock while it works, so a second run that overlaps fails the non-blocking lock and exits.*
 
 Scripts run by `cron` or by timers can overlap. `flock` gives you a reliable advisory lock, and the kernel releases it when the process dies.
 
@@ -667,7 +671,7 @@ Here are some habits that make a script idempotent. Use `mkdir -p`, `ln -sfn`, a
 
 ![A retry loop that sleeps with a doubling delay until the attempts run out.](./img/l09-retry.svg)
 
-*Figure 1.9.16. Retries with a growing delay and a timeout keep scripts from hanging or failing on transient errors.*
+*Figure 1.9.17. Retries with a growing delay and a timeout keep scripts from hanging or failing on transient errors.*
 
 External commands fail transiently. A package mirror, a metadata service or a flaky NFS server can each fail for a moment. A retry helper handles those cases.
 
@@ -750,11 +754,11 @@ To measure the difference, you can `time` the script, and use `strace -c -f` or 
 
 ![An annotated Slurm batch script with callouts for the shebang, SBATCH resource directives, strict mode, modules, head node discovery and srun launches.](./img/p3-0109-sbatch-anatomy.svg)
 
-*Figure 1.9.17. The SBATCH lines are comments to the shell but resource requests to Slurm, and the rest is ordinary bash that runs on the allocated nodes.*
+*Figure 1.9.18. The SBATCH lines are comments to the shell but resource requests to Slurm, and the rest is ordinary bash that runs on the allocated nodes.*
 
 ![A node health check runs five bounded checks in order, each failing with a message, and exits 0 only if all pass.](./img/p2-0109-health-flow.svg)
 
-*Figure 1.9.18. A node health check runs five bounded checks in order, and each failed check exits non-zero with a reason.*
+*Figure 1.9.19. A node health check runs five bounded checks in order, and each failed check exits non-zero with a reason.*
 
 Now let us put the pieces together on the systems you will actually run. Each pattern below is a short script that you adapt rather than copy. Read each one, then make it fit your site.
 

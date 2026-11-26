@@ -377,6 +377,10 @@ Restrict who can use each resolver before you open it to a network.
 
 ## 9. Running your own DNS
 
+![A rack caching resolver architecture showing redundant dnsmasq instances answering local records, caching external replies, and forwarding misses upstream to shield resolvers.](./img/p4-0208-local-resolver.svg)
+
+*Figure 2.0.0. A dedicated rack-level caching resolver serves local cluster records, caches external queries to reduce latency, and forwards cache misses upstream.*
+
 A recursive caching resolver in each site or rack reduces latency and shields the upstream resolvers. It is a local shortcut that most lookups never need to leave.
 
 BIND 9 is the reference server, and it covers authoritative and recursive work, with views and DNSSEC. Unbound is a small, secure validating recursive resolver. dnsmasq is a small forwarder with DHCP, which suits labs. CoreDNS is plugin-based and is the Kubernetes default. PowerDNS is an authoritative server with SQL backends and an API. Cloud-managed options include Route 53 and Cloud DNS.

@@ -1,0 +1,40 @@
+# docs/part-20-nebius-sre-interview/13-design-a-multi-tenant-llm-inference-api.md
+- ## What the interviewer is testing | 240 words | NO FIGURE NEEDED interview overview and role expectations
+- ### What is public about Nebius, and what is my reasoning | 320 words | NO FIGURE NEEDED tabular list of public vendor facts versus candidate reasoning
+- ## The core ideas | 15 words | NO FIGURE NEEDED structural section header
+- ### 1. Requirements and numbers first (minutes 0 to 5) | 440 words | COVERED(p3-2013-sizing-ladder)
+- ### 2. The API contract (minutes 5 to 8) | 370 words | COVERED(p3-2013-api-contract)
+- ### 3. The control plane and the data plane (minutes 8 to 10) | 220 words | COVERED(x13-control-data-plane)
+- ### 4. The gateway: auth, quotas and rate limits by tokens (minutes 10 to 17) | 460 words | COVERED(p3-2013-four-fences, x13-token-admission)
+- ### 5. Usage metering for billing (minutes 17 to 19) | 240 words | COVERED(p2-2013-usage-metering)
+- ### 6. The router: cache-aware and load-aware (minutes 19 to 26) | 530 words | COVERED(p3-2013-router-sim-results, x13-bounded-router)
+- ### 7. Prefill and decode pools (minutes 26 to 29) | 340 words | COVERED(p2-2013-prefill-decode-pools)
+- ### 8. Model placement and warm pools (minutes 29 to 31) | 310 words | COVERED(p3-2013-hosting-shapes)
+- ### 9. Autoscaling signals (minutes 31 to 34) | 360 words | COVERED(p2-2013-scale-signals)
+- ### 10. Regions and data residency (minutes 34 to 36) | 230 words | COVERED(p2-2013-residency-routing)
+- ### 11. Tenant isolation and noisy neighbours (minutes 36 to 38) | 330 words | COVERED(p2-2013-isolation-layers)
+- ### 12. Streaming and backpressure (minutes 38 to 40) | 230 words | COVERED(p2-2013-stream-bounds)
+- ### 13. Failure handling and retries with budgets (minutes 40 to 42) | 390 words | COVERED(p3-2013-retry-safety, x13-retry-amplification)
+- ### 14. Observability (minutes 42 to 43) | 230 words | COVERED(p3-2013-observability-slis)
+- ### 15. Rollout (minutes 43 to 45) | 240 words | COVERED(p3-2013-rollout-stages)
+- ### 16. The whole picture in one diagram | 50 words | COVERED(m20-13-1)
+- ### 17. Trade-off tables for lookup | 160 words | NO FIGURE NEEDED lookup table summarizing architectural decisions
+- ## How to answer out loud | 30 words | NO FIGURE NEEDED structural section header
+- ### The 45-minute speaking plan | 200 words | COVERED(p3-2013-forty-five-minutes)
+- ### Question 1: "Design a multi-tenant LLM API." | 130 words | NO FIGURE NEEDED verbal answer script
+- ### Question 2: "How do you rate limit an LLM API?" | 100 words | NO FIGURE NEEDED verbal answer script
+- ### Question 3: "How does your router work?" | 100 words | NO FIGURE NEEDED verbal answer script
+- ### Question 4: "A replica is slow but not failing. What happens?" | 100 words | NO FIGURE NEEDED verbal answer script
+- ### Question 5: "How do you handle a tenant spike?" | 90 words | NO FIGURE NEEDED verbal answer script
+- ## Worked scenarios | 10 words | NO FIGURE NEEDED structural section header
+- ### Scenario 1: size a quota for a tenant | 140 words | COVERED(p3-2013-quota-arithmetic)
+- ### Scenario 2: TTFT doubled, GPU utilisation 40% | 140 words | COVERED(p3-2013-ttft-flat-gpu)
+- ### Scenario 3: the retry storm | 90 words | NEEDS FIGURE failure cascade arithmetic and the 4-part retry storm defense architecture
+- ## Hands-on lab | 380 words | NO FIGURE NEEDED python code and unit test execution instructions
+- ## Drill questions | 220 words | NO FIGURE NEEDED revision questions with collapsible answers
+- ## Common mistakes and weak answers | 160 words | NO FIGURE NEEDED comparative table of mistakes and fixes
+- ## Connections to the rest of the handbook | 100 words | NO FIGURE NEEDED cross-reference navigation links
+- ## Sources and review notes | 280 words | NO FIGURE NEEDED bibliography and notes
+- ### Verification log | 80 words | NO FIGURE NEEDED verification log
+
+Specs kept 1, dropped 0: []

@@ -787,6 +787,10 @@ The fix is to make the chain 60, 40, two tries of 18 and an engine abort of 15, 
 
 ### Scenario C. Streams die on every deploy
 
+![A timeline comparing the default 30-second Kubernetes grace period cutting 90-second streams with SIGKILL against a 135-second budget combining a 5-second preStop sleep, 120-second stream cap, and 10-second margin.](./img/p4-2021-deploy-grace-period.svg)
+
+*Figure 20.0.0. Sizing the termination grace period to 135 seconds covers endpoint propagation and the maximum stream duration, preventing SIGKILL from truncating active generations.*
+
 A deployment rolls eight replicas, one at a time. Each pod holds about forty streams, some lasting 90 seconds. Customers see truncated answers during every release, and the logs show SIGKILL.
 
 The default grace period is 30 seconds. Any stream longer than that is cut. The pod is also still receiving requests for a moment after SIGTERM because endpoint removal runs in parallel. Set the grace period to cover the preStop sleep, the longest permitted stream and a margin. With a 5 second sleep, a 120 second stream cap and a 10 second margin, the answer is 135 seconds. Mark the replica draining at the router before SIGTERM. Roll one replica at a time and wait for readiness, so spare capacity stays above X plus 1.

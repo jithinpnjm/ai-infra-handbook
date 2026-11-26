@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
+  <title>The etcd /registry Key Hierarchy</title>
+  <desc>Tree diagram illustrating Kubernetes data layout in etcd under the root prefix /registry, including core resources, leases, events routing, custom resources, and boundary limits.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129"/>
+    </marker>
+
+    
+    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="108%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b3d2b" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1420" fill="#f5f8f5"/>
+
+  
+  <g transform="translate(60, 40)">
+    <text x="0" y="44" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#207448">The etcd /registry Key Hierarchy</text>
+  </g>
+
+  
+  <g transform="translate(60, 560)">
+    <rect width="320" height="160" rx="16" fill="#207448" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(30, 48)" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="26" cy="14" rx="26" ry="12"/>
+      <path d="M 0 14 v 36 c 0 6.6 11.6 12 26 12 s 26 -5.4 26 -12 v -36"/>
+      <path d="M 0 32 c 0 6.6 11.6 12 26 12 s 26 -5.4 26 -12"/>
+    </g>
+    
+    <text x="104" y="98" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="34" font-weight="bold" fill="#ffffff">/registry/</text>
+  </g>
+
+  
+  <path d="M 380 640 L 440 640 M 440 260 L 440 1100" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <path d="M 440 260 L 480 260" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M 440 550 L 480 550" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M 440 820 L 480 820" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M 440 1100 L 480 1100" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(488, 120)">
+    <rect width="1052" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(28, 22)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 2 L 42 12 L 42 36 L 22 46 L 2 36 L 2 12 Z"/>
+      <path d="M 2 12 L 22 22 L 42 12"/>
+      <path d="M 22 22 L 22 46"/>
+    </g>
+    <text x="82" y="52" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#207448">Core Namespaced Resources</text>
+
+    
+    <g transform="translate(28, 76)">
+      <rect x="0" y="0" width="316" height="46" rx="8" fill="#e8f1ea"/>
+      <text x="16" y="32" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" fill="#303a36">/pods/[namespace]/[name]</text>
+
+      <rect x="332" y="0" width="374" height="46" rx="8" fill="#e8f1ea"/>
+      <text x="348" y="32" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" fill="#303a36">/configmaps/[namespace]/[name]</text>
+
+      <rect x="722" y="0" width="302" height="46" rx="8" fill="#e8f1ea"/>
+      <text x="738" y="32" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" fill="#303a36">/secrets/[namespace]/[name]</text>
+    </g>
+
+    
+    <g transform="translate(28, 142)">
+      <rect width="996" height="114" rx="10" fill="#f5f8f5" stroke="#b5d3be" stroke-width="1.5"/>
+      
+      <g transform="translate(20, 24)" fill="none" stroke="#207448" stroke-width="2.5">
+        <rect x="4" y="16" width="28" height="22" rx="4"/>
+        <path d="M 10 16 v -8 a 8 8 0 0 1 16 0 v 8"/>
+      </g>
+      <text x="68" y="44" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+        <tspan font-weight="bold" fill="#207448">Note on secrets:</tspan>
+        <tspan> stored as encrypted binary starting with prefix </tspan>
+        <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-weight="bold">k8s:enc:...</tspan>
+      </text>
+      <text x="68" y="86" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+        <tspan>when </tspan>
+        <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-weight="bold">EncryptionConfiguration</tspan>
+        <tspan> is enabled.</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(488, 424)">
+    <rect width="1052" height="248" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(28, 20)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round">
+      <circle cx="22" cy="22" r="20"/>
+      <path d="M 22 10 v 12 l 8 5"/>
+    </g>
+    <text x="82" y="50" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#207448">Leases</text>
+
+    
+    <g transform="translate(28, 76)">
+      <rect x="0" y="0" width="468" height="44" rx="8" fill="#e8f1ea"/>
+      <text x="16" y="31" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" fill="#303a36">/leases/kube-node-lease/[node-name]</text>
+      <text x="492" y="31" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">(frequent node heartbeats)</text>
+    </g>
+
+    
+    <g transform="translate(28, 140)">
+      <rect x="0" y="0" width="436" height="44" rx="8" fill="#e8f1ea"/>
+      <text x="16" y="31" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" fill="#303a36">/leases/kube-system/[leader-name]</text>
+      
+      <text x="456" y="31" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">(controller-manager and scheduler leader election locks)</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(488, 696)">
+    <rect width="1052" height="252" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(28, 20)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 4 a 14 14 0 0 0 -14 14 c 0 10 -4 14 -4 14 h 36 s -4 -4 -4 -14 a 14 14 0 0 0 -14 -14 Z"/>
+      <path d="M 18 36 a 4 4 0 0 0 8 0"/>
+    </g>
+    <text x="82" y="50" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#207448">Events</text>
+
+    
+    <g transform="translate(28, 76)">
+      <rect x="0" y="0" width="330" height="46" rx="8" fill="#e8f1ea"/>
+      <text x="16" y="32" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" fill="#303a36">/events/[namespace]/[name]</text>
+    </g>
+
+    
+    <g transform="translate(28, 142)">
+      <rect x="0" y="0" width="330" height="84" rx="8" fill="#f5f8f5" stroke="#b5d3be" stroke-width="1.5"/>
+      <circle cx="28" cy="42" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 28 36 v 6 l 4 3" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="52" y="50" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">high churn, 1-hour TTL</text>
+    </g>
+
+    
+    <path d="M 378 140 L 736 140" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" marker-end="url(#arrow-orange)"/>
+
+    
+    <g transform="translate(400, 106)">
+      <rect width="308" height="40" rx="8" fill="#fff3e8" stroke="#db8129" stroke-width="1.5"/>
+      <text x="14" y="28" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#db8129">--etcd-servers-overrides</text>
+    </g>
+
+    
+    <g transform="translate(746, 92)">
+      <rect width="280" height="96" rx="12" fill="#fff3e8" stroke="#db8129" stroke-width="2.5"/>
+      <g transform="translate(20, 26)" fill="none" stroke="#db8129" stroke-width="2.5">
+        <ellipse cx="18" cy="10" rx="16" ry="7"/>
+        <path d="M 2 10 v 22 c 0 4 7 7 16 7 s 16 -3 16 -7 v -22"/>
+        <path d="M 2 21 c 0 4 7 7 16 7 s 16 -3 16 -7"/>
+      </g>
+      <text x="64" y="44" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#db8129">secondary etcd</text>
+      <text x="64" y="74" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#db8129">cluster</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(488, 972)">
+    <rect width="1052" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(28, 20)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="36" height="36" rx="6"/>
+      <path d="M 16 4 v 8 M 28 4 v 8 M 4 16 h 8 M 4 28 h 8"/>
+    </g>
+    <text x="82" y="50" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#207448">Custom Resources</text>
+
+    
+    <g transform="translate(28, 76)">
+      <rect x="0" y="0" width="536" height="46" rx="8" fill="#e8f1ea"/>
+      <text x="16" y="32" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" fill="#303a36">/[crd-group]/[resource]/[namespace]/[name]</text>
+    </g>
+
+    
+    <g transform="translate(28, 142)">
+      <text x="10" y="30" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">(for example kueue.x-k8s.io or nvidia.com)</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(60, 1228)">
+    
+    <g transform="translate(0, 0)">
+      <rect width="460" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)"/>
+      <g transform="translate(24, 26)" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round">
+        <rect x="2" y="2" width="32" height="32" rx="4"/>
+        <path d="M 12 18 h 12 M 18 12 v 12"/>
+      </g>
+      <text x="70" y="50" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">1.5 MiB maximum</text>
+      <text x="70" y="88" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">request size limit</text>
+    </g>
+
+    
+    <g transform="translate(490, 0)">
+      <rect width="460" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)"/>
+      <g transform="translate(24, 26)" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 6 10 L 14 4 L 30 4 L 38 10 L 38 30 L 30 36 L 14 36 L 6 30 Z"/>
+        <circle cx="22" cy="20" r="6"/>
+      </g>
+      <text x="72" y="50" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">Protobuf binary</text>
+      <text x="72" y="88" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">encoding</text>
+    </g>
+
+    
+    <g transform="translate(980, 0)">
+      <rect width="500" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)"/>
+      <g transform="translate(24, 26)" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="18" cy="18" r="16"/>
+        <path d="M 8 8 L 28 28"/>
+      </g>
+      <text x="68" y="44" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan fill="#db8129">anti-patterns</tspan> (no metrics,
+      </text>
+      <text x="68" y="78" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">no binary blobs,</text>
+      <text x="68" y="112" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">no continuous status updates)</text>
+    </g>
+  </g>
+</svg>

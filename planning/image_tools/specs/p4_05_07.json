@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0507-job-restart-policy",
+  "title": "Job failure behavior under restartPolicy: OnFailure versus Never",
+  "anchor": "### One-shot failures: restart policy and backoff",
+  "spec": "Two side-by-side vertical panels contrasting how Kubernetes handles container failures in a Job. Left panel: restartPolicy: OnFailure. Top shows Job object 'oneshot'. Middle shows a single Pod 'oneshot-4nzfb' hosted on a Node. Inside the Pod, a container runs with args '--keygen-exit-code=1'. Container crashes with exit code 1. A curved arrow shows the local kubelet restarting the container in place inside the same Pod, applying exponential backoff (10s, 20s, 40s... up to 5m). Status badge reads 'CrashLoopBackOff (restarts: 4)'. Total Pod count remains 1. Right panel: restartPolicy: Never. Top shows Job object 'oneshot'. Middle shows Pod 1 'oneshot-1a2b' crashing with exit code 1. Kubelet does NOT restart it; Pod 1 is marked 'Error / Failed'. Job controller detects failure, decrements active count, and creates Pod 2 'oneshot-3c4d'. Pod 2 crashes and becomes 'Error'. Job controller creates Pod 3 'oneshot-5e6f'. An annotated callout shows cluster accumulating multiple terminated Pods in Error state, wasting etcd and pod table slots.",
+  "alt": "Comparison between OnFailure restarting containers in-place and Never creating new pods that accumulate in Error state.",
+  "cap": "Under OnFailure the kubelet restarts the container in the same pod with backoff, while Never causes the Job controller to spawn replacement pods leaving failed pods in the cluster.",
+  "part": "part-05-kubernetes",
+  "ch": "07"
+ },
+ {
+  "name": "p4-0507-work-queue-flow",
+  "title": "Architecture of a parallel work queue Job draining items from a queue service",
+  "anchor": "### Work queues: parallel jobs that drain a queue",
+  "spec": "Three horizontal stages showing work queue coordination. Left stage: Producer. A terminal box executes 'curl -X POST localhost:8080/memq/server/queues/keygen/enqueue -d work-item-N', pushing 100 items into the queue. Arrow points right to center stage. Center stage: Queue Server. A Kubernetes Service 'service-queue' (port 8080) fronts a ReplicaSet with 1 Pod running 'kuard' MemQ server. Inside the queue server, an array of 100 items ('work-item-0' to 'work-item-99') is shown with queue depth = 100. Right stage: Parallel Consumers. A Job 'consumers' with 'parallelism: 5' manages five worker pods ('consumers-0' through 'consumers-4'). Bi-directional arrows show each worker polling 'http://queue:8080/memq/server/queues/keygen' to dequeue an item, processing a key, and requesting the next item. When depth hits 0, workers receive empty responses, exit with return code 0, and the Job controller marks the batch complete.",
+  "alt": "A curl producer pushes 100 items into a queue server behind a Kubernetes Service while five consumer Job pods pull items and exit upon drain.",
+  "cap": "The queue pod decouples producer from consumers, allowing parallel Job worker pods to process items independently and wind down once the queue is empty.",
+  "part": "part-05-kubernetes",
+  "ch": "07"
+ },
+ {
+  "name": "p4-0507-gpu-node-sizing",
+  "title": "Resource budgeting and cgroup memory allocation for an HGX 8-GPU node",
+  "anchor": "## 5. Sizing and placement guidelines for GPU workloads",
+  "spec": "A full-node resource map representing an 8-GPU HGX server (e.g. 8x H100 80GB, 128 CPU cores, 1 TiB host RAM). Left column: Host Reservation. A top slice shows 'kube-reserved / system-reserved' allocating 8 CPU cores and 32 GiB RAM for OS, kubelet, and container runtime. Below it sits a DaemonSet slice ('dcgm-exporter') allocating 100m CPU and 128Mi RAM with SYS_ADMIN capability. Center column: Guaranteed Pod 'trainer-0'. Resource requests equal limits: 8 GPUs (all 8 devices claimed, preventing fragmenting), 64 CPU cores (matched to multi-worker DataLoader augmentation), and 800 GiB memory. Right column: Container Memory Cgroup breakdown (800 GiB total limit). A large block represents Process Heap and PyTorch pinned tensors (~736 GiB). A distinct highlighted sub-block shows '/dev/shm' backed by 'emptyDir: { medium: Memory, sizeLimit: 64Gi }' holding IPC and NCCL buffers, explicitly counted inside the 800 GiB limit to prevent OOMKilled exit 137. Attached volumes point into the pod: read-only dataset PVC at '/data', atomic checkpoint PVC at '/ckpt', and local NVMe scratch at '/work'.",
+  "alt": "A diagram of an 8-GPU node showing kube-reserved headroom, a Guaranteed 8-GPU pod requesting full cores and RAM, and tmpfs shared memory budgeted inside the memory limit.",
+  "cap": "Sizing a multi-GPU training pod as Guaranteed with requests matching limits prevents node fragmentation while budgeting tmpfs shared memory inside the container limit avoids unexpected OOM kills.",
+  "part": "part-05-kubernetes",
+  "ch": "07"
+ }
+]

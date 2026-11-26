@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1520" width="1600" height="1520">
+  <title>Cilium toFQDNs DNS proxy and dynamic eBPF map population</title>
+  <desc>Packet flow and sequence diagram showing DNS interception, proxying, dynamic eBPF map insertion, and fast-path egress filtering in Cilium.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1520" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">Cilium toFQDNs DNS proxy and</text>
+  <text x="800" y="105" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">dynamic eBPF map population</text>
+
+  
+  <rect x="40" y="350" width="380" height="1140" rx="16" fill="#eef5f0" stroke="#c0d5c5" stroke-width="2" stroke-dasharray="8 8" />
+  <rect x="460" y="350" width="680" height="1140" rx="16" fill="#eef5f0" stroke="#c0d5c5" stroke-width="2" stroke-dasharray="8 8" />
+  <rect x="1180" y="350" width="380" height="1140" rx="16" fill="#eef5f0" stroke="#c0d5c5" stroke-width="2" stroke-dasharray="8 8" />
+
+  
+
+  
+  <rect x="40" y="130" width="380" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="205" y="145" width="50" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="205" y1="157" x2="255" y2="157" stroke="#207448" stroke-width="3" />
+  <circle cx="217" cy="151" r="2.5" fill="#207448" />
+  <circle cx="227" cy="151" r="2.5" fill="#207448" />
+  
+  <text x="230" y="230" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="230" dy="0">Trainer Pod: app=trainer</tspan>
+    <tspan x="230" dy="34">in namespace training</tspan>
+  </text>
+
+  
+  <rect x="460" y="130" width="680" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <path d="M 800 145 L 825 155 L 825 175 C 825 190 800 200 800 200 C 800 200 775 190 775 175 L 775 155 Z" fill="none" stroke="#207448" stroke-width="4" />
+  
+  <text x="800" y="230" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Cilium Node Agent: tc BPF hook,</tspan>
+    <tspan x="800" dy="34">Per-node DNS Proxy on port 53, and</tspan>
+    <tspan x="800" dy="34">cilium_policy_&lt;ep_id&gt; BPF map</tspan>
+  </text>
+
+  
+  <rect x="1180" y="130" width="380" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="1345" y="145" width="50" height="18" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <rect x="1345" y="170" width="50" height="18" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="1385" cy="154" r="2.5" fill="#207448" />
+  <circle cx="1385" cy="179" r="2.5" fill="#207448" />
+  
+  <text x="1370" y="218" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1370" dy="0">Upstream:</tspan>
+    <tspan x="1370" dy="32">kube-dns in kube-system and</tspan>
+    <tspan x="1370" dy="32">Hugging Face CDN</tspan>
+    <tspan x="1370" dy="32">IP 108.156.60.42:443</tspan>
+  </text>
+
+  
+
+  
+  <g>
+    <rect x="80" y="375" width="840" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="125" cy="430" r="22" fill="#207448" />
+    <text x="125" y="438" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="165" y="422" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">Step 1: Trainer pod sends DNS request</tspan>
+      <tspan x="165" dy="34">for *.huggingface.co over UDP 53.</tspan>
+    </text>
+    
+    <line x1="230" y1="515" x2="740" y2="515" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g>
+    <rect x="480" y="550" width="640" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="525" cy="595" r="22" fill="#207448" />
+    <text x="525" y="603" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="565" y="590" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="565" dy="0">Step 2: Kernel tc BPF hook intercepts</tspan>
+      <tspan x="565" dy="34">UDP 53 query due to rules.dns</tspan>
+      <tspan x="565" dy="34">matchPattern: '*' and redirects it to</tspan>
+      <tspan x="565" dy="34">the local Cilium DNS Proxy.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="90" y="765" width="1420" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="135" cy="815" r="22" fill="#207448" />
+    <text x="135" y="823" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="175" y="805" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="175" dy="0">Step 3: DNS proxy forwards request to kube-dns, receives response</tspan>
+      <tspan x="175" dy="34">IP 108.156.60.42 with TTL 300s, and relays response back to Trainer pod.</tspan>
+    </text>
+    
+    <line x1="800" y1="885" x2="1350" y2="885" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <line x1="1350" y1="915" x2="800" y2="915" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-green)" />
+    <line x1="800" y1="945" x2="230" y2="945" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g>
+    <rect x="470" y="1000" width="660" height="240" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+    <circle cx="515" cy="1045" r="22" fill="#db8129" />
+    <text x="515" y="1053" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="555" y="1040" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="555" dy="0">Step 4: DNS proxy extracts IP 108.156.60.42</tspan>
+      <tspan x="555" dy="34">matching *.huggingface.co and writes dynamic</tspan>
+      <tspan x="555" dy="34">entry (IP=108.156.60.42, Port=443,</tspan>
+      <tspan x="555" dy="34">Proto=TCP, Action=ALLOW, TTL=300s)</tspan>
+      <tspan x="555" dy="34">directly into cilium_policy_&lt;ep_id&gt;</tspan>
+      <tspan x="555" dy="34">BPF map.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="90" y="1270" width="1420" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="135" cy="1315" r="22" fill="#207448" />
+    <text x="135" y="1323" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="175" y="1310" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="175" dy="0">Step 5: Trainer pod sends TCP SYN to 108.156.60.42:443; kernel eBPF egress hook</tspan>
+      <tspan x="175" dy="34">performs O(1) lookup in cilium_policy_&lt;ep_id&gt;, finds ALLOW, and</tspan>
+      <tspan x="175" dy="34">transmits packet to wire without user-space proxy latency.</tspan>
+    </text>
+    
+    <line x1="230" y1="1435" x2="1355" y2="1435" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  </g>
+
+</svg>

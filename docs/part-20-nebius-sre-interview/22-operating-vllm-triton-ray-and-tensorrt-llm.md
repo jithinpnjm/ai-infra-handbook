@@ -58,6 +58,10 @@ When an interviewer says "we use vLLM", ask which layer they mean. The answer te
 
 ### 2. What each engine is for
 
+![A comparison of vLLM, TensorRT-LLM, SGLang, Triton, and Ray Serve LLM showing their architectural mechanisms and workload targets.](./img/p4-2022-engine-specialties.svg)
+
+*Figure 20.0.0. Figure 20.22.3. Each tool solves a different operational problem, from kernel-level NVIDIA tuning in TensorRT-LLM to fleet-level prefix routing in Ray Serve.*
+
 Picture a team that runs many open models on one fleet and has to choose a default engine. The book describes vLLM as the most broadly used open framework. Its strengths are paged KV caching with continuous batching, an easy path for open and self-fine-tuned models, and a large community. It serves one model per instance.
 
 In plain terms, paged KV caching splits the cache into small blocks that are handed out as needed, rather than one large reserved slab. Continuous batching lets new requests join the running batch between steps, instead of waiting for the whole batch to finish. One model per instance means you run one process for each model you want to serve.
@@ -395,6 +399,10 @@ Step 3. The manifest uses a 10 second period and a threshold of 90, which gives 
 Answer. Raise the startup probe budget above the measured start, pre-pull the image so it drops, and stagger the roll so the weight loads do not all hit storage at once. Chapter 20.18 section 7 covers the thundering herd, which is the name for many clients or pods hitting one resource at the same moment.
 
 ### Scenario C. Picking an engine for a new customer
+
+![A decision tree leading to TensorRT-LLM, vLLM, Triton, or Ray Serve LLM based on model scale, hardware coupling, and multi-model requirements.](./img/p4-2022-customer-engine-decision.svg)
+
+*Figure 20.0.0. Figure 20.22.17. Decision tree for matching customer requirements to the right serving stack based on model variety, hardware stability, and multi-model scope.*
 
 Two requests land on your desk in the same week. A customer needs a 70B model with a strict time to first token, on eight H100s, for a year. Another team serves forty small open models.
 
@@ -776,6 +784,10 @@ def test_cli_exit_code(capsys):
 ```
 
 ### Kubernetes Deployment for vLLM
+
+![A diagram of the Kubernetes pod layout for vLLM showing resource requests and limits, memory-backed shared memory, persistent volume cache, and cascaded probe settings.](./img/p4-2022-k8s-pod-layout.svg)
+
+*Figure 20.0.0. Figure 20.22.18. Architecture of the production vLLM pod showing memory headroom, shared memory IPC volume, persistent weight cache, and probe hierarchy.*
 
 Picture yourself as the reviewer for this file before it reaches the cluster. This manifest runs two replicas of one model with a pinned image, GPU and memory resources, a shared-memory volume, a model cache volume, and three probes. The comments in the file give the kubeconform command.
 

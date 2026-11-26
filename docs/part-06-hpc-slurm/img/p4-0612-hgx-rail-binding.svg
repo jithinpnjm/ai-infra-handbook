@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>Rail-Optimized HGX NUMA, GPU, and NIC Binding Architecture</title>
+  <desc>Architecture infographic illustrating NUMA domain isolation, local GPU-to-NIC rail alignment, and the cross-socket interconnect traversal anti-pattern on an 8-GPU HGX system.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-upi" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 1 6 L 11 6 M 6 1 L 11 6 L 6 11" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1380" fill="#f5f8f5" />
+
+  
+  <g id="header-group">
+    <rect x="40" y="28" width="1520" height="68" rx="10" fill="#207448" />
+    <text x="800" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle">Rail-Optimized HGX NUMA, GPU, and NIC Binding Architecture</text>
+  </g>
+
+  
+  <g id="numa-0-group">
+    
+    <rect x="40" y="118" width="670" height="920" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="40" y="118" width="670" height="62" rx="14" fill="#e8f1ea" />
+    <rect x="40" y="166" width="670" height="14" fill="#e8f1ea" />
+    
+    <g transform="translate(64, 131)" stroke="#207448" stroke-width="2.5" fill="none">
+      <rect x="6" y="6" width="24" height="24" rx="3" />
+      <path d="M12 2 v4 M18 2 v4 M24 2 v4 M12 30 v4 M18 30 v4 M24 30 v4 M2 12 h4 M2 18 h4 M2 24 h4 M30 12 h4 M30 18 h4 M30 24 h4" />
+    </g>
+    <text x="114" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">NUMA Domain 0 (Socket 0)</text>
+
+    
+    <rect x="64" y="198" width="622" height="126" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.8" />
+    <text x="84" y="238" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">CPU Cores 0..47</text>
+    
+    
+    <rect x="84" y="254" width="582" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4" />
+    
+    <g transform="translate(100, 265)" stroke="#207448" stroke-width="2.5" fill="none">
+      <path d="M14 4 L4 8 v8 c0 7 10 12 10 12 s10 -5 10 -12 V8 Z" />
+    </g>
+    <text x="136" y="291" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">CoreSpecCount</text>
+
+    
+    <rect x="64" y="344" width="622" height="210" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.8" />
+    <text x="84" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">GPUs 0..3</text>
+    <text x="216" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">(Ranks 0..3)</text>
+    
+    
+    <rect x="84" y="400" width="130" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+    <text x="149" y="454" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">GPU 0</text>
+
+    <rect x="234" y="400" width="130" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+    <text x="299" y="454" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">GPU 1</text>
+
+    <rect x="384" y="400" width="130" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+    <text x="449" y="454" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">GPU 2</text>
+
+    <rect x="534" y="400" width="132" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+    <text x="600" y="454" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">GPU 3</text>
+
+    
+    <rect x="84" y="504" width="582" height="38" rx="6" fill="#207448" />
+    <text x="375" y="531" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">NVLink</text>
+
+    
+    <rect x="64" y="602" width="622" height="52" rx="8" fill="#207448" />
+    <text x="375" y="637" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Rail-Optimized Local Path: GPUDirect RDMA Enabled</text>
+
+    
+    <path d="M 149 490 L 149 602" stroke="#207448" stroke-width="4" fill="none" />
+    <path d="M 299 490 L 299 602" stroke="#207448" stroke-width="4" fill="none" />
+    <path d="M 449 490 L 449 602" stroke="#207448" stroke-width="4" fill="none" />
+    <path d="M 600 490 L 600 602" stroke="#207448" stroke-width="4" fill="none" />
+
+    <path d="M 149 654 L 149 716" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+    <path d="M 299 654 L 299 790" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+    <path d="M 449 654 L 449 864" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+    <path d="M 600 654 L 600 938" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+    
+    
+    <rect x="64" y="720" width="622" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="84" y="759" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC 0 (mlx5_0, Rail 0)</text>
+
+    
+    <rect x="64" y="794" width="622" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="84" y="833" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC 1 (mlx5_1, Rail 1)</text>
+
+    
+    <rect x="64" y="868" width="622" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="84" y="907" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC 2 (mlx5_2, Rail 2)</text>
+
+    
+    <rect x="64" y="942" width="622" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="84" y="981" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC 3 (mlx5_3, Rail 3)</text>
+  </g>
+
+  
+  <g id="interconnect-group">
+    <rect x="732" y="198" width="136" height="828" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <line x1="800" y1="218" x2="800" y2="1006" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" />
+    
+    
+    <g transform="translate(800, 612)">
+      <rect x="-60" y="-190" width="120" height="380" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="0" y="-140" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">CPU</text>
+      <text x="0" y="-105" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Interconnect</text>
+      <text x="0" y="-55" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">(UPI link -</text>
+      <text x="0" y="-20" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Cross-Socket</text>
+      <text x="0" y="15" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Chokepoint)</text>
+      
+      
+      <g transform="translate(-16, 75)" stroke="#207448" stroke-width="3" fill="none">
+        <path d="M 0 10 L 32 10 M 22 0 L 32 10 L 22 20" />
+        <path d="M 32 35 L 0 35 M 10 25 L 0 35 L 10 45" />
+      </g>
+    </g>
+  </g>
+
+  
+  <g id="numa-1-group">
+    
+    <rect x="890" y="118" width="670" height="920" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="890" y="118" width="670" height="62" rx="14" fill="#e8f1ea" />
+    <rect x="890" y="166" width="670" height="14" fill="#e8f1ea" />
+    
+    <g transform="translate(914, 131)" stroke="#207448" stroke-width="2.5" fill="none">
+      <rect x="6" y="6" width="24" height="24" rx="3" />
+      <path d="M12 2 v4 M18 2 v4 M24 2 v4 M12 30 v4 M18 30 v4 M24 30 v4 M2 12 h4 M2 18 h4 M2 24 h4 M30 12 h4 M30 18 h4 M30 24 h4" />
+    </g>
+    <text x="964" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">NUMA Domain 1 (Socket 1)</text>
+
+    
+    <rect x="914" y="198" width="622" height="126" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.8" />
+    <text x="934" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">CPU Cores 48..95</text>
+
+    
+    <rect x="914" y="344" width="622" height="210" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.8" />
+    <text x="934" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">GPUs 4..7</text>
+    <text x="1066" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">(Ranks 4..7)</text>
+
+    
+    <rect x="934" y="400" width="130" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+    <text x="999" y="454" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">GPU 4</text>
+
+    <rect x="1084" y="400" width="130" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+    <text x="1149" y="454" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">GPU 5</text>
+
+    <rect x="1234" y="400" width="130" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+    <text x="1299" y="454" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">GPU 6</text>
+
+    <rect x="1384" y="400" width="132" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+    <text x="1450" y="454" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">GPU 7</text>
+
+    
+    <rect x="934" y="504" width="582" height="38" rx="6" fill="#207448" />
+    <text x="1225" y="531" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">NVLink</text>
+
+    
+    <path d="M 999 490 L 999 716" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+    <path d="M 1149 490 L 1149 790" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+    <path d="M 1299 490 L 1299 864" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+    <path d="M 1450 490 L 1450 938" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+    
+    
+    <rect x="914" y="720" width="622" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="934" y="759" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC 4 (mlx5_4, Rail 4)</text>
+
+    
+    <rect x="914" y="794" width="622" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="934" y="833" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC 5 (mlx5_5, Rail 5)</text>
+
+    
+    <rect x="914" y="868" width="622" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="934" y="907" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC 6 (mlx5_6, Rail 6)</text>
+
+    
+    <rect x="914" y="942" width="622" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="934" y="981" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC 7 (mlx5_7, Rail 7)</text>
+  </g>
+
+  
+  
+  <g id="contrast-path-group">
+    
+    <path d="M 149 445 Q 149 336 260 336 L 720 336 L 880 336 Q 940 336 940 420 L 940 714" 
+          stroke="#db8129" stroke-width="4.5" stroke-dasharray="10 6" fill="none" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="310" y="306" width="980" height="58" rx="8" fill="#db8129" />
+    <text x="800" y="343" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Anti-Pattern (Maligned Binding): Cross-Socket Interconnect Traversal -> Throughput Falls</text>
+  </g>
+
+  
+  <g id="summary-banner-group">
+    
+    <rect x="40" y="1064" width="1520" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="64" y="1088" width="1472" height="106" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+    <text x="800" y="1152" font-family="ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">--cpus-per-gpu=12 --cpu-bind=cores --gpu-bind=closest --gres-flags=enforce-binding</text>
+
+    
+    <rect x="64" y="1218" width="468" height="96" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="298" y="1276" font-family="ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">nvidia-smi topo -m</text>
+
+    <rect x="566" y="1218" width="468" height="96" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="1276" font-family="ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">numactl -s</text>
+
+    <rect x="1068" y="1218" width="468" height="96" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="1302" y="1276" font-family="ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">taskset -pc $$</text>
+  </g>
+</svg>

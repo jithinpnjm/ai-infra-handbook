@@ -595,6 +595,10 @@ Before you cap anything, decide which slice holds the host and which slice holds
 
 ## 11. Sandboxing and service hardening
 
+![Concentric boxes illustrate systemd sandboxing layers from filesystem and identity isolation to seccomp filtering, highlighting why GPU daemons require DeviceAllow instead of PrivateDevices.](./img/p4-0115-sandbox-layers.svg)
+
+*Figure 1.15.17. systemd sandboxing creates defense-in-depth isolation around services, but GPU workloads must avoid PrivateDevices and explicitly permit device nodes with DeviceAllow.*
+
 A service that only needs a few files should not have full access to the machine. systemd can confine a service in a few lines, using namespaces, capabilities and seccomp under the hood. Chapters 1.19 and 1.21 explain those kernel features. So if you run a service that reads only a few files, you can lock the rest of the machine away from it.
 
 | Option | Effect |
@@ -619,11 +623,11 @@ Start with the protections the service can survive, and add the rest only after 
 
 ![A decision flow showing journald with Storage auto writing to disk only if var log journal exists and otherwise keeping logs in memory where a reboot loses them.](./img/p3-0115-journal-storage.svg)
 
-*Figure 1.15.17. With Storage auto the journal survives a reboot only if the var log journal directory exists, so set Storage to persistent.*
+*Figure 1.15.18. With Storage auto the journal survives a reboot only if the var log journal directory exists, so set Storage to persistent.*
 
 ![The most common journalctl filters by boot, unit, kernel, priority and time.](./img/l15-journalctl.svg)
 
-*Figure 1.15.18. Each journalctl option filters the journal in a different way.*
+*Figure 1.15.19. Each journalctl option filters the journal in a different way.*
 
 When a GPU node drops out during the night, the first clue is usually in its logs. `systemd-journald` keeps those logs, and you can search them by unit, by priority and by time. It collects the standard output and error of every service, `syslog()` messages, kernel messages and audit records. It stores them in a **structured, indexed binary journal**, which is a plain way of saying that every line keeps its labels and can be found again quickly. Each entry carries fields such as `_SYSTEMD_UNIT`, `_PID`, `_UID`, `_HOSTNAME`, `PRIORITY`, `SYSLOG_IDENTIFIER`, `_BOOT_ID` and `_TRANSPORT`. For containers, it also carries `CONTAINER_ID`. Because systemd captures service output, the old problem of start-up scripts writing to a console that has since disappeared goes away.
 
@@ -676,6 +680,10 @@ Before you rely on a node's logs after a reboot, confirm that `Storage` is set t
 
 ## 13. The other built-in services: networkd, resolved, timesyncd
 
+![A flowchart shows how client DNS lookups travel through nsswitch and the 127.0.0.53 stub listener into systemd-resolved, which checks local caches and routes queries to upstream nameservers.](./img/p4-0115-resolved-flow.svg)
+
+*Figure 1.15.20. systemd-resolved handles DNS for applications through an NSS plugin or the 127.0.0.53 stub resolver, caching results and routing lookups to per-link upstream servers.*
+
 systemd includes optional replacements for several traditional daemons. You will meet them on Ubuntu, Fedora and many cloud images, so it helps to know what each one does and where it keeps its configuration.
 
 - **`systemd-networkd`** reads network configuration from `.network`, `.netdev` and `.link` files in `/etc/systemd/network/` and `/usr/lib/systemd/network/`. For each link, the first matching file in alphabetical order wins, so choose file names with care. `[Match]` selects interfaces by name, MAC address or driver. `[Network]` sets DHCP, or a static `Address=`, `Gateway=` or `DNS=`. Check the result with `networkctl status` and `networkctl list`. NetworkManager and Netplan are alternatives, and Part 2 covers Linux networking.
@@ -689,7 +697,7 @@ If a host runs a network manager other than `systemd-networkd`, check which one 
 
 ![Failure messages and status codes such as 203 EXEC, 217 USER and 226 NAMESPACE mapped to their likely causes.](./img/p3-0115-status-code-ladder.svg)
 
-*Figure 1.15.19. A status code such as 203 EXEC or 217 USER points at the layer that broke before you read a single log line.*
+*Figure 1.15.21. A status code such as 203 EXEC or 217 USER points at the layer that broke before you read a single log line.*
 
 A unit that fails gives you a short message and a status code, and not much else. The table below lists the tools that turn that message into a cause, starting with the first look.
 
@@ -718,7 +726,7 @@ When you see one of these strings, start with the status code, then read the jou
 
 ![A six step shutdown sequence from shutdown target through SIGTERM, a 90 second wait, SIGKILL and reboot, with the commands to use and to find the slow unit.](./img/p3-0115-shutdown-sequence.svg)
 
-*Figure 1.15.20. Units stop in reverse start order, then a SIGTERM and a typical 90 second wait precede SIGKILL, so a slow stop shows up as a long reboot.*
+*Figure 1.15.22. Units stop in reverse start order, then a SIGTERM and a typical 90 second wait precede SIGKILL, so a slow stop shows up as a long reboot.*
 
 A server that hangs for 90 seconds at every reboot is annoying, and it usually points to one slow unit. Knowing the shutdown order is how you find that unit.
 
@@ -738,7 +746,7 @@ If you reboot a host and it waits, you have found the slow part. Replace legacy 
 
 ![A SysV rc5.d directory listing with one link name split into start or stop letter, two digit order and script name.](./img/p3-0115-rc-link-names.svg)
 
-*Figure 1.15.21. In a SysV rc directory the first letter says start or stop, the two digits set the order, and the rest names the init script.*
+*Figure 1.15.23. In a SysV rc directory the first letter says start or stop, the two digits set the order, and the rest names the init script.*
 
 Older System V systems describe the machine's state with a runlevel, which is simply a number from 0 to 6. Each runlevel runs a base set of processes, such as `crond` and `udevd`. A system spends most of its time in one runlevel. When you shut down, init moves to a different runlevel so it can stop services in order.
 
@@ -767,6 +775,10 @@ The name tells `rc` what to do. An `S` means start, and the two digits from `00`
 But runlevels are becoming a thing of the past. systemd supports them, but it treats runlevels as obsolete end states. It prefers target units, which section 6 describes. To systemd, runlevels exist mainly to start services that need the System V init scripts.
 
 ## 16. AI-infrastructure patterns
+
+![A vertical dependency graph shows the startup pipeline of an AI node where driver daemons and a oneshot health gate must succeed before containerd, kubelet, and workloads start.](./img/p4-0115-gpu-startup-contract.svg)
+
+*Figure 1.15.24. A robust AI node startup contract uses drop-in dependencies and a oneshot health gate so container runtimes and schedulers only start after NVLink fabric initialization is verified.*
 
 Once you know the parts, you can put them together on a GPU node. The patterns below show how the unit, timer and slice ideas fit together in a production stack.
 

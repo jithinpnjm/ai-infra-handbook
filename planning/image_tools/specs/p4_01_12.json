@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0112-512e-rmw",
+  "title": "The 512e Read-Modify-Write Penalty",
+  "anchor": "### Sectors and block sizes",
+  "spec": "A comparative architectural diagram in two panels (A and B) contrasting an aligned write with an unaligned 512-byte write on a 512e Advanced Format drive. Panel A (Aligned 4 KiB Write): Top box shows 'Application Buffer: 4,096 Bytes (Aligned to 4 KiB offset 0)'. A straight green arrow labelled 'Single Direct Write (1 I/O operation)' points down to 'Drive Controller RAM Buffer' and then directly to 'Physical NAND / Platter: Physical Sector 0 (4,096 Bytes)'. Metrics box below shows: 'Read count: 0, Write count: 1, Total operations: 1'. Panel B (Unaligned 512-Byte Write - Read-Modify-Write): Top box shows 'Application Buffer: 512 Bytes (Targeting logical sector 1, offset 512-1023)'. Three sequential numbered steps: Step 1 (Read): A blue arrow labelled '1. Read entire 4 KiB physical sector' pulls Physical Sector 0 (4,096 bytes) from physical disk into 'Drive Controller DRAM Cache'. Step 2 (Modify): An orange arrow labelled '2. Overwrite bytes 512..1023 in controller DRAM' merges the 512-byte application update into the cached 4 KiB block. Step 3 (Write): A red arrow labelled '3. Write modified 4 KiB sector back to media' flushes the 4,096 bytes back to disk. Metrics box below shows: 'Read count: 1, Write count: 1, Total operations: 2 (2x I/O magnification, latency spike)'. At the bottom, note: 'Check drive geometry with: lsblk -t (LOG-SEC=512, PHY-SEC=4096)'.",
+  "alt": "A diagram comparing an aligned four-kilobyte write that takes a single operation against an unaligned 512-byte write on a 512e drive that forces a three-step read-modify-write cycle.",
+  "cap": "On 512e drives, any write smaller than four kilobytes or unaligned to a physical sector boundary forces the controller into a read-modify-write cycle that doubles physical I/O.",
+  "part": "part-01-linux",
+  "ch": "12"
+ },
+ {
+  "name": "p4-0112-fsck-passes",
+  "title": "The Five Passes of e2fsck and Backup Superblock Recovery",
+  "anchor": "## 7. Checking and repairing filesystems",
+  "spec": "A two-part workflow diagram illustrating how e2fsck verifies filesystems and how to recover from primary superblock corruption. Left side: 'e2fsck 5-Pass Verification Pipeline'. Five stacked sequential rectangular stages: 'Pass 1: Checking Inodes, Blocks, and Sizes' (validates inode tables, extent trees, detects bad block pointers); 'Pass 2: Checking Directory Structure' (validates directory entries, checks '.' and '..' linkages); 'Pass 3: Checking Directory Connectivity' (verifies every directory links back to root inode 2); 'Pass 4: Checking Reference Counts' (verifies inode link counts; unreferenced orphan files are reconnected to '/lost+found/#<inode>'); 'Pass 5: Checking Group Summary Information' (reconciles block and inode allocation bitmaps against actual usage). Right side: 'Emergency Superblock Corruption Decision Tree'. Step 1 box: 'Mount fails: recovery required or invalid superblock'. Step 2 box: 'Run dry-run simulation: sudo mke2fs -n /dev/sdb1' (red warning: 'never omit -n, which simulates creation and prints backup locations'). Arrow leads to 'Discovered Backup Superblocks: 32768, 98304, 163840...'. Step 3 box: 'Execute repair targeting backup: sudo e2fsck -b 32768 /dev/sdb1'. Step 4 box: 'Primary superblock restored and filesystem mounted cleanly'.",
+  "alt": "A workflow diagram showing the five sequential passes of e2fsck alongside the emergency recovery procedure using mke2fs dry runs and backup superblocks.",
+  "cap": "The five verification passes of e2fsck validate filesystem consistency from inodes to bitmaps, while backup superblocks allow full recovery when primary metadata is corrupted.",
+  "part": "part-01-linux",
+  "ch": "12"
+ },
+ {
+  "name": "p4-0112-quota-workflow",
+  "title": "Linux Filesystem Quota Architecture and Six-Step Setup Workflow",
+  "anchor": "### Quotas",
+  "spec": "A two-panel technical illustration showing quota enforcement mechanics and the complete administrative lifecycle from Supercomputers for Linux SysAdmins Chapter 12. Top panel: 'Quota Limit Spectrum (Storage & Inode Axis)'. Horizontal timeline bar from 0 GB to 120 GB: 'Normal Usage Range (0 to 100 GB)' in green; at 100 GB marker: 'Soft Limit (bsoft=100G)'. When exceeded, a warning arrow shows 'Grace Period Timer starts (default 7 days: setquota -t)'. Between 100 GB and 120 GB: 'Grace Period Window (writes permitted, warnings logged)'. At 120 GB marker: 'Hard Limit (bhard=120G)'. Beyond 120 GB or after grace expiry: solid red wall labelled 'Hard Limit Exceeded: Write blocked immediately with ENOSPC'. Bottom panel: '6-Step Administrative Workflow'. Six numbered sequential workflow boxes: '1. /etc/fstab: add usrquota,grpquota to mount options (/dev/sda6 on /export)'; '2. sudo mount -o remount,ro /dev/sda6: freeze writes to prevent corrupt usage scan'; '3. sudo quotacheck -vugc /dev/sda6: scan disk and create aquota.user and aquota.group files'; '4. sudo mount /dev/sda6 (or remount,rw): restore read-write operation'; '5. sudo quotaon -va: activate kernel quota enforcement'; '6. sudo edquota / setquota & repquota -a: configure user/group limits and verify'. Callout on the right: 'NFS Export: start rpc.rquotad daemon on server so network clients can query repquota'.",
+  "alt": "A diagram illustrating the quota enforcement spectrum between soft and hard limits alongside the six-step Linux quota administrative setup workflow.",
+  "cap": "Quota enforcement uses soft limits with grace periods before hard rejection, requiring a six-step workflow from fstab configuration and read-only database generation to active enforcement.",
+  "part": "part-01-linux",
+  "ch": "12"
+ }
+]

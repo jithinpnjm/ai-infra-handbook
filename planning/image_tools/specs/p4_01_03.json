@@ -1,0 +1,42 @@
+[
+ {
+  "name": "p4-0103-paths-traversal",
+  "title": "Absolute versus Relative Path Resolution from Working Directory",
+  "anchor": "## 1. Paths: how you name a file",
+  "spec": "Tree topology diagram illustrating path navigation. At top: Root directory '/' box. Branch left: '/home' -> '/home/alice' -> '/home/alice/project' -> file 'train.py'. Callout label: 'Absolute Path: /home/alice/project/train.py (starts with /, identical target from any process)'. Branch right: '/usr' with subdirectories '/usr/lib' and '/usr/bin'. Current Working Directory (pwd) indicator highlighted around '/usr/lib'. Relative path navigation arrows radiating from '/usr/lib': (1) self-reference '.' staying at '/usr/lib'; (2) downward traversal './X11' or 'X11' reaching '/usr/lib/X11'; (3) upward traversal '..' moving up to parent '/usr'; (4) composite traversal '../bin' moving up to '..' (/usr) then down to 'bin' (/usr/bin). Bottom callout box: '~ shorthand expands in shell to user home directory (e.g. /home/alice), never seen directly by kernel.'",
+  "alt": "Diagram illustrating absolute path resolution starting at root slash and relative path navigation from current working directory usr lib using dot and dot-dot.",
+  "cap": "Absolute paths always resolve from root slash, while relative paths depend on the process current working directory with dot representing current and dot-dot representing parent directory.",
+  "part": "part-01-linux",
+  "ch": "03"
+ },
+ {
+  "name": "p4-0103-hard-vs-symlink",
+  "title": "Structural Comparison of Hard Links versus Symbolic Links",
+  "anchor": "### Symbolic (soft) links",
+  "spec": "Two-panel comparative architecture diagram. Left panel (Hard Links): Directory table contains two separate name entries 'a.txt' and 'b.txt'. Both entries point directly to the same Inode record 'Inode 7401'. Inode 7401 box displays: 'Type: regular (-)', 'Link count: 2', 'Size: 200 MiB', and data block pointers targeting data block containing payload bytes 'hello'. Annotation: 'rm a.txt' deletes directory entry 'a.txt' and decrements link count to 1; data blocks remain intact and accessible via 'b.txt'. Boundary note: 'EXDEV error: Hard links cannot cross mount points/filesystems (e.g. ext4 to tmpfs)'. Right panel (Symbolic Links): Directory table contains entry 'cuda' pointing to 'Inode 5520'. Inode 5520 box displays: 'Type: symbolic link (l)', 'Link count: 1', 'Size: 21 bytes'. Its data block stores target string path '/usr/local/cuda-12.4'. A resolution arrow points from that path string to the target directory 'cuda-12.4' (Inode 3105). Annotation: If 'cuda-12.4' is moved or deleted, 'cuda' becomes a dangling link pointing to nowhere. Capability note: 'Symlinks can cross filesystem boundaries and point to directories.'",
+  "alt": "Side by side comparison showing a hard link sharing an inode record and a symbolic link containing a target path string with dangling behavior on deletion.",
+  "cap": "Hard links create multiple directory entries for a single inode that survive deletion of other names, whereas symbolic links store path strings that become dangling if the target is moved or deleted.",
+  "part": "part-01-linux",
+  "ch": "03"
+ },
+ {
+  "name": "p4-0103-atomic-symlink-swap",
+  "title": "Two-Step Atomic Symlink Replacement Workflow",
+  "anchor": "### The atomic \"latest\" pattern",
+  "spec": "Three-stage workflow sequence diagram showing safe checkpoint pointer rotation. Initial State (T0): Directory contains checkpoint directories 'checkpoints/step_000900' and 'checkpoints/step_001000'. Active symlink 'latest' points to 'step_000900'. Concurrent Reader process resolves 'latest/model.pt' -> 'step_000900/model.pt'. Step 1 (T1 - Prepare): Command 'ln -sfn checkpoints/step_001000 latest.tmp'. A temporary symlink 'latest.tmp' is created pointing to 'step_001000'. The existing 'latest' symlink remains untouched and live. Concurrent Readers during T1 still resolve 'step_000900' with zero errors. Step 2 (T2 - Atomic Swap): Command 'mv -T latest.tmp latest'. The Linux kernel executes an atomic rename() syscall, replacing 'latest' with 'latest.tmp' in a single filesystem operation. Final State: 'latest' now points to 'step_001000'. 'latest.tmp' disappears. Callout highlight: Readers at all moments see either step_000900 or step_001000, never encountering a missing link window (ENOENT).",
+  "alt": "Two-step sequence diagram illustrating creation of latest.tmp pointing to new checkpoint step followed by atomic rename over latest to prevent reader race conditions.",
+  "cap": "Creating latest.tmp before executing an atomic rename over latest ensures continuous resolution for reader processes with zero downtime window.",
+  "part": "part-01-linux",
+  "ch": "03"
+ },
+ {
+  "name": "p4-0103-tar-compression-pipeline",
+  "title": "Tar Archiving Pipeline and Compressor Trade-off Comparison",
+  "anchor": "## 8. Archiving and compression",
+  "spec": "Top: Two-stage archiving and compression pipeline. Stage 1 (Archive): Multiple directory tree files ('project/code.py', 'project/config.yaml', 'project/model.safetensors') with individual metadata (permissions, owner, mtime) enter 'tar -c', bundling into a continuous sequential tar stream. Stage 2 (Compress): Tar stream passes through compressor tool ('gzip', 'bzip2', 'xz', 'zstd') creating single archive file (e.g. 'project.tar.gz' via 'tar -czf' or 'project.tar.zst' via 'tar --zstd -f'). Reverse flow indicates 'tar -tf' lists and verifies table of contents, while 'tar -xzf -C /target' extracts into dedicated folder. Bottom: Comparative trade-off matrix across 4 compressors: (1) gzip (-z): fast compression, moderate ratio, single/multi-core via pigz, ubiquitous standard for logs/configs; (2) bzip2 (-j): slower compression, higher ratio, pbzip2, legacy text; (3) xz (-J): very slow compression, maximum ratio, xz -T0, software release tarballs; (4) zstd (--zstd): very fast gzip-like speed, high compression ratio, zstd -T0, modern AI default for checkpoints/datasets. Callout rule: 'Do not compress already compressed files (.safetensors, .pt, .zip); wastes CPU with zero byte reduction.'",
+  "alt": "Flow diagram of two-stage tar archiving and compression pipeline with a comparison matrix of gzip, bzip2, xz, and zstd compressors.",
+  "cap": "Archiving bundles files and metadata into a stream while compression shrinks the bytes, with zstd and pigz providing modern speed and ratio trade-offs for AI workloads.",
+  "part": "part-01-linux",
+  "ch": "03"
+ }
+]

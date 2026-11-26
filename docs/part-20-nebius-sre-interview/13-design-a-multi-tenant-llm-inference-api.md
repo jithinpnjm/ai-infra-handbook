@@ -420,6 +420,10 @@ The alert shows p99 TTFT doubled over ten minutes. Utilisation is flat. Picture 
 
 ### Scenario 3: the retry storm
 
+![Comparison of retry storm load escalation arithmetic against the four-point defense architecture of retry budgets, jitter, pre-token guards, and 429 shedding.](./img/p4-2013-retry-cascade.svg)
+
+*Figure 20.0.0. Losing two replicas while retrying three times amplifies load to 144 percent of capacity, which is prevented by a 10 percent retry budget, pre-token retries, and 429 shedding.*
+
 A pool loses two of ten replicas. Error rate rises to 5%. Clients retry three times with no backoff. Offered load becomes about 1.15 times the original at once and keeps growing as latency rises and timeouts trigger more retries. Fix: retries only for pre-first-token errors, a budget of 10% of traffic, jittered backoff, and retries in one layer. The router sheds with 429 and Retry-After when queues are full, which tells well-behaved clients to wait.
 
 ## Hands-on lab

@@ -1,0 +1,32 @@
+# docs/part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md
+- ## Why this matters for AI infrastructure | 260 | NO FIGURE NEEDED introductory context and cluster access topology definitions
+- ## Prerequisites and outcomes | 220 | NO FIGURE NEEDED learning outcomes and chapter roadmap
+- ## 1. How SSH works | 450 | COVERED(ch05-d1-luna)
+- ## 2. Keys: create, install, protect | 480 | NEEDS FIGURE architectural comparison of host keys versus user keys, trust directions, and StrictModes file permissions
+- ## 3. Using SSH day to day | 30 | NO FIGURE NEEDED brief section intro
+- ### Running commands, with or without a terminal | 180 | NO FIGURE NEEDED command line syntax examples and quoting rules
+- ### The config file: `~/.ssh/config` | 270 | COVERED(p3-0105-config-first-match)
+- ### Port forwarding (tunnels) | 230 | COVERED(p3-0105-forward-compare)
+- ### Debugging a connection | 120 | NO FIGURE NEEDED concise bullet points on client verbose mode and server auth logs
+- ## 4. Copying files: `scp`, `sftp`, `rsync` and cloud tools | 220 | COVERED(l05-copy-tools)
+- ### `rsync` properly | 420 | COVERED(p3-0105-rsync-slash)
+- ### Network filesystems: an introduction | 250 | NO FIGURE NEEDED high-level overview referencing later storage chapters
+- ## 5. Sessions that survive: `tmux` | 270 | NEEDS FIGURE process architecture showing how the persistent tmux server protects sessions from SIGHUP when SSH drops
+- ## 6. Running commands on many nodes | 180 | COVERED(l05-fanout)
+- ## 7. Editors: enough to survive anywhere | 460 | NEEDS FIGURE state machine of vim modal editing between Normal, Insert, Visual, and Command-line modes
+- ## 8. Out-of-band access: when SSH is not available | 200 | COVERED(l05-bmc)
+- ## 9. AI-infrastructure patterns | 190 | COVERED(l05-hpc-path)
+- ## How it fails | 30 | NO FIGURE NEEDED brief section lead-in
+- ### 1. `Permission denied (publickey)` | 180 | COVERED(p3-0105-publickey-ladder)
+- ### 2. `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` | 100 | NO FIGURE NEEDED handled by text explanation and ssh-keygen -R command
+- ### 3. Hangs, timeouts and "Connection refused" | 90 | NEEDS FIGURE packet flow decision tree contrasting TCP SYN timeout vs TCP RST connection refused
+- ### 4. Sessions drop and kill your work | 70 | NO FIGURE NEEDED covered by tmux architecture in section 5
+- ### 5. rsync mirrors the wrong thing: the trailing slash and --delete | 100 | NO FIGURE NEEDED covered by p3-0105-rsync-slash
+- ### 6. Agent forwarding exposes you, and keys leak | 80 | NO FIGURE NEEDED concise security warning and ProxyJump recommendation
+- ### 7. Works in the terminal, fails over `ssh host command` or in automation | 80 | NO FIGURE NEEDED short explanation of non-interactive PATH and pseudo-terminal allocation
+- ## Hands-on lab: SSH, rsync, tmux, and VM drills | 500 | NO FIGURE NEEDED hands-on step-by-step exercise lab
+- ## Exercises | 220 | NO FIGURE NEEDED practice problems
+- ## Checkpoint questions (20) | 900 | NO FIGURE NEEDED review Q&A
+- ## Sources and review notes | 200 | NO FIGURE NEEDED bibliography and testing notes
+
+Specs kept 4, dropped 0: []

@@ -1,0 +1,36 @@
+# docs/part-20-nebius-sre-interview/25-promql-grafana-and-tracing-traps.md
+- ## What the interviewer is testing | 200 words | NO FIGURE NEEDED interview context and exam scope
+- ## The core ideas | 30 words | NO FIGURE NEEDED introductory sentence
+- ### 1. Counters, resets and what rate really computes | 290 words | COVERED(x25-counter-reset-compare)
+- ### 2. rate versus irate, and the range-selector trap | 280 words | COVERED(p3-2025-range-and-irate)
+- ### 3. Aggregate after rate, never before | 210 words | COVERED(p3-2025-ratio-trap, p2-2025-sum-before-rate)
+- ### 4. Histograms: keep le, then take the quantile once | 330 words | COVERED(p3-2025-average-p99, p2-2025-le-buckets, m20-25-1)
+- ### 5. Gauges, saturation and dashboards that tell the truth | 310 words | COVERED(p3-2025-saturation-panels)
+- ### 6. Staleness, absent and silent alerts | 210 words | COVERED(x25-alert-blind-spots)
+- ### 7. Joins: on, ignoring and group_left | 170 words | NEEDS FIGURE many-to-one vector matching mechanism with group_left syntax
+- ### 8. Alert rules: for, flapping and keep_firing_for | 200 words | COVERED(p3-2025-for-keepfiring)
+- ### 9. Alertmanager: grouping, inhibition and routing | 430 words | COVERED(x25-alertmanager-routing)
+- ### 10. Recording rules and naming | 400 words | COVERED(p3-2025-rule-layers)
+- ### 11. Offset, subqueries and what they do to time | 170 words | NO FIGURE NEEDED syntax placement covered in exercise table
+- ### 12. Cardinality: the cost behind every label | 170 words | NEEDS FIGURE worked calculation of series multiplication and TSDB explosion
+- ### 13. Tracing a streaming request | 410 words | COVERED(p3-2025-traceparent-anatomy, m20-25-2)
+- ### 14. Sampling and joining traces to metrics | 240 words | COVERED(x25-exemplar-join-path)
+- ## How to answer out loud | 40 words | NO FIGURE NEEDED verbal practice intro
+- ### Question 1: "What is wrong with a p99 panel that averages across pods?" | 100 words | NO FIGURE NEEDED verbal response script
+- ### Question 2: "Explain rate versus irate and how you pick a window." | 90 words | NO FIGURE NEEDED verbal response script
+- ### Question 3: "The alert never fired during the outage. Why?" | 100 words | NO FIGURE NEEDED verbal response script
+- ### Question 4: "Pager noise is too high. What do you change?" | 110 words | NO FIGURE NEEDED verbal response script
+- ### Question 5: "How would you trace a streaming request?" | 90 words | NO FIGURE NEEDED verbal response script
+- ## Worked scenarios | 40 words | NO FIGURE NEEDED scenario intro
+- ### Scenario 1: The flat p99 | 120 words | NO FIGURE NEEDED covered by p3-2025-average-p99 in idea 4
+- ### Scenario 2: The silent outage | 120 words | COVERED(p3-2025-silent-outage-count)
+- ### Scenario 3: Forty pages for one cause | 100 words | NO FIGURE NEEDED Alertmanager routing covered by x25-alertmanager-routing
+- ## Hands-on lab | 290 words | NO FIGURE NEEDED practical terminal commands and test steps
+- ## The 15 exercises: what is wrong with this query | 480 words | COVERED(p3-2025-query-mistakes-alerts)
+- ## Drill questions | 280 words | NO FIGURE NEEDED drill Q and A list
+- ## Common mistakes and weak answers | 140 words | NO FIGURE NEEDED bullet list of interview pitfalls
+- ## Connections to the rest of the handbook | 110 words | NO FIGURE NEEDED cross reference links
+- ## Sources and review notes | 490 words | NO FIGURE NEEDED bibliographical sources and notes
+- ### Verification log | 230 words | NO FIGURE NEEDED verification table
+
+Specs kept 2, dropped 0: []

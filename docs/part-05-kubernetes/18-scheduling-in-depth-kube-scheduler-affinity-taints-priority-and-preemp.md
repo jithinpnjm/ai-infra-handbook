@@ -411,6 +411,10 @@ Kueue also offers topology-aware scheduling (TAS). TAS places a workload's pods 
 
 ### Volcano
 
+![Volcano batch scheduling pipeline showing enqueue, allocate, preempt, reclaim, and backfill actions coordinating with gang and fairness plugins.](./img/p4-0518-volcano-architecture.svg)
+
+*Figure 5.0.0. Volcano replaces kube-scheduler for batch workloads, evaluating all-or-nothing PodGroup admission and cross-queue fairness in a multi-stage action loop.*
+
 Volcano is a batch scheduler from CNCF. It runs its own scheduler binary and uses its own CRDs. These are `Queue`, with weight, capability and reclaimable; `PodGroup`, with minMember and minResources, which give gang behaviour; and `Job`, a vcjob with tasks and lifecycle policies. Its actions are `enqueue`, `allocate`, `preempt`, `reclaim` and `backfill`. Its plugins include `gang`, `priority`, `drf` for fairness, `proportion`, `binpack`, `nodeorder`, `predicates`, `task-topology` and `numa-aware`. Network-topology awareness comes through HyperNode.
 
 Pods set `schedulerName: volcano` and reference a PodGroup. Compared with Kueue, Volcano replaces kube-scheduler for batch pods. It puts richer batch-specific policy in one place, but it is more intrusive. Kueue complements the default scheduler, with a lighter integration with standard Jobs and operators. Teams often choose Kueue for new platform builds, and Volcano where its HPC-style policies or existing deployments are already established.
@@ -477,6 +481,10 @@ spec:
 Attribute names and API versions differ by driver and Kubernetes release, so verify them. For a job that must stay within one domain, choose the topology key first, then apply it with node affinity, Kueue TAS or a DRA claim.
 
 ## 7. Descheduling, autoscaling and scheduler tuning
+
+![Three control loops coordinate placement: kube-scheduler places pods, the descheduler periodically evicts drifted pods to consolidate nodes, and the autoscaler provisions or removes nodes.](./img/p4-0518-placement-lifecycle.svg)
+
+*Figure 5.0.0. Maintaining optimal GPU cluster placement requires coordinating kube-scheduler placement, descheduler defragmentation, and autoscaler provisioning without interrupting running training jobs.*
 
 A cluster has been running for months. Pods have drifted into awkward places, a few nodes are nearly empty, and others are packed. The descheduler is the tool that tidies that up over time. It periodically evicts pods to improve placement. It can remove duplicates, balance utilisation, fix pods that violate affinity, clean up node taints, and consolidate nodes with low utilisation. Run it with PDBs, and only on non-training pods.
 

@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-2025-group-left-join",
+  "title": "Many-to-One Vector Matching with group_left",
+  "anchor": "### 7. Joins: on, ignoring and group_left",
+  "spec": "Layout shows two columns joining into an output vector, illustrating why Prometheus requires explicit group_left. On the left side ('Many' side), show two series of metric vllm:num_requests_waiting: series 1 with labels pod='pod-1', engine='0', value 7; series 2 with labels pod='pod-1', engine='1', value 4. On the right side ('One' side), show kube_pod_info with labels pod='pod-1', node='node-a', value 1. In the middle, show the join attempt: Top branch shows bad query 'waiting * on (pod) kube_pod_info' marked with a red X and promtool error callout: 'multiple matches for labels: many-to-one matching must be explicit (group_left/group_right)'. Bottom branch shows the correct query 'waiting * on (pod) group_left(node) kube_pod_info' marked with a green checkmark. Show arrows matching on pod='pod-1' and copying node='node-a' to both output series: output 1 is pod='pod-1', engine='0', node='node-a', value 7; output 2 is pod='pod-1', engine='1', node='node-a', value 4.",
+  "alt": "A PromQL many-to-one join between queue depth series and pod info using on pod group_left node.",
+  "cap": "Many-to-one vector matching requires explicit group_left to attach labels from a single info series to multiple metric series.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25"
+ },
+ {
+  "name": "p4-2025-cardinality-explosion",
+  "title": "Cardinality Arithmetic and Label Explosion",
+  "anchor": "### 12. Cardinality: the cost behind every label",
+  "spec": "A tree calculation layout illustrating label multiplication and TSDB memory cost. Level 1 (Histogram base): A single histogram metric with 10 finite buckets + 1 '+Inf' bucket + 1 '_sum' + 1 '_count' = 13 series per label set. Level 2 (Model dimension): Multiply by 20 models -> 13 * 20 = 260 series. Level 3 (Tenant dimension): Multiply by 1,000 tenants -> 260 * 1,000 = 260,000 active series in memory (healthy TSDB state). Level 4 (The Anti-Pattern): A red fork showing the addition of label 'request_id'. Unbounded unique request IDs per day (e.g. 5,000,000 requests) multiply by 260,000 -> billions of series leading to TSDB Out of Memory crash. At the bottom, contrast two destination boxes: 'Metrics TSDB' showing only bounded low-cardinality labels (model, status), versus 'Traces and Logs' showing unbounded high-cardinality data (request_id, prompt_id, user_id).",
+  "alt": "A diagram showing series multiplication across ten histogram buckets, twenty models, and one thousand tenants yielding 260,000 series.",
+  "cap": "Metric labels multiply series combinatorially, making high-cardinality identifiers like request ID suitable only for traces and logs.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25"
+ }
+]

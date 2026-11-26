@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>CPython Execution Pipeline from Source to PVM</title>
+  <desc>Flowchart diagram illustrating the two-stage CPython execution model, compilation frontend, import caching mechanism, and the PVM evaluation loop.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">CPython Execution Pipeline from Source to PVM</text>
+
+  
+  <rect x="40" y="380" width="220" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(125, 410)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 0 0 L 32 0 L 48 16 L 48 58 L 0 58 Z" />
+    <path d="M 32 0 L 32 16 L 48 16" />
+    <line x1="12" y1="28" x2="36" y2="28" />
+    <line x1="12" y1="38" x2="36" y2="38" />
+    <line x1="12" y1="48" x2="26" y2="48" />
+  </g>
+  
+  <text x="150" y="515" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Source Code</text>
+  <text x="150" y="560" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">(script.py /</text>
+  <text x="150" y="595" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">module.py)</text>
+
+  
+  <line x1="260" y1="505" x2="390" y2="505" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <rect x="268" y="445" width="124" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="330" y="473" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Compiler</text>
+  <text x="330" y="499" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">(Frontend)</text>
+
+  
+  <rect x="400" y="380" width="220" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(485, 415)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="25" cy="25" r="14" />
+    <path d="M 25 4 L 25 11 M 25 39 L 25 46 M 4 25 L 11 25 M 39 25 L 46 25 M 10 10 L 15 15 M 35 35 L 40 40 M 10 40 L 15 35 M 35 15 L 40 10" />
+  </g>
+  <text x="510" y="530" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Bytecode</text>
+  <text x="510" y="570" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Generation</text>
+
+  
+  
+  <path d="M 620 460 L 660 460 L 660 250 L 690 250" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <rect x="635" y="140" width="260" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="765" y="172" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">If imported module</text>
+
+  
+  <rect x="700" y="195" width="370" height="150" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(860, 208)" stroke="#207448" stroke-width="3" fill="none">
+    <ellipse cx="25" cy="10" rx="22" ry="8" />
+    <path d="M 3 10 L 3 32 A 22 8 0 0 0 47 32 L 47 10" />
+    <path d="M 3 21 A 22 8 0 0 0 47 21" />
+  </g>
+  <text x="885" y="285" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">__pycache__/</text>
+  <text x="885" y="322" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">module.cpython-312.pyc</text>
+
+  
+  <line x1="885" y1="345" x2="885" y2="385" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="700" y="395" width="370" height="95" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(730, 420)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="44" height="44" rx="6" />
+    <line x1="0" y1="16" x2="44" y2="16" />
+    <line x1="16" y1="0" x2="16" y2="44" />
+  </g>
+  <text x="910" y="455" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">sys.modules</text>
+
+  
+  
+  <path d="M 620 560 L 660 560 L 660 670 L 1100 670" fill="none" stroke="#207448" stroke-width="4" />
+  
+  <rect x="755" y="645" width="220" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="865" y="679" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">If direct script</text>
+
+  
+  
+  <path d="M 1070 442 L 1100 442 L 1100 670" fill="none" stroke="#207448" stroke-width="4" />
+  
+  <line x1="1100" y1="540" x2="1145" y2="540" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+  
+  <rect x="990" y="505" width="180" height="70" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="2.5" />
+  <text x="1080" y="534" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Instruction</text>
+  <text x="1080" y="562" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">stream</text>
+
+  
+  <rect x="1155" y="140" width="410" height="840" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+
+  
+  <g transform="translate(1335, 160)" stroke="#207448" stroke-width="3" fill="none">
+    
+    <rect x="5" y="5" width="40" height="40" rx="6" />
+    <rect x="15" y="15" width="20" height="20" />
+    <line x1="15" y1="0" x2="15" y2="5" />
+    <line x1="25" y1="0" x2="25" y2="5" />
+    <line x1="35" y1="0" x2="35" y2="5" />
+    <line x1="15" y1="45" x2="15" y2="50" />
+    <line x1="25" y1="45" x2="25" y2="50" />
+    <line x1="35" y1="45" x2="35" y2="50" />
+    <line x1="0" y1="15" x2="5" y2="15" />
+    <line x1="0" y1="25" x2="5" y2="25" />
+    <line x1="0" y1="35" x2="5" y2="35" />
+    <line x1="45" y1="15" x2="50" y2="15" />
+    <line x1="45" y1="25" x2="50" y2="25" />
+    <line x1="45" y1="35" x2="50" y2="35" />
+  </g>
+  <text x="1360" y="245" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Python Virtual Machine (PVM)</text>
+
+  
+  <rect x="1205" y="275" width="310" height="60" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <text x="1360" y="314" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Fetch instruction</text>
+
+  
+  <line x1="1360" y1="335" x2="1360" y2="370" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1205" y="375" width="310" height="60" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <text x="1360" y="414" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Decode opcode</text>
+
+  
+  <line x1="1360" y1="435" x2="1360" y2="470" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1175" y="475" width="370" height="88" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <text x="1360" y="510" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Execute against</text>
+  <text x="1360" y="542" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Evaluation Stack</text>
+
+  
+  <line x1="1360" y1="563" x2="1360" y2="598" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1255" y="603" width="210" height="56" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <text x="1360" y="640" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Repeat</text>
+
+  
+  <path d="M 1465 631 L 1530 631 L 1530 305 L 1520 305" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1175" y="685" width="370" height="270" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1360" y="730" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">dis.dis() inspects</text>
+  <text x="1360" y="775" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">bytecode instructions;</text>
+  <text x="1360" y="820" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">runtime execution</text>
+  <text x="1360" y="865" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">begins without</text>
+  <text x="1360" y="910" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">separate link phase</text>
+
+</svg>

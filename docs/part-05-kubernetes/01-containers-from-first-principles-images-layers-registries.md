@@ -422,6 +422,10 @@ BuildKit is the modern build engine and the default in current Docker. It runs s
 
 ### Image size and startup
 
+![Comparison between traditional image pull downloading all layers before startup and lazy pulling starting in seconds while streaming layer chunks on demand.](./img/p4-0501-lazy-pull.svg)
+
+*Figure 5.0.0. Lazy-pulling snapshotters fetch index metadata first so the container starts immediately, downloading remaining layer data only as the application reads it.*
+
 Large images cost you network, registry space, disk and time to start. Think of an image as a box that every node must receive before the job can begin. A heavier box takes longer to carry, and it fills more shelves. Several techniques reduce that cost. Use slim or distroless bases, and use multi-stage builds. Remove build tools, strip binaries, and avoid copying whole datasets into an image. Mount or download datasets when the container starts. Share base layers across images so that nodes already hold them. Compress with `zstd`, which decompresses faster than gzip.
 
 Lazy-pulling snapshotters go a step further. These are stargz or eStargz, SOCI, Nydus and OverlayBD. They let a container start before the whole image has downloaded, which matters for multi-GB ML images. The runtime fetches the parts of the image that the process actually reads, and it fetches the rest in the background or on demand. For GPU images, share one CUDA or PyTorch base layer across every team's images, so the heavy part is downloaded once per node instead of once per team.
@@ -568,6 +572,10 @@ Each `hosts.toml` file belongs to one registry. The `server` line names the real
 
 ### Registry anatomy and placement
 
+![Anatomy of an OCI container registry showing its API server, metadata database, and blob store replicated across regional failure domains.](./img/p4-0501-registry-anatomy.svg)
+
+*Figure 5.0.0. A container registry splits metadata from content-addressed blob storage and replicates across regions to keep pull traffic local and fault-tolerant.*
+
 A registry has three main parts. A server handles the user interface and the API. A blob store holds the image data. A database holds user and image metadata. The OCI standardizes registry operations, so different products interoperate. Storage backends are often configurable, and that choice shapes the registry's design.
 
 You can host images in an artifact store such as Artifactory or Nexus. If most of your environment runs in one cloud, a cloud registry such as ECR, GCR or ACR may save money, because the traffic stays inside that cloud's network. Placement matters for availability. Many teams put a registry in each failure domain, which is a group of machines that can fail together, such as a data centre or a region. You then choose between one central blob store and a blob store per region, with replication between them. Replication pushes an image to one registry and copies it to the others. If your product lacks replication, a pipeline tool and webhooks on each push can do a basic version.
@@ -629,6 +637,10 @@ docker run --rm --device nvidia.com/gpu=all ubuntu:22.04 ls /dev/nvidia*       #
 ```
 
 ## 7. Container lifecycle commands (cheat sheet)
+
+![State machine of container lifecycle showing transitions between Created, Running, Paused, and Stopped with commands, signals, and resulting exit codes.](./img/p4-0501-container-lifecycle.svg)
+
+*Figure 5.0.0. The container lifecycle moves through distinct kernel states driven by CLI commands, signal propagation, and cgroup resource enforcement.*
 
 Most of your day with containers is spent starting them, watching them, stopping them and cleaning up. The block below collects those commands in the order you are likely to use them. Read it as a sequence: start, look, change, stop, clean. Each line is a small question you ask the container.
 

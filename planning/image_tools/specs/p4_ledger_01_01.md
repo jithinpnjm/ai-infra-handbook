@@ -1,0 +1,37 @@
+# docs/part-01-linux/01-the-linux-big-picture-kernel-userspace-distributions.md
+- ## Why this matters for AI infrastructure | 270 | NO FIGURE NEEDED introductory motivation for Linux on AI clusters
+- ## Prerequisites and outcomes | 130 | NO FIGURE NEEDED learning outcomes list
+- ## 1. What an operating system is for | 200 | NO FIGURE NEEDED conceptual analogy explained clearly in text and succeeded by technical layers
+- ## 2. The three layers | 480 | COVERED(ch01-d1-luna)
+- ### Why two modes? Kernel mode and user mode | 270 | NEEDS FIGURE CPU privilege rings, instruction trap mechanism, and fault isolation boundary
+- ## 3. What the kernel does: four jobs | 70 | NO FIGURE NEEDED short introductory transition section
+- ### Job 1: running processes | 310 | COVERED(ch01-d2-luna)
+- ### Job 2: managing memory | 310 | COVERED(p3-0101-pagetable-example)
+- ### Job 3: managing devices | 300 | NEEDS FIGURE routing standard file operations through /dev to kernel drivers and pseudodevices
+- ### Job 4: system calls and the services around them | 340 | NEEDS FIGURE request path from application through glibc and syscall instruction to kernel subsystems
+- ## 4. Processes, users, and who starts what | 20 | NO FIGURE NEEDED structural section header
+- ### What happens when you type a command | 270 | COVERED(ch01-d3-luna)
+- ### Users, owners, and `root` | 270 | COVERED(l01-uid-gid)
+- ## 5. Seeing it with your own eyes | 40 | NO FIGURE NEEDED introductory text for interactive terminal commands
+- ### 5.1 What machine and which kernel is this? | 160 | NO FIGURE NEEDED command listing and commentary
+- ### 5.2 What is running, and in what tree? | 150 | NO FIGURE NEEDED command walkthrough of process tree inspection
+- ### 5.3 Watch a command start: `strace` | 140 | NO FIGURE NEEDED terminal commands and output explanations
+- ### 5.4 Watch the kernel/user boundary yourself | 120 | NO FIGURE NEEDED minimal C code and compilation instructions
+- ### 5.5 Where do devices and kernel modules show up? | 110 | NO FIGURE NEEDED listing commands for device files and kernel modules
+- ## 6. Distributions: Linux is a kernel, not a system | 330 | COVERED(ch01-d4-luna)
+- ### 6.1 The Red Hat, Fedora, CentOS, and Amazon Linux branch | 260 | NEEDS FIGURE upstream-to-downstream river topology connecting Fedora, CentOS Stream, RHEL, Rocky, Alma, and Amazon Linux
+- ### 6.2 The Debian and Ubuntu branch | 380 | COVERED(l01-asymmetry)
+- ## 7. Putting a GPU node on the map | 450 | COVERED(ch01-d5-luna)
+- ## 8. How it fails: six classic confusions | 70 | COVERED(l01-layer-failures)
+- ### 1. "I updated the kernel and the GPU disappeared" | 100 | NO FIGURE NEEDED short incident case study covered by l01-layer-failures and l01-asymmetry
+- ### 2. "Works in the container, not on the host" (and the reverse): confusing library layers | 90 | NO FIGURE NEEDED short incident case study covered by l01-asymmetry
+- ### 3. A process that "cannot be killed": state D | 90 | COVERED(p3-0101-d-versus-z)
+- ### 4. "The kernel killed my job": the out-of-memory killer | 100 | NO FIGURE NEEDED short incident case study covered by l01-layer-failures
+- ### 5. "Permission denied" versus "No such file": wrong layer of cause | 90 | NO FIGURE NEEDED short incident case study covered by l01-layer-failures
+- ### 6. "It behaves differently on the other cluster": distribution differences | 90 | NO FIGURE NEEDED short incident case study covered by l01-layer-failures
+- ## Hands-on lab: layer verification and VM tour | 330 | NO FIGURE NEEDED hands-on lab instructions
+- ## Exercises | 260 | NO FIGURE NEEDED student exercises
+- ## Checkpoint questions (20) | 1100 | NO FIGURE NEEDED revision questions and answers
+- ## Sources and review notes | 330 | NO FIGURE NEEDED bibliographic sources list
+
+Specs kept 4, dropped 0: []

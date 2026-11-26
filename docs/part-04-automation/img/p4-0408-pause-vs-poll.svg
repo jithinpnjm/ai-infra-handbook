@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Fixed pause versus active condition polling</title>
+  <desc>Two-lane timeline comparison diagram contrasting blind pause with dynamic until polling across fast and slow service scenarios.</desc>
+
+  <defs>
+    
+    <pattern id="idleHatch" width="12" height="12" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="12" stroke="#d9534f" stroke-width="4" />
+    </pattern>
+    
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="50" y="55" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Fixed pause versus active condition polling</text>
+  <text x="50" y="95" font-family="sans-serif" font-size="24px" fill="#303a36">Two-lane timeline comparison diagram contrasting blind pause with dynamic until polling across fast and slow service scenarios.</text>
+
+  
+  
+  
+  <rect x="50" y="125" width="1500" height="465" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 145)">
+    <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="28,12 28,28 42,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="145" y="168" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">
+    Top Lane (Blind Wait: <tspan font-family="monospace">pause: seconds=60</tspan>)
+  </text>
+  <text x="145" y="198" font-family="sans-serif" font-size="24px" fill="#303a36">A 0s to 80s timeline.</text>
+
+  
+  <rect x="75" y="215" width="710" height="355" rx="10" fill="#ffffff" stroke="#c2d6c6" stroke-width="2" />
+  <text x="95" y="252" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="95" dy="0" font-weight="bold">Fast scenario:</tspan> service restarts and is healthy
+    <tspan x="95" dy="32">at T+2s, but Ansible blindly sleeps until T+60s,</tspan>
+    <tspan x="95" dy="32">creating 58 seconds of wasted idle latency</tspan>
+  </text>
+
+  
+  <g transform="translate(105, 360)">
+    
+    <line x1="0" y1="90" x2="650" y2="90" stroke="#a0b5a4" stroke-width="4" />
+    
+    
+    <line x1="0" y1="85" x2="0" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="0" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">0s</text>
+
+    <line x1="150" y1="85" x2="150" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="150" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">20s</text>
+
+    <line x1="300" y1="85" x2="300" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="300" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">40s</text>
+
+    <line x1="450" y1="85" x2="450" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="450" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">60s</text>
+
+    <line x1="600" y1="85" x2="600" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="600" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">80s</text>
+
+    
+    <circle cx="15" cy="90" r="8" fill="#207448" />
+    <text x="15" y="45" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">T+2s</text>
+    <line x1="15" y1="52" x2="15" y2="82" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="15" y="60" width="435" height="30" fill="url(#idleHatch)" stroke="#d9534f" stroke-width="2" />
+    <text x="232" y="35" font-family="sans-serif" font-size="24px" fill="#d9534f" font-weight="bold" text-anchor="middle">58s idle latency</text>
+
+    
+    <circle cx="450" cy="90" r="8" fill="#303a36" />
+    <text x="450" y="45" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">T+60s</text>
+  </g>
+
+  
+  <rect x="815" y="215" width="710" height="355" rx="10" fill="#ffffff" stroke="#c2d6c6" stroke-width="2" />
+  <text x="835" y="252" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="835" dy="0" font-weight="bold">Slow scenario:</tspan> heavy GPU POST takes 65s to settle;
+    <tspan x="835" dy="32">pause expires at T+60s, next task checks port</tspan>
+    <tspan x="835" dy="32">immediately, receives Connection Refused, and</tspan>
+    <tspan x="835" dy="32">triggers a false-positive failure at T+61s.</tspan>
+  </text>
+
+  
+  <g transform="translate(845, 360)">
+    
+    <line x1="0" y1="90" x2="650" y2="90" stroke="#a0b5a4" stroke-width="4" />
+
+    
+    <line x1="0" y1="85" x2="0" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="0" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">0s</text>
+
+    <line x1="150" y1="85" x2="150" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="150" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">20s</text>
+
+    <line x1="300" y1="85" x2="300" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="300" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">40s</text>
+
+    <line x1="450" y1="85" x2="450" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="450" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">60s</text>
+
+    <line x1="600" y1="85" x2="600" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="600" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">80s</text>
+
+    
+    <rect x="0" y="72" width="488" height="18" fill="#d3dfd5" rx="4" />
+    <text x="240" y="60" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">GPU POST running (0s to 65s)</text>
+
+    
+    <circle cx="450" cy="90" r="7" fill="#303a36" />
+    <text x="410" y="32" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">T+60s</text>
+
+    
+    <line x1="458" y1="15" x2="458" y2="90" stroke="#d9534f" stroke-width="3" />
+    <circle cx="458" cy="90" r="8" fill="#d9534f" />
+    <text x="475" y="18" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#d9534f">T+61s Failure</text>
+  </g>
+
+  
+  
+  
+  <rect x="50" y="615" width="1500" height="490" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 635)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="115 25" />
+    <polyline points="44,8 52,24 36,24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <polyline points="20,28 26,35 38,20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="145" y="658" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">
+    Bottom Lane (Active Polling: <tspan font-family="monospace">until: probe.status == 200, retries: 12, delay: 10</tspan>)
+  </text>
+
+  
+  <rect x="75" y="700" width="710" height="380" rx="10" fill="#ffffff" stroke="#c2d6c6" stroke-width="2" />
+  <text x="95" y="738" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="95" dy="0" font-weight="bold">Fast scenario:</tspan> probe 1 checks at T+10s,
+    <tspan x="95" dy="32">passes, and immediately advances the play,</tspan>
+    <tspan x="95" dy="32">saving 50s.</tspan>
+  </text>
+
+  
+  <g transform="translate(105, 875)">
+    
+    <line x1="0" y1="90" x2="650" y2="90" stroke="#a0b5a4" stroke-width="4" />
+
+    
+    <line x1="0" y1="85" x2="0" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="0" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">0s</text>
+
+    <line x1="150" y1="85" x2="150" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="150" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">20s</text>
+
+    <line x1="300" y1="85" x2="300" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="300" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">40s</text>
+
+    <line x1="450" y1="85" x2="450" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="450" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">60s</text>
+
+    <line x1="600" y1="85" x2="600" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="600" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">80s</text>
+
+    
+    <circle cx="15" cy="90" r="6" fill="#207448" />
+    <text x="15" y="60" font-family="sans-serif" font-size="24px" fill="#207448" text-anchor="middle">T+2s</text>
+
+    
+    <circle cx="75" cy="90" r="10" fill="#207448" />
+    <polyline points="68,90 73,95 82,84" fill="none" stroke="#ffffff" stroke-width="3" />
+    <text x="75" y="30" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">T+10s Probe 1</text>
+
+    
+    <line x1="85" y1="80" x2="440" y2="80" stroke="#db8129" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrowOrange)" />
+    <rect x="180" y="18" width="180" height="40" rx="8" fill="#db8129" />
+    <text x="270" y="46" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">Saved 50s</text>
+  </g>
+
+  
+  <rect x="815" y="700" width="710" height="380" rx="10" fill="#ffffff" stroke="#c2d6c6" stroke-width="2" />
+  <text x="835" y="738" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="835" dy="0" font-weight="bold">Slow scenario:</tspan> probes at T=10s through 60s fail
+    <tspan x="835" dy="32">and retry automatically; probe at T=70s</tspan>
+    <tspan x="835" dy="32">succeeds once the service finishes loading,</tspan>
+    <tspan x="835" dy="32">proceeding cleanly without alert or failure.</tspan>
+  </text>
+
+  
+  <g transform="translate(845, 875)">
+    
+    <line x1="0" y1="90" x2="650" y2="90" stroke="#a0b5a4" stroke-width="4" />
+
+    
+    <line x1="0" y1="85" x2="0" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="0" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">0s</text>
+
+    <line x1="150" y1="85" x2="150" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="150" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">20s</text>
+
+    <line x1="300" y1="85" x2="300" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="300" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">40s</text>
+
+    <line x1="450" y1="85" x2="450" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="450" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">60s</text>
+
+    <line x1="600" y1="85" x2="600" y2="95" stroke="#303a36" stroke-width="2" />
+    <text x="600" y="125" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">80s</text>
+
+    
+    
+    <circle cx="75" cy="90" r="6" fill="#88998b" />
+    
+    <circle cx="150" cy="90" r="6" fill="#88998b" />
+    
+    <circle cx="225" cy="90" r="6" fill="#88998b" />
+    
+    <circle cx="300" cy="90" r="6" fill="#88998b" />
+    
+    <circle cx="375" cy="90" r="6" fill="#88998b" />
+    
+    <circle cx="450" cy="90" r="6" fill="#88998b" />
+    
+    <text x="260" y="55" font-family="sans-serif" font-size="24px" fill="#506155" text-anchor="middle">Probes retry automatically</text>
+
+    
+    <line x1="488" y1="70" x2="488" y2="90" stroke="#207448" stroke-width="2" />
+    <text x="488" y="30" font-family="sans-serif" font-size="24px" fill="#207448" text-anchor="middle">65s ready</text>
+
+    
+    <circle cx="525" cy="90" r="10" fill="#207448" />
+    <polyline points="518,90 523,95 532,84" fill="none" stroke="#ffffff" stroke-width="3" />
+    <text x="545" y="60" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">T=70s OK</text>
+  </g>
+</svg>

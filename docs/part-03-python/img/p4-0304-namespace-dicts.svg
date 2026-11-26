@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Python Namespace Dictionaries and Pointer Links Under the Hood</title>
+  <desc>Memory layout diagram illustrating linked Python namespace dictionary objects, inheritance pointers, attribute lookup resolution paths, and dynamic method attachment.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#207448"/>
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#303a36" text-anchor="middle">Python Namespace Dictionaries and Pointer Links Under the Hood</text>
+
+  
+  <g transform="translate(340, 95)">
+    <rect width="560" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 26)" stroke="#207448" stroke-width="4" fill="none">
+      <ellipse cx="28" cy="14" rx="26" ry="10"/>
+      <path d="M 2 14 v 30 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10 v -30"/>
+      <path d="M 2 29 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10"/>
+    </g>
+    <text x="96" y="66" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#303a36">object namespace root</text>
+  </g>
+
+  
+  <path d="M 620, 275 L 620, 215" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <rect x="635" y="228" width="220" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="645" y="254" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">rec.__bases__</text>
+
+  
+  <g transform="translate(60, 275)">
+    <rect width="890" height="265" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 22)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="2" y="2" width="52" height="52" rx="6"/>
+      <line x1="2" y1="18" x2="54" y2="18"/>
+      <circle cx="12" cy="10" r="2.5" fill="#207448"/>
+      <circle cx="20" cy="10" r="2.5" fill="#207448"/>
+    </g>
+    <text x="96" y="58" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#303a36">class rec namespace</text>
+    
+    
+    <rect x="24" y="86" width="842" height="155" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="44" y="124" font-family="monospace" font-size="24px" fill="#303a36">__dict__: {</text>
+    <text x="70" y="160" font-family="monospace" font-size="24px" fill="#303a36">'name': 'Pat', 'age': 40.5,</text>
+    <text x="70" y="196" font-family="monospace" font-size="24px" fill="#303a36">'jobs': ['dev', 'mgr'], 'method': uppername</text>
+    <text x="44" y="228" font-family="monospace" font-size="24px" fill="#303a36">}</text>
+  </g>
+
+  
+  
+  <path d="M 270, 615 L 270, 550" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <rect x="285" y="565" width="180" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="295" y="591" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">x.__class__</text>
+
+  
+  <path d="M 730, 615 L 730, 550" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <rect x="745" y="565" width="180" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="755" y="591" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">y.__class__</text>
+
+  
+
+  
+  <g transform="translate(60, 615)">
+    <rect width="430" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(20, 20)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="14"/>
+      <path d="M 28 6 v 6 M 28 44 v 6 M 6 28 h 6 M 44 28 h 6 M 12 12 l 5 5 M 39 39 l 5 5 M 12 44 l 5 -5 M 39 17 l 5 -5"/>
+    </g>
+    <text x="86" y="56" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">instance x</text>
+    <rect x="20" y="86" width="390" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="36" y="128" font-family="monospace" font-size="24px" fill="#303a36">x.__dict__:</text>
+    <text x="56" y="164" font-family="monospace" font-size="24px" fill="#303a36">{'name': 'Sue'}</text>
+  </g>
+
+  
+  <g transform="translate(520, 615)">
+    <rect width="430" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(20, 20)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="14"/>
+      <path d="M 28 6 v 6 M 28 44 v 6 M 6 28 h 6 M 44 28 h 6 M 12 12 l 5 5 M 39 39 l 5 5 M 12 44 l 5 -5 M 39 17 l 5 -5"/>
+    </g>
+    <text x="86" y="56" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">instance y</text>
+    <rect x="20" y="86" width="390" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="36" y="128" font-family="monospace" font-size="24px" fill="#303a36">y.__dict__:</text>
+    <text x="56" y="164" font-family="monospace" font-size="24px" fill="#303a36">{} (empty)</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(990, 275)">
+    <rect width="550" height="265" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M 28 6 L 50 14 v 18 c 0 16 -22 24 -22 24 s -22 -8 -22 -24 v -18 Z"/>
+    </g>
+    <text x="90" y="54" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Lookup Contrast</text>
+    
+    <rect x="20" y="82" width="510" height="162" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="36" y="118" font-family="monospace" font-size="24px" fill="#db8129">x.__dict__['age']</text>
+    <text x="40" y="150" font-family="sans-serif" font-size="24px" fill="#303a36">which raises KeyError</text>
+    <text x="36" y="188" font-family="monospace" font-size="24px" fill="#207448">x.age</text>
+    <text x="40" y="222" font-family="sans-serif" font-size="24px" fill="#303a36">which succeeds via inheritance</text>
+  </g>
+
+  
+  <g transform="translate(990, 580)">
+    <rect width="550" height="270" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="8" y="12" width="40" height="34" rx="4"/>
+      <line x1="20" y1="2" x2="20" y2="12"/>
+      <line x1="36" y1="2" x2="36" y2="12"/>
+      <line x1="28" y1="46" x2="28" y2="56"/>
+    </g>
+    <text x="90" y="54" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Dynamic Attachment</text>
+    
+    <rect x="20" y="82" width="510" height="168" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="36" y="120" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">rec.method = uppername</text>
+    <text x="36" y="160" font-family="sans-serif" font-size="24px" fill="#303a36">enabling</text>
+    <text x="144" y="160" font-family="monospace" font-size="24px" fill="#303a36">x.method()</text>
+    <text x="286" y="160" font-family="sans-serif" font-size="24px" fill="#303a36">and</text>
+    <text x="338" y="160" font-family="monospace" font-size="24px" fill="#303a36">rec.method(x)</text>
+    <text x="36" y="200" font-family="sans-serif" font-size="24px" fill="#303a36">to execute</text>
+    <text x="162" y="200" font-family="monospace" font-size="24px" fill="#207448">uppername(x)</text>
+    <text x="328" y="200" font-family="sans-serif" font-size="24px" fill="#303a36">returning</text>
+    <text x="444" y="200" font-family="monospace" font-size="24px" fill="#db8129">'SUE'</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(60, 875)">
+    <rect width="1480" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="56" cy="60" r="24" fill="#207448"/>
+    <text x="56" y="70" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <text x="104" y="70" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
+      <tspan font-family="monospace" fill="#207448">x.name</tspan> resolves directly in <tspan font-family="monospace" fill="#207448">x.__dict__</tspan> (<tspan font-family="monospace" fill="#207448">'Sue'</tspan>).
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 1025)">
+    <rect width="1480" height="135" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    <circle cx="56" cy="67" r="24" fill="#db8129"/>
+    <text x="56" y="77" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <text x="104" y="55" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
+      <tspan font-family="monospace" fill="#db8129">x.age</tspan> is missing in <tspan font-family="monospace" fill="#303a36">x.__dict__</tspan>, follows <tspan font-family="monospace" fill="#207448">x.__class__</tspan> pointer up to
+    </text>
+    <text x="104" y="98" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
+      <tspan font-family="monospace" fill="#207448">rec.__dict__</tspan>, returning <tspan font-family="monospace" fill="#db8129">40.5</tspan>.
+    </text>
+  </g>
+
+  
+  <path d="M 120, 680 C 20, 680 20, 410 50, 410" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow-orange)"/>
+
+</svg>

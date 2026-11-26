@@ -1057,6 +1057,10 @@ For logs and file names that may contain invalid UTF-8, use `errors="replace"`, 
 
 ### `pathlib`
 
+![An anatomy diagram showing how a pathlib Path object decomposes file paths into parent, name, stem, suffix, and suffixes for single and multi-dot filenames.](./img/p4-0305-pathlib-anatomy.svg)
+
+*Figure 3.0.0. A pathlib Path breaks file locations into structured attributes like parent, name, stem, and suffix, eliminating fragile string splitting and slash joins.*
+
 ```python
 from pathlib import Path
 p = Path("/etc/kubernetes") / "manifests" / "kube-apiserver.yaml"      # '/' joins

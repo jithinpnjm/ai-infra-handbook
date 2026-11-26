@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0205-routeget",
+  "title": "Anatomy of an ip route get Kernel FIB Query",
+  "anchor": "### `ip route get`: ask the kernel",
+  "spec": "Two-panel layout comparing synthetic query inputs with kernel FIB output anatomy. Left panel ('Simulated Query Inputs'): boxes showing Destination IP (8.8.8.8), Source IP ('from 10.100.0.45'), Input Interface ('iif lo'), and Firewall Mark ('mark 0x10'). Middle arrow through 'Kernel FIB Engine' indicating that the kernel runs the lookup rules and trie without sending wire packets. Right panel ('Output Anatomy'): the resulting line '10.30.7.8 via 10.20.0.254 dev eno1 src 10.20.0.45 uid 1000' with callout brackets pointing to: (1) matched gateway 'via 10.20.0.254', (2) egress interface 'dev eno1', (3) chosen source IP 'src 10.20.0.45' (critical for asymmetric routing debugging), and (4) socket context 'uid 1000'.",
+  "alt": "Anatomy of an ip route get command showing how synthetic inputs like destination, source address, incoming interface and mark produce kernel-resolved next hop, device, and source IP.",
+  "cap": "The ip route get command runs a full FIB lookup without sending traffic, exposing the selected gateway, egress device, and source address.",
+  "part": "part-02-networking",
+  "ch": "05"
+ },
+ {
+  "name": "p4-0205-persistence",
+  "title": "Ephemeral Kernel FIB vs Persistent Network Managers",
+  "anchor": "## 6. Static routes and persistence",
+  "spec": "Two-layer diagram contrasting disk configuration with kernel memory. Top layer ('Disk Configuration Files'): boxes for Netplan YAML (/etc/netplan/60-routes.yaml), NetworkManager keyfiles (/etc/NetworkManager/system-connections/), and systemd-networkd INI (/etc/systemd/network/*.network). Middle layer: 'Netlink AF_NETLINK (RTM_NEWROUTE)' socket. Bottom layer ('Linux Kernel RAM'): the Forwarding Information Base (FIB) containing active routes. A red dashed arrow shows manual command 'ip route add 10.30.0.0/16 via 10.20.0.254' writing straight into kernel RAM, tagged with a warning 'Lost on reboot or link restart'. A green solid arrow shows persistent daemons re-applying routes on boot from disk.",
+  "alt": "Diagram comparing persistent configuration files in Netplan, NetworkManager, and systemd-networkd with ephemeral ip route add commands that disappear from the kernel FIB upon reboot.",
+  "cap": "Routes added manually with ip route exist only in kernel RAM and vanish on reboot, whereas persistent managers reinstall routes from disk via Netlink during boot.",
+  "part": "part-02-networking",
+  "ch": "05"
+ },
+ {
+  "name": "p4-0205-ipv6-linklocal",
+  "title": "IPv6 Link-Local Gateway Scope Ambiguity",
+  "anchor": "## 9. IPv6 routing on a host",
+  "spec": "Side-by-side comparison diagram. Left panel ('IPv4 Global/Subnet Gateway'): host with two NICs (eno1 on 10.20.0.0/24, ens1f0 on 10.100.0.0/24); adding 'via 10.20.0.254' allows the kernel to infer eno1 automatically because 10.20.0.254 falls inside a unique connected subnet. Right panel ('IPv6 Link-Local Gateway'): host with two NICs (eno1 and ens1f0), both sharing the fe80::/64 link-local scope; two upstream routers on both cables share or use link-local address fe80::1. A failure box shows 'ip -6 route add 2001:db8:200::/48 via fe80::1' rejected with 'Error: Device required for link-local nexthop'. A success box shows 'via fe80::1 dev eno1' explicitly binding the link-local next hop to the physical wire.",
+  "alt": "Diagram contrasting unambiguous IPv4 next-hop gateway resolution with IPv6 link-local gateway ambiguity where fe80::1 exists on multiple interfaces and requires an explicit dev specification.",
+  "cap": "Because every IPv6 interface shares the link-local fe80::/64 prefix, a next-hop gateway of fe80::1 is ambiguous without an explicit egress device.",
+  "part": "part-02-networking",
+  "ch": "05"
+ }
+]

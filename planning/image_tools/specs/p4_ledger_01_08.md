@@ -1,0 +1,58 @@
+# docs/part-01-linux/08-processes-signals-and-job-control.md
+- ## Why this matters for AI infrastructure | 160 words | NO FIGURE NEEDED introductory framing and motivation
+- ## Prerequisites and outcomes | 160 words | NO FIGURE NEEDED outcome checklist and prerequisite links
+- ## 1. What the kernel does for processes | 50 words | NO FIGURE NEEDED section intro
+- ### The operating system in one picture | 120 words | COVERED(ch08-d1-luna)
+- ### Kernel mode and user mode | 250 words | NO FIGURE NEEDED concise distinction between rings and switches
+- ### System calls | 200 words | NO FIGURE NEEDED comprehensive reference table of syscalls
+- ### Interrupts, the clock and idle | 270 words | NO FIGURE NEEDED descriptive breakdown of interrupts and ticks
+- ### Preemption | 120 words | NO FIGURE NEEDED brief summary of preemption models
+- ## 2. What a process is | 170 words | NO FIGURE NEEDED core definition and attributes list
+- ### Threads | 190 words | COVERED(p2-0108-thread-tree)
+- ### Where processes come from: `fork` and `exec` | 200 words | COVERED(ch08-d2-luna)
+- ### Zombies and orphans | 190 words | COVERED(l08-zombie-orphan)
+- ### Process states | 200 words | COVERED(ch08-fig2-states.jpg)
+- ### The run queue and the load average | 220 words | COVERED(l08-load-average)
+- ## 3. Looking at processes from outside | 50 words | NO FIGURE NEEDED section transition
+- ### `ps` | 200 words | NO FIGURE NEEDED command cheat sheet and recipe list
+- ### What the default `ps` columns mean | 170 words | NO FIGURE NEEDED column definitions table
+- ### Viewing threads with `ps m` | 170 words | NO FIGURE NEEDED annotated terminal output block
+- ### `top`, `htop`, `atop` | 200 words | NO FIGURE NEEDED interactive shortcut key table
+- ### `pgrep`, `pidof`, `pstree`, `fuser` | 80 words | NO FIGURE NEEDED short list of utility invocations
+- ### `/proc`: the kernel's window on every process | 210 words | COVERED(l08-proc-pid)
+- ### `lsof`: who has what open? | 200 words | NO FIGURE NEEDED overview and invocation recipes
+- ### Reading `lsof` output | 190 words | NEEDS FIGURE command-output anatomy of lsof fields and descriptor types
+- ### Narrowing `lsof` output | 100 words | NO FIGURE NEEDED short command options list
+- ### `strace` and `ltrace`: what is this program actually doing? | 270 words | NO FIGURE NEEDED trace output walkthrough
+- ## 4. Signals | 280 words | NO FIGURE NEEDED signal reference table and definitions
+- ### Sending signals | 160 words | COVERED(p2-0108-escalate, ch08-d4-luna)
+- ### Stopping, continuing and processes that resist | 140 words | NO FIGURE NEEDED text description of stop and continue
+- ### Catching signals in shell scripts | 170 words | COVERED(p3-0108-slurm-checkpoint)
+- ### Core dumps | 120 words | NO FIGURE NEEDED policy parameters and settings
+- ## 5. Shell job control | 240 words | COVERED(l08-hangup-remedies)
+- ### Job control: useful, but easy to get lost in | 120 words | COVERED(p2-0108-job-states)
+- ### Background processes and stray output | 170 words | NO FIGURE NEEDED terminal handling guidance
+- ## 6. Priority: `nice`, `ionice`, CPU affinity | 300 words | NEEDS FIGURE comparison across CPU niceness, IO classes, and CPU affinity
+- ### Seeing priorities in `top` | 160 words | NO FIGURE NEEDED commentary on PR and NI columns
+- ## 7. Limits: `ulimit` and `prlimit` | 260 words | COVERED(p3-0108-limit-layers)
+- ## 8. First resource monitoring: CPU time, memory, I/O | 90 words | NO FIGURE NEEDED section intro
+- ### Measuring CPU time: `time` | 150 words | COVERED(p3-0108-time-classify)
+- ### Load averages with `uptime` | 230 words | NO FIGURE NEEDED worked explanation of uptime load numbers
+- ### Memory in brief, and page faults | 240 words | COVERED(p3-0108-page-faults)
+- ### `vmstat`: the whole machine in one line per interval | 250 words | COVERED(p2-0108-vmstat-tree)
+- ### Watching memory run out in `vmstat` | 170 words | NO FIGURE NEEDED narrative walk through memory exhaustion
+- ### I/O: `iostat`, `iotop`, `pidstat`, `sar` | 300 words | NO FIGURE NEEDED tool reference and options
+- ### Partitions, per-process I/O and `pidstat` in detail | 280 words | NO FIGURE NEEDED output explanations for iostat and iotop
+- ## 9. Control groups (cgroups) | 130 words | NO FIGURE NEEDED intro to controllers and mechanisms
+- ### v1 versus v2 | 130 words | NO FIGURE NEEDED v1 vs v2 comparison table
+- ### Viewing cgroups | 200 words | NO FIGURE NEEDED command walkthrough of cgroup files
+- ### Creating and changing cgroups | 260 words | COVERED(p3-0108-cgroup-exceed)
+- ## 10. AI-infrastructure patterns | 580 words | COVERED(p2-0108-k8s-stop)
+- ## Kernel background reference (from the operating-systems chapter of the performance book) | 680 words | NO FIGURE NEEDED reference glossary of operating system terms
+- ## How it fails | 500 words | NO FIGURE NEEDED troubleshooting failure catalog
+- ## Hands-on lab: processes, signals, cgroups, and VM drills | 450 words | NO FIGURE NEEDED step-by-step lab exercises
+- ## Exercises | 250 words | NO FIGURE NEEDED practice questions
+- ## Checkpoint questions (20) | 1100 words | NO FIGURE NEEDED review Q and A
+- ## Sources and review notes | 400 words | NO FIGURE NEEDED bibliographic sources
+
+Specs kept 2, dropped 0: []

@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1250" width="1600" height="1250">
+  <title>Aggregate Dashboard Masking versus Per-Tenant Token Starvation</title>
+  <desc>Visual comparison showing how aggregate gateway metrics mask severe token starvation for individual tenants and illustrating both immediate mitigation and architectural fixes.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1250" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="38" font-weight="bold" fill="#303a36">Aggregate Dashboard Masking versus Per-Tenant Token Starvation</text>
+
+  
+  <rect x="60" y="90" width="1480" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+  
+  <g transform="translate(85, 110)">
+    
+    <path d="M 6 36 A 22 22 0 0 1 42 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="24" y1="36" x2="33" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="24" cy="36" r="3" fill="#207448" />
+  </g>
+  <text x="145" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Aggregate Gateway Dashboard (Masked Failure)</text>
+
+  
+  
+  <rect x="90" y="170" width="440" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="310" y="212" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="310" dy="0">Aggregate Request Rate:</tspan>
+    <tspan x="310" dy="30" font-weight="bold" fill="#207448">120 req/s (Normal)</tspan>
+  </text>
+
+  
+  <rect x="580" y="170" width="440" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="212" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">Aggregate p50 TTFT:</tspan>
+    <tspan x="800" dy="30" font-weight="bold" fill="#207448">45 ms (Green)</tspan>
+  </text>
+
+  
+  <rect x="1070" y="170" width="440" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1290" y="212" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1290" dy="0">Overall GPU Utilisation:</tspan>
+    <tspan x="1290" dy="30" font-weight="bold" fill="#207448">88% (Healthy)</tspan>
+  </text>
+
+  
+  <rect x="90" y="285" width="440" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="310" y="324" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Status: All Green / No Alert</text>
+
+  <rect x="580" y="285" width="930" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1045" y="324" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Averages and aggregate p99 mask tenant-level starvation</text>
+
+  
+  <rect x="60" y="395" width="1480" height="675" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+  
+  <g transform="translate(85, 415)">
+    
+    <rect x="4" y="6" width="38" height="10" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="4" y="22" width="26" height="10" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="4" y="38" width="14" height="10" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="145" y="445" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Gateway Per-Tenant Breakdown (The Ground Truth)</text>
+
+  
+  <rect x="90" y="475" width="860" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="115" y="514" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Tenant A (Noisy Neighbor)</text>
+  
+  <rect x="115" y="530" width="810" height="24" rx="6" fill="#e8f1ea" />
+  
+  <rect x="115" y="530" width="551" height="24" rx="6" fill="#db8129" />
+  <text x="115" y="588" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">Large batches / long prompts (68% prompt tokens),</tspan>
+    <tspan x="115" dy="32">p99 TTFT: 50 ms (Normal / Satiated)</tspan>
+  </text>
+
+  
+  <rect x="90" y="675" width="860" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="115" y="714" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Tenant B</text>
+  
+  <rect x="115" y="730" width="810" height="24" rx="6" fill="#e8f1ea" />
+  
+  <rect x="115" y="730" width="146" height="24" rx="6" fill="#207448" />
+  <text x="115" y="788" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">Short queries, queue wait: 4.2 s,</tspan>
+    <tspan x="115" dy="32">p99 TTFT: degraded</tspan>
+  </text>
+
+  
+  <rect x="90" y="870" width="860" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="115" y="909" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Tenant C</text>
+  
+  <rect x="115" y="925" width="810" height="24" rx="6" fill="#e8f1ea" />
+  
+  <rect x="115" y="925" width="113" height="24" rx="6" fill="#207448" />
+  <text x="115" y="983" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">Chat client, queue wait: 9.8 s,</tspan>
+    <tspan x="115" dy="32">p99 TTFT: 10.1 s (Severely Starved / Reporting Outage)</tspan>
+  </text>
+
+  
+  
+  <rect x="1010" y="475" width="500" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1035, 498)">
+    <path d="M 18 4 L 34 10 V 22 C 34 32 18 40 18 40 C 18 40 2 32 2 22 V 10 Z" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="1035" y="565" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1035" dy="0" font-weight="bold" fill="#207448">Mitigate now: Apply Tenant A rate limit,</tspan>
+    <tspan x="1035" dy="34">or isolate to dedicated endpoint</tspan>
+  </text>
+
+  
+  <rect x="1010" y="775" width="500" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1035, 798)">
+    <circle cx="18" cy="18" r="8" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 18 4 V 8 M 18 28 V 32 M 4 18 H 8 M 28 18 H 32 M 8 8 L 11 11 M 25 25 L 28 28 M 8 28 L 11 25 M 25 11 L 28 8" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="1035" y="865" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1035" dy="0" font-weight="bold" fill="#207448">Fix later: Fair-share queueing at</tspan>
+    <tspan x="1035" dy="34">router and per-tenant token quotas</tspan>
+  </text>
+
+  
+  <line x1="950" y1="565" x2="1006" y2="565" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <path d="M 950 635 H 980 V 865 H 1006" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="60" y="1095" width="1480" height="115" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(85, 1125)">
+    <polygon points="20,4 38,36 2,36" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="20" y1="16" x2="20" y2="25" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="20" cy="31" r="2" fill="#207448" />
+  </g>
+  <text x="145" y="1144" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0" font-weight="bold">Cardinality Warning: Track tenant ID at API gateway, not on engine</tspan>
+    <tspan x="145" dy="34">Prometheus histogram labels, to prevent metric series explosion</tspan>
+  </text>
+</svg>

@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2010-insert-vs-deque",
+  "title": "Memory Mechanics of list.insert versus deque.appendleft",
+  "anchor": "### 2. The hidden costs of Python operations, measured",
+  "spec": "Two-panel vertical diagram contrasting memory operations during head insertions. Top panel: list.insert(0, x). Shows a contiguous array in memory holding references [item 0, item 1, item 2, ... item n-1]. An incoming element 'x' targets index 0. Big red directional arrows show every single item from index 0 to n-1 shifting one position to the right ('Shifts every item in contiguous memory'). Annotations show measured timings: '1,000 items: 0.61 us' and '100,000 items: 30 us (O(n) linear growth)'. Bottom panel: deque.appendleft(x). Shows collections.deque implemented as doubly linked blocks of pointers. The leftmost block has an available empty slot at the head. The incoming element 'x' is placed directly into the free slot without moving any existing elements ('Writes to free slot in head block'). Annotations show measured timings: '1,000 items: 0.014 us' and '100,000 items: 0.16 us (O(1) flat, within noise)'. Summary text box at bottom: 'At 100,000 items, list head insertion is ~187x slower because shifting contiguous memory scales with n, whereas deque prepends in constant time.'",
+  "alt": "Comparison of list.insert shifting every contiguous element to the right versus deque.appendleft placing an element into a free head slot without shifting.",
+  "cap": "Inserting at the head of a list requires shifting every reference in contiguous memory taking 30 microseconds at 100,000 items, while deque.appendleft takes 0.16 microseconds in constant time.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10"
+ }
+]

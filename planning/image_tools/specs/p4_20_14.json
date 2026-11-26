@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-2014-interview-mental-map",
+  "title": "Five-Question System Design Answer Architecture for Dedicated Endpoints",
+  "anchor": "## How to answer out loud",
+  "spec": "Flowchart showing the five canonical questions organized into a coherent 2-minute answer structure. Column 1 (Question & Anchor): Q1 Dedicated Endpoint Spec (Control Plane vs Regional Data Plane, Memory Sizing 70B x 2B = 140GB, SLA 99.9% + surge slot). Q2 Checkpoint Ingestion (Immutable Hub, Hash/Arch/Eval Canary validation, Spec Update). Q3 Scarce GPU Rollout (Hybrid: Rolling surge 1 / unavail 0 + Canary gate; 33 ticks vs 17 ticks; ProgressDeadline alert). Q4 Promotion & Rollback Gates (Clean pass promotes, marginal/thin data holds, hard drops in tokens/quality/finish_reason roll back). Q5 Scale-to-Zero Decision (Min=1 for 99.9% SLA to avoid 170s cold-start penalty; Min=0 for dev/batch with pre-staged weights). Connect each question box to a central pillar labeled 'Interview Rubric: Separation of Concerns, Absolute GPU Accounting, Automated Correctness Gates'.",
+  "alt": "A visual answer architecture showing how the five dedicated endpoint interview questions map to control plane specs, checkpoint validation, surge-one rollout, quality gates, and SLA replica floors.",
+  "cap": "Figure 20.14.17. Structuring the dedicated endpoint answer across lifecycle, scarce GPU rollout, multi-dimensional gates, and scale-to-zero trade-offs.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14"
+ },
+ {
+  "name": "p4-2014-scenario-a-trace",
+  "title": "Scenario A: Rolling Update State Trace with 8 Replicas and 1 Spare GPU",
+  "anchor": "### Scenario A. Eight replicas, one spare GPU",
+  "spec": "Timeline state trace diagram depicting 8 replicas on 1-GPU pods with 1 spare GPU slot under different Deployment strategies. Box 1: 'Strategy: maxSurge=1, maxUnavailable=0 (Recommended)'. Shows Pod Cap = 9, Floor = 8. Step 1: Pod 9 (v2) launches in spare slot, status Loading (ticks 1-4). Available = 8 v1 pods. Step 2: Pod 9 passes readiness probe at tick 4. Controller issues SIGTERM to Pod 1 (v1). Pod 1 slot becomes free. Available = 8 (7 v1 + 1 v2). Step 3: Pod 10 (v2) schedules into vacated slot. Repeats across 33 ticks. Available pods never drop below 8. Box 2: 'Trap: maxSurge=1, maxUnavailable=0 with 0 Spare GPUs'. New Pod 9 stays Pending indefinitely. Availability remains 8, but rollout hangs until ProgressDeadlineExceeded triggers. Box 3: 'Alternative: maxSurge=0, maxUnavailable=1 with 0 Spare GPUs'. Terminates Pod 1 first; availability drops to 7 of 8 (violates SLA floor if headroom absent); finishes in 33 ticks.",
+  "alt": "Step-by-step execution trace showing how a rolling update with maxSurge 1 and maxUnavailable 0 safely uses a single spare GPU slot to replace eight pods without dropping below minimum capacity.",
+  "cap": "Figure 20.14.18. Rolling update mechanics under strict single-GPU surge constraints compared with zero-spare hang and down-scaling trade-offs.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14"
+ }
+]

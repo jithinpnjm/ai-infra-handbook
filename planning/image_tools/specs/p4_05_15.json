@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0515-tofqdns-proxy",
+  "title": "Cilium toFQDNs DNS proxy and dynamic eBPF map population",
+  "anchor": "### Cilium",
+  "spec": "Sequence and packet flow diagram across three vertical swimlanes: Left Lane (Trainer Pod: app=trainer in namespace training), Middle Lane (Cilium Node Agent: tc BPF hook, Per-node DNS Proxy on port 53, and cilium_policy_<ep_id> BPF map), Right Lane (Upstream: kube-dns in kube-system and Hugging Face CDN IP 108.156.60.42:443). Step 1: Trainer pod sends DNS request for *.huggingface.co over UDP 53. Step 2: Kernel tc BPF hook intercepts UDP 53 query due to rules.dns matchPattern: '*' and redirects it to the local Cilium DNS Proxy. Step 3: DNS proxy forwards request to kube-dns, receives response IP 108.156.60.42 with TTL 300s, and relays response back to Trainer pod. Step 4: DNS proxy extracts IP 108.156.60.42 matching *.huggingface.co and writes dynamic entry (IP=108.156.60.42, Port=443, Proto=TCP, Action=ALLOW, TTL=300s) directly into cilium_policy_<ep_id> BPF map. Step 5: Trainer pod sends TCP SYN to 108.156.60.42:443; kernel eBPF egress hook performs O(1) lookup in cilium_policy_<ep_id>, finds ALLOW, and transmits packet to wire without user-space proxy latency.",
+  "alt": "A five-step packet flow showing how Cilium DNS proxy inspects DNS replies to dynamically populate resolved IP addresses into the eBPF policy map for FQDN egress.",
+  "cap": "Cilium toFQDNs rules rely on the DNS rule to redirect queries to a local DNS proxy, which inspects answers and injects ephemeral IP addresses with TTLs into the kernel eBPF policy map.",
+  "part": "part-05-kubernetes",
+  "ch": "15"
+ },
+ {
+  "name": "p4-0515-identity-models",
+  "title": "Workload identity enforcement: Calico Dikastes sidecar versus Cilium kernel eBPF",
+  "anchor": "### Network identity with Calico and Cilium",
+  "spec": "Side-by-side architectural comparison diagram. Left Box (Calico + Dikastes Sidecar Model): Pod contains Application Container (app: summary), Envoy Sidecar Container, and Dikastes Sidecar Container. Incoming packet with Istio mTLS client certificate arrives at Envoy; Envoy verifies certificate against Istio CA, then issues gRPC CheckRequest over local Unix Domain Socket (/var/run/dikastes/dikastes.sock) to Dikastes. Felix agent on host resolves Kubernetes ServiceAccount 'customer' to Pod IPs and programs Dikastes; Dikastes evaluates GlobalNetworkPolicy and returns Allow/Deny to Envoy. Right Box (Cilium Datapath eBPF Model): Application Pod runs with ServiceAccount 'leia'. Cilium control plane assigns numeric Security Identity (e.g. Identity 1597 for 'luke', 57962 for divergent pod). Inbound packet carries Security Identity 1597 in encapsulation/metadata. At the kernel tc BPF hook on the veth pair, BPF program performs O(1) lookup in BPF map cilium_policy_<ep_id> keyed by numeric source identity, destination port, and protocol, enforcing decision in kernel space without sidecar containers or Unix domain socket hops.",
+  "alt": "A side-by-side architectural comparison of Calico Dikastes sidecar proxy model versus Cilium kernel eBPF numeric security identity model for workload authorization.",
+  "cap": "Calico pairs an Envoy sidecar and Dikastes daemon communicating over Unix sockets for service-account identity, whereas Cilium embeds numeric security identities directly into datapath eBPF maps.",
+  "part": "part-05-kubernetes",
+  "ch": "15"
+ }
+]

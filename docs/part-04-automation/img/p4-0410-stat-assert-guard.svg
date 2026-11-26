@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
+  <title>Pairing stat and assert as a preflight guardrail</title>
+  <desc>Flow diagram contrasting early preflight guardrail validation using Ansible stat and assert against downstream failure during service execution.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-3%" y="-2%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b382b" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1420" fill="#f5f8f5" />
+
+  
+  <g id="header-group">
+    <rect x="50" y="36" width="1500" height="74" rx="12" fill="#207448" />
+    <text x="800" y="86" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle">Pairing stat and assert as a preflight guardrail</text>
+  </g>
+
+  
+
+  
+  <g id="target-file-node" filter="url(#shadow)">
+    <rect x="50" y="140" width="370" height="420" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(80, 168)">
+      <path d="M 6 0 L 34 0 L 48 14 L 48 54 L 6 54 Z" fill="#ffffff" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <polyline points="34,0 34,14 48,14" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <line x1="14" y1="24" x2="40" y2="24" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="14" y1="34" x2="40" y2="34" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="14" y1="44" x2="28" y2="44" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    </g>
+    
+    <text x="80" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Target file at</text>
+    <rect x="76" y="295" width="318" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="96" y="331" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#207448">/etc/nginx/conf</text>
+  </g>
+
+  
+  <g id="step-1-node" filter="url(#shadow)">
+    <rect x="470" y="140" width="530" height="420" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="510" cy="185" r="22" fill="#207448" />
+    <text x="510" y="193" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+    
+    <g transform="translate(550, 160)">
+      <circle cx="20" cy="20" r="16" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="32" y1="32" x2="46" y2="46" stroke="#207448" stroke-width="4.5" stroke-linecap="round" />
+    </g>
+
+    <text x="500" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="500" dy="0" font-weight="bold">Step 1: ansible.builtin.stat</tspan>
+      <tspan x="500" dy="36">queries target filesystem and</tspan>
+      <tspan x="500" dy="36">populates dictionary 'st.stat'</tspan>
+      <tspan x="500" dy="36">containing fields exists: true,</tspan>
+      <tspan x="500" dy="36">isreg: true, isdir: false,</tspan>
+      <tspan x="500" dy="36">pw_name: 'root', mode: '0644',</tspan>
+      <tspan x="500" dy="36">size, checksum.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-2-node" filter="url(#shadow)">
+    <rect x="1050" y="140" width="500" height="420" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1090" cy="185" r="22" fill="#207448" />
+    <text x="1090" y="193" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    
+    <g transform="translate(1130, 160)">
+      <path d="M 22 2 L 4 10 L 4 24 C 4 36 12 46 22 50 C 32 46 40 36 40 24 L 40 10 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <polyline points="14,24 20,30 30,18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    <text x="1080" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1080" dy="0" font-weight="bold">Step 2: ansible.builtin.assert</tspan>
+      <tspan x="1080" dy="36">evaluates conditions</tspan>
+      <tspan x="1080" dy="36">[st.stat.exists, st.stat.isreg,</tspan>
+      <tspan x="1080" dy="36">st.stat.pw_name == 'root'] with</tspan>
+      <tspan x="1080" dy="36">quiet: true and fail_msg.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="420" y1="350" x2="468" y2="350" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="1000" y1="350" x2="1048" y2="350" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  
+  <path d="M 1250 560 L 1250 600 L 420 600 L 420 668" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1350 560 L 1350 600 L 1180 600 L 1180 668" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+
+  
+  <g id="path-a-group" filter="url(#shadow)">
+    <rect x="50" y="670" width="730" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <rect x="74" y="696" width="682" height="66" rx="10" fill="#207448" />
+    
+    <g transform="translate(94, 706)">
+      <path d="M 22 2 L 4 10 L 4 24 C 4 36 12 46 22 50 C 32 46 40 36 40 24 L 40 10 Z" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-linejoin="round" />
+      <path d="M 14 23 L 30 23" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="156" y="740" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Path A (With Guardrail)</text>
+
+    
+    <rect x="74" y="790" width="682" height="540" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+    <text x="104" y="850" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan x="104" dy="0">assert failing immediately at task 1</tspan>
+      <tspan x="104" dy="44">with explicit message</tspan>
+    </text>
+
+    
+    <rect x="98" y="920" width="634" height="130" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="118" y="970" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="118" dy="0">'Configuration file missing</tspan>
+      <tspan x="118" dy="42">or owned by wrong user'</tspan>
+    </text>
+
+    <text x="104" y="1100" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan x="104" dy="0">playbook cleanly halts without modifying</tspan>
+      <tspan x="104" dy="44">target.</tspan>
+    </text>
+
+    
+    <rect x="104" y="1200" width="380" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="124" y="1234" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">✓ Zero Corrupted State</text>
+  </g>
+
+  
+  <g id="path-b-group" filter="url(#shadow)">
+    <rect x="820" y="670" width="730" height="690" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+
+    
+    <rect x="844" y="696" width="682" height="66" rx="10" fill="#db8129" />
+    
+    <g transform="translate(864, 706)">
+      <path d="M 22 4 L 42 42 L 2 42 Z" fill="#ffffff" stroke="#db8129" stroke-width="2" stroke-linejoin="round" />
+      <line x1="22" y1="18" x2="22" y2="28" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="22" cy="35" r="2" fill="#db8129" />
+    </g>
+    <text x="926" y="740" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Path B (Without Guardrail)</text>
+
+    
+    <rect x="844" y="790" width="682" height="540" rx="12" fill="#fdfbf9" stroke="#db8129" stroke-width="1.5" />
+
+    <text x="874" y="850" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan x="874" dy="0">task 1 skipped or missing,</tspan>
+      <tspan x="874" dy="48">task 2 applies template silently,</tspan>
+      <tspan x="874" dy="48">task 3 fails downstream at systemd</tspan>
+      <tspan x="874" dy="48">service restart with obscure error</tspan>
+    </text>
+
+    
+    <rect x="868" y="1060" width="634" height="90" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="888" y="1115" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="888" dy="0">'rc: 1 Job for nginx.service failed'</tspan>
+    </text>
+
+    
+    <rect x="874" y="1200" width="410" height="50" rx="8" fill="#fdede3" stroke="#db8129" stroke-width="2" />
+    <text x="894" y="1234" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">✗ Broken Production Service</text>
+  </g>
+</svg>

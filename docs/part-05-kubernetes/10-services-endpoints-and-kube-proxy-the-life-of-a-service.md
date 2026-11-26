@@ -495,6 +495,10 @@ nftables is the modern kernel packet filter, and `kube-proxy` supports it as a m
 
 ### eBPF replacements (Cilium kube-proxy replacement, Calico eBPF dataplane)
 
+![A comparison showing traditional packet DNAT allocating conntrack entries in netfilter hooks versus Cilium eBPF translating destination sockaddr inside the socket connect hook before packet generation.](./img/p4-0510-socket-lb.svg)
+
+*Figure 5.0.0. eBPF socket load balancing rewrites the destination sockaddr inside the cgroup connect4 hook before packets are built, bypassing netfilter DNAT and conntrack entirely.*
+
 An eBPF datapath replaces kube-proxy entirely. Service resolution happens at socket-connect time. `cgroup/connect4` hooks translate the ClusterIP to a backend before the packet exists, which is called socket LB. For NodePort and external traffic, resolution happens at tc or XDP ingress instead. The load-balancing state lives in BPF maps. The datapath offers Maglev consistent hashing, and DSR (direct server return) avoids SNAT hops. It also brings health checking. Socket-level translations need no conntrack, and CPU use at scale is much lower, with faster updates.
 
 The key word is socket. A normal packet is rewritten after it is built. With socket-level load balancing, the rewrite happens when the application asks the kernel to connect, so the first packet already carries the real pod address. That is why this approach needs no conntrack entry for in-cluster Service traffic.
@@ -610,6 +614,10 @@ Here is a worked case. Suppose three pods run on ten nodes. Every node without a
 
 ### LoadBalancer implementations
 
+![A diagram comparing MetalLB Layer 2 mode with a single elected ARP speaker node against BGP mode where all nodes peer with the top of rack switch for multi-node ECMP.](./img/p4-0510-metallb-l2-vs-bgp.svg)
+
+*Figure 5.0.0. MetalLB Layer 2 mode funnels all ingress traffic through one elected ARP speaker node, while BGP mode peers directly with rack switches for line-rate ECMP load balancing.*
+
 In the cloud (AWS NLB or ALB, GCP LB, Azure LB), cloud-controller-manager creates the load balancer, along with node ports or direct pod targets. By default, a cloud `LoadBalancer` Service provisions a public, internet-facing load balancer. To expose a Service only inside your private VPC or VNet, add the cloud provider's internal load-balancer annotation to `metadata.annotations`. *Kubernetes: Up and Running*, third edition, Chapter 7, lists them:
 
 - **Google Cloud Platform (GKE)**: `cloud.google.com/load-balancer-type: "Internal"`
@@ -663,6 +671,10 @@ This example comes from a cluster on Google Cloud, run through GKE. How a load b
 Layer 4 balancing works per connection. HTTP/2 and gRPC multiplex many requests over one connection, so a client opens one connection and all its requests hit one pod. This is the well-known uneven gRPC load problem, and it is severe for inference gateways. Put simply, a client that opens one connection is like a shopper who sends every order through one cashier, no matter how many cashiers are open. You have several fixes. You can use a headless Service with client-side load balancing (gRPC `round_robin`, or xDS). You can use L7 proxies such as Envoy, Istio, Linkerd or an ingress. You can set connection age limits with `MAX_CONNECTION_AGE` on servers, or use a service mesh (5.28).
 
 ### Source IP and hairpin
+
+![A diagram showing how a pod sending traffic to its own Service VIP deadlocks via loopback delivery unless KUBE-MARK-MASQ forces source NAT through the host bridge.](./img/p4-0510-hairpin-masq.svg)
+
+*Figure 5.0.0. Hairpin traffic deadlocks when a pod replies to itself over loopback unless KUBE-MARK-MASQ applies source NAT so replies route through host conntrack.*
 
 Pod-to-own-Service traffic, called hairpin, requires `KUBE-MARK-MASQ` for same-endpoint selection. Bridge CNIs also need bridge `hairpin_mode` or promiscuous setups. Pod-to-Service traffic normally keeps the client pod IP as its source, with no SNAT, inside the cluster for iptables and IPVS modes. Traffic that leaves the cluster is SNAT'd by the CNI or the NAT gateway. Hairpin traffic is rare, but when it happens the reply needs special handling. Checkpoint 10 explains the rule that handles it.
 

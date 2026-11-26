@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
+  <title>Why cd and export must be builtins: process boundaries and working directory isolation</title>
+  <desc>A two-panel visual comparison illustrating why directory change and state modifications must execute in the parent process rather than an isolated child process.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#207448" />
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1420" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Why cd and export must be builtins:</text>
+  <text x="800" y="118" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">process boundaries and working directory isolation</text>
+
+  
+  <rect x="50" y="160" width="730" height="970" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <rect x="50" y="160" width="730" height="70" rx="16" fill="#207448" />
+  <rect x="50" y="210" width="730" height="20" fill="#207448" />
+  <text x="415" y="208" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#ffffff">Hypothetical External /bin/cd /tmp</text>
+
+  
+  <rect x="80" y="255" width="670" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="105" y="282" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+  <text x="133" y="318" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">&gt;_</text>
+  <text x="185" y="298" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Process 1 'Interactive Shell'</text>
+  <text x="185" y="336" font-family="monospace" font-size="24" fill="#303a36">(PID 1000, CWD: /home/alice)</text>
+
+  
+  <line x1="415" y1="365" x2="415" y2="395" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="80" y="400" width="670" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 115 435 L 133 460 L 133 485 M 133 460 L 151 435" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="185" y="442" font-family="sans-serif" font-size="24" fill="#303a36">Shell calls fork() and execve() to spawn</text>
+  <text x="185" y="474" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Process 2 'Child /bin/cd'</text>
+  <text x="185" y="504" font-family="monospace" font-size="24" fill="#303a36">(PID 1001, inherits CWD: /home/alice)</text>
+
+  
+  <line x1="415" y1="520" x2="415" y2="550" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="80" y="555" width="670" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="133" cy="607" r="24" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="133" cy="607" r="10" fill="none" stroke="#207448" stroke-width="4" />
+  <text x="185" y="597" font-family="sans-serif" font-size="24" fill="#303a36">Child process executes chdir('/tmp'),</text>
+  <text x="185" y="633" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">updating its own CWD to /tmp</text>
+
+  
+  <line x1="415" y1="660" x2="415" y2="690" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="80" y="695" width="670" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="133" cy="737" r="22" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 123 727 L 143 747 M 143 727 L 123 747" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="185" y="747" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Child process terminates (exit 0)</text>
+
+  
+  <rect x="80" y="805" width="670" height="90" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="3" />
+  
+  <path d="M 133 827 L 157 872 L 109 872 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+  <line x1="133" y1="844" x2="133" y2="856" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+  <circle cx="133" cy="864" r="2.5" fill="#db8129" />
+  <text x="185" y="858" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">Directory change is lost upon child exit</text>
+
+  
+  <line x1="415" y1="895" x2="415" y2="925" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="80" y="930" width="670" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 133 965 L 157 977 L 157 1005 C 157 1022 133 1033 133 1033 C 133 1033 109 1022 109 1005 L 109 977 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  <text x="185" y="972" font-family="sans-serif" font-size="24" fill="#303a36">Parent Shell CWD remains unchanged at /home/alice</text>
+  <text x="185" y="1010" font-family="sans-serif" font-size="24" fill="#303a36">because the kernel strictly isolates process memory</text>
+  <text x="185" y="1048" font-family="sans-serif" font-size="24" fill="#303a36">and task structures.</text>
+
+  
+  <rect x="820" y="160" width="730" height="970" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="820" y="160" width="730" height="70" rx="16" fill="#207448" />
+  <rect x="820" y="210" width="730" height="20" fill="#207448" />
+  <text x="1185" y="208" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#ffffff">Actual Shell Builtin: cd /tmp</text>
+
+  
+  <rect x="850" y="255" width="670" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="875" y="282" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+  <text x="903" y="318" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">&gt;_</text>
+  <text x="955" y="298" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Process 1 'Interactive Shell'</text>
+  <text x="955" y="336" font-family="monospace" font-size="24" fill="#303a36">(PID 1000, CWD: /home/alice)</text>
+
+  
+  <line x1="1185" y1="365" x2="1185" y2="405" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="850" y="410" width="670" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="903" cy="460" r="18" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="916" y1="473" x2="931" y2="488" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="955" y="460" font-family="sans-serif" font-size="24" fill="#303a36">Shell parses command 'cd' and</text>
+  <text x="955" y="498" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">identifies it as an internal builtin</text>
+
+  
+  <line x1="1185" y1="535" x2="1185" y2="575" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="850" y="580" width="670" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="903" cy="627" r="22" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="887" y1="643" x2="919" y2="611" stroke="#207448" stroke-width="4" />
+  <text x="955" y="636" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">No fork() occurs</text>
+
+  
+  <line x1="1185" y1="675" x2="1185" y2="715" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="850" y="720" width="670" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="875" y="772" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+  <polyline points="890,800 903,813 920,787" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="955" y="765" font-family="sans-serif" font-size="24" fill="#303a36">Parent Shell directly invokes the kernel</text>
+  <text x="955" y="803" font-family="sans-serif" font-size="24" fill="#303a36">system call chdir('/tmp') within its own</text>
+  <text x="955" y="841" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">process context</text>
+
+  
+  <line x1="1185" y1="880" x2="1185" y2="920" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="850" y="925" width="670" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="903" cy="980" r="24" fill="#207448" />
+  <polyline points="892,980 900,988 915,972" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+  <text x="955" y="988" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">Shell CWD updates to /tmp</text>
+
+  
+  <rect x="50" y="1165" width="1500" height="220" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  <text x="800" y="1210" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    Other state-modifying builtins that cannot run as child processes:
+  </text>
+
+  
+  
+  <rect x="75" y="1235" width="335" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="242" y="1280" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">export</text>
+  <text x="242" y="1320" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(environment block)</text>
+
+  
+  <rect x="440" y="1235" width="335" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="607" y="1280" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">alias</text>
+  <text x="607" y="1320" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(shell lookup table)</text>
+
+  
+  <rect x="805" y="1235" width="335" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="972" y="1280" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">umask</text>
+  <text x="972" y="1320" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(file creation mask)</text>
+
+  
+  <rect x="1170" y="1235" width="355" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1347" y="1280" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">source / .</text>
+  <text x="1347" y="1320" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(executing script in current shell)</text>
+
+</svg>

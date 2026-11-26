@@ -1,0 +1,31 @@
+# docs/part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md
+- ## Why this matters for AI infrastructure | 250 | NO FIGURE NEEDED intro context and workload framing
+- ## Prerequisites and outcomes | 130 | NO FIGURE NEEDED outcomes checklist and prerequisites
+- ## 1. What a transport protocol must solve | 680 | NEEDS FIGURE marshaling grammars and error correction mechanisms
+- ## 2. Transport models: DoD, OSI, RINA, and connection-oriented versus connectionless | 340 | NEEDS FIGURE comparison of DoD, OSI, RINA recursive IPC, and connection state
+- ## 3. The TCP header and options | 340 | COVERED(m2-06-1) TCP header fields and options diagram
+- ## 4. The handshake, data transfer and teardown | 650 | COVERED(p3-0206-connect-errors, p3-0206-listen-queues, m2-06-2, n06-fig1-handshake)
+- ### TCP states in the field | 120 | COVERED(p3-0206-state-counts) socket counts and state diagnostics
+- ### Ports, connections and netstat | 230 | COVERED(p3-0206-direction-ports) netstat connections and 4-tuple
+- ### Well-known ports and /etc/services | 80 | NO FIGURE NEEDED brief port definitions and file description
+- ### What TCP does for you | 110 | NO FIGURE NEEDED high-level summary of TCP abstractions
+- ## 5. Reliability: ACKs, retransmission and the RTO | 580 | COVERED(p3-0206-sack-reorder, p3-0206-nagle-delayed-ack, n06-loss)
+- ## 6. Flow control: the sliding window | 350 | COVERED(p3-0206-window-scale, n06-window)
+- ### Bandwidth-delay product and buffers | 450 | COVERED(p3-0206-buffer-sizing, n06-bdp)
+- ## 7. Congestion control | 750 | COVERED(p3-0206-incast-rto, p3-0206-cc-algorithms, m2-06-3, n06-fig2-cwnd)
+- ## 8. Linux tuning reference and what each knob is for | 260 | COVERED(p3-0206-idle-timeouts) timeout timeline and sysctl reference
+- ## 9. Reading TCP in practice | 20 | NO FIGURE NEEDED short introductory heading for diagnostic tools
+- ### ss | 130 | COVERED(p3-0206-ss-read) ss output anatomy and metrics
+- ### tcpdump | 170 | COVERED(p3-0206-tcpdump-nstat) tcpdump flags and nstat counters
+- ### nstat and /proc/net/netstat | 100 | COVERED(p3-0206-tcpdump-nstat) counters covered alongside tcpdump
+- ### A diagnostic flow | 40 | COVERED(m2-06-4) diagnostic flow diagram
+- ## 10. TCP and AI workloads | 310 | COVERED(p3-0206-tcp-ai-matrix) matrix of AI workloads and TCP limits
+- ## 11. QUIC and where TCP is going | 420 | COVERED(p3-0206-quic-fixes) QUIC architecture and TCP comparison
+- ## 12. Hands-on lab: observe TCP behaviour | 440 | NO FIGURE NEEDED hands-on lab code and commands
+- ## 13. Common mistakes | 230 | NO FIGURE NEEDED troubleshooting anti-patterns list
+- ## 14. Interview angles | 140 | NO FIGURE NEEDED interview questions list
+- ## Exercises | 340 | NO FIGURE NEEDED practice exercises
+- ## Checkpoint questions (20) | 1800 | NO FIGURE NEEDED self-test Q and A
+- ## Sources and review notes | 380 | NO FIGURE NEEDED bibliography and verification notes
+
+Specs kept 2, dropped 0: []

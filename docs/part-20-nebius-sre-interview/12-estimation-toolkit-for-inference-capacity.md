@@ -378,6 +378,10 @@ These four scenarios reuse the numbers from the sections above, so the reasoning
 
 ### Scenario 1: the opening question
 
+![Flowchart showing the nine sequential calculation steps that lead from model weights and KV memory to 9 H100 GPUs and 44 cents per million tokens.](./img/p4-2012-opening-calc.svg)
+
+*Figure 20.0.0. The nine calculation steps for the opening scenario work from model parameters and KV cache to per-GPU throughput, replica count, and token cost.*
+
 Picture the interviewer asking for the GPU count for an 8-billion-parameter model on H100s at 40 requests per second, 2,000 tokens in and 500 out. You take Qwen3-8B in BF16, as the question suggests, and you work the chain from the top. Say each step aloud as you finish it, so the interviewer can stop you at the first wrong input.
 
 1. Weights: 8.2 x 2 equals 16.4 GB.

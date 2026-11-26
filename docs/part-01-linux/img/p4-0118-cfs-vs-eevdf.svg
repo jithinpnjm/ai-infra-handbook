@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>CFS Virtual Runtime Versus EEVDF Eligibility and Virtual Deadline</title>
+  <desc>Visual comparison between CFS Red-Black Tree scheduling and EEVDF eligibility filtering with virtual deadline scheduling.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">CFS Virtual Runtime Versus EEVDF Eligibility and Virtual Deadline</text>
+
+  
+  <rect x="40" y="95" width="730" height="1045" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(65, 115)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="28" cy="12" r="10" />
+    <circle cx="12" cy="44" r="8" />
+    <circle cx="44" cy="44" r="8" />
+    <line x1="22" y1="20" x2="16" y2="36" />
+    <line x1="34" y1="20" x2="40" y2="36" />
+  </g>
+
+  
+  <text x="135" y="140" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="135" dy="0">CFS (Linux 2.6.23 to 6.5) -</tspan>
+    <tspan x="135" dy="36">Red-Black Tree by vruntime</tspan>
+  </text>
+
+  
+  <rect x="65" y="195" width="680" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="405" y="236" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">vruntime = actual_runtime * 1024 / weight</text>
+
+  
+  <rect x="65" y="275" width="680" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+  
+  <g stroke="#207448" stroke-width="3">
+    
+    <line x1="405" y1="330" x2="265" y2="395" />
+    <line x1="405" y1="330" x2="545" y2="395" />
+    <line x1="265" y1="395" x2="165" y2="465" />
+    <line x1="265" y1="395" x2="345" y2="465" />
+    <line x1="545" y1="395" x2="485" y2="465" />
+    <line x1="545" y1="395" x2="625" y2="465" />
+  </g>
+
+  
+  <circle cx="405" cy="330" r="26" fill="#207448" />
+  <circle cx="545" cy="395" r="26" fill="#207448" />
+  <circle cx="265" cy="395" r="26" fill="#207448" />
+  <circle cx="345" cy="465" r="24" fill="#207448" />
+  <circle cx="485" cy="465" r="24" fill="#207448" />
+  <circle cx="625" cy="465" r="24" fill="#207448" />
+
+  
+  <circle cx="165" cy="465" r="28" fill="#e8f1ea" stroke="#207448" stroke-width="5" />
+
+  
+  <line x1="165" y1="545" x2="165" y2="505" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="90" y="545" width="630" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="405" y="582" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Always picks leftmost task (least vruntime)</text>
+
+  
+  <rect x="65" y="635" width="680" height="480" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(90, 655)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="28" cy="28" r="24" />
+    <polyline points="28,14 28,28 40,28" />
+  </g>
+
+  
+  <g transform="translate(90, 725)">
+    <rect x="40" y="20" width="180" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <line x1="235" y1="55" x2="355" y2="55" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    
+    <rect x="375" y="10" width="210" height="90" rx="10" fill="#207448" />
+    <circle cx="130" cy="55" r="20" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <rect x="420" y="30" width="120" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  </g>
+
+  
+  <text x="405" y="870" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="405" dy="0">sleeping task waking up with an outdated low vruntime,</tspan>
+    <tspan x="405" dy="36">immediately dominating the CPU and causing wake-up</tspan>
+    <tspan x="405" dy="36">latency spikes for running tasks, necessitating</tspan>
+    <tspan x="405" dy="36">complex wake-up heuristics</tspan>
+  </text>
+
+  
+  <rect x="830" y="95" width="730" height="1045" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(855, 115)" stroke="#207448" stroke-width="4" fill="none">
+    <line x1="28" y1="8" x2="28" y2="48" />
+    <line x1="10" y1="18" x2="46" y2="18" />
+    <polygon points="10,22 18,38 2,38" />
+    <polygon points="46,22 54,38 38,38" />
+  </g>
+
+  
+  <text x="925" y="140" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="925" dy="0">EEVDF (Linux 6.6+) -</tspan>
+    <tspan x="925" dy="36">Eligibility Filter and Virtual Deadline</tspan>
+  </text>
+
+  
+  <rect x="855" y="195" width="680" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1195" y="235" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">run queue virtual time line V</text>
+
+  
+  <line x1="895" y1="290" x2="1475" y2="290" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <line x1="1185" y1="260" x2="1185" y2="320" stroke="#207448" stroke-width="5" />
+  
+  <circle cx="985" cy="290" r="14" fill="#207448" />
+  <circle cx="1085" cy="290" r="14" fill="#207448" />
+  <circle cx="1285" cy="290" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <circle cx="1385" cy="290" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+  
+  <rect x="855" y="375" width="680" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <text x="880" y="415" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="880" dy="0" font-weight="bold" fill="#207448">Step 1 Eligibility: tasks are partitioned into</tspan>
+    <tspan x="880" dy="38">Eligible (vruntime &lt;= V, have not received more than</tspan>
+    <tspan x="880" dy="38">their fair share) and Ineligible (vruntime &gt; V)</tspan>
+  </text>
+  
+  <g transform="translate(880, 525)">
+    <rect x="0" y="0" width="310" height="38" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <rect x="330" y="0" width="310" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" />
+  </g>
+
+  
+  <rect x="855" y="600" width="680" height="235" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <text x="880" y="640" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="880" dy="0" font-weight="bold" fill="#207448">Step 2 Deadline selection: among eligible tasks,</tspan>
+    <tspan x="880" dy="36">the scheduler computes deadline</tspan>
+    <tspan x="880" dy="36" font-family="monospace">d_i = v_i + (slice q_i / weight w_i)</tspan>
+    <tspan x="880" dy="36">and picks the task with the earliest deadline</tspan>
+  </text>
+
+  
+  <rect x="855" y="855" width="680" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(880, 875)">
+    
+    <rect x="340" y="15" width="290" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="20" y="15" width="160" height="42" rx="6" fill="#f5f8f5" stroke="#db8129" stroke-width="3" />
+    
+    <path d="M 190 36 L 325 36" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+  </g>
+
+  
+  <text x="880" y="975" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="880" dy="0">A latency-sensitive task requesting a small slice</tspan>
+    <tspan x="880" dy="36">(q = 1 ms) gets an early deadline and preempts batch</tspan>
+    <tspan x="880" dy="36">tasks (q = 8 ms) cleanly without heuristics</tspan>
+  </text>
+</svg>

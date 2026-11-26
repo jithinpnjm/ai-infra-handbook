@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>Safe Shared Directory Mechanics: setgid Group Inheritance and umask Coordination</title>
+  <desc>A side-by-side workflow diagram contrasting Linux default file creation failure against the safe shared project directory pattern using setgid and umask coordination.</desc>
+
+  <defs>
+    <marker id="arrowhead-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1480" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Safe Shared Directory Mechanics:</text>
+  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">setgid Group Inheritance and umask Coordination</text>
+
+  
+  
+  <rect x="50" y="145" width="720" height="1305" rx="16" fill="#ffffff" stroke="#d0ded3" stroke-width="2" />
+  <rect x="50" y="145" width="720" height="70" rx="16" fill="#e8f1ea" />
+  <rect x="50" y="195" width="720" height="20" fill="#e8f1ea" />
+  <text x="410" y="193" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Left Column (Default Failure)</text>
+
+  
+  <g transform="translate(80, 240)">
+    <rect width="660" height="135" rx="12" fill="#f5f8f5" stroke="#d0ded3" stroke-width="2" />
+    
+    <g transform="translate(24, 28)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+      <path d="M 4 14 L 22 14 L 28 22 L 52 22 A 4 4 0 0 1 56 26 L 56 48 A 4 4 0 0 1 52 52 L 4 52 A 4 4 0 0 1 0 48 L 0 18 A 4 4 0 0 1 4 14 Z" />
+    </g>
+    <text x="100" y="45" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Directory '/data/projx' has mode '0755'</text>
+    <text x="100" y="80" font-family="sans-serif" font-size="25" fill="#303a36">(drwxr-xr-x), owned by 'root:projx'</text>
+  </g>
+
+  
+  <path d="M 410 375 L 410 405" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead-green)" />
+
+  
+  <g transform="translate(80, 415)">
+    <rect width="660" height="150" rx="12" fill="#f5f8f5" stroke="#d0ded3" stroke-width="2" />
+    
+    <g transform="translate(24, 30)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="18" r="14" />
+      <path d="M 6 52 C 6 38 16 34 28 34 C 40 34 50 38 50 52" />
+    </g>
+    <text x="100" y="42" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Alice (primary group 'alice',</text>
+    <text x="100" y="76" font-family="sans-serif" font-size="24" fill="#303a36">supplementary group 'projx', umask '022')</text>
+    <text x="100" y="110" font-family="sans-serif" font-size="24" fill="#303a36">creates 'notes.txt'</text>
+  </g>
+
+  
+  <path d="M 410 565 L 410 595" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead-green)" />
+
+  
+  <g transform="translate(80, 605)">
+    <rect width="660" height="175" rx="12" fill="#f5f8f5" stroke="#d0ded3" stroke-width="2" />
+    
+    <g transform="translate(24, 42)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <path d="M 28 2 L 28 10 M 18 2 L 18 10 M 38 2 L 38 10" />
+      <path d="M 28 46 L 28 54 M 18 46 L 18 54 M 38 46 L 38 54" />
+      <path d="M 2 28 L 10 28 M 2 18 L 10 18 M 2 38 L 10 38" />
+      <path d="M 46 28 L 54 28 M 46 18 L 54 18 M 46 38 L 54 38" />
+    </g>
+    <text x="100" y="42" font-family="sans-serif" font-size="24" fill="#303a36">The kernel assigns owner 'alice:1042',</text>
+    <text x="100" y="76" font-family="sans-serif" font-size="24" fill="#303a36">group 'alice:1042' (inheriting creator</text>
+    <text x="100" y="110" font-family="sans-serif" font-size="24" fill="#303a36">primary group), and mode '0644 (rw-r--r--)'</text>
+  </g>
+
+  
+  <path d="M 410 780 L 410 810" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead-green)" />
+
+  
+  <g transform="translate(80, 820)">
+    <rect width="660" height="150" rx="12" fill="#f5f8f5" stroke="#d0ded3" stroke-width="2" />
+    
+    <g transform="translate(24, 30)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="24" cy="18" r="14" />
+      <path d="M 4 52 C 4 38 14 34 24 34 C 34 34 44 38 44 52" />
+      <path d="M 42 24 L 54 12" />
+    </g>
+    <text x="100" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Bob (supplementary group 'projx')</text>
+    <text x="100" y="78" font-family="sans-serif" font-size="24" fill="#303a36">attempts write access</text>
+    <text x="100" y="112" font-family="sans-serif" font-size="24" fill="#303a36">('echo data &gt;&gt; notes.txt')</text>
+  </g>
+
+  
+  <path d="M 410 970 L 410 1000" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead-green)" />
+
+  
+  <g transform="translate(80, 1010)">
+    <rect width="660" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 45)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M 28 6 L 50 16 L 50 34 C 50 48 28 58 28 58 C 28 58 6 48 6 34 L 6 16 Z" />
+      <path d="M 18 24 L 38 44 M 38 24 L 18 44" />
+    </g>
+    <text x="100" y="45" font-family="sans-serif" font-size="24" fill="#303a36">The kernel evaluates Bob under 'Other (r--)'</text>
+    <text x="100" y="82" font-family="sans-serif" font-size="24" fill="#303a36">because group does not match; write is denied</text>
+    <text x="100" y="122" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">('Permission denied')</text>
+  </g>
+
+
+  
+  
+  <rect x="830" y="145" width="720" height="1305" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="830" y="145" width="720" height="70" rx="16" fill="#207448" />
+  <rect x="830" y="195" width="720" height="20" fill="#207448" />
+  <text x="1190" y="193" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Right Column (The 2770 Recipe)</text>
+
+  
+  <g id="node-r1" transform="translate(860, 240)">
+    <rect width="660" height="165" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 40)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+      <path d="M 4 14 L 22 14 L 28 22 L 52 22 A 4 4 0 0 1 56 26 L 56 48 A 4 4 0 0 1 52 52 L 4 52 A 4 4 0 0 1 0 48 L 0 18 A 4 4 0 0 1 4 14 Z" />
+      <circle cx="28" cy="36" r="5" />
+    </g>
+    <text x="100" y="38" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Directory '/data/projx' is configured with</text>
+    <text x="100" y="72" font-family="sans-serif" font-size="24" fill="#303a36">'chmod 2770' (drwxrws---) and group</text>
+    <text x="100" y="106" font-family="sans-serif" font-size="24" fill="#303a36">'projx:2001', highlighting the 's' in the</text>
+    <text x="100" y="140" font-family="sans-serif" font-size="24" fill="#303a36">group execute position (setgid bit 2000)</text>
+  </g>
+
+  
+  <g transform="translate(860, 435)">
+    <rect width="660" height="100" rx="12" fill="#f5f8f5" stroke="#d0ded3" stroke-width="2" />
+    
+    <g transform="translate(24, 22)" stroke="#207448" stroke-width="4" fill="none">
+      <line x1="8" y1="16" x2="48" y2="16" />
+      <line x1="8" y1="36" x2="48" y2="36" />
+      <circle cx="20" cy="16" r="6" fill="#f5f8f5" />
+      <circle cx="36" cy="36" r="6" fill="#f5f8f5" />
+    </g>
+    <text x="100" y="44" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Alice sets 'umask 002' in her startup</text>
+    <text x="100" y="78" font-family="sans-serif" font-size="25" fill="#303a36">environment</text>
+  </g>
+
+  
+  <g transform="translate(860, 565)">
+    <rect width="660" height="85" rx="12" fill="#f5f8f5" stroke="#d0ded3" stroke-width="2" />
+    
+    <g transform="translate(24, 16)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="4" y="6" width="48" height="40" rx="4" />
+      <path d="M 14 18 L 22 26 L 14 34 M 26 34 L 38 34" />
+    </g>
+    <text x="100" y="52" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Alice runs 'touch notes.txt'</text>
+  </g>
+
+  
+  <g transform="translate(860, 680)">
+    <rect width="660" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="20" y="20" width="620" height="90" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="35" y="54" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">enforces group inheritance via setgid,</text>
+    <text x="35" y="88" font-family="sans-serif" font-size="24" fill="#303a36">setting file group to 'projx:2001'</text>
+
+    
+    <rect x="20" y="125" width="620" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="35" y="158" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">retains group write permission, setting</text>
+    <text x="35" y="190" font-family="sans-serif" font-size="24" fill="#303a36">file mode to '0664 (rw-rw-r--)'</text>
+  </g>
+
+  
+  <path d="M 860 320 L 805 320 L 805 745 L 875 745" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrowhead-orange)" />
+
+  
+  <path d="M 1520 485 L 1545 485 L 1545 845 L 1505 845" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead-green)" />
+
+  
+  <path d="M 1190 910 L 1190 935" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead-green)" />
+
+  
+  <g transform="translate(860, 945)">
+    <rect width="660" height="95" rx="12" fill="#f5f8f5" stroke="#d0ded3" stroke-width="2" />
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="18" r="14" />
+      <path d="M 6 52 C 6 38 16 34 28 34 C 40 34 50 38 50 52" />
+    </g>
+    <text x="100" y="44" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Bob (member of 'projx') writes</text>
+    <text x="100" y="76" font-family="sans-serif" font-size="25" fill="#303a36">to 'notes.txt'</text>
+  </g>
+
+  
+  <path d="M 1190 1040 L 1190 1065" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead-green)" />
+
+  
+  <g transform="translate(860, 1075)">
+    <rect width="660" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 40)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M 28 6 L 50 16 L 50 34 C 50 48 28 58 28 58 C 28 58 6 48 6 34 L 6 16 Z" />
+      <path d="M 16 32 L 24 40 L 40 22" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="100" y="42" font-family="sans-serif" font-size="24" fill="#303a36">The kernel matches Bob's supplementary</text>
+    <text x="100" y="76" font-family="sans-serif" font-size="24" fill="#303a36">group 'projx' to the file group; write is</text>
+    <text x="100" y="112" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">granted ('rw-')</text>
+  </g>
+
+  
+  <g transform="translate(860, 1275)">
+    <rect width="660" height="95" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="8" y="22" width="40" height="30" rx="4" />
+      <path d="M 16 22 L 16 14 C 16 8 38 8 38 14 L 38 22" />
+    </g>
+    <text x="100" y="55" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Outside users ('Other: ---') have zero access</text>
+  </g>
+
+</svg>

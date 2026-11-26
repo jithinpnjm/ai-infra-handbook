@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>Transport Architecture Models: DoD, OSI, RINA, and Connection State</title>
+  <desc>Visual comparison of DoD vs OSI network layers, RINA recursive IPC scopes, and Connection-Oriented versus Connectionless transport mechanics.</desc>
+
+  <rect width="1600" height="1500" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Transport Architecture Models: DoD, OSI, RINA, and Connection State</text>
+
+  
+  <g id="col-dod-osi">
+    
+    <rect x="40" y="110" width="480" height="85" rx="12" fill="#207448" />
+    <text x="280" y="162" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">DoD (TCP/IP) vs. OSI Reference Model</text>
+
+    
+    <rect x="40" y="215" width="480" height="260" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="55" y="230" width="450" height="46" rx="6" fill="#207448" />
+    <text x="280" y="262" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">DoD Application Layer (L7)</text>
+    <text x="70" y="320" font-family="sans-serif" font-size="24" fill="#303a36">• Layer 7 (Application: HTTP, gRPC)</text>
+    <text x="70" y="375" font-family="sans-serif" font-size="24" fill="#303a36">• Layer 6 (Presentation: TLS, Protobuf)</text>
+    <text x="70" y="430" font-family="sans-serif" font-size="24" fill="#303a36">• Layer 5 (Session: RPC framing)</text>
+
+    
+    <rect x="40" y="495" width="480" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="55" y="510" width="450" height="46" rx="6" fill="#207448" />
+    <text x="280" y="542" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">DoD Transport Layer (L4)</text>
+    <text x="70" y="605" font-family="sans-serif" font-size="24" fill="#303a36">• Layer 4 (Transport: TCP, UDP, ports)</text>
+
+    
+    <rect x="40" y="665" width="480" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="55" y="680" width="450" height="46" rx="6" fill="#207448" />
+    <text x="280" y="712" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">DoD Internet Layer (L3)</text>
+    <text x="70" y="775" font-family="sans-serif" font-size="24" fill="#303a36">• Layer 3 (Network: IP, ICMP, routing)</text>
+
+    
+    <rect x="40" y="835" width="480" height="205" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="55" y="850" width="450" height="46" rx="6" fill="#207448" />
+    <text x="280" y="882" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">DoD Link Layer (L1-L2)</text>
+    <text x="70" y="940" font-family="sans-serif" font-size="24" fill="#303a36">• Layer 2 (Data Link: Ethernet, MAC)</text>
+    <text x="70" y="995" font-family="sans-serif" font-size="24" fill="#303a36">• Layer 1 (Physical: optics, copper)</text>
+  </g>
+
+  
+  <g id="col-rina">
+    
+    <rect x="560" y="110" width="480" height="85" rx="12" fill="#207448" />
+    <text x="800" y="148" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">RINA (Recursive Internet</text>
+    <text x="800" y="180" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Architecture)</text>
+
+    
+    <rect x="560" y="215" width="480" height="55" rx="8" fill="#db8129" />
+    <text x="800" y="252" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">IPC (Inter-Process Communication) Layer</text>
+
+    
+    <rect x="560" y="290" width="480" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="580" y="335" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Scope 4: Multi-region WAN</text>
+    <text x="580" y="375" font-family="sans-serif" font-size="24" fill="#303a36">Routing</text>
+
+    
+    <rect x="560" y="420" width="480" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="580" y="465" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Scope 3: Data Center Fabric</text>
+    <text x="580" y="505" font-family="sans-serif" font-size="24" fill="#303a36">Flow &amp; Congestion Control</text>
+
+    
+    <rect x="560" y="550" width="480" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="580" y="595" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Scope 2: Rack / ToR Subnet</text>
+    <text x="580" y="635" font-family="sans-serif" font-size="24" fill="#303a36">Error Control (ARQ/FEC)</text>
+
+    
+    <rect x="560" y="680" width="480" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="580" y="725" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Scope 1: Local Host IPC</text>
+    <text x="580" y="762" font-family="sans-serif" font-size="24" fill="#303a36">(between container processes)</text>
+    <text x="580" y="798" font-family="sans-serif" font-size="24" fill="#303a36">Naming/Addressing</text>
+
+    
+    <rect x="560" y="835" width="480" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="880" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Architectural Principle</text>
+    <text x="585" y="930" font-family="sans-serif" font-size="24" fill="#303a36">Layers are not distinct physics;</text>
+    <text x="585" y="970" font-family="sans-serif" font-size="24" fill="#303a36">they are recursive IPC blocks</text>
+    <text x="585" y="1010" font-family="sans-serif" font-size="24" fill="#303a36">applied at different distance/failure scopes</text>
+  </g>
+
+  
+  <g id="col-state">
+    
+    <rect x="1080" y="110" width="480" height="85" rx="12" fill="#207448" />
+    <text x="1320" y="148" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Connection-Oriented vs</text>
+    <text x="1320" y="180" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Connectionless Transport</text>
+
+    
+    <rect x="1080" y="215" width="480" height="520" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="1095" y="230" width="450" height="50" rx="6" fill="#207448" />
+    <text x="1320" y="265" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Connection-Oriented (TCP)</text>
+
+    <text x="1105" y="320" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">State Established Prior to Data:</text>
+    <text x="1105" y="360" font-family="sans-serif" font-size="24" fill="#303a36">• ISN negotiation, rwnd/cwnd tracking</text>
+    <text x="1105" y="400" font-family="sans-serif" font-size="24" fill="#303a36">• RTT timers, socket buffers</text>
+    <text x="1105" y="440" font-family="sans-serif" font-size="24" fill="#303a36">• TIME_WAIT state</text>
+
+    <line x1="1105" y1="465" x2="1535" y2="465" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" />
+
+    <text x="1105" y="505" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Trade-offs:</text>
+    <text x="1105" y="545" font-family="sans-serif" font-size="24" fill="#303a36">• In-order reliable byte stream vs</text>
+    <text x="1105" y="585" font-family="sans-serif" font-size="24" fill="#303a36">  1-3 RTT handshake setup latency</text>
+    <text x="1105" y="630" font-family="sans-serif" font-size="24" fill="#303a36">• kernel socket memory overhead</text>
+    <text x="1105" y="675" font-family="sans-serif" font-size="24" fill="#303a36">• conntrack table pressure</text>
+
+    
+    <rect x="1080" y="755" width="480" height="695" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="1095" y="770" width="450" height="50" rx="6" fill="#207448" />
+    <text x="1320" y="805" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Connectionless (UDP)</text>
+
+    <text x="1105" y="860" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Header Structure:</text>
+    <text x="1105" y="900" font-family="sans-serif" font-size="24" fill="#303a36">Stateless 8-byte header</text>
+    <text x="1105" y="940" font-family="sans-serif" font-size="24" fill="#303a36">(Src Port, Dst Port, Length, Checksum)</text>
+    <text x="1105" y="980" font-family="sans-serif" font-size="24" fill="#303a36">followed directly by payload datagram</text>
+
+    <line x1="1105" y1="1010" x2="1535" y2="1010" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" />
+
+    <text x="1105" y="1050" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Trade-offs:</text>
+    <text x="1105" y="1090" font-family="sans-serif" font-size="24" fill="#303a36">• Zero setup latency</text>
+    <text x="1105" y="1130" font-family="sans-serif" font-size="24" fill="#303a36">• Zero kernel connection state</text>
+    <text x="1105" y="1170" font-family="sans-serif" font-size="24" fill="#303a36">• Immune to conntrack timeouts;</text>
+    <text x="1105" y="1215" font-family="sans-serif" font-size="24" fill="#303a36">  leaves ordering, congestion control,</text>
+    <text x="1105" y="1255" font-family="sans-serif" font-size="24" fill="#303a36">  and loss recovery entirely to</text>
+    <text x="1105" y="1295" font-family="sans-serif" font-size="24" fill="#303a36">  application (QUIC) or NIC</text>
+    <text x="1105" y="1335" font-family="sans-serif" font-size="24" fill="#303a36">  hardware (RoCEv2)</text>
+  </g>
+</svg>

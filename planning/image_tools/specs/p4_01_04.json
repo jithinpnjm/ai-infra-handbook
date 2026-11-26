@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0104-cut-vs-awk-delim",
+  "title": "Field Splitting: Single Delimiter in cut Versus Whitespace Collapsing in awk",
+  "anchor": "## 4. Slicing, ordering and counting: `cut`, `tr`, `sort`, `uniq`, `wc`, `head`, `tail`",
+  "spec": "Top: A single text line from a ps table: 'root      1024  0.0  0.1 slurmd', where 'root' and '1024' are separated by six space characters. Middle path labeled 'cut -d\" \"': each individual space character forms a delimiter boundary. Field 1 contains 'root'. Delimiter 1 creates empty Field 2 (''). Delimiter 2 creates empty Field 3 (''). Delimiters 3 through 5 create empty Fields 4, 5, and 6 (''). Delimiter 6 leaves '1024' in Field 7. A red crossout callout highlights 'cut -d\" \" -f2 returns empty string (fails to extract PID)'. Bottom path labeled 'awk default splitting': contiguous whitespace runs are collapsed into a single delimiter, and leading whitespace is stripped. Box $1 contains 'root'. Six collapsed spaces lead directly to Box $2 containing '1024'. Two collapsed spaces lead to Box $3 containing '0.0'. Two collapsed spaces lead to Box $4 containing '0.1'. One space leads to Box $5 containing 'slurmd'. A green checkmark callout shows 'awk \"{print \\$2, \\$5}\" returns 1024 slurmd'.",
+  "alt": "Comparison of how cut and awk split a space-aligned table line into fields.",
+  "cap": "cut treats every individual space as a delimiter and produces empty fields on aligned tables, while awk collapses runs of whitespace.",
+  "part": "part-01-linux",
+  "ch": "04"
+ },
+ {
+  "name": "p4-0104-comm-columns",
+  "title": "Three-Column Comparison and Suppression Flags in comm",
+  "anchor": "### `diff`, `comm`, `cmp`",
+  "spec": "Left: Two sorted input files. File A contains lines ['apple', 'banana', 'cherry']. File B contains lines ['banana', 'cherry', 'date']. Center: Standard output of 'comm fileA fileB' showing three tab-delimited columns. Column 1 (no leading tab) displays lines unique to File A: 'apple'. Column 2 (one leading tab) displays lines unique to File B: 'date'. Column 3 (two leading tabs) displays lines common to both files: 'banana' and 'cherry'. Right: A decision table mapping suppression flags to set operations. 'comm -12 fileA fileB' shows -1 hiding Column 1 and -2 hiding Column 2, leaving only Column 3 (Intersection: lines in both). 'comm -23 fileA fileB' shows -2 and -3 hiding Columns 2 and 3, leaving only Column 1 (Set difference: File A minus File B). 'comm -13 fileA fileB' shows -1 and -3 hiding Columns 1 and 3, leaving only Column 2 (Set difference: File B minus File A). An annotation note emphasizes: 'comm flags suppress columns rather than select them, and inputs must be sorted beforehand.'",
+  "alt": "Diagram showing comm three-column output format and column suppression flags.",
+  "cap": "comm outputs three columns for lines unique to file A, unique to file B, and common to both, where flags suppress rather than select columns.",
+  "part": "part-01-linux",
+  "ch": "04"
+ }
+]

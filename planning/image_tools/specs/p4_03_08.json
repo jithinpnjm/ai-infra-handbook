@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0308-ratelimit-atomicfile",
+  "title": "Token Bucket Rate Limiting and Atomic POSIX File Replacement",
+  "anchor": "### 3.5 Rate limits, concurrency and file operations",
+  "spec": "Two side-by-side architectural diagrams. Left panel 'Outbound Rate Limiting (Token Bucket)': A bucket container labeled 'Capacity B tokens' has tokens dropping in from a tap at 'Refill rate: r tokens/sec'. Client requests enter from the top; when a token is present, a token is consumed and the request proceeds to the fleet endpoint with headers 'X-RateLimit-Remaining: N'. If the bucket is empty, the request queues or yields until the next token drops. An error branch shows HTTP 429 Too Many Requests leading to a pause respecting 'Retry-After: 30'. Right panel 'Atomic File Updates vs TOCTOU Race Condition': Upper bad path 'Unsafe Check-Then-Open' shows Step 1 'if exists(config.json)' followed by a time gap (window of vulnerability) where a concurrent agent or crash causes a race, resulting in 'Corrupted / Partial Read' or FileNotFoundError. Lower good path 'Atomic POSIX Replace' shows: Step 1 'Write full payload to temporary file in same directory (.config.json.tmp)' ensuring identical filesystem/mount point. Step 2 'Flush and close'. Step 3 'os.replace(.config.json.tmp, config.json)' executing an atomic directory inode pointer update. Step 4 'Mutual Exclusion' note highlighting 'fcntl.flock(fd, LOCK_EX)' and 'open with os.O_EXCL' preventing concurrent overwrite.",
+  "alt": "A token bucket rate limiter handing out tokens alongside safe atomic file replacement using temporary files and os.replace compared to an unsafe TOCTOU race condition.",
+  "cap": "Outbound rate limiting uses a token bucket to avoid 429 errors, while safe file state updates require writing to a sibling temporary file before an atomic os.replace.",
+  "part": "part-03-python",
+  "ch": "08"
+ }
+]

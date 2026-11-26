@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-2022-engine-specialties",
+  "title": "Serving Engine and Orchestrator Specialisations",
+  "anchor": "### 2. What each engine is for",
+  "spec": "A comparative layout with 5 architectural cards arranged horizontally or in a clean 2-row grid. Card 1: 'vLLM (Engine + Server)'. Highlights: Paged KV caching, continuous batching, single model per instance, broad open-source community, rapid adoption of open checkpoints. Card 2: 'TensorRT-LLM (Engine + Server)'. Highlights: Dedicated NVIDIA optimisation, PyTorch LLM API with trtllm-serve, in-flight batching, disaggregated prefill/decode (Beta), chunked context, FP8/FP4 quantisation. Card 3: 'SGLang (Engine + Server)'. Highlights: RadixAttention (radix tree for prefix reuse), structured output, agentic workloads, broad hardware support. Card 4: 'Triton (Inference Server)'. Highlights: Model repository with configuration files, dynamic batcher, instance groups across multiple GPUs, hosts TensorRT-LLM or classic vision/tabular models under one API. Card 5: 'Ray Serve LLM (Fleet Orchestrator)'. Highlights: Ray head and worker nodes, prefix-aware routing to warm cache replicas, autoscaling, disaggregated prefill and decode workers hosting vLLM or SGLang engines underneath.",
+  "alt": "A comparison of vLLM, TensorRT-LLM, SGLang, Triton, and Ray Serve LLM showing their architectural mechanisms and workload targets.",
+  "cap": "Figure 20.22.3. Each tool solves a different operational problem, from kernel-level NVIDIA tuning in TensorRT-LLM to fleet-level prefix routing in Ray Serve.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22"
+ },
+ {
+  "name": "p4-2022-customer-engine-decision",
+  "title": "Engine Selection Decision Flowchart",
+  "anchor": "### Scenario C. Picking an engine for a new customer",
+  "spec": "A decision flowchart illustrating how an SRE selects the serving stack. Start node: 'New Customer Serving Request'. Decision Diamond 1: 'Stable large model (e.g., 70B) on NVIDIA GPUs with strict TTFT SLO for 1+ year?' -> Yes: Box 'TensorRT-LLM on TP=8 (Benchmark against vLLM; efficiency gains justify tight hardware and version coupling)'. -> No: Decision Diamond 2: 'Fleet of 40+ diverse open models changing frequently across mixed hardware?' -> Yes: Box 'vLLM (One process per model, paged caching, fastest path to production)'. -> No: Decision Diamond 3: 'Mixed workloads including non-LLM models (vision, audio, tabular) needing one metrics and health API?' -> Yes: Box 'Triton Server (Model repository with dynamic batcher hosting LLM and non-LLM backends)'. -> No: Decision Diamond 4: 'Need cluster autoscaling and prefix-aware routing across many engine instances?' -> Yes: Box 'Ray Serve LLM orchestrating vLLM or SGLang'. Bottom note box: 'Decision rule: Benchmark time to first token, inter-token latency, and goodput on production traffic; count operational overhead, not just raw tokens per second.'",
+  "alt": "A decision tree leading to TensorRT-LLM, vLLM, Triton, or Ray Serve LLM based on model scale, hardware coupling, and multi-model requirements.",
+  "cap": "Figure 20.22.17. Decision tree for matching customer requirements to the right serving stack based on model variety, hardware stability, and multi-model scope.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22"
+ },
+ {
+  "name": "p4-2022-k8s-pod-layout",
+  "title": "vLLM Kubernetes Pod Architecture and Probing Topology",
+  "anchor": "### Kubernetes Deployment for vLLM",
+  "spec": "A detailed architectural diagram of the Kubernetes Deployment described in section 12. Outer container box: 'vllm-llama-8b Pod'. Inside the container: 1. 'Resource Envelope': Requests (CPU 4, Memory 24Gi, GPU 1 nvidia.com/gpu) alongside Limits (Memory 32Gi, GPU 1 nvidia.com/gpu), highlighting the 8Gi headroom between memory request and limit for weight loading. 2. 'Volumes': Box showing '/dev/shm' mounted to 'emptyDir: medium: Memory, sizeLimit: 2Gi' annotated with 'Required for PyTorch and NCCL tensor-parallel IPC'; second box showing '/root/.cache/huggingface' mounted to 'PVC: vllm-model-cache' annotated with 'Avoids re-downloading 16 GB weights on pod restart'. 3. 'Environment & Credentials': Box showing 'HF_TOKEN' pulled from 'Secret: hf-token-secret'. 4. 'Cascaded Probes': Horizontal timeline or grouped cards: 'startupProbe' (/health, period 10s, failure 90 -> 900s total budget to absorb weight loading and CUDA graph capture); 'readinessProbe' (/health, period 5s, failure 3 -> gates cluster traffic); 'livenessProbe' (/health, period 20s, timeout 10s, failure 6 -> forgiving threshold to prevent killing busy engines). External to Pod: 'Service: vllm-llama-8b' mapping port 8000 to containerPort 8000.",
+  "alt": "A diagram of the Kubernetes pod layout for vLLM showing resource requests and limits, memory-backed shared memory, persistent volume cache, and cascaded probe settings.",
+  "cap": "Figure 20.22.18. Architecture of the production vLLM pod showing memory headroom, shared memory IPC volume, persistent weight cache, and probe hierarchy.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22"
+ }
+]

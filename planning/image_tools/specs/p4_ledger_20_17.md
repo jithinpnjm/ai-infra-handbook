@@ -1,0 +1,31 @@
+# docs/part-20-nebius-sre-interview/17-system-design-drill-sheet-twelve-prompts.md
+- ## What the interviewer is testing | 275 | NO FIGURE NEEDED interview meta-context and candidate expectations
+- ## The core ideas | 10 | NO FIGURE NEEDED structural section header
+- ### 0. How to use the twelve prompts | 210 | COVERED(m20-17-1) timeline diagram of the 40-minute spine
+- ### 1. GPU job scheduling [report] | 450 | COVERED(p3-2017-checkpoint-interval) Young's rule arithmetic and COVERED(m20-17-2) scheduler architecture
+- ### 2. Model inference serving [report] | 350 | COVERED(x17-burst-gpus) peak versus burst GPU calculation and COVERED(m20-17-3) inference serving architecture
+- ### 3. Training data storage for thousands of GPUs [report] | 380 | COVERED(p3-2017-storage-burst) checkpoint burst bandwidth chart and COVERED(m20-17-4) storage tier topology
+- ### 4. Detecting a failing GPU before the customer does [report] | 300 | COVERED(p2-2017-detect-gpu-numbers) spared request calculation ladder and COVERED(m20-17-5) failure detection architecture
+- ### 5. The SRE variant: incidents, capacity and rollout safety [report] | 370 | COVERED(p3-2017-burn-equivalence) burn rate budget consumption, COVERED(p3-2017-order-gpus-lead-time) capacity chain, and COVERED(m20-17-6) SRE incident and rollout architecture
+- ### 6. Multi-region failover for dedicated endpoints [my addition] | 320 | COVERED(x17-failover-budget) failover budget arithmetic and COVERED(m20-17-7) multi-region failover topology
+- ### 7. Usage metering and billing correctness [my addition] | 300 | COVERED(p3-2017-duplicate-vs-loss) duplicate charge versus loss comparison and COVERED(m20-17-8) metering pipeline architecture
+- ### 8. A prompt-cache or KV-cache tier [my addition] | 440 | COVERED(p3-2017-kv-tier-capacity) cache tier capacities, COVERED(x17-kv-tier-crossover) recompute versus load crossover, and COVERED(m20-17-9) KV cache architecture
+- ### 9. A model weights distribution system for cold start [my addition] | 300 | COVERED(x17-weights-tree) tree fanout distribution time and COVERED(m20-17-10) weight distribution topology
+- ### 10. An inference gateway rate limiter [my addition] | 310 | COVERED(p3-2017-reserve-refund) reserve and refund token bucket timeline and COVERED(m20-17-11) rate limiter architecture
+- ### 11. Multi-tenant noisy-neighbour control [my addition] | 300 | COVERED(p3-2017-noisy-neighbour-kv) KV cache capacity starvation calculation and COVERED(m20-17-12) noisy neighbor control architecture
+- ### 12. An SLO and alerting platform for 1,000 endpoints [my addition] | 280 | COVERED(p3-2017-slo-platform-scale) metric series and rule evaluation chain and COVERED(m20-17-13) SLO platform architecture
+- ## Scoring rubric | 110 | NO FIGURE NEEDED structured markdown evaluation rubric
+- ## The first five minutes script | 130 | NO FIGURE NEEDED ordered dialogue script for opening minutes
+- ## How to answer out loud | 150 | NO FIGURE NEEDED canned verbal response patterns
+- ## Worked scenarios | 25 | NO FIGURE NEEDED transition heading for worked scenarios
+- ### Scenario 1: A prompt you have not drilled | 130 | NO FIGURE NEEDED concise walkthrough applying the decision checklist to batch embeddings
+- ### Scenario 2: The interviewer changes a number | 120 | NO FIGURE NEEDED behavioral guidance on scaling parameter count on the fly
+- ## Hands-on lab | 800 | NO FIGURE NEEDED python calculator script and testing steps
+- ## The one-page decision checklist | 130 | COVERED(p2-2017-decision-checklist) eight-step decision checklist diagram
+- ## Drill questions | 250 | NO FIGURE NEEDED practice interview drill Q&A cards
+- ## Common mistakes and weak answers | 110 | NO FIGURE NEEDED bulleted list of interview pitfalls
+- ## Connections to the rest of the handbook | 100 | NO FIGURE NEEDED cross-reference link directory
+- ## Sources and review notes | 200 | NO FIGURE NEEDED bibliography and citation notes
+- ### Verification log | 150 | NO FIGURE NEEDED factual audit and verification record
+
+Specs kept 0, dropped 0: []

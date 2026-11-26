@@ -179,6 +179,10 @@ A deleted pod on an unreachable node stays stuck in `Terminating` until the kube
 
 ### EndpointSlice and Service controllers
 
+![A three-column flow diagram showing how the EndpointSlice controller removes an unready inference pod from traffic routing during model loading without killing the container.](./img/p4-0506-endpointslice-readiness.svg)
+
+*Figure 5.0.0. The EndpointSlice controller updates endpoint conditions based on readiness probes, removing an unready model server from traffic while keeping its container alive.*
+
 The EndpointSlice controller watches Services and Pods. For each Service, it maintains EndpointSlices that list ready pod IPs, along with `serving` and `terminating` states. It updates them when pods become Ready or NotReady, so readiness probes decide where traffic goes. A pod that fails its readiness check is removed from the list, but it is not killed. That is the difference between readiness and liveness, and it matters during a slow model load. `kube-proxy` consumes these slices (see 5.10). The Service controller, which runs in cloud-controller-manager, provisions cloud load balancers for `type: LoadBalancer`.
 
 ### Namespace, garbage collector, TTL, PV/PVC, HPA and others
@@ -244,6 +248,10 @@ Strings in `metadata.finalizers` block deletion. The API server sets `deletionTi
 A resource stuck in `Terminating` almost always has an unfulfilled finalizer. Fix the controller that should remove it, not only the finalizer list. Removing a finalizer by hand skips the cleanup, which can leak cloud disks, IPs and load balancers. The cleanup was there for a reason, so removing the note only hides the work that never happened.
 
 ### Status and conditions
+
+![Diagram showing the separation between metadata.generation and status.observedGeneration through the status subresource, alongside the six fields of a condition object.](./img/p4-0506-status-conditions.svg)
+
+*Figure 5.0.0. Writing status through the /status subresource updates observedGeneration and conditions without bumping metadata.generation, preventing reconcile loops.*
 
 By convention, `status.conditions[]` entries carry `type`, `status` (`True`, `False` or `Unknown`), `reason` (a CamelCase, machine-readable value), `message`, `lastTransitionTime` and `observedGeneration`. Consumers such as `kubectl wait --for=condition=Available`, GitOps health checks and Kueue rely on them. A condition is a small, structured answer to a yes-or-no question, such as "is this Deployment available?" Tools can read it without understanding the rest of the object.
 

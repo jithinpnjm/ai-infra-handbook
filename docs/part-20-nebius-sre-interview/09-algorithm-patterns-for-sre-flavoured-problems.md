@@ -369,6 +369,10 @@ Decide: "best k" or "merge sorted inputs" means a heap, and you must say which e
 
 ### 5. Interval merging and scheduling
 
+![A timeline comparison showing how taking the maximum end time prevents nested intervals from shrinking merged ranges, and how a cursor identifies free gaps between busy intervals.](./img/p4-2009-interval-merge.svg)
+
+*Figure 20.0.0. Interval merging requires taking the maximum of the end boundaries so nested intervals do not truncate the merged range, while free slot detection advances a cursor through sorted gaps.*
+
 Platform teams book maintenance windows and GPU reservations. Two questions follow. Which windows overlap, and how many nodes do we need if each reservation needs a whole node? The idea is to sort by start time and sweep once, keeping only what you must remember about the past. Think of a single list of bookings on a shared whiteboard, read from the top, with a note of which rooms are still in use.
 
 A useful way to say the sweep is "I walk the timeline from left to right, and at each point I know how many things are running." That sentence is short, it names the state you keep, and it describes the sweep without any code.
@@ -957,6 +961,10 @@ Decide: ask "what should happen on a cycle", because the answer is an error nami
 
 ### 11. BFS, DFS and shortest path on a service graph
 
+![Reversing dependency edges from a failed network component exposes the blast radius through breadth-first search rings, marking nodes on enqueue to prevent duplicate processing.](./img/p4-2009-blast-radius-bfs.svg)
+
+*Figure 20.0.0. Reversing service dependency edges turns an inward dependency graph into an outward blast radius search where breadth-first search identifies all downstream affected services.*
+
 A database fails. Which services are affected? Or: what is the fewest hops between two network devices? Breadth-first search explores in rings of increasing distance, so the first time it reaches the target is the shortest route when every edge costs the same. Depth-first search follows one path as far as it goes and is the natural tool for "what is reachable". Both answers matter during an incident, and the question you are asked tells you which search to reach for.
 
 During an incident, the two questions often come one after another. First, what breaks. Second, what is the fastest safe route back. The first is a reachability question, and the second is an ordering question. Saying so out loud helps the interviewer see that you are solving the right problem at each moment.
@@ -970,6 +978,10 @@ The cost is O(V + E). Each node is visited once and each edge is looked at once,
 Decide: if edges are unweighted and you want the fewest hops, say BFS. If they have costs, say Dijkstra. The question about costs is the one that decides which algorithm you need.
 
 ### 12. Union-find
+
+![Union by size attaches smaller root trees under larger ones, while path compression flattens deep parent pointers directly to the root during find operations.](./img/p4-2009-union-find.svg)
+
+*Figure 20.0.0. Union by size keeps disjoint trees shallow by attaching smaller clusters under larger roots, while path compression flattens parent chains directly to the root on each lookup.*
 
 Fifty nodes report errors. Some pairs are linked, for example by sharing a switch. How many separate failure clusters are there? Union-find answers "are these two in the same group" and "merge these two groups" in near-constant time. Each group has a root, `find` follows parents up to the root, and `union` points one root at the other. Think of it as a set of small teams, where each team has a leader and a merge means one leader reports to the other.
 

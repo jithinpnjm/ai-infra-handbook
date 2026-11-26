@@ -1,0 +1,33 @@
+# docs/part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md
+- ## Why this matters for AI infrastructure | 150 | NO FIGURE NEEDED introductory framing
+- ## Prerequisites and outcomes | 160 | NO FIGURE NEEDED prerequisite and learning objectives list
+- ## 1. The model: lines of text flowing through small tools | 250 | COVERED(ch04-d1-luna, ch04-fig1-pipeline-v2.jpg)
+- ## 2. Regular expressions from scratch | 450 | COVERED(l04-bre-ere, l04-regex-map)
+- ## 3. `grep`: filter lines | 230 | NO FIGURE NEEDED straightforward command option table and code samples
+- ## 4. Slicing, ordering and counting: `cut`, `tr`, `sort`, `uniq`, `wc`, `head`, `tail` | 280 | NEEDS FIGURE p4-0104-cut-vs-awk-delim explains why cut fails on space-aligned tables while awk succeeds
+- ### The two pipelines you will write a thousand times | 100 | NO FIGURE NEEDED short code patterns covered conceptually by Figure 1.4.2
+- ### Reading long output: `less`, and a few one-line improvements | 270 | NO FIGURE NEEDED keyboard shortcuts and flag list
+- ### Combining: `paste`, `join`, `column`, `tee` | 70 | NO FIGURE NEEDED brief utility summary
+- ## 5. `sed`: edit a stream | 220 | COVERED(l04-sed-substitute)
+- ## 6. `awk`: the Swiss army knife for columns | 280 | COVERED(p3-0104-awk-groupby, ch04-fig2-awk-v2.jpg)
+- ## 7. Fan-out: `find`, `xargs`, and parallelism | 230 | COVERED(ch04-fig3-xargs.jpg)
+- ## 8. Comparing files and handling structured text | 30 | NO FIGURE NEEDED brief section transition
+- ### `diff`, `comm`, `cmp` | 160 | NEEDS FIGURE p4-0104-comm-columns explains three-column comm output and suppression flags
+- ### JSON and friends: use a parser, not regex | 150 | COVERED(p3-0104-jq-filter)
+- ### Ask tools for machine-readable output first | 120 | NO FIGURE NEEDED list of CLI commands with parseable flags
+- ## 9. Portability, locale and other traps | 350 | NO FIGURE NEEDED conceptual explanations of traps elaborated in How It Fails
+- ## 10. Recipes for AI and HPC work | 220 | COVERED(p3-0104-mask-rank-errors)
+- ## How it fails | 30 | NO FIGURE NEEDED troubleshooting header
+- ### 1. Different sort order or "wrong" results on two machines: locale | 70 | NO FIGURE NEEDED textual diagnostic explanation
+- ### 2. `uniq -c` shows duplicates: input was not sorted | 50 | NO FIGURE NEEDED already illustrated in Figure 1.4.2 and Figure 1.4.6
+- ### 3. The `sed -i` that works on the laptop and fails on the server (or the reverse) | 90 | NO FIGURE NEEDED textual explanation of BSD vs GNU syntax differences
+- ### 4. Files with spaces or newlines in names break an `xargs` pipeline | 50 | NO FIGURE NEEDED illustrated in Figure 1.4.8
+- ### 5. A regex that matches too much: unescaped dots, greedy stars | 60 | NO FIGURE NEEDED brief regex pitfall rules
+- ### 6. Parsing a pretty table with `cut -d' '` | 50 | NO FIGURE NEEDED covered by proposed figure in Section 4
+- ### 7. Parsing JSON or YAML with regex | 50 | NO FIGURE NEEDED covered by Figure 1.4.9
+- ## Hands-on lab: text pipelines and VM drills | 350 | NO FIGURE NEEDED step-by-step hands-on exercises
+- ## Exercises | 200 | NO FIGURE NEEDED practice problem set
+- ## Checkpoint questions (20) | 750 | NO FIGURE NEEDED self-test questions and answers
+- ## Sources and review notes | 150 | NO FIGURE NEEDED bibliography and verification notes
+
+Specs kept 2, dropped 0: []

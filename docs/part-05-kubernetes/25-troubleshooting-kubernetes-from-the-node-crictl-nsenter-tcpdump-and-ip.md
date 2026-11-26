@@ -235,6 +235,10 @@ Each tool answers a different question. `top -H` and `pidstat` ask which threads
 
 ### 3.6 GPU and fabric hardware
 
+![A five-tier diagnostic ladder for GPU and fabric hardware inspecting driver health, NVLink, PCIe link status, kernel Xid errors, and collective fabric tests before collecting a bug report.](./img/p4-0525-gpu-hw-ladder.svg)
+
+*Figure 5.0.0. GPU and fabric hardware triage moves through five layers from NVML queries down to PCIe link negotiation and kernel Xid errors before generating an official bug report.*
+
 When a GPU or a fabric link misbehaves, the hardware tools and the kernel log are where you look first. A GPU can run hot, throttle its clocks, or drop off the PCIe bus, and none of those events show up as a Kubernetes error. The kernel log is the one place where the hardware reports its own faults.
 
 ```bash

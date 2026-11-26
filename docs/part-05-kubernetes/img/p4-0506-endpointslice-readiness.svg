@@ -1,0 +1,252 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
+  <title>EndpointSlice Controller Decoupling Readiness from Pod Lifecycle</title>
+  <desc>Three-column flow diagram showing how pod readiness affects EndpointSlices and traffic routing during an AI model load.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#718096"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1420" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">
+    EndpointSlice Controller Decoupling Readiness from Pod Lifecycle
+  </text>
+
+  
+  
+  
+  <rect x="40" y="120" width="460" height="1080" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(65, 140)">
+    
+    <rect x="0" y="6" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="10" y="16" width="16" height="16" fill="#207448"/>
+    <line x1="8" y1="0" x2="8" y2="6" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="0" x2="18" y2="6" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="0" x2="28" y2="6" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="42" x2="8" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="42" x2="18" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="42" x2="28" y2="48" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="270" y="172" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+    Pod Lifecycle on GPU Node
+  </text>
+
+  
+  <rect x="60" y="210" width="420" height="180" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2"/>
+  <circle cx="100" cy="255" r="22" fill="#207448"/>
+  <text x="100" y="263" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="280" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="280" dy="0">inference container</tspan>
+    <tspan x="280" dy="34">started</tspan>
+  </text>
+
+  
+  <rect x="60" y="420" width="420" height="340" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2"/>
+  <circle cx="100" cy="465" r="22" fill="#207448"/>
+  <text x="100" y="473" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="275" y="473" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">
+    Model Weight Loading
+  </text>
+
+  
+  <rect x="75" y="505" width="390" height="105" rx="8" fill="#fdeeed" stroke="#e05252" stroke-width="2"/>
+  <text x="270" y="548" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c0392b" text-anchor="middle">
+    <tspan x="270" dy="0">readiness probe fails</tspan>
+    <tspan x="270" dy="32">with HTTP 503</tspan>
+  </text>
+
+  
+  <rect x="75" y="625" width="390" height="105" rx="8" fill="#edf7ed" stroke="#207448" stroke-width="2"/>
+  <text x="270" y="668" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="270" dy="0">liveness probe passes</tspan>
+    <tspan x="270" dy="32">with HTTP 200</tspan>
+  </text>
+
+  
+  <rect x="60" y="790" width="420" height="380" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2"/>
+  <circle cx="100" cy="835" r="22" fill="#207448"/>
+  <text x="100" y="843" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="275" y="843" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">
+    Weights Ready
+  </text>
+
+  
+  <rect x="75" y="880" width="390" height="120" rx="8" fill="#edf7ed" stroke="#207448" stroke-width="2"/>
+  <text x="270" y="930" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="270" dy="0">readiness probe succeeds</tspan>
+    <tspan x="270" dy="34">with HTTP 200</tspan>
+  </text>
+
+
+  
+  
+  
+  <rect x="530" y="120" width="540" height="1080" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(555, 140)">
+    
+    <circle cx="20" cy="22" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 20 2 L 20 8 M 20 36 L 20 42 M 2 22 L 8 22 M 36 22 L 42 22" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="815" y="172" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+    EndpointSlice Controller Loop
+  </text>
+
+  
+  <rect x="560" y="210" width="480" height="180" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2"/>
+  <text x="800" y="285" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Controller watches</tspan>
+    <tspan x="800" dy="34">Pod conditions</tspan>
+  </text>
+
+  
+  <rect x="560" y="420" width="480" height="340" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2"/>
+  <text x="800" y="468" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+    EndpointSlice
+  </text>
+  
+  
+  
+  <rect x="580" y="495" width="440" height="235" rx="8" fill="#fdf2f2" stroke="#e05252" stroke-width="2"/>
+  <text x="800" y="555" font-family="ui-monospace, 'Courier New', monospace" font-size="24" font-weight="bold" fill="#b91c1c" text-anchor="middle">
+    <tspan x="800" dy="0">endpoints[0].conditions.</tspan>
+    <tspan x="800" dy="34">ready=false</tspan>
+  </text>
+  <text x="800" y="670" font-family="ui-monospace, 'Courier New', monospace" font-size="24" font-weight="bold" fill="#b91c1c" text-anchor="middle">
+    serving=false
+  </text>
+
+  
+  <rect x="560" y="790" width="480" height="380" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2"/>
+  <text x="800" y="838" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+    EndpointSlice
+  </text>
+
+  
+  
+  <rect x="580" y="870" width="440" height="260" rx="8" fill="#edf7ed" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="935" font-family="ui-monospace, 'Courier New', monospace" font-size="24" font-weight="bold" fill="#15803d" text-anchor="middle">
+    <tspan x="800" dy="0">endpoints[0].conditions.</tspan>
+    <tspan x="800" dy="34">ready=true</tspan>
+  </text>
+  <text x="800" y="1050" font-family="ui-monospace, 'Courier New', monospace" font-size="24" font-weight="bold" fill="#15803d" text-anchor="middle">
+    serving=true
+  </text>
+
+
+  
+  
+  
+  <rect x="1100" y="120" width="460" height="1080" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1125, 140)">
+    
+    <rect x="4" y="12" width="36" height="22" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="14" cy="23" r="3" fill="#207448"/>
+    <circle cx="22" cy="23" r="3" fill="#207448"/>
+    <circle cx="30" cy="23" r="3" fill="#207448"/>
+    <line x1="12" y1="6" x2="12" y2="12" stroke="#207448" stroke-width="3"/>
+    <line x1="32" y1="6" x2="32" y2="12" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="1340" y="172" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+    Traffic Routing Plane
+  </text>
+
+  
+  <rect x="1120" y="210" width="420" height="180" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2"/>
+  <text x="1330" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">
+    vllm-service
+  </text>
+  <text x="1330" y="325" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#555555" text-anchor="middle">
+    backed by EndpointSlice
+  </text>
+
+  
+  <rect x="1120" y="420" width="420" height="340" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2"/>
+  <rect x="1140" y="445" width="380" height="90" rx="8" fill="#f5f8f5" stroke="#718096" stroke-width="2"/>
+  <text x="1330" y="500" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+    cloud load balancers
+  </text>
+
+  
+  <rect x="1140" y="565" width="380" height="165" rx="8" fill="#fdf2f2" stroke="#e05252" stroke-width="2"/>
+  
+  <circle cx="1330" cy="615" r="24" fill="#c0392b"/>
+  <line x1="1318" y1="603" x2="1342" y2="627" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1342" y1="603" x2="1318" y2="627" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <text x="1330" y="685" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c0392b" text-anchor="middle">
+    traffic dropped
+  </text>
+
+  
+  <rect x="1120" y="790" width="420" height="380" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2"/>
+  <rect x="1140" y="815" width="380" height="85" rx="8" fill="#f5f8f5" stroke="#718096" stroke-width="2"/>
+  <text x="1330" y="868" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+    kube-proxy
+  </text>
+
+  
+  <g transform="translate(1140, 930)">
+    <rect x="0" y="0" width="380" height="55" rx="27" fill="#207448"/>
+    <text x="190" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      client inference requests
+    </text>
+  </g>
+
+  
+  <line x1="1330" y1="995" x2="1330" y2="1045" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1170" y="1055" width="320" height="85" rx="8" fill="#edf7ed" stroke="#207448" stroke-width="2"/>
+  <text x="1330" y="1108" font-family="ui-monospace, 'Courier New', monospace" font-size="26" font-weight="bold" fill="#15803d" text-anchor="middle">
+    ready=true
+  </text>
+
+
+  
+  
+  
+  
+  <line x1="480" y1="560" x2="550" y2="560" stroke="#c0392b" stroke-width="4" marker-end="url(#arrow-green)"/>
+  
+  
+  <line x1="1040" y1="560" x2="1110" y2="560" stroke="#c0392b" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="480" y1="940" x2="550" y2="940" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="1040" y1="940" x2="1110" y2="940" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+
+  
+  
+  
+  <rect x="50" y="1235" width="1500" height="145" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+  
+  
+  <g transform="translate(90, 1280)">
+    <path d="M 24 2 L 44 10 L 44 26 C 44 38 24 48 24 48 C 24 48 4 38 4 26 L 4 10 Z" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="24" y1="16" x2="24" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="24" cy="36" r="2.5" fill="#db8129"/>
+  </g>
+
+  
+  <text x="820" y="1295" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="820" dy="0">unready pods drop traffic without being terminated by kubelet,</tspan>
+    <tspan x="820" dy="40">distinguishing readiness from liveness</tspan>
+  </text>
+
+</svg>

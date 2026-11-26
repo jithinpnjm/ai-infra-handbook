@@ -1,0 +1,31 @@
+# docs/part-02-networking/05-routing-on-a-host-routing-tables-default-gateways-and-forwarding.md
+- ## Why this matters for AI infrastructure | 210 | NO FIGURE NEEDED introductory overview and motivation
+- ## Prerequisites and outcomes | 220 | NO FIGURE NEEDED outcome checklist and prerequisites
+- ## 1. The routing decision | 180 | COVERED(m2-05-1)
+- ## 2. Reading the routing table | 240 | COVERED(p3-0205-table-read)
+- ### Longest-prefix match and metrics | 210 | COVERED(n05-fig1-lpm.jpg)
+- ### The default gateway | 140 | COVERED(p3-0205-default-accident)
+- ### `ip route get`: ask the kernel | 110 | NEEDS FIGURE breakdown of command input parameters vs kernel FIB simulation output
+- ## 3. Routing tables, rules and special routes | 300 | COVERED(p3-0205-rule-walk)
+- ### Special route types | 150 | COVERED(p3-0205-special-routes)
+- ### Loopback, VIPs and dummy interfaces | 120 | NO FIGURE NEEDED plain definition of virtual interfaces and local VIPs
+- ### Adding and deleting routes by hand | 140 | NO FIGURE NEEDED simple CLI syntax and symmetric return path note
+- ## 4. Choosing the source address | 190 | COVERED(p3-0205-source-pick)
+- ## 5. Multiple interfaces: weak host model, rp_filter and asymmetric routing | 270 | COVERED(p3-0205-rpfilter)
+- ### Diagnosing "SSH works on NIC A but not NIC B" | 150 | COVERED(p3-0205-ssh-nic-ladder)
+- ## 6. Static routes and persistence | 280 | NEEDS FIGURE ephemeral kernel FIB state versus persistent config managers and reboot loss
+- ## 7. Linux as a router: forwarding | 280 | COVERED(p3-0205-forwarding-ladder)
+- ### ICMP redirects and source routing | 130 | COVERED(p3-0205-redirect)
+- ## 8. Multipath (ECMP) routes | 210 | COVERED(n05-ecmp)
+- ## 9. IPv6 routing on a host | 140 | NEEDS FIGURE link-local scope zone ambiguity and why dev is mandatory for IPv6 next hops
+- ## 10. Containers, VMs and Kubernetes: more routing tables than you think | 190 | COVERED(p3-0205-k8s-tables)
+- ## 11. Diagnosing routing problems | 100 | COVERED(m2-05-2)
+- ## 12. Case study: a GPU server with six networks | 260 | COVERED(n05-sixnets)
+- ## 13. Hands-on lab: routing between network namespaces | 450 | NO FIGURE NEEDED step-by-step namespace lab; topology already drawn
+- ## 14. Common mistakes | 170 | NO FIGURE NEEDED summary list of pitfalls
+- ## 15. Interview angles | 160 | NO FIGURE NEEDED list of interview questions
+- ## Exercises | 380 | NO FIGURE NEEDED student exercises
+- ## Checkpoint questions (20) | 1300 | NO FIGURE NEEDED question and answer review
+- ## Sources and review notes | 280 | NO FIGURE NEEDED citations and lab verification notes
+
+Specs kept 3, dropped 0: []

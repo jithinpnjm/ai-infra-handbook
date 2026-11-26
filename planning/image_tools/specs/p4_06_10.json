@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0610-live-monitoring",
+  "title": "Live GPU Job Telemetry and Distributed Bottleneck Triage",
+  "anchor": "### Live GPU job monitoring and distributed profiling (*Distributed AI Systems* Chapter 8)",
+  "spec": "Flowchart and decision tree diagram organized from top to bottom. Top tier shows two non-SSH telemetry collection methods: Box A labeled 'SLURM Step Attachment' with command 'srun --jobid=ID -w node nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits', and Box B labeled 'Interactive Job Inspection' with 'srun --jobid=ID nvidia-smi'. Middle tier splits into three diagnostic symptom branches based on query values: Left branch labeled 'Condition: utilization.gpu < 50%' leads to 'Straggler / Stalled Rank' box, with callout causes: DataLoader starvation (insufficient cpus-per-task), slow storage I/O, or collective barrier wait. Center branch labeled 'Condition: memory_used / memory_total > 0.95' leads to 'Imminent VRAM OOM' box, with callouts: CUDA caching allocator fragmentation or activation memory spike within 5% of HBM exhaustion. Right branch labeled 'Condition: utilization.gpu == 100% but slow step time' leads to 'False 100% Compute Illusion' box. An arrow from Right branch points to Bottom tier profiling action: 'torch.profiler Instrumentation (5 steps)' with calls 'prof.key_averages().table(sort_by=cuda_time_total)' and rank-0 Chrome trace 'prof.export_chrome_trace(trace.json)'. Profiler diagnosis outcome box shows: 'ncclAllReduce dominates cuda_time_total -> Inter-Node Communication Bottleneck (NCCL polling loops spinning SMs at 100%)', leading to remediation tags: 'Increase micro-batch size', 'Gradient accumulation', 'Overlap comm/compute', 'export NCCL_DEBUG=INFO'.",
+  "alt": "A troubleshooting flowchart showing how live GPU metrics and torch.profiler distinguish stragglers, impending memory exhaustion, and false 100 percent utilization caused by NCCL polling loops.",
+  "cap": "Live GPU telemetry reveals true bottlenecks by distinguishing idle stragglers, VRAM exhaustion, and false 100 percent utilization from NCCL spin loops.",
+  "part": "part-06-hpc-slurm",
+  "ch": "10"
+ }
+]

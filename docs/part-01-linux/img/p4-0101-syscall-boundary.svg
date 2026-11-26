@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>The system call execution path and category routing</title>
+  <desc>Diagram detailing how a system call request traverses from a user space application through glibc across the user kernel boundary into the kernel dispatcher and subsystems.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-return" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1380" fill="#f5f8f5" />
+
+  
+  <text x="80" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">The system call execution path and category routing</text>
+
+  
+  
+  
+  <g id="layer-application">
+    <rect x="80" y="105" width="1440" height="140" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(110, 137)">
+      <rect x="0" y="0" width="56" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="0" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="3" />
+      <circle cx="12" cy="8" r="3" fill="#207448" />
+      <circle cx="24" cy="8" r="3" fill="#207448" />
+      <circle cx="36" cy="8" r="3" fill="#207448" />
+    </g>
+
+    <text x="190" y="150" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">User Space Application</text>
+    <text x="190" y="190" font-family="sans-serif" font-size="24" fill="#303a36">User program executes code and calls a high-level C library function such as</text>
+    <text x="190" y="222" font-family="monospace" font-size="24" fill="#303a36">open('data.txt'), malloc(), socket(), or clone().</text>
+  </g>
+
+  
+  <path d="M 800 245 L 800 285" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  
+  
+  <g id="layer-library">
+    <rect x="80" y="295" width="1440" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(110, 332)">
+      <rect x="4" y="4" width="48" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="14" y1="18" x2="42" y2="18" stroke="#207448" stroke-width="4" />
+      <line x1="14" y1="30" x2="42" y2="30" stroke="#207448" stroke-width="4" />
+      <line x1="14" y1="42" x2="32" y2="42" stroke="#207448" stroke-width="4" />
+    </g>
+
+    <text x="190" y="340" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">User Space Library</text>
+    <text x="190" y="380" font-family="sans-serif" font-size="24" fill="#303a36">glibc (libc.so.6) receives the call, places arguments into CPU architecture registers,</text>
+    <text x="190" y="415" font-family="sans-serif" font-size="24" fill="#303a36">sets the system call opcode number (e.g., <tspan font-family="monospace">__NR_openat</tspan>), and executes the hardware syscall instruction.</text>
+  </g>
+
+  
+  
+  
+  
+  <line x1="60" y1="540" x2="1540" y2="540" stroke="#db8129" stroke-width="3.5" stroke-dasharray="14 10" />
+
+  
+  <path d="M 800 455 L 800 625" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="boundary-badge">
+    <rect x="80" y="515" width="670" height="50" rx="25" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+    <text x="105" y="549" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">User/Kernel boundary (CPU switches from Ring 3 to Ring 0)</text>
+  </g>
+
+  
+  <g id="strace-callout">
+    <rect x="870" y="475" width="650" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <line x1="870" y1="540" x2="815" y2="540" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" />
+    <circle cx="815" cy="540" r="5" fill="#207448" />
+
+    <text x="895" y="510" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">strace</text>
+    <text x="895" y="545" font-family="sans-serif" font-size="24" fill="#303a36">strace intercepts every crossing via ptrace and records</text>
+    <text x="895" y="578" font-family="sans-serif" font-size="24" fill="#303a36">call name, arguments, and return codes.</text>
+  </g>
+
+  
+  
+  
+  <g id="layer-dispatcher">
+    
+    <rect x="80" y="635" width="1440" height="525" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(110, 665)">
+      <rect x="8" y="8" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="18" y="18" width="24" height="24" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="20" y1="0" x2="20" y2="8" stroke="#207448" stroke-width="3" />
+      <line x1="40" y1="0" x2="40" y2="8" stroke="#207448" stroke-width="3" />
+      <line x1="20" y1="52" x2="20" y2="60" stroke="#207448" stroke-width="3" />
+      <line x1="40" y1="52" x2="40" y2="60" stroke="#207448" stroke-width="3" />
+      <line x1="0" y1="20" x2="8" y2="20" stroke="#207448" stroke-width="3" />
+      <line x1="0" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="3" />
+      <line x1="52" y1="20" x2="60" y2="20" stroke="#207448" stroke-width="3" />
+      <line x1="52" y1="40" x2="60" y2="40" stroke="#207448" stroke-width="3" />
+    </g>
+
+    <text x="190" y="675" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Kernel Space System Call Dispatcher</text>
+    <text x="190" y="715" font-family="sans-serif" font-size="24" fill="#303a36">Syscall handler reads opcode and branches into five distinct kernel functional categories:</text>
+
+    
+    
+    <g id="category-files">
+      <rect x="110" y="745" width="445" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="135" y="785" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">1. Files</text>
+      <text x="135" y="830" font-family="monospace" font-size="24" fill="#303a36">(openat, read, write,</text>
+      <text x="135" y="870" font-family="monospace" font-size="24" fill="#303a36"> close, stat)</text>
+    </g>
+
+    
+    <g id="category-processes">
+      <rect x="580" y="745" width="445" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="605" y="785" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">2. Processes</text>
+      <text x="605" y="830" font-family="monospace" font-size="24" fill="#303a36">(clone, execve, wait4,</text>
+      <text x="605" y="870" font-family="monospace" font-size="24" fill="#303a36"> exit_group, kill)</text>
+    </g>
+
+    
+    <g id="category-memory">
+      <rect x="1050" y="745" width="445" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="1075" y="785" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">3. Memory</text>
+      <text x="1075" y="830" font-family="monospace" font-size="24" fill="#303a36">(mmap, brk, munmap,</text>
+      <text x="1075" y="870" font-family="monospace" font-size="24" fill="#303a36"> mprotect)</text>
+    </g>
+
+    
+    
+    <g id="category-network">
+      <rect x="110" y="940" width="675" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="135" y="980" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">4. Network</text>
+      <text x="135" y="1025" font-family="monospace" font-size="24" fill="#303a36">(socket, connect, bind, listen,</text>
+      <text x="135" y="1065" font-family="monospace" font-size="24" fill="#303a36"> accept, sendto, recvfrom)</text>
+    </g>
+
+    
+    <g id="category-control-info">
+      <rect x="815" y="940" width="680" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="840" y="980" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">5. Control and Info</text>
+      <text x="840" y="1025" font-family="monospace" font-size="24" fill="#303a36">(ioctl, getpid, uname,</text>
+      <text x="840" y="1065" font-family="monospace" font-size="24" fill="#303a36"> clock_gettime)</text>
+    </g>
+  </g>
+
+  
+  
+  
+  
+  <path d="M 800 1160 L 800 1195" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-return)" />
+
+  <g id="return-box">
+    <rect x="80" y="1205" width="1440" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(110, 1245)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 20 28 L 36 16 L 36 40 Z" fill="#207448" />
+    </g>
+
+    <text x="190" y="1255" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">The subsystem returns status/value to dispatcher, CPU switches back to Ring 3,</text>
+    <text x="190" y="1295" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">and glibc sets errno or returns result to user application.</text>
+  </g>
+
+  
+  <path d="M 80 1272 L 40 1272 L 40 175 L 70 175" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="8 6" marker-end="url(#arrow-return)" />
+</svg>

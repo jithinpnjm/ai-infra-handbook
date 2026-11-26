@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-2018-noisy-tenant",
+  "title": "Aggregate Dashboard Masking versus Per-Tenant Token Starvation",
+  "anchor": "### 10. Noisy tenants",
+  "spec": "Layout: Top-to-bottom comparison layout with two main panels.\nTop Panel: 'Aggregate Gateway Dashboard (Masked Failure)'. Shows three green dashboard tiles: 'Aggregate Request Rate: 120 req/s (Normal)', 'Aggregate p50 TTFT: 45 ms (Green)', and 'Overall GPU Utilisation: 88% (Healthy)'. A status badge reads 'Status: All Green / No Alert'. A callout box notes: 'Averages and aggregate p99 mask tenant-level starvation'.\nBottom Panel: 'Gateway Per-Tenant Breakdown (The Ground Truth)'. Displays three tenant horizontal bars broken down by prompt tokens and queue wait times:\n1. 'Tenant A (Noisy Neighbor)': Bar spans 68% of total prompt tokens. Label: 'Large batches / long prompts (68% prompt tokens), p99 TTFT: 50 ms (Normal / Satiated)'.\n2. 'Tenant B': Bar spans 18% of prompt tokens. Label: 'Short queries, queue wait: 4.2 s, p99 TTFT: degraded'.\n3. 'Tenant C': Bar spans 14% of prompt tokens. Label: 'Chat client, queue wait: 9.8 s, p99 TTFT: 10.1 s (Severely Starved / Reporting Outage)'.\nAn arrow points from Tenant A to an isolation box showing 'Mitigate now: Apply Tenant A rate limit, or isolate to dedicated endpoint'.\nA second arrow points to 'Fix later: Fair-share queueing at router and per-tenant token quotas'.\nFooter warning box: 'Cardinality Warning: Track tenant ID at API gateway, not on engine Prometheus histogram labels, to prevent metric series explosion'.",
+  "alt": "An aggregate dashboard shows normal latency and green status, while a per-tenant gateway breakdown reveals that one tenant takes 68 percent of prompt tokens and starves others in the queue.",
+  "cap": "Aggregate dashboards mask noisy tenant starvation, which is confirmed by breaking down prompt tokens and request rates by tenant at the gateway.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18"
+ }
+]

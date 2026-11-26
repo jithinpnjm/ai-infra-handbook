@@ -1,0 +1,46 @@
+# docs/part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md
+- ## Why this matters for AI infrastructure | 160 | NO FIGURE NEEDED introductory context and motivation
+- ## Prerequisites and outcomes | 120 | NO FIGURE NEEDED prerequisite checklist and outcomes
+- ## 1. Service objects | 150 | NO FIGURE NEEDED manifest overview and concept intro
+- ### Why a Service is needed | 290 | COVERED(p2-0510-why-service)
+- ### Creating two services | 280 | NO FIGURE NEEDED CLI walkthrough
+- ### Types | 180 | COVERED(p2-0510-service-types)
+- ### Ports | 100 | NO FIGURE NEEDED simple port field explanations
+- ### DNS | 240 | COVERED(p3-0510-env-vs-dns)
+- ### Readiness checks | 360 | NO FIGURE NEEDED probe steps and watch mechanics covered in later figures
+- ## 2. EndpointSlices | 380 | COVERED(p3-0510-endpoint-propagation, k10-endpoint-slices)
+- ### Watching endpoints | 260 | COVERED(p3-0510-endpoints-watch)
+- ### Manual service discovery | 140 | NO FIGURE NEEDED CLI demonstration
+- ## 3. kube-proxy | 130 | NO FIGURE NEEDED architecture introduction
+- ### iptables mode (default for many years) | 300 | COVERED(p3-0510-random-probabilities, p3-0510-clusterip-dnat-return)
+- ### Why iptables struggles at scale | 170 | COVERED(p2-0510-iptables-walk)
+- ### IPVS mode | 160 | NO FIGURE NEEDED overview covered by listings and comparison table
+- ### Reading IPVS listings | 260 | COVERED(p3-0510-ipvs-listing)
+- ### nftables mode | 120 | NO FIGURE NEEDED covered by mode comparison table
+- ### eBPF replacements (Cilium kube-proxy replacement, Calico eBPF dataplane) | 200 | NEEDS FIGURE socket connect hook vs packet DNAT mechanism
+- ### Mode comparison | 70 | COVERED(m5-10-1)
+- ### Cluster IP environment variables | 170 | NO FIGURE NEEDED legacy environment table
+- ## 4. NodePort, LoadBalancer and traffic policies | 50 | NO FIGURE NEEDED brief section intro
+- ### NodePort path | 120 | COVERED(p2-0510-nodeport-path)
+- ### Trying a NodePort | 160 | NO FIGURE NEEDED CLI walkthrough
+- ### `externalTrafficPolicy` | 220 | COVERED(k10-traffic-policy)
+- ### LoadBalancer implementations | 170 | NEEDS FIGURE MetalLB L2 single-speaker vs BGP ECMP on bare metal
+- ### Trying a LoadBalancer | 230 | NO FIGURE NEEDED CLI walkthrough
+- ### Session affinity and long-lived connections | 140 | COVERED(k10-grpc-pinning)
+- ### Source IP and hairpin | 70 | NEEDS FIGURE hairpin traffic loopback deadlock and KUBE-MARK-MASQ fix
+- ### Connecting with other environments | 40 | NO FIGURE NEEDED transition text
+- ### Connecting to resources outside of a cluster | 130 | COVERED(p3-0510-selectorless-service)
+- ### Connecting external resources to services inside a cluster | 140 | NO FIGURE NEEDED decision strategy text
+- ## 5. conntrack: the hidden state | 260 | COVERED(p3-0510-dns-udp-race, p3-0510-conntrack-fill)
+- ### How a table fills up, and what to watch | 110 | NO FIGURE NEEDED covered by conntrack fill figure
+- ## 6. Topology-aware routing and other features | 260 | COVERED(p3-0510-topology-routing)
+- ## 7. Debugging Services | 230 | COVERED(p3-0510-service-debug-ladder)
+- ## 8. Scaling guidance | 240 | COVERED(p3-0510-kubeproxy-scale-limits)
+- ## 9. Lab | 360 | NO FIGURE NEEDED hands-on lab exercises
+- ## 10. Common mistakes | 210 | NO FIGURE NEEDED troubleshooting anti-patterns list
+- ## 11. Interview angles | 120 | NO FIGURE NEEDED interview questions
+- ## Exercises | 180 | NO FIGURE NEEDED exercise questions
+- ## Checkpoint questions (20) | 1400 | NO FIGURE NEEDED Q&A drill
+- ## Sources and review notes | 240 | NO FIGURE NEEDED bibliography
+
+Specs kept 3, dropped 0: []

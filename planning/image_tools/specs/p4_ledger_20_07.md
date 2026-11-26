@@ -1,0 +1,42 @@
+# docs/part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md
+- ## What the interviewer is testing | 250 | NO FIGURE NEEDED overview of interview format and syllabus
+- ## The core ideas | 10 | NO FIGURE NEEDED container heading
+- ### 1. Build every pipeline in four moves | 270 | COVERED(m20-07-1) four-move pipeline flow
+- ### 2. The traps inside field splitting | 380 | COVERED(x07-uniq-needs-sort) uniq requiring prior sort
+- ### 3. The Mac is not the interview box | 380 | COVERED(p2-2007-mac-vs-gnu) BSD vs GNU differences table
+- ### 4. Percentiles by hand | 280 | COVERED(x07-percentile-rank) nearest-rank percentile lookup
+- ### 5. Reading journald and systemd units | 680 | COVERED(p2-2007-restart-loop) restart loops and failure propagation
+- ### 6. Processes, signals, zombies and PID 1 | 620 | COVERED(p2-2007-pid1-init) PID 1 signal handling and zombies
+- ### 7. cron and logrotate gotchas | 630 | COVERED(p3-2007-cron-percent) crontab percent sign and logrotate file descriptor traps
+- ### 8. Disk, mount, user and group chores | 360 | NEEDS FIGURE anatomy of colon-delimited passwd and group files alongside POSIX df -P multi-word mounts
+- ### 9. tar, rsync, curl and jq one-liners | 380 | COVERED(p2-2007-curl-exit) curl exit codes under fail flag
+- ### 10. Bash that survives production | 340 | NEEDS FIGURE silent pipeline failure without pipefail, variable declaration masking, and arithmetic exit traps
+- ### 11. How to behave in the room | 120 | NO FIGURE NEEDED behavioral interview advice
+- ## How to answer out loud | 15 | NO FIGURE NEEDED container heading
+- ### Question 1. "Top talkers and the 5xx burst from this log." | 110 | NO FIGURE NEEDED scripted spoken walkthrough
+- ### Question 2. "What is your p95 and how do you know?" | 90 | NO FIGURE NEEDED scripted spoken walkthrough
+- ### Question 3. "A service restarts every few seconds. What do you do?" | 100 | NO FIGURE NEEDED scripted spoken walkthrough
+- ### Question 4. "A process will not die. Walk me through it." | 100 | NO FIGURE NEEDED scripted spoken walkthrough
+- ### Question 5. "Write a safe script to rotate and copy a directory." | 80 | NO FIGURE NEEDED scripted spoken walkthrough
+- ## Worked scenarios | 90 | NO FIGURE NEEDED intro to drill tasks
+- ### Task 1. Top five clients (fixture `access.log`) | 190 | COVERED(p3-2007-pipeline-stages) five-stage pipeline diagram
+- ### Task 2. Slowest requests (fixture `access.log`) | 150 | NO FIGURE NEEDED straightforward 3-stage numeric sort pipeline
+- ### Task 3. The busiest error minutes (fixture `access.log`) | 180 | NO FIGURE NEEDED straightforward timestamp extraction and count
+- ### Task 4. Percentiles by hand (fixture `access.log`) | 200 | NO FIGURE NEEDED calculation covered by Section 4 diagram
+- ### Task 5. Failed SSH logins (fixture `auth.log`) | 190 | NEEDS FIGURE shifting column words between valid and invalid users breaking naive awk extraction
+- ### Task 6. Restart counters (fixture `journal.txt`) | 210 | NO FIGURE NEEDED straightforward journal regex extraction
+- ### Task 7. Zombies and their parents (fixture `ps.txt`) | 180 | COVERED(x07-zombie-parent-tree) zombie process tree and parent ownership
+- ### Task 8. Nearly full filesystems (fixture `df.txt`) | 190 | NO FIGURE NEEDED covered by Section 8 mount point handling
+- ### Task 9. Old big logs with spaces in the name (generated tree) | 200 | COVERED(p3-2007-xargs-nul) find print0 and xargs -0 with reference stamp
+- ### Task 10. Error codes in JSON lines (fixture `app.jsonl`) | 180 | NO FIGURE NEEDED brief jq streaming snippet
+- ### Task 11. The percent sign in a crontab (fixture `crontab.txt`) | 190 | NO FIGURE NEEDED covered by Section 7 cron diagram
+- ### Task 12. Who can sudo (fixtures `passwd.txt` and `group.txt`) | 230 | NO FIGURE NEEDED covered by Section 8 passwd/group structure
+- ## Hands-on lab | 210 | NO FIGURE NEEDED console commands list
+- ## Drill questions | 230 | NO FIGURE NEEDED review Q&A
+- ## Common mistakes and weak answers | 130 | NO FIGURE NEEDED summary list
+- ## Connections to the rest of the handbook | 110 | NO FIGURE NEEDED cross references
+- ## Sources and review notes | 260 | NO FIGURE NEEDED bibliographical notes
+- ### Explicitly labelled inferences | 70 | NO FIGURE NEEDED methodology disclaimer
+- ### Not verified | 110 | NO FIGURE NEEDED testing boundary notes
+
+Specs kept 3, dropped 0: []

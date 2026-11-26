@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0102-builtin-cwd",
+  "title": "Why cd and export must be builtins: process boundaries and working directory isolation",
+  "anchor": "### The forms of the basic commands",
+  "spec": "Two-panel comparison diagram illustrating process boundaries during command execution. Left panel ('Hypothetical External /bin/cd /tmp'): Shows Process 1 'Interactive Shell' (PID 1000, CWD: /home/alice). Shell calls fork() and execve() to spawn Process 2 'Child /bin/cd' (PID 1001, inherits CWD: /home/alice). Child process executes chdir('/tmp'), updating its own CWD to /tmp. Child process terminates (exit 0). Arrow points back to Process 1: Parent Shell CWD remains unchanged at /home/alice because the kernel strictly isolates process memory and task structures. Callout: 'Directory change is lost upon child exit'. Right panel ('Actual Shell Builtin: cd /tmp'): Shows Process 1 'Interactive Shell' (PID 1000, CWD: /home/alice). Shell parses command 'cd' and identifies it as an internal builtin. No fork() occurs. Parent Shell directly invokes the kernel system call chdir('/tmp') within its own process context. Shell CWD updates to /tmp. Bottom summary bar lists other state-modifying builtins that cannot run as child processes: export (environment block), alias (shell lookup table), umask (file creation mask), and source / . (executing script in current shell).",
+  "alt": "A comparison showing why an external cd command changes only its own child process directory before exiting, whereas a shell builtin changes the working directory of the interactive shell itself.",
+  "cap": "A child process cannot alter its parent process environment or working directory, so commands like cd and export must execute directly inside the shell as builtins.",
+  "part": "part-01-linux",
+  "ch": "02"
+ },
+ {
+  "name": "p4-0102-readline-map",
+  "title": "Readline keyboard shortcuts and line-editing buffer motions",
+  "anchor": "## 9. Working faster: history, completion and editing",
+  "spec": "Horizontal command line editing diagram centered on an interactive command buffer containing the text: 'python3 train.py --batch-size 64 --lr 0.001'. The active cursor is positioned on the digit '6' of '64'. Top section shows navigation shortcuts with directional arrows: long arrow from cursor to beginning of line labeled 'Ctrl-A (start of line)'; long arrow from cursor to end of line labeled 'Ctrl-E (end of line)'; leftward arc jumping over '--batch-size' labeled 'Alt-B (back one word)'; rightward arc jumping over '64' to '--lr' labeled 'Alt-F (forward one word)'; single-step arrows labeled 'Ctrl-B (left 1 char)' and 'Ctrl-F (right 1 char)'. Bottom section illustrates text deletion and the kill ring: backward span over '--batch-size ' labeled 'Ctrl-W (erase word)'; broad left span from cursor to start of line labeled 'Ctrl-U (erase to start)'; broad right span from cursor to end of line labeled 'Ctrl-K (erase to end)'. All three erase actions feed an arrow into a box labeled 'Kill Ring (Yank Buffer)'. A downward returning arrow from the Kill Ring points back to the cursor position labeled 'Ctrl-Y (yank / paste)'. Side panel shows vertical navigation: 'Ctrl-P (previous history)' and 'Ctrl-N (next history)', plus 'Ctrl-R (incremental history search)' and 'Ctrl-L (clear screen, keep line)'.",
+  "alt": "A command line buffer diagram mapping readline shortcuts for word jumps, line boundaries, text cutting to the kill ring, and pasting with Ctrl-Y.",
+  "cap": "Readline shortcuts allow rapid navigation and in-place editing across the command buffer, with deleted text preserved in the kill ring for pasting.",
+  "part": "part-01-linux",
+  "ch": "02"
+ }
+]

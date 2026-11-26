@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320">
+  <title>Flat layout import pollution versus src layout build isolation</title>
+  <desc>A comparative layout diagram showing test runner behavior under two folder structures: flat layout versus src layout.</desc>
+
+  <defs>
+    
+    <marker id="arrowhead-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrowhead-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1320" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">Flat layout import pollution versus src layout build isolation</text>
+  <text x="800" y="98" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">A comparative layout diagram showing test runner behavior under two folder structures.</text>
+
+  
+  <rect x="50" y="130" width="725" height="1145" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="75" y="152" width="675" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="412" y="193" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">Flat layout: myops/myops/ and myops/tests/</text>
+
+  
+  <rect x="85" y="240" width="655" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="125" cy="285" r="22" fill="#207448" />
+  <text x="125" y="293" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(165, 260)">
+    <rect x="0" y="0" width="56" height="50" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 12 18 L 22 25 L 12 32 M 26 32 L 38 32" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="245" y="285" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="245" dy="0">Terminal executes </tspan><tspan font-family="monospace">'pytest'</tspan><tspan> from</tspan>
+    <tspan x="245" dy="34">root directory </tspan><tspan font-family="monospace">/home/user/myops</tspan><tspan>.</tspan>
+  </text>
+
+  
+  <line x1="412" y1="375" x2="412" y2="410" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead-green)" />
+
+  
+  <rect x="85" y="415" width="655" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="125" cy="460" r="22" fill="#207448" />
+  <text x="125" y="468" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(165, 435)">
+    <path d="M 6 12 L 22 12 L 28 18 L 50 18 L 50 44 L 6 44 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  </g>
+  <text x="245" y="462" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="245" dy="0" font-family="monospace">sys.path[0]</tspan><tspan> is set to</tspan>
+    <tspan x="245" dy="34" font-family="monospace">'/home/user/myops'</tspan><tspan>.</tspan>
+  </text>
+
+  
+  <line x1="412" y1="550" x2="412" y2="585" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead-green)" />
+
+  
+  <rect x="85" y="590" width="655" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="125" cy="640" r="22" fill="#207448" />
+  <text x="125" y="648" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(165, 612)">
+    <circle cx="22" cy="22" r="16" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="34" y1="34" x2="48" y2="48" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="245" y="640" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="245" dy="0">The test runner directly discovers</tspan>
+    <tspan x="245" dy="34">and imports </tspan><tspan font-family="monospace">'./myops'</tspan><tspan> from disk.</tspan>
+  </text>
+
+  
+  <line x1="412" y1="750" x2="412" y2="785" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead-green)" />
+
+  
+  <rect x="85" y="790" width="655" height="455" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="130" cy="840" r="22" fill="#207448" />
+  <text x="130" y="848" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(170, 815)">
+    <path d="M 28 6 L 48 14 L 48 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 L 8 14 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <path d="M 18 28 L 25 35 L 38 20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="120" y="915" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="120" dy="0" font-weight="bold">Result: test passes (False Green),</tspan>
+    <tspan x="120" dy="38">masking missing dependencies, broken</tspan>
+    <tspan x="120" dy="38">build backend declarations in</tspan>
+    <tspan x="120" dy="38" font-family="monospace">pyproject.toml</tspan><tspan>, and</tspan>
+    <tspan x="120" dy="38">missing package data.</tspan>
+  </text>
+
+  
+  <rect x="825" y="130" width="725" height="1145" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="850" y="152" width="675" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1187" y="193" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">Src layout: myops/src/myops/ and myops/tests/</text>
+
+  
+  <rect x="860" y="240" width="655" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="900" cy="285" r="22" fill="#207448" />
+  <text x="900" y="293" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(940, 260)">
+    <rect x="0" y="0" width="56" height="50" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 12 18 L 22 25 L 12 32 M 26 32 L 38 32" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1015" y="285" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1015" dy="0">Terminal executes </tspan><tspan font-family="monospace">'pytest'</tspan>
+    <tspan x="1015" dy="34">from root </tspan><tspan font-family="monospace">/home/user/myops</tspan><tspan>.</tspan>
+  </text>
+
+  
+  <line x1="1187" y1="375" x2="1187" y2="410" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead-green)" />
+
+  
+  <rect x="860" y="415" width="655" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="900" cy="460" r="22" fill="#207448" />
+  <text x="900" y="468" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(940, 435)">
+    <path d="M 6 12 L 22 12 L 28 18 L 50 18 L 50 44 L 6 44 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  </g>
+  <text x="1015" y="462" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1015" dy="0" font-family="monospace">sys.path[0]</tspan><tspan> is</tspan>
+    <tspan x="1015" dy="34" font-family="monospace">'/home/user/myops'</tspan><tspan>.</tspan>
+  </text>
+
+  
+  <line x1="1187" y1="550" x2="1187" y2="585" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead-green)" />
+
+  
+  <rect x="860" y="590" width="655" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="900" cy="640" r="22" fill="#207448" />
+  <text x="900" y="648" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(940, 612)">
+    <circle cx="28" cy="28" r="20" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="18" y1="18" x2="38" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="38" y1="18" x2="18" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="1015" y="635" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1015" dy="0">Neither </tspan><tspan font-family="monospace">'myops.py'</tspan><tspan> nor</tspan>
+    <tspan x="1015" dy="34">directory </tspan><tspan font-family="monospace">'myops/'</tspan><tspan> exists</tspan>
+    <tspan x="1015" dy="34">directly in root.</tspan>
+  </text>
+
+  
+  <line x1="1187" y1="740" x2="1187" y2="775" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead-green)" />
+
+  
+  <rect x="860" y="780" width="655" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="900" cy="825" r="22" fill="#207448" />
+  <text x="900" y="833" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(940, 800)">
+    <path d="M 28 6 L 48 14 L 48 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 L 8 14 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <line x1="28" y1="18" x2="28" y2="30" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="28" cy="38" r="2.5" fill="#207448" />
+  </g>
+  <text x="1015" y="828" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1015" dy="0">Direct </tspan><tspan font-family="monospace">'import myops'</tspan><tspan> raises</tspan>
+    <tspan x="1015" dy="34" font-family="monospace">ModuleNotFoundError</tspan><tspan>.</tspan>
+  </text>
+
+  
+  <line x1="1187" y1="915" x2="1187" y2="958" stroke="#db8129" stroke-width="4" marker-end="url(#arrowhead-orange)" />
+
+  
+  <rect x="860" y="968" width="655" height="277" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <circle cx="900" cy="1010" r="22" fill="#db8129" />
+  <text x="900" y="1018" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <g transform="translate(940, 985)">
+    <path d="M 28 8 L 48 18 L 48 40 L 28 50 L 8 40 L 8 18 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+    <path d="M 28 8 L 28 50 M 8 18 L 28 29 L 48 18" fill="none" stroke="#db8129" stroke-width="3.5" />
+  </g>
+  <text x="895" y="1065" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="895" dy="0">developer running </tspan><tspan font-family="monospace">'pip install -e .'</tspan><tspan> first:</tspan>
+    <tspan x="895" dy="34">wheels and editable </tspan><tspan font-family="monospace">.pth</tspan><tspan> are built,</tspan>
+    <tspan x="895" dy="34">validating that </tspan><tspan font-family="monospace">pyproject.toml</tspan><tspan> and</tspan>
+    <tspan x="895" dy="34">hatchling package definitions work</tspan>
+    <tspan x="895" dy="34">before tests can execute.</tspan>
+  </text>
+</svg>

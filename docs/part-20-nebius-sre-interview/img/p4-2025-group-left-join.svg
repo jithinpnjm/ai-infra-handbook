@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Many-to-One Vector Matching with group_left</title>
+  <desc>Visual infographic explaining why Prometheus requires an explicit group_left modifier when joining many-to-one metric vectors.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 1 L 13 7 L 1 13 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 1 L 13 7 L 1 13 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Many-to-One Vector Matching with group_left</text>
+
+  
+  <g id="many-side">
+    
+    <rect x="40" y="90" width="440" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="65" y="115" width="48" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="65" y1="129" x2="113" y2="129" stroke="#207448" stroke-width="3" />
+    <circle cx="75" cy="122" r="2.5" fill="#207448" />
+    <circle cx="84" cy="122" r="2.5" fill="#207448" />
+
+    
+    <text x="125" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">'Many' side</text>
+    <text x="65" y="195" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">vllm:num_requests_waiting</text>
+
+    
+    <rect x="65" y="220" width="390" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="90" y="260" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">series 1</text>
+    <text x="90" y="305" font-family="monospace" font-size="24" fill="#303a36">pod='pod-1', engine='0'</text>
+    <rect x="90" y="325" width="130" height="40" rx="8" fill="#e8f1ea" />
+    <text x="105" y="353" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">value 7</text>
+
+    
+    <rect x="65" y="415" width="390" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="90" y="455" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">series 2</text>
+    <text x="90" y="500" font-family="monospace" font-size="24" fill="#303a36">pod='pod-1', engine='1'</text>
+    <rect x="90" y="520" width="130" height="40" rx="8" fill="#e8f1ea" />
+    <text x="105" y="548" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">value 4</text>
+  </g>
+
+  
+  <g id="middle-branch">
+    
+    <rect x="510" y="90" width="580" height="245" rx="16" fill="#fdf2f2" stroke="#d9534f" stroke-width="2" />
+    
+    
+    <rect x="530" y="110" width="485" height="55" rx="8" fill="#ffffff" stroke="#d9534f" stroke-width="1.5" />
+    <text x="545" y="146" font-family="monospace" font-size="24" font-weight="bold" fill="#c0392b">waiting * on (pod) kube_pod_info</text>
+
+    
+    <circle cx="1055" cy="137" r="22" fill="#d9534f" />
+    <line x1="1043" y1="125" x2="1067" y2="149" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    <line x1="1067" y1="125" x2="1043" y2="149" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+
+    
+    <rect x="530" y="180" width="540" height="135" rx="10" fill="#ffffff" stroke="#d9534f" stroke-width="1.5" stroke-dasharray="6,4" />
+    <text x="550" y="218" font-family="monospace" font-size="24" font-weight="bold" fill="#c0392b">multiple matches for labels:</text>
+    <text x="550" y="255" font-family="monospace" font-size="24" fill="#c0392b">many-to-one matching must be explicit</text>
+    <text x="550" y="292" font-family="monospace" font-size="24" font-weight="bold" fill="#c0392b">(group_left/group_right)</text>
+
+    
+    <rect x="510" y="365" width="580" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="530" y="390" width="485" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="550" y="433" font-family="monospace" font-size="24" fill="#303a36">waiting * on (pod)</text>
+    <text x="550" y="475" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">group_left(node) kube_pod_info</text>
+
+    
+    <circle cx="1055" cy="445" r="22" fill="#207448" />
+    <polyline points="1044,445 1052,453 1066,437" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <g id="one-side">
+    
+    <rect x="1120" y="90" width="440" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <ellipse cx="1169" cy="125" rx="24" ry="10" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 1145 125 v 20 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10 v -20" fill="none" stroke="#207448" stroke-width="4" />
+
+    
+    <text x="1205" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">'One' side</text>
+    <text x="1145" y="195" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">kube_pod_info</text>
+
+    
+    <rect x="1145" y="250" width="390" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1175" y="310" font-family="monospace" font-size="24" fill="#303a36">pod='pod-1'</text>
+    <text x="1175" y="360" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">node='node-a'</text>
+    <rect x="1175" y="390" width="130" height="40" rx="8" fill="#e8f1ea" />
+    <text x="1190" y="418" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">value 1</text>
+  </g>
+
+  
+  
+  <line x1="260" y1="610" x2="260" y2="756" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="100" y="628" width="320" height="46" rx="23" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="260" y="659" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">matching on pod='pod-1'</text>
+
+  
+  <line x1="800" y1="540" x2="800" y2="661" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="1340" y1="610" x2="1340" y2="756" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <rect x="1190" y="628" width="300" height="46" rx="23" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="1340" y="659" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">copying node='node-a'</text>
+
+  
+  <g id="output-vector">
+    
+    <rect x="40" y="665" width="1520" height="465" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="65" y="692" width="46" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="78" y1="692" x2="78" y2="732" stroke="#207448" stroke-width="3" />
+    <line x1="65" y1="712" x2="111" y2="712" stroke="#207448" stroke-width="3" />
+    <text x="125" y="725" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Output Vector</text>
+
+    
+    <rect x="65" y="760" width="710" height="340" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="95" y="810" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">output 1</text>
+    <text x="95" y="865" font-family="monospace" font-size="24" fill="#303a36">pod='pod-1', engine='0'</text>
+    <rect x="95" y="890" width="220" height="44" rx="8" fill="#e8f1ea" />
+    <text x="110" y="921" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">node='node-a'</text>
+    <rect x="95" y="955" width="140" height="44" rx="8" fill="#207448" />
+    <text x="110" y="986" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">value 7</text>
+
+    
+    <rect x="825" y="760" width="710" height="340" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="855" y="810" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">output 2</text>
+    <text x="855" y="865" font-family="monospace" font-size="24" fill="#303a36">pod='pod-1', engine='1'</text>
+    <rect x="855" y="890" width="220" height="44" rx="8" fill="#e8f1ea" />
+    <text x="870" y="921" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">node='node-a'</text>
+    <rect x="855" y="955" width="140" height="44" rx="8" fill="#207448" />
+    <text x="870" y="986" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">value 4</text>
+  </g>
+</svg>

@@ -78,6 +78,10 @@ Try saying the starters aloud while you cook or walk. The goal is to make them s
 
 ### 5. Recovering when you are stuck
 
+![A five-step escalation ladder for recovering when stuck in a coding interview, progressing from tracing a smaller example to structural transforms, targeted hints, and brute force fallbacks.](./img/p4-2008-unstuck-ladder.svg)
+
+*Figure 20.0.0. When mental block strikes, work down the five-step recovery ladder out loud rather than remaining silent.*
+
 Every candidate gets stuck, including people who have done this many times. The interviewer is watching what you do next, and that is the part that counts. Nebius's page tells you to ask for hints, which means asking is expected and not a failure. A good request is specific: "I have the sliding window idea but I am not sure when to move the left pointer. Can you confirm the window must contain no repeats?" A vague request like "I am stuck" gives the interviewer very little to work with.
 
 It also helps to say what you already know before you ask. "I know the counting part, and I am stuck on the tie rule" is a request the interviewer can answer in one line. It shows you have done the work and only need a nudge on one point.
@@ -286,6 +290,10 @@ The Learning Python book, chapter 16 onwards, and Fluent Python give the languag
 **Know the five or six tools by exact behaviour, and say which one you chose and why.**
 
 ### 10. Go equivalents, briefly
+
+![A comparison diagram detailing Python standard library tools alongside their Go equivalents and boilerplate requirements for coding interviews.](./img/p4-2008-go-python-bridge.svg)
+
+*Figure 20.0.0. Go equivalents for Python coding patterns require explicit boilerplate, especially the five container/heap interface methods and sort.SliceStable.*
 
 Nebius names Go as an acceptable language. If you are weaker in Go than Python, use Python, because the interview grades problem solving and not language choice. If you do use Go, know that it has no built-in counter, no heap function and no ordered-set type. The standard library gives you `map`, `container/heap`, `sort.Slice`, `sort.SliceStable` and `sort.SearchInts`. Each of these needs a small adjustment from what you know in Python, and the adjustments are the part to practise.
 

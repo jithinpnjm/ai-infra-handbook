@@ -1,0 +1,33 @@
+# docs/part-05-kubernetes/23-autoscaling-hpa-vpa-keda-and-the-cluster-autoscaler.md
+- ## Why this matters for AI infrastructure | 250 | NO FIGURE NEEDED introductory framing and motivation for GPU autoscaling
+- ## Prerequisites and outcomes | 170 | NO FIGURE NEEDED prerequisite checklist and learning goals
+- ## 1. Layers of autoscaling | 280 | COVERED(p2-0523-scaling-layers, m5-23-1) multi-layer flow from metrics to pods to pending nodes and scheduling
+- ### When not to autoscale | 140 | NO FIGURE NEEDED qualitative criteria on static provisioning and operational trade-offs
+- ### Designing applications to scale | 190 | NO FIGURE NEEDED application architecture best practices for microservices, startup latency, and graceful drain
+- ## 2. Horizontal Pod Autoscaler (HPA) | 10 | NO FIGURE NEEDED structural container heading
+- ### Controller and algorithm | 470 | COVERED(p3-0523-hpa-manifest-anatomy, p2-0523-hpa-ratio) manifest anatomy and ratio formula with tolerance band
+- ### Metric types | 200 | COVERED(p3-0523-metric-types-apis) mapping five metric types to Kubernetes metrics APIs
+- ### Behaviour tuning | 280 | COVERED(p3-0523-readiness-overshoot, k23-scale-down-window) slow-start readiness overshoot timeline and stabilization window mechanics
+- ### Scaling signals for inference services | 380 | COVERED(p3-0523-signal-lead-lag) leading vs lagging signals timeline and saturation indicators
+- ### Exposing custom metrics (Prometheus Adapter example) | 210 | COVERED(p3-0523-adapter-pipeline) custom metrics pipeline from vLLM gauge to Prometheus adapter and HPA
+- ### Cluster proportional autoscaler | 230 | COVERED(p3-0523-cpa-methods) linear and ladder methods for cluster proportional scaling
+- ### Custom autoscaling | 90 | NO FIGURE NEEDED brief overview of CronJob replica scheduling and trade-offs
+- ## 3. Vertical Pod Autoscaler (VPA) | 380 | COVERED(p3-0523-vpa-parts) three components and four update modes with GPU considerations
+- ### Off mode as a tuning aid | 200 | COVERED(p3-0523-vpa-recommendation-output) reading target, lower, and upper bounds from VPA status recommendation
+- ## 4. KEDA: event-driven autoscaling | 540 | COVERED(p3-0523-keda-switch-dimmer) light-switch (0 to 1) and dimmer (1 to N) model with multi-trigger evaluation
+- ## 5. Cluster Autoscaler and Karpenter | 10 | NO FIGURE NEEDED structural container heading
+- ### Cluster Autoscaler (CA) | 630 | COVERED(p3-0523-ca-up-down) Pending pod scale-up loop, expander selection, and scale-down blocker criteria
+- ### Cluster Autoscaler configuration example | 260 | NO FIGURE NEEDED standard deployment manifest and flag anatomy for node group min-max parameters
+- ### Cluster overprovisioning | 330 | COVERED(k23-overprovision-preempt) pause pod preemption and background node replenishment
+- ### Karpenter | 380 | COVERED(p3-0523-karpenter-vs-ca) chef-vs-menu comparison and annotated NodePool manifest
+- ### Atomic capacity for multi-node jobs | 210 | COVERED(k23-gang-atomic) piecemeal scale-up waste vs atomic ProvisioningRequest gang scheduling
+- ## 6. Autoscaling patterns for AI workloads | 430 | COVERED(p3-0523-ai-workload-patterns) pod and node scaling matrix for seven AI workload categories
+- ## 7. Troubleshooting | 380 | COVERED(p3-0523-autoscale-troubleshoot) symptoms, root causes, and verification steps across metrics, HPA, and CA layers
+- ## 8. Lab | 420 | NO FIGURE NEEDED hands-on simulator and cluster exercise steps
+- ## 9. Common mistakes | 240 | NO FIGURE NEEDED bulleted list of production pitfalls
+- ## 10. Interview angles | 120 | NO FIGURE NEEDED senior SRE interview questions list
+- ## Exercises | 180 | NO FIGURE NEEDED hands-on practice problems
+- ## Checkpoint questions (20) | 2200 | NO FIGURE NEEDED detailed self-test Q&A block
+- ## Sources and review notes | 210 | NO FIGURE NEEDED source citations and review notes
+
+Specs kept 0, dropped 0: []

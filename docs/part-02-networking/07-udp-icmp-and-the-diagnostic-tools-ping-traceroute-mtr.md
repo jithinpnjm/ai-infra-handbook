@@ -354,6 +354,10 @@ Picture a node that cannot reach a service on another subnet. The temptation is 
 
 ## 8. Hands-on lab: UDP, ICMP, traceroute, and an MTU black hole
 
+![Network namespace topology for the hands-on lab showing client host hA, intermediate router r with MTU 1400 and iptables need-frag drop rule, and server host hB.](./img/p4-0207-lab-topology.svg)
+
+*Figure 2.0.0. Figure 2.7.18. The three-namespace lab topology implements an MTU mismatch and ICMP filter on router r to recreate and fix a Path MTU black hole.*
+
 A word on status first. The Python lab below has been run, while the VM steps that follow have not been run for this chapter, so treat those results as something you still need to confirm. Start with the self-checking Python lab. Run it on your own machine with `python3 code/part02/udp_icmp_pmtu_lab.py`. It checks the overlay and tunnel MTU values and the inner TCP MSS calculations. The expected values are `VXLAN` `1450`/`8950`, `WireGuard` `1420`/`1400`, `GRE` `1476` and `IPIP` `1480`. It also checks the largest `ping -M do -s` payloads, which are `1472` for IPv4, `1452` for IPv6 and `8972` for jumbo frames. Finally, it classifies `mtr` hop loss, so you can tell control-plane ICMP rate limiting from genuine forwarding loss.
 
 ```bash

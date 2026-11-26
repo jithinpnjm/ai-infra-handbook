@@ -1,0 +1,12 @@
+[
+ {
+  "name": "p4-0203-switch-vs-route",
+  "title": "Packet Transformation: Layer 2 Switching versus Layer 3 Routing",
+  "anchor": "### Switching versus routing (L2 versus L3)",
+  "spec": "A side-by-side comparison illustrating packet transformations, forwarding logic, and broadcast domain boundaries between an L2 switch and an L3 router. Left Panel: 'Layer 2 Switch (Same Subnet)'. Show Host A sending a frame to Host B. Ingress frame header: Destination MAC B (00:11:22:33:44:02), Source MAC A (00:11:22:33:44:01), EtherType 0x0800, IP Src 10.0.0.1, IP Dst 10.0.0.2, TTL 64, FCS. Switch inspects MAC table (FDB) only. Egress frame header out port 2: identical Destination MAC B, Source MAC A, TTL 64 untouched, payload unchanged. Dotted boundary indicates broadcast domain spans all ports; flooded broadcast (ff:ff:ff:ff:ff:ff) crosses the switch. Right Panel: 'Layer 3 Router (Inter-Subnet)'. Host A sending to off-subnet Host C (192.168.1.5). Ingress frame header: Destination MAC is Router Ingress MAC eth0 (00:aa:bb:cc:dd:01), Source MAC A (00:11:22:33:44:01), IP Dst 192.168.1.5, TTL 64. Internal router flow in 3 callouts: (1) Strips incoming L2 header; (2) FIB lookup for destination IP 192.168.1.5 -> egress eth1; (3) Decrements TTL to 63 and recalculates IP checksum. Egress frame header on eth1: Destination MAC rewritten to Next-Hop MAC (00:55:66:77:88:99), Source MAC rewritten to Router Egress MAC eth1 (00:aa:bb:cc:dd:02), TTL decremented to 63, new FCS generated. Red solid boundary line indicates router drops L2 broadcasts, containing broadcast domains. Bottom summary box contrasts 3 dimensions: Addressing/Header (MAC preserved vs MAC rewritten and TTL decremented), Scaling (FDB flat per host vs FIB prefix aggregation), Broadcasts (flooded vs contained).",
+  "alt": "Comparison of L2 switching preserving Ethernet headers and forwarding broadcasts versus L3 routing stripping L2 headers, decrementing TTL, rewriting MAC addresses, and terminating broadcast domains.",
+  "cap": "An L2 switch forwards frames unchanged based on MAC lookup and floods broadcasts, whereas an L3 router terminates the L2 frame, decrements TTL, rewrites source and destination MACs, and confines broadcast domains.",
+  "part": "part-02-networking",
+  "ch": "03"
+ }
+]

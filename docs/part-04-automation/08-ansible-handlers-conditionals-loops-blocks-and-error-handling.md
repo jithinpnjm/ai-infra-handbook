@@ -168,6 +168,10 @@ When you write a condition, check the real type of its value, because a string a
 
 ## 3. Loops
 
+![A diagram showing how Ansible loops populate a results array in registered variables and how loop_control loop_var prevents inner loops from overwriting outer loop items.](./img/p4-0408-loop-register-results.svg)
+
+*Figure 4.0.0. Loops store per-iteration output inside a results list on the registered dictionary, and loop_control loop_var prevents inner nested loops from clobbering outer loop variables.*
+
 A loop repeats one task over a list. This section shows how to loop over lists of dictionaries, how to keep the output readable, and how to stop a loop from doing the wrong work on the wrong items. A loop is only as safe as the list it reads, so check the list first. A typo in one entry can send the change to the wrong host, and a loop makes that typo repeat for every item.
 
 Installing packages one call at a time repeats work that a single call could do. Each call makes the package manager check its cache and resolve dependencies again, so three calls cost more than one call with three names. You can avoid that waste by passing a list, and loops handle the cases where each item needs its own call, such as one template per service.
@@ -234,6 +238,10 @@ A command fails on one node out of forty. Should the whole play stop, or should 
 Suppose a task fails on one host while the rest of the play is still running. By default, that host leaves the rest of the play, and the other hosts carry on. Think of a relay race where one runner drops out, but the other runners keep going with their own legs. The exception is when `any_errors_fatal` or `max_fail_percentage` stops the play. The play recap reports `failed`, and the exit code is non-zero (2). `unreachable` hosts behave similarly, but the recap counts them separately, with exit 3. The separate count matters, because a host you could not reach is a different problem from a host where a command failed.
 
 ### Overriding judgement
+
+![A decision pipeline showing how task exit codes and stdout are evaluated by default versus how failed_when, changed_when, and ignore_errors override host status and play recap.](./img/p4-0408-task-verdict-pipeline.svg)
+
+*Figure 4.0.0. The task verdict pipeline shows how failed_when and changed_when override Ansible default exit-code evaluation and change detection before updating the play recap.*
 
 Sometimes Ansible's verdict is wrong. `grep` returns 1 when nothing matches, and in that case that is not an error. It is an answer. Ansible reads any non-zero exit code as a failure, so the default is too strict for this case. The examples below replace a blanket decision with a narrow rule, so only the outcomes you actually care about count as failures.
 
@@ -356,6 +364,10 @@ For fleet changes, the order of defence is this. Validate the inputs with `asser
 The toolkit from 4.6 adds `force_handlers`, `ignore_unreachable`, a `timeout` on tasks, and `async` for long steps. The `async` keyword lets a long step, such as a large download, run in the background while the playbook polls it, so one slow task does not hold the others back.
 
 ### Retries and eventual consistency
+
+![A two-lane timeline diagram contrasting the waste and failure modes of fixed pause 60 seconds against active until polling across fast and slow service restarts.](./img/p4-0408-pause-vs-poll.svg)
+
+*Figure 4.0.0. Active polling with until and delay dynamically adapts to service readiness, avoiding the wasted latency and false failures caused by a blind pause.*
 
 A service takes a few seconds to come back after a restart. The first health check fails, and the next one succeeds. Retries let a task wait for the system to settle, instead of failing on a race that would have resolved itself a moment later. The term eventual consistency describes a system that becomes correct after a short wait, and not instantly. A playbook that expects instant correctness will fail on a system like that, so the playbook has to allow for the wait.
 

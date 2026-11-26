@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0309-transport-mocking",
+  "title": "Transport Interception vs Client Method Mocking",
+  "anchor": "### HTTP-level fakes",
+  "spec": "Diagram contrasting two approaches to testing HTTP clients. Top path (Bad/Brittle Mocking): Test -> calls client.get_json(\"/x\") -> client.py calls httpx.Client.get() -> Mock replaces client.get -> skips URL building, header auth, query serialization, timeout configuration, and raise_for_status() handling. Returns dummy dict directly. Bottom path (Hermetic Transport Faking with respx / responses): Test -> calls client.get_json(\"/x\") -> runs full client code: URL construction, query params serialization ('params={\"limit\": 2}'), header injection, retry logic, error handling -> httpx Transport Boundary / BaseTransport -> respx mock router intercepts the HTTP Request -> returns real HTTP Response (status 200, headers, JSON body with items [1, 2] and next_page_token 't') -> client decodes response normally. Annotate key takeaway: real client serialisation and parsing code runs end-to-end without touching physical network sockets.",
+  "alt": "A diagram contrasting brittle client method mocking where client serialization is bypassed against transport-level interception where real HTTP request and response decoding code runs in full.",
+  "cap": "Transport-level interception with respx or responses exercises URL formatting, header injection and status handling, whereas mocking client.get skips client internals entirely.",
+  "part": "part-03-python",
+  "ch": "09"
+ },
+ {
+  "name": "p4-0309-async-testing",
+  "title": "Async Testing Anatomy and Cancellation Safety",
+  "anchor": "### Async code",
+  "spec": "Anatomy flow of an async infrastructure test using pytest-asyncio and AsyncMock. Show three horizontal panels. Panel 1 (Test Harness): '@pytest.mark.asyncio' decorator -> 'async def test_worker_timeout()' -> wraps coroutine with 'asyncio.wait_for(coro, timeout=2.0)' to guarantee test termination. Panel 2 (Collaborators & Injected Clock): Async client injected with 'AsyncMock(spec=ClusterClient)' -> 'mock.fetch_node_status = AsyncMock(return_value={\"status\": \"ready\"})' -> clock/sleep injected via fake event loop or 'asyncio.sleep' no-op replacement, completing simulated 60-second backoff in 0 ms. Panel 3 (Cancellation & Error Branches): Task cancellation flow: 'task = asyncio.create_task(coro)' -> 'task.cancel()' -> triggers 'try: await task except asyncio.CancelledError:' -> asserts cleanup logic (draining queues, releasing semaphores) runs before test exits.",
+  "alt": "A three panel diagram showing pytest-asyncio execution with AsyncMock collaborators, bounded wait_for timeouts, and task cancellation handling.",
+  "cap": "Async tests must be bounded with wait_for, isolate coroutines using AsyncMock, and explicitly verify CancelledError cleanup paths.",
+  "part": "part-03-python",
+  "ch": "09"
+ }
+]

@@ -1,0 +1,37 @@
+# docs/part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md
+- ## Why this matters for AI infrastructure | 230 | NO FIGURE NEEDED: contextual introduction motivating image sizing and pull latency.
+- ## Prerequisites and outcomes | 280 | NO FIGURE NEEDED: prerequisite checklist and learning objectives.
+- ## 1. What a container is | 880 | COVERED(p3-0501-four-questions, m5-01-1): container isolation mechanisms and host kernel relationship are already illustrated.
+- ### The dependency problem containers solve | 190 | NO FIGURE NEEDED: conceptual text on dynamic linking and environment drift.
+- ### Why containers took off | 380 | NO FIGURE NEEDED: historical narrative and shipping container analogy.
+- ## 2. Images: layers, content addressing and the OCI formats | 760 | COVERED(m5-01-2): diagram already shows tag to index to manifest and content-addressed blobs.
+- ### Overlay filesystems: how layers stack | 320 | COVERED(k01-whiteout-layers): layer stacking, modifications, and whiteout files are already illustrated.
+- ### Manifests, indexes and configs | 480 | COVERED(p2-0501-manifest-chain): manifest references to configs and layers are already diagrammed.
+- ### Layout on disk | 90 | NO FIGURE NEEDED: brief list of directory paths in local OCI stores.
+- ## 3. Building images well | 80 | NO FIGURE NEEDED: short introductory paragraph for Dockerfile practices.
+- ### Dockerfile mechanics | 480 | COVERED(p3-0501-cache-order): cache invalidation and instruction ordering are already illustrated.
+- ### A Docker build, step by step | 240 | NO FIGURE NEEDED: text walkthrough of a three-line Dockerfile build sequence.
+- ### A Node.js example, line by line | 390 | NO FIGURE NEEDED: step-by-step code and file walkthrough.
+- ### BuildKit, buildx and builders | 170 | NO FIGURE NEEDED: list of build flags and tool choices.
+- ### Image size and startup | 160 | NEEDS FIGURE: comparison of traditional full-image download and unpack versus lazy pulling snapshotters for multi-gigabyte AI images.
+- ### Choosing a base | 220 | COVERED(p2-0501-base-choice): base image trade-offs and Alpine incompatibilities are already diagrammed.
+- ### Build image versus runtime image | 290 | COVERED(k01-multistage): multi-stage builder and slim runtime stages are already illustrated.
+- ### Runtime user and pinned packages | 270 | COVERED(p3-0501-exec-vs-shell): exec form versus shell form signal handling is already illustrated.
+- ### Choosing a build backend | 160 | NO FIGURE NEEDED: evaluation questions for builder tools.
+- ### Pitfalls of containers | 290 | NO FIGURE NEEDED: discussion of storage and state anti-patterns.
+- ## 4. Registries and distribution | 450 | COVERED(k01-pull-cache): in-cluster pull-through caching is already illustrated.
+- ### Registry anatomy and placement | 270 | NEEDS FIGURE: registry three-tier architecture and multi-region replication topology.
+- ## 5. Rootless containers and security basics | 430 | COVERED(k01-userns-map): rootless user namespace UID mapping is already illustrated.
+- ## 6. GPU containers | 720 | COVERED(p3-0501-gpu-image-host-split, m5-01-3): host driver and container userspace split is already covered by two figures.
+- ## 7. Container lifecycle commands (cheat sheet) | 310 | NEEDS FIGURE: container state machine showing transitions across created, running, paused, and stopped states with signals and exit codes.
+- ### Running a container and mapping its port | 170 | NO FIGURE NEEDED: straightforward explanation of the publish flag.
+- ### Cleaning up images | 140 | NO FIGURE NEEDED: command syntax descriptions for image cleanup.
+- ## 8. Troubleshooting images and containers | 260 | COVERED(p3-0501-exit-code-map): exit code decision tree and root causes are already diagrammed.
+- ## 9. Lab | 450 | NO FIGURE NEEDED: lab exercise instructions.
+- ## 10. Common mistakes | 190 | NO FIGURE NEEDED: summary list of pitfalls.
+- ## 11. Interview angles | 120 | NO FIGURE NEEDED: list of interview questions.
+- ## Exercises | 260 | NO FIGURE NEEDED: practice exercise prompts.
+- ## Checkpoint questions (20) | 1700 | NO FIGURE NEEDED: checkpoint review questions.
+- ## Sources and review notes | 320 | NO FIGURE NEEDED: bibliography and source notes.
+
+Specs kept 3, dropped 0: []

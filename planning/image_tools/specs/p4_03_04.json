@@ -1,0 +1,22 @@
+[
+ {
+  "name": "p4-0304-polymorphism-pipeline",
+  "title": "Stream Processor Polymorphism with Interchangeable Readers and Writers",
+  "anchor": "### Polymorphism and programming by customization",
+  "spec": "Layout diagram showing the processor(reader, converter, writer) stream architecture from left to right. Left block (Data Sources): Three subclass boxes inheriting from Reader: FileReader with read() reading local files, SocketReader with read() reading network sockets, and FtpReader with read() reading FTP streams. Middle block (Core Loop): processor(reader, converter, writer) containing steps: 1. data = reader.read() (break if empty), 2. data = converter(data), 3. writer.write(data). Right block (Data Sinks): Subclass boxes for FileWriter with write() and JsonWriter with write(). Below: Three call combinations from the text: processor(FileReader(...), converter, FileWriter(...)), processor(SocketReader(...), converter, FileWriter(...)), and processor(FtpReader(...), converter, JsonWriter(...)). Annotation shows that the processing loop relies solely on the polymorphic read() and write() interface without inspecting concrete object types.",
+  "alt": "A stream processor pipeline where interchangeable FileReader, SocketReader and FtpReader inputs feed through a converter to FileWriter and JsonWriter outputs.",
+  "cap": "Polymorphism allows processor() to orchestrate stream transfers across diverse sources and sinks through a uniform read and write contract.",
+  "part": "part-03-python",
+  "ch": "04"
+ },
+ {
+  "name": "p4-0304-namespace-dicts",
+  "title": "Python Namespace Dictionaries and Pointer Links Under the Hood",
+  "anchor": "### Under the hood: namespaces are dictionaries",
+  "spec": "Memory layout diagram showing four linked namespace dictionary objects and pointer references. Top level: object namespace root. Middle level: class rec namespace box containing __dict__: {'name': 'Pat', 'age': 40.5, 'jobs': ['dev', 'mgr'], 'method': uppername} and rec.__bases__ pointing to object. Bottom level: Two instance boxes. Left instance x box: x.__dict__: {'name': 'Sue'} and x.__class__ pointer pointing up to rec. Right instance y box: y.__dict__: {} (empty) and y.__class__ pointer pointing up to rec. Arrows trace two lookups: 1. x.name resolves directly in x.__dict__ ('Sue'). 2. x.age is missing in x.__dict__, follows x.__class__ pointer up to rec.__dict__, returning 40.5. A callout box contrasts x.__dict__['age'] which raises KeyError with x.age which succeeds via inheritance. Another box shows dynamic attachment rec.method = uppername, enabling x.method() and rec.method(x) to execute uppername(x) returning 'SUE'.",
+  "alt": "Namespace dictionaries for class rec and instances x and y linked by class and bases pointers, contrasting direct dict indexing with dot inheritance lookup.",
+  "cap": "Namespaces in Python are dictionaries linked by class pointers, which explains why direct dictionary indexing raises KeyError while dot lookup climbs the tree.",
+  "part": "part-03-python",
+  "ch": "04"
+ }
+]

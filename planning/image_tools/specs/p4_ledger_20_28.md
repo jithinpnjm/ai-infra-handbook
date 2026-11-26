@@ -1,0 +1,31 @@
+# docs/part-20-nebius-sre-interview/28-the-project-deep-dive-and-the-final-round.md
+- ## What the interviewer is testing | 330 | NO FIGURE NEEDED | Narrative introduction contrasting official format with deep-dive expectations.
+- ## The core ideas | 10 | NO FIGURE NEEDED | Transitional section heading.
+- ### 1. The round has two shapes and one skill | 250 | COVERED(p2-2028-round-shapes) | Three interview rooms and preparation needs already illustrated.
+- ### 2. Picking the one project | 340 | COVERED(p2-2028-project-gate, m20-28-1) | Six-test project scoring gate already diagrammed.
+- ### 3. The one-page dossier | 350 | COVERED(x28-dossier-nine-parts) | Nine parts of the project dossier already illustrated.
+- ### 4. What the interviewer asks at each part, and the shape of a good answer | 450 | COVERED(p3-2028-probe-answer-shapes) | Probing questions and answer shapes table already illustrated.
+- ### 5. Talking about trade-offs and mistakes honestly | 380 | COVERED(p3-2028-mistake-story, x28-tradeoff-sentence-parts) | Mistake story anatomy and trade-off sentence structure both illustrated.
+- ### 6. Why Nebius, why SRE, why inference | 370 | COVERED(p3-2028-why-card) | Three-card pairing of public fact with personal experience already illustrated.
+- ### 7. Questions to ask the team leader | 270 | COVERED(p3-2028-questions-for-leader) | Leader questions table already illustrated.
+- ### 8. Salary, notice and logistics, kept general | 260 | NO FIGURE NEEDED | Practical conversational boundaries and salary ranges, best as text.
+- ### 9. The first-90-days answer | 270 | COVERED(x28-first-90-days) | Three-month plan progression already illustrated.
+- ## How to answer out loud | 35 | NO FIGURE NEEDED | Short transition heading introducing vocal rehearsal drills.
+- ### "Walk me through the project in two minutes" | 120 | COVERED(p3-2028-two-minute-walkthrough) | Two-minute walkthrough progression already illustrated.
+- ### "Why did you choose X over Y?" | 80 | NO FIGURE NEEDED | Short drill prompt covered by trade-off sentence structure earlier.
+- ### "Tell me about something that went wrong" | 85 | NO FIGURE NEEDED | Short drill prompt covered by mistake story structure earlier.
+- ### "What would you do differently?" | 65 | NO FIGURE NEEDED | Concise vocal guidance, no complex mechanism.
+- ### "Why Nebius, why SRE, why inference?" | 75 | NO FIGURE NEEDED | Short drill prompt covered by why-card structure earlier.
+- ## Worked scenarios | 10 | NO FIGURE NEEDED | Transitional section heading.
+- ### Scenario 1: choosing among three projects | 170 | NO FIGURE NEEDED | Self-contained decision matrix and tie-breaking rule in markdown table.
+- ### Scenario 2: rewriting a weak decision | 140 | NO FIGURE NEEDED | Textual before-and-after rewrite example.
+- ### Scenario 3: a five-level ladder on one decision | 150 | COVERED(x28-five-level-ladder) | Five-level probing ladder already illustrated.
+- ### Scenario 4: the logistics questions | 80 | NO FIGURE NEEDED | Brief interview response script.
+- ## Hands-on lab | 800 | NEEDS FIGURE | Multi-stage pipeline of the dossier linter script parsing markdown and enforcing structural rules.
+- ## Drill questions | 300 | NO FIGURE NEEDED | Review questions and collapsibles.
+- ## Common mistakes and weak answers | 230 | NO FIGURE NEEDED | Comparison table of weak vs strong answers.
+- ## Connections to the rest of the handbook | 120 | NO FIGURE NEEDED | Cross-reference link list.
+- ## Sources and review notes | 200 | NO FIGURE NEEDED | Source attributions and review notes.
+- ### Verification log | 180 | NO FIGURE NEEDED | Fact-checking verification table.
+
+Specs kept 1, dropped 0: []

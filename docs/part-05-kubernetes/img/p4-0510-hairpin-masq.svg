@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Hairpin NAT Deadlock and KUBE-MARK-MASQ Resolution</title>
+  <desc>Visual comparison showing the hairpin NAT deadlock without masquerade and its resolution using KUBE-MARK-MASQ.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Hairpin NAT Deadlock and KUBE-MARK-MASQ Resolution</text>
+  <text x="800" y="98" text-anchor="middle" font-family="sans-serif" font-size="26" fill="#303a36">Two-panel sequence illustrating hairpin traffic.</text>
+
+  
+  <rect x="40" y="125" width="1520" height="495" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="70" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Broken flow without MASQUERADE</text>
+
+  
+  <rect x="70" y="185" width="440" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="106" cy="222" r="22" fill="#207448" />
+  <text x="106" y="230" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <rect x="146" y="198" width="48" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="146" y1="212" x2="194" y2="212" stroke="#207448" stroke-width="3" />
+  <circle cx="156" cy="205" r="2" fill="#207448" />
+  <circle cx="164" cy="205" r="2" fill="#207448" />
+  <text x="92" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="92" dy="0">Pod A (IP 10.244.1.5) sends a</tspan>
+    <tspan x="92" dy="32">request to its own Service VIP</tspan>
+    <tspan x="92" dy="32">(10.96.0.100:80).</tspan>
+  </text>
+
+  
+  <rect x="560" y="185" width="460" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="596" cy="222" r="22" fill="#207448" />
+  <text x="596" y="230" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <circle cx="650" cy="220" r="14" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 650 198 L 650 206 M 650 234 L 650 242 M 628 220 L 636 220 M 664 220 L 672 220 M 634 204 L 640 210 M 660 230 L 666 236 M 634 236 L 640 230 M 660 210 L 666 204" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="582" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="582" dy="0">Host DNAT rewrites the</tspan>
+    <tspan x="582" dy="32">destination back to Pod A</tspan>
+    <tspan x="582" dy="32">itself (10.244.1.5:8000).</tspan>
+  </text>
+
+  
+  <rect x="1070" y="185" width="450" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="1106" cy="222" r="22" fill="#207448" />
+  <text x="1106" y="230" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <rect x="1146" y="200" width="48" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="1160" cy="219" r="4" fill="#207448" />
+  <circle cx="1178" cy="219" r="4" fill="#207448" />
+  <text x="1092" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1092" dy="0">The packet arrives at Pod A</tspan>
+    <tspan x="1092" dy="32">with src=10.244.1.5 and</tspan>
+    <tspan x="1092" dy="32">dst=10.244.1.5.</tspan>
+  </text>
+
+  
+  <rect x="70" y="415" width="690" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="106" cy="452" r="22" fill="#207448" />
+  <text x="106" y="460" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <rect x="146" y="430" width="42" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="140" y1="442" x2="146" y2="442" stroke="#207448" stroke-width="3" />
+  <line x1="140" y1="458" x2="146" y2="458" stroke="#207448" stroke-width="3" />
+  <line x1="188" y1="442" x2="194" y2="442" stroke="#207448" stroke-width="3" />
+  <line x1="188" y1="458" x2="194" y2="458" stroke="#207448" stroke-width="3" />
+  <text x="92" y="508" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="92" dy="0">Pod A kernel sees source is local to its</tspan>
+    <tspan x="92" dy="32">network namespace and responds directly</tspan>
+    <tspan x="92" dy="32">via loopback (lo) interface rather than eth0.</tspan>
+  </text>
+
+  
+  <rect x="810" y="415" width="710" height="185" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  <circle cx="846" cy="452" r="22" fill="#207448" />
+  <text x="846" y="460" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  <circle cx="898" cy="450" r="18" fill="none" stroke="#207448" stroke-width="4" />
+  <polyline points="898,438 898,450 908,450" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="832" y="508" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="832" dy="0">Host conntrack is bypassed, the reply is</tspan>
+    <tspan x="832" dy="32">never un-DNATed back to VIP, and Pod A</tspan>
+    <tspan x="832" dy="32">socket hangs indefinitely.</tspan>
+  </text>
+
+  
+  <line x1="510" y1="280" x2="560" y2="280" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="1020" y1="280" x2="1070" y2="280" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 1295 375 L 1295 395 L 415 395 L 415 415" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="760" y1="507" x2="810" y2="507" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="40" y="645" width="1520" height="525" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="70" y="685" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Hairpin resolution with KUBE-MARK-MASQ</text>
+
+  
+  <rect x="70" y="705" width="690" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="106" cy="742" r="22" fill="#207448" />
+  <text x="106" y="750" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <path d="M 164 722 L 184 730 L 184 746 C 184 758 164 766 164 766 C 164 766 144 758 144 746 L 144 730 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  <text x="92" y="800" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="92" dy="0">Hairpin packet matches rule -s 10.244.1.5</tspan>
+    <tspan x="92" dy="32">in KUBE-SEP chain, receiving mark</tspan>
+    <tspan x="92" dy="32">0x4000.</tspan>
+  </text>
+
+  
+  <rect x="810" y="705" width="710" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="846" cy="742" r="22" fill="#207448" />
+  <text x="846" y="750" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <circle cx="900" cy="742" r="14" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 900 720 L 900 728 M 900 756 L 900 764 M 878 742 L 886 742 M 914 742 L 922 742 M 884 726 L 890 732 M 910 752 L 916 758 M 884 758 L 890 752 M 910 732 L 916 726" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <text x="832" y="800" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="832" dy="0">POSTROUTING rule masquerades the</tspan>
+    <tspan x="832" dy="32">source IP to node/bridge IP</tspan>
+    <tspan x="832" dy="32">(10.244.1.1).</tspan>
+  </text>
+
+  
+  <rect x="70" y="945" width="690" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="106" cy="982" r="22" fill="#207448" />
+  <text x="106" y="990" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <rect x="146" y="960" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="160" cy="981" r="3" fill="#207448" />
+  <circle cx="178" cy="981" r="3" fill="#207448" />
+  <text x="92" y="1040" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="92" dy="0">Packet arrives at Pod A with</tspan>
+    <tspan x="92" dy="32">src=10.244.1.1, dst=10.244.1.5.</tspan>
+  </text>
+
+  
+  <rect x="810" y="945" width="710" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="846" cy="982" r="22" fill="#207448" />
+  <text x="846" y="990" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <circle cx="900" cy="982" r="18" fill="none" stroke="#207448" stroke-width="4" />
+  <polyline points="891,982 897,988 910,974" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="832" y="1035" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="832" dy="0">Reply SYN-ACK must route back through host</tspan>
+    <tspan x="832" dy="32">veth/bridge to reach 10.244.1.1, allowing host</tspan>
+    <tspan x="832" dy="32">conntrack to reverse both DNAT and SNAT correctly.</tspan>
+  </text>
+
+  
+  <line x1="760" y1="805" x2="810" y2="805" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 1165 905 L 1165 925 L 415 925 L 415 945" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="760" y1="1045" x2="810" y2="1045" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+</svg>

@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Task evaluation pipeline: overriding failed_when, changed_when, and ignore_errors</title>
+  <desc>A three-stage horizontal decision pipeline showing how Ansible evaluates task execution results, processes failure and change overrides, and produces final play recap statuses.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <g id="pipeline-title">
+    <text x="800" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Task evaluation pipeline:</text>
+    <text x="800" y="105" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448" text-anchor="middle">overriding failed_when, changed_when, and ignore_errors</text>
+  </g>
+
+  
+  <g id="stage-1">
+    <rect x="40" y="140" width="360" height="990" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="65" y="165" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 77 185 L 89 193 L 77 201" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="93" y1="203" x2="109" y2="203" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+    
+    <text x="135" y="195" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Stage 1</text>
+    <text x="135" y="225" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">(Raw Task Output)</text>
+
+    
+    <rect x="60" y="250" width="320" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="220" y="293" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">rc, stdout, and stderr</text>
+
+    
+    <rect x="60" y="370" width="320" height="220" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="80" y="420" font-family="monospace" font-size="24" fill="#303a36">grep -q 'Xid'</text>
+    <text x="80" y="460" font-family="monospace" font-size="24" fill="#303a36">returning rc=1</text>
+    <rect x="80" y="495" width="280" height="70" rx="6" fill="#e8f1ea"/>
+    <text x="220" y="538" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="middle">Exit status: rc = 1</text>
+
+    
+    <rect x="60" y="650" width="320" height="240" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="80" y="700" font-family="monospace" font-size="24" fill="#303a36">tool returning</text>
+    <text x="80" y="740" font-family="monospace" font-size="24" fill="#303a36">rc=0 with</text>
+    <text x="80" y="780" font-family="monospace" font-size="24" fill="#303a36">ERROR in stdout</text>
+    <rect x="80" y="805" width="280" height="65" rx="6" fill="#e8f1ea"/>
+    <text x="220" y="846" font-family="sans-serif" font-size="24" fill="#207448" text-anchor="middle">Exit: 0, text: ERROR</text>
+  </g>
+
+  
+  <g id="stage-2">
+    <rect x="430" y="140" width="730" height="990" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="455" y="165" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 467 177 L 499 177 L 489 193 L 489 211 L 477 211 L 477 193 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+
+    
+    <text x="525" y="202" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Stage 2 (Evaluation &amp; Overrides)</text>
+
+    
+    <rect x="450" y="240" width="690" height="580" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="475" y="278" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Failure lane</text>
+
+    
+    <rect x="470" y="295" width="650" height="50" rx="8" fill="#e8f1ea"/>
+    <text x="795" y="329" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">rc != 0 means FAILED</text>
+
+    
+    <rect x="470" y="360" width="650" height="135" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="490" y="395" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Branch 1</text>
+    <text x="490" y="430" font-family="monospace" font-size="24" fill="#303a36">failed_when: xid.rc not in [0, 1]</text>
+    <text x="490" y="468" font-family="sans-serif" font-size="24" fill="#303a36">converts rc=1 into SUCCESS/OK</text>
+
+    
+    <rect x="470" y="510" width="650" height="155" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="3"/>
+    <text x="490" y="545" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Branch 2</text>
+    <text x="490" y="580" font-family="monospace" font-size="24" fill="#303a36">failed_when: "'ERROR' in out.stdout</text>
+    <text x="645" y="612" font-family="monospace" font-size="24" fill="#303a36">or out.rc != 0"</text>
+    <text x="490" y="648" font-family="sans-serif" font-size="24" fill="#303a36">catches error text and converts rc=0 into FAILED</text>
+
+    
+    <rect x="470" y="680" width="650" height="125" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="490" y="715" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Branch 3</text>
+    <text x="490" y="750" font-family="monospace" font-size="24" fill="#303a36">ignore_errors: true</text>
+    <text x="490" y="788" font-family="sans-serif" font-size="24" fill="#303a36">catches failure but prevents host abort</text>
+
+    
+    <rect x="450" y="840" width="690" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="475" y="878" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Change lane</text>
+    <text x="475" y="915" font-family="sans-serif" font-size="24" fill="#303a36">default module change detector</text>
+    
+    <rect x="470" y="935" width="650" height="155" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="490" y="980" font-family="monospace" font-size="24" fill="#303a36">changed_when: false</text>
+    <text x="490" y="1025" font-family="sans-serif" font-size="24" fill="#303a36">force OK status on read-only queries</text>
+  </g>
+
+  
+  <g id="stage-3">
+    <rect x="1190" y="140" width="370" height="990" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="1215" y="165" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 1231 177 L 1255 177" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 1231 193 L 1255 193" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 1231 209 L 1247 209" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text x="1285" y="195" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Stage 3</text>
+    <text x="1285" y="225" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">(Play Recap &amp; Flow)</text>
+
+    
+    <rect x="1210" y="250" width="330" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1230" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">OK</text>
+    <text x="1230" y="340" font-family="sans-serif" font-size="24" fill="#303a36">recap ok=N, continues</text>
+
+    
+    <rect x="1210" y="390" width="330" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1230" y="435" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">CHANGED</text>
+    <text x="1230" y="475" font-family="sans-serif" font-size="24" fill="#303a36">recap changed=N,</text>
+    <text x="1230" y="510" font-family="sans-serif" font-size="24" fill="#303a36">queues handlers</text>
+
+    
+    <rect x="1210" y="560" width="330" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1230" y="605" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">IGNORED</text>
+    <text x="1230" y="650" font-family="sans-serif" font-size="24" fill="#303a36">recap ignored=1, continues</text>
+
+    
+    <rect x="1210" y="710" width="330" height="230" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1230" y="755" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">FAILED</text>
+    <text x="1230" y="800" font-family="sans-serif" font-size="24" fill="#303a36">recap failed=1,</text>
+    <text x="1230" y="835" font-family="sans-serif" font-size="24" fill="#303a36">host removed from play</text>
+    <text x="1230" y="870" font-family="sans-serif" font-size="24" fill="#303a36">with exit code 2</text>
+  </g>
+
+  
+  
+  <path d="M 380 480 L 405 480 L 405 320 L 465 320" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 380 770 L 425 770 L 425 585 L 465 585" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+  
+  <path d="M 1120 427 L 1165 427 L 1165 310 L 1205 310" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1120 585 L 1150 585 L 1150 825 L 1205 825" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1120 742 L 1175 742 L 1175 625 L 1205 625" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1120 1010 L 1180 1010 L 1180 340 L 1205 340" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+</svg>

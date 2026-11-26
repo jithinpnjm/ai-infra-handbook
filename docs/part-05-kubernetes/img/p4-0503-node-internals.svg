@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>Worker Node Anatomy: Daemons, Interfaces, and Hardware</title>
+  <desc>Architecture of a Kubernetes worker node showing host daemons under systemd, plugin interfaces, and running pod sandboxes.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1480" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Worker Node Anatomy: Daemons, Interfaces, and Hardware</text>
+
+  
+  <rect x="40" y="95" width="1520" height="1355" rx="20" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <rect x="40" y="95" width="530" height="48" rx="10" fill="#207448"/>
+  <text x="60" y="130" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Worker Node Host (Linux OS)</text>
+
+  
+  <g id="top-layer">
+    <rect x="70" y="165" width="1460" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="95" y="205" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Host System Services running under systemd</text>
+
+    
+    <rect x="95" y="225" width="680" height="255" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(115, 245)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="20" cy="20" r="12"/>
+      <path d="M 20 2 L 20 8 M 20 32 L 20 38 M 2 20 L 8 20 M 32 20 L 38 20 M 7 7 L 12 12 M 28 28 L 33 33 M 7 33 L 12 28 M 28 12 L 33 7"/>
+    </g>
+    <text x="170" y="275" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">kubelet</text>
+    <text x="115" y="325" font-family="sans-serif" font-size="24" fill="#303a36">listening on 10250</text>
+    <text x="115" y="370" font-family="sans-serif" font-size="24" fill="#303a36">heartbeating via Lease to apiserver:6443</text>
+    <text x="115" y="415" font-family="sans-serif" font-size="24" fill="#303a36">reading static manifests</text>
+    <text x="115" y="450" font-family="monospace" font-size="24" fill="#303a36">/etc/kubernetes/manifests</text>
+
+    
+    <rect x="805" y="225" width="695" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(825, 245)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="20" cy="20" r="12"/>
+      <path d="M 20 2 L 20 8 M 20 32 L 20 38 M 2 20 L 8 20 M 32 20 L 38 20 M 7 7 L 12 12 M 28 28 L 33 33 M 7 33 L 12 28 M 28 12 L 33 7"/>
+    </g>
+    <text x="880" y="275" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">containerd.service</text>
+    <text x="880" y="315" font-family="sans-serif" font-size="24" fill="#303a36">in system-reserved / kube-reserved cgroups</text>
+
+    
+    <rect x="805" y="360" width="695" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(825, 380)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="20" cy="20" r="12"/>
+      <path d="M 20 2 L 20 8 M 20 32 L 20 38 M 2 20 L 8 20 M 32 20 L 38 20 M 7 7 L 12 12 M 28 28 L 33 33 M 7 33 L 12 28 M 28 12 L 33 7"/>
+    </g>
+    <text x="880" y="410" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">sshd / systemd-journald</text>
+    <text x="880" y="450" font-family="sans-serif" font-size="24" fill="#303a36">in system-reserved / kube-reserved cgroups</text>
+  </g>
+
+  
+  <g id="middle-layer">
+    <rect x="70" y="530" width="1460" height="665" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="95" y="570" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Plugin Interfaces and Host Daemons</text>
+
+    
+    <rect x="95" y="595" width="1410" height="110" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="125" y="638" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">CRI (gRPC unix:///run/containerd/containerd.sock)</text>
+    <text x="125" y="680" font-family="sans-serif" font-size="24" fill="#303a36">kubelet connects to Container Runtime via gRPC socket</text>
+
+    
+    <rect x="95" y="725" width="690" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(120, 745)" stroke="#207448" stroke-width="3" fill="none">
+      <ellipse cx="20" cy="10" rx="18" ry="7"/>
+      <path d="M 2 10 L 2 30 C 2 35 38 35 38 30 L 38 10"/>
+      <path d="M 2 20 C 2 25 38 25 38 20"/>
+    </g>
+    <text x="180" y="775" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CSI Drivers</text>
+    <text x="120" y="830" font-family="sans-serif" font-size="24" fill="#303a36">kubelet connects to Storage via</text>
+    <text x="120" y="865" font-family="sans-serif" font-size="24" fill="#303a36">Container Storage Interface</text>
+
+    
+    <rect x="815" y="725" width="690" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(840, 745)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="8" y="8" width="24" height="24" rx="3"/>
+      <path d="M 14 2 L 14 8 M 26 2 L 26 8 M 14 32 L 14 38 M 26 32 L 26 38 M 2 14 L 8 14 M 2 26 L 8 26 M 32 14 L 38 14 M 32 26 L 38 26"/>
+    </g>
+    <text x="900" y="775" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Device Plugin API</text>
+    <text x="840" y="830" font-family="monospace" font-size="24" fill="#303a36">(/var/lib/kubelet/device-plugins/nvidia.sock)</text>
+    <text x="840" y="870" font-family="sans-serif" font-size="24" fill="#303a36">kubelet connects to Devices via gRPC socket</text>
+
+    
+    <rect x="95" y="960" width="690" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(120, 980)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="12" y="4" width="16" height="12" rx="2"/>
+      <rect x="2" y="24" width="14" height="12" rx="2"/>
+      <rect x="24" y="24" width="14" height="12" rx="2"/>
+      <path d="M 20 16 L 20 20 M 9 20 L 31 20 M 9 20 L 9 24 M 31 20 L 31 24"/>
+    </g>
+    <text x="180" y="1010" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">kube-proxy</text>
+    <text x="120" y="1065" font-family="sans-serif" font-size="24" fill="#303a36">(or eBPF) programming host</text>
+    <text x="120" y="1105" font-family="sans-serif" font-size="24" fill="#303a36">iptables/IPVS</text>
+
+    
+    <rect x="815" y="960" width="690" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(840, 980)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="20" cy="20" r="16"/>
+      <circle cx="14" cy="18" r="2" fill="#207448"/>
+      <circle cx="26" cy="18" r="2" fill="#207448"/>
+      <circle cx="20" cy="26" r="2" fill="#207448"/>
+    </g>
+    <text x="900" y="1010" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CNI Plugin daemon</text>
+    <text x="840" y="1065" font-family="monospace" font-size="24" fill="#303a36">/opt/cni/bin</text>
+    <text x="840" y="1105" font-family="monospace" font-size="24" fill="#303a36">/etc/cni/net.d</text>
+  </g>
+
+  
+  <g id="bottom-layer">
+    <rect x="70" y="1215" width="1460" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="95" y="1235" width="1410" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(125, 1255)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="6" width="32" height="28" rx="4"/>
+      <line x1="4" y1="14" x2="36" y2="14"/>
+      <circle cx="10" cy="10" r="1.5" fill="#207448"/>
+      <circle cx="16" cy="10" r="1.5" fill="#207448"/>
+    </g>
+    <text x="180" y="1285" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pod Sandboxes and Containers</text>
+    <text x="125" y="1335" font-family="sans-serif" font-size="24" fill="#303a36">(cgroups, network namespaces)</text>
+    <text x="125" y="1375" font-family="sans-serif" font-size="24" fill="#303a36">running user workloads and accessing GPU hardware</text>
+  </g>
+
+  
+  
+  <line x1="435" y1="480" x2="435" y2="590" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  
+  
+  <line x1="1152" y1="345" x2="1152" y2="590" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <line x1="750" y1="705" x2="750" y2="1230" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" marker-end="url(#arrow)"/>
+
+</svg>

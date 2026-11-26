@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0408-loop-register-results",
+  "title": "Loop register structure and nested variable scoping",
+  "anchor": "## 3. Loops",
+  "spec": "Two-part diagram. Part A (Register in Loops): Left box shows a task running template on loop: [chrony, rsyslog, logrotate] with register: cfg_out. Middle shows three sequential execution iterations: iteration 1 (chrony -> changed: true, rc: 0), iteration 2 (rsyslog -> changed: false, rc: 0), iteration 3 (logrotate -> changed: true, rc: 0). Right box shows the resulting data structure cfg_out containing top-level key results: [ {item: 'chrony', changed: true, rc: 0}, {item: 'rsyslog', changed: false, rc: 0}, {item: 'logrotate', changed: true, rc: 0} ]. Callout annotations show Jinja filters: cfg_out.results | map(attribute='rc') yielding [0, 0, 0] and cfg_out.results | selectattr('failed') yielding []. Part B (Nested Loop Variable Scoping): Left column shows the collision trap where an outer loop over vhosts calls include_tasks with default item, and the included file also loops over [logs, public_http] with item, overwriting the outer vhost. Right column shows the fix using loop_control: { loop_var: vhost } on the outer loop so outer tasks use vhost.domain while inner tasks safely retain item.",
+  "alt": "A diagram showing how Ansible loops populate a results array in registered variables and how loop_control loop_var prevents inner loops from overwriting outer loop items.",
+  "cap": "Loops store per-iteration output inside a results list on the registered dictionary, and loop_control loop_var prevents inner nested loops from clobbering outer loop variables.",
+  "part": "part-04-automation",
+  "ch": "08"
+ },
+ {
+  "name": "p4-0408-task-verdict-pipeline",
+  "title": "Task evaluation pipeline: overriding failed_when, changed_when, and ignore_errors",
+  "anchor": "### Overriding judgement",
+  "spec": "A three-stage horizontal decision pipeline showing how Ansible evaluates task results. Stage 1 (Raw Task Output): Box showing command execution returning rc, stdout, and stderr (e.g. grep -q 'Xid' returning rc=1 or tool returning rc=0 with ERROR in stdout). Stage 2 (Evaluation & Overrides): Two parallel evaluation lanes. Failure lane: default rule (rc != 0 means FAILED) splits into custom override branches. Branch 1: failed_when: xid.rc not in [0, 1] converts rc=1 into SUCCESS/OK. Branch 2: failed_when: \"'ERROR' in out.stdout or out.rc != 0\" catches error text and converts rc=0 into FAILED. Branch 3: ignore_errors: true catches failure but prevents host abort. Change lane: default module change detector overridden by changed_when: false to force OK status on read-only queries. Stage 3 (Play Recap & Flow): Boxes showing final status impacts: OK (recap ok=N, continues), CHANGED (recap changed=N, queues handlers), IGNORED (recap ignored=1, continues), and FAILED (recap failed=1, host removed from play with exit code 2).",
+  "alt": "A decision pipeline showing how task exit codes and stdout are evaluated by default versus how failed_when, changed_when, and ignore_errors override host status and play recap.",
+  "cap": "The task verdict pipeline shows how failed_when and changed_when override Ansible default exit-code evaluation and change detection before updating the play recap.",
+  "part": "part-04-automation",
+  "ch": "08"
+ },
+ {
+  "name": "p4-0408-pause-vs-poll",
+  "title": "Fixed pause versus active condition polling",
+  "anchor": "### Retries and eventual consistency",
+  "spec": "Two-lane timeline comparison diagram contrasting blind pause with dynamic until polling across fast and slow service scenarios. Top Lane (Blind Wait: pause: seconds=60): A 0s to 80s timeline. Fast scenario: service restarts and is healthy at T+2s, but Ansible blindly sleeps until T+60s, creating 58 seconds of wasted idle latency (highlighted with red hatching). Slow scenario: heavy GPU POST takes 65s to settle; pause expires at T+60s, next task checks port immediately, receives Connection Refused, and triggers a false-positive failure at T+61s. Bottom Lane (Active Polling: until: probe.status == 200, retries: 12, delay: 10): Fast scenario: probe 1 checks at T+10s, passes, and immediately advances the play, saving 50s. Slow scenario: probes at T=10s through 60s fail and retry automatically; probe at T=70s succeeds once the service finishes loading, proceeding cleanly without alert or failure.",
+  "alt": "A two-lane timeline diagram contrasting the waste and failure modes of fixed pause 60 seconds against active until polling across fast and slow service restarts.",
+  "cap": "Active polling with until and delay dynamically adapts to service readiness, avoiding the wasted latency and false failures caused by a blind pause.",
+  "part": "part-04-automation",
+  "ch": "08"
+ }
+]

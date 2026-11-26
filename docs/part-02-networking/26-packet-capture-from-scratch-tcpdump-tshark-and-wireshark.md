@@ -163,6 +163,10 @@ Read the output the way you would read a short conversation. The first two lines
 
 ### Capture filter syntax (pcap-filter)
 
+![Diagram illustrating pcap-filter byte-offset slicing and bitmask operations across IPv4 and TCP headers for DSCP, ECN, fragmentation flags, TTL, and TCP flags.](./img/p4-0226-byte-offsets.svg)
+
+*Figure 2.0.0. Byte-offset syntax slices specific protocol header bytes and applies bitmasks, letting captures isolate DSCP EF, ECN CE, low TTL, and pure SYN flags directly in the kernel.*
+
 A capture filter is an expression built from primitives. Each primitive can carry a qualifier, such as a type (`host`, `net`, `port` or `portrange`), a direction (`src`, `dst` or `src or dst`) and a protocol (`ether`, `ip`, `ip6`, `arp`, `tcp`, `udp`, `icmp`, `icmp6` or `vlan`). You join the pieces with `and`/`&&`, `or`/`||` and `not`/`!`, and group them with parentheses when the order matters. Read the expression like a sentence: "host this and port that, but not from there".
 
 Take the expression `host 10.0.0.5 and not port 22` and read it as a sentence. It means packets that involve 10.0.0.5, but not the ones that touch port 22. Now add an `or`. The expression `tcp port 443 or udp port 53` matches two separate groups, and a packet needs to fit only one of them. Putting `and` and `or` side by side without parentheses invites mistakes, so group the parts with parentheses whenever the meaning depends on the order.

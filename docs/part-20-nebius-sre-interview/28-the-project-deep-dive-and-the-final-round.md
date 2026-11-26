@@ -400,6 +400,10 @@ Imagine the team leader asking, "What are your expectations, and when could you 
 
 ## Hands-on lab
 
+![Flowchart showing the dossier checker parsing markdown into sections and blocks, evaluating six rule sets including placeholders, numbers, and unquantified claims, and yielding an exit code.](./img/p4-2028-dossier-linter-pipeline.svg)
+
+*Figure 20.0.0. Figure 20.28.13. Parsing and validation pipeline of c28_dossier_check.py, illustrating how structural completeness, numeric density, and unquantified claims are audited.*
+
 Consider a laptop with Python 3 and pytest installed, and a blank dossier file beside it. This lab runs on a laptop. Steps 1 to 4 were run on a Mac with Python 3.12.7 and pytest 8.3.5. Steps 5 and 6 are practice you do yourself, and they were not run here.
 
 1. Copy the template to a working file. Run `cp code/part20/c28_dossier_template.md dossier.md`. Expected result: a new file with `[YOUR ...]` markers in it.

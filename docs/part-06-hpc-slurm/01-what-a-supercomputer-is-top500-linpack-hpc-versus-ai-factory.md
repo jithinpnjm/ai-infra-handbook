@@ -299,6 +299,10 @@ The table compares the three types on the points that matter when a node fails. 
 
 ### Clusters versus custom vendor supercomputers, farms, and Beowulf systems
 
+![Comparison of custom supercomputers, commodity HPC clusters, Beowulf systems, and computing farms across components, interconnect, vendor lock-in, and target workloads.](./img/p4-0601-custom-vs-commodity.svg)
+
+*Figure 6.0.0. Modern supercomputing centers predominantly deploy commodity off-the-shelf clusters with standardized fabrics rather than proprietary single-vendor supercomputers or improvised Beowulf systems.*
+
 Does a supercomputer always mean a cluster? No. A cluster is valuable partly because you can build it from parts you buy off the shelf. With enough experience, you can assemble one yourself.
 
 Think about how you would buy the parts. A cluster asks for servers, switches, and storage that you can order from several vendors. A custom machine asks for one vendor's boards and interconnect, and you accept that vendor's roadmap as your own. That difference shapes the purchase, the spares you keep on the shelf, and the support contract you sign.

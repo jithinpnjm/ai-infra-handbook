@@ -1,0 +1,34 @@
+# docs/part-20-nebius-sre-interview/23-kubernetes-failure-drills-for-gpu-platforms.md
+- ## What the interviewer is testing | 170 | NO FIGURE NEEDED interview context and role-play framing
+- ## The core ideas | 20 | NO FIGURE NEEDED brief introductory section header
+- ### 1. Debug in a fixed order, from the object outward | 260 | COVERED(p2-2023-outward-order, m20-23-1)
+- ### 2. Know who owns each decision | 140 | COVERED(p2-2023-owner-table)
+- ### 3. GPUs add three facts you must be able to say | 190 | COVERED(p2-2023-gpu-three-facts)
+- ### 4. How to run a drill from this chapter | 180 | NO FIGURE NEEDED procedural practice instructions
+- ## How to answer out loud | 15 | NO FIGURE NEEDED brief introductory section header
+- ### "A GPU pod is Pending. Walk me through it." | 100 | COVERED(x23-gpu-pending-branches)
+- ### "A pod restarts every few minutes. OOM or probe?" | 100 | COVERED(x23-oom-or-liveness)
+- ### "A node is NotReady. What happens to its pods?" | 90 | COVERED(x23-node-notready-cascade)
+- ### "How do you upgrade GPU nodes without an outage?" | 85 | COVERED(p3-2023-gpu-upgrade-steps)
+- ### "An admission webhook is down and nothing deploys." | 70 | NO FIGURE NEEDED concise spoken summary covered in detail by Drill 12 figure
+- ## Worked scenarios | 60 | NO FIGURE NEEDED introductory text for drill reveal tables
+- ### Drill 1: Pending pod that requests nvidia.com/gpu | 380 | NEEDS FIGURE scheduler node filtering across untainted CPU nodes and tainted GPU nodes
+- ### Drill 2: ImagePullBackOff on a huge model image | 250 | COVERED(p3-2023-pull-by-pool)
+- ### Drill 3: CrashLoopBackOff, OOM or probe kill | 280 | COVERED(p3-2023-startup-probe-timeline)
+- ### Drill 4: A node goes NotReady | 290 | COVERED(p3-2023-eviction-limits)
+- ### Drill 5: Eviction storm | 300 | COVERED(p3-2023-eviction-vs-oom)
+- ### Drill 6: A PDB blocks a drain | 270 | COVERED(p3-2023-pdb-arithmetic)
+- ### Drill 7: CoreDNS slow for half the lookups | 260 | COVERED(p3-2023-dns-half-slow)
+- ### Drill 8: A Service has no endpoints | 240 | COVERED(p3-2023-no-endpoints)
+- ### Drill 9: The HPA does not scale | 230 | COVERED(p3-2023-hpa-unknown)
+- ### Drill 10: Device plugin missing after an upgrade | 270 | COVERED(p3-2023-plugin-after-upgrade)
+- ### Drill 11: etcd is slow after a topology change | 250 | COVERED(p3-2023-etcd-split)
+- ### Drill 12: An admission webhook outage blocks deploys | 270 | COVERED(x23-webhook-deadlock-loop)
+- ## Hands-on lab | 540 | NO FIGURE NEEDED terminal commands, test fixtures and triage helper outputs
+- ## Drill questions | 250 | NO FIGURE NEEDED checkpoint questions and review answers
+- ## Common mistakes and weak answers | 130 | NO FIGURE NEEDED comparison table of weak versus strong interview responses
+- ## Connections to the rest of the handbook | 120 | NO FIGURE NEEDED cross-reference navigation links
+- ## Sources and review notes | 280 | NO FIGURE NEEDED bibliography and documentation notes
+- ### Verification log | 190 | NO FIGURE NEEDED verification table of documented Kubernetes claims
+
+Specs kept 1, dropped 0: []

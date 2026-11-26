@@ -311,6 +311,10 @@ The change stays outside `FirstClass`. Older instances keep their old behavior, 
 
 ### Polymorphism and programming by customization
 
+![A stream processor pipeline where interchangeable FileReader, SocketReader and FtpReader inputs feed through a converter to FileWriter and JsonWriter outputs.](./img/p4-0304-polymorphism-pipeline.svg)
+
+*Figure 3.0.0. Polymorphism allows processor() to orchestrate stream transfers across diverse sources and sinks through a uniform read and write contract.*
+
 Suppose you build an employee database. Most employees follow the same rules for salary, raises, promotions and retirement. Engineers compute their pay differently, and every other rule still applies to them. You do not want to copy the shared rules for every job type.
 
 Start with a general superclass that holds the default behavior. The bodies are placeholders here:
@@ -532,6 +536,10 @@ print(rec1.jobs, rec2.info())
 The constructor sets `name`, `jobs` and `age` on every instance. The `age` value can be left out, and the default `None` fills it in. Named tuples fill a similar role. They behave like classes with extra logic that maps attribute names to tuple positions. A dictionary holds the data but has no room for processing logic. A class packages both together.
 
 ### Under the hood: namespaces are dictionaries
+
+![Namespace dictionaries for class rec and instances x and y linked by class and bases pointers, contrasting direct dict indexing with dot inheritance lookup.](./img/p4-0304-namespace-dicts.svg)
+
+*Figure 3.0.0. Namespaces in Python are dictionaries linked by class pointers, which explains why direct dictionary indexing raises KeyError while dot lookup climbs the tree.*
 
 Classes and instances are linked namespace objects, and Python usually stores each namespace as a dictionary. The `__dict__` attribute shows the namespace of an instance or a class, much as it does for a module. Here is the `rec` example from the previous section:
 

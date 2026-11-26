@@ -142,6 +142,10 @@ Two layers belong together. `up == 0` catches a target that exists but cannot be
 
 ### 7. Joins: on, ignoring and group_left
 
+![A PromQL many-to-one join between queue depth series and pod info using on pod group_left node.](./img/p4-2025-group-left-join.svg)
+
+*Figure 20.0.0. Many-to-one vector matching requires explicit group_left to attach labels from a single info series to multiple metric series.*
+
 Suppose you want vLLM queue depth shown by node. The node name lives on `kube_pod_info`, not on the vLLM metric. The two series share a pod label, so you join them with `on (pod)`.
 
 Prometheus matches one series to one series by default. If one side has several series per pod, for example one per engine, the join is many-to-one. The query then fails, and the real error from `promtool` is: "multiple matches for labels: many-to-one matching must be explicit (group_left/group_right)". The error is honest. It tells you the matching is ambiguous and asks you to say which side has the many. The fix names the many side. With `group_left (node)` the result keeps every left series and copies the node label from the right.
@@ -330,6 +334,10 @@ A subquery runs an instant query repeatedly over a range, and its resolution def
 **Put offset on the selector, and use a subquery only when you can say what resolution it samples at.**
 
 ### 12. Cardinality: the cost behind every label
+
+![A diagram showing series multiplication across ten histogram buckets, twenty models, and one thousand tenants yielding 260,000 series.](./img/p4-2025-cardinality-explosion.svg)
+
+*Figure 20.0.0. Metric labels multiply series combinatorially, making high-cardinality identifiers like request ID suitable only for traces and logs.*
 
 A new label named `request_id` ships on a Friday afternoon. By Monday Prometheus is out of memory. Every distinct value makes a new series, and a histogram makes many series per value. The label looked like one extra dimension. In fact it multiplied everything by the number of requests.
 

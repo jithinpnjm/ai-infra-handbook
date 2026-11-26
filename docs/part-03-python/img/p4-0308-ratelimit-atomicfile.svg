@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1450" width="1600" height="1450">
+  <title>Token Bucket Rate Limiting and Atomic POSIX File Replacement</title>
+  <desc>Visual comparison of token bucket network traffic shaping and atomic POSIX file replacement preventing TOCTOU races.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1450" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Token Bucket Rate Limiting and Atomic POSIX File Replacement</text>
+
+  
+  
+  
+  <rect x="50" y="100" width="720" height="1300" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <text x="410" y="150" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Outbound Rate Limiting (Token Bucket)</text>
+
+  
+  <rect x="185" y="190" width="450" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="230" cy="227" r="18" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 230 215 L 230 227 L 238 233" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="265" y="235" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Refill rate: r tokens/sec</text>
+
+  
+  <path d="M 410 265 L 410 320" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="185" y="330" width="450" height="290" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <text x="410" y="375" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Capacity B tokens</text>
+
+  
+  <g>
+    <circle cx="270" cy="450" r="32" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="270" y="458" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">T</text>
+
+    <circle cx="350" cy="495" r="32" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="350" y="503" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">T</text>
+
+    <circle cx="430" cy="440" r="32" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="430" y="448" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">T</text>
+
+    <circle cx="510" cy="495" r="32" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="510" y="503" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">T</text>
+
+    <circle cx="390" cy="565" r="32" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <text x="390" y="573" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">T</text>
+  </g>
+
+  
+  
+  <path d="M 330 620 L 330 720" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  <rect x="90" y="730" width="480" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="330" y="775" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Token Available</text>
+  <rect x="115" y="800" width="430" height="55" rx="8" fill="#e8f1ea" />
+  <text x="330" y="836" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">X-RateLimit-Remaining: N</text>
+
+  
+  <path d="M 520 620 L 520 940" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="160" y="950" width="500" height="120" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <text x="410" y="1000" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">HTTP 429 Too Many Requests</text>
+  <text x="410" y="1040" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Bucket Empty: Request Throttled</text>
+
+  
+  <path d="M 410 1070 L 410 1140" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="180" y="1150" width="460" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="410" y="1205" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">Retry-After: 30</text>
+
+
+  
+  
+  
+  <rect x="830" y="100" width="720" height="1300" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <text x="1190" y="150" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Atomic File Updates vs TOCTOU Race Condition</text>
+
+  
+  <rect x="860" y="180" width="660" height="300" rx="14" fill="#ffffff" stroke="#303a36" stroke-width="2" />
+  <text x="1190" y="225" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Unsafe Check-Then-Open</text>
+
+  <rect x="890" y="255" width="600" height="60" rx="8" fill="#f5f8f5" stroke="#303a36" stroke-width="1.5" />
+  <text x="1190" y="294" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">if exists(config.json)</text>
+
+  
+  <path d="M 1190 315 L 1190 365" fill="none" stroke="#303a36" stroke-width="3" stroke-dasharray="6 6" marker-end="url(#arrow)" />
+
+  <rect x="890" y="380" width="600" height="75" rx="8" fill="#f5f8f5" stroke="#303a36" stroke-width="1.5" />
+  <text x="1190" y="426" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Corrupted / Partial Read or FileNotFoundError</text>
+
+  
+  <rect x="860" y="520" width="660" height="840" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1190" y="570" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Atomic POSIX Replace</text>
+
+  
+  <rect x="885" y="605" width="610" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="925" cy="650" r="22" fill="#207448" />
+  <text x="925" y="658" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff">1</text>
+  <text x="965" y="648" font-family="sans-serif" font-size="24" fill="#303a36">Write full payload to temporary file</text>
+  <text x="965" y="683" font-family="sans-serif" font-size="24" fill="#303a36">in same directory</text>
+  <text x="965" y="722" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">(.config.json.tmp)</text>
+
+  
+  <path d="M 1190 755 L 1190 790" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="885" y="795" width="610" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="925" cy="835" r="22" fill="#207448" />
+  <text x="925" y="843" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff">2</text>
+  <text x="965" y="844" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Flush and close</text>
+
+  
+  <path d="M 1190 875 L 1190 910" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="885" y="915" width="610" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="925" cy="962" r="22" fill="#207448" />
+  <text x="925" y="970" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff">3</text>
+  <text x="965" y="970" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">os.replace(.config.json.tmp, config.json)</text>
+
+  
+  <path d="M 1190 1010 L 1190 1055" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="885" y="1065" width="610" height="255" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <circle cx="925" cy="1115" r="22" fill="#207448" />
+  <text x="925" y="1123" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff">4</text>
+  <text x="965" y="1123" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Mutual Exclusion</text>
+
+  <rect x="915" y="1155" width="550" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1190" y="1194" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fcntl.flock(fd, LOCK_EX)</text>
+
+  <rect x="915" y="1235" width="550" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1190" y="1274" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">open with os.O_EXCL</text>
+
+</svg>

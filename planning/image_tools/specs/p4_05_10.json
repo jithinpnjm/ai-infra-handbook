@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-0510-socket-lb",
+  "title": "Socket-Level Load Balancing with eBPF vs Traditional Packet DNAT",
+  "anchor": "### eBPF replacements (Cilium kube-proxy replacement, Calico eBPF dataplane)",
+  "spec": "Two-panel vertical comparison. Top panel: Traditional kube-proxy packet DNAT. Step 1: Application in Pod calls connect() to ClusterIP:80 (10.96.0.100:80). Step 2: Linux kernel constructs TCP SYN packet with src=10.244.1.5, dst=10.96.0.100:80. Step 3: Packet leaves Pod veth and hits netfilter PREROUTING hook on host. Step 4: iptables or nftables DNAT rewrites destination IP:port to Pod IP 10.244.2.9:8000 and allocates a conntrack entry. Step 5: Reverse NAT is required on return packet path. Bottom panel: Cilium eBPF Socket-LB (cgroup/connect4). Step 1: Application calls connect() to ClusterIP:80. Step 2: Attached eBPF cgroup/connect4 hook intercepts the syscall inside the kernel before packet construction. Step 3: Hook queries BPF LB map and directly rewrites the destination sockaddr_in to 10.244.2.9:8000 in memory. Step 4: Kernel constructs TCP SYN packet with dst=10.244.2.9:8000 already populated. Step 5: Wire packet flows directly to target pod with zero netfilter DNAT, zero conntrack allocation, and no reverse NAT.",
+  "alt": "A comparison showing traditional packet DNAT allocating conntrack entries in netfilter hooks versus Cilium eBPF translating destination sockaddr inside the socket connect hook before packet generation.",
+  "cap": "eBPF socket load balancing rewrites the destination sockaddr inside the cgroup connect4 hook before packets are built, bypassing netfilter DNAT and conntrack entirely.",
+  "part": "part-05-kubernetes",
+  "ch": "10"
+ },
+ {
+  "name": "p4-0510-metallb-l2-vs-bgp",
+  "title": "Bare-Metal Load Balancing: MetalLB Layer 2 Mode vs BGP ECMP Mode",
+  "anchor": "### LoadBalancer implementations",
+  "spec": "Two-column comparison showing bare-metal LoadBalancer routing. Left column: Layer 2 Mode (L2Advertisement). External VIP 198.51.100.1. A single elected speaker node (Node 1) answers ARP/NDP requests for the VIP on the LAN. All external ingress traffic flows into Node 1 interface eth0, creating a single-node bandwidth bottleneck. Node 1 then forwards via kube-proxy or overlay to backend pods on Node 2 and Node 3. Right column: BGP Mode (BGPAdvertisement). External VIP 198.51.100.1. All speaker nodes (Node 1, Node 2, Node 3) establish BGP peering sessions over TCP port 179 with Top-of-Rack (ToR) physical switches. Each node advertises a /32 route to the VIP. ToR switch performs line-rate ECMP (Equal-Cost Multi-Path) hashing, distributing incoming connections evenly across all nodes without a single-node choke point.",
+  "alt": "A diagram comparing MetalLB Layer 2 mode with a single elected ARP speaker node against BGP mode where all nodes peer with the top of rack switch for multi-node ECMP.",
+  "cap": "MetalLB Layer 2 mode funnels all ingress traffic through one elected ARP speaker node, while BGP mode peers directly with rack switches for line-rate ECMP load balancing.",
+  "part": "part-05-kubernetes",
+  "ch": "10"
+ },
+ {
+  "name": "p4-0510-hairpin-masq",
+  "title": "Hairpin NAT Deadlock and KUBE-MARK-MASQ Resolution",
+  "anchor": "### Source IP and hairpin",
+  "spec": "Two-panel sequence illustrating hairpin traffic. Top panel: Broken flow without MASQUERADE. Pod A (IP 10.244.1.5) sends a request to its own Service VIP (10.96.0.100:80). Host DNAT rewrites the destination back to Pod A itself (10.244.1.5:8000). The packet arrives at Pod A with src=10.244.1.5 and dst=10.244.1.5. Pod A kernel sees source is local to its network namespace and responds directly via loopback (lo) interface rather than eth0. Host conntrack is bypassed, the reply is never un-DNATed back to VIP, and Pod A socket hangs indefinitely. Bottom panel: Hairpin resolution with KUBE-MARK-MASQ. Hairpin packet matches rule -s 10.244.1.5 in KUBE-SEP chain, receiving mark 0x4000. POSTROUTING rule masquerades the source IP to node/bridge IP (10.244.1.1). Packet arrives at Pod A with src=10.244.1.1, dst=10.244.1.5. Reply SYN-ACK must route back through host veth/bridge to reach 10.244.1.1, allowing host conntrack to reverse both DNAT and SNAT correctly.",
+  "alt": "A diagram showing how a pod sending traffic to its own Service VIP deadlocks via loopback delivery unless KUBE-MARK-MASQ forces source NAT through the host bridge.",
+  "cap": "Hairpin traffic deadlocks when a pod replies to itself over loopback unless KUBE-MARK-MASQ applies source NAT so replies route through host conntrack.",
+  "part": "part-05-kubernetes",
+  "ch": "10"
+ }
+]

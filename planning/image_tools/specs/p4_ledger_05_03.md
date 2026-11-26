@@ -1,0 +1,42 @@
+# docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md
+- ## Why this matters for AI infrastructure | 157 | NO FIGURE NEEDED introduction and context
+- ## Prerequisites and outcomes | 114 | NO FIGURE NEEDED learning checklist
+- ## 1. The big picture | 158 | COVERED(m5-03-1)
+- ### What "Kubernetes" covers in this book | 158 | NO FIGURE NEEDED scope definition
+- ### Getting the core binaries | 206 | NO FIGURE NEEDED CLI output and definitions
+- ### Why Kubernetes Exists: Borg/Omega Heritage and Five Core Benefits (*Kubernetes: Up and Running* Chapter 1) | 269 | NO FIGURE NEEDED conceptual list
+- ## 2. Control plane components | 36 | NO FIGURE NEEDED section intro
+- ### kube-apiserver | 196 | COVERED(p2-0503-apiserver-pipeline)
+- ### etcd | 165 | COVERED(k03-quorum)
+- ### kube-scheduler | 195 | COVERED(p2-0503-scheduler-cycles)
+- ### kube-controller-manager | 108 | NEEDS FIGURE controller workqueue and informer loop architecture (SharedInformer, Reflector, DeltaFIFO, Indexer, WorkQueue, Reconcile)
+- ### cloud-controller-manager | 94 | NO FIGURE NEEDED short functional overview
+- ### Aggregated and extension API servers | 62 | NO FIGURE NEEDED short definition
+- ### Checking the control plane with `componentstatuses` | 74 | NO FIGURE NEEDED CLI verification
+- ## 3. Node components | 207 | NEEDS FIGURE node architecture components (kubelet, containerd, CRI, CNI, CSI, kube-proxy, GPU device plugins, systemd relationship)
+- ### Inspecting Nodes (`Capacity` vs. `Allocatable` and `Conditions`) and `kube-system` (*Kubernetes: Up and Running* Chapter 3) | 258 | COVERED(k03-allocatable)
+- ### Reading one node with `kubectl describe nodes` | 239 | NO FIGURE NEEDED CLI output walkthrough
+- ### kube-proxy and DNS in practice | 225 | NO FIGURE NEEDED CLI commands and explanations
+- ## 4. Ports and trust | 153 | COVERED(p3-0503-ports-map)
+- ## 5. The declarative object model | 344 | COVERED(p3-0503-ownership-finalizer-delete, p3-0503-optimistic-409, p3-0503-level-vs-edge, p2-0503-deployment-relay)
+- ## 6. From `kubectl apply` to a running container | 148 | COVERED(m5-03-2)
+- ## 7. High availability and failure behaviour | 26 | NO FIGURE NEEDED section intro
+- ### Topologies | 137 | COVERED(p3-0503-leader-election, k03-etcd-topology)
+- ### What fails and what happens | 338 | COVERED(p3-0503-api-down-survives, k03-kubelet-timeline)
+- ## 8. Extension points | 87 | NO FIGURE NEEDED table of extension points
+- ### Why some APIs are only a contract | 132 | COVERED(p2-0503-ingress-contract)
+- ### Interfaces: how plug-ins fit in | 222 | NEEDS FIGURE interface plug-in decoupling (kubelet talking over gRPC to CRI containerd, CNI network, CSI storage driver)
+- ### Kubernetes is one piece of the puzzle | 108 | NO FIGURE NEEDED non-technical high-level perspective
+- ## 9. Add-ons required for a functioning cluster | 163 | NO FIGURE NEEDED itemized add-on list
+- ## 10. Architecture of a GPU/AI cluster | 316 | COVERED(m5-03-3)
+- ## 11. Official limits (SIG-Scalability thresholds, approximate) | 101 | NO FIGURE NEEDED scalability numbers list
+- ## 12. Hands-on tour | 175 | NO FIGURE NEEDED interactive terminal commands
+- ### Seeing the cluster in a UI | 95 | NO FIGURE NEEDED tooling advice
+- ## 13. Lab | 321 | NO FIGURE NEEDED lab steps and exercises
+- ## 14. Common mistakes | 137 | NO FIGURE NEEDED failure modes checklist
+- ## 15. Interview angles | 107 | NO FIGURE NEEDED interview questions
+- ## Exercises | 318 | NO FIGURE NEEDED exercises
+- ## Checkpoint questions (20) | 1684 | NO FIGURE NEEDED questions and answers
+- ## Sources and review notes | 240 | NO FIGURE NEEDED citations and provenance
+
+Specs kept 3, dropped 0: []

@@ -162,6 +162,10 @@ A habit that saves time is to read the object before you read the code. If the o
 
 ## 2. Secrets
 
+![A diagram shows kube-apiserver using an external KMS provider to encrypt a data encryption key and storing the resulting ciphertext payload in etcd.](./img/p4-0516-kms-envelope.svg)
+
+*Figure 5.0.0. KMS v2 envelope encryption uses an external Key Encryption Key to wrap a local Data Encryption Key, ensuring etcd stores only ciphertext.*
+
 A data scientist pastes a Hugging Face token into a ConfigMap to get a job running, and the job works. Weeks later, a colleague with read access to the namespace runs `kubectl get configmap -o yaml` and copies the token into a chat message. Nothing was hacked. The token was simply stored in the wrong kind of object. That is the situation a Secret exists to prevent.
 
 A Secret looks much like a ConfigMap. Its `data` field holds base64-encoded values, and `stringData` accepts write-only plain text. Kubernetes treats it differently, though. When a Secret is mounted, it sits in tmpfs on the node, and the kubelet does not write it to disk. RBAC restricts it through its own `secrets` resource, and it is eligible for encryption at rest. The types are `Opaque`, `kubernetes.io/tls` (which uses `tls.crt` and `tls.key`), `kubernetes.io/dockerconfigjson` for image pulls, `kubernetes.io/basic-auth`, `kubernetes.io/ssh-auth`, `kubernetes.io/service-account-token` (the legacy type) and `bootstrap.kubernetes.io/token`.
@@ -590,6 +594,10 @@ vault write auth/kubernetes/role/database \
 
 ### Secrets Store CSI driver and CyberArk
 
+![A diagram illustrates the Secrets Store CSI driver fetching secrets directly from an external store into a node tmpfs mount without storing them in etcd.](./img/p4-0516-secrets-store-csi.svg)
+
+*Figure 5.0.0. The Secrets Store CSI Driver mounts external secrets directly into pod tmpfs via a node provider plugin, completely bypassing etcd storage.*
+
 CyberArk is another option that many clients already use. It offers a Credential Provider and a Dynamic Access Provider (DAP). Like Vault, it supports `initContainers` that run alongside your application to talk to DAP.
 
 A newer approach is the `secrets-store-csi-driver`. At the time of writing, it is a Kubernetes subproject within `kubernetes-sigs`. It lets Pods use externally hosted secrets without a sidecar or an initContainer. Secret access starts to feel like a platform service instead of something each application integrates with. A simple picture helps. An application that uses a sidecar is like a tenant who hires a locksmith for each door. The CSI driver is more like a building that provides the locksmith for every tenant. The driver runs as a DaemonSet, with a driver Pod on every host, much like a storage CSI driver.
@@ -775,6 +783,10 @@ Notice the `serviceAccountToken` source. Its token is valid only for the `vault`
 The three sources each do a different job. The token proves who the pod is. The CA bundle lets the pod trust the server it talks to. The labels describe the pod itself. All three land in one directory, so the application reads everything from one place and does not need to know which source a file came from.
 
 ### ServiceAccounts
+
+![A sequence diagram shows a pod exchanging its projected ServiceAccount token with a cloud STS service via cluster OIDC keys to obtain short-lived cloud credentials.](./img/p4-0516-workload-identity.svg)
+
+*Figure 5.0.0. Workload Identity Federation verifies Kubernetes projected tokens against the cluster OIDC endpoint to issue short-lived cloud credentials without static keys.*
 
 Every namespace has a `default` ServiceAccount, and pods use it unless `serviceAccountName` is set. Since 1.22+, pods receive a bound ServiceAccount token. The token is a JWT signed by the API server, and it is audience-bound to the API server. It is time-limited, with a default of about 1 h, and it is refreshed automatically. It is also bound to the pod, node and Secret object, and it becomes invalid when the pod is deleted. The token is mounted at `/var/run/secrets/kubernetes.io/serviceaccount/token` through a projected volume. It replaces legacy token Secrets, which never expired. Those are no longer auto-created since 1.24. Create an explicit `type: kubernetes.io/service-account-token` Secret only when you truly need one. For short-lived tokens, use `kubectl create token <sa> --duration=...` instead. A simple way to tell the two apart is to look at how the token was made. A bound token is created for the pod at start time, and the kubelet refreshes it. A token from `kubectl create token` lasts for the duration you asked for, and then it stops working.
 

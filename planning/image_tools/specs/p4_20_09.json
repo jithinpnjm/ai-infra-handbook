@@ -1,0 +1,32 @@
+[
+ {
+  "name": "p4-2009-interval-merge",
+  "title": "Interval Merging Sweep and the Nested Interval Trap",
+  "anchor": "### 5. Interval merging and scheduling",
+  "spec": "Horizontal timeline diagram showing two interval processing operations from the chapter text. Top panel (Interval Merging and the nested trap): Timeline with intervals sorted by start time. Show Interval 1 from 1 to 10. Show Interval 2 from 2 to 3 sitting entirely inside Interval 1. Contrast buggy update out[-1][1] = e which incorrectly shrinks the merged interval to [1, 3], against correct logic out[-1][1] = max(out[-1][1], e) which preserves the right boundary at 10. Show Interval 3 from 10 to 12 touching at boundary 10, extending the merged interval to [1, 12]. Bottom panel (Free Slots Sweep): Day timeline from day_start=0 to day_end=12 with busy blocks [1, 5] and [8, 10]. Show cursor starting at 0. First gap emitted (0, 1). Cursor advances to max(cursor, e)=5. Second gap emitted (5, 8) as next start s=8 is greater than cursor 5. Cursor advances to 10. Trailing gap emitted (10, 12) before reaching day_end.",
+  "alt": "A timeline comparison showing how taking the maximum end time prevents nested intervals from shrinking merged ranges, and how a cursor identifies free gaps between busy intervals.",
+  "cap": "Interval merging requires taking the maximum of the end boundaries so nested intervals do not truncate the merged range, while free slot detection advances a cursor through sorted gaps.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09"
+ },
+ {
+  "name": "p4-2009-blast-radius-bfs",
+  "title": "Blast Radius Calculation via Dependency Edge Reversal",
+  "anchor": "### 11. BFS, DFS and shortest path on a service graph",
+  "spec": "Two-part service dependency graph diagram. Left panel (Original Dependency Graph): Directed edges representing depends-on relationships: web -> api; api -> db; api -> cache; db -> net; cache -> net. Highlight that network (net) is the deepest dependency. Right panel (Edge Reversal and BFS Blast Radius): Directed edges reversed to model failure propagation outward from failed service net. Root of search is failed node net. Concentric BFS frontier rings show blast radius reachability: Distance 1 ring contains db and cache; Distance 2 ring contains api; Distance 3 ring contains web. Show BFS queue with seen-set check, illustrating that nodes are marked as seen immediately upon being enqueued so that diamond dependencies (db and cache both reaching api) do not enqueue api twice.",
+  "alt": "Reversing dependency edges from a failed network component exposes the blast radius through breadth-first search rings, marking nodes on enqueue to prevent duplicate processing.",
+  "cap": "Reversing service dependency edges turns an inward dependency graph into an outward blast radius search where breadth-first search identifies all downstream affected services.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09"
+ },
+ {
+  "name": "p4-2009-union-find",
+  "title": "Union-Find with Union by Size and Path Compression",
+  "anchor": "### 12. Union-find",
+  "spec": "Three-stage visual state diagram of disjoint set trees representing failing node clusters. Left panel (Initial Clusters): Two trees of failing rack nodes. Tree A with root Node A (size 3) with children Node B and Node C. Tree D with root Node D (size 2) with child Node E, and Node E has child Node F. Middle panel (Union by Size): An edge links Node B and Node E. Find identifies root A (size 3) and root D (size 2). Because size(D) < size(A), root D is attached under root A, pointing D -> A, updating size(A) to 5. Right panel (Path Compression during Find): A call to find(F) traverses F -> E -> D -> A. Path compression executes iteratively, updating parent pointers so Node E and Node F both point directly to root Node A, reducing tree height to 1 and enabling constant-time subsequent lookups.",
+  "alt": "Union by size attaches smaller root trees under larger ones, while path compression flattens deep parent pointers directly to the root during find operations.",
+  "cap": "Union by size keeps disjoint trees shallow by attaching smaller clusters under larger roots, while path compression flattens parent chains directly to the root on each lookup.",
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09"
+ }
+]

@@ -366,6 +366,10 @@ Have these prerequisites in place before you touch any Slurm package. You need D
 
 ### Installation methods
 
+![Comparison of four Slurm installation methods alongside the silent compile-time feature drop hazard when development headers are missing.](./img/p4-0607-install-methods.svg)
+
+*Figure 6.0.0. Choose source RPM or DEB packages for production GPU clusters, and install nvml, mysql, and dbus headers before compilation to avoid silent feature drops.*
+
 1. Distribution packages: `apt install slurm-wlm` on Ubuntu or `dnf install slurm` from EPEL on Rocky and RHEL. This is quick to start, but the packages are usually old, and package splits differ between distributions. As listed in *Supercomputers for Linux SysAdmins*, chapter 15, you install `slurm` and `slurm-munge` on compute and control nodes. You can add optional `slurm-perlapi` and `slurm-torque` for Torque script compatibility. The controller node also gets `slurm-slurmctld` and `slurm-plugins`, and compute nodes get `slurm-slurmd`. The database node gets MySQL or MariaDB along with `slurm`, `slurm-munge`, `slurm-slurmdbd`, `slurm-sql`, and `slurm-plugins`. On Slurm 23.11 and later, login nodes can optionally use `slurm-sackd`. Use packages for a lab, and move to source builds once you need a specific version.
 2. Build packages from source: download a release from `schedmd.com` or the `https://github.com/SchedMD/slurm` repository. Check out the tag you want, for example `slurm-24-11-5-1`. Then either build directly with `./configure --prefix=/opt/slurm && make && make install`, or build RPMs or DEBs yourself with `rpmbuild -ta slurm-VERSION.tar.bz2` or the Debian packaging flow (`mk-build-deps -i debian/control; debuild -b -uc -us`). This is what serious sites do. You choose the version and enable the features you need: PMIx, NVML, hwloc, UCX, JWT for `slurmrestd`, and the MariaDB `mysql_config` headers for `slurmdbd`. The result is reproducible packages that you can sign and ship in your image pipeline. Install the development headers before you build. A missing `nvml.h` quietly produces a Slurm without `AutoDetect=nvml` support, which is a classic way to lose an afternoon.
 3. Use a cluster manager: BCM (chapter 8.8), DGX OS images or vendor tools install and configure Slurm for you. You still need the knowledge in this chapter to operate it. When the manager's defaults surprise you, this chapter is what lets you read them.
@@ -624,6 +628,10 @@ Names and numbers are the two ways Slurm identifies a machine and a user. When t
 The log reports that a cgroup controller is not available or cannot be mounted. Or all jobs fail at launch. The OS may have switched to cgroup v2 while Slurm was built without v2 support. Alternatively, `cgroup.conf` forces v1, or the systemd unit delegation is missing. Run `stat -fc %T /sys/fs/cgroup`, where `cgroup2fs` means v2. Then run `slurmd -V` and `slurmd -D -vvvv`. Use a Slurm build with cgroup v2 support, set `CgroupPlugin=autodetect`, and keep the OS and Slurm versions on a tested matrix.
 
 ### 7. "Socket timed out on send/recv operation" and a sluggish controller: RPC overload
+
+![Diagram of an RPC overload cascade in slurmctld showing how tight polling loops monopolize global read locks, delay scheduling, and appear in sdiag output.](./img/p4-0607-rpc-overload-cascade.svg)
+
+*Figure 6.0.0. A polling storm holds internal controller locks and delays scheduling, producing connection timeouts that can be isolated using sdiag RPC statistics.*
 
 Commands hang or fail intermittently. `squeue` takes seconds, and the log warns about an RPC backlog. The causes include polling loops, such as users or monitors running `squeue` every second from hundreds of clients. Very high job counts, a too small `MaxJobCount`, accounting back-pressure, a slow `StateSaveLocation`, or thousands of short jobs can also cause it. Each of these adds requests to a controller that serves them one lock at a time.
 

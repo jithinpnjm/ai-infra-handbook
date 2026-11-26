@@ -1,0 +1,42 @@
+[
+ {
+  "name": "p4-0101-cpu-rings",
+  "title": "CPU rings, privileged instructions, and fault handling",
+  "anchor": "### Why two modes? Kernel mode and user mode",
+  "spec": "Concentric circle diagram illustrating x86 processor privilege levels and hardware fault isolation. Outer ring represents Ring 3 (User Mode / Unprivileged): contains user-space processes such as PyTorch, bash, web browser, and processes running as root (UID 0 in Ring 3). Unprivileged CPU instructions execute directly. Middle dividing boundary represents the CPU privilege barrier. Inner circle represents Ring 0 (Kernel Mode / Privileged): contains the Linux kernel, scheduler, virtual memory manager, device drivers (nvidia.ko, mlx5_core.ko), and kernel threads ([kthreadd], [kworker], [ksoftirqd]). Privileged CPU instructions (page table writes, direct device I/O, disabling interrupts) execute only here. Show two dynamic flows across the boundary: Flow 1 (Legitimate): User process invokes a system call (e.g., read(), open()), CPU performs controlled transition into Ring 0, kernel executes service and returns result to Ring 3. Flow 2 (Fault Trap): User process attempts a privileged CPU instruction directly; CPU hardware halts the instruction, raises a hardware fault/trap into Ring 0, and the kernel trap handler intercepts the fault and sends SIGSEGV/kills the rogue process while all other user processes and the kernel continue running unaffected. Include a side callout box contrasting failure scope: User process crash = local exit, kernel reclaims memory; Kernel bug/module fault = whole system halts with kernel panic.",
+  "alt": "Concentric rings showing Ring 3 user mode and Ring 0 kernel mode, illustrating how CPU hardware traps illegal privileged instructions to protect the system.",
+  "cap": "The CPU hardware boundary: user processes run in Ring 3 and trap into Ring 0 via system calls, while illegal privileged instructions trigger hardware faults that terminate the rogue process without halting the system.",
+  "part": "part-01-linux",
+  "ch": "01"
+ },
+ {
+  "name": "p4-0101-device-files",
+  "title": "Device file routing from user space to hardware and pseudodevices",
+  "anchor": "### Job 3: managing devices",
+  "spec": "Three-tier architectural diagram illustrating how Linux routes standard file operations to devices. Top tier (User Space): Applications issue standard POSIX file system calls open(), read(), write(), and ioctl() on paths in /dev. Middle tier (Kernel Space): Divided into two pathways. Left pathway (Hardware-backed device nodes): Special character device /dev/nvidia0 and block device /dev/nvme0n1. The VFS and device subsystem map open() and ioctl() requests to loaded kernel modules (nvidia.ko and nvme.ko). Modules reside in kernel space as .ko objects. Right pathway (Pseudodevices): Software-only devices in /dev that correspond to no hardware. /dev/null routes writes to a kernel sink that discards bytes; /dev/zero routes reads to a kernel generator returning 0x00 bytes; /dev/urandom routes reads to the kernel cryptographic entropy pool. Bottom tier (Physical Hardware vs Pure Software): Left pathway connects drivers to physical PCIe hardware (NVIDIA H100 GPU and NVMe SSD). Right pathway connects pseudodevices to pure in-kernel software routines with no physical hardware backing.",
+  "alt": "Diagram illustrating how file operations on device nodes under slash dev route through kernel device drivers to physical hardware or software pseudodevices.",
+  "cap": "Linux device architecture: ordinary file system calls on files under slash dev are routed by the kernel to either hardware device drivers or kernel-internal pseudodevices.",
+  "part": "part-01-linux",
+  "ch": "01"
+ },
+ {
+  "name": "p4-0101-syscall-boundary",
+  "title": "The system call execution path and category routing",
+  "anchor": "### Job 4: system calls and the services around them",
+  "spec": "Sequence and flow diagram detailing how a request traverses from an application into kernel subsystems. Top layer (User Space Application): User program executes code and calls a high-level C library function such as open('data.txt'), malloc(), socket(), or clone(). Second layer (User Space Library): glibc (libc.so.6) receives the call, places arguments into CPU architecture registers, sets the system call opcode number (e.g., __NR_openat), and executes the hardware syscall instruction. Boundary: Horizontal dashed line representing the User/Kernel boundary (CPU switches from Ring 3 to Ring 0). An strace callout box points to this exact line, showing that strace intercepts every crossing via ptrace and records call name, arguments, and return codes. Third layer (Kernel Space System Call Dispatcher): Syscall handler reads opcode and branches into five distinct kernel functional categories: 1. Files (openat, read, write, close, stat); 2. Processes (clone, execve, wait4, exit_group, kill); 3. Memory (mmap, brk, munmap, mprotect); 4. Network (socket, connect, bind, listen, accept, sendto, recvfrom); 5. Control and Info (ioctl, getpid, uname, clock_gettime). Bottom return arrow: The subsystem returns status/value to dispatcher, CPU switches back to Ring 3, and glibc sets errno or returns result to user application.",
+  "alt": "Diagram of a system call journey showing user code calling glibc, transitioning through the CPU syscall instruction into kernel subsystems, with strace intercepting at the boundary.",
+  "cap": "The system call path: user applications invoke glibc wrappers that trigger the hardware syscall instruction, transitioning execution to the kernel dispatcher across five functional categories while strace observes the boundary.",
+  "part": "part-01-linux",
+  "ch": "01"
+ },
+ {
+  "name": "p4-0101-rhel-lineage",
+  "title": "The Red Hat upstream-to-downstream distribution river",
+  "anchor": "### 6.1 The Red Hat, Fedora, CentOS, and Amazon Linux branch",
+  "spec": "Vertical river-flow diagram illustrating the Red Hat enterprise distribution lineage from upstream development to downstream production. Top tier (Upstream): Fedora Project. Sponsored by Red Hat; fast release cycle (every 6 months); incorporates cutting-edge upstream Linux kernels, gcc, systemd, and glibc; acts as community testbed. Middle tier (Midstream): CentOS Stream. Acts as a rolling-preview midstream between Fedora and RHEL; incorporates stabilized upstream packages before commercial freeze. Main branch (Downstream Commercial): Red Hat Enterprise Linux (RHEL). Long-term commercial stability, vendor hardware/ISV certifications (Slurm, NVIDIA drivers, Base Command Manager), backported kernel features (e.g., 5.14 kernel backports in RHEL 9). Downstream community and cloud derivatives branching from RHEL source code: 1. Rocky Linux and AlmaLinux: 1:1 bug-for-bug binary compatible free rebuilds created after CentOS moved to Stream; 2. Amazon Linux 2023 (AL2023): AWS cloud-tailored distribution incorporating Fedora, CentOS Stream, and RHEL source components; 3. Oracle Linux: alternative enterprise rebuild. Surrounding toolchain bracket: Highlights shared package ecosystem across all members: RPM package format (.rpm), low-level tool rpm, and high-level repository resolvers yum and modern dnf.",
+  "alt": "Lineage diagram showing the flow of packages from upstream Fedora through midstream CentOS Stream to downstream RHEL and binary rebuilds Rocky Linux, AlmaLinux, and Amazon Linux.",
+  "cap": "The Red Hat distribution lineage: innovations flow from upstream Fedora through midstream CentOS Stream to RHEL, which downstream community distributions like Rocky Linux and cloud distributions like Amazon Linux rebuild or adapt using RPM and DNF.",
+  "part": "part-01-linux",
+  "ch": "01"
+ }
+]

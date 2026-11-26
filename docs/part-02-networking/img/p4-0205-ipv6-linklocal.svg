@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>IPv6 Link-Local Gateway Scope Ambiguity</title>
+  <desc>Side-by-side comparison illustrating why IPv4 gateways can be inferred via unique subnets, while IPv6 link-local gateways fe80::/64 require an explicit interface binding.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2 2 L 10 7 L 2 12 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">IPv6 Link-Local Gateway Scope Ambiguity</text>
+
+  
+  <rect x="40" y="105" width="740" height="905" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(65, 130)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="6" x2="28" y2="14" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="42" x2="28" y2="50" stroke="#207448" stroke-width="4"/>
+    <line x1="6" y1="28" x2="14" y2="28" stroke="#207448" stroke-width="4"/>
+    <line x1="42" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="140" y="168" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">IPv4 Global/Subnet Gateway</text>
+
+  
+  <rect x="70" y="205" width="680" height="300" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(95, 225)">
+    <rect x="0" y="0" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="14" y1="50" x2="42" y2="50" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="42" x2="28" y2="50" stroke="#207448" stroke-width="4"/>
+    <circle cx="14" cy="21" r="3" fill="#207448"/>
+    <circle cx="28" cy="21" r="3" fill="#207448"/>
+    <circle cx="42" cy="21" r="3" fill="#207448"/>
+  </g>
+  <text x="170" y="258" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">host with two NICs</text>
+
+  
+  <rect x="95" y="290" width="630" height="85" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="125" y="343" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">eno1 on 10.20.0.0/24</text>
+
+  
+  <rect x="95" y="395" width="630" height="85" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="125" y="448" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">ens1f0 on 10.100.0.0/24</text>
+
+  
+  <rect x="70" y="530" width="680" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(95, 552)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="20,28 28,20 36,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="28" y1="20" x2="28" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="175" y="591" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">via 10.20.0.254</text>
+
+  
+  <path d="M 640 540 L 680 540 L 680 345 L 635 345" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="70" y="655" width="680" height="330" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(95, 680)">
+    <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="20" y1="0" x2="20" y2="8" stroke="#207448" stroke-width="4"/>
+    <line x1="36" y1="0" x2="36" y2="8" stroke="#207448" stroke-width="4"/>
+    <line x1="20" y1="48" x2="20" y2="56" stroke="#207448" stroke-width="4"/>
+    <line x1="36" y1="48" x2="36" y2="56" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="20" x2="8" y2="20" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="36" x2="8" y2="36" stroke="#207448" stroke-width="4"/>
+    <line x1="48" y1="20" x2="56" y2="20" stroke="#207448" stroke-width="4"/>
+    <line x1="48" y1="36" x2="56" y2="36" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="95" y="775" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="95" dy="0">allows the kernel to infer eno1</tspan>
+    <tspan x="95" dy="40">automatically because 10.20.0.254 falls</tspan>
+    <tspan x="95" dy="40">inside a unique connected subnet.</tspan>
+  </text>
+
+  
+  <rect x="820" y="105" width="740" height="905" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(845, 130)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <ellipse cx="28" cy="28" rx="12" ry="24" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="4" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="920" y="168" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">IPv6 Link-Local Gateway</text>
+
+  
+  <rect x="850" y="205" width="680" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(875, 225)">
+    <rect x="4" y="8" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="18" cy="28" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="38" cy="28" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 12 8 L 12 2 L 44 2 L 44 8" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="950" y="252" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">eno1 and ens1f0</text>
+  <text x="950" y="305" font-family="sans-serif" font-size="25" fill="#303a36">both sharing the fe80::/64 link-local scope</text>
+
+  
+  <rect x="850" y="375" width="680" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(875, 400)">
+    <rect x="0" y="10" width="56" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="18" x2="28" y2="38" stroke="#207448" stroke-width="3"/>
+    <circle cx="12" cy="28" r="3" fill="#207448"/>
+    <circle cx="44" cy="28" r="3" fill="#207448"/>
+    <circle cx="28" cy="18" r="3" fill="#207448"/>
+    <circle cx="28" cy="38" r="3" fill="#207448"/>
+  </g>
+  <text x="950" y="440" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="950" dy="0">two upstream routers on both cables share</tspan>
+    <tspan x="950" dy="38">or use link-local address fe80::1</tspan>
+  </text>
+
+  
+  <rect x="850" y="560" width="680" height="215" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(875, 580)">
+    <path d="M 28 4 L 54 50 L 2 50 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="42" r="3" fill="#db8129"/>
+  </g>
+  <text x="950" y="612" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="950" dy="0">ip -6 route add 2001:db8:200::/48</tspan>
+    <tspan x="950" dy="34">via fe80::1</tspan>
+  </text>
+  <text x="875" y="730" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">Error: Device required for link-local nexthop</text>
+
+  
+  <rect x="850" y="795" width="680" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(875, 820)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="16,28 24,36 40,20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="950" y="852" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">via fe80::1 dev eno1</text>
+  <text x="950" y="910" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="950" dy="0">explicitly binding the link-local next hop</tspan>
+    <tspan x="950" dy="38">to the physical wire.</tspan>
+  </text>
+</svg>
