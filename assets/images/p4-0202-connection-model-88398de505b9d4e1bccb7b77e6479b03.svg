@@ -1,0 +1,259 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>State at the Edges versus State in the Network Core</title>
+  <desc>A visual comparison showing how link failure disrupts connection state in circuit-switched cores versus seamless dynamic rerouting in stateless IP cores under the End-to-End Principle.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-gray" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 0 1 L 12 7 L 0 13 z" fill="#708278" />
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1380" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">State at the Edges versus State in the Network Core</text>
+
+  
+  
+  
+  <g transform="translate(40, 75)">
+    
+    <rect width="1520" height="520" rx="16" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2" />
+    <text x="760" y="44" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">State in the Core (Circuit Switching / Virtual Circuits)</text>
+
+    
+    <g transform="translate(30, 80)">
+      <rect width="210" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      <rect x="75" y="25" width="60" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="87" y1="73" x2="123" y2="73" stroke="#207448" stroke-width="4" />
+      <line x1="105" y1="73" x2="105" y2="85" stroke="#207448" stroke-width="4" />
+      <line x1="90" y1="85" x2="120" y2="85" stroke="#207448" stroke-width="4" />
+      <circle cx="105" cy="49" r="6" fill="#207448" />
+
+      <text x="105" y="130" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host A</text>
+      <rect x="20" y="160" width="170" height="70" rx="8" fill="#f5f8f5" stroke="#b8d5c0" stroke-width="1.5" />
+      <text x="105" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Virtual Circuit</text>
+    </g>
+
+    
+    <line x1="240" y1="210" x2="300" y2="210" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(300, 80)">
+      <rect width="410" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      <rect x="180" y="20" width="50" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 190 35 L 220 35 M 215 30 L 220 35 L 215 40" stroke="#207448" stroke-width="2.5" fill="none" />
+      <path d="M 220 45 L 190 45 M 195 40 L 190 45 L 195 50" stroke="#207448" stroke-width="2.5" fill="none" />
+
+      <text x="205" y="95" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Switch 1</text>
+      <text x="205" y="130" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Internal state table mapping</text>
+
+      
+      <rect x="25" y="150" width="360" height="90" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="2" />
+      <text x="205" y="186" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">[In-Port, Circuit ID]</text>
+      <text x="205" y="222" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">to [Out-Port, Circuit ID]</text>
+    </g>
+
+    
+    <g transform="translate(710, 80)">
+      <line x1="0" y1="130" x2="100" y2="130" stroke="#d32f2f" stroke-width="4" stroke-dasharray="8,6" />
+      
+      <line x1="32" y1="112" x2="68" y2="148" stroke="#d32f2f" stroke-width="6" stroke-linecap="round" />
+      <line x1="68" y1="112" x2="32" y2="148" stroke="#d32f2f" stroke-width="6" stroke-linecap="round" />
+    </g>
+
+    
+    <g transform="translate(810, 80)">
+      <rect width="410" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      <rect x="180" y="20" width="50" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 190 35 L 220 35 M 215 30 L 220 35 L 215 40" stroke="#207448" stroke-width="2.5" fill="none" />
+      <path d="M 220 45 L 190 45 M 195 40 L 190 45 L 195 50" stroke="#207448" stroke-width="2.5" fill="none" />
+
+      <text x="205" y="95" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Switch 2</text>
+      <text x="205" y="130" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Internal state table mapping</text>
+
+      
+      <rect x="25" y="150" width="360" height="90" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="2" />
+      <text x="205" y="186" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">[In-Port, Circuit ID]</text>
+      <text x="205" y="222" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">to [Out-Port, Circuit ID]</text>
+    </g>
+
+    
+    <line x1="1220" y1="210" x2="1280" y2="210" stroke="#708278" stroke-width="4" stroke-dasharray="6,6" marker-end="url(#arrow-gray)" />
+
+    
+    <g transform="translate(1280, 80)">
+      <rect width="210" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      <rect x="75" y="25" width="60" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="87" y1="73" x2="123" y2="73" stroke="#207448" stroke-width="4" />
+      <line x1="105" y1="73" x2="105" y2="85" stroke="#207448" stroke-width="4" />
+      <line x1="90" y1="85" x2="120" y2="85" stroke="#207448" stroke-width="4" />
+      <circle cx="105" cy="49" r="6" fill="#207448" />
+
+      <text x="105" y="130" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host B</text>
+      <rect x="20" y="160" width="170" height="70" rx="8" fill="#f5f8f5" stroke="#b8d5c0" stroke-width="1.5" />
+      <text x="105" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Virtual Circuit</text>
+    </g>
+
+    
+    <g transform="translate(30, 370)">
+      <rect width="1460" height="120" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+      <text x="730" y="50" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">
+        Failure invalidates circuit state in transit; central controller or signaling protocol
+      </text>
+      <text x="730" y="88" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">
+        must tear down and re-establish each path before data resumes.
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g transform="translate(40, 630)">
+    
+    <rect width="1520" height="600" rx="16" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2" />
+    <text x="760" y="44" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">State at the Edges (End-to-End Principle: IP Core with TCP/RDMA Edges)</text>
+
+    
+    <g transform="translate(30, 75)">
+      <rect width="360" height="350" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      <rect x="150" y="20" width="60" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="162" y1="68" x2="198" y2="68" stroke="#207448" stroke-width="4" />
+      <line x1="180" y1="68" x2="180" y2="80" stroke="#207448" stroke-width="4" />
+      <line x1="165" y1="80" x2="195" y2="80" stroke="#207448" stroke-width="4" />
+      <circle cx="180" cy="44" r="6" fill="#207448" />
+
+      <text x="180" y="115" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host A</text>
+      <text x="180" y="148" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#207448">Endpoint Connection State</text>
+
+      
+      <rect x="25" y="165" width="310" height="165" rx="8" fill="#f5f8f5" stroke="#b8d5c0" stroke-width="1.5" />
+      <text x="180" y="205" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">TCP socket</text>
+      <text x="180" y="248" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">seq/ack numbers, timers</text>
+      <text x="180" y="291" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">congestion window</text>
+    </g>
+
+    
+    <line x1="390" y1="165" x2="480" y2="165" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(480, 75)">
+      
+      <rect width="600" height="350" rx="12" fill="#ffffff" stroke="#b8d5c0" stroke-width="2" filter="url(#shadow)" />
+      
+      
+      <text x="300" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        Core Router 1, Router 2, Router 3, and Router 4
+      </text>
+      <text x="300" y="68" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        maintain only stateless destination prefix FIBs, holding zero flow state
+      </text>
+
+      
+      <g transform="translate(40, 90)">
+        <rect width="210" height="85" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+        <circle cx="45" cy="42" r="22" fill="none" stroke="#207448" stroke-width="2.5" />
+        <path d="M 33 42 L 57 42 M 45 30 L 45 54" stroke="#207448" stroke-width="2.5" />
+        <text x="135" y="52" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Router 1</text>
+      </g>
+
+      
+      <line x1="250" y1="132" x2="350" y2="132" stroke="#d32f2f" stroke-width="4" stroke-dasharray="6,6" />
+      <line x1="282" y1="114" x2="318" y2="150" stroke="#d32f2f" stroke-width="6" stroke-linecap="round" />
+      <line x1="318" y1="114" x2="282" y2="150" stroke="#d32f2f" stroke-width="6" stroke-linecap="round" />
+
+      
+      <g transform="translate(350, 90)">
+        <rect width="210" height="85" rx="10" fill="#f5f8f5" stroke="#708278" stroke-width="1.5" />
+        <circle cx="45" cy="42" r="22" fill="none" stroke="#708278" stroke-width="2.5" />
+        <path d="M 33 42 L 57 42 M 45 30 L 45 54" stroke="#708278" stroke-width="2.5" />
+        <text x="135" y="52" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#708278">Router 2</text>
+      </g>
+
+      
+      <g transform="translate(40, 230)">
+        <rect width="210" height="85" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+        <circle cx="45" cy="42" r="22" fill="none" stroke="#207448" stroke-width="2.5" />
+        <path d="M 33 42 L 57 42 M 45 30 L 45 54" stroke="#207448" stroke-width="2.5" />
+        <text x="135" y="52" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Router 3</text>
+      </g>
+
+      
+      <g transform="translate(350, 230)">
+        <rect width="210" height="85" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+        <circle cx="45" cy="42" r="22" fill="none" stroke="#207448" stroke-width="2.5" />
+        <path d="M 33 42 L 57 42 M 45 30 L 45 54" stroke="#207448" stroke-width="2.5" />
+        <text x="135" y="52" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Router 4</text>
+      </g>
+
+      
+      
+      <path d="M 145 175 L 145 220" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8,6" marker-end="url(#arrow-green)" />
+      
+      <path d="M 250 272 L 340 272" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8,6" marker-end="url(#arrow-green)" />
+    </g>
+
+    
+    <path d="M 1080 347 L 1150 347 L 1150 250 L 1180 250" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8,6" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(1190, 75)">
+      <rect width="300" height="350" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      <rect x="120" y="20" width="60" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="132" y1="68" x2="168" y2="68" stroke="#207448" stroke-width="4" />
+      <line x1="150" y1="68" x2="150" y2="80" stroke="#207448" stroke-width="4" />
+      <line x1="135" y1="80" x2="165" y2="80" stroke="#207448" stroke-width="4" />
+      <circle cx="150" cy="44" r="6" fill="#207448" />
+
+      <text x="150" y="115" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host B</text>
+      <text x="150" y="148" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#207448">Endpoint Socket State</text>
+
+      
+      <rect x="25" y="165" width="250" height="165" rx="8" fill="#f5f8f5" stroke="#b8d5c0" stroke-width="1.5" />
+      <text x="125" y="225" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">TCP socket</text>
+      <text x="125" y="270" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">intact state</text>
+    </g>
+
+    
+    <g transform="translate(30, 455)">
+      <rect width="1460" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="730" y="50" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+        Datagrams reroute dynamically around the broken link; connection state
+      </text>
+      <text x="730" y="88" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+        on Host A and Host B stays intact without notifying the core.
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g transform="translate(40, 1260)">
+    <rect width="1520" height="90" rx="14" fill="#207448" />
+    <text x="760" y="42" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      End-to-End Principle: Keep core simple and connectionless;
+    </text>
+    <text x="760" y="74" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      keep intelligence and state at the endpoints.
+    </text>
+  </g>
+</svg>

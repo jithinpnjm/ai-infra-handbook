@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>Execution timeline and sys.modules state during circular imports</title>
+  <desc>Visual comparison of execution timelines and sys.modules state during circular imports between recur1 and recur2</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 0 1 L 10 6 L 0 11 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 0 1 L 10 6 L 0 11 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1380" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="system-ui, sans-serif" font-size="44" font-weight="bold" fill="#207448">Execution timeline and sys.modules state during circular imports</text>
+  <text x="800" y="95" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">Two parallel step-by-step execution timelines side by side.</text>
+
+  
+  
+  <rect x="40" y="125" width="740" height="1215" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="70" y="172" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Left timeline (import recur1 fails):</text>
+
+  
+  <rect x="65" y="195" width="690" height="120" rx="12" ry="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <circle cx="108" cy="235" r="24" fill="#207448" />
+  <text x="108" y="244" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(148, 213)" fill="none" stroke="#207448" stroke-width="3">
+    <ellipse cx="22" cy="10" rx="20" ry="7" />
+    <path d="M 2 10 v 14 c 0 4 9 7 20 7 s 20 -3 20 -7 v -14" />
+    <path d="M 2 17 c 0 4 9 7 20 7 s 20 -3 20 -7" />
+  </g>
+  <text x="210" y="244" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">Step 1:</text>
+  <text x="90" y="287" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">sys.modules['recur1']</tspan> created as empty module object.</text>
+
+  
+  <line x1="410" y1="315" x2="410" y2="340" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="65" y="345" width="690" height="110" rx="12" ry="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <circle cx="108" cy="385" r="24" fill="#207448" />
+  <text x="108" y="394" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(150, 363)" fill="none" stroke="#207448" stroke-width="3">
+    <path d="M 6 4 h 22 l 12 12 v 24 h -34 z" />
+    <path d="M 28 4 v 12 h 12" />
+  </g>
+  <text x="210" y="394" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">Step 2:</text>
+  <text x="90" y="433" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">recur1.py</tspan> executes <tspan font-family="ui-monospace, monospace">'X = 1'</tspan>.</text>
+
+  
+  <line x1="410" y1="455" x2="410" y2="480" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="65" y="485" width="690" height="135" rx="12" ry="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <circle cx="108" cy="525" r="24" fill="#207448" />
+  <text x="108" y="534" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(150, 503)" fill="none" stroke="#207448" stroke-width="3">
+    <circle cx="22" cy="22" r="20" />
+    <line x1="16" y1="12" x2="16" y2="32" stroke-width="4" />
+    <line x1="28" y1="12" x2="28" y2="32" stroke-width="4" />
+  </g>
+  <text x="210" y="534" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">Step 3:</text>
+  <text x="90" y="575" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">recur1.py</tspan> executes <tspan font-family="ui-monospace, monospace">'import recur2'</tspan></text>
+  <text x="90" y="607" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">(recur1 paused at line 2).</text>
+
+  
+  <line x1="410" y1="620" x2="410" y2="645" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="65" y="650" width="690" height="110" rx="12" ry="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <circle cx="108" cy="690" r="24" fill="#207448" />
+  <text x="108" y="699" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(148, 668)" fill="none" stroke="#207448" stroke-width="3">
+    <ellipse cx="22" cy="10" rx="20" ry="7" />
+    <path d="M 2 10 v 14 c 0 4 9 7 20 7 s 20 -3 20 -7 v -14" />
+    <path d="M 2 17 c 0 4 9 7 20 7 s 20 -3 20 -7" />
+  </g>
+  <text x="210" y="699" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">Step 4:</text>
+  <text x="90" y="738" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">sys.modules['recur2']</tspan> created.</text>
+
+  
+  <line x1="410" y1="760" x2="410" y2="785" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="65" y="790" width="690" height="145" rx="12" ry="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <circle cx="108" cy="830" r="24" fill="#207448" />
+  <text x="108" y="839" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g transform="translate(150, 808)" fill="none" stroke="#207448" stroke-width="3">
+    <rect x="4" y="6" width="36" height="30" rx="4" />
+    <path d="M 12 21 l 7 7 l 13 -13" />
+  </g>
+  <text x="210" y="839" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">Step 5:</text>
+  <text x="90" y="880" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">recur2.py</tspan> executes <tspan font-family="ui-monospace, monospace">'from recur1 import X'</tspan></text>
+  <text x="90" y="912" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">(succeeds, X=1 exists).</text>
+
+  
+  <line x1="410" y1="935" x2="410" y2="960" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="65" y="965" width="690" height="255" rx="12" ry="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <circle cx="108" cy="1005" r="24" fill="#db8129" />
+  <text x="108" y="1014" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+  
+  <g transform="translate(150, 983)" fill="none" stroke="#db8129" stroke-width="3">
+    <path d="M 22 4 L 42 38 H 2 Z" />
+    <line x1="22" y1="16" x2="22" y2="26" stroke-width="3.5" />
+    <circle cx="22" cy="32" r="1.5" fill="#db8129" />
+  </g>
+  <text x="210" y="1014" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#db8129">Step 6:</text>
+  <text x="90" y="1055" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">recur2.py</tspan> executes <tspan font-family="ui-monospace, monospace">'from recur1 import Y'</tspan></text>
+  <text x="90" y="1087" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">(FAILS with ImportError: cannot import</text>
+  <text x="90" y="1119" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">name Y from partially initialized module</text>
+  <text x="90" y="1151" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">recur1, because line 3 Y = 2 has not</text>
+  <text x="90" y="1183" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">run yet).</text>
+
+
+  
+  
+  <rect x="820" y="125" width="740" height="1215" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="850" y="172" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Right timeline (import recur2 first succeeds):</text>
+
+  
+  <rect x="845" y="195" width="690" height="120" rx="12" ry="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <circle cx="888" cy="235" r="24" fill="#207448" />
+  <text x="888" y="244" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(928, 213)" fill="none" stroke="#207448" stroke-width="3">
+    <ellipse cx="22" cy="10" rx="20" ry="7" />
+    <path d="M 2 10 v 14 c 0 4 9 7 20 7 s 20 -3 20 -7 v -14" />
+    <path d="M 2 17 c 0 4 9 7 20 7 s 20 -3 20 -7" />
+  </g>
+  <text x="990" y="244" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">Step 1:</text>
+  <text x="870" y="287" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">sys.modules['recur2']</tspan> created.</text>
+
+  
+  <line x1="1190" y1="315" x2="1190" y2="340" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="845" y="345" width="690" height="120" rx="12" ry="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <circle cx="888" cy="385" r="24" fill="#207448" />
+  <text x="888" y="394" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(930, 363)" fill="none" stroke="#207448" stroke-width="3">
+    <path d="M 6 4 h 22 l 12 12 v 24 h -34 z" />
+    <path d="M 28 4 v 12 h 12" />
+  </g>
+  <text x="990" y="394" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">Step 2:</text>
+  <text x="870" y="437" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">recur2.py</tspan> executes <tspan font-family="ui-monospace, monospace">'from recur1 import X'</tspan>.</text>
+
+  
+  <line x1="1190" y1="465" x2="1190" y2="490" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="845" y="495" width="690" height="260" rx="12" ry="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <circle cx="888" cy="535" r="24" fill="#207448" />
+  <text x="888" y="544" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(930, 513)" fill="none" stroke="#207448" stroke-width="3">
+    <circle cx="20" cy="20" r="8" />
+    <path d="M 20 4 v 4 M 20 32 v 4 M 4 20 h 4 M 32 20 h 4 M 9 9 l 3 3 M 28 28 l 3 3 M 9 31 l 3 -3 M 28 12 l 3 -3" />
+  </g>
+  <text x="990" y="544" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">Step 3:</text>
+  <text x="870" y="585" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">sys.modules['recur1']</tspan> created; recur1.py</text>
+  <text x="870" y="617" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">runs line 1 'X = 1', line 2 'import recur2'</text>
+  <text x="870" y="649" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">(instant no-op since recur2 is already</text>
+  <text x="870" y="681" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">in sys.modules), line 3 'Y = 2'</text>
+  <text x="870" y="713" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">runs to completion.</text>
+
+  
+  <line x1="1190" y1="755" x2="1190" y2="780" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="845" y="785" width="690" height="205" rx="12" ry="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <circle cx="888" cy="825" r="24" fill="#207448" />
+  <text x="888" y="834" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(930, 803)" fill="none" stroke="#207448" stroke-width="3">
+    <path d="M 6 8 L 22 2 L 38 8 v 14 c 0 12 -16 18 -16 18 s -16 -6 -16 -18 z" />
+    <path d="M 14 20 l 5 5 l 10 -10" />
+  </g>
+  <text x="990" y="834" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">Step 4:</text>
+  <text x="870" y="875" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">control returns to recur2.py; both X and Y</text>
+  <text x="870" y="907" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">now exist in <tspan font-family="ui-monospace, monospace">recur1.__dict__</tspan>, so</text>
+  <text x="870" y="939" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">'from recur1 import Y' succeeds.</text>
+</svg>

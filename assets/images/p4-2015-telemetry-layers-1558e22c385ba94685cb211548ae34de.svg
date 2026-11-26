@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1440" width="1600" height="1440">
+  <title>Inference Telemetry Layers: Detection at Edge vs Explanation at Engine and Infra</title>
+  <desc>Diagram showing the inference request path across platform layers and the exact signals collected at each level from edge detection to infrastructure root cause.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1440" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Inference Telemetry Layers:</text>
+  <text x="800" y="104" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">Detection at Edge vs Explanation at Engine and Infra</text>
+
+  
+  <g id="flow-pipeline">
+    
+    <rect x="50" y="155" width="200" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="150" y="190" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="150" dy="0">Customer</tspan>
+      <tspan x="150" dy="28">Request</tspan>
+    </text>
+
+    
+    <line x1="250" y1="195" x2="285" y2="195" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <rect x="295" y="155" width="340" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="465" y="190" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="465" dy="0">Gateway Layer</tspan>
+      <tspan x="465" dy="28">(Edge SLI Measurement)</tspan>
+    </text>
+
+    
+    <line x1="635" y1="195" x2="670" y2="195" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <rect x="680" y="155" width="140" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="750" y="203" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Router</text>
+
+    
+    <line x1="820" y1="195" x2="855" y2="195" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <rect x="865" y="155" width="310" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="1020" y="190" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="1020" dy="0">Engine Layer</tspan>
+      <tspan x="1020" dy="28">(vLLM Execution)</tspan>
+    </text>
+
+    
+    <line x1="1175" y1="195" x2="1210" y2="195" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <rect x="1220" y="155" width="330" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="1385" y="190" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="1385" dy="0">Hardware &amp; Platform</tspan>
+      <tspan x="1385" dy="28">Layers (GPU, Node, K8s)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="tier-1-gateway">
+    <rect x="50" y="265" width="1500" height="325" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(75, 285)">
+      <path d="M 22 4 L 40 12 L 40 26 C 40 38 22 48 22 48 C 22 48 4 38 4 26 L 4 12 Z" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 14 24 L 20 30 L 32 18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="135" y="320" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">MEASURE SLIs AT THE EDGE (Detect Customer Impact)</text>
+
+    
+    <rect x="75" y="350" width="760" height="46" rx="8" fill="#db8129" />
+    <text x="95" y="382" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Seen directly by customer. Drives customer SLO alerts.</text>
+
+    
+    <rect x="75" y="412" width="690" height="82" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="95" y="444" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0" font-weight="bold">Gateway code / requests counter by code</tspan>
+      <tspan x="95" dy="28">(labels: model, code, route, reason)</tspan>
+    </text>
+
+    
+    <rect x="790" y="412" width="735" height="82" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="815" y="460" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Latency histogram (TTFT and end-to-end)</text>
+
+    
+    <rect x="75" y="508" width="690" height="66" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="95" y="549" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Token counters (in and out)</text>
+
+    
+    <rect x="790" y="508" width="735" height="66" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="815" y="549" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Rejections by reason</text>
+  </g>
+
+  
+  <g id="tier-2-engine">
+    <rect x="50" y="615" width="1500" height="375" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(75, 632)">
+      <circle cx="24" cy="24" r="10" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 24 4 L 24 10 M 24 38 L 24 44 M 4 24 L 10 24 M 38 24 L 44 24 M 10 10 L 14 14 M 34 34 L 38 38 M 10 38 L 14 34 M 34 14 L 38 10" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="135" y="667" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">EXPLAIN SLIs AT THE ENGINE (Decompose Time &amp; Bottlenecks)</text>
+
+    
+    <rect x="75" y="692" width="690" height="42" rx="8" fill="#207448" />
+    <text x="95" y="722" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Splits latency into queue wait vs prefill vs decode.</text>
+
+    
+    <text x="790" y="722" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">vLLM /metrics breakdown:</text>
+
+    
+    
+    <rect x="75" y="746" width="690" height="46" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="95" y="778" font-family="sans-serif" font-size="24" fill="#303a36">num_requests_waiting (queue time)</text>
+
+    <rect x="790" y="746" width="735" height="46" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="815" y="778" font-family="sans-serif" font-size="24" fill="#303a36">preemptions</text>
+
+    
+    <rect x="75" y="802" width="690" height="46" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="95" y="834" font-family="sans-serif" font-size="24" fill="#303a36">running requests</text>
+
+    <rect x="790" y="802" width="735" height="46" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="815" y="834" font-family="sans-serif" font-size="24" fill="#303a36">TTFT &amp; inter-token histograms</text>
+
+    
+    <rect x="75" y="858" width="690" height="46" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="95" y="890" font-family="sans-serif" font-size="24" fill="#303a36">kv_cache_usage_perc (memory pressure)</text>
+
+    <rect x="790" y="858" width="735" height="46" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5" />
+    <text x="815" y="890" font-family="sans-serif" font-size="24" fill="#303a36">finish reasons</text>
+
+    
+    <rect x="75" y="918" width="1450" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="95" y="952" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Labels kept: model_name, engine, finished_reason</text>
+  </g>
+
+  
+  <g id="tier-3-infra">
+    <rect x="50" y="1015" width="1500" height="395" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(75, 1032)">
+      <rect x="6" y="8" width="36" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="6" y="26" width="36" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="12" cy="14" r="2" fill="#207448" />
+      <circle cx="12" cy="32" r="2" fill="#207448" />
+    </g>
+
+    
+    <text x="135" y="1066" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">CONTEXT &amp; ROOT CAUSE (Infrastructure Health)</text>
+
+    
+    <rect x="75" y="1095" width="460" height="290" rx="10" fill="#ffffff" stroke="#c2d6c6" stroke-width="2" />
+    <text x="95" y="1132" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0" font-weight="bold" fill="#207448">GPU (DCGM exporter,</tspan>
+      <tspan x="95" dy="32" font-weight="bold" fill="#207448">port 9400):</tspan>
+      <tspan x="95" dy="38">memory used,</tspan>
+      <tspan x="95" dy="32">temperature, power,</tspan>
+      <tspan x="95" dy="32">ECC and Xid errors</tspan>
+      <tspan x="95" dy="48" fill="#55605a">(labels: gpu, hostname).</tspan>
+    </text>
+
+    
+    <rect x="570" y="1095" width="460" height="290" rx="10" fill="#ffffff" stroke="#c2d6c6" stroke-width="2" />
+    <text x="590" y="1132" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="590" dy="0" font-weight="bold" fill="#207448">Node (node-exporter):</tspan>
+      <tspan x="590" dy="42">CPU, memory, disk,</tspan>
+      <tspan x="590" dy="34">network, pressure</tspan>
+      <tspan x="590" dy="58" fill="#55605a">(labels: instance).</tspan>
+    </text>
+
+    
+    <rect x="1065" y="1095" width="460" height="290" rx="10" fill="#ffffff" stroke="#c2d6c6" stroke-width="2" />
+    <text x="1085" y="1132" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1085" dy="0" font-weight="bold" fill="#207448">Kubernetes</tspan>
+      <tspan x="1085" dy="32" font-weight="bold" fill="#207448">(kube-state-metrics):</tspan>
+      <tspan x="1085" dy="38">pod phase, restarts,</tspan>
+      <tspan x="1085" dy="32">requests and limits</tspan>
+      <tspan x="1085" dy="48" fill="#55605a">(labels: namespace, pod).</tspan>
+    </text>
+  </g>
+</svg>

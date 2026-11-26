@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>Namespace Testbed for UDP, Traceroute, and MTU Black Hole Lab</title>
+  <desc>A horizontal network topology diagram showing a 3-namespace disposable Linux VM testbed (hA, r, hB) with optional chained router r2, fault injection, and PMTU black hole sequence.</desc>
+
+  <rect width="1600" height="1380" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Namespace Testbed for UDP, Traceroute,</text>
+  <text x="800" y="104" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">and MTU Black Hole Lab</text>
+
+  
+
+  
+  <rect x="40" y="140" width="410" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="64" y="164" width="54" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="64" y1="178" x2="118" y2="178" stroke="#207448" stroke-width="3"/>
+  <circle cx="76" cy="171" r="3" fill="#207448"/>
+  <circle cx="86" cy="171" r="3" fill="#207448"/>
+  
+  <text x="130" y="194" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Namespace &apos;hA&apos;</text>
+  <text x="130" y="226" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(Client Host)</text>
+
+  
+  <rect x="60" y="250" width="370" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="286" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Test Tools</text>
+  <text x="80" y="330" font-family="monospace" font-size="24" fill="#303a36">nc -u</text>
+  <text x="80" y="380" font-family="monospace" font-size="24" fill="#303a36">iperf3 -u -b 100M</text>
+  <text x="100" y="415" font-family="monospace" font-size="24" fill="#303a36">-l 1400</text>
+  <text x="80" y="460" font-family="monospace" font-size="24" fill="#303a36">ping -M do -s 1472</text>
+  <text x="100" y="492" font-family="monospace" font-size="24" fill="#303a36">10.2.0.2</text>
+
+  
+  <rect x="60" y="525" width="370" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="566" font-family="monospace" font-size="24" fill="#303a36">traceroute -n</text>
+
+  
+  <rect x="60" y="605" width="370" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="642" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">veth interface &apos;vA&apos;</text>
+  <text x="80" y="682" font-family="monospace" font-size="24" fill="#303a36">10.1.0.2/24,</text>
+  <text x="80" y="722" font-family="monospace" font-size="24" fill="#303a36">MTU 1500,</text>
+  <text x="80" y="762" font-family="monospace" font-size="24" fill="#303a36">default route</text>
+  <text x="80" y="794" font-family="monospace" font-size="24" fill="#303a36">via 10.1.0.1</text>
+
+  
+  <rect x="475" y="140" width="550" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="515" cy="188" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="497" y1="188" x2="533" y2="188" stroke="#207448" stroke-width="4"/>
+  <line x1="515" y1="170" x2="515" y2="206" stroke="#207448" stroke-width="4"/>
+
+  <text x="555" y="185" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Namespace &apos;r&apos;</text>
+  <text x="555" y="218" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(Router with ip_forward=1)</text>
+
+  
+  <rect x="495" y="240" width="245" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="510" y="275" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Ingress interface &apos;rA&apos;</text>
+  <text x="510" y="315" font-family="monospace" font-size="24" fill="#303a36">10.1.0.1/24,</text>
+  <text x="510" y="355" font-family="monospace" font-size="24" fill="#303a36">MTU 1500</text>
+
+  <rect x="760" y="240" width="245" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="775" y="275" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Egress interface &apos;rB&apos;</text>
+  <text x="775" y="315" font-family="monospace" font-size="24" fill="#303a36">10.2.0.1/24</text>
+  <text x="775" y="355" font-family="sans-serif" font-size="24" fill="#303a36">MTU is stepped down to 1400</text>
+
+  
+  <rect x="495" y="415" width="510" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="530" cy="455" r="20" fill="#207448"/>
+  <text x="530" y="463" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="565" y="462" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Fault Injection: Traffic Shaping &amp; Loss</text>
+  <text x="515" y="508" font-family="monospace" font-size="24" fill="#303a36">tc qdisc tbf rate 50mbit</text>
+  <text x="515" y="542" font-family="monospace" font-size="24" fill="#303a36">latency 50ms and netem loss 1%</text>
+
+  
+  <rect x="495" y="610" width="510" height="200" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="530" cy="650" r="20" fill="#207448"/>
+  <text x="530" y="658" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="565" y="657" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Fault Injection: Drop ICMP Frag Needed</text>
+  <text x="515" y="700" font-family="monospace" font-size="24" fill="#303a36">iptables OUTPUT rule dropping</text>
+  <text x="515" y="738" font-family="monospace" font-size="24" fill="#303a36">icmp --icmp-type</text>
+  <text x="515" y="776" font-family="monospace" font-size="24" fill="#303a36">fragmentation-needed</text>
+
+  
+  <rect x="1045" y="240" width="180" height="470" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6"/>
+  <circle cx="1135" cy="295" r="26" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="4 3"/>
+  <line x1="1117" y1="295" x2="1153" y2="295" stroke="#207448" stroke-width="3"/>
+  <line x1="1135" y1="277" x2="1135" y2="313" stroke="#207448" stroke-width="3"/>
+
+  <text x="1135" y="355" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">optional chained</text>
+  <text x="1135" y="390" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">router &apos;r2&apos;</text>
+  <text x="1135" y="430" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">inserted between</text>
+  <text x="1135" y="465" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">r and hB for</text>
+  <text x="1135" y="500" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">the traceroute</text>
+  <text x="1135" y="535" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">hop test</text>
+
+  
+  <rect x="1245" y="140" width="315" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="1265" y="165" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="1265" y1="179" x2="1313" y2="179" stroke="#207448" stroke-width="3"/>
+  <line x1="1265" y1="193" x2="1313" y2="193" stroke="#207448" stroke-width="3"/>
+  <circle cx="1303" cy="172" r="2" fill="#207448"/>
+  <circle cx="1303" cy="186" r="2" fill="#207448"/>
+  <circle cx="1303" cy="200" r="2" fill="#207448"/>
+
+  <text x="1325" y="192" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Namespace &apos;hB&apos;</text>
+  <text x="1325" y="224" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(Server Host)</text>
+
+  
+  <rect x="1260" y="250" width="285" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1280" y="295" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Services</text>
+  <text x="1280" y="348" font-family="monospace" font-size="24" fill="#303a36">nc -u -l 5000</text>
+  <text x="1280" y="405" font-family="monospace" font-size="24" fill="#303a36">iperf3 -s</text>
+
+  
+  <rect x="1260" y="535" width="285" height="275" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1275" y="575" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">interface &apos;vB&apos;</text>
+  <text x="1275" y="620" font-family="monospace" font-size="24" fill="#303a36">10.2.0.2/24,</text>
+  <text x="1275" y="660" font-family="monospace" font-size="24" fill="#303a36">MTU 1500,</text>
+  <text x="1275" y="700" font-family="monospace" font-size="24" fill="#303a36">default route</text>
+  <text x="1275" y="735" font-family="monospace" font-size="24" fill="#303a36">via 10.2.0.1</text>
+
+  
+  <rect x="40" y="860" width="1520" height="470" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="75" y="910" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">PMTU Black Hole Packet Flow</text>
+
+  
+  <rect x="75" y="940" width="440" height="350" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="100" y="965" width="390" height="50" rx="8" fill="#e8f1ea"/>
+  <text x="115" y="1000" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Step 1: Transmission</text>
+  <text x="100" y="1055" font-family="sans-serif" font-size="24" fill="#303a36">1500-byte IP packet with DF=1</text>
+  <text x="100" y="1095" font-family="sans-serif" font-size="24" fill="#303a36">travels from hA to r,</text>
+  
+  <path d="M 120 1180 L 410 1180" fill="none" stroke="#207448" stroke-width="5"/>
+  <polygon points="410,1168 440,1180 410,1192" fill="#207448"/>
+  <rect x="175" y="1205" width="200" height="40" rx="6" fill="#e8f1ea"/>
+  <text x="190" y="1233" font-family="monospace" font-size="24" fill="#207448">DF=1 [1500B]</text>
+
+  
+  <rect x="545" y="940" width="470" height="350" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <rect x="570" y="965" width="420" height="50" rx="8" fill="#fdf0e2"/>
+  <text x="585" y="1000" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Step 2: Egress Discard</text>
+  <text x="570" y="1055" font-family="sans-serif" font-size="24" fill="#303a36">is discarded at rB because</text>
+  <text x="570" y="1095" font-family="sans-serif" font-size="24" fill="#303a36">MTU is 1400,</text>
+
+  
+  <circle cx="780" cy="1190" r="36" fill="#fdf0e2" stroke="#db8129" stroke-width="4"/>
+  <line x1="760" y1="1170" x2="800" y2="1210" stroke="#db8129" stroke-width="6" stroke-linecap="round"/>
+  <line x1="800" y1="1170" x2="760" y2="1210" stroke="#db8129" stroke-width="6" stroke-linecap="round"/>
+
+  
+  <rect x="1045" y="940" width="485" height="350" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="1070" y="965" width="435" height="50" rx="8" fill="#e8f1ea"/>
+  <text x="1085" y="1000" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Step 3: Silent Hang</text>
+  <text x="1070" y="1055" font-family="sans-serif" font-size="24" fill="#303a36">and when iptables drops the</text>
+  <text x="1070" y="1095" font-family="sans-serif" font-size="24" fill="#303a36">ICMP Type 3 Code 4</text>
+  <text x="1070" y="1135" font-family="sans-serif" font-size="24" fill="#303a36">notification,</text>
+  <text x="1070" y="1185" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">the connection silently hangs.</text>
+
+  
+  <circle cx="1115" cy="1245" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+  <polyline points="1115,1230 1115,1245 1128,1245" fill="none" stroke="#207448" stroke-width="4"/>
+  <text x="1155" y="1254" font-family="monospace" font-size="24" fill="#303a36">TIMEOUT / HANG</text>
+
+</svg>

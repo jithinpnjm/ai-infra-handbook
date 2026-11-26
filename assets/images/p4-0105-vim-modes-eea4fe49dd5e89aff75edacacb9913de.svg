@@ -1,0 +1,334 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Vim Modal Editing State Machine and Key Transitions</title>
+  <desc>State machine diagram showing Vim modes (Normal, Insert, Visual, and Command-Line), keystroke transitions, and the safe editing workflow.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#db8129" />
+    </marker>
+    
+    <filter id="pill-shadow" x="-8%" y="-15%" width="116%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="64" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Vim Modal Editing State Machine and Key Transitions</text>
+
+  
+  <path d="M 430 200 L 516 200" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <rect x="250" y="174" width="170" height="52" rx="26" fill="#db8129" />
+  <text x="335" y="209" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Initial State</text>
+
+  
+  <g id="node-normal">
+    
+    <rect x="530" y="140" width="540" height="550" rx="24" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <rect x="530" y="140" width="540" height="96" rx="24" fill="#e8f1ea" />
+    <rect x="530" y="212" width="540" height="24" fill="#e8f1ea" />
+    <line x1="530" y1="236" x2="1070" y2="236" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(556, 158)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="22" />
+      <line x1="28" y1="6" x2="28" y2="50" />
+      <line x1="6" y1="28" x2="50" y2="28" />
+      <circle cx="28" cy="28" r="7" fill="#207448" />
+    </g>
+
+    
+    <text x="630" y="186" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Normal Mode</text>
+    <text x="630" y="218" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Navigation &amp; Command Execution</text>
+
+    
+    <rect x="554" y="256" width="492" height="410" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4" />
+
+    
+    <g transform="translate(574, 290)">
+      
+      <rect x="0" y="0" width="40" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="20" y="26" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">x</text>
+      <text x="54" y="26" font-family="sans-serif" font-size="24" fill="#303a36">delete char</text>
+
+      
+      <rect x="0" y="58" width="50" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="25" y="84" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">dd</text>
+      <text x="64" y="84" font-family="sans-serif" font-size="24" fill="#303a36">cut line</text>
+
+      
+      <rect x="0" y="116" width="50" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="25" y="142" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">yy</text>
+      <text x="64" y="142" font-family="sans-serif" font-size="24" fill="#303a36">yank line</text>
+
+      
+      <rect x="0" y="174" width="40" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="20" y="200" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">p</text>
+      <text x="54" y="200" font-family="sans-serif" font-size="24" fill="#303a36">paste</text>
+    </g>
+
+    
+    <g transform="translate(800, 290)">
+      
+      <rect x="0" y="0" width="40" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="20" y="26" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">u</text>
+      <text x="54" y="26" font-family="sans-serif" font-size="24" fill="#303a36">undo</text>
+
+      
+      <rect x="0" y="58" width="94" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="47" y="84" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">Ctrl-r</text>
+      <text x="108" y="84" font-family="sans-serif" font-size="24" fill="#303a36">redo</text>
+
+      
+      <rect x="0" y="116" width="90" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="45" y="142" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">/word</text>
+      <text x="104" y="142" font-family="sans-serif" font-size="24" fill="#303a36">search</text>
+
+      
+      <rect x="0" y="174" width="104" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="52" y="200" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">gg / G</text>
+      <text x="118" y="200" font-family="sans-serif" font-size="24" fill="#303a36">top/bottom</text>
+    </g>
+
+    
+    <rect x="574" y="540" width="452" height="106" rx="10" fill="#e8f1ea" />
+    <text x="800" y="574" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Hub for all mode switches.</text>
+    <text x="800" y="608" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Press keystroke to act or enter modes.</text>
+  </g>
+
+  
+  <g id="node-insert">
+    <rect x="1170" y="140" width="390" height="230" rx="24" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <rect x="1170" y="140" width="390" height="88" rx="24" fill="#e8f1ea" />
+    <rect x="1170" y="204" width="390" height="24" fill="#e8f1ea" />
+    <line x1="1170" y1="228" x2="1560" y2="228" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(1194, 156)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="6" y="8" width="44" height="40" rx="6" />
+      <line x1="14" y1="18" x2="20" y2="18" />
+      <line x1="26" y1="18" x2="32" y2="18" />
+      <line x1="38" y1="18" x2="42" y2="18" />
+      <line x1="14" y1="28" x2="22" y2="28" />
+      <line x1="28" y1="28" x2="42" y2="28" />
+      <line x1="18" y1="38" x2="38" y2="38" />
+    </g>
+
+    <text x="1266" y="184" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Insert Mode</text>
+    <text x="1266" y="214" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(Text entry)</text>
+
+    
+    <rect x="1194" y="248" width="342" height="102" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="1365" y="288" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Typed keys are directly</text>
+    <text x="1365" y="324" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">inserted into text buffer</text>
+  </g>
+
+  
+  
+  <path d="M 1070 190 L 1166 190" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <path d="M 1170 320 L 1074 320" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(1120, 142)" filter="url(#pill-shadow)">
+    <rect x="-160" y="-32" width="320" height="52" rx="26" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="0" y="3" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">i</tspan> (insert) or <tspan font-family="monospace" font-weight="bold" fill="#207448">a</tspan> (append)
+    </text>
+  </g>
+
+  
+  <g transform="translate(1120, 320)" filter="url(#pill-shadow)">
+    <rect x="-135" y="-24" width="270" height="48" rx="24" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="0" y="9" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">Esc</tspan> return to Normal
+    </text>
+  </g>
+
+  
+  <g id="node-visual">
+    <rect x="1080" y="470" width="480" height="500" rx="24" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <rect x="1080" y="470" width="480" height="96" rx="24" fill="#e8f1ea" />
+    <rect x="1080" y="542" width="480" height="24" fill="#e8f1ea" />
+    <line x1="1080" y1="566" x2="1560" y2="566" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(1106, 490)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="8" y="8" width="40" height="40" rx="4" stroke-dasharray="6 4" />
+      <rect x="18" y="18" width="20" height="20" fill="#207448" fill-opacity="0.25" />
+    </g>
+
+    <text x="1178" y="518" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Visual Mode</text>
+    <text x="1178" y="550" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(Text selection)</text>
+
+    
+    <rect x="1106" y="586" width="428" height="360" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+
+    <text x="1320" y="626" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Selection Sub-types</text>
+    <text x="1130" y="666" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">v</tspan> : character visual
+    </text>
+    <text x="1130" y="704" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">V</tspan> : line visual
+    </text>
+
+    
+    <rect x="1120" y="730" width="400" height="196" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1320" y="768" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Selection Operations</text>
+    <text x="1320" y="806" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Operations like</text>
+    <text x="1320" y="842" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">'d'</tspan> (delete) or <tspan font-family="monospace" font-weight="bold" fill="#207448">'y'</tspan> (yank)
+    </text>
+    <text x="1320" y="878" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">apply to highlighted selection</text>
+    <text x="1320" y="912" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">and return to Normal Mode.</text>
+  </g>
+
+  
+  
+  <path d="M 1070 480 L 1130 480 L 1130 450 L 1260 450 L 1260 466" fill="none" stroke="#207448" stroke-width="0" />
+  
+  <path d="M 1030 690 L 1030 730 L 1074 730" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 1076 830 L 980 830 L 980 694" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(1040, 706)" filter="url(#pill-shadow)">
+    <rect x="-160" y="-24" width="320" height="48" rx="24" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="0" y="9" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">v</tspan> / <tspan font-family="monospace" font-weight="bold" fill="#207448">V</tspan> (character / line)
+    </text>
+  </g>
+
+  
+  <g transform="translate(1010, 856)" filter="url(#pill-shadow)">
+    <rect x="-135" y="-24" width="270" height="48" rx="24" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="0" y="9" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">Esc</tspan> return to Normal
+    </text>
+  </g>
+
+  
+  <g id="node-command">
+    <rect x="40" y="470" width="600" height="500" rx="24" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <rect x="40" y="470" width="600" height="96" rx="24" fill="#e8f1ea" />
+    <rect x="40" y="542" width="600" height="24" fill="#e8f1ea" />
+    <line x1="40" y1="566" x2="640" y2="566" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(66, 490)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="6" y="8" width="44" height="40" rx="6" />
+      <path d="M 14 22 L 24 28 L 14 34" />
+      <line x1="28" y1="36" x2="40" y2="36" />
+    </g>
+
+    <text x="138" y="518" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Command-Line Mode</text>
+    <text x="138" y="550" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(Ex commands)</text>
+
+    
+    <rect x="64" y="586" width="552" height="360" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+
+    <text x="88" y="626" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Screen-bottom prompt ':' commands:</text>
+
+    
+    <g transform="translate(88, 646)">
+      
+      <rect x="0" y="0" width="60" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="30" y="26" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">:w</text>
+      <text x="74" y="26" font-family="sans-serif" font-size="24" fill="#303a36">save buffer</text>
+
+      
+      <rect x="0" y="48" width="60" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="30" y="74" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">:q</text>
+      <text x="74" y="74" font-family="sans-serif" font-size="24" fill="#303a36">quit</text>
+
+      
+      <rect x="0" y="96" width="76" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="38" y="122" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">:wq</text>
+      <text x="90" y="122" font-family="sans-serif" font-size="24" fill="#303a36">save &amp; quit</text>
+
+      
+      <rect x="0" y="144" width="76" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="38" y="170" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">:q!</text>
+      <text x="90" y="170" font-family="sans-serif" font-size="24" fill="#303a36">force quit (discard changes)</text>
+
+      
+      <rect x="0" y="192" width="200" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="100" y="218" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">:%s/old/new/g</text>
+      <text x="214" y="218" font-family="sans-serif" font-size="24" fill="#303a36">global substitution</text>
+    </g>
+
+    
+    <rect x="88" y="890" width="504" height="42" rx="8" fill="#303a36" />
+    <text x="104" y="920" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">:_</text>
+  </g>
+
+  
+  
+  <path d="M 590 694 L 590 730 L 646 730" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <path d="M 644 830 L 710 830 L 710 694" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(618, 706)" filter="url(#pill-shadow)">
+    <rect x="-80" y="-24" width="160" height="48" rx="24" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="0" y="9" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">:</tspan> prompt
+    </text>
+  </g>
+
+  
+  <g transform="translate(690, 856)" filter="url(#pill-shadow)">
+    <rect x="-160" y="-24" width="320" height="48" rx="24" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="0" y="9" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">Enter</tspan> / <tspan font-family="monospace" font-weight="bold" fill="#207448">Esc</tspan> return
+    </text>
+  </g>
+
+  
+  <g id="safe-editing">
+    <rect x="40" y="1010" width="1520" height="150" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    <text x="70" y="1052" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Safe Editing Workflow:</text>
+
+    
+    
+    <rect x="70" y="1074" width="280" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="210" y="1114" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">cp -a conf conf.bak</text>
+
+    
+    <path d="M 354 1106 L 388 1106" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="394" y="1074" width="240" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="514" y="1114" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">sudoedit config</text>
+
+    
+    <path d="M 638 1106 L 672 1106" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="678" y="1074" width="170" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="763" y="1114" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">diff -u</text>
+
+    
+    <path d="M 852 1106 L 886 1106" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="892" y="1074" width="380" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1082" y="1114" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      syntax check (<tspan font-family="monospace" font-weight="bold" fill="#207448">sshd -t</tspan>)
+    </text>
+
+    
+    <path d="M 1276 1106 L 1310 1106" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="1316" y="1074" width="220" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1426" y="1114" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">reload</text>
+  </g>
+</svg>

@@ -1,0 +1,220 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>Loop register structure and nested variable scoping</title>
+  <desc>Visual explanation of Ansible loop register results data structure and loop_control variable scoping for nested loops.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="108%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="#1b3022" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1480" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Loop register structure and nested variable scoping</text>
+
+  
+  
+  
+  <g id="part-a">
+    
+    <rect x="40" y="95" width="1520" height="665" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    
+    <rect x="40" y="95" width="1520" height="56" rx="16" fill="#e8f1ea" />
+    <rect x="40" y="135" width="1520" height="16" fill="#e8f1ea" />
+    <text x="70" y="134" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Part A (Register in Loops)</text>
+
+    
+    <g transform="translate(68, 175)">
+      <rect width="410" height="305" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      
+      <rect x="24" y="24" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 36 48 L 44 56 L 60 38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="88" y="58" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Task Definition</text>
+
+      <text x="24" y="115" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">task running template on</tspan>
+        <tspan x="24" dy="38" font-family="monospace" font-weight="bold">loop: [chrony, rsyslog,</tspan>
+        <tspan x="48" dy="36" font-family="monospace" font-weight="bold">logrotate]</tspan>
+        <tspan x="24" dy="48">with</tspan>
+        <tspan x="84" dy="0" font-family="monospace" font-weight="bold" fill="#207448">register: cfg_out</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="480" y1="327" x2="528" y2="327" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <g transform="translate(538, 175)">
+      <rect width="455" height="305" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="48" cy="48" r="22" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 48 34 L 48 48 L 58 54" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <text x="84" y="56" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">three sequential execution iterations:</text>
+
+      
+      <g transform="translate(18, 86)">
+        <rect width="419" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+        <circle cx="28" cy="28" r="16" fill="#207448" />
+        <text x="28" y="36" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+        <text x="56" y="36" font-family="monospace" font-size="24" fill="#303a36">iteration 1 (chrony -&gt;</text>
+        <text x="56" y="36" font-family="monospace" font-size="24" fill="#303a36">
+          <tspan x="56" dy="0">iteration 1 (chrony -&gt;</tspan>
+          <tspan font-weight="bold" fill="#207448"> changed: true, rc: 0)</tspan>
+        </text>
+      </g>
+
+      
+      <g transform="translate(18, 154)">
+        <rect width="419" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+        <circle cx="28" cy="28" r="16" fill="#207448" />
+        <text x="28" y="36" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+        <text x="56" y="36" font-family="monospace" font-size="24" fill="#303a36">
+          <tspan x="56" dy="0">iteration 2 (rsyslog -&gt;</tspan>
+          <tspan font-weight="bold" fill="#303a36"> changed: false, rc: 0)</tspan>
+        </text>
+      </g>
+
+      
+      <g transform="translate(18, 222)">
+        <rect width="419" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+        <circle cx="28" cy="28" r="16" fill="#207448" />
+        <text x="28" y="36" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+        <text x="56" y="36" font-family="monospace" font-size="24" fill="#303a36">
+          <tspan x="56" dy="0">iteration 3 (logrotate -&gt;</tspan>
+          <tspan font-weight="bold" fill="#207448"> changed: true, rc: 0)</tspan>
+        </text>
+      </g>
+    </g>
+
+    
+    <line x1="995" y1="327" x2="1042" y2="327" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <g transform="translate(1052, 175)">
+      <rect width="478" height="305" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      
+      <rect x="22" y="22" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 32 36 L 60 36 M 32 46 L 54 46 M 32 56 L 48 56" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <text x="82" y="54" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Registered Structure</text>
+
+      
+      <text x="22" y="106" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="22" dy="0">resulting data structure cfg_out</tspan>
+        <tspan x="22" dy="32">containing top-level key results: [</tspan>
+        <tspan x="30" dy="36" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">{item: 'chrony', changed: true, rc: 0},</tspan>
+        <tspan x="30" dy="34" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">{item: 'rsyslog', changed: false, rc: 0},</tspan>
+        <tspan x="30" dy="34" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">{item: 'logrotate', changed: true, rc: 0}</tspan>
+        <tspan x="22" dy="32" font-family="monospace" font-size="24">]</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(68, 502)">
+      <rect width="1462" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      
+      <path d="M 36 26 L 66 26 L 54 46 L 54 62 L 48 64 L 48 46 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <text x="80" y="50" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Callout annotations show Jinja filters:</text>
+
+      
+      <g transform="translate(30, 75)">
+        <rect width="1402" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+        <text x="24" y="40" font-family="monospace" font-size="24" fill="#303a36">
+          <tspan font-weight="bold">cfg_out.results | map(attribute='rc') yielding [0, 0, 0]</tspan>
+        </text>
+      </g>
+
+      
+      <g transform="translate(30, 148)">
+        <rect width="1402" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+        <text x="24" y="40" font-family="monospace" font-size="24" fill="#303a36">
+          <tspan font-weight="bold">cfg_out.results | selectattr('failed') yielding []</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+
+  
+  
+  
+  <g id="part-b">
+    
+    <rect x="40" y="785" width="1520" height="660" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    
+    <rect x="40" y="785" width="1520" height="56" rx="16" fill="#e8f1ea" />
+    <rect x="40" y="825" width="1520" height="16" fill="#e8f1ea" />
+    <text x="70" y="824" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Part B (Nested Loop Variable Scoping)</text>
+
+    
+    <g transform="translate(68, 865)">
+      <rect width="695" height="550" rx="12" fill="#fff9f5" stroke="#db8129" stroke-width="2.5" />
+      
+      
+      <polygon points="52,32 76,74 28,74" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+      <line x1="52" y1="48" x2="52" y2="58" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <circle cx="52" cy="66" r="3" fill="#db8129" />
+      <text x="92" y="62" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">Variable Collision Trap</text>
+
+      
+      <g transform="translate(24, 96)">
+        <rect width="647" height="426" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+        <text x="24" y="44" font-family="sans-serif" font-size="24" fill="#303a36">
+          <tspan x="24" dy="0" font-weight="bold" fill="#db8129">collision trap where an outer loop over vhosts</tspan>
+          <tspan x="24" dy="38">calls include_tasks with default item,</tspan>
+          <tspan x="24" dy="38">and the included file also loops over</tspan>
+          <tspan x="24" dy="38" font-family="monospace" font-weight="bold">[logs, public_http] with item,</tspan>
+          <tspan x="24" dy="38" font-weight="bold" fill="#db8129">overwriting the outer vhost.</tspan>
+        </text>
+
+        
+        <g transform="translate(24, 230)">
+          <rect width="599" height="170" rx="8" fill="#fef4ec" stroke="#db8129" stroke-width="1" stroke-dasharray="6,4" />
+          <text x="20" y="38" font-family="monospace" font-size="24" fill="#303a36">Outer loop: item = "vhost1"</text>
+          <text x="50" y="76" font-family="monospace" font-size="24" fill="#db8129">└── include_tasks: item = "logs"</text>
+          <line x1="20" y1="102" x2="580" y2="102" stroke="#db8129" stroke-width="2" />
+          <text x="20" y="142" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Result: item was overwritten by inner loop</text>
+        </g>
+      </g>
+    </g>
+
+    
+    <g transform="translate(835, 865)">
+      <rect width="695" height="550" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" />
+      
+      
+      <path d="M 52 30 L 74 38 L 74 56 C 74 68 52 78 52 78 C 52 78 30 68 30 56 L 30 38 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 42 54 L 50 62 L 64 44" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="92" y="62" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Scoped Loop Control Fix</text>
+
+      
+      <g transform="translate(24, 96)">
+        <rect width="647" height="426" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+        <text x="24" y="44" font-family="sans-serif" font-size="24" fill="#303a36">
+          <tspan x="24" dy="0" font-weight="bold" fill="#207448">fix using loop_control: { loop_var: vhost }</tspan>
+          <tspan x="24" dy="38">on the outer loop so outer tasks use</tspan>
+          <tspan x="24" dy="38" font-family="monospace" font-weight="bold" fill="#207448">vhost.domain</tspan>
+          <tspan x="24" dy="38">while inner tasks safely retain item.</tspan>
+        </text>
+
+        
+        <g transform="translate(24, 230)">
+          <rect width="599" height="170" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1" />
+          <text x="20" y="38" font-family="monospace" font-size="24" fill="#207448">Outer loop: vhost = {domain: "example.com"}</text>
+          <text x="50" y="76" font-family="monospace" font-size="24" fill="#303a36">└── include_tasks: item = "logs"</text>
+          <line x1="20" y1="102" x2="580" y2="102" stroke="#207448" stroke-width="2" />
+          <text x="20" y="142" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Result: vhost.domain and item safely coexist</text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

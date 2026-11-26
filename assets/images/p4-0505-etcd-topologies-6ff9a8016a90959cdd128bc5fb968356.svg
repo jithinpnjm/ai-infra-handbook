@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
+  <title>Stacked vs Dedicated etcd Topologies</title>
+  <desc>Visual comparison between stacked colocated etcd and dedicated external etcd deployment topologies for Kubernetes clusters.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1350" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Stacked vs Dedicated etcd Topologies</text>
+
+  
+  
+  
+  <rect x="40" y="90" width="740" height="1220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+
+  
+  <text x="410" y="135" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Stacked (Colocated) etcd</text>
+  <text x="410" y="170" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(recommended for up to 50-200 worker nodes)</text>
+
+  
+  <g transform="translate(70, 200)">
+    <rect width="680" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="24" y="38" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Control Plane Node 1</text>
+    
+    
+    <rect x="24" y="60" width="280" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="164" y="110" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">kube-apiserver</text>
+    <text x="164" y="142" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">process</text>
+
+    
+    <line x1="304" y1="115" x2="376" y2="115" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+    <rect x="275" y="70" width="130" height="30" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1"/>
+    <text x="340" y="92" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">localhost:2379</text>
+
+    
+    <rect x="376" y="60" width="280" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="516" y="105" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">colocated etcd pod</text>
+    <text x="516" y="142" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">managed as a static pod</text>
+  </g>
+
+  
+  <g transform="translate(70, 465)">
+    <rect width="680" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="24" y="38" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Control Plane Node 2</text>
+    
+    
+    <rect x="24" y="60" width="280" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="164" y="110" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">kube-apiserver</text>
+    <text x="164" y="142" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">process</text>
+
+    
+    <line x1="304" y1="115" x2="376" y2="115" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+    <rect x="275" y="70" width="130" height="30" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1"/>
+    <text x="340" y="92" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">localhost:2379</text>
+
+    
+    <rect x="376" y="60" width="280" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="516" y="105" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">colocated etcd pod</text>
+    <text x="516" y="142" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">managed as a static pod</text>
+  </g>
+
+  
+  <g transform="translate(70, 730)">
+    <rect width="680" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="24" y="38" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Control Plane Node 3</text>
+    
+    
+    <rect x="24" y="60" width="280" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="164" y="110" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">kube-apiserver</text>
+    <text x="164" y="142" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">process</text>
+
+    
+    <line x1="304" y1="115" x2="376" y2="115" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+    <rect x="275" y="70" width="130" height="30" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1"/>
+    <text x="340" y="92" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">localhost:2379</text>
+
+    
+    <rect x="376" y="60" width="280" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="516" y="105" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">colocated etcd pod</text>
+    <text x="516" y="142" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">managed as a static pod</text>
+  </g>
+
+  
+  <path d="M 686 320 C 740 320 740 585 686 585" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M 686 585 C 740 585 740 850 686 850" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  
+  
+  <rect x="440" y="985" width="300" height="42" rx="8" fill="#207448"/>
+  <text x="590" y="1014" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">peer port 2380</text>
+
+  
+  <g transform="translate(70, 1045)">
+    <rect width="680" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="24" y="38" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Pros and Cons</text>
+    <text x="24" y="76" font-family="sans-serif" font-size="24" fill="#207448">• lower cost</text>
+    <text x="24" y="112" font-family="sans-serif" font-size="24" fill="#207448">• simple kubeadm setup</text>
+    <text x="24" y="152" font-family="sans-serif" font-size="24" fill="#db8129">• shared CPU, RAM, and disk IO contention</text>
+    <text x="24" y="196" font-family="sans-serif" font-size="24" fill="#303a36">Intra-etcd Raft peer communication across nodes</text>
+  </g>
+
+
+  
+  
+  
+  <rect x="820" y="90" width="740" height="1220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+
+  
+  <text x="1190" y="135" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Dedicated (External) etcd</text>
+  <text x="1190" y="170" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(recommended for over 200 worker nodes and large AI/GPU clusters)</text>
+
+  
+  <g transform="translate(850, 200)">
+    <rect width="680" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="340" y="40" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">load balancer</text>
+  </g>
+
+  
+  <line x1="1190" y1="260" x2="1190" y2="295" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <g transform="translate(850, 295)">
+    <rect width="680" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="340" y="42" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">3-5 stateless Control Plane nodes</text>
+    <text x="340" y="78" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">running kube-apiserver behind a load balancer</text>
+
+    
+    <rect x="30" y="105" width="190" height="95" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="125" y="145" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">kube-</text>
+    <text x="125" y="175" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">apiserver 1</text>
+
+    <rect x="245" y="105" width="190" height="95" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="340" y="145" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">kube-</text>
+    <text x="340" y="175" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">apiserver 2</text>
+
+    <rect x="460" y="105" width="190" height="95" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="145" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">kube-</text>
+    <text x="555" y="175" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">apiserver 3</text>
+  </g>
+
+  
+  <g transform="translate(850, 535)">
+    
+    <line x1="340" y1="0" x2="340" y2="75" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+    <rect x="40" y="18" width="600" height="42" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="340" y="47" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">API servers connect to all etcd endpoints over HTTPS on port 2379</text>
+  </g>
+
+  
+  <g transform="translate(850, 625)">
+    <rect width="680" height="395" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="340" y="40" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">3 or 5 dedicated etcd nodes</text>
+    <text x="340" y="74" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">running on bare-metal or dedicated instances</text>
+    <text x="340" y="106" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">with local NVMe disks</text>
+
+    
+    <rect x="30" y="125" width="190" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="125" y="170" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">etcd 1</text>
+    <text x="125" y="205" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">NVMe</text>
+
+    <rect x="245" y="125" width="190" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="340" y="170" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">etcd 2</text>
+    <text x="340" y="205" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">NVMe</text>
+
+    <rect x="460" y="125" width="190" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="170" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">etcd 3</text>
+    <text x="555" y="205" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">NVMe</text>
+
+    
+    <line x1="220" y1="180" x2="245" y2="180" stroke="#207448" stroke-width="3"/>
+    <line x1="435" y1="180" x2="460" y2="180" stroke="#207448" stroke-width="3"/>
+
+    <text x="340" y="275" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">etcd members communicate over peer port 2380</text>
+    <text x="340" y="315" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">isolated from control plane CPU and memory spikes</text>
+    <text x="340" y="355" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">High-latency cross-region links are marked with a</text>
+    <text x="340" y="382" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">red warning cross</text>
+  </g>
+
+  
+  <g transform="translate(850, 1045)">
+    <rect width="680" height="240" rx="12" fill="#ffffff" stroke="#c92a2a" stroke-width="2"/>
+    
+    <g transform="translate(340, 65)">
+      <circle cx="0" cy="0" r="34" fill="#ffe3e3" stroke="#c92a2a" stroke-width="3"/>
+      <line x1="-16" y1="-16" x2="16" y2="16" stroke="#c92a2a" stroke-width="5" stroke-linecap="round"/>
+      <line x1="16" y1="-16" x2="-16" y2="16" stroke="#c92a2a" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <text x="340" y="145" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#c92a2a">Avoid Cross-Region Latency</text>
+    <text x="340" y="185" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Raft consensus requires low round-trip latency (&lt; 10ms)</text>
+    <text x="340" y="215" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#db8129">Cross-region deployments cause leader election instability</text>
+  </g>
+
+</svg>

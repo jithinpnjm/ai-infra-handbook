@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Field Position Shifts in auth.log Between Valid and Invalid Users</title>
+  <desc>Visual comparison demonstrating how variable token lengths in syslog shift field positions, breaking column-based extraction like awk.</desc>
+
+  <defs>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#207448">Field Position Shifts in auth.log Between Valid and Invalid Users</text>
+  <text x="800" y="96" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">Side-by-side comparison illustrating why counting columns breaks on variable syslog lines.</text>
+
+  
+  <rect x="50" y="135" width="1500" height="245" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 155)">
+    <path d="M 24 4 L 44 12 L 44 26 C 44 38 24 46 24 46 C 24 46 4 38 4 26 L 4 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 14 24 L 21 31 L 34 17" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="135" y="190" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Valid user log line broken into numbered tokens:</text>
+
+  
+  <g font-family="monospace" font-size="24" text-anchor="middle">
+    
+    <rect x="140" y="215" width="125" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="202" y="245" fill="#303a36">[1: Mar]</text>
+
+    
+    <rect x="285" y="215" width="115" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="342" y="245" fill="#303a36">[2: 12]</text>
+
+    
+    <rect x="420" y="215" width="205" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="522" y="245" fill="#303a36">[3: 10:14:02]</text>
+
+    
+    <rect x="645" y="215" width="125" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="707" y="245" fill="#303a36">[4: srv]</text>
+
+    
+    <rect x="790" y="215" width="250" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="915" y="245" fill="#303a36">[5: sshd[1234]:]</text>
+
+    
+    <rect x="1060" y="215" width="175" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1147" y="245" fill="#303a36">[6: Failed]</text>
+
+    
+    <rect x="1255" y="215" width="205" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1357" y="245" fill="#303a36">[7: password]</text>
+  </g>
+
+  
+  <g font-family="monospace" font-size="24" text-anchor="middle">
+    
+    <rect x="142" y="270" width="125" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="204" y="300" fill="#303a36">[8: for]</text>
+
+    
+    <rect x="289" y="270" width="140" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="359" y="300" fill="#303a36">[9: root]</text>
+
+    
+    <rect x="451" y="270" width="155" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="528" y="300" fill="#303a36">[10: from]</text>
+
+    
+    <rect x="628" y="270" width="285" height="44" rx="6" fill="#d8eedc" stroke="#207448" stroke-width="2.5" />
+    <text x="770" y="300" font-weight="bold" fill="#207448">[11: 198.51.100.23]</text>
+
+    
+    <rect x="935" y="270" width="155" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1012" y="300" fill="#303a36">[12: port]</text>
+
+    
+    <rect x="1112" y="270" width="170" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1197" y="300" fill="#303a36">[13: 45120]</text>
+
+    
+    <rect x="1304" y="270" width="155" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1381" y="300" fill="#303a36">[14: ssh2]</text>
+  </g>
+
+  
+  <text x="800" y="352" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#207448">Token $11 correctly holds the IP address 198.51.100.23.</text>
+
+  
+  <rect x="50" y="415" width="1500" height="375" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 435)">
+    <path d="M 24 4 L 44 12 L 44 26 C 44 38 24 46 24 46 C 24 46 4 38 4 26 L 4 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="24" y1="16" x2="24" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <circle cx="24" cy="35" r="2.5" fill="#db8129" />
+  </g>
+  <text x="135" y="470" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Invalid user log line broken into numbered tokens:</text>
+
+  
+  <g font-family="monospace" font-size="24" text-anchor="middle">
+    
+    <rect x="88" y="495" width="125" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="150" y="525" fill="#303a36">[1: Mar]</text>
+
+    
+    <rect x="227" y="495" width="115" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="284" y="525" fill="#303a36">[2: 12]</text>
+
+    
+    <rect x="356" y="495" width="205" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="458" y="525" fill="#303a36">[3: 10:14:05]</text>
+
+    
+    <rect x="575" y="495" width="125" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="637" y="525" fill="#303a36">[4: srv]</text>
+
+    
+    <rect x="714" y="495" width="250" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="839" y="525" fill="#303a36">[5: sshd[1235]:]</text>
+
+    
+    <rect x="978" y="495" width="175" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1065" y="525" fill="#303a36">[6: Failed]</text>
+
+    
+    <rect x="1167" y="495" width="205" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1269" y="525" fill="#303a36">[7: password]</text>
+
+    
+    <rect x="1386" y="495" width="125" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1448" y="525" fill="#303a36">[8: for]</text>
+  </g>
+
+  
+  <g font-family="monospace" font-size="24" text-anchor="middle">
+    
+    <rect x="96" y="550" width="160" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="176" y="580" fill="#303a36">[9: invalid]</text>
+
+    
+    <rect x="272" y="550" width="140" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="342" y="580" fill="#303a36">[10: user]</text>
+
+    
+    <rect x="428" y="550" width="150" height="44" rx="6" fill="#faeae1" stroke="#db8129" stroke-width="2.5" />
+    <text x="503" y="580" font-weight="bold" fill="#db8129">[11: admin]</text>
+
+    
+    <rect x="594" y="550" width="140" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="664" y="580" fill="#303a36">[12: from]</text>
+
+    
+    <rect x="750" y="550" width="275" height="44" rx="6" fill="#d8eedc" stroke="#207448" stroke-width="2.5" />
+    <text x="887" y="580" font-weight="bold" fill="#207448">[13: 198.51.100.23]</text>
+
+    
+    <rect x="1041" y="550" width="140" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1111" y="580" fill="#303a36">[14: port]</text>
+
+    
+    <rect x="1197" y="550" width="150" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1272" y="580" fill="#303a36">[15: 45122]</text>
+
+    
+    <rect x="1363" y="550" width="140" height="44" rx="6" fill="#ffffff" stroke="#b2ccb9" stroke-width="1.5" />
+    <text x="1433" y="580" fill="#303a36">[16: ssh2]</text>
+  </g>
+
+  
+  <circle cx="503" cy="594" r="3.5" fill="#db8129" />
+  <line x1="503" y1="594" x2="503" y2="636" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="160" y="640" width="1280" height="60" rx="10" fill="#faeae1" stroke="#db8129" stroke-width="2" />
+  <text x="800" y="678" font-family="sans-serif" font-size="25" font-weight="bold" text-anchor="middle" fill="#db8129">&apos;awk {print $11}&apos; mistakenly extracting the word &apos;admin&apos; as an IP</text>
+
+  
+  <text x="800" y="745" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">The insertion of &apos;invalid user&apos; shifts token $11 to the username &apos;admin&apos;, while the true IP moves to $13.</text>
+
+  
+  <rect x="50" y="825" width="1500" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 845)">
+    <circle cx="24" cy="14" r="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="24" y1="20" x2="24" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="14" y1="26" x2="34" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M 8 32 C 8 44 40 44 40 32" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="135" y="880" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Solution using delimiter anchoring with sed:</text>
+
+  
+  <rect x="90" y="905" width="1420" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="952" font-family="monospace" font-size="28" font-weight="bold" text-anchor="middle" fill="#207448">&apos;from ([0-9.]+) port&apos;</text>
+  <text x="800" y="995" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">capturing the IP cleanly in group \1 regardless of word count shifts.</text>
+</svg>

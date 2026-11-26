@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>Server-Sent Events streaming with proxy buffering enabled versus disabled in nginx</title>
+  <desc>Comparative visualization of real-time SSE token delivery with nginx proxy buffering on versus off.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1480" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="40" font-weight="bold" fill="#207448">Server-Sent Events streaming with proxy buffering</text>
+  <text x="800" y="98" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">enabled versus disabled in nginx</text>
+  <text x="800" y="138" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Top-to-bottom comparative pipeline illustrating how nginx proxy buffering impacts real-time SSE token delivery.</text>
+
+  
+  <rect x="50" y="165" width="1500" height="495" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="80" y="205" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">Top flow (proxy_buffering on, default):</text>
+
+  
+  <rect x="80" y="225" width="420" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <rect x="110" y="245" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <rect x="122" y="257" width="20" height="20" fill="none" stroke="#207448" stroke-width="2" />
+  <line x1="120" y1="240" x2="120" y2="245" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="132" y1="240" x2="132" y2="245" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="144" y1="240" x2="144" y2="245" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="120" y1="289" x2="120" y2="294" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="132" y1="289" x2="132" y2="294" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="144" y1="289" x2="144" y2="294" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  
+  <text x="110" y="330" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="110" dy="0">vLLM backend produces</tspan>
+    <tspan x="110" dy="32">incremental token chunks</tspan>
+  </text>
+  
+  <rect x="105" y="415" width="370" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1" />
+  <text x="290" y="450" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="290" dy="0">data: token text</tspan>
+    <tspan x="290" dy="30">at 20 tokens/sec</tspan>
+  </text>
+
+  
+  <line x1="500" y1="432" x2="538" y2="432" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="540" y="225" width="460" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <circle cx="585" cy="265" r="18" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="585" cy="265" r="7" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="585" y1="242" x2="585" y2="247" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="585" y1="283" x2="585" y2="288" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="562" y1="265" x2="567" y2="265" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="603" y1="265" x2="608" y2="265" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+
+  <text x="565" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="565" dy="0">Nginx receives small chunks</tspan>
+    <tspan x="565" dy="32">but retains them in an</tspan>
+    <tspan x="565" dy="32">internal memory buffer</tspan>
+  </text>
+  
+  <rect x="565" y="425" width="410" height="45" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1" />
+  <text x="770" y="456" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">proxy_buffer_size 4k</text>
+
+  <text x="565" y="505" font-family="sans-serif" font-size="24" fill="#303a36">A buffer fill meter shows data accumulating</text>
+  
+  
+  <rect x="565" y="525" width="410" height="48" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <rect x="565" y="525" width="102" height="48" fill="#c7decb" />
+  <rect x="667" y="525" width="102" height="48" fill="#a0caa7" />
+  <rect x="769" y="525" width="102" height="48" fill="#75b282" />
+  <rect x="871" y="525" width="104" height="48" rx="0 8 8 0" fill="#207448" />
+  <text x="616" y="557" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">0.5 KB</text>
+  <text x="718" y="557" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">1.5 KB</text>
+  <text x="820" y="557" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">3.2 KB</text>
+  <text x="923" y="557" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4.0 KB</text>
+
+  
+  <line x1="1000" y1="432" x2="1038" y2="432" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="1040" y="225" width="480" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <rect x="1065" y="245" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="1065" y1="258" x2="1113" y2="258" stroke="#207448" stroke-width="2" />
+  <circle cx="1075" cy="252" r="2.5" fill="#207448" />
+  <circle cx="1083" cy="252" r="2.5" fill="#207448" />
+
+  
+  <rect x="1065" y="300" width="430" height="150" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="2" />
+  <text x="1080" y="332" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="1080" dy="0">A timeline next to the client socket</tspan>
+    <tspan x="1080" dy="32">indicates a 6-second blank freeze</tspan>
+    <tspan x="1080" dy="32">where perceived TTFT is severely</tspan>
+    <tspan x="1080" dy="32">elevated.</tspan>
+  </text>
+
+  <text x="1065" y="485" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065" dy="0">Once the 4 KB threshold fills, nginx</tspan>
+    <tspan x="1065" dy="30">flushes the entire block at once, delivering</tspan>
+    <tspan x="1065" dy="30">a burst of 100 tokens all at once and</tspan>
+    <tspan x="1065" dy="30">ruining streaming ergonomics.</tspan>
+  </text>
+
+  
+  <rect x="50" y="685" width="1500" height="470" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="80" y="725" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">Bottom flow (proxy_buffering off; proxy_cache off; grpc_buffer_size 4k;):</text>
+
+  
+  <rect x="80" y="745" width="420" height="390" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <rect x="110" y="765" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <rect x="122" y="777" width="20" height="20" fill="none" stroke="#207448" stroke-width="2" />
+  <line x1="120" y1="760" x2="120" y2="765" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="132" y1="760" x2="132" y2="765" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="144" y1="760" x2="144" y2="765" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="120" y1="809" x2="120" y2="814" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="132" y1="809" x2="132" y2="814" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="144" y1="809" x2="144" y2="814" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+  <text x="110" y="850" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="110" dy="0">vLLM emits token chunk T1.</tspan>
+    <tspan x="110" dy="48">Subsequent tokens T2, T3, T4</tspan>
+    <tspan x="110" dy="32">arrive continuously at steady</tspan>
+    <tspan x="110" dy="32">inter-token intervals (~50 ms).</tspan>
+  </text>
+
+  
+  <rect x="110" y="1020" width="60" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="140" y="1048" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">T1</text>
+  <line x1="175" y1="1040" x2="195" y2="1040" stroke="#207448" stroke-width="2" marker-end="url(#arrowhead)" />
+  <rect x="205" y="1020" width="60" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="235" y="1048" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">T2</text>
+  <line x1="270" y1="1040" x2="290" y2="1040" stroke="#207448" stroke-width="2" marker-end="url(#arrowhead)" />
+  <rect x="300" y="1020" width="60" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="330" y="1048" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">T3</text>
+  <line x1="365" y1="1040" x2="385" y2="1040" stroke="#207448" stroke-width="2" marker-end="url(#arrowhead)" />
+  <rect x="395" y="1020" width="60" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="425" y="1048" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">T4</text>
+
+  
+  <line x1="500" y1="940" x2="538" y2="940" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="540" y="745" width="460" height="390" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <circle cx="585" cy="785" r="18" fill="none" stroke="#207448" stroke-width="3" />
+  <polygon points="576 775, 576 795, 588 785" fill="#207448" />
+  <polygon points="588 775, 588 795, 600 785" fill="#207448" />
+
+  <text x="565" y="855" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="565" dy="0">Nginx bypasses memory buffering</tspan>
+    <tspan x="565" dy="34">and immediately writes chunk T1</tspan>
+    <tspan x="565" dy="34">to the client TCP socket.</tspan>
+  </text>
+  <rect x="565" y="990" width="410" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="770" y="1033" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">0 KB internal buffering</text>
+
+  
+  <line x1="1000" y1="940" x2="1038" y2="940" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="1040" y="745" width="480" height="390" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <rect x="1065" y="765" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="1065" y1="778" x2="1113" y2="778" stroke="#207448" stroke-width="2" />
+  <circle cx="1075" cy="772" r="2.5" fill="#207448" />
+  <circle cx="1083" cy="772" r="2.5" fill="#207448" />
+
+  <text x="1065" y="855" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065" dy="0">Client perceives immediate TTFT</tspan>
+    <tspan x="1065" dy="34">matching backend generation time</tspan>
+    <tspan x="1065" dy="34">(180 ms).</tspan>
+  </text>
+
+  <rect x="1065" y="990" width="430" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1280" y="1033" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Smooth real-time delivery (~50 ms)</text>
+
+  
+  <rect x="50" y="1180" width="1500" height="260" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="80" y="1225" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Callout box highlights necessary directives:</text>
+
+  
+  <rect x="80" y="1255" width="420" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="290" y="1291" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">proxy_buffering off</text>
+
+  <rect x="530" y="1255" width="420" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="740" y="1291" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">proxy_cache off</text>
+
+  <rect x="980" y="1255" width="490" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1225" y="1291" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">proxy_http_version 1.1</text>
+
+  
+  <rect x="80" y="1335" width="760" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="460" y="1371" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">proxy_set_header Connection empty string</text>
+
+  <rect x="870" y="1335" width="600" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1170" y="1371" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">proxy_read_timeout 600s</text>
+</svg>

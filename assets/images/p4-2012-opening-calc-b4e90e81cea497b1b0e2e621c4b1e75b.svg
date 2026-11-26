@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1460" width="1600" height="1460" style="background:#f5f8f5; font-family:system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;">
+  <title>Full Nine-Step Capacity and Cost Calculation Pipeline for Scenario 1</title>
+  <desc>A structured nine-step calculation pipeline across three phases: Memory Budget, Throughput Ceilings, and Fleet Sizing and Economics.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="10" refY="7" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="10" refY="7" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+    <filter id="card-shadow" x="-3%" y="-3%" width="106%" height="108%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#143621" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-size="44" font-weight="bold" fill="#207448">Full Nine-Step Capacity and Cost Calculation Pipeline</text>
+  <text x="800" y="100" text-anchor="middle" font-size="34" font-weight="bold" fill="#303a36">for Scenario 1</text>
+
+  
+  <rect x="50" y="130" width="1500" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="168" font-size="30" font-weight="bold" fill="#207448">(A) Memory Budget</text>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="80" y="190" width="640" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <circle cx="120" cy="228" r="22" fill="#207448"/>
+  <text x="120" y="236" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="156" y="238" font-size="30" font-weight="bold" fill="#303a36">Step 1: Weights</text>
+  
+  <g transform="translate(650, 205)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 10 38 L 46 38"/>
+    <path d="M 28 38 L 28 12"/>
+    <path d="M 14 16 L 42 16"/>
+    <polygon points="14,16 6,30 22,30" stroke-linejoin="round"/>
+    <polygon points="42,16 34,30 50,30" stroke-linejoin="round"/>
+  </g>
+  <text x="104" y="285" font-size="24" fill="#303a36">8.2B params x 2 B = 16.4 GB (BF16)</text>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="80" y="340" width="640" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <circle cx="120" cy="378" r="22" fill="#207448"/>
+  <text x="120" y="386" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="156" y="388" font-size="30" font-weight="bold" fill="#303a36">Step 2: KV per Request</text>
+  
+  <g transform="translate(650, 355)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="10" y="10" width="36" height="32" rx="4"/>
+    <line x1="10" y1="20" x2="46" y2="20"/>
+    <line x1="10" y1="31" x2="46" y2="31"/>
+    <line x1="28" y1="10" x2="28" y2="42"/>
+  </g>
+  <text x="104" y="425" font-size="24" fill="#303a36">2,500 tokens (2,000 prompt + 500 answer)</text>
+  <text x="104" y="455" font-size="24" fill="#303a36">x 147,456 B/tok = 0.36864 GB</text>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="830" y="190" width="690" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <circle cx="875" cy="232" r="22" fill="#207448"/>
+  <text x="875" y="240" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="912" y="242" font-size="30" font-weight="bold" fill="#303a36">Step 3: Fit Ceiling</text>
+  
+  <g transform="translate(1450, 205)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 8 40 A 20 20 0 0 1 48 40"/>
+    <line x1="28" y1="40" x2="40" y2="22"/>
+    <line x1="8" y1="12" x2="48" y2="12"/>
+  </g>
+  <text x="856" y="295" font-size="24" fill="#303a36">(72.0 GB usable - 16.4 GB weights -</text>
+  <text x="856" y="332" font-size="24" fill="#303a36">5.0 GB overhead) = 50.6 GB cache room</text>
+  <text x="856" y="375" font-size="24" fill="#303a36">/ 0.36864 GB = 137 requests max</text>
+
+  
+  <path d="M 720 255 L 826 255" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M 720 405 L 826 405" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="50" y="515" width="1500" height="485" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="552" font-size="30" font-weight="bold" fill="#207448">(B) Throughput Ceilings</text>
+
+  
+  <path d="M 1290 470 L 1290 572" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="1070" y="576" width="450" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <circle cx="1112" cy="615" r="22" fill="#207448"/>
+  <text x="1112" y="623" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1148" y="625" font-size="28" font-weight="bold" fill="#303a36">Step 4: Batch Selection</text>
+  
+  <g transform="translate(1460, 595)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="10" y="10" width="34" height="12" rx="3"/>
+    <rect x="10" y="24" width="34" height="12" rx="3"/>
+    <rect x="10" y="38" width="34" height="12" rx="3"/>
+  </g>
+  <text x="1092" y="675" font-size="24" fill="#303a36">Select batch = 64</text>
+  <text x="1092" y="715" font-size="24" fill="#303a36">(50 percent of 137 ceiling</text>
+  <text x="1092" y="748" font-size="24" fill="#303a36">for burst safety)</text>
+
+  
+  <path d="M 1070 673 L 1024 673" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="525" y="576" width="495" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <circle cx="565" cy="615" r="22" fill="#207448"/>
+  <text x="565" y="623" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  <text x="600" y="625" font-size="28" font-weight="bold" fill="#303a36">Step 5: Decode Rate</text>
+  
+  <g transform="translate(960, 595)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="27" cy="27" r="18"/>
+    <line x1="27" y1="27" x2="38" y2="18"/>
+    <path d="M 15 35 A 14 14 0 0 1 39 35"/>
+  </g>
+  <text x="545" y="670" font-size="24" fill="#303a36">Step time = (16.4 GB + 64 x</text>
+  <text x="545" y="705" font-size="24" fill="#303a36">0.36864 GB) / 3,350 GB/s = 11.94 ms</text>
+  <text x="545" y="745" font-size="24" fill="#303a36">-&gt; 64 / 0.01194 s = 5,361 tokens/s</text>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="525" y="785" width="495" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <circle cx="565" cy="824" r="22" fill="#207448"/>
+  <text x="565" y="832" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+  <text x="600" y="834" font-size="28" font-weight="bold" fill="#303a36">Step 6: Prefill Rate</text>
+  
+  <g transform="translate(960, 804)" stroke="#207448" stroke-width="3" fill="none">
+    <polygon points="28,8 14,28 26,28 22,46 38,24 26,24" stroke-linejoin="round"/>
+  </g>
+  <text x="545" y="878" font-size="24" fill="#303a36">989.5 TFLOPS x 0.40 MFU /</text>
+  <text x="545" y="915" font-size="24" fill="#303a36">(2 x 8.2B) = 24,134 tokens/s</text>
+  <text x="545" y="955" font-size="24" fill="#303a36">-&gt; 2,000 / 24,134 = 0.0829 s</text>
+
+  
+  <path d="M 525 673 L 474 673" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <path d="M 525 882 L 474 882" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="80" y="576" width="390" height="404" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <circle cx="120" cy="615" r="22" fill="#207448"/>
+  <text x="120" y="623" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+  <text x="156" y="625" font-size="28" font-weight="bold" fill="#303a36">Step 7: Per-GPU Rate</text>
+  
+  <g transform="translate(405, 595)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="10" y="10" width="34" height="34" rx="4"/>
+    <circle cx="27" cy="27" r="8"/>
+    <line x1="16" y1="5" x2="16" y2="10"/>
+    <line x1="27" y1="5" x2="27" y2="10"/>
+    <line x1="38" y1="5" x2="38" y2="10"/>
+    <line x1="16" y1="44" x2="16" y2="49"/>
+    <line x1="27" y1="44" x2="27" y2="49"/>
+    <line x1="38" y1="44" x2="38" y2="49"/>
+  </g>
+  <text x="100" y="675" font-size="24" fill="#303a36">Time = 0.0829 s (prefill)</text>
+  <text x="100" y="715" font-size="24" fill="#303a36">+ 500 / 5,361 = 0.0933 s</text>
+  <text x="100" y="755" font-size="24" fill="#303a36">(decode) = 0.1762 s</text>
+  <text x="100" y="820" font-size="24" fill="#303a36">-&gt; 1 / 0.1762</text>
+  <text x="100" y="865" font-size="28" font-weight="bold" fill="#207448">= 5.68 requests/s</text>
+
+  
+  <rect x="50" y="1025" width="1500" height="395" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="1062" font-size="30" font-weight="bold" fill="#207448">(C) Fleet Sizing and Economics</text>
+
+  
+  <path d="M 275 980 L 275 1084" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="80" y="1090" width="670" height="305" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <circle cx="125" cy="1132" r="22" fill="#207448"/>
+  <text x="125" y="1140" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff">8</text>
+  <text x="162" y="1142" font-size="30" font-weight="bold" fill="#303a36">Step 8: Replicas and Spares</text>
+  
+  <g transform="translate(685, 1108)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="10" y="8" width="36" height="12" rx="2"/>
+    <circle cx="16" cy="14" r="2" fill="#207448"/>
+    <rect x="10" y="24" width="36" height="12" rx="2"/>
+    <circle cx="16" cy="30" r="2" fill="#207448"/>
+    <rect x="10" y="40" width="36" height="12" rx="2"/>
+    <circle cx="16" cy="46" r="2" fill="#207448"/>
+  </g>
+  <text x="105" y="1195" font-size="24" fill="#303a36">40 target QPS / (5.68 x 0.90 headroom)</text>
+  <text x="105" y="1238" font-size="24" fill="#303a36">= 7.83 -&gt; 8 active replicas</text>
+  <text x="105" y="1285" font-size="24" fill="#303a36">+ 1 spare (N+1)</text>
+  <text x="105" y="1335" font-size="30" font-weight="bold" fill="#207448">= 9 H100 GPUs</text>
+
+  
+  <path d="M 750 1242 L 814 1242" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="820" y="1090" width="700" height="305" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+  </g>
+  <circle cx="865" cy="1132" r="22" fill="#db8129"/>
+  <text x="865" y="1140" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff">9</text>
+  <text x="902" y="1142" font-size="30" font-weight="bold" fill="#303a36">Step 9: Cost per Million</text>
+  
+  <g transform="translate(1455, 1108)" stroke="#db8129" stroke-width="3" fill="none">
+    <circle cx="28" cy="28" r="20"/>
+    <path d="M 28 16 L 28 40"/>
+    <path d="M 34 22 C 34 18 22 18 22 24 C 22 30 34 28 34 34 C 34 40 22 40 22 36"/>
+  </g>
+  <text x="848" y="1195" font-size="24" fill="#303a36">$4.50 / (2,839 output tok/s x 3,600 s) x 1e6</text>
+  <text x="848" y="1255" font-size="32" font-weight="bold" fill="#db8129">= $0.44 / million output tokens</text>
+  <text x="848" y="1320" font-size="26" font-weight="bold" fill="#303a36">($29,565/month)</text>
+</svg>

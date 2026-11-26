@@ -1,0 +1,211 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Architectural Spectrum: Custom Supercomputer, Commodity HPC Cluster, Beowulf Cluster, and Computing Farm</title>
+  <desc>Visual comparison contrasting four system paradigms across examples, hardware, sourcing, interconnect, tooling, and coupling.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Architectural Spectrum:</text>
+  <text x="800" y="106" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Custom Supercomputer, Commodity HPC Cluster,</text>
+  <text x="800" y="160" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Beowulf Cluster, and Computing Farm</text>
+
+  
+  <rect x="35" y="185" width="365" height="860" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="52" y="200" width="48" height="52" rx="4" />
+    <ellipse cx="76" cy="226" rx="16" ry="7" />
+    <ellipse cx="76" cy="226" rx="7" ry="16" />
+    <circle cx="76" cy="226" r="3" fill="#207448" />
+  </g>
+  <text x="114" y="224" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Custom</text>
+  <text x="114" y="254" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Supercomputer</text>
+  <line x1="50" y1="268" x2="385" y2="268" stroke="#207448" stroke-width="1.5" opacity="0.3" />
+
+  
+  <text x="52" y="296" font-family="sans-serif" font-size="24">
+    <tspan x="52" font-weight="bold" fill="#207448">Examples:</tspan>
+    <tspan x="52" dy="27" fill="#303a36">IBM Blue Gene series,</tspan>
+    <tspan x="52" dy="27" fill="#303a36">NEC SX-Aurora Tsubasa</tspan>
+
+    <tspan x="52" dy="38" font-weight="bold" fill="#207448">Hardware:</tspan>
+    <tspan x="52" dy="27" fill="#303a36">Proprietary compute</tspan>
+    <tspan x="52" dy="27" fill="#303a36">boards, custom chassis,</tspan>
+    <tspan x="52" dy="27" fill="#303a36">single-vendor</tspan>
+    <tspan x="52" dy="27" fill="#303a36">backplanes,</tspan>
+    <tspan x="52" dy="27" fill="#303a36">proprietary specialized</tspan>
+    <tspan x="52" dy="27" fill="#303a36">interconnects</tspan>
+    <tspan x="52" dy="27" fill="#303a36">(e.g., 3D torus)</tspan>
+
+    <tspan x="52" dy="38" font-weight="bold" fill="#207448">Sourcing &amp; Spares:</tspan>
+    <tspan x="52" dy="27" fill="#303a36">Single-vendor lock-in,</tspan>
+    <tspan x="52" dy="27" fill="#303a36">parts cannot be bought</tspan>
+    <tspan x="52" dy="27" fill="#303a36">separately on open</tspan>
+    <tspan x="52" dy="27" fill="#303a36">market, vendor roadmap</tspan>
+    <tspan x="52" dy="27" fill="#303a36">dependency</tspan>
+
+    <tspan x="52" dy="38" font-weight="bold" fill="#207448">Tooling:</tspan>
+    <tspan x="52" dy="27" fill="#303a36">Vendor-specific</tspan>
+    <tspan x="52" dy="27" fill="#303a36">proprietary utilities and</tspan>
+    <tspan x="52" dy="27" fill="#303a36">custom diagnostics</tspan>
+
+    <tspan x="52" dy="38" font-weight="bold" fill="#207448">Coupling:</tspan>
+    <tspan x="52" dy="27" fill="#303a36">Microsecond tightly</tspan>
+    <tspan x="52" dy="27" fill="#303a36">coupled</tspan>
+  </text>
+
+  
+  <rect x="423" y="185" width="365" height="860" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="440" y="202" width="48" height="13" rx="2" />
+    <rect x="440" y="220" width="48" height="13" rx="2" />
+    <rect x="440" y="238" width="48" height="13" rx="2" />
+    <circle cx="448" cy="208.5" r="1.5" fill="#207448" />
+    <circle cx="448" cy="226.5" r="1.5" fill="#207448" />
+    <circle cx="448" cy="244.5" r="1.5" fill="#207448" />
+    <line x1="458" y1="208.5" x2="478" y2="208.5" />
+    <line x1="458" y1="226.5" x2="478" y2="226.5" />
+    <line x1="458" y1="244.5" x2="478" y2="244.5" />
+  </g>
+  <text x="502" y="224" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Commodity HPC /</text>
+  <text x="502" y="254" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">AI Cluster</text>
+  <line x1="438" y1="268" x2="773" y2="268" stroke="#207448" stroke-width="1.5" opacity="0.3" />
+
+  
+  <text x="440" y="296" font-family="sans-serif" font-size="24">
+    <tspan x="440" font-weight="bold" fill="#207448">Examples:</tspan>
+    <tspan x="440" dy="27" fill="#303a36">Modern TOP500 &amp;</tspan>
+    <tspan x="440" dy="27" fill="#303a36">GPU AI Training Clusters</tspan>
+
+    <tspan x="440" dy="38" font-weight="bold" fill="#207448">Hardware:</tspan>
+    <tspan x="440" dy="27" fill="#303a36">Commercial off-the-shelf</tspan>
+    <tspan x="440" dy="27" fill="#303a36">(COTS) standard</tspan>
+    <tspan x="440" dy="27" fill="#303a36">enterprise servers,</tspan>
+    <tspan x="440" dy="27" fill="#303a36">x86/ARM/GPU accelerator</tspan>
+    <tspan x="440" dy="27" fill="#303a36">modules (PCIe/OAM)</tspan>
+
+    <tspan x="440" dy="38" font-weight="bold" fill="#207448">Sourcing &amp; Spares:</tspan>
+    <tspan x="440" dy="27" fill="#303a36">Multi-vendor sourcing,</tspan>
+    <tspan x="440" dy="27" fill="#303a36">standardized components,</tspan>
+    <tspan x="440" dy="27" fill="#303a36">replaceable parts</tspan>
+
+    <tspan x="440" dy="38" font-weight="bold" fill="#207448">Interconnect:</tspan>
+    <tspan x="440" dy="27" fill="#303a36">Off-the-shelf low-latency</tspan>
+    <tspan x="440" dy="27" fill="#303a36">fabrics (InfiniBand,</tspan>
+    <tspan x="440" dy="27" fill="#303a36">RoCEv2, Slingshot)</tspan>
+
+    <tspan x="440" dy="38" font-weight="bold" fill="#207448">Tooling:</tspan>
+    <tspan x="440" dy="27" fill="#303a36">Open tools, Linux, Slurm,</tspan>
+    <tspan x="440" dy="27" fill="#303a36">MPI, NCCL, parallel</tspan>
+    <tspan x="440" dy="27" fill="#303a36">shell scripts</tspan>
+
+    <tspan x="440" dy="38" font-weight="bold" fill="#207448">Coupling:</tspan>
+    <tspan x="440" dy="27" fill="#303a36">Microsecond tightly</tspan>
+    <tspan x="440" dy="27" fill="#303a36">coupled</tspan>
+  </text>
+
+  
+  <rect x="811" y="185" width="365" height="860" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="828" y="203" width="26" height="20" rx="2" />
+    <line x1="841" y1="223" x2="841" y2="230" />
+    <line x1="835" y1="230" x2="847" y2="230" />
+    <rect x="860" y="203" width="16" height="30" rx="2" />
+    <line x1="864" y1="210" x2="872" y2="210" />
+    <circle cx="868" cy="224" r="1.5" fill="#207448" />
+    <path d="M 841 230 v 16 h 27 v -12" />
+  </g>
+  <text x="890" y="224" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Beowulf</text>
+  <text x="890" y="254" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Cluster</text>
+  <line x1="826" y1="268" x2="1161" y2="268" stroke="#207448" stroke-width="1.5" opacity="0.3" />
+
+  
+  <text x="828" y="296" font-family="sans-serif" font-size="24">
+    <tspan x="828" font-weight="bold" fill="#207448">Examples:</tspan>
+    <tspan x="828" dy="27" fill="#303a36">Improvised academic or</tspan>
+    <tspan x="828" dy="27" fill="#303a36">DIY clusters</tspan>
+
+    <tspan x="828" dy="38" font-weight="bold" fill="#207448">Hardware:</tspan>
+    <tspan x="828" dy="27" fill="#303a36">Assembled from</tspan>
+    <tspan x="828" dy="27" fill="#303a36">commodity consumer/office</tspan>
+    <tspan x="828" dy="27" fill="#303a36">PCs</tspan>
+
+    <tspan x="828" dy="38" font-weight="bold" fill="#207448">Sourcing &amp; Spares:</tspan>
+    <tspan x="828" dy="27" fill="#303a36">Budget parts, consumer</tspan>
+    <tspan x="828" dy="27" fill="#303a36">retail channels</tspan>
+
+    <tspan x="828" dy="38" font-weight="bold" fill="#207448">Interconnect:</tspan>
+    <tspan x="828" dy="27" fill="#303a36">Standard commodity</tspan>
+    <tspan x="828" dy="27" fill="#303a36">Ethernet LAN (1G/10G)</tspan>
+    <tspan x="828" dy="27" fill="#303a36">switches without</tspan>
+    <tspan x="828" dy="27" fill="#303a36">specialized RDMA</tspan>
+
+    <tspan x="828" dy="38" font-weight="bold" fill="#207448">Tooling:</tspan>
+    <tspan x="828" dy="27" fill="#303a36">Linux and open-source</tspan>
+    <tspan x="828" dy="27" fill="#303a36">clustering tools</tspan>
+
+    <tspan x="828" dy="38" font-weight="bold" fill="#207448">Coupling:</tspan>
+    <tspan x="828" dy="27" fill="#303a36">Loosely to moderately</tspan>
+    <tspan x="828" dy="27" fill="#303a36">coupled</tspan>
+  </text>
+
+  
+  <rect x="1199" y="185" width="365" height="860" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 1222 225 a 9 9 0 0 1 3 -16 a 13 13 0 0 1 24 -3 a 10 10 0 0 1 12 11 a 8 8 0 0 1 -3 8 z" />
+    <rect x="1221" y="235" width="9" height="9" rx="1" />
+    <rect x="1237" y="235" width="9" height="9" rx="1" />
+    <rect x="1253" y="235" width="9" height="9" rx="1" />
+  </g>
+  <text x="1278" y="224" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Computing</text>
+  <text x="1278" y="254" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Farm</text>
+  <line x1="1214" y1="268" x2="1549" y2="268" stroke="#207448" stroke-width="1.5" opacity="0.3" />
+
+  
+  <text x="1216" y="296" font-family="sans-serif" font-size="24">
+    <tspan x="1216" font-weight="bold" fill="#207448">Examples:</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">Render farms,</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">Parameter sweep workers,</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">SETI@home /</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">Folding@home</tspan>
+
+    <tspan x="1216" dy="38" font-weight="bold" fill="#207448">Hardware:</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">Heterogeneous servers</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">or cloud VMs running</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">independently</tspan>
+
+    <tspan x="1216" dy="38" font-weight="bold" fill="#207448">Sourcing &amp; Spares:</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">Completely flexible,</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">no matching hardware</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">required</tspan>
+
+    <tspan x="1216" dy="38" font-weight="bold" fill="#207448">Interconnect:</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">Standard TCP/IP LAN</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">or WAN</tspan>
+
+    <tspan x="1216" dy="38" font-weight="bold" fill="#207448">Tooling:</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">Central batch dispatcher,</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">independent task pull</tspan>
+
+    <tspan x="1216" dy="38" font-weight="bold" fill="#207448">Coupling:</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">Decoupled</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">(zero inter-node</tspan>
+    <tspan x="1216" dy="27" fill="#303a36">communication)</tspan>
+  </text>
+
+  
+  <rect x="35" y="1060" width="1529" height="122" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <rect x="35" y="1060" width="12" height="122" rx="4" fill="#db8129" />
+  <text x="68" y="1098" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="68" dy="0">Modern AI supercomputers are almost universally Commodity Clusters with high-speed RDMA fabrics and</tspan>
+    <tspan x="68" dy="32">synchronization hardware, offering multi-vendor freedom and open tooling while achieving top capability.</tspan>
+  </text>
+</svg>

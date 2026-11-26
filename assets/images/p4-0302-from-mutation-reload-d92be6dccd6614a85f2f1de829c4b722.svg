@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>Shared references, rebinding versus in-place mutation, and reload staleness</title>
+  <desc>Visual comparison of Python namespace binding, in-place mutation versus rebinding, and module reload staleness mechanics.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#c93b2b" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+
+    
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
+
+  
+  <g id="header-group">
+    <text x="800" y="52" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">
+      Shared references, rebinding versus in-place mutation,
+    </text>
+    <text x="800" y="104" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">
+      and reload staleness
+    </text>
+  </g>
+
+  
+  
+  <rect x="40" y="130" width="1520" height="640" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#shadow)"/>
+  
+  
+  <rect x="70" y="150" width="450" height="46" rx="8" fill="#207448"/>
+  <text x="295" y="182" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    Rebinding vs Mutation
+  </text>
+
+  
+  <rect x="70" y="220" width="400" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="70" y="220" width="400" height="48" rx="12" fill="#d1e3d5"/>
+  <text x="270" y="253" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    share.py module namespace
+  </text>
+  
+  <text x="96" y="315" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">x -&gt; int 1</text>
+  <text x="96" y="375" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">y -&gt; list [1, 2]</text>
+
+  
+  <rect x="70" y="475" width="400" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <text x="270" y="510" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    import share; share.x = 23
+  </text>
+  <text x="270" y="542" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    share.py namespace
+  </text>
+  <path d="M 270 475 L 270 455" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="520" y="220" width="460" height="520" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="520" y="220" width="460" height="48" rx="12" fill="#d1e3d5"/>
+  <text x="750" y="253" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+    heap memory
+  </text>
+
+  
+  <rect x="550" y="285" width="400" height="60" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="750" y="323" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+    share.x remains 1
+  </text>
+
+  
+  <rect x="550" y="370" width="400" height="75" rx="8" fill="#fcf0f0" stroke="#c93b2b" stroke-width="2"/>
+  <text x="750" y="416" font-family="monospace" font-size="25" font-weight="bold" fill="#c93b2b" text-anchor="middle">
+    ['hack', 2]
+  </text>
+
+  
+  <rect x="550" y="470" width="400" height="60" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="750" y="508" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+    str 'hack'
+  </text>
+
+  
+  <rect x="550" y="555" width="400" height="85" rx="8" fill="#ffffff" stroke="#c93b2b" stroke-width="2"/>
+  <text x="750" y="590" font-family="monospace" font-size="24" font-weight="bold" fill="#c93b2b" text-anchor="middle">
+    y[0] = hack
+  </text>
+  <text x="750" y="624" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c93b2b" text-anchor="middle">
+    both namespaces see the change
+  </text>
+
+  
+  <path d="M 540 600 L 480 600" fill="none" stroke="#c93b2b" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-red)"/>
+  <path d="M 960 600 L 1020 600" fill="none" stroke="#c93b2b" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-red)"/>
+
+  
+  <rect x="1030" y="220" width="490" height="520" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="1030" y="220" width="490" height="48" rx="12" fill="#d1e3d5"/>
+  <text x="1275" y="253" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    importer namespace
+  </text>
+
+  <rect x="1055" y="280" width="440" height="50" rx="8" fill="#e8f1ea"/>
+  <text x="1275" y="313" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    'from share import x, y'
+  </text>
+
+  
+  <rect x="1055" y="345" width="440" height="55" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="1075" y="380" font-family="monospace" font-size="24" fill="#303a36">
+    local x points to 1
+  </text>
+
+  <rect x="1055" y="415" width="440" height="55" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="1075" y="450" font-family="monospace" font-size="24" fill="#303a36">
+    local y points to [1, 2]
+  </text>
+
+  
+  <rect x="1055" y="485" width="440" height="85" rx="8" fill="#fff5ec" stroke="#db8129" stroke-width="2"/>
+  <text x="1275" y="520" font-family="monospace" font-size="25" font-weight="bold" fill="#db8129" text-anchor="middle">
+    x = hack
+  </text>
+  <text x="1275" y="553" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    breaks local binding
+  </text>
+
+  
+  <path d="M 1055 528 L 955 500" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+
+  
+  
+  <rect x="40" y="800" width="1520" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#shadow)"/>
+
+  
+  <rect x="70" y="820" width="580" height="46" rx="8" fill="#207448"/>
+  <text x="360" y="852" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    Reload Staleness with changer.py
+  </text>
+
+  
+  
+  <rect x="70" y="885" width="680" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="90" y="897" width="36" height="36" rx="6" fill="#207448"/>
+  <text x="108" y="923" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">v1</text>
+  <text x="140" y="924" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">changer v1</text>
+  <text x="90" y="970" font-family="monospace" font-size="24" fill="#303a36">(message='First version', def printer)</text>
+
+  
+  <rect x="800" y="885" width="720" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="820" y="920" font-family="monospace" font-size="24" fill="#303a36">
+    Importer A runs 'from changer import printer'
+  </text>
+
+  <rect x="800" y="943" width="720" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="820" y="978" font-family="monospace" font-size="24" fill="#303a36">
+    Importer B runs 'import changer'
+  </text>
+
+  
+  <rect x="70" y="1015" width="1450" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="110" cy="1055" r="18" fill="#207448"/>
+  <text x="110" y="1062" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">✎</text>
+  <text x="145" y="1063" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    changer edited to v2 (message='After editing')
+  </text>
+
+  
+  <rect x="70" y="1115" width="1450" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="95" y="1135" width="410" height="70" rx="8" fill="#e8f1ea"/>
+  <text x="300" y="1178" font-family="monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+    'importlib.reload(changer)'
+  </text>
+  <text x="530" y="1178" font-family="sans-serif" font-size="25" fill="#303a36">
+    : changer.__dict__ is overwritten in-place with new code object
+  </text>
+
+  
+  
+  <rect x="70" y="1245" width="690" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="90" y="1265" width="170" height="40" rx="6" fill="#207448"/>
+  <text x="175" y="1292" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">SUCCESS</text>
+  <text x="90" y="1350" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    Importer B calling changer.printer() gets v2
+  </text>
+  <text x="90" y="1395" font-family="sans-serif" font-size="24" fill="#303a36">
+    Qualifying via module retrieves fresh namespace attribute
+  </text>
+
+  
+  <rect x="790" y="1245" width="730" height="185" rx="12" fill="#fff5f5" stroke="#c93b2b" stroke-width="2.5"/>
+  <rect x="815" y="1265" width="220" height="40" rx="6" fill="#c93b2b"/>
+  <text x="925" y="1292" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">STALE REFERENCE</text>
+  
+  <text x="815" y="1345" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c93b2b">
+    Importer A calling printer() still points to orphaned
+  </text>
+  <text x="815" y="1385" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c93b2b">
+    v1 function in heap
+  </text>
+  <rect x="1045" y="1358" width="130" height="34" rx="6" fill="#db8129"/>
+  <text x="1110" y="1382" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">WARNING</text>
+</svg>

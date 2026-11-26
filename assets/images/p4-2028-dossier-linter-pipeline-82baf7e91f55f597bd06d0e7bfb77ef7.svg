@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Architecture and Rule Passes of the Dossier Checker</title>
+  <desc>Flowchart diagram showing how c28_dossier_check.py processes a project dossier across three stages to two distinct exit code outcomes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="60" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Architecture and Rule Passes of the Dossier Checker</text>
+
+  
+  <rect x="60" y="92" width="340" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="230" y="123" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">c28_dossier_check.py</text>
+
+  
+  <g id="input-node">
+    <rect x="50" y="450" width="170" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 115 478 L 145 478 L 160 493 L 160 534 L 115 534 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 145 478 L 145 493 L 160 493" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <line x1="125" y1="506" x2="142" y2="506" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="125" y1="518" x2="150" y2="518" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    <text x="135" y="570" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Input:</text>
+    <text x="135" y="605" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">dossier.md</text>
+  </g>
+
+  
+  <line x1="220" y1="540" x2="268" y2="540" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="stage-1">
+    <rect x="270" y="220" width="230" height="640" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="365" cy="270" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="405" cy="270" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="375" y1="280" x2="415" y2="315" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="395" y1="280" x2="355" y2="315" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    <text x="385" y="360" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">strip_comments()</text>
+
+    
+    <rect x="286" y="390" width="198" height="440" rx="10" fill="#ffffff" stroke="#b4d3be" stroke-width="2" />
+    <text x="385" y="460" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">replaces HTML</text>
+    <text x="385" y="520" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">comments with</text>
+    <text x="385" y="580" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">newline</text>
+    <text x="385" y="640" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">preserving</text>
+    <text x="385" y="700" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">exact line</text>
+    <text x="385" y="760" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">counts</text>
+  </g>
+
+  
+  <line x1="500" y1="540" x2="538" y2="540" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="stage-2">
+    <rect x="540" y="150" width="280" height="830" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="680" cy="190" r="12" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="640" cy="235" r="10" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="720" cy="235" r="10" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="672" y1="200" x2="646" y2="226" stroke="#207448" stroke-width="3" />
+    <line x1="688" y1="200" x2="714" y2="226" stroke="#207448" stroke-width="3" />
+
+    <text x="680" y="275" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Parser:</text>
+    <text x="680" y="308" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Heading &amp; Block AST</text>
+
+    
+    <rect x="556" y="330" width="248" height="625" rx="10" fill="#ffffff" stroke="#b4d3be" stroke-width="2" />
+    <text x="680" y="375" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">splits lines on</text>
+    <text x="680" y="415" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">'##' (SECTIONS:</text>
+    <text x="680" y="455" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Context, My role,</text>
+    <text x="680" y="495" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Constraints,</text>
+    <text x="680" y="535" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Numbers,</text>
+    <text x="680" y="575" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Architecture,</text>
+    <text x="680" y="615" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Decisions,</text>
+    <text x="680" y="655" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Failures, Changes,</text>
+    <text x="680" y="695" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Metrics),</text>
+    <text x="680" y="745" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">'###' (blocks), and</text>
+    <text x="680" y="790" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">bullets</text>
+    <text x="680" y="830" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">('- Label: Value')</text>
+  </g>
+
+  
+  <line x1="820" y1="540" x2="858" y2="540" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="stage-3">
+    <rect x="860" y="150" width="410" height="830" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 1065 170 L 1090 182 L 1090 207 C 1090 225 1065 237 1065 237 C 1065 237 1040 225 1040 207 L 1040 182 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 1054 202 L 1062 210 L 1078 194" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    <text x="1065" y="270" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rules Engine (6 checks)</text>
+
+    
+    <rect x="876" y="295" width="378" height="95" rx="8" fill="#ffffff" stroke="#b4d3be" stroke-width="2" />
+    <text x="1065" y="332" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Missing/Empty Sections</text>
+    <text x="1065" y="367" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(checks 9 required sections)</text>
+
+    
+    <rect x="876" y="405" width="378" height="95" rx="8" fill="#ffffff" stroke="#b4d3be" stroke-width="2" />
+    <text x="1065" y="442" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Placeholder Scanner</text>
+    <text x="1065" y="477" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(regex matches [YOUR...], TODO, TBD)</text>
+
+    
+    <rect x="876" y="515" width="378" height="100" rx="8" fill="#ffffff" stroke="#b4d3be" stroke-width="2" />
+    <text x="1065" y="550" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Numeric Line Count</text>
+    <text x="1065" y="583" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(Numbers &gt;= 3, Metrics &gt;= 2, Failures &gt;= 1)</text>
+
+    
+    <rect x="876" y="630" width="378" height="100" rx="8" fill="#ffffff" stroke="#b4d3be" stroke-width="2" />
+    <text x="1065" y="665" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Decision Block Audit</text>
+    <text x="1065" y="698" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(&gt;= 3 decisions, &gt;= 2 alternatives per decision)</text>
+
+    
+    <rect x="876" y="745" width="378" height="100" rx="8" fill="#ffffff" stroke="#b4d3be" stroke-width="2" />
+    <text x="1065" y="780" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Field Completeness</text>
+    <text x="1065" y="813" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(checks chosen, alternatives, why, cost accepted)</text>
+
+    
+    <rect x="876" y="860" width="378" height="105" rx="8" fill="#ffffff" stroke="#b4d3be" stroke-width="2" />
+    <text x="1065" y="893" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Unquantified Claim Regex</text>
+    <text x="1065" y="924" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(flags 'faster', 'slower', 'massive', 'greatly' if line lacks digits)</text>
+  </g>
+
+  
+  
+  <path d="M 1270 340 L 1318 340" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  <g id="output-clean">
+    <rect x="1320" y="300" width="240" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <text x="1440" y="350" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">summary: clean</text>
+
+    
+    <line x1="1440" y1="380" x2="1440" y2="418" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="1335" y="420" width="210" height="70" rx="10" fill="#207448" />
+    <text x="1440" y="465" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#ffffff">exit code 0</text>
+  </g>
+
+  
+  
+  <path d="M 1270 760 L 1298 760" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  <g id="output-findings">
+    <rect x="1300" y="710" width="260" height="100" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="1430" y="752" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Findings list &amp;</text>
+    <text x="1430" y="787" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">line numbers</text>
+
+    
+    <line x1="1430" y1="810" x2="1430" y2="848" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    <rect x="1325" y="850" width="210" height="70" rx="10" fill="#fef3e9" stroke="#db8129" stroke-width="3" />
+    <text x="1430" y="895" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#db8129">exit code 1</text>
+  </g>
+
+  
+  <rect x="50" y="1030" width="1510" height="65" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="805" y="1072" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">checks structure and completeness, not factual truth</text>
+
+</svg>

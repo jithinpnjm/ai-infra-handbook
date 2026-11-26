@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>Live GPU Job Telemetry and Distributed Bottleneck Triage</title>
+  <desc>Flowchart and decision tree diagram for live GPU job telemetry collection, symptom triage branches, and profiler-based distributed bottleneck remediation.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="108%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#303a36" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1480" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">Live GPU Job Telemetry and Distributed Bottleneck Triage</text>
+
+  
+  
+  <g filter="url(#shadow)">
+    <rect x="60" y="100" width="960" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="60" y="100" width="960" height="60" rx="12" fill="#e8f1ea" />
+    
+    <rect x="80" y="115" width="36" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 88 126 L 94 130 L 88 134 M 98 134 L 106 134" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="130" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">SLURM Step Attachment</text>
+    
+    <rect x="80" y="175" width="920" height="105" rx="6" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="96" y="206" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">srun --jobid=ID -w node nvidia-smi</tspan>
+      <tspan x="96" dy="32">--query-gpu=utilization.gpu,memory.used,memory.total</tspan>
+      <tspan x="96" dy="32">--format=csv,noheader,nounits</tspan>
+    </text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1060" y="100" width="480" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="1060" y="100" width="480" height="60" rx="12" fill="#e8f1ea" />
+    
+    <rect x="1080" y="115" width="36" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1088 127 L 1094 130 L 1088 133 M 1097 133 L 1105 133" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="1130" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Interactive Job Inspection</text>
+    
+    <rect x="1080" y="175" width="440" height="105" rx="6" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="1100" y="235" font-family="monospace" font-size="24" fill="#303a36">srun --jobid=ID nvidia-smi</text>
+  </g>
+
+  
+  <path d="M 540 300 L 540 340 M 1300 300 L 1300 340 M 540 340 L 1300 340" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 290 340 L 290 410" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 800 340 L 800 410" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 1310 340 L 1310 410" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  
+  <rect x="65" y="420" width="450" height="60" rx="30" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="290" y="458" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Condition: utilization.gpu &lt; 50%</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="50" y="500" width="480" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="50" y="500" width="480" height="70" rx="12" fill="#e8f1ea" />
+    
+    <circle cx="85" cy="535" r="18" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 85 523 L 85 535 L 94 535" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="120" y="546" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Straggler / Stalled Rank</text>
+    
+    
+    <rect x="70" y="590" width="440" height="75" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="85" y="622" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">DataLoader starvation</tspan>
+      <tspan x="85" dy="30">(insufficient cpus-per-task)</tspan>
+    </text>
+
+    <rect x="70" y="680" width="440" height="55" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="85" y="716" font-family="sans-serif" font-size="24" fill="#303a36">slow storage I/O</text>
+
+    <rect x="70" y="750" width="440" height="55" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="85" y="786" font-family="sans-serif" font-size="24" fill="#303a36">collective barrier wait</text>
+  </g>
+
+  
+  <rect x="560" y="420" width="480" height="60" rx="30" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="458" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Condition: memory_used / memory_total &gt; 0.95</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="560" y="500" width="480" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="560" y="500" width="480" height="70" rx="12" fill="#e8f1ea" />
+    
+    <rect x="585" y="520" width="30" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="593" y1="514" x2="593" y2="520" stroke="#207448" stroke-width="3" />
+    <line x1="607" y1="514" x2="607" y2="520" stroke="#207448" stroke-width="3" />
+    <line x1="593" y1="550" x2="593" y2="556" stroke="#207448" stroke-width="3" />
+    <line x1="607" y1="550" x2="607" y2="556" stroke="#207448" stroke-width="3" />
+    <text x="630" y="546" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Imminent VRAM OOM</text>
+
+    
+    <rect x="580" y="590" width="440" height="95" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="595" y="626" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="595" dy="0">CUDA caching allocator</tspan>
+      <tspan x="595" dy="34">fragmentation</tspan>
+    </text>
+
+    <rect x="580" y="700" width="440" height="115" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="595" y="736" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="595" dy="0">activation memory spike</tspan>
+      <tspan x="595" dy="34">within 5% of HBM exhaustion</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="1060" y="415" width="500" height="70" rx="35" fill="#fdf3e8" stroke="#db8129" stroke-width="2" />
+  <text x="1310" y="443" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+    <tspan x="1310" dy="0">Condition: utilization.gpu == 100%</tspan>
+    <tspan x="1310" dy="26">but slow step time</tspan>
+  </text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1070" y="500" width="480" height="340" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <rect x="1070" y="500" width="480" height="70" rx="12" fill="#fdf3e8" />
+    
+    <circle cx="1100" cy="535" r="18" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="6 4" />
+    <path d="M 1100 525 L 1100 537 M 1100 543 L 1100 545" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+    <text x="1130" y="546" font-family="sans-serif" font-size="27" font-weight="bold" fill="#db8129">False 100% Compute Illusion</text>
+
+    
+    <rect x="1090" y="590" width="440" height="225" rx="8" fill="#fdf3e8" stroke="#db8129" stroke-width="1.5" />
+    
+    <circle cx="1310" cy="670" r="42" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="14 8" />
+    <path d="M 1310 645 L 1310 670 L 1326 680" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+    <text x="1310" y="760" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">NCCL Busy-Wait Trap</text>
+  </g>
+
+  
+  <path d="M 1310 840 L 1310 900" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  
+  <g filter="url(#shadow)">
+    <rect x="100" y="910" width="1400" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="100" y="910" width="1400" height="60" rx="12" fill="#e8f1ea" />
+    
+    <rect x="125" y="925" width="32" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 132 947 L 139 937 L 145 943 L 151 933" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="175" y="951" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">torch.profiler Instrumentation (5 steps)</text>
+
+    
+    <rect x="125" y="985" width="760" height="50" rx="6" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="140" y="1018" font-family="monospace" font-size="24" fill="#303a36">prof.key_averages().table(sort_by=cuda_time_total)</text>
+
+    
+    <rect x="910" y="985" width="560" height="50" rx="6" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="925" y="1018" font-family="monospace" font-size="24" fill="#303a36">prof.export_chrome_trace(trace.json)</text>
+  </g>
+
+  
+  <path d="M 800 1110 L 800 1150" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  
+  <g filter="url(#shadow)">
+    <rect x="100" y="1160" width="1400" height="130" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+    <rect x="100" y="1160" width="1400" height="130" rx="12" fill="#fdf3e8" fill-opacity="0.5" />
+    
+    <circle cx="140" cy="1225" r="14" fill="none" stroke="#db8129" stroke-width="3" />
+    <circle cx="190" cy="1205" r="8" fill="none" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="190" cy="1245" r="8" fill="none" stroke="#db8129" stroke-width="2.5" />
+    <line x1="154" y1="1220" x2="182" y2="1209" stroke="#db8129" stroke-width="2.5" />
+    <line x1="154" y1="1230" x2="182" y2="1241" stroke="#db8129" stroke-width="2.5" />
+
+    <text x="220" y="1215" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="220" dy="0">ncclAllReduce dominates cuda_time_total -&gt;</tspan>
+      <tspan x="220" dy="36">Inter-Node Communication Bottleneck (NCCL polling loops spinning SMs at 100%)</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 800 1290 L 800 1340" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g filter="url(#shadow)">
+    
+    <rect x="100" y="1350" width="320" height="70" rx="10" fill="#207448" />
+    <text x="260" y="1394" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Increase micro-batch size</text>
+
+    
+    <rect x="460" y="1350" width="310" height="70" rx="10" fill="#207448" />
+    <text x="615" y="1394" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Gradient accumulation</text>
+
+    
+    <rect x="810" y="1350" width="310" height="70" rx="10" fill="#207448" />
+    <text x="965" y="1394" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Overlap comm/compute</text>
+
+    
+    <rect x="1160" y="1350" width="340" height="70" rx="10" fill="#207448" />
+    <text x="1330" y="1394" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">export NCCL_DEBUG=INFO</text>
+  </g>
+</svg>

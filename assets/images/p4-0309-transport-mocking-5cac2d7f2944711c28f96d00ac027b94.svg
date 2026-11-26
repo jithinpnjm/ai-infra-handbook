@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Transport Interception vs Client Method Mocking</title>
+  <desc>Visual comparison contrasting fragile client method mocking against robust hermetic transport interception for testing HTTP clients.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-down" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="60" y="65" font-family="system-ui, sans-serif" font-size="44" font-weight="bold" fill="#207448">Transport Interception vs Client Method Mocking</text>
+
+  
+  <rect x="60" y="100" width="1480" height="350" rx="16" fill="#ffffff" stroke="#c8d8ce" stroke-width="2" />
+  <text x="90" y="142" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Bad/Brittle Mocking</text>
+
+  
+  <rect x="90" y="165" width="150" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="130" cy="205" r="20" fill="#207448" />
+  <text x="130" y="212" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <path d="M 175 190 L 195 190 M 180 190 L 180 205 L 168 225 A 4 4 0 0 0 172 230 L 198 230 A 4 4 0 0 0 202 225 L 190 205 L 190 190" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="165" y="295" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">Test</text>
+
+  
+  <line x1="240" y1="290" x2="570" y2="290" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <rect x="250" y="264" width="310" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="405" y="298" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">calls client.get_json("/x")</text>
+
+  
+  <rect x="570" y="165" width="300" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="610" cy="205" r="20" fill="#207448" />
+  <text x="610" y="212" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <rect x="655" y="185" width="36" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="663" y1="200" x2="683" y2="200" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="663" y1="212" x2="679" y2="212" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="720" y="275" font-family="system-ui, sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">client.py calls</text>
+  <text x="720" y="315" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">httpx.Client.get()</text>
+
+  
+  <line x1="870" y1="290" x2="1100" y2="290" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <rect x="890" y="258" width="190" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="985" y="285" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Mock replaces</text>
+  <text x="985" y="312" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">client.get</text>
+
+  
+  <rect x="1100" y="165" width="410" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1140" cy="205" r="20" fill="#207448" />
+  <text x="1140" y="212" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <circle cx="1195" cy="205" r="18" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="1182" y1="192" x2="1208" y2="218" stroke="#207448" stroke-width="3" />
+  <text x="1305" y="220" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1305" dy="0">skips URL building, header auth,</tspan>
+    <tspan x="1305" dy="30">query serialization, timeout</tspan>
+    <tspan x="1305" dy="30">configuration, and</tspan>
+    <tspan x="1305" dy="30">raise_for_status() handling.</tspan>
+    <tspan x="1305" dy="32" font-weight="bold">Returns dummy dict directly.</tspan>
+  </text>
+
+
+  
+  <rect x="60" y="475" width="1480" height="545" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="90" y="518" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Hermetic Transport Faking with respx / responses</text>
+
+  
+  <rect x="90" y="545" width="150" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="130" cy="585" r="20" fill="#207448" />
+  <text x="130" y="592" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <path d="M 175 570 L 195 570 M 180 570 L 180 585 L 168 605 A 4 4 0 0 0 172 610 L 198 610 A 4 4 0 0 0 202 605 L 190 585 L 190 570" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="165" y="670" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">Test</text>
+
+  
+  <line x1="240" y1="645" x2="570" y2="645" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <rect x="250" y="619" width="310" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="405" y="653" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">calls client.get_json("/x")</text>
+
+  
+  <rect x="570" y="545" width="470" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="610" cy="585" r="20" fill="#207448" />
+  <text x="610" y="592" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <circle cx="670" cy="585" r="16" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 670 563 L 670 569 M 670 601 L 670 607 M 648 585 L 654 585 M 686 585 L 692 585" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="805" y="605" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="805" dy="0" font-weight="bold" fill="#207448">runs full client code: URL construction,</tspan>
+    <tspan x="805" dy="32">query params serialization ('params={"limit": 2}'),</tspan>
+    <tspan x="805" dy="30">header injection, retry logic, error handling</tspan>
+  </text>
+
+  
+  <line x1="1040" y1="645" x2="1140" y2="645" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="1140" y="545" width="370" height="205" rx="12" fill="#fdf6ed" stroke="#db8129" stroke-width="3" />
+  <circle cx="1180" cy="585" r="20" fill="#db8129" />
+  <text x="1180" y="592" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <rect x="1225" y="569" width="36" height="32" rx="4" fill="none" stroke="#db8129" stroke-width="3" />
+  <line x1="1237" y1="569" x2="1237" y2="601" stroke="#db8129" stroke-width="2" />
+  <line x1="1249" y1="569" x2="1249" y2="601" stroke="#db8129" stroke-width="2" />
+  <text x="1335" y="640" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">
+    <tspan x="1335" dy="0">httpx Transport Boundary /</tspan>
+    <tspan x="1335" dy="36" font-family="monospace" font-size="25">BaseTransport</tspan>
+  </text>
+
+  
+  <line x1="1335" y1="750" x2="1335" y2="788" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="1080" y="795" width="430" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1120" cy="835" r="20" fill="#207448" />
+  <text x="1120" y="842" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <path d="M 1165 835 L 1185 835 M 1185 835 L 1201 823 M 1185 835 L 1201 847" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="1205" cy="823" r="3" fill="#207448" />
+  <circle cx="1205" cy="847" r="3" fill="#207448" />
+  <text x="1295" y="890" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1295" dy="0" font-weight="bold" font-size="26" fill="#207448">respx mock router</tspan>
+    <tspan x="1295" dy="34" font-weight="bold">intercepts the HTTP Request</tspan>
+  </text>
+
+  
+  <line x1="1080" y1="895" x2="520" y2="895" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <rect x="545" y="835" width="510" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="865" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0" font-weight="bold" fill="#207448">returns real HTTP Response</tspan>
+    <tspan x="800" dy="30">(status 200, headers, JSON body with</tspan>
+    <tspan x="800" dy="30">items [1, 2] and next_page_token 't')</tspan>
+  </text>
+
+  
+  <rect x="90" y="795" width="420" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="130" cy="835" r="20" fill="#207448" />
+  <text x="130" y="842" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <rect x="175" y="815" width="36" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 183 836 L 191 844 L 204 828" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="300" y="905" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+    client decodes response normally.
+  </text>
+
+
+  
+  <rect x="60" y="1050" width="1480" height="76" rx="12" fill="#207448" />
+  <text x="800" y="1098" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    real client serialisation and parsing code runs end-to-end without touching physical network sockets.
+  </text>
+</svg>

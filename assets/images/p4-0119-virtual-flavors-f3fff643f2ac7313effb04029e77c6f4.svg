@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>Spectrum of Virtualization: Language Environments vs HPC Containers vs Application Containers vs System Containers</title>
+  <desc>Visual comparison of isolation boundaries across Python venv, Enroot/Pyxis HPC containers, Docker/Podman application containers, and LXC/LXD system containers.</desc>
+
+  
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Spectrum of Virtualization: Language Environments vs HPC Containers</text>
+  <text x="800" y="115" text-anchor="middle" font-family="sans-serif" font-size="40" font-weight="bold" fill="#207448">vs Application Containers vs System Containers</text>
+
+  
+  <rect x="35" y="150" width="365" height="1170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(190, 175)">
+    <rect x="-35" y="0" width="70" height="54" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M-22 18 L-10 27 L-22 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="-4" y1="36" x2="18" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="217" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Language-level</text>
+  <text x="217" y="312" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Environment</text>
+  <text x="217" y="348" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(Python venv, conda)</text>
+
+  
+  <rect x="55" y="375" width="325" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="75" y="420" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Execution Box:</text>
+  <text x="75" y="460" font-family="monospace" font-size="24" fill="#303a36">host shell running</text>
+  <text x="75" y="495" font-family="monospace" font-size="24" fill="#303a36">activate script</text>
+
+  
+  <rect x="55" y="570" width="325" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="615" font-family="monospace" font-size="24" fill="#303a36">Changes PATH,</text>
+  <text x="75" y="655" font-family="monospace" font-size="24" fill="#303a36">sys.path, and</text>
+  <text x="75" y="695" font-family="monospace" font-size="24" fill="#303a36">VIRTUAL_ENV.</text>
+
+  <rect x="55" y="740" width="325" height="300" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="785" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">Zero kernel isolation;</tspan>
+    <tspan x="75" dy="38">shares host filesystem,</tspan>
+    <tspan x="75" dy="38">PIDs, network, and</tspan>
+    <tspan x="75" dy="38">real UID.</tspan>
+  </text>
+
+  <rect x="55" y="1060" width="325" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="1105" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">Best for resolving</tspan>
+    <tspan x="75" dy="36">conflicting Python</tspan>
+    <tspan x="75" dy="36">packages on shared</tspan>
+    <tspan x="75" dy="36">developer workstations.</tspan>
+  </text>
+
+
+  
+  <rect x="425" y="150" width="365" height="1170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(580, 175)">
+    <rect x="-35" y="0" width="70" height="22" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="-18" cy="11" r="3" fill="#207448"/>
+    <circle cx="-6" cy="11" r="3" fill="#207448"/>
+    <rect x="-35" y="32" width="70" height="22" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="-18" cy="43" r="3" fill="#207448"/>
+    <circle cx="-6" cy="43" r="3" fill="#207448"/>
+  </g>
+
+  
+  <text x="607" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">HPC Container</text>
+  <text x="607" y="320" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(Enroot + Pyxis)</text>
+
+  
+  <rect x="445" y="375" width="325" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="465" y="415" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="465" dy="0" font-family="monospace">Slurm srun</tspan>
+    <tspan x="465" dy="36" font-family="monospace">--container-image</tspan>
+    <tspan x="465" dy="36">unpacking an OCI</tspan>
+    <tspan x="465" dy="36">image into a</tspan>
+    <tspan x="465" dy="36">squashfs rootfs</tspan>
+    <tspan x="465" dy="36">directory.</tspan>
+  </text>
+
+  
+  <rect x="445" y="655" width="325" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="465" y="700" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="465" dy="0">Uses unprivileged</tspan>
+    <tspan x="465" dy="36">user and mount</tspan>
+    <tspan x="465" dy="36">namespaces without</tspan>
+    <tspan x="465" dy="36">a daemon.</tspan>
+  </text>
+
+  <rect x="445" y="865" width="325" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="465" y="905" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="465" dy="0">Runs as the user's real</tspan>
+    <tspan x="465" dy="34">host UID/GID so shared</tspan>
+    <tspan x="465" dy="34">NFS/Lustre quotas and</tspan>
+    <tspan x="465" dy="34">file permissions</tspan>
+    <tspan x="465" dy="34">remain valid.</tspan>
+  </text>
+
+  <rect x="445" y="1130" width="325" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="465" y="1175" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="465" dy="0">Direct access to host</tspan>
+    <tspan x="465" dy="36">GPU and InfiniBand</tspan>
+    <tspan x="465" dy="36">devices.</tspan>
+  </text>
+
+
+  
+  <rect x="815" y="150" width="365" height="1170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(970, 175)">
+    <rect x="-32" y="0" width="64" height="54" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="-12" y1="0" x2="-12" y2="54" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="0" x2="8" y2="54" stroke="#207448" stroke-width="3"/>
+    <line x1="-32" y1="27" x2="32" y2="27" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <text x="997" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Application Container</text>
+  <text x="997" y="320" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(Docker, Podman)</text>
+
+  
+  <rect x="835" y="375" width="325" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="855" y="415" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="855" dy="0">single entrypoint</tspan>
+    <tspan x="855" dy="36">application process</tspan>
+    <tspan x="855" dy="36">inside full set of</tspan>
+    <tspan x="855" dy="36">namespaces (mnt, pid,</tspan>
+    <tspan x="855" dy="36">net, ipc, uts, cgroup).</tspan>
+  </text>
+
+  
+  <rect x="835" y="675" width="325" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="718" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="855" dy="0">Isolated virtual network</tspan>
+    <tspan x="855" dy="35">via veth pair or pod</tspan>
+    <tspan x="855" dy="35">network; cgroups</tspan>
+    <tspan x="855" dy="35">limit CPU and memory.</tspan>
+  </text>
+
+  <rect x="835" y="910" width="325" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="955" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="855" dy="0">Daemon (dockerd) or</tspan>
+    <tspan x="855" dy="36">daemonless (Podman).</tspan>
+  </text>
+
+  <rect x="835" y="1075" width="325" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="1120" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="855" dy="0">Best for microservices</tspan>
+    <tspan x="855" dy="36">and cloud-native</tspan>
+    <tspan x="855" dy="36">AI inference pods.</tspan>
+  </text>
+
+
+  
+  <rect x="1205" y="150" width="365" height="1170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1360, 175)">
+    <circle cx="0" cy="27" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="0" cy="27" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="-2" x2="0" y2="8" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="46" x2="0" y2="56" stroke="#207448" stroke-width="4"/>
+    <line x1="-29" y1="27" x2="-19" y2="27" stroke="#207448" stroke-width="4"/>
+    <line x1="19" y1="27" x2="29" y2="27" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <text x="1387" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">System Container</text>
+  <text x="1387" y="320" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(LXC, LXD, Incus)</text>
+
+  
+  <rect x="1225" y="375" width="325" height="360" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1245" y="420" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1245" dy="0">full init system</tspan>
+    <tspan x="1245" dy="36">(systemd) as PID 1</tspan>
+    <tspan x="1245" dy="36">running multiple</tspan>
+    <tspan x="1245" dy="36">internal services,</tspan>
+    <tspan x="1245" dy="36">background daemons,</tspan>
+    <tspan x="1245" dy="36">and syslog inside a</tspan>
+    <tspan x="1245" dy="36">single container</tspan>
+    <tspan x="1245" dy="36">boundary.</tspan>
+  </text>
+
+  
+  <rect x="1225" y="755" width="325" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1245" y="805" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1245" dy="0">Feels like a lightweight</tspan>
+    <tspan x="1245" dy="36">VM with deep namespace</tspan>
+    <tspan x="1245" dy="36">isolation, but shares</tspan>
+    <tspan x="1245" dy="36">the host kernel.</tspan>
+  </text>
+
+
+  
+  
+  <rect x="35" y="1345" width="1535" height="120" rx="16" fill="#207448" stroke="#db8129" stroke-width="3"/>
+  <text x="802" y="1395" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#ffffff">
+    <tspan x="802" dy="0">choose Python venv for interpreter isolation, Enroot for multi-node Slurm storage compatibility,</tspan>
+    <tspan x="802" dy="38">Docker/Podman for isolated service delivery, and LXC for multi-service environments.</tspan>
+  </text>
+</svg>

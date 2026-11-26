@@ -1,0 +1,485 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1440" width="1600" height="1440">
+  <title>Rack-level local caching resolver architecture and query routing</title>
+  <desc>Topology and DNS query routing across cluster nodes, site resolver tier with authoritative records and cache, and upstream observability.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-blue" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#1d6fa5" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+
+    
+    <filter id="shadow" x="-3%" y="-2%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1440" fill="#f5f8f5" />
+
+  
+  <g transform="translate(40, 28)">
+    <text x="760" y="44" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448" text-anchor="middle">
+      Rack-level local caching resolver architecture and query routing
+    </text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(40, 95)">
+    
+    <rect width="360" height="1295" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(24, 24)">
+      
+      <rect x="0" y="4" width="46" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="8" y1="18" x2="38" y2="18" stroke="#207448" stroke-width="3" />
+      <line x1="8" y1="32" x2="38" y2="32" stroke="#207448" stroke-width="3" />
+      <circle cx="14" cy="25" r="2.5" fill="#207448" />
+      <circle cx="22" cy="25" r="2.5" fill="#207448" />
+      
+      <text x="60" y="38" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">
+        Cluster Nodes
+      </text>
+    </g>
+
+    
+    <g transform="translate(20, 95)">
+      <rect width="320" height="310" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      
+      <rect x="20" y="20" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="28" y="28" width="24" height="24" rx="2" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="14" y1="28" x2="20" y2="28" stroke="#207448" stroke-width="3" />
+      <line x1="14" y1="36" x2="20" y2="36" stroke="#207448" stroke-width="3" />
+      <line x1="14" y1="44" x2="20" y2="44" stroke="#207448" stroke-width="3" />
+      <line x1="60" y1="28" x2="66" y2="28" stroke="#207448" stroke-width="3" />
+      <line x1="60" y1="36" x2="66" y2="36" stroke="#207448" stroke-width="3" />
+      <line x1="60" y1="44" x2="66" y2="44" stroke="#207448" stroke-width="3" />
+      
+      <text x="74" y="48" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">
+        gpu01 at 10.20.0.45
+      </text>
+
+      
+      <rect x="18" y="80" width="284" height="205" rx="8" fill="#f5f8f5" stroke="#77a287" stroke-width="1.5" />
+      <text x="32" y="118" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">
+        /etc/resolv.conf
+      </text>
+      <text x="32" y="170" font-family="monospace" font-size="24px" fill="#303a36">
+        nameserver 10.20.0.10
+      </text>
+      <text x="32" y="235" font-family="monospace" font-size="24px" fill="#303a36">
+        nameserver 10.20.0.11
+      </text>
+    </g>
+
+    
+    <g transform="translate(20, 440)">
+      <rect width="320" height="310" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      
+      <rect x="20" y="20" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="28" y="28" width="24" height="24" rx="2" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="14" y1="28" x2="20" y2="28" stroke="#207448" stroke-width="3" />
+      <line x1="14" y1="36" x2="20" y2="36" stroke="#207448" stroke-width="3" />
+      <line x1="14" y1="44" x2="20" y2="44" stroke="#207448" stroke-width="3" />
+      <line x1="60" y1="28" x2="66" y2="28" stroke="#207448" stroke-width="3" />
+      <line x1="60" y1="36" x2="66" y2="36" stroke="#207448" stroke-width="3" />
+      <line x1="60" y1="44" x2="66" y2="44" stroke="#207448" stroke-width="3" />
+
+      <text x="74" y="48" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">
+        gpu02 at 10.20.0.46
+      </text>
+
+      
+      <rect x="18" y="80" width="284" height="205" rx="8" fill="#f5f8f5" stroke="#77a287" stroke-width="1.5" />
+      <text x="32" y="118" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">
+        /etc/resolv.conf
+      </text>
+      <text x="32" y="170" font-family="monospace" font-size="24px" fill="#303a36">
+        nameserver 10.20.0.10
+      </text>
+      <text x="32" y="235" font-family="monospace" font-size="24px" fill="#303a36">
+        nameserver 10.20.0.11
+      </text>
+    </g>
+
+    
+    <g transform="translate(20, 785)">
+      <rect width="320" height="480" rx="12" fill="#ffffff" stroke="#77a287" stroke-width="1.5" />
+      <text x="24" y="44" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">
+        Query Routing Policy
+      </text>
+      
+      
+      <rect x="20" y="65" width="280" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1" />
+      <circle cx="42" cy="95" r="14" fill="#207448" />
+      <text x="42" y="103" font-family="sans-serif" font-size="22px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="68" y="96" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Flow 1</text>
+      <text x="24" y="145" font-family="sans-serif" font-size="24px" fill="#303a36">
+        Local Cluster Query
+      </text>
+
+      
+      <rect x="20" y="200" width="280" height="115" rx="8" fill="#ebf3f9" stroke="#1d6fa5" stroke-width="1" />
+      <circle cx="42" cy="230" r="14" fill="#1d6fa5" />
+      <text x="42" y="238" font-family="sans-serif" font-size="22px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="68" y="231" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#1d6fa5">Flow 2</text>
+      <text x="24" y="280" font-family="sans-serif" font-size="24px" fill="#303a36">
+        Cached External Query
+      </text>
+
+      
+      <rect x="20" y="335" width="280" height="115" rx="8" fill="#fcf2e8" stroke="#db8129" stroke-width="1" />
+      <circle cx="42" cy="365" r="14" fill="#db8129" />
+      <text x="42" y="373" font-family="sans-serif" font-size="22px" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <text x="68" y="366" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129">Flow 3</text>
+      <text x="24" y="415" font-family="sans-serif" font-size="24px" fill="#303a36">
+        Cache Miss
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g transform="translate(425, 95)">
+    
+    <rect width="780" height="1295" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(24, 24)">
+      
+      <circle cx="24" cy="24" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 24 4 L 24 10 M 24 38 L 24 44 M 4 24 L 10 24 M 38 24 L 44 24 M 10 10 L 14 14 M 34 34 L 38 38 M 10 38 L 14 34 M 34 14 L 38 10" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      
+      <text x="60" y="36" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">
+        Site/Rack Resolver Tier
+      </text>
+
+      
+      <rect x="420" y="8" width="310" height="38" rx="8" fill="#ffffff" stroke="#77a287" stroke-width="1.5" />
+      <text x="430" y="34" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+        distinct failure domains
+      </text>
+    </g>
+
+    
+    <g transform="translate(20, 85)">
+      <rect width="740" height="970" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#shadow)" />
+      
+      
+      <rect x="0" y="0" width="740" height="64" rx="14" fill="#207448" />
+      <text x="24" y="42" font-family="monospace" font-size="28px" font-weight="bold" fill="#ffffff">
+        Resolver 01 at 10.20.0.10
+      </text>
+      <text x="500" y="42" font-family="monospace" font-size="24px" fill="#e8f1ea">
+        dnsmasq/Unbound
+      </text>
+
+      
+      
+      
+      <g transform="translate(20, 80)">
+        <rect width="700" height="360" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+        
+        
+        <rect x="18" y="16" width="460" height="42" rx="6" fill="#207448" />
+        <text x="32" y="45" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">
+          Block A 'Local Authoritative Records'
+        </text>
+
+        
+        <text x="28" y="100" font-family="monospace" font-size="24px" fill="#303a36">
+          domain=cluster.lab
+        </text>
+        <text x="28" y="145" font-family="monospace" font-size="24px" fill="#303a36">
+          local=/cluster.lab/
+        </text>
+        <text x="28" y="190" font-family="monospace" font-size="24px" fill="#303a36">
+          address=/gpu01.cluster.lab/10.20.0.45
+        </text>
+        <text x="28" y="235" font-family="monospace" font-size="24px" fill="#303a36">
+          host-record=gpu02.cluster.lab,10.20.0.46
+        </text>
+        
+        
+        <text x="28" y="280" font-family="monospace" font-size="24px" fill="#303a36">
+          ptr-record=45.0.20.10.in-addr.arpa,
+        </text>
+        <text x="50" y="315" font-family="monospace" font-size="24px" fill="#303a36">
+          gpu01.cluster.lab
+        </text>
+
+        
+        <rect x="280" y="75" width="405" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <text x="290" y="105" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+          hits Block A directly
+        </text>
+      </g>
+
+      
+      
+      
+      <g transform="translate(20, 460)">
+        <rect width="700" height="235" rx="10" fill="#f5f8f5" stroke="#1d6fa5" stroke-width="2" />
+        
+        
+        <rect x="18" y="16" width="340" height="42" rx="6" fill="#1d6fa5" />
+        <text x="32" y="45" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">
+          Block B 'In-Memory Cache'
+        </text>
+
+        <rect x="380" y="16" width="305" height="42" rx="8" fill="#ebf3f9" stroke="#1d6fa5" stroke-width="1.5" />
+        <text x="390" y="45" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#1d6fa5">
+          hits Block B
+        </text>
+
+        <text x="28" y="105" font-family="sans-serif" font-size="24px" fill="#303a36">
+          storing recent external query answers with remaining TTL
+        </text>
+
+        
+        <rect x="28" y="140" width="644" height="60" rx="8" fill="#ebf3f9" stroke="#1d6fa5" stroke-width="1" />
+        <text x="44" y="178" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#1d6fa5">
+          sub-millisecond cached answer
+        </text>
+      </g>
+
+      
+      
+      
+      <g transform="translate(20, 715)">
+        <rect width="700" height="230" rx="10" fill="#f5f8f5" stroke="#db8129" stroke-width="2" />
+        
+        
+        <rect x="18" y="16" width="380" height="42" rx="6" fill="#db8129" />
+        <text x="32" y="45" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">
+          Block C 'Upstream Forwarder'
+        </text>
+
+        <text x="28" y="100" font-family="monospace" font-size="24px" fill="#303a36">
+          no-resolv
+        </text>
+        <text x="28" y="145" font-family="monospace" font-size="24px" fill="#303a36">
+          server=8.8.8.8
+        </text>
+        <text x="28" y="190" font-family="monospace" font-size="24px" fill="#303a36">
+          cloud VPC resolver 169.254.169.254
+        </text>
+      </g>
+    </g>
+
+    
+    <g transform="translate(20, 1075)">
+      <rect width="740" height="195" rx="14" fill="#ffffff" stroke="#77a287" stroke-width="2" stroke-dasharray="6,4" filter="url(#shadow)" />
+      
+      <rect x="0" y="0" width="740" height="58" rx="14" fill="#77a287" />
+      <text x="24" y="38" font-family="monospace" font-size="28px" font-weight="bold" fill="#ffffff">
+        Resolver 02 at 10.20.0.11
+      </text>
+      <text x="500" y="38" font-family="monospace" font-size="24px" fill="#ffffff">
+        dnsmasq/Unbound
+      </text>
+
+      <text x="28" y="100" font-family="sans-serif" font-size="24px" fill="#303a36">
+        Redundant secondary resolver mirroring Block A, B, and C
+      </text>
+      <text x="28" y="145" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+        Active-active load sharing across distinct failure domains
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g transform="translate(1230, 95)">
+    
+    <rect width="330" height="1295" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(20, 24)">
+      
+      <circle cx="24" cy="24" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+      <ellipse cx="24" cy="24" rx="8" ry="18" fill="none" stroke="#207448" stroke-width="2.5" />
+      <line x1="6" y1="24" x2="42" y2="24" stroke="#207448" stroke-width="2.5" />
+      
+      <text x="54" y="36" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">
+        Upstream &amp;
+      </text>
+      <text x="54" y="68" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">
+        Observability
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 110)">
+      <rect width="298" height="420" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      <text x="20" y="44" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">
+        Upstream resolvers
+      </text>
+
+      <rect x="16" y="70" width="266" height="85" rx="8" fill="#fcf2e8" stroke="#db8129" stroke-width="1.5" />
+      <text x="24" y="105" font-family="monospace" font-size="24px" font-weight="bold" fill="#db8129">
+        8.8.8.8 /
+      </text>
+      <text x="24" y="138" font-family="monospace" font-size="24px" font-weight="bold" fill="#db8129">
+        VPC resolver
+      </text>
+
+      <rect x="16" y="180" width="266" height="215" rx="8" fill="#f5f8f5" stroke="#77a287" stroke-width="1.5" />
+      <text x="24" y="225" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+        answering
+      </text>
+      <text x="24" y="265" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+        uncached queries
+      </text>
+      <text x="24" y="320" font-family="sans-serif" font-size="24px" fill="#303a36">
+        Populates Block B
+      </text>
+      <text x="24" y="360" font-family="sans-serif" font-size="24px" fill="#303a36">
+        cache on return
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 560)">
+      <rect width="298" height="715" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      
+      
+      <rect x="20" y="20" width="38" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="28" y1="42" x2="28" y2="34" stroke="#207448" stroke-width="3" />
+      <line x1="38" y1="42" x2="38" y2="26" stroke="#207448" stroke-width="3" />
+      <line x1="48" y1="42" x2="48" y2="30" stroke="#207448" stroke-width="3" />
+
+      <text x="68" y="46" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">
+        Observability
+      </text>
+
+      <text x="20" y="96" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+        monitoring Resolver
+      </text>
+      <text x="20" y="130" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+        01 and 02 key metrics:
+      </text>
+
+      
+      <g transform="translate(16, 160)">
+        <rect width="266" height="110" rx="8" fill="#f5f8f5" stroke="#77a287" stroke-width="1.5" />
+        <text x="16" y="44" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+          query rate (QPS)
+        </text>
+        <text x="16" y="86" font-family="monospace" font-size="24px" fill="#303a36">
+          24,500 req/s
+        </text>
+      </g>
+
+      
+      <g transform="translate(16, 290)">
+        <rect width="266" height="110" rx="8" fill="#f5f8f5" stroke="#77a287" stroke-width="1.5" />
+        <text x="16" y="44" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+          p99 latency
+        </text>
+        <text x="16" y="86" font-family="monospace" font-size="24px" fill="#303a36">
+          0.42 ms (local)
+        </text>
+      </g>
+
+      
+      <g transform="translate(16, 420)">
+        <rect width="266" height="110" rx="8" fill="#f5f8f5" stroke="#77a287" stroke-width="1.5" />
+        <text x="16" y="44" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+          SERVFAIL ratio
+        </text>
+        <text x="16" y="86" font-family="monospace" font-size="24px" fill="#303a36">
+          0.001 %
+        </text>
+      </g>
+
+      
+      <g transform="translate(16, 550)">
+        <rect width="266" height="130" rx="8" fill="#f5f8f5" stroke="#77a287" stroke-width="1.5" />
+        <text x="16" y="40" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+          cache hit rate
+        </text>
+        <text x="16" y="74" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+          (percentage)
+        </text>
+        <text x="16" y="112" font-family="monospace" font-size="24px" fill="#303a36">
+          98.7 %
+        </text>
+      </g>
+    </g>
+  </g>
+
+  
+  
+  
+
+  
+  
+  
+  <g id="flow-1-routing">
+    
+    <path d="M 380 270 L 465 270" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    
+    
+    <g transform="translate(480, 280)">
+      <rect x="0" y="0" width="620" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+      <text x="18" y="34" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+        Flow 1 'Local Cluster Query' for gpu01.cluster.lab or PTR 45.0.20.10
+      </text>
+      <text x="18" y="68" font-family="sans-serif" font-size="24px" fill="#303a36">
+        answered authoritatively in sub-millisecond (less than 0.5 ms), zero WAN traffic
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g id="flow-2-routing">
+    
+    <path d="M 380 610 L 465 610" fill="none" stroke="#1d6fa5" stroke-width="4" stroke-dasharray="8,4" marker-end="url(#arrow-blue)" />
+    
+    
+    <g transform="translate(480, 615)">
+      <rect x="0" y="0" width="560" height="50" rx="8" fill="#ffffff" stroke="#1d6fa5" stroke-width="2" filter="url(#shadow)" />
+      <text x="18" y="34" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#1d6fa5">
+        Flow 2 'Cached External Query'
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g id="flow-3-routing">
+    
+    
+    <path d="M 1165 920 L 1200 920 L 1200 360 L 1240 360" fill="none" stroke="#db8129" stroke-width="4.5" marker-end="url(#arrow-orange)" />
+    
+    
+    <g transform="translate(480, 955)">
+      <rect x="0" y="0" width="670" height="85" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" filter="url(#shadow)" />
+      <text x="18" y="34" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129">
+        Flow 3 'Cache Miss'
+      </text>
+      <text x="18" y="68" font-family="sans-serif" font-size="24px" fill="#303a36">
+        routed through Block C upstream to Right zone
+      </text>
+    </g>
+  </g>
+
+</svg>

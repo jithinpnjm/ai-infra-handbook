@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Structural Comparison of Hard Links versus Symbolic Links</title>
+  <desc>Comparative architectural diagram illustrating the differences between hard links and symbolic links in UNIX-like filesystems, detailing inode structures, directory table entries, and reference resolution.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-3%" y="-2%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Structural Comparison of Hard Links versus Symbolic Links</text>
+
+  
+  <g transform="translate(40, 85)">
+    
+    <rect width="740" height="1025" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="370" y="48" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Hard Links</text>
+
+    
+    <g transform="translate(30, 75)" filter="url(#shadow)">
+      <rect width="310" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 24 38 L 44 38 L 52 46 L 76 46 L 76 66 L 24 66 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <text x="90" y="58" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Directory table</text>
+      
+      
+      <rect x="20" y="85" width="270" height="48" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="155" y="118" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">a.txt</text>
+
+      
+      <rect x="20" y="145" width="270" height="48" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="155" y="178" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">b.txt</text>
+    </g>
+
+    
+    <g transform="translate(400, 75)" filter="url(#shadow)">
+      <rect width="310" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <rect x="24" y="24" width="46" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 18 36 L 24 36 M 18 50 L 24 50 M 70 36 L 76 36 M 70 50 L 76 50 M 36 18 L 36 24 M 50 18 L 50 24 M 36 70 L 36 76 M 50 70 L 50 76" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <text x="85" y="58" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Inode 7401</text>
+      
+      <text x="24" y="110" font-family="sans-serif" font-size="24" fill="#303a36">Type: regular (-)</text>
+      <text x="24" y="148" font-family="sans-serif" font-size="24" fill="#303a36">Link count: 2</text>
+      <text x="24" y="186" font-family="sans-serif" font-size="24" fill="#303a36">Size: 200 MiB</text>
+    </g>
+
+    
+    <g transform="translate(400, 360)" filter="url(#shadow)">
+      <rect width="310" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 25 36 C 25 30 65 30 65 36 C 65 42 25 42 25 36 Z M 25 36 L 25 60 C 25 66 65 66 65 60 L 65 36" fill="none" stroke="#207448" stroke-width="3" />
+      <text x="80" y="54" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Data block</text>
+      
+      <rect x="20" y="78" width="270" height="52" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="155" y="113" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">hello</text>
+    </g>
+
+    
+    
+    <path d="M 340 184 L 398 184" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <path d="M 340 244 L 370 244 L 370 200 L 398 200" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <path d="M 555 285 L 555 358" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(30, 565)" filter="url(#shadow)">
+      <rect width="680" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="50" cy="48" r="22" fill="#207448" />
+      <text x="50" y="56" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">i</text>
+      <text x="85" y="56" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Unlink Behavior</text>
+
+      <text x="24" y="105" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan font-family="monospace" font-weight="bold">rm a.txt</tspan> deletes directory entry <tspan font-family="monospace" font-weight="bold">a.txt</tspan> and
+      </text>
+      <text x="24" y="142" font-family="sans-serif" font-size="24" fill="#303a36">decrements link count to 1; data blocks remain</text>
+      <text x="24" y="179" font-family="sans-serif" font-size="24" fill="#303a36">
+        intact and accessible via <tspan font-family="monospace" font-weight="bold">b.txt</tspan>.
+      </text>
+    </g>
+
+    
+    <g transform="translate(30, 810)" filter="url(#shadow)">
+      <rect width="680" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 46 28 L 66 36 L 66 54 C 66 66 46 74 46 74 C 46 74 26 66 26 54 L 26 36 Z" fill="none" stroke="#207448" stroke-width="3" />
+      <text x="82" y="58" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Filesystem Boundary</text>
+      
+      <text x="24" y="108" font-family="sans-serif" font-size="24" fill="#303a36">EXDEV error: Hard links cannot cross mount points/</text>
+      <text x="24" y="145" font-family="sans-serif" font-size="24" fill="#303a36">filesystems (e.g. ext4 to tmpfs)</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(820, 85)">
+    
+    <rect width="740" height="1025" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="370" y="48" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Symbolic Links</text>
+
+    
+    <g transform="translate(30, 75)" filter="url(#shadow)">
+      <rect width="310" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 24 38 L 44 38 L 52 46 L 76 46 L 76 66 L 24 66 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <text x="90" y="58" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Directory table</text>
+      
+      
+      <rect x="20" y="105" width="270" height="58" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="155" y="142" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">cuda</text>
+    </g>
+
+    
+    <g transform="translate(400, 75)" filter="url(#shadow)">
+      <rect width="310" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <rect x="24" y="24" width="46" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 18 36 L 24 36 M 18 50 L 24 50 M 70 36 L 76 36 M 70 50 L 76 50 M 36 18 L 36 24 M 50 18 L 50 24 M 36 70 L 36 76 M 50 70 L 50 76" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <text x="85" y="58" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Inode 5520</text>
+      
+      <text x="24" y="110" font-family="sans-serif" font-size="24" fill="#303a36">Type: symbolic link (l)</text>
+      <text x="24" y="148" font-family="sans-serif" font-size="24" fill="#303a36">Link count: 1</text>
+      <text x="24" y="186" font-family="sans-serif" font-size="24" fill="#303a36">Size: 21 bytes</text>
+    </g>
+
+    
+    <g transform="translate(30, 360)" filter="url(#shadow)">
+      <rect width="310" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 24 34 L 44 34 L 52 42 L 76 42 L 76 62 L 24 62 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <text x="90" y="52" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">cuda-12.4</text>
+      
+      <rect x="20" y="78" width="270" height="52" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="155" y="113" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Inode 3105</text>
+    </g>
+
+    
+    <g transform="translate(400, 360)" filter="url(#shadow)">
+      <rect width="310" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 25 36 C 25 30 65 30 65 36 C 65 42 25 42 25 36 Z M 25 36 L 25 60 C 25 66 65 66 65 60 L 65 36" fill="none" stroke="#207448" stroke-width="3" />
+      <text x="80" y="54" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Data block</text>
+      
+      <rect x="14" y="78" width="282" height="52" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="155" y="113" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">/usr/local/cuda-12.4</text>
+    </g>
+
+    
+    
+    <path d="M 340 210 L 398 210" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <path d="M 555 285 L 555 358" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <path d="M 400 445 L 342 445" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+    
+    <g transform="translate(30, 565)" filter="url(#shadow)">
+      <rect width="680" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="50" cy="48" r="22" fill="#207448" />
+      <text x="50" y="56" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">i</text>
+      <text x="85" y="56" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Dangling Link Risk</text>
+
+      <text x="24" y="110" font-family="sans-serif" font-size="24" fill="#303a36">
+        If <tspan font-family="monospace" font-weight="bold">cuda-12.4</tspan> is moved or deleted, <tspan font-family="monospace" font-weight="bold">cuda</tspan> becomes
+      </text>
+      <text x="24" y="152" font-family="sans-serif" font-size="24" fill="#303a36">a dangling link pointing to nowhere.</text>
+    </g>
+
+    
+    <g transform="translate(30, 810)" filter="url(#shadow)">
+      <rect width="680" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 46 26 L 50 38 L 62 42 L 50 46 L 46 58 L 42 46 L 30 42 L 42 38 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <text x="82" y="58" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Extended Capability</text>
+
+      <text x="24" y="108" font-family="sans-serif" font-size="24" fill="#303a36">Symlinks can cross filesystem boundaries</text>
+      <text x="24" y="145" font-family="sans-serif" font-size="24" fill="#303a36">and point to directories.</text>
+    </g>
+  </g>
+</svg>

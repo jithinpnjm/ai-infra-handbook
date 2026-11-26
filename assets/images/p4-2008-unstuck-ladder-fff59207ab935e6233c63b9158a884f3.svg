@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1400" width="1600" height="1400">
+  <title>The five-step recovery protocol when stuck</title>
+  <desc>A systematic five-step escalation ladder for candidates when hitting a mental block during technical interviews, contrasted with silent staring.</desc>
+
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1400" fill="#f5f8f5" />
+
+  
+  <text x="60" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The five-step recovery protocol when stuck</text>
+
+  
+
+  
+  <g id="step1">
+    <rect x="60" y="130" width="980" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="110" cy="175" r="24" fill="#207448" />
+    <text x="110" y="183" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <text x="155" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Shrink the example</text>
+    
+    <g transform="translate(930, 155)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="46" height="46" rx="6" stroke-dasharray="4 3" />
+      <circle cx="15" cy="23" r="5" fill="#207448" />
+      <circle cx="31" cy="23" r="5" fill="#207448" />
+    </g>
+    
+    <text x="155" y="228" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Small 2-element probe: tracing variable states</text>
+    <text x="155" y="258" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">on the screen line by line</text>
+  </g>
+
+  
+  <line x1="550" y1="275" x2="550" y2="315" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <g id="step2">
+    <rect x="60" y="325" width="980" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="110" cy="370" r="24" fill="#207448" />
+    <text x="110" y="378" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <text x="155" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">State brute force</text>
+    
+    <g transform="translate(930, 350)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="23" cy="23" r="18" />
+      <circle cx="23" cy="23" r="9" />
+      <path d="M 23 5 L 23 14 M 41 23 L 32 23" />
+    </g>
+    
+    <text x="155" y="423" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Baseline O(N^2) formulation, naming the cost and</text>
+    <text x="155" y="453" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">identifying the exact recomputed work (e.g. repeated scans)</text>
+  </g>
+
+  
+  <line x1="550" y1="470" x2="550" y2="510" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <g id="step3">
+    <rect x="60" y="520" width="980" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="110" cy="565" r="24" fill="#207448" />
+    <text x="110" y="573" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <text x="155" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Apply structural transforms</text>
+    
+    <g transform="translate(930, 545)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 8 38 L 23 23 L 23 6 M 23 23 L 38 38" />
+      <circle cx="8" cy="38" r="3" fill="#207448" />
+      <circle cx="38" cy="38" r="3" fill="#207448" />
+      <circle cx="23" cy="6" r="3" fill="#207448" />
+    </g>
+    
+    <rect x="110" y="605" width="425" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="130" y="640" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Does sorting remove</text>
+    <text x="130" y="668" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">repeated scanning?</text>
+
+    <rect x="565" y="605" width="435" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="585" y="640" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Does a hash map/set provide</text>
+    <text x="585" y="668" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">O(1) lookups?</text>
+  </g>
+
+  
+  <line x1="550" y1="705" x2="550" y2="745" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <g id="step4">
+    <rect x="60" y="755" width="980" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="110" cy="800" r="24" fill="#207448" />
+    <text x="110" y="808" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <text x="155" y="810" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Relax constraints</text>
+    
+    <g transform="translate(930, 780)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="8" y="18" width="30" height="24" rx="4" />
+      <path d="M 14 18 L 14 12 C 14 6 28 6 28 12" />
+    </g>
+    
+    <text x="155" y="853" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Problem simplification (e.g., assume no negative numbers,</text>
+    <text x="155" y="883" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">assume unique elements, or drop memory limits)</text>
+  </g>
+
+  
+  <line x1="550" y1="900" x2="550" y2="940" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <g id="step5">
+    <rect x="60" y="950" width="980" height="395" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="110" cy="995" r="24" fill="#207448" />
+    <text x="110" y="1003" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <text x="155" y="1005" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Targeted hint or fallback</text>
+
+    
+    <g id="pathA">
+      <rect x="100" y="1035" width="900" height="135" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+      <rect x="120" y="1055" width="88" height="32" rx="6" fill="#db8129" />
+      <text x="164" y="1078" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Path A</text>
+      <text x="225" y="1080" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">Ask targeted hint with context</text>
+      <text x="125" y="1120" font-family="monospace" font-size="24" fill="#303a36">&#39;I have sliding window, but need clarification</text>
+      <text x="125" y="1150" font-family="monospace" font-size="24" fill="#303a36">on when left pointer advances&#39;</text>
+    </g>
+
+    
+    <g id="pathB">
+      <rect x="100" y="1185" width="900" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="120" y="1205" width="88" height="32" rx="6" fill="#207448" />
+      <text x="164" y="1228" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Path B</text>
+      <text x="225" y="1230" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Deliver correct brute force</text>
+      <text x="125" y="1270" font-family="monospace" font-size="24" fill="#303a36">&#39;Linear rollback: working quadratic answer</text>
+      <text x="125" y="1300" font-family="monospace" font-size="24" fill="#303a36">beats half-finished syntax error&#39;</text>
+    </g>
+  </g>
+
+  
+  <g id="sidePanel">
+    <rect x="1080" y="130" width="460" height="1215" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="1115" y="170" width="390" height="510" rx="12" fill="#fdf5f5" stroke="#d97d7d" stroke-width="2" />
+    
+    <g transform="translate(1280, 240)" stroke="#b33939" stroke-width="4" fill="none">
+      <circle cx="30" cy="30" r="26" />
+      <polyline points="30,14 30,30 42,30" />
+      <line x1="8" y1="8" x2="52" y2="52" stroke="#b33939" stroke-width="4" />
+    </g>
+    
+    <text x="1310" y="380" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#b33939">Anti-pattern:</text>
+    <text x="1310" y="440" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#b33939">6 minutes of</text>
+    <text x="1310" y="485" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#b33939">silent staring</text>
+
+    
+    <rect x="1115" y="730" width="390" height="575" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1280, 800)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="12" y="8" width="36" height="28" rx="6" />
+      <path d="M 22 36 L 16 46 L 30 36 Z" fill="#207448" />
+      <path d="M 6 16 C 0 20 0 24 6 28" />
+      <path d="M 54 16 C 60 20 60 24 54 28" />
+    </g>
+    
+    <text x="1310" y="930" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Rubric-aligned:</text>
+    <text x="1310" y="990" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">narrate every step</text>
+    <text x="1310" y="1035" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">of the ladder</text>
+    <text x="1310" y="1080" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">out loud</text>
+  </g>
+</svg>

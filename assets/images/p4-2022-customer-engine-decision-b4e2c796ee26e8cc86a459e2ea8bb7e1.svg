@@ -1,0 +1,221 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1460" width="1600" height="1460">
+  <title>Engine Selection Decision Flowchart</title>
+  <desc>A decision flowchart illustrating how an SRE selects the serving stack among TensorRT-LLM, vLLM, Triton Server, and Ray Serve LLM.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="112%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b3624" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1460" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Engine Selection Decision Flowchart</text>
+
+  
+  <g id="start-node" filter="url(#card-shadow)">
+    <rect x="110" y="96" width="560" height="88" rx="24" fill="#207448" stroke="#185a37" stroke-width="2" />
+    
+    <g transform="translate(136, 114)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="16" r="12" />
+      <path d="M 6 46 C 6 34 16 30 26 30 C 36 30 46 34 46 46" />
+      <path d="M 38 18 L 48 26 L 38 34" stroke-width="2.5" />
+    </g>
+    <text x="390" y="151" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">New Customer Serving Request</text>
+  </g>
+
+  
+  <line x1="390" y1="184" x2="390" y2="228" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="decision-1" filter="url(#card-shadow)">
+    <rect x="50" y="230" width="680" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(362, 246)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,4 52,28 28,52 4,28" fill="#ffffff" />
+      <circle cx="28" cy="28" r="6" fill="#207448" />
+    </g>
+    <text x="390" y="342" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="390" dy="0">Stable large model (e.g., 70B) on NVIDIA</tspan>
+      <tspan x="390" dy="34">GPUs with strict TTFT SLO for 1+ year?</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="730" y1="325" x2="765" y2="325" stroke="#207448" stroke-width="4" />
+  <rect x="765" y="307" width="62" height="36" rx="18" fill="#207448" />
+  <text x="796" y="333" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Yes</text>
+  <line x1="827" y1="325" x2="858" y2="325" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="box-1" filter="url(#card-shadow)">
+    <rect x="860" y="230" width="690" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(886, 250)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="6" fill="#e8f1ea" />
+      <path d="M 4 18 L 10 18 M 4 28 L 10 28 M 4 38 L 10 38" />
+      <path d="M 46 18 L 52 18 M 46 28 L 52 28 M 46 38 L 52 38" />
+      <path d="M 18 4 L 18 10 M 28 4 L 28 10 M 38 4 L 38 10" />
+      <path d="M 18 46 L 18 52 M 28 46 L 28 52 M 38 46 L 38 52" />
+    </g>
+    <text x="956" y="284" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">TensorRT-LLM on TP=8</text>
+    <text x="1205" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1205" dy="0">(Benchmark against vLLM; efficiency gains</tspan>
+      <tspan x="1205" dy="34">justify tight hardware and version coupling)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="390" y1="420" x2="390" y2="444" stroke="#207448" stroke-width="4" />
+  <rect x="360" y="444" width="60" height="34" rx="17" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="390" y="469" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">No</text>
+  <line x1="390" y1="478" x2="390" y2="498" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="decision-2" filter="url(#card-shadow)">
+    <rect x="50" y="500" width="680" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(362, 516)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,4 52,28 28,52 4,28" fill="#ffffff" />
+      <circle cx="28" cy="28" r="6" fill="#207448" />
+    </g>
+    <text x="390" y="612" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="390" dy="0">Fleet of 40+ diverse open models</tspan>
+      <tspan x="390" dy="34">changing frequently across mixed hardware?</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="730" y1="595" x2="765" y2="595" stroke="#207448" stroke-width="4" />
+  <rect x="765" y="577" width="62" height="36" rx="18" fill="#207448" />
+  <text x="796" y="603" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Yes</text>
+  <line x1="827" y1="595" x2="858" y2="595" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="box-2" filter="url(#card-shadow)">
+    <rect x="860" y="500" width="690" height="190" rx="16" fill="#fffbf5" stroke="#db8129" stroke-width="4" />
+    
+    <g transform="translate(886, 520)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="20" fill="#fef4e8" />
+      <path d="M 28 14 L 28 28 L 38 34" />
+      <path d="M 12 28 L 6 28 M 50 28 L 44 28 M 28 12 L 28 6 M 28 50 L 28 44" />
+    </g>
+    <text x="956" y="554" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">vLLM</text>
+    <text x="1205" y="610" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1205" dy="0">(One process per model, paged caching,</tspan>
+      <tspan x="1205" dy="34">fastest path to production)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="390" y1="690" x2="390" y2="714" stroke="#207448" stroke-width="4" />
+  <rect x="360" y="714" width="60" height="34" rx="17" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="390" y="739" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">No</text>
+  <line x1="390" y1="748" x2="390" y2="768" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="decision-3" filter="url(#card-shadow)">
+    <rect x="50" y="770" width="680" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(362, 784)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,4 52,28 28,52 4,28" fill="#ffffff" />
+      <circle cx="28" cy="28" r="6" fill="#207448" />
+    </g>
+    <text x="390" y="865" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="390" dy="0">Mixed workloads including non-LLM models</tspan>
+      <tspan x="390" dy="32">(vision, audio, tabular) needing one</tspan>
+      <tspan x="390" dy="32">metrics and health API?</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="730" y1="865" x2="765" y2="865" stroke="#207448" stroke-width="4" />
+  <rect x="765" y="847" width="62" height="36" rx="18" fill="#207448" />
+  <text x="796" y="873" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Yes</text>
+  <line x1="827" y1="865" x2="858" y2="865" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="box-3" filter="url(#card-shadow)">
+    <rect x="860" y="770" width="690" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(886, 790)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="12" rx="3" fill="#e8f1ea" />
+      <rect x="8" y="24" width="40" height="12" rx="3" fill="#e8f1ea" />
+      <rect x="8" y="40" width="40" height="12" rx="3" fill="#e8f1ea" />
+      <circle cx="16" cy="14" r="2" fill="#207448" />
+      <circle cx="16" cy="30" r="2" fill="#207448" />
+      <circle cx="16" cy="46" r="2" fill="#207448" />
+    </g>
+    <text x="956" y="824" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Triton Server</text>
+    <text x="1205" y="880" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1205" dy="0">(Model repository with dynamic batcher</tspan>
+      <tspan x="1205" dy="34">hosting LLM and non-LLM backends)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="390" y1="960" x2="390" y2="984" stroke="#207448" stroke-width="4" />
+  <rect x="360" y="984" width="60" height="34" rx="17" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="390" y="1009" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">No</text>
+  <line x1="390" y1="1018" x2="390" y2="1038" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="decision-4" filter="url(#card-shadow)">
+    <rect x="50" y="1040" width="680" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(362, 1056)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,4 52,28 28,52 4,28" fill="#ffffff" />
+      <circle cx="28" cy="28" r="6" fill="#207448" />
+    </g>
+    <text x="390" y="1152" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="390" dy="0">Need cluster autoscaling and prefix-aware</tspan>
+      <tspan x="390" dy="34">routing across many engine instances?</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="730" y1="1135" x2="765" y2="1135" stroke="#207448" stroke-width="4" />
+  <rect x="765" y="1117" width="62" height="36" rx="18" fill="#207448" />
+  <text x="796" y="1143" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Yes</text>
+  <line x1="827" y1="1135" x2="858" y2="1135" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="box-4" filter="url(#card-shadow)">
+    <rect x="860" y="1040" width="690" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(886, 1060)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="14" r="8" fill="#e8f1ea" />
+      <circle cx="14" cy="42" r="8" fill="#e8f1ea" />
+      <circle cx="42" cy="42" r="8" fill="#e8f1ea" />
+      <line x1="24" y1="20" x2="18" y2="36" />
+      <line x1="32" y1="20" x2="38" y2="36" />
+      <line x1="22" y1="42" x2="34" y2="42" />
+    </g>
+    <text x="956" y="1120" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="956" dy="0">Ray Serve LLM</tspan>
+      <tspan x="956" dy="40" font-size="24" font-weight="normal" fill="#303a36">orchestrating vLLM or SGLang</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-note" filter="url(#card-shadow)">
+    <rect x="50" y="1275" width="1500" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(80, 1315)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 28 46 M 12 46 L 44 46" />
+      <path d="M 12 16 L 44 16" />
+      <path d="M 12 16 L 6 32 L 18 32 Z" fill="#ffffff" />
+      <path d="M 44 16 L 38 32 L 50 32 Z" fill="#ffffff" />
+    </g>
+    <text x="160" y="1334" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">Decision rule: </tspan>
+      <tspan>Benchmark time to first token, inter-token latency, and goodput on production traffic;</tspan>
+      <tspan x="160" dy="36">count operational overhead, not just raw tokens per second.</tspan>
+    </text>
+  </g>
+</svg>

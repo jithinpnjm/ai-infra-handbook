@@ -1,0 +1,251 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Linux Host Logging Architecture and Data Flow</title>
+  <desc>Visual architecture diagram showing Linux log message generation, collection via systemd-journald, and dispatching via rsyslog.</desc>
+
+  <defs>
+    <marker id="green-arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <filter id="shadow" x="-4%" y="-3%" width="108%" height="108%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#303a36" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Linux Host Logging Architecture and Data Flow</text>
+
+  
+  <rect x="40" y="90" width="340" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="210" y="122" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">Log Sources</text>
+
+  <rect x="450" y="90" width="390" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="645" y="122" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">Collector: systemd-journald</text>
+
+  <rect x="1200" y="90" width="340" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1370" y="122" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">Legacy &amp; Network Dispatch</text>
+
+  
+  
+  <g filter="url(#shadow)">
+    <rect x="40" y="155" width="340" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="65" y="175" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="77" y1="167" x2="77" y2="175" stroke="#207448" stroke-width="4"/>
+    <line x1="97" y1="167" x2="97" y2="175" stroke="#207448" stroke-width="4"/>
+    <line x1="77" y1="219" x2="77" y2="227" stroke="#207448" stroke-width="4"/>
+    <line x1="97" y1="219" x2="97" y2="227" stroke="#207448" stroke-width="4"/>
+    <line x1="57" y1="187" x2="65" y2="187" stroke="#207448" stroke-width="4"/>
+    <line x1="57" y1="207" x2="65" y2="207" stroke="#207448" stroke-width="4"/>
+    <line x1="109" y1="187" x2="117" y2="187" stroke="#207448" stroke-width="4"/>
+    <line x1="109" y1="207" x2="117" y2="207" stroke="#207448" stroke-width="4"/>
+    <text x="125" y="207" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Kernel Messages</text>
+    
+    <text x="65" y="258" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">(/dev/kmsg,</tspan>
+      <tspan x="65" dy="34">ring buffer, drivers,</tspan>
+      <tspan x="65" dy="34">OOM kills)</tspan>
+    </text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="40" y="415" width="340" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="87" cy="447" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="87" y1="423" x2="87" y2="431" stroke="#207448" stroke-width="4"/>
+    <line x1="87" y1="463" x2="87" y2="471" stroke="#207448" stroke-width="4"/>
+    <line x1="63" y1="447" x2="71" y2="447" stroke="#207448" stroke-width="4"/>
+    <line x1="103" y1="447" x2="111" y2="447" stroke="#207448" stroke-width="4"/>
+    <text x="125" y="457" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Systemd Services</text>
+    
+    <text x="65" y="515" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">(stdout and stderr</tspan>
+      <tspan x="65" dy="34">captured directly</tspan>
+      <tspan x="65" dy="34">by systemd)</tspan>
+    </text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="40" y="680" width="340" height="430" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="65" y="705" width="46" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="65" y1="719" x2="111" y2="719" stroke="#207448" stroke-width="2"/>
+    <circle cx="75" cy="712" r="2" fill="#207448"/>
+    <circle cx="83" cy="712" r="2" fill="#207448"/>
+    <text x="125" y="722" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="125" dy="0">Applications and</tspan>
+      <tspan x="125" dy="32">Utilities</tspan>
+    </text>
+    
+    <text x="65" y="805" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">(calls to syslog()</tspan>
+      <tspan x="65" dy="34">writing to Unix</tspan>
+      <tspan x="65" dy="34">datagram socket</tspan>
+      <tspan x="65" dy="34" font-family="monospace">/dev/log;</tspan>
+      <tspan x="65" dy="34">scripts calling</tspan>
+      <tspan x="65" dy="34" font-family="monospace">logger)</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 380 270 L 415 270 L 415 895 L 380 895" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="380" y1="532" x2="415" y2="532" stroke="#207448" stroke-width="3"/>
+  <line x1="415" y1="330" x2="448" y2="330" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+
+  
+  
+  <g filter="url(#shadow)">
+    <rect x="450" y="155" width="390" height="355" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <circle cx="488" cy="195" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 488 183 L 488 207 M 476 195 L 500 195" stroke="#207448" stroke-width="4"/>
+    <text x="520" y="205" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">systemd-journald</text>
+
+    
+    <rect x="468" y="235" width="354" height="255" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="484" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="484" dy="0">Attaches trusted</tspan>
+      <tspan x="484" dy="34">kernel metadata</tspan>
+      <tspan x="484" dy="34" font-family="monospace">(_PID, _UID, _COMM,</tspan>
+      <tspan x="484" dy="34" font-family="monospace">_SYSTEMD_UNIT,</tspan>
+      <tspan x="484" dy="34" font-family="monospace">_HOSTNAME)</tspan>
+      <tspan x="484" dy="34">from socket credentials</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="645" y1="510" x2="645" y2="568" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="450" y="570" width="390" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="488" cy="605" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 470 605 L 470 625 A 18 7 0 0 0 506 625 L 506 605" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="520" y="612" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="520" dy="0">Structured Binary</tspan>
+      <tspan x="520" dy="32">Journal</tspan>
+    </text>
+
+    <text x="475" y="688" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="475" dy="0">(/var/log/journal/</tspan>
+      <tspan x="475" dy="34" font-family="sans-serif">persistent or</tspan>
+      <tspan x="475" dy="34">/run/log/journal/</tspan>
+      <tspan x="475" dy="34" font-family="sans-serif">volatile)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="645" y1="810" x2="645" y2="868" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="450" y="870" width="390" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="470" y="895" width="42" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 478 906 L 486 912 L 478 918" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="488" y1="921" x2="498" y2="921" stroke="#207448" stroke-width="3"/>
+    <text x="528" y="922" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">journalctl</text>
+
+    <text x="470" y="975" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="470" dy="0">querying binary files</tspan>
+      <tspan x="470" dy="34">with filters</tspan>
+      <tspan x="470" dy="34" font-family="monospace">(-u, -b, -p,</tspan>
+      <tspan x="470" dy="34" font-family="monospace">-S, -g, -o json)</tspan>
+    </text>
+  </g>
+
+  
+  
+  <line x1="840" y1="280" x2="1198" y2="280" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="865" y="195" width="310" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1020" y="230" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">Forwarding Path</text>
+    <text x="1020" y="266" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1020" dy="0">(via /run/systemd/</tspan>
+      <tspan x="1020" dy="32">journal/syslog or</tspan>
+      <tspan x="1020" dy="32">rsyslog imjournal</tspan>
+      <tspan x="1020" dy="32" font-family="sans-serif">plugin)</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g filter="url(#shadow)">
+    <rect x="1200" y="155" width="340" height="255" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1225 180 L 1261 180 L 1249 198 L 1249 216 L 1237 210 L 1237 198 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="1275" y="202" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">rsyslog Daemon</text>
+
+    <text x="1225" y="255" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1225" dy="0">(evaluates</tspan>
+      <tspan x="1225" dy="32" font-family="monospace">facility.severity</tspan>
+      <tspan x="1225" dy="32">selectors such as</tspan>
+      <tspan x="1225" dy="32" font-family="monospace">auth.*, kern.*,</tspan>
+      <tspan x="1225" dy="32" font-family="monospace">*.emerg)</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1540 280 L 1570 280 L 1570 990 L 1542 990" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="1570" y1="540" x2="1542" y2="540" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+  <line x1="1570" y1="745" x2="1542" y2="745" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+  
+  <polygon points="1542,990 1552,985 1552,995" fill="#207448"/>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1200" y="440" width="340" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1225 460 L 1250 460 L 1261 471 L 1261 498 L 1225 498 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 1250 460 L 1250 471 L 1261 471" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="1275" y="488" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Local text files</text>
+
+    <text x="1225" y="538" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1225" dy="0">(/var/log/syslog,</tspan>
+      <tspan x="1225" dy="34">/var/log/auth.log,</tspan>
+      <tspan x="1225" dy="34">/var/log/kern.log)</tspan>
+    </text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1200" y="665" width="340" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1225 695 L 1243 688 L 1243 718 L 1225 711 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 1243 695 L 1257 690 L 1257 716 L 1243 711" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="1267" y="696" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1267" dy="0">Broadcast to</tspan>
+      <tspan x="1267" dy="28">logged-in users</tspan>
+    </text>
+
+    <text x="1225" y="775" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1225" dy="0">(:omusrmsg:*)</tspan>
+    </text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1200" y="865" width="340" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="1242" cy="897" r="15" fill="none" stroke="#207448" stroke-width="3"/>
+    <ellipse cx="1242" cy="897" rx="7" ry="15" fill="none" stroke="#207448" stroke-width="2"/>
+    <line x1="1227" y1="897" x2="1257" y2="897" stroke="#207448" stroke-width="2"/>
+    <text x="1268" y="896" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1268" dy="0">Remote forwarder</tspan>
+      <tspan x="1268" dy="28">over network</tspan>
+    </text>
+
+    <text x="1220" y="972" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1220" dy="0">(@host:514 UDP or</tspan>
+      <tspan x="1220" dy="34">@@host:514 TCP</tspan>
+      <tspan x="1220" dy="34" font-family="sans-serif">with disk queue)</tspan>
+    </text>
+  </g>
+</svg>

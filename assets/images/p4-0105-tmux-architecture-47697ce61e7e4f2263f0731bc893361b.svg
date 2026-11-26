@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>Process Lifecycle Under tmux: Isolating Processes from SIGHUP</title>
+  <desc>Split-panel comparison of process lifecycles during network disconnection with and without tmux, showing how tmux isolates running processes from SIGHUP signals.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#c93b2b"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+
+    
+    <g id="lightning">
+      <polygon points="14,0 4,16 12,16 8,28 22,12 14,12" fill="#c93b2b"/>
+    </g>
+  </defs>
+
+  
+  <rect width="1600" height="1380" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Process Lifecycle Under tmux: Isolating Processes from SIGHUP</text>
+
+  
+  
+  
+  <rect x="50" y="85" width="720" height="1260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="132" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Panel A: Without tmux: Plain SSH</text>
+
+  
+  <rect x="80" y="160" width="660" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="106" y="186" width="46" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="98" y1="220" x2="160" y2="220" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="175" y="198" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Client</text>
+  <text x="175" y="234" font-family="monospace" font-size="24" fill="#207448">ssh user@gpu01</text>
+
+  
+  <line x1="410" y1="260" x2="410" y2="395" stroke="#207448" stroke-width="3" stroke-dasharray="8,6"/>
+  
+  <rect x="365" y="270" width="90" height="34" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="410" y="294" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">TCP</text>
+  
+  <rect x="160" y="322" width="500" height="50" rx="10" fill="#fdf0ed" stroke="#c93b2b" stroke-width="2"/>
+  <use href="#lightning" x="180" y="333"/>
+  <text x="430" y="356" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c93b2b">Network Drop / Laptop Sleep</text>
+
+  
+  <rect x="80" y="395" width="660" height="530" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="105" y="415" width="42" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+  <rect x="105" y="432" width="42" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="114" cy="421" r="2" fill="#207448"/>
+  <circle cx="114" cy="438" r="2" fill="#207448"/>
+  <text x="165" y="436" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Remote Server</text>
+
+  
+  <rect x="105" y="465" width="610" height="60" rx="8" fill="#f5f8f5" stroke="#95a59a" stroke-width="2"/>
+  <text x="130" y="503" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">sshd (daemon)</text>
+
+  
+  <line x1="410" y1="525" x2="410" y2="550" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="105" y="555" width="610" height="85" rx="8" fill="#f5f8f5" stroke="#95a59a" stroke-width="2"/>
+  <text x="130" y="588" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">child sshd (privsep session)</text>
+  <text x="130" y="622" font-family="sans-serif" font-size="24" fill="#303a36">allocating pseudo-terminal <tspan font-family="monospace" fill="#207448">/dev/pts/1</tspan></text>
+
+  
+  <line x1="410" y1="640" x2="410" y2="665" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="105" y="670" width="610" height="60" rx="8" fill="#f5f8f5" stroke="#95a59a" stroke-width="2"/>
+  <text x="130" y="708" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">bash (login shell)</text>
+
+  
+  <line x1="410" y1="730" x2="410" y2="755" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="105" y="760" width="610" height="85" rx="8" fill="#f5f8f5" stroke="#95a59a" stroke-width="2"/>
+  <text x="130" y="793" font-family="sans-serif" font-size="24" fill="#303a36">foreground process</text>
+  <text x="130" y="827" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">python train.py</text>
+
+  
+  <rect x="80" y="945" width="660" height="375" rx="12" fill="#fdf2f0" stroke="#c93b2b" stroke-width="2"/>
+  <text x="110" y="986" font-family="sans-serif" font-size="30" font-weight="bold" fill="#c93b2b">Consequence:</text>
+  <text x="110" y="1030" font-family="sans-serif" font-size="24" fill="#303a36">• <tspan font-family="monospace">sshd session</tspan> terminates</text>
+  <text x="110" y="1070" font-family="sans-serif" font-size="24" fill="#303a36">• <tspan font-family="monospace">/dev/pts/1</tspan> hangs up</text>
+  <text x="110" y="1110" font-family="sans-serif" font-size="24" fill="#303a36">• kernel sends <tspan font-family="monospace" font-weight="bold" fill="#c93b2b">SIGHUP</tspan></text>
+  <text x="135" y="1144" font-family="sans-serif" font-size="24" fill="#303a36">to foreground process group</text>
+
+  
+  <rect x="105" y="1175" width="610" height="120" rx="8" fill="#c93b2b"/>
+  <text x="410" y="1245" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#ffffff">python train.py killed</text>
+
+
+  
+  
+  
+  <rect x="830" y="85" width="720" height="1260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="860" y="132" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Panel B: With tmux: Persistent Multiplexer</text>
+
+  
+  <rect x="860" y="160" width="660" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="886" y="186" width="46" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="878" y1="220" x2="940" y2="220" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="955" y="198" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Client</text>
+  <text x="955" y="234" font-family="monospace" font-size="24" fill="#207448">ssh -t gpu01 tmux attach</text>
+
+  
+  <line x1="1190" y1="260" x2="1190" y2="395" stroke="#207448" stroke-width="3" stroke-dasharray="8,6"/>
+  
+  <rect x="1145" y="270" width="90" height="34" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1190" y="294" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">TCP</text>
+  
+  <rect x="880" y="318" width="620" height="66" rx="10" fill="#fdf0ed" stroke="#c93b2b" stroke-width="2"/>
+  <use href="#lightning" x="895" y="337"/>
+  <text x="1200" y="344" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c93b2b">Network Drop <tspan font-weight="normal" fill="#303a36">or user</tspan> <tspan font-family="monospace">Ctrl-b d (detach)</tspan></text>
+  <text x="1200" y="372" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">terminates only transient sshd and tmux client</text>
+
+  
+  <rect x="860" y="395" width="660" height="530" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="885" y="415" width="42" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+  <rect x="885" y="432" width="42" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="894" cy="421" r="2" fill="#207448"/>
+  <circle cx="894" cy="438" r="2" fill="#207448"/>
+  <text x="945" y="436" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Remote Server</text>
+
+  
+  <rect x="885" y="455" width="610" height="75" rx="8" fill="#fdfaf5" stroke="#db8129" stroke-width="2" stroke-dasharray="6,4"/>
+  <text x="905" y="486" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">sshd session</text>
+  <text x="905" y="516" font-family="sans-serif" font-size="24" fill="#303a36">runs transient <tspan font-family="monospace" font-weight="bold">tmux client</tspan></text>
+
+  
+  <line x1="1190" y1="530" x2="1190" y2="595" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="945" y="542" width="490" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1190" y="567" text-anchor="middle" font-family="monospace" font-size="24" fill="#207448">/tmp/tmux-UID/default</text>
+
+  
+  <rect x="885" y="600" width="610" height="305" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="905" y="635" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">tmux server (daemon)</text>
+  <text x="905" y="670" font-family="sans-serif" font-size="24" fill="#303a36">owns virtual ptys: <tspan font-family="monospace" font-weight="bold" fill="#207448">/dev/pts/2</tspan></text>
+
+  
+  <rect x="905" y="690" width="570" height="60" rx="8" fill="#ffffff" stroke="#95a59a" stroke-width="2"/>
+  <text x="925" y="728" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">bash</text>
+
+  
+  <line x1="1190" y1="750" x2="1190" y2="775" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  <rect x="905" y="780" width="570" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="925" y="814" font-family="sans-serif" font-size="24" fill="#303a36">persistent session process</text>
+  <text x="925" y="855" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">python train.py</text>
+
+  
+  <rect x="860" y="945" width="660" height="375" rx="12" fill="#edf7ed" stroke="#207448" stroke-width="2"/>
+  <text x="890" y="986" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Consequence:</text>
+
+  
+  <rect x="885" y="1008" width="610" height="95" rx="8" fill="#207448"/>
+  <text x="1190" y="1045" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff"><tspan font-family="monospace">tmux server</tspan> and <tspan font-family="monospace">python train.py</tspan></text>
+  <text x="1190" y="1082" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">continue running unharmed</text>
+
+  
+  <rect x="885" y="1120" width="610" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 915 1195 A 22 22 0 1 1 935 1215" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="970" y="1165" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">tmux attach -t train</text>
+  <text x="970" y="1205" font-family="sans-serif" font-size="24" fill="#303a36">subsequent reconnect command</text>
+  <text x="970" y="1245" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">re-establishing visual output</text>
+
+</svg>

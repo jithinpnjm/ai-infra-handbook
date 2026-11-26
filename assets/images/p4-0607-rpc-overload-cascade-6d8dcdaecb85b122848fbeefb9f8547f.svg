@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480" style="background-color: #f5f8f5;">
+  <title>The controller RPC overload cascade, lock contention, and diagnosis with sdiag</title>
+  <desc>Visual infographic explaining the root causes of Slurm controller overload, internal lock contention cascade, diagnostic signatures with sdiag, and operational remedies.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-down" viewBox="0 0 10 10" refX="5" refY="8" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 1.5 0 L 5 8 L 8.5 0 z" fill="#207448" />
+    </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">The controller RPC overload cascade, lock contention,</text>
+  <text x="800" y="108" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">and diagnosis with sdiag</text>
+
+  
+  <rect x="40" y="150" width="460" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  
+  
+  <g transform="translate(65, 175)">
+    <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 12 L 28 28 L 40 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="135" y="210" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">The Polling Storm (Root Causes)</text>
+
+  
+  <rect x="65" y="250" width="410" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="95" cy="285" r="16" fill="#207448" />
+  <text x="95" y="293" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="125" y="292" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">User terminal polling scripts</text>
+  <rect x="85" y="320" width="370" height="85" rx="8" fill="#f5f8f5" stroke="#cbd5e1" stroke-width="1" />
+  <text x="100" y="355" font-family="monospace" font-size="24" fill="#303a36">(while true; do</text>
+  <text x="100" y="385" font-family="monospace" font-size="24" fill="#303a36"> squeue; sleep 1; done)</text>
+
+  
+  <rect x="65" y="455" width="410" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="95" cy="490" r="16" fill="#207448" />
+  <text x="95" y="498" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="125" y="495" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">External monitoring</text>
+  <text x="85" y="540" font-family="sans-serif" font-size="24" fill="#303a36">exporters querying squeue</text>
+  <text x="85" y="575" font-family="sans-serif" font-size="24" fill="#303a36">every 5s across hundreds</text>
+  <text x="85" y="610" font-family="sans-serif" font-size="24" fill="#303a36">of clients</text>
+
+  
+  <rect x="65" y="655" width="410" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="95" cy="690" r="16" fill="#207448" />
+  <text x="95" y="698" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="125" y="695" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">High-churn short jobs</text>
+  <text x="85" y="740" font-family="sans-serif" font-size="24" fill="#303a36">flooding job state changes</text>
+
+  
+  <rect x="65" y="830" width="410" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="270" y="875" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">All send RPCs (port 6817)</text>
+  <text x="270" y="915" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">into slurmctld</text>
+  <line x1="270" y1="940" x2="270" y2="990" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+
+
+  
+  <rect x="530" y="150" width="540" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  
+  
+  <g transform="translate(555, 175)">
+    <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 16 28 L 24 36 L 40 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="625" y="210" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">The slurmctld Contention Cascade</text>
+
+  
+  <rect x="555" y="245" width="490" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="282" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Incoming RPC queue exceeds</text>
+  <text x="800" y="315" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">thread pool limit</text>
+
+  
+  <line x1="800" y1="335" x2="800" y2="355" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="555" y="355" width="490" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="392" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Threads acquire global in-memory</text>
+  <text x="800" y="425" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">job read lock (job_read_lock)</text>
+
+  
+  <line x1="800" y1="450" x2="800" y2="470" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="555" y="470" width="490" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="505" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Read locks starve write locks</text>
+  <text x="800" y="540" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(scheduling, node state updates,</text>
+  <text x="800" y="575" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">slurmd heartbeats)</text>
+
+  
+  <line x1="800" y1="600" x2="800" y2="620" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="555" y="620" width="490" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="658" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Backfill scheduler cycle time</text>
+  <text x="800" y="693" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">spikes from 0.05s to 15s+</text>
+
+  
+  <line x1="800" y1="720" x2="800" y2="740" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="555" y="740" width="490" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="778" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">slurmd ping heartbeats queue</text>
+  <text x="800" y="813" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">behind read requests</text>
+
+  
+  <line x1="800" y1="840" x2="800" y2="860" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="555" y="860" width="490" height="165" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+  <text x="800" y="915" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">Controller marks healthy</text>
+  <text x="800" y="960" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129" text-anchor="middle">nodes DOWN* (flapping)</text>
+
+
+  
+  <rect x="1100" y="150" width="460" height="910" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  
+  
+  <g transform="translate(1120, 175)">
+    <rect x="4" y="6" width="48" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 14 20 L 22 28 L 14 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="26" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="1185" y="200" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Symptoms and</text>
+  <text x="1185" y="232" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Diagnosis with sdiag</text>
+
+  
+  <rect x="1120" y="260" width="420" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1330" y="295" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Client squeue hangs with</text>
+  <rect x="1135" y="315" width="390" height="80" rx="8" fill="#f5f8f5" stroke="#cbd5e1" stroke-width="1" />
+  <text x="1330" y="348" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">'Socket timed out on</text>
+  <text x="1330" y="378" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">send/recv operation'</text>
+
+  
+  <rect x="1120" y="435" width="420" height="590" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <rect x="1120" y="435" width="420" height="45" rx="12" fill="#207448" />
+  <circle cx="1145" cy="457" r="6" fill="#e8f1ea" />
+  <circle cx="1165" cy="457" r="6" fill="#e8f1ea" />
+  <circle cx="1185" cy="457" r="6" fill="#e8f1ea" />
+  <text x="1330" y="466" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">sdiag output:</text>
+
+  
+  
+  <rect x="1135" y="495" width="390" height="175" rx="8" fill="#f5f8f5" stroke="#cbd5e1" stroke-width="1" />
+  <text x="1145" y="530" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">'Remote Procedure Call</text>
+  <text x="1145" y="562" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">statistics by message</text>
+  <text x="1145" y="594" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">type' highlighting</text>
+  <text x="1145" y="628" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">REQUEST_JOB_INFO</text>
+  <text x="1145" y="658" font-family="monospace" font-size="24" fill="#303a36">(92% of calls)</text>
+
+  
+  <rect x="1135" y="685" width="390" height="160" rx="8" fill="#f5f8f5" stroke="#cbd5e1" stroke-width="1" />
+  <text x="1145" y="725" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">'RPCs by user'</text>
+  <text x="1145" y="765" font-family="sans-serif" font-size="24" fill="#303a36">identifying abusive</text>
+  <text x="1145" y="805" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">user UID</text>
+
+  
+  <rect x="1135" y="860" width="390" height="145" rx="8" fill="#f5f8f5" stroke="#cbd5e1" stroke-width="1" />
+  <text x="1330" y="920" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Agent queue size</text>
+  <text x="1330" y="960" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">saturated</text>
+
+
+  
+  <rect x="40" y="1090" width="1520" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+  
+  
+  <g transform="translate(65, 1115)">
+    <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 16 L 28 32 M 28 38 L 28 42" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="135" y="1152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Operational Remedies:</text>
+
+  
+  
+  <rect x="65" y="1180" width="345" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="105" cy="1225" r="18" fill="#207448" />
+  <text x="105" y="1234" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="135" y="1234" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Throttle and cache</text>
+  <text x="85" y="1275" font-family="sans-serif" font-size="24" fill="#303a36">polling</text>
+
+  
+  <rect x="440" y="1180" width="355" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="480" cy="1225" r="18" fill="#207448" />
+  <text x="480" y="1234" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="510" y="1234" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Replace squeue</text>
+  <text x="460" y="1275" font-family="sans-serif" font-size="24" fill="#303a36">polling with sacct or</text>
+  <text x="460" y="1310" font-family="sans-serif" font-size="24" fill="#303a36">caching exporters</text>
+
+  
+  <rect x="825" y="1180" width="345" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="865" cy="1225" r="18" fill="#207448" />
+  <text x="865" y="1234" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="895" y="1234" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Configure RPC rate</text>
+  <text x="845" y="1275" font-family="sans-serif" font-size="24" fill="#303a36">limiting</text>
+
+  
+  <rect x="1200" y="1180" width="340" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="1240" cy="1225" r="18" fill="#207448" />
+  <text x="1240" y="1234" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="1270" y="1234" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Raise MaxJobCount</text>
+  <text x="1220" y="1275" font-family="sans-serif" font-size="24" fill="#303a36">only after eliminating</text>
+  <text x="1220" y="1310" font-family="sans-serif" font-size="24" fill="#303a36">pollers</text>
+</svg>
