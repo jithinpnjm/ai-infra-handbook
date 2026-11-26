@@ -80,7 +80,7 @@ D=[
 ("Python (30)",M('Refresh:',L('3.5','5. Data formats')),"Program: count errors per service from JSON lines"),
 ("Shell (15)","`sed -i`, `grep -rn`, `tar`","`tar czf` and `tar xzf`")]),
 ("Day 8, Fri 4 Dec",[
-("Linux (30)",M(L('20.4','### 4. strace: how to read','### 5. Blocks, inodes','### 6. Permission checks'),L('1.19','2. The namespace types')),"`lsof -p`, `/proc/<pid>/limits`"),
+("Linux (30)",M(L('20.4','### 4. strace: how to read','### 5. Blocks, inodes','### 6. Permission checks'),L('1.19','2. The namespace types'),L('1.18','5. Control groups: the idea','7. The CPU controller')),"`lsof -p`, `/proc/<pid>/limits`"),
 ("Networking (25)",L('20.6','### 1. Refused, timed out','### 3. Reading ss','### 4. SYN backlog','### 5. TIME_WAIT'),"MTU test `ping -M do -s 1472`"),
 ("Platform: Kubernetes under the hood (30)",L('5.26','1. The master map','3. cgroups v2 in depth','6. Networking in the kernel'),"On a kind node: `crictl ps`, `lsns`, `nsenter -t <pid> -n ip a`; build a container by hand: "+L('1.20','Step 3. Namespaces with unshare')),
 ("Coding (30)","Merge intervals, meeting rooms, insert interval","Timed"),
@@ -96,13 +96,13 @@ D=[
 ("Day 10, Sun 6 Dec",[
 ("Linux (30)",L('20.7','### 6. Processes, signals','### 7. cron and logrotate','### 10. Bash that survives'),"One triage drill on a deliberately broken VM"),
 ("Networking (25)",M(L('2.30','4. A practical workflow','5. The diagnostic kit'),'[IF TIME] SR-IOV vs virtio, BGP in the data centre, VXLAN: one paragraph each'),"Draw the decision tree for \"A cannot reach B\""),
-("Platform: GPU basics (30)",M(L('10.1','2. CPU latency design'),L('10.8','2. The three misleading metrics','3. Clocks, power caps'),L('10.6','2. NVLink, NVSwitch'),L('12.1','2. RDMA, RoCEv2')),"Draw an 8-GPU node; read the sample `nvidia-smi` outputs"),
+("Platform: Linux internals, packet path (30)",M(L('2.24','5. The packet path','6. TCP/IP stack tuning'),L('2.23','1. Netfilter architecture','2. Connection tracking'),L('2.25','1. Network namespaces','2. Building container networking by hand'),L('2.22','Unix domain sockets')),"Trace one packet: app `write()` -> socket -> TCP -> IP -> netfilter -> qdisc -> NIC; use `ss -i`, `conntrack -L`, `tc qdisc show`, `ip netns add` + veth pair"),
 ("Coding (30)","Number of islands (BFS/DFS), tree level-order, max depth","Timed"),
 ("Python (30)",M('Refresh:',L('3.3','8. Iterables, iterators and generators','6. Functions as objects')),"Program: `@retry` decorator and timer context manager"),
 ("Shell (15)","Health check","`nc -z` port, `systemctl is-active`, `df`, exit code")]),
 ("Day 11, Mon 7 Dec (review day: recall 25 min on Days 1-10)",[
 ("Linux + Networking (55)",M(L('2.1','12. A map from symptom to layer'),L('20.3','### 3. The first 60 seconds')),"One timed 30-min Linux mock"),
-("Platform: AI cluster + DevOps (30)",M(L('13.1','1. Why AI storage is different'),L('15.1','2. The Nine-Stage','3. Prefill vs. Decode'),L('11.1','2. Why an Integer Count'),L('20.19','5. Error budgets','6. Burn rate')),"Explain the AI-cluster path aloud (storage, GPU, network, checkpoint); explain rolling/canary/blue-green, rollback, CI/CD stages"),
+("Platform: DevOps + GPU overview (30)",M(L('20.19','5. Error budgets','6. Burn rate'),'[IF TIME] GPU overview:',L('10.8','2. The three misleading metrics'),L('12.1','2. RDMA, RoCEv2'),L('15.1','3. Prefill vs. Decode')),"Explain rolling/canary/blue-green, rollback, CI/CD stages aloud; one-minute GPU story: storage feeds GPUs, NVLink/RDMA move gradients, checkpoints go back to storage"),
 ("Coding (30)","Three fresh problems, 30 min each","Timed"),
 ("Python (30)",M('Refresh:',L('3.9','2. pytest essentials','3. Isolating dependencies')),"Program: 6 tests for two earlier programs, one failure case"),
 ("Shell (15)","All one-liners from Days 1-10","From memory")]),
